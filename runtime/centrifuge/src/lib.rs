@@ -1630,8 +1630,8 @@ impl pallet_loans::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
-	type PriceId = u32;
-	type PriceRegistry = pallet_loans::util::NoPriceRegistry<Runtime>;
+	type PriceId = OracleKey;
+	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
