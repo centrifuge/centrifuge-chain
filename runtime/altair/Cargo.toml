@@ -66,6 +66,7 @@ pallet-collective = { git = "https://github.com/paritytech/substrate", default-f
 pallet-democracy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-identity = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-membership = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-preimage = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -82,6 +83,7 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate", default-feat
 
 # orml pallets
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
@@ -106,6 +108,7 @@ pallet-block-rewards = { path = "../../pallets/block-rewards", default-features 
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
+pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
@@ -146,11 +149,10 @@ std = [
   "frame-try-runtime/std",
   "orml-asset-registry/std",
   "orml-tokens/std",
-  "orml-tokens/std",
   "orml-xcm-support/std",
   "orml-xcm/std",
   "orml-xtokens/std",
-  "orml-xtokens/std",
+  "orml-oracle/std",
   "pallet-anchors/std",
   "pallet-aura/std",
   "pallet-authorship/std",
@@ -162,6 +164,7 @@ std = [
   "pallet-collective/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
+  "pallet-data-collector/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
@@ -176,6 +179,7 @@ std = [
   "pallet-loans/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
+  "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-permissions/std",
   "pallet-pool-system/std",
@@ -237,6 +241,7 @@ runtime-benchmarks = [
   "pallet-collective/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
+  "pallet-data-collector/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -249,6 +254,7 @@ runtime-benchmarks = [
   "pallet-loans/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
+  "pallet-membership/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
@@ -300,6 +306,7 @@ try-runtime = [
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
+  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
@@ -311,6 +318,7 @@ try-runtime = [
   "pallet-collective/try-runtime",
   "pallet-crowdloan-claim/try-runtime",
   "pallet-crowdloan-reward/try-runtime",
+  "pallet-data-collector/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
@@ -324,6 +332,7 @@ try-runtime = [
   "pallet-loans/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
+  "pallet-membership/try-runtime",
   "pallet-nft-sales/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-system/try-runtime",
