@@ -42,9 +42,9 @@ use crate::{
 		time::secs::*,
 		tokens,
 		tokens::{DECIMAL_BASE_12, YEAR_RATE},
+		AUSD_ASSET_ID,
 	},
 };
-use crate::utils::AUSD_ASSET_ID;
 
 /// Creates a default pool.
 ///

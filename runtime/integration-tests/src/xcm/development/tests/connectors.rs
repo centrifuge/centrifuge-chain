@@ -427,9 +427,9 @@ fn verify_tranche_fields_sizes() {
 
 mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
-	use crate::utils::AUSD_ASSET_ID;
 
 	use super::*;
+	use crate::utils::AUSD_ASSET_ID;
 
 	pub fn setup_pre_requirements() {
 		let moonbeam_location = MultiLocation {

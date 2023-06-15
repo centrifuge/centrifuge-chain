@@ -248,7 +248,6 @@ pub const UNKNOWN_INVESTMENT: InvestmentId = InvestmentId::PoolTranche {
 /// The currency id for the AUSD token
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
-
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build() -> TestExternalities {
