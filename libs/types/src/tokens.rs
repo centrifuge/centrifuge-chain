@@ -31,7 +31,8 @@ use crate::{xcm::XcmMetadata, EVMChainId};
 /// to ensure that the values under an old codec-encoded key are moved to the
 /// new key.
 ///
-/// NOTE: It is vital to leave the `#[codec(index = _)]` marks immutable or else storage items under a `CurrencyId` key will be corrupted.
+/// NOTE: It is vital to leave the `#[codec(index = _)]` marks immutable or else
+/// storage items under a `CurrencyId` key will be corrupted.
 #[derive(
 	Clone,
 	Copy,
@@ -328,12 +329,6 @@ mod tests {
 			.is_err()
 		);
 		assert!(
-			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::KSM).is_err()
-		);
-		assert!(
-			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::AUSD).is_err()
-		);
-		assert!(
 			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			))
@@ -344,30 +339,33 @@ mod tests {
 	#[cfg(test)]
 	mod tests {
 		use cfg_primitives::TrancheId;
-		use crate::tokens as after;
-		use super::{ForeignAssetId, StakingCurrency};
 		use codec::Encode;
 		use hex::FromHex;
+
+		use super::{ForeignAssetId, StakingCurrency};
+		use crate::tokens as after;
 
 		mod before {
 			use cfg_primitives::{PoolId, TrancheId};
 			use codec::{Decode, Encode, MaxEncodedLen};
 			use scale_info::TypeInfo;
+
 			use crate::tokens::{ForeignAssetId, StakingCurrency};
 
-			/// The old definition of `CurrencyId` which included `AUSD` and `KSM` as hardcoded variants.
+			/// The old definition of `CurrencyId` which included `AUSD` and
+			/// `KSM` as hardcoded variants.
 			#[derive(
-			Clone,
-			Copy,
-			PartialOrd,
-			Ord,
-			PartialEq,
-			Eq,
-			Debug,
-			Encode,
-			Decode,
-			TypeInfo,
-			MaxEncodedLen,
+				Clone,
+				Copy,
+				PartialOrd,
+				Ord,
+				PartialEq,
+				Eq,
+				Debug,
+				Encode,
+				Decode,
+				TypeInfo,
+				MaxEncodedLen,
 			)]
 			pub enum CurrencyId {
 				// The Native token, representing AIR in Altair and CFG in Centrifuge.
@@ -415,8 +413,8 @@ mod tests {
 			assert_eq!(
 				after::CurrencyId::Tranche(33, default_tranche_id()).encode(),
 				vec![
-					1, 33, 0, 0, 0, 0, 0, 0, 0, 129, 26, 205, 91, 63, 23, 192, 104, 65, 199, 228, 30,
-					158, 4, 203, 27
+					1, 33, 0, 0, 0, 0, 0, 0, 0, 129, 26, 205, 91, 63, 23, 192, 104, 65, 199, 228,
+					30, 158, 4, 203, 27
 				]
 			);
 

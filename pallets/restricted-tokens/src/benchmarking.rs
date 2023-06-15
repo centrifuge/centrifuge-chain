@@ -161,7 +161,7 @@ where
 	T: Config,
 	T::CurrencyId: From<CurrencyId>,
 {
-	CurrencyId::KSM.into()
+	CurrencyId::ForeignAsset(1).into()
 }
 
 benchmarks! {

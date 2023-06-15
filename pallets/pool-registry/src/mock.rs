@@ -327,7 +327,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::Staking(_) => false,
 			_ => true,
 		}
 	}

@@ -19,6 +19,7 @@ use sp_runtime::{AccountId32, Storage};
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
+	AUSD_ASSET_ID, RELAY_ASSET_ID,
 };
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the
@@ -59,7 +60,7 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					CurrencyId::AUSD.into(),
+					AUSD_ASSET_ID,
 					(100_000 * DECIMAL_BASE_12).into(),
 				)
 			})
@@ -83,7 +84,7 @@ where
 	default_ausd_balances::<Runtime>(storage);
 }
 
-/// Register the CurrencyID::KSM and CurrencyId::AUSD as assets
+/// Register the Relay chain token and CurrencyId::AUSD as assets
 pub fn register_default_asset<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config,
@@ -92,7 +93,7 @@ where
 	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	let genesis = MockGenesisConfigAssetRegistry {
-		assets: vec![CurrencyId::AUSD, CurrencyId::KSM],
+		assets: vec![RELAY_ASSET_ID, AUSD_ASSET_ID],
 	};
 
 	<MockGenesisConfigAssetRegistry as GenesisBuild<Runtime>>::assimilate_storage(

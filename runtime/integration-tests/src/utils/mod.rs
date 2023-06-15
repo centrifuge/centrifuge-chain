@@ -10,6 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::tokens::CurrencyId;
+
 pub mod accounts;
 pub mod env;
 pub mod extrinsics;
@@ -19,3 +21,8 @@ pub mod logs;
 pub mod pools;
 pub mod time;
 pub mod tokens;
+
+/// The relay native token's asset id
+pub const RELAY_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+/// The AUSD asset id
+pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(2);
