@@ -22,10 +22,8 @@ use frame_support::{
 use pallet_evm::GasWeightMapping;
 use sp_core::{H160, H256, U256};
 
-mod origin;
 mod weights;
 
-pub use origin::*;
 pub use pallet::*;
 
 #[frame_support::pallet]
