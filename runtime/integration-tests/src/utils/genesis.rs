@@ -45,7 +45,7 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD tokens to the
+/// Provides 100_000 * DECIMAL_BASE_12 AUSD tokens to the
 /// `accounts::default_accounts()`
 pub fn default_ausd_balances<Runtime>(storage: &mut Storage)
 where
@@ -71,7 +71,7 @@ where
 }
 
 /// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12
-/// CurrencyId::AUSD tokens to the `accounts::default_accounts()`
+/// AUSD tokens to the `accounts::default_accounts()`
 pub fn default_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_tokens::Config + pallet_balances::Config,
@@ -84,7 +84,7 @@ where
 	default_ausd_balances::<Runtime>(storage);
 }
 
-/// Register the Relay chain token and CurrencyId::AUSD as assets
+/// Register the Relay chain token and AUSD_CURRENCY_ID in the asset registry
 pub fn register_default_asset<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config,

@@ -379,6 +379,8 @@ mod benchmarks_utils {
 	use super::*;
 	use crate::tranches::TrancheMetadata;
 
+	const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
 	where
 		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
@@ -391,9 +393,9 @@ mod benchmarks_utils {
 		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
 
-			if T::AssetRegistry::metadata(&CurrencyId::AUSD).is_none() {
+			if T::AssetRegistry::metadata(&AUSD_CURRENCY_ID).is_none() {
 				T::AssetRegistry::register_asset(
-					Some(CurrencyId::AUSD),
+					Some(AUSD_CURRENCY_ID),
 					orml_asset_registry::AssetMetadata {
 						decimals: 18,
 						name: "MOCK TOKEN".as_bytes().to_vec(),
@@ -433,7 +435,7 @@ mod benchmarks_utils {
 						},
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				FUNDS.into(),
 			)
 			.unwrap();
@@ -453,7 +455,7 @@ mod benchmarks_utils {
 			)
 			.unwrap();
 
-			T::Tokens::mint_into(CurrencyId::AUSD, &investor, FUNDS.into()).unwrap();
+			T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor, FUNDS.into()).unwrap();
 			T::Investments::update_investment(
 				&investor,
 				T::TrancheCurrency::generate(pool_id.into(), tranche),
@@ -472,7 +474,7 @@ mod benchmarks_utils {
 		}
 
 		fn benchmark_give_ausd(account: &T::AccountId, balance: T::Balance) {
-			T::Tokens::mint_into(CurrencyId::AUSD, account, balance).unwrap();
+			T::Tokens::mint_into(AUSD_CURRENCY_ID, account, balance).unwrap();
 			T::Currency::make_free_balance_be(account, balance);
 		}
 	}

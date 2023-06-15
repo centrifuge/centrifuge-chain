@@ -44,6 +44,7 @@ use crate::{
 		tokens::{DECIMAL_BASE_12, YEAR_RATE},
 	},
 };
+use crate::utils::AUSD_ASSET_ID;
 
 /// Creates a default pool.
 ///
@@ -132,7 +133,7 @@ pub fn custom_pool(
 ///    with id 3
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche
 ///    with id 4
-/// * Currency: CurrencyId::AUSD,
+/// * Currency: AUSD (Acala USD),
 /// * MaxReserve: 100_000 AUSD
 pub fn default_pool_calls(
 	admin: AccountId,
@@ -142,7 +143,7 @@ pub fn default_pool_calls(
 	pool_setup_calls(
 		admin,
 		pool_id,
-		CurrencyId::AUSD,
+		AUSD_ASSET_ID,
 		100_000 * DECIMAL_BASE_12,
 		create_tranche_input(
 			vec![None, Some(10), Some(7), Some(5), Some(3)],

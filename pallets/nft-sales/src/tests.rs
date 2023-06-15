@@ -17,6 +17,8 @@ use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, traits::fun
 
 use crate::{mock::*, NftsBySeller, Price};
 
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 /// Verify that calling `NftSales::add` specifiying an nft that is not present
 /// in the underlying `pallet_uniques` fails with
 /// `nft_sales::Error::<T>::NotFound`.
@@ -32,7 +34,7 @@ fn add_nft_not_found() {
 				unknown_nft.0,
 				unknown_nft.1,
 				Price {
-					currency: CurrencyId::AUSD,
+					currency: AUSD_CURRENCY_ID,
 					amount: 3
 				}
 			),
@@ -55,7 +57,7 @@ fn add_nft_not_owner() {
 				collection_id,
 				item_id,
 				Price {
-					currency: CurrencyId::AUSD,
+					currency: AUSD_CURRENCY_ID,
 					amount: 3
 				}
 			),
@@ -77,7 +79,7 @@ fn add_nft_works() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -119,7 +121,7 @@ fn remove_nft_bad_actor() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -155,7 +157,7 @@ fn remove_nft_works() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -193,7 +195,7 @@ fn buy_nft_seller() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 		// Set it for sale in the NftSales
@@ -214,7 +216,7 @@ fn buy_nft_not_for_sale() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let offer = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -233,8 +235,8 @@ fn buy_nft_insufficient_balance() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
-			amount: OrmlTokens::balance(CurrencyId::AUSD, &1) + 1,
+			currency: AUSD_CURRENCY_ID,
+			amount: OrmlTokens::balance(AUSD_CURRENCY_ID, &1) + 1,
 		};
 
 		// Set it for sale in the NftSales
@@ -259,10 +261,10 @@ fn buy_nft_insufficient_balance() {
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
-		let seller_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &1);
+		let seller_initial_balance = OrmlTokens::balance(AUSD_CURRENCY_ID, &1);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -283,7 +285,7 @@ fn buy_nft_works() {
 
 		// Verify that the buyer can buy the nft
 		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
-		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &BUYER);
+		let buyer_initial_balance = OrmlTokens::balance(AUSD_CURRENCY_ID, &BUYER);
 		assert_ok!(NftSales::buy(
 			buyer.clone(),
 			collection_id,
@@ -329,7 +331,7 @@ fn buy_nft_respects_max_offer_amount() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 
@@ -361,7 +363,7 @@ fn buy_nft_respects_max_offer_currency() {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			amount: 10_000,
 		};
 

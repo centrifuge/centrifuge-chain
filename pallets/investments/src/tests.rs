@@ -89,10 +89,10 @@ fn update_invest_works() {
 				2 * amount,
 			));
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				2 * amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), CurrencyId::AUSD), 0);
+			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), 0);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -131,11 +131,11 @@ fn update_invest_works() {
 				amount / 2,
 			));
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				amount / 2
 			);
 			assert_eq!(
-				free_balance_of(InvestorA::get(), CurrencyId::AUSD),
+				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
 				amount + amount / 2
 			);
 			assert_eq!(
@@ -161,10 +161,10 @@ fn update_invest_works() {
 				amount,
 			));
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), CurrencyId::AUSD), amount);
+			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), amount);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -695,11 +695,11 @@ fn fulfillment_flow_for_everything_works() {
 		// checking balances have changed correctly
 		{
 			assert_eq!(
-				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
 				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
 			);
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				0
 			);
 			assert_eq!(
@@ -782,14 +782,14 @@ fn fulfillment_flow_for_everything_works() {
 		// checking balances have changed correctly
 		{
 			assert_eq!(
-				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
 				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
 					- PRICE
 						.checked_mul_int(TOTAL_REDEEM_AMOUNT)
 						.expect("Unwrapping test checked_mul_int must work")
 			);
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int(TOTAL_REDEEM_AMOUNT)
 					.expect("Unwrapping test checked_mul_int must work")
@@ -872,7 +872,7 @@ fn fulfillment_partially_works_low_price() {
 		// SINGLE_REDEEM_AMOUNT fulfilled. We must check first the correct balances.
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				TOTAL_INVEST_AMOUNT
 					.checked_sub(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
 					.expect("Unwrapping checked_sub must work")
@@ -902,7 +902,7 @@ fn fulfillment_partially_works_low_price() {
 					.expect("Unwrapping checke_add must work")
 			);
 			assert_eq!(
-				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
 				OWNER_START_BALANCE
 					.checked_add(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
 					.expect("Unwrapping checked_add must work")
@@ -1178,7 +1178,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
@@ -1237,7 +1237,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
@@ -1288,7 +1288,7 @@ fn fulfillment_partially_works_low_price() {
 		// Only checking balances of investment account here:
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				207245508982035928145
 			);
 			assert_eq!(
@@ -1337,7 +1337,7 @@ fn fulfillment_partially_works_low_price() {
 		// We check balances again now for investment account:
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int(4 * SINGLE_REDEEM_AMOUNT)
 					.unwrap()
@@ -1397,7 +1397,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
@@ -1405,7 +1405,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID),
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
@@ -1413,7 +1413,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID),
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
@@ -1425,7 +1425,7 @@ fn fulfillment_partially_works_low_price() {
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
-				free_balance_of(TrancheHolderD::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderD::get(), AUSD_CURRENCY_ID),
 				93113772455089820358
 			);
 
@@ -1567,7 +1567,7 @@ fn fulfillment_partially_works_high_price() {
 		// SINGLE_REDEEM_AMOUNT fulfilled. We must check first the correct balances.
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				TOTAL_INVEST_AMOUNT
 					.checked_sub(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
 					.expect("Unwrapping checked_sub must work")
@@ -1597,7 +1597,7 @@ fn fulfillment_partially_works_high_price() {
 					.expect("Unwrapping checke_add must work")
 			);
 			assert_eq!(
-				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
 				OWNER_START_BALANCE
 					.checked_add(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
 					.expect("Unwrapping checked_add must work")
@@ -1873,7 +1873,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
@@ -1932,7 +1932,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				PRICE
 					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
@@ -1983,7 +1983,7 @@ fn fulfillment_partially_works_high_price() {
 		// Only checking balances of investment account here:
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				207194029850746268657
 			);
 			assert_eq!(
@@ -2032,7 +2032,7 @@ fn fulfillment_partially_works_high_price() {
 		// We check balances again now for investment account:
 		{
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				353343283582089552240
 			);
 			assert_eq!(
@@ -2084,7 +2084,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
@@ -2092,7 +2092,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID),
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
@@ -2100,7 +2100,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID),
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
@@ -2112,7 +2112,7 @@ fn fulfillment_partially_works_high_price() {
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
-				free_balance_of(TrancheHolderD::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderD::get(), AUSD_CURRENCY_ID),
 				92985074626865671638
 			);
 
@@ -2232,7 +2232,7 @@ fn fulfillment_of_zero_works() {
 				TOTAL_REDEEM_AMOUNT
 			);
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				TOTAL_INVEST_AMOUNT
 			);
 		}
@@ -2416,7 +2416,7 @@ fn fulfillment_of_zero_works() {
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
 				Some(Order::new(SINGLE_REDEEM_AMOUNT, 1))
 			);
-			assert_eq!(free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD), 0);
+			assert_eq!(free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID), 0);
 		}
 
 		// TrancheHolderB
@@ -2461,7 +2461,7 @@ fn fulfillment_of_zero_works() {
 				RedeemOrders::<MockRuntime>::get(TrancheHolderB::get(), INVESTMENT_0_0),
 				Some(Order::new(SINGLE_REDEEM_AMOUNT, 1))
 			);
-			assert_eq!(free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD), 0);
+			assert_eq!(free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID), 0);
 		}
 
 		// TrancheHolderC
@@ -2506,7 +2506,7 @@ fn fulfillment_of_zero_works() {
 				RedeemOrders::<MockRuntime>::get(TrancheHolderC::get(), INVESTMENT_0_0),
 				Some(Order::new(SINGLE_REDEEM_AMOUNT, 1))
 			);
-			assert_eq!(free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD), 0);
+			assert_eq!(free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID), 0);
 		}
 	})
 }
@@ -2577,7 +2577,7 @@ fn collecting_fully_works() {
 					.unwrap()
 			);
 			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				PRICE.checked_mul_int(TOTAL_REDEEM_AMOUNT).unwrap()
 			);
 		}
@@ -2740,7 +2740,7 @@ fn collecting_fully_works() {
 				None,
 			);
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				redeem_return(SINGLE_REDEEM_AMOUNT_A)
 			);
 		}
@@ -2778,7 +2778,7 @@ fn collecting_fully_works() {
 				None
 			);
 			assert_eq!(
-				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID),
 				redeem_return(SINGLE_REDEEM_AMOUNT_B)
 			);
 		}
@@ -2816,7 +2816,7 @@ fn collecting_fully_works() {
 				None,
 			);
 			assert_eq!(
-				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID),
 				redeem_return(SINGLE_REDEEM_AMOUNT_C)
 			);
 		}
@@ -2960,7 +2960,7 @@ fn collecting_over_max_works() {
 				None
 			);
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
 				92985074626865671637
 			)
 		}

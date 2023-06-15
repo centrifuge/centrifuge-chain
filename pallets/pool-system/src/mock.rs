@@ -426,7 +426,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
@@ -443,7 +443,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![(
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			AssetMetadata {
 				decimals: 18,
 				name: "MOCK TOKEN".as_bytes().to_vec(),

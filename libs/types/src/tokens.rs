@@ -422,7 +422,7 @@ mod tests {
 			assert_eq!(before::CurrencyId::KSM.encode(), vec![2]);
 
 			// AUSD - deprecated
-			assert_eq!(before::CurrencyId::AUSD.encode(), vec![3]);
+			assert_eq!(before::AUSD_CURRENCY_ID.encode(), vec![3]);
 
 			// ForeignAsset
 			assert_eq!(

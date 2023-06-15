@@ -35,6 +35,8 @@ const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 const POOL: u64 = 0;
 const TRANCHE: TrancheIndex = 0;
 
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 benchmarks! {
 	where_clause {
 	where
@@ -176,11 +178,11 @@ where
 	T::AssetRegistry:
 		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
 {
-	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+	match T::AssetRegistry::metadata(&AUSD_CURRENCY_ID) {
 		Some(_) => (),
 		None => {
 			T::AssetRegistry::register_asset(
-				Some(CurrencyId::AUSD),
+				Some(AUSD_CURRENCY_ID),
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN".as_bytes().to_vec(),
@@ -233,7 +235,7 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
-	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
+	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone().into(), MINT_AMOUNT)?;
 	if let Some(amount) = with_tranche_tokens {
 		T::Tokens::mint_into(
 			CurrencyId::Tranche(POOL, tranche_id),
@@ -276,7 +278,7 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		caller,
 		POOL,
 		tranches,
-		CurrencyId::AUSD,
+		AUSD_CURRENCY_ID,
 		MAX_RESERVE,
 	)
 }

@@ -138,7 +138,7 @@ mod filter {
 						_amount,
 						can_actually_hold,
 					) => match asset {
-						CurrencyId::AUSD => false,
+						AUSD_CURRENCY_ID => false,
 						_ => can_actually_hold,
 					},
 				}
@@ -461,7 +461,7 @@ impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restrict
 
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
-			CurrencyId::AUSD => true,
+			AUSD_CURRENCY_ID => true,
 			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
 			CurrencyId::Cfg => true,
 		}
@@ -484,7 +484,7 @@ impl TestExternalitiesBuilder {
 			.unwrap();
 		let ausd = (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::AUSD, DISTR_PER_ACCOUNT))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let restric_1 = (0..10)
 			.into_iter()

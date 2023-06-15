@@ -184,7 +184,7 @@ mod test {
 			v0::Pool::<Runtime, MetaSize>::insert(
 				1701,
 				v0::PoolDetails {
-					currency: CurrencyId::AUSD,
+					currency: AUSD_CURRENCY_ID,
 					tranches: Tranches::new(1701, Vec::new()).unwrap(),
 					parameters: PoolParameters {
 						min_epoch_time: 12,

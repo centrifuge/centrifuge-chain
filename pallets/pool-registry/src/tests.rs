@@ -59,7 +59,7 @@ fn register_pool_and_set_metadata() {
 				},
 			}];
 
-			let currency = CurrencyId::AUSD;
+			let currency = AUSD_CURRENCY_ID;
 			let max_reserve: u128 = 10_000 * 1_000_000_000_000_000;
 
 			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes

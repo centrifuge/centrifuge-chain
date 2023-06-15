@@ -427,6 +427,7 @@ fn verify_tranche_fields_sizes() {
 
 mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
+	use crate::utils::AUSD_ASSET_ID;
 
 	use super::*;
 
@@ -509,7 +510,7 @@ mod utils {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			ausd_meta,
-			Some(CurrencyId::AUSD)
+			Some(AUSD_ASSET_ID)
 		));
 	}
 
@@ -550,7 +551,7 @@ mod utils {
 					}
 				}
 			],
-			CurrencyId::AUSD,
+			AUSD_ASSET_ID,
 			10_000 * dollar(currency_decimals::AUSD),
 		));
 	}

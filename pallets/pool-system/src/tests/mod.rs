@@ -39,6 +39,8 @@ use crate::{
 	PoolState, UnhealthyState,
 };
 
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
@@ -67,7 +69,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -151,7 +153,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -251,7 +253,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -356,7 +358,7 @@ fn pool_constraints_pass() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -452,7 +454,7 @@ fn epoch() {
 					}
 				}
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 		assert_ok!(Investments::update_invest_order(
@@ -686,7 +688,7 @@ fn submission_period() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 		assert_ok!(Investments::update_invest_order(
@@ -875,7 +877,7 @@ fn execute_info_removed_after_epoch_execute() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -946,7 +948,7 @@ fn pool_updates_should_be_constrained() {
 					token_symbol: BoundedVec::default(),
 				}
 			}],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1105,7 +1107,7 @@ fn tranche_ids_are_unique() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1156,7 +1158,7 @@ fn tranche_ids_are_unique() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1194,7 +1196,7 @@ fn same_pool_id_not_possible() {
 					token_symbol: BoundedVec::default(),
 				}
 			},],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1211,7 +1213,7 @@ fn same_pool_id_not_possible() {
 						token_symbol: BoundedVec::default(),
 					}
 				},],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::PoolInUse
@@ -1276,7 +1278,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1338,7 +1340,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1392,7 +1394,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1443,7 +1445,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1488,7 +1490,7 @@ fn triger_challange_period_with_zero_solution() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1582,7 +1584,7 @@ fn min_challenge_time_is_respected() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1679,7 +1681,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -1880,7 +1882,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -2133,7 +2135,7 @@ fn only_usd_as_pool_currency_allowed() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 	});
@@ -2177,7 +2179,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(0).unwrap();
@@ -2214,7 +2216,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(1).unwrap();
@@ -2253,7 +2255,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -2300,7 +2302,7 @@ fn create_tranche_token_metadata() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 

@@ -456,7 +456,7 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<Test> {
 			balances: (0..10)
 				.into_iter()
-				.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+				.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 				.collect(),
 		}
 		.assimilate_storage(&mut storage)
@@ -473,7 +473,7 @@ impl TestExternalitiesBuilder {
 
 		orml_asset_registry_mock::GenesisConfig {
 			metadata: vec![(
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN".as_bytes().to_vec(),

@@ -245,6 +245,10 @@ pub const UNKNOWN_INVESTMENT: InvestmentId = InvestmentId::PoolTranche {
 	tranche_id: TRANCHE_ID_0,
 };
 
+/// The currency id for the AUSD token
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
+
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build() -> TestExternalities {
@@ -255,11 +259,11 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				// Owner holds enough capital to satisfy redemptions
-				(Owner::get(), CurrencyId::AUSD, OWNER_START_BALANCE),
-				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
-				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
-				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
-				(InvestorD::get(), CurrencyId::AUSD, 100 * CURRENCY),
+				(Owner::get(), AUSD_CURRENCY_ID, OWNER_START_BALANCE),
+				(InvestorA::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
+				(InvestorB::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
+				(InvestorC::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
+				(InvestorD::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
 				(TrancheHolderA::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 				(TrancheHolderB::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 				(TrancheHolderC::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
@@ -277,7 +281,7 @@ impl TestExternalitiesBuilder {
 					InvestmentInfo {
 						owner: Owner::get(),
 						id: INVESTMENT_0_0,
-						payment_currency: CurrencyId::AUSD,
+						payment_currency: AUSD_CURRENCY_ID,
 					},
 				),
 				(
@@ -285,7 +289,7 @@ impl TestExternalitiesBuilder {
 					InvestmentInfo {
 						owner: Owner::get(),
 						id: INVESTMENT_0_1,
-						payment_currency: CurrencyId::AUSD,
+						payment_currency: AUSD_CURRENCY_ID,
 					},
 				),
 			],
