@@ -176,8 +176,8 @@ pub mod types {
 	/// A representation of a loan identifier
 	pub type LoanId = u64;
 
-	/// A representation of a price identifier
-	pub type PriceId = u64;
+	/// The type for indexing pallets on a Substrate runtime
+	pub type PalletIndex = u8;
 }
 
 /// Common constants for all runtimes

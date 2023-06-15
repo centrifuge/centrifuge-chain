@@ -13,7 +13,7 @@
 use centrifuge_runtime::{OrmlAssetRegistry, RuntimeOrigin};
 use cfg_primitives::{parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
@@ -26,8 +26,7 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use super::setup::DOT_ASSET_ID;
-use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
+use crate::xcm::polkadot::setup::{AUSD_ASSET_ID, DOT_ASSET_ID, NO_XCM_ASSET_ID};
 
 mod asset_registry;
 mod currency_id_convert;
@@ -43,7 +42,10 @@ fn register_dot() {
 		symbol: "DOT".into(),
 		existential_deposit: 100_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
@@ -67,7 +69,10 @@ fn register_ausd() {
 				general_key(parachains::polkadot::acala::AUSD_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -92,7 +97,10 @@ fn register_cfg() {
 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -120,12 +128,36 @@ fn register_cfg_v2() {
 				)),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
 		meta,
 		Some(CurrencyId::Native)
+	));
+}
+
+/// Register a token whose `CrossChainTransferability` does NOT include XCM.
+fn register_no_xcm_token() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "NO XCM".into(),
+		symbol: "NXCM".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: None,
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Connectors,
+			..CustomMetadata::default()
+		},
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		RuntimeOrigin::root(),
+		meta,
+		Some(NO_XCM_ASSET_ID)
 	));
 }

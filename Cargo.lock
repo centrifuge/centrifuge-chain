@@ -243,7 +243,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft-sales",
@@ -1135,7 +1135,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
@@ -1217,6 +1217,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mock-builder",
+ "orml-traits",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "sp-core",
@@ -2620,6 +2621,7 @@ dependencies = [
  "hex-literal 0.3.4",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -2639,6 +2641,7 @@ dependencies = [
  "pallet-connectors",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
+ "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -2651,7 +2654,8 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-rewards",
- "pallet-loans-ref",
+ "pallet-loans",
+ "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
@@ -7091,6 +7095,7 @@ name = "pallet-data-collector"
 version = "1.0.0"
 dependencies = [
  "cfg-traits",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "orml-oracle",
@@ -7467,7 +7472,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-loans-ref"
+name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
  "cfg-mocks",
@@ -7478,6 +7483,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "orml-traits",
  "pallet-balances",
  "pallet-interest-accrual",
  "pallet-timestamp",
@@ -10675,20 +10681,24 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-traits",
  "cfg-types",
  "cfg-utils",
  "frame-support",
  "frame-system",
  "hex-literal 0.2.2",
+ "orml-oracle",
  "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
+ "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
  "parity-scale-codec 3.4.0",
@@ -10734,7 +10744,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-connectors",
  "pallet-investments",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",

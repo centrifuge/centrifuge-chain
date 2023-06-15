@@ -35,6 +35,8 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
+/// Traits related to checked changes.
+pub mod changes;
 /// Traits related to connectors.
 pub mod connectors;
 /// Traits related to data registry and collection.

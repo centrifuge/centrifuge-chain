@@ -32,7 +32,9 @@ use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
+	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
+	oracles::OracleKey,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
@@ -477,10 +479,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -521,14 +523,14 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -543,7 +545,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -1291,12 +1293,78 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 50;
+	pub const MaxActiveLoansPerPool: u32 = 1000;
+	pub const MaxRateCount: u32 = MaxActiveLoansPerPool::get();
+	pub const MaxCollectionSize: u32 = MaxActiveLoansPerPool::get();
 	pub const MaxWriteOffPolicySize: u32 = 10;
+	pub const MaxPriceOracleMembers: u32 = 5;
+	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
+		MaxPriceOracleMembers::get(),
+		// For benchmarking we need a number of members equals to the active loans.
+		// The benchmark distintion can be removed once
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+		MaxActiveLoansPerPool::get()
+	);
+	pub const MaxPoolsWithExternalPrices: u32 = 50;
+	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
 }
 
-impl pallet_loans_ref::Config for Runtime {
+impl pallet_membership::Config for Runtime {
+	type AddOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxMembers = MaxPriceOracleMembers;
+	type MembershipChanged = PriceOracle;
+	type MembershipInitialized = ();
+	type PrimeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RemoveOrigin = EnsureRootOr<HalfOfCouncil>;
+	type ResetOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type SwapOrigin = EnsureRootOr<HalfOfCouncil>;
+	type WeightInfo = pallet_membership::weights::SubstrateWeight<Self>;
+}
+
+impl orml_oracle::Config for Runtime {
+	type CombineData = runtime_common::oracle::LastOracleValue;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Members = PriceOracleMembership;
+	// This can be removed once
+	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Members = runtime_common::oracle::benchmarks_util::Members;
+	type OnNewData = PriceCollector;
+	type OracleKey = OracleKey;
+	type OracleValue = Rate;
+	type RootOperatorAccountId = RootOperatorOraclePrice;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type WeightInfo = ();
+}
+
+impl pallet_data_collector::Config for Runtime {
+	type CollectionId = PoolId;
+	type Data = Rate;
+	type DataId = OracleKey;
+	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
+	type MaxCollectionSize = MaxCollectionSize;
+	type MaxCollections = MaxPoolsWithExternalPrices;
+	type Moment = Moment;
+}
+
+impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
+	type InterestRate = Rate;
+	// TODO: This is a stopgap value until we can calculate it correctly with
+	// updated benchmarks. See #1024
+	type MaxRateCount = MaxRateCount;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Weights = ();
+}
+
+impl pallet_loans::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = pallet_loans::util::NoLoanChanges<Runtime>;
+	type ChangeId = u64;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
@@ -1307,12 +1375,12 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
-	type PriceId = PriceId;
-	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
+	type PriceId = OracleKey;
+	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1366,10 +1434,10 @@ impl
 					Role::PoolRole(..) => true,
 					_ => false,
 				},
-				Role::PoolRole(PoolRole::MemberListAdmin) => matches!(
+				Role::PoolRole(PoolRole::InvestorAdmin) => matches!(
 					*role,
-					// MemberlistAdmins can manage tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _))
+						| Role::PoolRole(PoolRole::PODReadAccess)
 				),
 				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => matches!(
 					*role,
@@ -1488,17 +1556,6 @@ impl orml_asset_registry::Config for Runtime {
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-}
-
-impl pallet_interest_accrual::Config for Runtime {
-	type Balance = Balance;
-	type InterestRate = Rate;
-	// TODO: This is a stopgap value until we can calculate it correctly with
-	// updated benchmarks. See #1024
-	type MaxRateCount = MaxActiveLoansPerPool;
-	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
-	type Weights = ();
 }
 
 impl pallet_connectors::Config for Runtime {
@@ -1815,7 +1872,7 @@ construct_runtime!(
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
-		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 96,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
@@ -1832,6 +1889,7 @@ construct_runtime!(
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
+		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1846,6 +1904,8 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
+		PriceOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
+		PriceOracleMembership: pallet_membership::{Pallet, Call, Storage, Event<T>} = 155,
 
 		// EVM pallets
 		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,
@@ -2393,7 +2453,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans_ref, Loans);
+			add_benchmark!(params, batches, pallet_loans, Loans);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
@@ -2431,7 +2491,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans_ref, Loans);
+			list_benchmark!(list, extra, pallet_loans, Loans);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);

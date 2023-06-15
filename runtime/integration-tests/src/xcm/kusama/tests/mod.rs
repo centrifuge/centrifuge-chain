@@ -1,7 +1,7 @@
 use centrifuge_runtime::{OrmlAssetRegistry, RuntimeOrigin};
 use cfg_primitives::{parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
@@ -34,7 +34,10 @@ fn register_air() {
 				general_key(parachains::kusama::altair::AIR_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -59,7 +62,10 @@ fn register_ausd() {
 				general_key(parachains::kusama::karura::AUSD_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -78,7 +84,10 @@ fn register_ksm() {
 		symbol: "KSM".into(),
 		existential_deposit: 1_000_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(

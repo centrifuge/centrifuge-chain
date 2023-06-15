@@ -29,17 +29,20 @@ use frame_support::{
 	},
 };
 use frame_system::RawOrigin;
+use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
 use sp_std::{time::Duration, vec};
 
-use super::{
-	loan::LoanInfo,
-	pallet::*,
-	pricing::{
-		internal::{InternalPricing, MaxBorrowAmount},
-		Pricing,
+use crate::{
+	entities::{
+		loans::LoanInfo,
+		pricing::{
+			internal::{InternalPricing, MaxBorrowAmount},
+			Pricing,
+		},
 	},
+	pallet::*,
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
@@ -75,12 +78,13 @@ where
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
 		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 
-		use crate::mock::{MockPermissions, MockPools, MockPrices};
+		use crate::tests::mock::{MockPermissions, MockPools, MockPrices};
 
 		MockPermissions::mock_add(|_, _, _| Ok(()));
 		MockPermissions::mock_has(|_, _, _| true);
@@ -90,8 +94,9 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
+		MockPrices::mock_feed_value(|_, _, _| Ok(()));
 		MockPrices::mock_register_id(|_, _| Ok(()));
-		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
+		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
 	}
 
 	fn prepare_benchmark() -> PoolIdOf<T> {
@@ -228,7 +233,12 @@ where
 		}
 
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
-			let price_id = T::PriceId::from(i + 1);
+			let price_id = i.into();
+			// This account is different in each iteration because of how oracles works.
+			// This restriction no longer exists once
+			// https://github.com/open-web3-stack/open-runtime-module-library/pull/920 is merged
+			let feeder = account("feeder", i, 0);
+			T::PriceRegistry::feed_value(feeder, price_id, Default::default()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 
@@ -239,6 +249,10 @@ where
 		}
 
 		pool_id
+	}
+
+	fn max_active_loans() -> u32 {
+		T::MaxActiveLoansPerPool::get().min(10)
 	}
 }
 
@@ -252,6 +266,7 @@ benchmarks! {
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 	}
 
 	create {
@@ -265,7 +280,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_info)
 
 	borrow {
-		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
+		let n in 1..Helper::<T>::max_active_loans() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -274,7 +289,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into())
 
 	repay {
-		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
+		let n in 1..Helper::<T>::max_active_loans() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -284,7 +299,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into(), 0.into())
 
 	write_off {
-		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
+		let n in 1..Helper::<T>::max_active_loans() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -296,7 +311,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id)
 
 	admin_write_off {
-		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
+		let n in 1..Helper::<T>::max_active_loans() - 1;
 
 		let loan_admin = account("loan_admin", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -307,7 +322,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
 
 	close {
-		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
+		let n in 1..Helper::<T>::max_active_loans() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -325,7 +340,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 
 	update_portfolio_valuation {
-		let n in 1..T::MaxActiveLoansPerPool::get();
+		let n in 1..Helper::<T>::max_active_loans();
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -336,4 +351,8 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
+impl_benchmark_test_suite!(
+	Pallet,
+	crate::tests::mock::new_test_ext(),
+	crate::tests::mock::Runtime
+);

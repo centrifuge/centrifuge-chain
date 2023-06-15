@@ -15,15 +15,15 @@ use sp_runtime::{
 	DispatchError,
 };
 
+use super::pricing::{
+	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
+};
 use crate::{
 	pallet::{AssetOf, Config, Error, PoolIdOf, PriceOf},
-	pricing::{
-		external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
-	},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
-		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
-		RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
+		LoanRestrictions, MutationError, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -127,7 +127,7 @@ impl<T: Config> ClosedLoan<T> {
 }
 
 /// Data containing an active loan.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveLoan<T: Config> {
 	/// Specify the repayments schedule of the loan
@@ -368,7 +368,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
 		if let ActivePricing::Internal(inner) = &mut self.pricing {
-			inner.update_penalty(new_status.penalty)?;
+			inner.set_penalty(new_status.penalty)?;
 		}
 
 		self.write_off_percentage = new_status.percentage;
@@ -409,6 +409,22 @@ impl<T: Config> ActiveLoan<T> {
 		};
 
 		Ok((loan, self.borrower))
+	}
+
+	pub fn mutate_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
+		match mutation {
+			LoanMutation::Maturity(maturity) => self.schedule.maturity = maturity,
+			LoanMutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
+			LoanMutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
+			LoanMutation::Internal(mutation) => match &mut self.pricing {
+				ActivePricing::Internal(inner) => inner.mutate_with(mutation)?,
+				ActivePricing::External(_) => {
+					Err(Error::<T>::from(MutationError::InternalPricingExpected))?
+				}
+			},
+		};
+
+		Ok(())
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]

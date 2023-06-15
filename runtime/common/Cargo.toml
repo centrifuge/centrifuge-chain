@@ -30,6 +30,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # ORML dependencies
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Frontier dependencies
@@ -41,9 +42,12 @@ pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier"
 
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
+pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
 [dev-dependencies]
@@ -77,7 +81,11 @@ std = [
   "cfg-primitives/std",
   "cfg-utils/std",
   "orml-traits/std",
+  "cfg-traits/std",
+  "pallet-loans/std",
+  "orml-oracle/std",
   "pallet-pool-system/std",
+  "pallet-data-collector/std",
   "serde/std",
   "scale-info/std",
   "xcm/std",
@@ -88,10 +96,13 @@ runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
+  "pallet-loans/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
+  "pallet-data-collector/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -104,12 +115,16 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
+  "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-loans/try-runtime",
+  "pallet-data-collector/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
   "pallet-evm/try-runtime",

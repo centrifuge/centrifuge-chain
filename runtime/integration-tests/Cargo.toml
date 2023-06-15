@@ -85,8 +85,8 @@ cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-connectors = { path = "../../pallets/connectors" }
-pallet-investments = { package = "pallet-investments", path = "../../pallets/investments" }
-pallet-loans = { package = "pallet-loans-ref", path = "../../pallets/loans-ref" }
+pallet-investments = { path = "../../pallets/investments" }
+pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }

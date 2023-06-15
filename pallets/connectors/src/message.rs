@@ -200,6 +200,93 @@ where
 		tranche_id: TrancheId,
 		investor: Address,
 	},
+	/// The message sent back to the domain from which a `DecreaseInvestOrder`
+	/// message was received, ensuring the correct state update on said domain
+	/// and that the `investor`'s wallet is updated accordingly.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ExecutedDecreaseInvestOrder {
+		/// The pool id
+		pool_id: PoolId,
+		/// The tranche id
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The currency in which `DecreaseInvestOrder` was realised
+		currency: u128,
+		/// The amount of `currency` that was actually executed in the original
+		/// `DecreaseInvestOrder` message, i.e., the amount by which the
+		/// investment order was actually decreased by.
+		currency_payout: Balance,
+		/// The outstanding order, in `currency` units
+		remaining_invest_order: Balance,
+	},
+	/// The message sent back to the domain from which a `DecreaseRedeemOrder`
+	/// message was received, ensuring the correct state update on said domain
+	/// and that the `investor`'s wallet is updated accordingly.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ExecutedDecreaseRedeemOrder {
+		/// The pool id
+		pool_id: PoolId,
+		/// The tranche id
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The currency in which `DecreaseRedeemOrder` was realised
+		currency: u128,
+		/// The amount of tranche tokens that was actually executed in the
+		/// original `DecreaseRedeemOrder` message, i.e., the amount by which
+		/// the redeem order was actually decreased by.
+		tranche_tokens_payout: Balance,
+		/// The remaining amount of tranche tokens the investor still has locked
+		/// to redeem at a later epoch execution
+		remaining_redeem_order: Balance,
+	},
+	/// The message sent back to the domain from which a `CollectInvest` message
+	/// has been received, which will ensure the `investor` gets the payout
+	/// respective to their investment.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ExecutedCollectInvest {
+		/// The pool id
+		pool_id: PoolId,
+		/// The tranche
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The currency in which the investment was realised
+		currency: u128,
+		/// The amount that was actually collected
+		currency_payout: Balance,
+		/// The amount of tranche tokens received for the investment made
+		tranche_tokens_payout: Balance,
+		/// The remaining amount of `currency` the investor still has locked to
+		/// invest at a later epoch execution
+		remaining_invest_order: Balance,
+	},
+	/// The message sent back to the domain from which a `CollectRedeem` message
+	/// has been received, which will ensure the `investor` gets the payout
+	/// respective to their redemption.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ExecutedCollectRedeem {
+		/// The pool id
+		pool_id: PoolId,
+		/// The tranche id
+		tranche_id: TrancheId,
+		/// The investor's address
+		investor: Address,
+		/// The stable coin currency in which the payout takes place
+		currency: u128,
+		/// The amount of `currency` being paid out to the investor
+		currency_payout: Balance,
+		/// How many tranche tokens were actually redeemed
+		tranche_tokens_payout: Balance,
+		/// The remaining amount of tranche tokens the investor still has locked
+		/// to redeem at a later epoch execution
+		remaining_redeem_order: Balance,
+	},
 }
 
 impl<
@@ -233,6 +320,10 @@ impl<
 			Self::DecreaseRedeemOrder { .. } => 12,
 			Self::CollectInvest { .. } => 13,
 			Self::CollectRedeem { .. } => 14,
+			Self::ExecutedDecreaseInvestOrder { .. } => 15,
+			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
+			Self::ExecutedCollectInvest { .. } => 17,
+			Self::ExecutedCollectRedeem { .. } => 18,
 		}
 	}
 }
@@ -414,6 +505,82 @@ impl<
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
 			),
+			Message::ExecutedDecreaseInvestOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+				currency_payout,
+				remaining_invest_order,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+					encode_be(currency_payout),
+					encode_be(remaining_invest_order),
+				],
+			),
+			Message::ExecutedDecreaseRedeemOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+				tranche_tokens_payout,
+				remaining_redeem_order,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+					encode_be(tranche_tokens_payout),
+					encode_be(remaining_redeem_order),
+				],
+			),
+			Message::ExecutedCollectInvest {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+				currency_payout,
+				tranche_tokens_payout,
+				remaining_invest_order,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+					encode_be(currency_payout),
+					encode_be(tranche_tokens_payout),
+					encode_be(remaining_invest_order),
+				],
+			),
+			Message::ExecutedCollectRedeem {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+				currency_payout,
+				tranche_tokens_payout,
+				remaining_redeem_order,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+					encode_be(currency_payout),
+					encode_be(tranche_tokens_payout),
+					encode_be(remaining_redeem_order),
+				],
+			),
 		}
 	}
 
@@ -503,6 +670,40 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
+			}),
+			15 => Ok(Self::ExecutedDecreaseInvestOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				currency_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			16 => Ok(Self::ExecutedDecreaseRedeemOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			17 => Ok(Self::ExecutedCollectInvest {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				currency_payout: decode_be_bytes::<16, _, _>(input)?,
+				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			18 => Ok(Self::ExecutedCollectRedeem {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				currency_payout: decode_be_bytes::<16, _, _>(input)?,
+				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -812,6 +1013,68 @@ mod tests {
 				investor: default_address_32(),
 			},
 			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+		)
+	}
+
+	#[test]
+	fn executed_decrease_invest_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::ExecutedDecreaseInvestOrder {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				currency: TOKEN_ID,
+				currency_payout: AMOUNT / 2,
+				remaining_invest_order: AMOUNT * 2
+			},
+			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+		)
+	}
+
+	#[test]
+	fn executed_decrease_redeem_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::ExecutedDecreaseRedeemOrder {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				currency: TOKEN_ID,
+				tranche_tokens_payout: AMOUNT / 2,
+				remaining_redeem_order: AMOUNT * 2
+			},
+			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+		)
+	}
+
+	#[test]
+	fn executed_collect_invest() {
+		test_encode_decode_identity(
+			ConnectorMessage::ExecutedCollectInvest {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				currency: TOKEN_ID,
+				currency_payout: AMOUNT,
+				tranche_tokens_payout: AMOUNT / 2,
+				remaining_invest_order: AMOUNT * 3,
+			},
+			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+		)
+	}
+
+	#[test]
+	fn executed_collect_redeem() {
+		test_encode_decode_identity(
+			ConnectorMessage::ExecutedCollectRedeem {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				investor: vec_to_fixed_array(default_address_20().to_vec()),
+				currency: TOKEN_ID,
+				currency_payout: AMOUNT,
+				tranche_tokens_payout: AMOUNT / 2,
+				remaining_redeem_order: AMOUNT * 3,
+			},
+			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
 		)
 	}
 

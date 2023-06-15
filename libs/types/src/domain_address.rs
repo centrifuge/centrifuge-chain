@@ -16,9 +16,7 @@ use codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
 
-/// The EVM Chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
+use crate::EVMChainId;
 
 /// A Domain is a chain or network we can send a Connectors message to.
 /// The domain indices need to match those used in the EVM contracts and these

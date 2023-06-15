@@ -203,7 +203,7 @@ fn update_member() {
 			Role::PoolRole(PoolRole::PoolAdmin),
 			ALICE.into(),
 			PermissionScope::Pool(pool_id),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
 		// Verify it fails if the destination is not whitelisted yet
@@ -221,7 +221,7 @@ fn update_member() {
 		// Whitelist destination as TrancheInvestor of this Pool
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(ALICE.into()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
 			PermissionScope::Pool(pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(
@@ -431,14 +431,14 @@ fn transfer_tranche_tokens() {
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
 			PermissionScope::Pool(pool_id.clone()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
 		// Whitelist destination as TrancheInvestor of this Pool
 		let valid_until = u64::MAX;
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(
@@ -523,21 +523,21 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
 			PermissionScope::Pool(valid_pool_id.clone()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
 			PermissionScope::Pool(invalid_pool_id.clone()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
 		// Give BOB investor role for (valid_pool_id, invalid_tranche_id) and
 		// (invalid_pool_id, valid_tranche_id)
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(invalid_pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(
@@ -547,7 +547,7 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(valid_pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(
@@ -701,7 +701,14 @@ fn allow_pool_should_fail() {
 		// Register new asset with pool_currency set to false
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			utils::asset_metadata("Test".into(), "TEST".into(), 12, false, None),
+			utils::asset_metadata(
+				"Test".into(),
+				"TEST".into(),
+				12,
+				false,
+				None,
+				Default::default(),
+			),
 			Some(currency_id)
 		));
 		// Should fail if asset is registered but not as pool_currency
@@ -724,7 +731,7 @@ fn allow_pool_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
-				xcm: Default::default(),
+				transferability: Default::default(),
 				mintable: Default::default(),
 				permissioned: Default::default(),
 				pool_currency: true,
@@ -744,7 +751,14 @@ fn allow_pool_should_fail() {
 		// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			utils::asset_metadata("Acala Dollar".into(), "AUSD".into(), 12, true, None),
+			utils::asset_metadata(
+				"Acala Dollar".into(),
+				"AUSD".into(),
+				12,
+				true,
+				None,
+				Default::default()
+			),
 			Some(CurrencyId::AUSD)
 		));
 		utils::create_currency_pool(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
@@ -1281,6 +1295,8 @@ fn verify_tranche_fields_sizes() {
 }
 
 mod utils {
+	use cfg_types::tokens::CrossChainTransferability;
+
 	use super::*;
 
 	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
@@ -1332,7 +1348,8 @@ mod utils {
 				"GLMR".into(),
 				18,
 				false,
-				Some(VersionedMultiLocation::V3(moonbeam_native_token))
+				Some(VersionedMultiLocation::V3(moonbeam_native_token)),
+				CrossChainTransferability::Xcm(Default::default()),
 			),
 			Some(CURRENCY_ID_GLMR)
 		));
@@ -1360,7 +1377,14 @@ mod utils {
 		// `create_pool`
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			asset_metadata("Acala Dollar".into(), "AUSD".into(), 12, true, None),
+			asset_metadata(
+				"Acala Dollar".into(),
+				"AUSD".into(),
+				12,
+				true,
+				None,
+				CrossChainTransferability::Xcm(Default::default()),
+			),
 			Some(CURRENCY_ID_AUSD)
 		));
 	}
@@ -1427,6 +1451,7 @@ mod utils {
 		decimals: u32,
 		is_pool_currency: bool,
 		location: Option<VersionedMultiLocation>,
+		transferability: CrossChainTransferability,
 	) -> AssetMetadata<Balance, CustomMetadata> {
 		AssetMetadata {
 			name,
@@ -1435,7 +1460,7 @@ mod utils {
 			location,
 			existential_deposit: 1_000_000,
 			additional: CustomMetadata {
-				xcm: XcmMetadata::default(),
+				transferability,
 				mintable: false,
 				permissioned: false,
 				pool_currency: is_pool_currency,

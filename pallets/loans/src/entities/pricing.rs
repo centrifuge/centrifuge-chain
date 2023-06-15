@@ -1,5 +1,5 @@
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{RuntimeDebug, RuntimeDebugNoBound};
+use frame_support::RuntimeDebugNoBound;
 use scale_info::TypeInfo;
 
 use crate::pallet::Config;
@@ -19,7 +19,7 @@ pub enum Pricing<T: Config> {
 }
 
 /// Pricing attributes for active loans
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub enum ActivePricing<T: Config> {
 	/// External attributes

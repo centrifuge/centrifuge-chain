@@ -1,13 +1,16 @@
 use cfg_primitives::Moment;
 use cfg_traits::{
 	data::{DataCollection, DataRegistry},
-	ops::{EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign},
+	ops::{EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{One, Zero},
+	DispatchError, DispatchResult,
+};
 
 use crate::pallet::{Config, Error, PoolIdOf, PriceOf};
 
@@ -59,14 +62,14 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
 		let price = self.calculate_price()?;
-		Ok(self.outstanding_quantity.ensure_mul(price)?)
+		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
 	}
 
-	pub fn calculate_price(&self) -> Result<T::Balance, DispatchError> {
+	pub fn calculate_price(&self) -> Result<T::Rate, DispatchError> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
 	}
 
-	pub fn calculate_price_by<Prices>(&self, prices: &Prices) -> Result<T::Balance, DispatchError>
+	pub fn calculate_price_by<Prices>(&self, prices: &Prices) -> Result<T::Rate, DispatchError>
 	where
 		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
@@ -79,24 +82,24 @@ impl<T: Config> ExternalActivePricing<T> {
 			.info
 			.max_borrow_quantity
 			.ensure_sub(self.outstanding_quantity)?;
-		Ok(available.ensure_mul(price)?)
+		Ok(price.ensure_mul_int(available)?)
 	}
 
 	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
 	}
 
-	pub fn compute_present_value(&self, price: T::Balance) -> Result<T::Balance, DispatchError> {
-		Ok(self.outstanding_quantity.ensure_mul(price)?)
+	pub fn compute_present_value(&self, price: T::Rate) -> Result<T::Balance, DispatchError> {
+		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
 	}
 
 	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
 		let price = self.calculate_price()?;
 		let amount = adjustment.abs();
-		let quantity = amount.ensure_div(price)?;
+		let quantity = T::Rate::one().ensure_div(price)?.ensure_mul_int(amount)?;
 
 		ensure!(
-			quantity.ensure_mul(price)? == amount,
+			price.ensure_mul_int(quantity)? == amount,
 			Error::<T>::AmountNotMultipleOfPrice
 		);
 

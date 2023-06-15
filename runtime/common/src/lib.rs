@@ -22,6 +22,17 @@ pub mod account_conversion;
 pub mod apis;
 pub mod evm;
 
+#[macro_export]
+macro_rules! production_or_benchmark {
+	($production:expr, $benchmark:expr) => {{
+		if cfg!(feature = "runtime-benchmarks") {
+			$benchmark
+		} else {
+			$production
+		}
+	}};
+}
+
 pub mod xcm_fees {
 	use cfg_primitives::{constants::currency_decimals, types::Balance};
 	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND};
@@ -216,7 +227,7 @@ pub mod asset_registry {
 
 pub mod xcm {
 	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::traits::Convert;
 	use xcm::{
@@ -241,11 +252,13 @@ pub mod xcm {
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			metadata
-				.additional
-				.xcm
-				.fee_per_second
-				.or_else(|| Some(default_per_second(metadata.decimals)))
+			match metadata.additional.transferability {
+				CrossChainTransferability::Xcm(xcm_metadata)
+				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
+					.fee_per_second
+					.or_else(|| Some(default_per_second(metadata.decimals))),
+				_ => None,
+			}
 		}
 	}
 
@@ -270,6 +283,322 @@ pub mod xcm {
 				id: account.into(),
 			})
 			.into()
+		}
+	}
+}
+
+pub mod oracle {
+	use cfg_primitives::types::{AccountId, Moment};
+	use cfg_types::{fixed_point::Rate, oracles::OracleKey};
+	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
+	use sp_runtime::DispatchResult;
+	use sp_std::{marker::PhantomData, vec::Vec};
+
+	type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
+
+	/// Always choose the last updated value in case of several values.
+	pub struct LastOracleValue;
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	impl CombineData<OracleKey, OracleValue> for LastOracleValue {
+		fn combine_data(
+			_: &OracleKey,
+			values: Vec<OracleValue>,
+			_: Option<OracleValue>,
+		) -> Option<OracleValue> {
+			values
+				.into_iter()
+				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
+		}
+	}
+
+	/// A provider that maps an `OracleValue` into a tuple `(Rate, Moment)`.
+	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
+	/// and can be removed once they fix this.
+	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
+
+	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
+		DataProviderExtended<OracleKey, (Rate, Moment)> for DataProviderBridge<OrmlOracle>
+	{
+		fn get_no_op(key: &OracleKey) -> Option<(Rate, Moment)> {
+			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
+		}
+
+		fn get_all_values() -> Vec<(OracleKey, Option<(Rate, Moment)>)> {
+			OrmlOracle::get_all_values()
+				.into_iter()
+				.map(|elem| {
+					(
+						elem.0,
+						elem.1
+							.map(|OracleValue { value, timestamp }| (value, timestamp)),
+					)
+				})
+				.collect()
+		}
+	}
+
+	impl<OrmlOracle: DataProvider<OracleKey, Rate>> DataProvider<OracleKey, Rate>
+		for DataProviderBridge<OrmlOracle>
+	{
+		fn get(key: &OracleKey) -> Option<Rate> {
+			OrmlOracle::get(key)
+		}
+	}
+
+	impl<OrmlOracle: DataFeeder<OracleKey, Rate, AccountId>> DataFeeder<OracleKey, Rate, AccountId>
+		for DataProviderBridge<OrmlOracle>
+	{
+		fn feed_value(who: AccountId, key: OracleKey, value: Rate) -> DispatchResult {
+			OrmlOracle::feed_value(who, key, value)
+		}
+	}
+
+	/// This is used for feeding the oracle from the data-collector in
+	/// benchmarks.
+	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
+	#[cfg(feature = "runtime-benchmarks")]
+	pub mod benchmarks_util {
+		use frame_support::traits::SortedMembers;
+		use sp_std::vec::Vec;
+
+		use super::*;
+
+		impl CombineData<OracleKey, OracleValue> for LastOracleValue {
+			fn combine_data(
+				_: &OracleKey,
+				_: Vec<OracleValue>,
+				_: Option<OracleValue>,
+			) -> Option<OracleValue> {
+				Some(OracleValue {
+					value: Default::default(),
+					timestamp: 0,
+				})
+			}
+		}
+
+		pub struct Members;
+
+		impl SortedMembers<AccountId> for Members {
+			fn sorted_members() -> Vec<AccountId> {
+				// We do not want members for benchmarking
+				Vec::default()
+			}
+
+			fn contains(_: &AccountId) -> bool {
+				// We want to mock the member permission for benchmark
+				// Allowing any member
+				true
+			}
+		}
+	}
+}
+
+pub mod changes {
+	use cfg_traits::changes::ChangeGuard;
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use frame_support::RuntimeDebug;
+	use pallet_loans::LoanChangeOf;
+	use scale_info::TypeInfo;
+	use sp_runtime::DispatchError;
+	use sp_std::marker::PhantomData;
+
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+	pub enum CfgChange<T: pallet_loans::Config> {
+		Loan(LoanChangeOf<T>),
+		Other, // i.e. Pool(PoolChange)
+	}
+
+	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for CfgChange<T> {
+		fn from(value: LoanChangeOf<T>) -> Self {
+			CfgChange::Loan(value)
+		}
+	}
+
+	impl<T: pallet_loans::Config> TryInto<LoanChangeOf<T>> for CfgChange<T> {
+		type Error = DispatchError;
+
+		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
+			match self {
+				CfgChange::Loan(change) => Ok(change),
+				_ => Err(DispatchError::Other("Expected Loan type")),
+			}
+		}
+	}
+
+	pub struct ChangeGuardBridge<Change, ChangeGuardImpl>(PhantomData<(Change, ChangeGuardImpl)>);
+
+	impl<T, Change, ChangeGuardImpl> ChangeGuard for ChangeGuardBridge<Change, ChangeGuardImpl>
+	where
+		T: pallet_loans::Config,
+		Change: Into<CfgChange<T>> + TryFrom<CfgChange<T>, Error = DispatchError>,
+		ChangeGuardImpl: ChangeGuard<Change = CfgChange<T>>,
+	{
+		type Change = Change;
+		type ChangeId = ChangeGuardImpl::ChangeId;
+		type PoolId = ChangeGuardImpl::PoolId;
+
+		fn note(
+			pool_id: Self::PoolId,
+			change: Self::Change,
+		) -> Result<Self::ChangeId, DispatchError> {
+			ChangeGuardImpl::note(pool_id, change.into())
+		}
+
+		fn released(
+			pool_id: Self::PoolId,
+			change_id: Self::ChangeId,
+		) -> Result<Self::Change, DispatchError> {
+			ChangeGuardImpl::released(pool_id, change_id)?.try_into()
+		}
+	}
+}
+
+pub mod connectors {
+	use cfg_primitives::types::PalletIndex;
+	use cfg_types::tokens::ConnectorsWrappedToken;
+	use sp_core::Get;
+	use sp_runtime::traits::Convert;
+	use sp_std::marker::PhantomData;
+	use xcm::{
+		latest::{MultiLocation, NetworkId},
+		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+	};
+
+	/// This type offers conversions between the xcm MultiLocation and our
+	/// ConnectorsWrappedToken types. This conversion is runtime-dependant, as
+	/// it needs to include the Connectors pallet index on the target runtime.
+	/// Therefore, we have `Index` as a generic type param that we use to unwrap
+	/// said pallet index and correctly convert between the two types.
+	pub struct ConnectorsWrappedTokenConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
+
+	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
+		fn convert(location: MultiLocation) -> Result<ConnectorsWrappedToken, ()> {
+			match location {
+				MultiLocation {
+					parents: 0,
+					interior:
+						X3(
+							PalletInstance(pallet_instance),
+							GlobalConsensus(NetworkId::Ethereum { chain_id }),
+							AccountKey20 {
+								network: None,
+								key: address,
+							},
+						),
+				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
+				_ => Err(()),
+			}
+		}
+	}
+
+	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
+		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
+			match token {
+				ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
+					parents: 0,
+					interior: X3(
+						PalletInstance(Index::get()),
+						GlobalConsensus(NetworkId::Ethereum { chain_id }),
+						AccountKey20 {
+							network: None,
+							key: address,
+						},
+					),
+				},
+			}
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use sp_core::parameter_types;
+		use sp_runtime::traits::Convert;
+
+		use super::*;
+
+		#[test]
+		/// Verify that converting a ConnectorsWrappedToken to MultiLocation and
+		/// back results in the same original value.
+		fn connectors_wrapped_token_convert_identity() {
+			parameter_types! {
+				const Index: PalletIndex = 108;
+			}
+
+			const CHAIN_ID: u64 = 123;
+			const ADDRESS: [u8; 20] = [9; 20];
+
+			let wrapped_token = ConnectorsWrappedToken::EVM {
+				chain_id: CHAIN_ID,
+				address: ADDRESS,
+			};
+
+			let location = MultiLocation {
+				parents: 0,
+				interior: X3(
+					PalletInstance(Index::get()),
+					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+					AccountKey20 {
+						network: None,
+						key: ADDRESS,
+					},
+				),
+			};
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					ConnectorsWrappedToken,
+					MultiLocation,
+				>>::convert(wrapped_token),
+				location
+			);
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					MultiLocation,
+					Result<ConnectorsWrappedToken, ()>,
+				>>::convert(location),
+				Ok(wrapped_token)
+			);
+		}
+
+		/// Verify that ConnectorsWrappedTokenConvert will fail to convert a
+		/// location to a ConnectorsWrappedToken if the PalletInstance value
+		/// doesn't match the Index generic param, i.e, fail if the token
+		/// doesn't appear to be under the Connectors pallet and thus be a
+		/// connectors wrapped token.
+		#[test]
+		fn connectors_wrapped_token_convert_fail() {
+			parameter_types! {
+				const Index: PalletIndex = 108;
+				const WrongIndex: PalletIndex = 72;
+			}
+			const CHAIN_ID: u64 = 123;
+			const ADDRESS: [u8; 20] = [9; 20];
+
+			let location = MultiLocation {
+				parents: 0,
+				interior: X3(
+					PalletInstance(WrongIndex::get()),
+					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+					AccountKey20 {
+						network: None,
+						key: ADDRESS,
+					},
+				),
+			};
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					MultiLocation,
+					Result<ConnectorsWrappedToken, ()>,
+				>>::convert(location),
+				Err(())
+			);
 		}
 	}
 }

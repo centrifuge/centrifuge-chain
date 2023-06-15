@@ -27,7 +27,6 @@ impl<InvestmentId> TypeId for InvestmentAccount<InvestmentId> {
 
 // Pallet-Ids that define pallets accounts
 pub const POOLS_PALLET_ID: PalletId = PalletId(*b"roc/pool");
-pub const LOANS_PALLET_ID: PalletId = PalletId(*b"roc/loan");
 pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"chnbrdge");
 pub const CLAIMS_PALLET_ID: PalletId = PalletId(*b"p/claims");
 pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
@@ -36,6 +35,7 @@ pub const TREASURY_PALLET_ID: PalletId = PalletId(*b"py/trsry");
 pub const NFT_SALES_PALLET_ID: PalletId = PalletId(*b"pal/nfts");
 pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 pub const BLOCK_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/blrw");
+pub const PRICE_ORACLE_PALLET_ID: PalletId = PalletId(*b"or/price");
 
 // Other ids
 pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";

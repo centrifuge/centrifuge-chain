@@ -13,7 +13,9 @@
 
 use std::time::Duration;
 
-use cfg_mocks::{pallet_mock_data, pallet_mock_permissions, pallet_mock_pools};
+use cfg_mocks::{
+	pallet_mock_change_guard, pallet_mock_data, pallet_mock_permissions, pallet_mock_pools,
+};
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{
@@ -28,7 +30,7 @@ use sp_runtime::{
 	DispatchError, FixedU128,
 };
 
-use crate::pallet as pallet_loans;
+use crate::{pallet as pallet_loans, LoanChangeOf};
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
@@ -71,6 +73,7 @@ pub type PoolId = u32;
 pub type TrancheId = u64;
 pub type LoanId = u64;
 pub type PriceId = u64;
+pub type ChangeId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -86,6 +89,7 @@ frame_support::construct_runtime!(
 		MockPools: pallet_mock_pools,
 		MockPermissions: pallet_mock_permissions,
 		MockPrices: pallet_mock_data,
+		MockChangeGuard: pallet_mock_change_guard,
 		Loans: pallet_loans,
 	}
 );
@@ -186,14 +190,23 @@ impl pallet_mock_permissions::Config for Runtime {
 impl pallet_mock_data::Config for Runtime {
 	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
 	type CollectionId = PoolId;
-	type Data = Result<(Balance, Moment), DispatchError>;
+	type Data = Result<(Rate, Moment), DispatchError>;
+	type DataElem = Rate;
 	type DataId = PriceId;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 }
 
+impl pallet_mock_change_guard::Config for Runtime {
+	type Change = LoanChangeOf<Runtime>;
+	type ChangeId = u64;
+	type PoolId = PoolId;
+}
+
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
+	type ChangeGuard = MockChangeGuard;
+	type ChangeId = ChangeId;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
