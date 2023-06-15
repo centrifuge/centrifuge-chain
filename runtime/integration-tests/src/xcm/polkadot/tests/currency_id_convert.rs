@@ -53,10 +53,10 @@ use super::register_dot;
 use crate::xcm::polkadot::{
 	setup::{
 		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, NO_XCM_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::{register_ausd, register_cfg, register_cfg_v2},
+	tests::{register_ausd, register_cfg, register_cfg_v2, register_no_xcm_token},
 };
 
 #[test]
@@ -131,37 +131,15 @@ fn convert_cfg_xcm_v2() {
 	});
 }
 
-/// Verify that Tranche tokens are not handled by the CurrencyIdConvert
-/// since we don't allow Tranche tokens to be transferable through XCM.
+/// Verify that a registered token that is NOT XCM transferable is filtered out
+/// by CurrencyIdConvert as expected.
 #[test]
-fn convert_tranche() {
-	// We don't yet know the pools pallet index on the Centrifuge runtime
-	const MOCK_POOLS_PALLET_INDEX: u8 = 42;
-	let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
-	let tranche_id =
-		WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-	let tranche_multilocation = MultiLocation {
-		parents: 1,
-		interior: X3(
-			Parachain(parachains::polkadot::centrifuge::ID),
-			PalletInstance(MOCK_POOLS_PALLET_INDEX),
-			GeneralKey {
-				length: tranche_id.len() as u8,
-				data: vec_to_fixed_array(tranche_id.to_vec()),
-			},
-		),
-	};
-
+fn convert_no_xcm_token() {
 	Centrifuge::execute_with(|| {
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
-			Err(tranche_multilocation),
-		);
-	});
+		register_no_xcm_token();
 
-	Centrifuge::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(tranche_currency),
+			<CurrencyIdConvert as C2<_, _>>::convert(NO_XCM_ASSET_ID),
 			None
 		)
 	});

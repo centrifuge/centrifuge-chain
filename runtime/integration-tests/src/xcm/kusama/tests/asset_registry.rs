@@ -25,7 +25,7 @@
 use altair_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::{assert_noop, assert_ok};
@@ -62,7 +62,10 @@ fn register_air_works() {
 				0,
 				X1(general_key(parachains::kusama::altair::AIR_KEY)),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
@@ -88,7 +91,10 @@ fn register_foreign_asset_works() {
 					general_key(parachains::kusama::karura::AUSD_KEY),
 				),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
@@ -112,7 +118,10 @@ fn register_tranche_asset_blocked() {
 				1,
 				X2(Parachain(2000), general_key(&[42])),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 
 		// It fails with `BadOrigin` even when submitted with `Origin::root` since we

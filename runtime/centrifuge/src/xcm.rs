@@ -194,18 +194,18 @@ where
 /// This type implements conversions from our `CurrencyId` type into
 /// `MultiLocation` and vice-versa. A currency locally is identified with a
 /// `CurrencyId` variant but in the network it is identified in the form of a
-/// `MultiLocation`, in this case a pCfg (Para-Id, Currency-Id).
+/// `MultiLocation`.
 pub struct CurrencyIdConvert;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// Other chains need to know how this conversion takes place in order to
-/// handle it on their side.
+/// We use the `OrmlAssetRegistry` to lookup the associated `MultiLocation` for
+/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		match id {
-			CurrencyId::Tranche(_, _) => None,
-			_ => OrmlAssetRegistry::multilocation(&id).ok()?,
-		}
+		OrmlAssetRegistry::metadata(id)
+			.filter(|m| m.additional.transferability.includes_xcm())
+			.and_then(|m| m.location)
+			.and_then(|l| l.try_into().ok())
 	}
 }
 

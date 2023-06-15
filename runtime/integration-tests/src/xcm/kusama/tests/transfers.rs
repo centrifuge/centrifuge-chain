@@ -25,7 +25,7 @@
 use altair_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
@@ -41,13 +41,16 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 
-use crate::xcm::kusama::{
-	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, PARA_ID_SIBLING,
+use crate::xcm::{
+	kusama::{
+		setup::{
+			air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
+			AUSD_ASSET_ID, BOB, PARA_ID_SIBLING,
+		},
+		test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+		tests::register_ausd,
 	},
-	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
-	tests::register_ausd,
+	xcm_metadata,
 };
 
 /*
@@ -88,7 +91,10 @@ fn transfer_air_to_sibling() {
 					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
@@ -113,7 +119,10 @@ fn transfer_air_to_sibling() {
 					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
@@ -313,7 +322,10 @@ fn transfer_ksm_from_relay_chain() {
 		symbol: "KSM".into(),
 		existential_deposit: 1_000_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	Altair::execute_with(|| {
@@ -412,11 +424,11 @@ fn transfer_foreign_sibling_to_altair() {
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
-			xcm: XcmMetadata {
+			transferability: CrossChainTransferability::Xcm(XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
 				// used when XCM transfer fees are charged for this token.
 				fee_per_second: Some(8420000000000000000),
-			},
+			}),
 			..CustomMetadata::default()
 		},
 	};
@@ -473,7 +485,13 @@ fn transfer_foreign_sibling_to_altair() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			bob_balance,
-			transfer_amount - calc_fee(meta.additional.xcm.fee_per_second.unwrap())
+			transfer_amount
+				- calc_fee(
+					xcm_metadata(meta.additional.transferability)
+						.unwrap()
+						.fee_per_second
+						.unwrap()
+				)
 		);
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993264000000000000);
@@ -498,7 +516,10 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	let transfer_amount = foreign(12, meta.decimals);
 	let alice_initial_balance = transfer_amount * 100;

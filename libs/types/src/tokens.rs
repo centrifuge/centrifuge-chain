@@ -21,7 +21,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
 
-use crate::xcm::XcmMetadata;
+use crate::{xcm::XcmMetadata, EVMChainId};
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -210,8 +210,8 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 	MaxEncodedLen,
 )]
 pub struct CustomMetadata {
-	/// XCM-related metadata.
-	pub xcm: XcmMetadata,
+	/// The ways, if any, this token is cross-chain transferable
+	pub transferability: CrossChainTransferability,
 
 	/// Whether an asset can be minted.
 	/// When `true`, the right permissions will checked in the permissions
@@ -226,6 +226,68 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
+}
+
+/// The Cross Chain Transferability property of an asset describes the way(s),
+/// if any, that said asset is cross-chain transferable. It may currently be
+/// transferable through Xcm, Centrifuge Connectors, or All .
+///
+/// NOTE: Once set to `All`, the asset is automatically transferable through any
+/// eventual new option added at a later stage. A migration might be required if
+/// that's undesirable for any registered asset.
+#[derive(
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CrossChainTransferability {
+	/// The asset is not transferable cross-chain
+	#[default]
+	None,
+
+	/// The asset is only transferable through XCM
+	Xcm(XcmMetadata),
+
+	/// The asset is only transferable through Centrifuge Connectors
+	Connectors,
+
+	/// The asset is transferable through all available options
+	All(XcmMetadata),
+}
+
+impl CrossChainTransferability {
+	pub fn includes_xcm(self) -> bool {
+		matches!(self, Self::Xcm(..) | Self::All(..))
+	}
+}
+
+/// Connectors-wrapped tokens
+///
+/// Currently, Connectors are only deployed on EVM-based chains and therefore
+/// we only support EVM tokens. In the far future, we might support wrapped
+/// tokens from other chains such as Cosmos based ones.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum ConnectorsWrappedToken {
+	/// An EVM-native token
+	EVM {
+		/// The EVM chain id where the token is deployed
+		chain_id: EVMChainId,
+		/// The token contract address
+		address: [u8; 20],
+	},
 }
 
 #[cfg(test)]
