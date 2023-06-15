@@ -30,6 +30,8 @@ use crate::{xcm::XcmMetadata, EVMChainId};
 /// index value of a variant is mandatory, a storage migration must take place
 /// to ensure that the values under an old codec-encoded key are moved to the
 /// new key.
+///
+/// NOTE: It is vital to leave the `#[codec(index = _)]` marks immutable or else storage items under a `CurrencyId` key will be corrupted.
 #[derive(
 	Clone,
 	Copy,
@@ -54,19 +56,6 @@ pub enum CurrencyId {
 	/// A Tranche token
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
-
-
-	/// Karura KSM
-	#[deprecated(note="please use the corresponding ForeignAsset entry in the AssetRegistry")]
-	#[codec(index = 2)]
-	KSM,
-
-	/// Acala Dollar
-	/// In Altair, it represents AUSD in Kusama;
-	/// In Centrifuge, it represents AUSD in Polkadot;
-	#[deprecated(note="please use the corresponding ForeignAsset entry in the AssetRegistry")]
-	#[codec(index = 3)]
-	AUSD,
 
 	/// A foreign asset
 	#[codec(index = 4)]
@@ -355,18 +344,18 @@ mod tests {
 	#[cfg(test)]
 	mod tests {
 		use cfg_primitives::TrancheId;
-		use cfg_types::{tokens as before, tokens::StakingCurrency};
+		use crate::tokens as after;
+		use super::{ForeignAssetId, StakingCurrency};
 		use codec::Encode;
 		use hex::FromHex;
-		use crate::tokens::StakingCurrency;
 
-		mod after {
+		mod before {
 			use cfg_primitives::{PoolId, TrancheId};
-			use cfg_types::tokens::{ForeignAssetId, StakingCurrency};
 			use codec::{Decode, Encode, MaxEncodedLen};
 			use scale_info::TypeInfo;
 			use crate::tokens::{ForeignAssetId, StakingCurrency};
 
+			/// The old definition of `CurrencyId` which included `AUSD` and `KSM` as hardcoded variants.
 			#[derive(
 			Clone,
 			Copy,
@@ -381,8 +370,7 @@ mod tests {
 			MaxEncodedLen,
 			)]
 			pub enum CurrencyId {
-				/// The Native token, representing AIR in Altair and CFG in
-				/// Centrifuge.
+				// The Native token, representing AIR in Altair and CFG in Centrifuge.
 				#[codec(index = 0)]
 				Native,
 
@@ -390,11 +378,21 @@ mod tests {
 				#[codec(index = 1)]
 				Tranche(PoolId, TrancheId),
 
+				/// Karura KSM
+				#[codec(index = 2)]
+				KSM,
+
+				/// Acala Dollar
+				/// In Altair, it represents AUSD in Kusama;
+				/// In Centrifuge, it represents AUSD in Polkadot;
+				#[codec(index = 3)]
+				AUSD,
+
 				/// A foreign asset
 				#[codec(index = 4)]
 				ForeignAsset(ForeignAssetId),
 
-				/// A staking token
+				/// A staking currency
 				#[codec(index = 5)]
 				Staking(StakingCurrency),
 			}
