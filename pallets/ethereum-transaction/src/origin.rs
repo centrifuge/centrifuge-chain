@@ -10,30 +10,30 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::domain_address::DomainAddress;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::EnsureOrigin;
 use scale_info::TypeInfo;
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum GatewayOrigin {
-	Local(DomainAddress),
+pub enum EthereumOrigin {
+	EthereumTransaction(H160),
 }
 
-pub struct EnsureLocal;
+pub struct EnsureEthereum;
 
-impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> for EnsureLocal {
-	type Success = DomainAddress;
+impl<O: Into<Result<EthereumOrigin, O>> + From<EthereumOrigin>> EnsureOrigin<O> for EnsureEthereum {
+	type Success = H160;
 
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().map(|o| match o {
-			GatewayOrigin::Local(domain_address) => domain_address,
+			EthereumOrigin::EthereumTransaction(id) => id,
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> O {
-		O::from(GatewayOrigin::Local(Default::default()))
+		O::from(EthereumOrigin::EthereumTransaction(Default::default()))
 	}
 }

@@ -1,9 +1,9 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Centrifuge Connectors Gateway Pallet"
+description = "Centrifuge Ethereum Transaction Pallet"
 edition = "2021"
 license = "LGPL-3.0"
-name = "pallet-connectors-gateway"
+name = "pallet-ethereum-transaction"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.0.1"
 
@@ -24,41 +24,38 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 # Substrate crates
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
+# Ethereum
+ethabi = { version = "16.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+ethereum = "0.14.0"
+
 # Our custom pallets
 cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-
-[dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-cfg-mocks = { path = "../../libs/mocks" }
-rand = "0.8.5"
 
 [features]
 default = ["std"]
 runtime-benchmarks = [
     "frame-benchmarking",
-    "cfg-traits/runtime-benchmarks",
-    "cfg-types/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
+    "cfg-traits/runtime-benchmarks",
 ]
 std = [
     "codec/std",
-    "cfg-types/std",
     "cfg-traits/std",
     "frame-support/std",
     "frame-system/std",
     "sp-std/std",
     "sp-runtime/std",
     "scale-info/std",
+    "pallet-ethereum/std",
 ]
 try-runtime = [
-    "cfg-traits/try-runtime",
-    "cfg-types/try-runtime",
     "frame-support/try-runtime",
     "frame-system/try-runtime",
+    "cfg-traits/try-runtime",
 ]
