@@ -41,8 +41,8 @@ use orml_traits::{
 };
 pub use pallet::*;
 use pool_types::{
-	changes::PoolChangeProposal, PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence,
-	PoolLocator, ScheduledUpdateDetails,
+	changes::{NotedPoolChange, PoolChangeProposal},
+	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -389,13 +389,13 @@ pub mod pallet {
 	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Changes<T: Config> = StorageDoubleMap<
+	pub type NotedChange<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
 		Blake2_128Concat,
 		T::Hash,
-		(Moment, T::RuntimeChange),
+		NotedPoolChange<T::RuntimeChange>,
 	>;
 
 	#[pallet::event]

@@ -405,9 +405,7 @@ pub mod changes {
 
 	/// Defines a change proposal with a list of requirements that must be
 	/// satisfied.
-	#[derive(
-		Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen,
-	)]
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub struct PoolChangeProposal {
 		pub requirements: BoundedBTreeSet<UniqueRequirement, MaxRequirements>,
 	}
@@ -426,6 +424,13 @@ pub mod changes {
 		pub fn requirements(&self) -> impl Iterator<Item = Requirement> + '_ {
 			self.requirements.iter().cloned().map(|req| req.0)
 		}
+	}
+
+	/// A PoolChangeProposal with extra information about when it was noted.
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+	pub struct NotedPoolChange<ChangeProposal: Into<PoolChangeProposal>> {
+		pub submitted_at: Moment,
+		pub change: ChangeProposal,
 	}
 }
 

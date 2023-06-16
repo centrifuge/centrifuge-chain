@@ -21,7 +21,7 @@ use sp_runtime::traits::Hash;
 use super::*;
 use crate::{
 	pool_types::{
-		changes::{PoolChangeProposal, Requirement},
+		changes::{NotedPoolChange, Requirement},
 		PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails,
 	},
 	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
@@ -378,14 +378,18 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 	type PoolId = T::PoolId;
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
-		let registered_change = (Self::now(), change.clone());
-		let change_id: Self::ChangeId = T::Hashing::hash(&registered_change.encode());
-		Changes::<T>::insert(pool_id, change_id, registered_change);
+		let noted_change = NotedPoolChange {
+			submitted_at: Self::now(),
+			change,
+		};
+
+		let change_id: Self::ChangeId = T::Hashing::hash(&noted_change.encode());
+		NotedChange::<T>::insert(pool_id, change_id, noted_change.clone());
 
 		Self::deposit_event(Event::ProposedChange {
 			pool_id,
 			change_id,
-			change,
+			change: noted_change.change,
 		});
 
 		Ok(change_id)
@@ -395,8 +399,10 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		pool_id: Self::PoolId,
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
-		let (submitted_time, change) =
-			Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
+		let NotedPoolChange {
+			submitted_at,
+			change,
+		} = NotedChange::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
 
 		let pool_change: PoolChangeProposal = change.clone().into();
 
@@ -405,12 +411,12 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			allowed &= match requirement {
 				Requirement::NextEpoch => {
 					match Pool::<T>::get(pool_id) {
-						Some(details) => submitted_time < details.epoch.last_closed,
+						Some(details) => submitted_at < details.epoch.last_closed,
 						None => true, // If the pool doesn't exists, there are no restrictions.
 					}
 				}
 				Requirement::DelayTime(secs) => {
-					Self::now().saturating_sub(submitted_time) >= secs as u64
+					Self::now().saturating_sub(submitted_at) >= secs as u64
 				}
 				// TODO
 				Requirement::BlockedByLockedRedemptions => false,
@@ -419,7 +425,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 		allowed
 			.then(|| {
-				Changes::<T>::remove(pool_id, change_id);
+				NotedChange::<T>::remove(pool_id, change_id);
 				change
 			})
 			.ok_or(Error::<T>::ChangeNotReady.into())
