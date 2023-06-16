@@ -27,6 +27,7 @@ pub struct EpochState<EpochId> {
 }
 
 impl<EpochId: Ord + Saturating + Copy + One> EpochState<EpochId> {
+	/// ```text
 	///                      submission_period
 	///                    <------------------->
 	/// -------------------|-------------------|-----------------------
@@ -34,6 +35,7 @@ impl<EpochId: Ord + Saturating + Copy + One> EpochState<EpochId> {
 	///  last_executed = i |                   | last_executed = i + 1
 	/// -------------------|-------------------|-----------------------
 	///                 close_epoch()     execute_epoch()
+	/// ```
 	pub fn is_submission_period(&self) -> bool {
 		self.last_executed.saturating_add(One::one()) < self.current
 	}
