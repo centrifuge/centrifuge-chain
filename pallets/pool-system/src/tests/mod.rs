@@ -2532,8 +2532,10 @@ mod changes {
 			let change = PoolChangeProposal::new([Requirement::NextEpoch]);
 			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
-			// If there is no is permissive
-			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+			assert_err!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::NoSuchPool
+			);
 		});
 	}
 

@@ -410,10 +410,8 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		for requirement in pool_change.requirements() {
 			allowed &= match requirement {
 				Requirement::NextEpoch => {
-					match Pool::<T>::get(pool_id) {
-						Some(details) => submitted_at < details.epoch.last_closed,
-						None => true, // If the pool doesn't exists, there are no restrictions.
-					}
+					let pool_details = Pool::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
+					submitted_at < pool_details.epoch.last_closed
 				}
 				Requirement::DelayTime(secs) => {
 					Self::now().saturating_sub(submitted_at) >= secs as u64
