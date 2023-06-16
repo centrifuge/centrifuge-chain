@@ -343,8 +343,10 @@ impl Config for Runtime {
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
-		// In this mock, AUSD_CURRENCY_ID is the only supported pool currency
-		*id == AUSD_CURRENCY_ID
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::Staking(_) => false,
+			_ => true,
+		}
 	}
 }
 

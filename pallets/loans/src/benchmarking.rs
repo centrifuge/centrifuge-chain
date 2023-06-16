@@ -126,6 +126,9 @@ where
 		)
 		.unwrap();
 
+		// todo(nuno): I guess this is the right place to register AUSD in the asset
+		// registry
+
 		pool_id
 	}
 
