@@ -283,6 +283,7 @@ pub enum ConnectorsWrappedToken {
 #[cfg(test)]
 mod tests {
 	use frame_support::parameter_types;
+	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche};
 
 	use super::*;
 
@@ -342,7 +343,7 @@ mod tests {
 		use codec::Encode;
 		use hex::FromHex;
 
-		use super::{ForeignAssetId, StakingCurrency};
+		use super::StakingCurrency;
 		use crate::tokens as after;
 
 		mod before {
@@ -422,7 +423,7 @@ mod tests {
 			assert_eq!(before::CurrencyId::KSM.encode(), vec![2]);
 
 			// AUSD - deprecated
-			assert_eq!(before::AUSD_CURRENCY_ID.encode(), vec![3]);
+			assert_eq!(before::CurrencyId::AUSD.encode(), vec![3]);
 
 			// ForeignAsset
 			assert_eq!(
@@ -448,6 +449,42 @@ mod tests {
 		fn default_tranche_id() -> TrancheId {
 			<[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b")
 				.expect("Should be valid tranche id")
+		}
+	}
+
+	/// Sanity check for every CurrencyId variant's encoding value.
+	/// This will stop us from accidentally moving or dropping variants
+	/// around which could have silent but serious negative consequences.
+	#[test]
+	fn currency_id_encode_sanity() {
+		// Verify that every variant encodes to what we would expect it to.
+		// If this breaks, we must have changed the order of a variant, added
+		// a new variant in between existing variants, or deleted one.
+		vec![Native, Tranche(42, [42; 16]), ForeignAsset(89), Staking(StakingCurrency::BlockRewards)]
+			.into_iter()
+			.for_each(|x| {
+				assert_eq!(x.encode(), expected_encoded_value(x))
+			});
+
+		/// Return the expected encoded representation of a `CurrencyId`.
+		/// This is useful to force at compile time that we handle all existing
+		/// variants.
+		fn expected_encoded_value(id: CurrencyId) -> Vec<u8> {
+			match id {
+				Native => vec![0],
+				Tranche(pool_id, tranche_id) => {
+					let mut r: Vec<u8> = vec![1];
+					r.append(&mut pool_id.encode());
+					r.append(&mut tranche_id.to_vec());
+					r
+				}
+				ForeignAsset(id) => {
+					let mut r: Vec<u8> = vec![4];
+					r.append(&mut id.encode());
+					r
+				},
+				Staking(StakingCurrency::BlockRewards) => vec![5, 0],
+			}
 		}
 	}
 }

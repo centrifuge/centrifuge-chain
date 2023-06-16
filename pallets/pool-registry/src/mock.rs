@@ -43,6 +43,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type TrancheId = [u8; 16];
 
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 parameter_types! {
@@ -475,7 +476,7 @@ impl TestExternalitiesBuilder {
 			metadata: vec![(
 				AUSD_CURRENCY_ID,
 				AssetMetadata {
-					decimals: 18,
+					decimals: 12,
 					name: "MOCK TOKEN".as_bytes().to_vec(),
 					symbol: "MOCK".as_bytes().to_vec(),
 					existential_deposit: 0,

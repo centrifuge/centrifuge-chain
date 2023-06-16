@@ -110,7 +110,7 @@ fn register_foreign_asset_works() {
 fn register_tranche_asset_blocked() {
 	Altair::execute_with(|| {
 		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 12,
+			decimals: 18,
 			name: "Tranche Token 1".into(),
 			symbol: "TRNCH".into(),
 			existential_deposit: 1_000_000_000_000,

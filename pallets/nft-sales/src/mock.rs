@@ -182,9 +182,10 @@ parameter_types! {
 	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
-pub(crate) const SELLER: u64 = 0x1;
-pub(crate) const BUYER: u64 = 0x2;
-pub(crate) const BAD_ACTOR: u64 = 0x3;
+pub(crate) const SELLER: u64 = 1;
+pub(crate) const BUYER: u64 = 2;
+pub(crate) const BAD_ACTOR: u64 = 3;
+pub(crate) const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 #[allow(dead_code)]
 // Build the genesis storage according to the mock runtime.

@@ -176,6 +176,10 @@ mod test {
 	use super::*;
 	use crate::mock::*;
 
+	// todo(nuno): figure out if this migration code is still needed and whether this needs to match
+	// the real foreign asset id in production and for which runtime if so.
+	const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 	#[cfg(feature = "try-runtime")]
 	#[test]
 	fn migrate_to_v2() {

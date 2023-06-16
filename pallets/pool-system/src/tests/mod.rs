@@ -15,7 +15,6 @@ use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
-	xcm::XcmMetadata,
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
@@ -2312,7 +2311,8 @@ fn create_tranche_token_metadata() {
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
 			AssetMetadata {
-				decimals: 18,
+				// The decimals of the tranche token need to match the decimals for the pool currency.
+				decimals: 12,
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,

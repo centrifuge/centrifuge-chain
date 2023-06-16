@@ -49,6 +49,8 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type MockAccountId = u64;
 
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -73,9 +75,9 @@ parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
-
 	pub const MaxRoles: u32 = u32::MAX;
 }
+
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
@@ -341,10 +343,8 @@ impl Config for Runtime {
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
-		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
-			_ => true,
-		}
+		// In this mock, AUSD_CURRENCY_ID is the only supported pool currency
+		*id == AUSD_CURRENCY_ID
 	}
 }
 
@@ -445,12 +445,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		metadata: vec![(
 			AUSD_CURRENCY_ID,
 			AssetMetadata {
-				decimals: 18,
-				name: "MOCK TOKEN".as_bytes().to_vec(),
-				symbol: "MOCK".as_bytes().to_vec(),
+				decimals: 12,
+				name: "MOCK AUSD".as_bytes().to_vec(),
+				symbol: "MckAUSD".as_bytes().to_vec(),
 				existential_deposit: 0,
 				location: None,
-				additional: CustomMetadata::default(),
+				additional: CustomMetadata {
+					pool_currency: true,
+					..Default::default()
+				},
 			},
 		)],
 	}

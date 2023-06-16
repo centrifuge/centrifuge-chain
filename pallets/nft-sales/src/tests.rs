@@ -17,8 +17,6 @@ use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, traits::fun
 
 use crate::{mock::*, NftsBySeller, Price};
 
-pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-
 /// Verify that calling `NftSales::add` specifiying an nft that is not present
 /// in the underlying `pallet_uniques` fails with
 /// `nft_sales::Error::<T>::NotFound`.
@@ -261,7 +259,7 @@ fn buy_nft_insufficient_balance() {
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
-		let seller_initial_balance = OrmlTokens::balance(AUSD_CURRENCY_ID, &1);
+		let seller_initial_balance = OrmlTokens::balance(AUSD_CURRENCY_ID, &SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: AUSD_CURRENCY_ID,

@@ -471,7 +471,6 @@ mod tests {
 
 	///! Tests for some types in the common section for our runtimes
 	use super::*;
-	use crate::tokens::StakingCurrency;
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
@@ -665,42 +664,5 @@ mod tests {
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
-	}
-
-	/// Sanity check for every CurrencyId variant's encoding value.
-	/// This will stop us from accidentally moving or dropping variants
-	/// around which could have silent but serious negative consequences.
-	#[test]
-	fn currency_id_encode_sanity() {
-		use crate::tokens::CurrencyId::*;
-
-		// Verify that every variant encodes to what we would expect it to.
-		// If this breaks, we must have changed the order of a variant, added
-		// a new variant in between existing variants, or deleted one.
-		vec![Native, Tranche(42, [42; 16]), ForeignAsset(89)]
-			.into_iter()
-			.for_each(|variant| {
-				let encoded_u64: Vec<u64> = variant.encode().iter().map(|x| *x as u64).collect();
-
-				assert_eq!(encoded_u64, expected_encoding_value(variant))
-			});
-
-		/// Return the expected encoding.
-		/// This is useful to force at compile time that we handle all existing
-		/// variants.
-		fn expected_encoding_value(id: crate::tokens::CurrencyId) -> Vec<u64> {
-			match id {
-				Native => vec![0],
-				Tranche(pool_id, tranche_id) => {
-					let mut r = vec![1, pool_id, 0, 0, 0, 0, 0, 0, 0];
-					r.append(&mut tranche_id.map(|x| x as u64).to_vec());
-					r
-				}
-				KSM => vec![2],
-				AUSD => vec![3],
-				ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
-				Staking(StakingCurrency::BlockRewards) => vec![5, 1, 0, 0, 0],
-			}
-		}
 	}
 }

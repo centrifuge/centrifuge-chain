@@ -26,9 +26,6 @@ use crate::{
 	Error,
 };
 
-/// The currency id for the AUSD token
-pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-
 #[test]
 fn transfer_works() {
 	TestExternalitiesBuilder::default()
@@ -37,7 +34,7 @@ fn transfer_works() {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 				RuntimeOrigin::signed(1),
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
@@ -58,7 +55,7 @@ fn transfer_fails() {
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					RuntimeOrigin::signed(10),
 					2,
-					AUSD_CURRENCY_ID,
+					CurrencyId::AUSD,
 					100
 				),
 				orml_tokens::Error::<Runtime>::BalanceTooLow
@@ -67,7 +64,7 @@ fn transfer_fails() {
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					RuntimeOrigin::signed(10),
 					2,
-					AUSD_CURRENCY_ID,
+					CurrencyId::AUSD,
 					100
 				),
 				orml_tokens::Error::<Runtime>::BalanceTooLow
@@ -102,7 +99,7 @@ fn transfer_keep_alive_fails() {
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					RuntimeOrigin::signed(1),
 					2,
-					AUSD_CURRENCY_ID,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
 				orml_tokens::Error::<Runtime>::KeepAlive
@@ -111,7 +108,7 @@ fn transfer_keep_alive_fails() {
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					RuntimeOrigin::signed(1),
 					2,
-					AUSD_CURRENCY_ID,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
 				orml_tokens::Error::<Runtime>::KeepAlive
@@ -137,7 +134,7 @@ fn transfer_keep_alive_works() {
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					RuntimeOrigin::signed(1),
 					2,
-					AUSD_CURRENCY_ID,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT - 1
 				)
 			);
@@ -160,17 +157,17 @@ fn transfer_all_works() {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(1),
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				false
 			));
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, AUSD_CURRENCY_ID).free == 2000);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(1),
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				false
 			));
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, AUSD_CURRENCY_ID).free == 2000);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(100),
 				101,
@@ -193,7 +190,7 @@ fn force_transfer_works() {
 				RuntimeOrigin::root(),
 				1,
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
@@ -215,7 +212,7 @@ fn force_transfer_fails() {
 				RuntimeOrigin::signed(1),
 				1,
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			)
 			.is_err());
@@ -223,7 +220,7 @@ fn force_transfer_fails() {
 				RuntimeOrigin::signed(1),
 				1,
 				2,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			)
 			.is_err());
@@ -246,22 +243,22 @@ fn set_balance_works() {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
 				RuntimeOrigin::root(),
 				1,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				200,
 				100
 			));
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, AUSD_CURRENCY_ID).free == 200);
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, AUSD_CURRENCY_ID).reserved == 100);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 200);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 100);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
 				RuntimeOrigin::root(),
 				1,
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				400,
 				200
 			));
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, AUSD_CURRENCY_ID).free == 400);
-			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, AUSD_CURRENCY_ID).reserved == 200);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 400);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 200);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
 				RuntimeOrigin::root(),
@@ -497,7 +494,7 @@ fn fungibles_total_issuance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
-				>>::total_issuance(AUSD_CURRENCY_ID),
+				>>::total_issuance(CurrencyId::AUSD),
 				10 * DISTR_PER_ACCOUNT
 			);
 		})
@@ -517,8 +514,8 @@ fn fungibles_minimum_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
-				>>::minimum_balance(AUSD_CURRENCY_ID),
-				ExistentialDeposits::get(&AUSD_CURRENCY_ID)
+				>>::minimum_balance(CurrencyId::AUSD),
+				ExistentialDeposits::get(&CurrencyId::AUSD)
 			)
 		})
 }
@@ -537,7 +534,7 @@ fn fungibles_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
-				>>::balance(AUSD_CURRENCY_ID, &1),
+				>>::balance(CurrencyId::AUSD, &1),
 				DISTR_PER_ACCOUNT
 			)
 		})
@@ -557,7 +554,7 @@ fn fungibles_reducible_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
-				>>::reducible_balance(AUSD_CURRENCY_ID, &1, false),
+				>>::reducible_balance(CurrencyId::AUSD, &1, false),
 				DISTR_PER_ACCOUNT / 2
 			);
 		})
@@ -577,7 +574,7 @@ fn fungibles_can_deposit() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(AUSD_CURRENCY_ID, &1, 10, false)
+				>>::can_deposit(CurrencyId::AUSD, &1, 10, false)
 					== DepositConsequence::Success
 			);
 		})
@@ -590,13 +587,13 @@ fn fungibles_can_withdraw() {
 		.execute_with(|| {
 			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungibles::Inspect<
 				AccountId,
-			>>::can_withdraw(AUSD_CURRENCY_ID, &1, DISTR_PER_ACCOUNT)
+			>>::can_withdraw(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT)
 				== WithdrawConsequence::ReducedToZero(0);
 			assert!(res);
 			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungibles::Inspect<
 				AccountId,
 			>>::can_withdraw(
-				AUSD_CURRENCY_ID,
+				CurrencyId::AUSD,
 				&1,
 				DISTR_PER_ACCOUNT - ExistentialDeposit::get(),
 			) == WithdrawConsequence::Success;
@@ -612,7 +609,7 @@ fn fungibles_balance_on_hold() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::balance_on_hold(AUSD_CURRENCY_ID, &1,),
+				>>::balance_on_hold(CurrencyId::AUSD, &1,),
 				0
 			);
 		})
@@ -631,12 +628,12 @@ fn fungibles_can_hold() {
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(AUSD_CURRENCY_ID, &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(AUSD_CURRENCY_ID, &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
 		})
 }
@@ -684,14 +681,14 @@ fn fungibles_hold() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(AUSD_CURRENCY_ID, &1, 1),
+				>>::hold(CurrencyId::AUSD, &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(AUSD_CURRENCY_ID, &1, 1),
+				>>::hold(CurrencyId::AUSD, &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 		})
@@ -717,13 +714,13 @@ fn fungibles_release() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(AUSD_CURRENCY_ID, &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
 				Error::<Runtime>::PreConditionsNotMet
 			);
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(AUSD_CURRENCY_ID, &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
 				Error::<Runtime>::PreConditionsNotMet
 			);
 		})
