@@ -223,30 +223,27 @@ fn update_member() {
 			RuntimeOrigin::signed(ALICE.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
-				default_tranche_id(pool_id).clone(),
+				default_tranche_id(pool_id),
 				valid_until
 			)),
 		));
 
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
-			Role::PoolRole(PoolRole::TrancheInvestor(
-				tranche_id.clone(),
-				valid_until.clone()
-			)),
+			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 		));
 
 		// Verify it now works
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(ALICE.into()),
-			pool_id.clone(),
-			tranche_id.clone(),
-			new_member.clone(),
-			valid_until.clone(),
+			pool_id,
+			tranche_id,
+			new_member,
+			valid_until,
 		));
 
 		// Verify it cannot be called for another member without whitelisting the domain
@@ -492,7 +489,7 @@ fn transfer_tranche_tokens_from_local() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			receiver.into(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
@@ -502,9 +499,9 @@ fn transfer_tranche_tokens_from_local() {
 			RuntimeOrigin::signed(receiver.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
-				default_tranche_id(pool_id).clone(),
+				default_tranche_id(pool_id),
 				valid_until
 			)),
 		));
@@ -567,7 +564,7 @@ fn transfer_tranche_tokens_to_local() {
 			AccountConverter::<DevelopmentRuntime>::convert(utils::DEFAULT_OTHER_DOMAIN_ADDRESS);
 		let tranche_id = default_tranche_id(pool_id);
 		let tranche_tokens: CurrencyId =
-			cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id.clone()).into();
+			cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id).into();
 		let valid_until = u64::MAX;
 
 		// Fund `DomainLocator` account of origination domain tranche tokens are
@@ -611,7 +608,7 @@ fn transfer_tranche_tokens_to_local() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			receiver.clone(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
@@ -620,9 +617,9 @@ fn transfer_tranche_tokens_to_local() {
 			RuntimeOrigin::signed(receiver.clone()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			receiver.clone(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
-				default_tranche_id(pool_id).clone(),
+				default_tranche_id(pool_id),
 				valid_until
 			)),
 		));
@@ -631,13 +628,13 @@ fn transfer_tranche_tokens_to_local() {
 		// address
 		assert_ok!(Connectors::handle(
 			RuntimeOrigin::signed(receiver.clone()),
-			bytes.clone()
+			bytes
 		));
 
 		// Verify that the correct amount of the Tranche token was transferred
 		// to the dest domain account on Centrifuge.
 		assert_eq!(OrmlTokens::free_balance(tranche_tokens, &receiver), amount);
-		assert!(OrmlTokens::free_balance(tranche_tokens, &sending_domain_locator.into()).is_zero());
+		assert!(OrmlTokens::free_balance(tranche_tokens, &sending_domain_locator).is_zero());
 
 		// TODO(subsequent PR): Verify that we cannot transfer to the local
 		// domain blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
@@ -677,14 +674,14 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
-			PermissionScope::Pool(valid_pool_id.clone()),
+			PermissionScope::Pool(valid_pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
-			PermissionScope::Pool(invalid_pool_id.clone()),
+			PermissionScope::Pool(invalid_pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
@@ -694,21 +691,15 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
-			PermissionScope::Pool(invalid_pool_id.clone()),
-			Role::PoolRole(PoolRole::TrancheInvestor(
-				valid_tranche_id.clone(),
-				valid_until
-			)),
+			PermissionScope::Pool(invalid_pool_id),
+			Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
-			PermissionScope::Pool(valid_pool_id.clone()),
-			Role::PoolRole(PoolRole::TrancheInvestor(
-				invalid_tranche_id.clone(),
-				valid_until
-			)),
+			PermissionScope::Pool(valid_pool_id),
+			Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
 		));
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
@@ -725,7 +716,7 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 				RuntimeOrigin::signed(BOB.into()),
 				valid_pool_id,
 				invalid_tranche_id,
-				dest_address.clone(),
+				dest_address,
 				transfer_amount
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::TrancheNotFound
@@ -1001,7 +992,7 @@ fn inbound_decrease_invest_order() {
 		// Execute byte message
 		assert_ok!(Connectors::handle(
 			RuntimeOrigin::signed(investor.clone()),
-			bytes.clone()
+			bytes
 		));
 
 		// Verify investment was decreased into investment account
@@ -1089,7 +1080,7 @@ fn inbound_collect_invest_order() {
 		// Execute byte message
 		assert_ok!(Connectors::handle(
 			RuntimeOrigin::signed(investor.clone()),
-			bytes.clone()
+			bytes
 		));
 
 		// Remove events before collect execution
@@ -1232,7 +1223,7 @@ fn inbound_decrease_redeem_order() {
 		// Execute byte message
 		assert_ok!(Connectors::handle(
 			RuntimeOrigin::signed(investor.clone()),
-			bytes.clone()
+			bytes
 		));
 
 		// Verify investment was decreased into investment account
@@ -1327,7 +1318,7 @@ fn inbound_collect_redeem_order() {
 		// Execute byte message
 		assert_ok!(Connectors::handle(
 			RuntimeOrigin::signed(investor.clone()),
-			bytes.clone()
+			bytes
 		));
 
 		// Remove events before collect execution
@@ -1722,7 +1713,7 @@ mod utils {
 
 			let amount_before = OrmlTokens::free_balance(
 				currency_id,
-				&investment_account(investment_id(pool_id, default_tranche_id(pool_id))).clone(),
+				&investment_account(investment_id(pool_id, default_tranche_id(pool_id))),
 			);
 			let final_amount = amount_before
 				.ensure_add(amount)
@@ -1739,7 +1730,6 @@ mod utils {
 				OrmlTokens::free_balance(
 					currency_id,
 					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
-						.clone()
 				),
 				final_amount
 			);
@@ -1834,7 +1824,7 @@ mod utils {
 
 			assert_ok!(Connectors::handle(
 				RuntimeOrigin::signed(investor.clone()),
-				bytes.clone()
+				bytes
 			));
 
 			// Verify redemption was transferred into investment account

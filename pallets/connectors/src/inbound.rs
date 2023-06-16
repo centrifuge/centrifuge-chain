@@ -71,9 +71,9 @@ impl<T: Config> Pallet<T> {
 		);
 		ensure!(
 			T::Permission::has(
-				PermissionScope::Pool(pool_id.clone()),
+				PermissionScope::Pool(pool_id),
 				receiver.clone(),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), Self::now())),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now())),
 			),
 			Error::<T>::UnauthorizedTransfer
 		);
@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
 		// Transfer tranche tokens to `DomainLocator` account of
 		// origination domain
 		T::Tokens::transfer(
-			invest_id.clone().into(),
+			invest_id.into(),
 			&investor,
 			&T::AccountConverter::convert(sending_domain),
 			amount,

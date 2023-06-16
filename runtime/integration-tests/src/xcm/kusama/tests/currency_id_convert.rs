@@ -113,7 +113,7 @@ fn convert_tranche() {
 
 	Altair::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
 			Err(tranche_multilocation),
 		);
 	});
@@ -161,7 +161,7 @@ fn convert_ksm() {
 		register_ksm();
 
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
 			Ok(KSM_ASSET_ID),
 		);
 
@@ -183,7 +183,7 @@ fn convert_unkown_multilocation() {
 	);
 
 	Altair::execute_with(|| {
-		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
 	});
 }
 
