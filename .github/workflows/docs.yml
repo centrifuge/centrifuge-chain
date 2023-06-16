@@ -31,7 +31,7 @@ jobs:
         with:
           command: doc
           args: --all --no-deps
-      
+
       - name: Build Documentation failed
         if: always() && steps.build_docs.outcome == 'failure'
         run: echo ":::error::cargo doc --all --no-deps failed"
