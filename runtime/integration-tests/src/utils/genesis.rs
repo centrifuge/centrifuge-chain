@@ -60,7 +60,7 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					AUSD_ASSET_ID,
+					AUSD_ASSET_ID.into(),
 					(100_000 * DECIMAL_BASE_12).into(),
 				)
 			})
