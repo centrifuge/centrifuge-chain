@@ -1,11 +1,10 @@
 on:
   push:
-    branches: [main, "release-v**"]
+    branches: [main, 'release-v**']
   pull_request:
 name: Tests
 jobs:
   tests:
-    if: "! github.event.pull_request.draft"
     name: ${{ matrix.target }}
     strategy:
       matrix:
@@ -37,3 +36,4 @@ jobs:
         run: ./ci/script.sh
         env:
           TARGET: ${{ matrix.target }}
+

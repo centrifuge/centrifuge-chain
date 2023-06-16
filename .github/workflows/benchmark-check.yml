@@ -1,11 +1,10 @@
 on:
   push:
-    branches: [main, "release-v**"]
+    branches: [main, 'release-v**']
   pull_request:
 name: Check Benchmarks
 jobs:
   tests:
-    if: "! github.event.pull_request.draft"
     name: ${{ matrix.target }}
     strategy:
       matrix:
