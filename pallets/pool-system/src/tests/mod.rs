@@ -14,7 +14,7 @@ use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 	xcm::XcmMetadata,
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -2411,9 +2411,7 @@ fn create_tranche_token_metadata() {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: XcmMetadata {
-						fee_per_second: None,
-					},
+					transferability: CrossChainTransferability::Connectors,
 				},
 			}
 		);

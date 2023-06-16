@@ -227,7 +227,7 @@ pub mod asset_registry {
 
 pub mod xcm {
 	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::traits::Convert;
 	use xcm::{
@@ -252,11 +252,13 @@ pub mod xcm {
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			metadata
-				.additional
-				.xcm
-				.fee_per_second
-				.or_else(|| Some(default_per_second(metadata.decimals)))
+			match metadata.additional.transferability {
+				CrossChainTransferability::Xcm(xcm_metadata)
+				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
+					.fee_per_second
+					.or_else(|| Some(default_per_second(metadata.decimals))),
+				_ => None,
+			}
 		}
 	}
 
@@ -451,6 +453,155 @@ pub mod changes {
 		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
 			let RuntimeChange::Loan(loan_change) = self;
 			Ok(loan_change)
+		}
+	}
+}
+
+pub mod connectors {
+	use cfg_primitives::types::PalletIndex;
+	use cfg_types::tokens::ConnectorsWrappedToken;
+	use sp_core::Get;
+	use sp_runtime::traits::Convert;
+	use sp_std::marker::PhantomData;
+	use xcm::{
+		latest::{MultiLocation, NetworkId},
+		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+	};
+
+	/// This type offers conversions between the xcm MultiLocation and our
+	/// ConnectorsWrappedToken types. This conversion is runtime-dependant, as
+	/// it needs to include the Connectors pallet index on the target runtime.
+	/// Therefore, we have `Index` as a generic type param that we use to unwrap
+	/// said pallet index and correctly convert between the two types.
+	pub struct ConnectorsWrappedTokenConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
+
+	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
+		fn convert(location: MultiLocation) -> Result<ConnectorsWrappedToken, ()> {
+			match location {
+				MultiLocation {
+					parents: 0,
+					interior:
+						X3(
+							PalletInstance(pallet_instance),
+							GlobalConsensus(NetworkId::Ethereum { chain_id }),
+							AccountKey20 {
+								network: None,
+								key: address,
+							},
+						),
+				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
+				_ => Err(()),
+			}
+		}
+	}
+
+	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
+		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
+			match token {
+				ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
+					parents: 0,
+					interior: X3(
+						PalletInstance(Index::get()),
+						GlobalConsensus(NetworkId::Ethereum { chain_id }),
+						AccountKey20 {
+							network: None,
+							key: address,
+						},
+					),
+				},
+			}
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use sp_core::parameter_types;
+		use sp_runtime::traits::Convert;
+
+		use super::*;
+
+		#[test]
+		/// Verify that converting a ConnectorsWrappedToken to MultiLocation and
+		/// back results in the same original value.
+		fn connectors_wrapped_token_convert_identity() {
+			parameter_types! {
+				const Index: PalletIndex = 108;
+			}
+
+			const CHAIN_ID: u64 = 123;
+			const ADDRESS: [u8; 20] = [9; 20];
+
+			let wrapped_token = ConnectorsWrappedToken::EVM {
+				chain_id: CHAIN_ID,
+				address: ADDRESS,
+			};
+
+			let location = MultiLocation {
+				parents: 0,
+				interior: X3(
+					PalletInstance(Index::get()),
+					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+					AccountKey20 {
+						network: None,
+						key: ADDRESS,
+					},
+				),
+			};
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					ConnectorsWrappedToken,
+					MultiLocation,
+				>>::convert(wrapped_token),
+				location
+			);
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					MultiLocation,
+					Result<ConnectorsWrappedToken, ()>,
+				>>::convert(location),
+				Ok(wrapped_token)
+			);
+		}
+
+		/// Verify that ConnectorsWrappedTokenConvert will fail to convert a
+		/// location to a ConnectorsWrappedToken if the PalletInstance value
+		/// doesn't match the Index generic param, i.e, fail if the token
+		/// doesn't appear to be under the Connectors pallet and thus be a
+		/// connectors wrapped token.
+		#[test]
+		fn connectors_wrapped_token_convert_fail() {
+			parameter_types! {
+				const Index: PalletIndex = 108;
+				const WrongIndex: PalletIndex = 72;
+			}
+			const CHAIN_ID: u64 = 123;
+			const ADDRESS: [u8; 20] = [9; 20];
+
+			let location = MultiLocation {
+				parents: 0,
+				interior: X3(
+					PalletInstance(WrongIndex::get()),
+					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+					AccountKey20 {
+						network: None,
+						key: ADDRESS,
+					},
+				),
+			};
+
+			assert_eq!(
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					MultiLocation,
+					Result<ConnectorsWrappedToken, ()>,
+				>>::convert(location),
+				Err(())
+			);
 		}
 	}
 }
