@@ -16,7 +16,7 @@ use cfg_traits::{
 	CurrencyInspect, Investment, InvestmentCollector, Permissions,
 };
 use cfg_types::{
-	domain_address::DomainAddress,
+	domain_address::{Domain, DomainAddress},
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -65,6 +65,11 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
+		// Check that the source is not the local domain
+		ensure!(
+			sending_domain.domain() != Domain::Centrifuge,
+			Error::<T>::InvalidDomain
+		);
 		ensure!(
 			T::Permission::has(
 				PermissionScope::Pool(pool_id.clone()),

@@ -294,7 +294,7 @@ fn update_token_price() {
 }
 
 #[test]
-fn transfer_non_tranche_tokens_from_cfg() {
+fn transfer_non_tranche_tokens_from_local() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -381,32 +381,30 @@ fn transfer_non_tranche_tokens_from_cfg() {
 }
 
 #[test]
-fn transfer_tranche_tokens_from_cfg() {
+fn transfer_tranche_tokens_from_local() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
 
-		// Now create the pool
 		let pool_id: u64 = 42;
+		let amount = 100_000;
+		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+		let receiver = BOB;
+
+		// Create the pool
 		utils::create_ausd_pool(pool_id);
 
-		// Find the tranche id
-		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
-		let tranche_id = pool_details
-			.tranches
-			.tranche_id(TrancheLoc::Index(0))
-			.expect("Tranche at index 0 exists");
-		let amount = 100_000;
-
-		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+		let tranche_tokens: CurrencyId =
+			cfg_types::tokens::TrancheCurrency::generate(pool_id, default_tranche_id(pool_id))
+				.into();
 
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				tranche_id,
+				default_tranche_id(pool_id),
 				dest_address.clone(),
 				amount,
 			),
@@ -418,18 +416,18 @@ fn transfer_tranche_tokens_from_cfg() {
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				tranche_id,
-				DomainAddress::Centrifuge(BOB),
+				default_tranche_id(pool_id),
+				DomainAddress::Centrifuge(receiver),
 				amount,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		);
 
-		// Make BOB the MembersListAdmin of this Pool
+		// Make receiver the MembersListAdmin of this Pool
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
-			BOB.into(),
+			receiver.into(),
 			PermissionScope::Pool(pool_id.clone()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
@@ -437,7 +435,7 @@ fn transfer_tranche_tokens_from_cfg() {
 		// Whitelist destination as TrancheInvestor of this Pool
 		let valid_until = u64::MAX;
 		assert_ok!(Permissions::add(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(receiver.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(pool_id.clone()),
@@ -450,26 +448,22 @@ fn transfer_tranche_tokens_from_cfg() {
 		// Call the Connectors::update_member which ensures the destination address is
 		// whitelisted.
 		assert_ok!(Connectors::update_member(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(receiver.into()),
 			pool_id,
-			tranche_id,
+			default_tranche_id(pool_id),
 			dest_address.clone(),
 			valid_until,
 		));
 
-		// Give BOB enough Tranche balance to be able to transfer it
-		OrmlTokens::deposit(
-			CurrencyId::Tranche(pool_id, tranche_id),
-			&BOB.into(),
-			amount,
-		);
+		// Give receiver enough Tranche balance to be able to transfer it
+		OrmlTokens::deposit(tranche_tokens, &receiver.into(), amount);
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		assert_ok!(Connectors::transfer_tranche_tokens(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(receiver.into()),
 			pool_id,
-			tranche_id,
+			default_tranche_id(pool_id),
 			dest_address.clone(),
 			amount,
 		));
@@ -484,13 +478,110 @@ fn transfer_tranche_tokens_from_cfg() {
 		// Verify that the correct amount of the Tranche token was transferred
 		// to the dest domain account on Centrifuge.
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &domain_account),
+			OrmlTokens::free_balance(tranche_tokens, &domain_account),
 			amount
 		);
-		assert!(
-			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &BOB.into())
-				.is_zero()
+		assert!(OrmlTokens::free_balance(tranche_tokens, &receiver.into()).is_zero());
+	});
+}
+
+#[test]
+fn transfer_tranche_tokens_to_local() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Create new pool
+		let pool_id: u64 = 42;
+		utils::create_ausd_pool(pool_id);
+
+		let amount = 100_000_000;
+		let receiver: AccountId = BOB.into();
+		let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+		let sending_domain_locator =
+			AccountConverter::<DevelopmentRuntime>::convert(utils::DEFAULT_OTHER_DOMAIN_ADDRESS);
+		let tranche_id = default_tranche_id(pool_id);
+		let tranche_tokens: CurrencyId =
+			cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id.clone()).into();
+		let valid_until = u64::MAX;
+
+		// Fund `DomainLocator` account of origination domain tranche tokens are
+		// transferred from this account instead of minting
+		assert_ok!(OrmlTokens::mint_into(
+			tranche_tokens,
+			&sending_domain_locator,
+			amount
+		));
+
+		// Mock incoming decrease message
+		let bytes = utils::ConnectorMessage::TransferTrancheTokens {
+			pool_id,
+			tranche_id,
+			sender: sender.address(),
+			domain: Domain::Centrifuge,
+			receiver: receiver.clone().into(),
+			amount,
+		}
+		.serialize();
+
+		// Verify that we do not accept incoming messages if the connection has not been
+		// initialized
+		assert_noop!(
+			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
 		);
+		assert_ok!(Connectors::add_connector(
+			RuntimeOrigin::root(),
+			receiver.clone()
+		));
+
+		// Verify that we first need the receiver to be whitelisted
+		assert_noop!(
+			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
+		);
+
+		// Make receiver the MembersListAdmin of this Pool
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			receiver.clone(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::InvestorAdmin),
+		));
+
+		// Whitelist destination as TrancheInvestor of this Pool
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::signed(receiver.clone()),
+			Role::PoolRole(PoolRole::InvestorAdmin),
+			receiver.clone(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				default_tranche_id(pool_id).clone(),
+				valid_until
+			)),
+		));
+
+		// Finally, verify that we can now transfer the tranche to the destination
+		// address
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(receiver.clone()),
+			bytes.clone()
+		));
+
+		// Verify that the correct amount of the Tranche token was transferred
+		// to the dest domain account on Centrifuge.
+		assert_eq!(OrmlTokens::free_balance(tranche_tokens, &receiver), amount);
+		assert!(OrmlTokens::free_balance(tranche_tokens, &sending_domain_locator.into()).is_zero());
+
+		// TODO(subsequent PR): Verify that we cannot transfer to the local
+		// domain blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
+		// assert_noop!(
+		// 	Connectors::handle(RuntimeOrigin::signed(investor.clone()),
+		// bytes.clone()),
+		// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
+		// );
 	});
 }
 
@@ -1615,7 +1706,8 @@ mod utils {
 		) {
 			let valid_until = utils::DEFAULT_VALIDITY;
 
-			// Mint balance into mocked `DomainLocator` account of origination domain
+			// Fund `DomainLocator` account of origination domain as redeemed tranche tokens
+			// are transferred from this account instead of minting
 			assert_ok!(OrmlTokens::mint_into(
 				investment_id(pool_id, default_tranche_id(pool_id)).into(),
 				&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS),
