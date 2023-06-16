@@ -379,7 +379,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let noted_change = NotedPoolChange {
-			submitted_at: Self::now(),
+			submitted_time: Self::now(),
 			change,
 		};
 
@@ -400,24 +400,23 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
 		let NotedPoolChange {
-			submitted_at,
+			submitted_time,
 			change,
 		} = NotedChange::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
 
 		let pool_change: PoolChangeProposal = change.clone().into();
+		let pool = Pool::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
 
-		let mut allowed = true;
+		// Default requirement for all changes
+		let mut allowed = !pool.epoch.is_submission_period();
+
 		for requirement in pool_change.requirements() {
 			allowed &= match requirement {
-				Requirement::NextEpoch => {
-					let pool_details = Pool::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
-					submitted_at < pool_details.epoch.last_closed
-				}
+				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
 				Requirement::DelayTime(secs) => {
-					Self::now().saturating_sub(submitted_at) >= secs as u64
+					Self::now().saturating_sub(submitted_time) >= secs as u64
 				}
-				// TODO
-				Requirement::BlockedByLockedRedemptions => false,
+				Requirement::BlockedByLockedRedemptions => false, // TODO
 			}
 		}
 

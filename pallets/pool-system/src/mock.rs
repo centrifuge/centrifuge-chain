@@ -425,7 +425,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
 			.collect(),
@@ -434,7 +434,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
 			.map(|idx| (idx, 1000 * CURRENCY))
 			.collect(),

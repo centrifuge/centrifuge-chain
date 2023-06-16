@@ -359,7 +359,7 @@ pub mod changes {
 		/// Measured in seconds.
 		DelayTime(u32),
 
-		/// The change requires to be at least until the current epoch
+		/// The change requires to be noted at least until the current epoch
 		/// finalizes.
 		NextEpoch,
 
@@ -429,7 +429,7 @@ pub mod changes {
 	/// A PoolChangeProposal with extra information about when it was noted.
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub struct NotedPoolChange<ChangeProposal: Into<PoolChangeProposal>> {
-		pub submitted_at: Moment,
+		pub submitted_time: Moment,
 		pub change: ChangeProposal,
 	}
 }
