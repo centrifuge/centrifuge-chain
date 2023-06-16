@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{fixed_point::Rate};
+use cfg_types::fixed_point::Rate;
 use frame_support::{assert_noop, assert_ok};
 use pallet_investments::Event;
 use sp_arithmetic::{traits::Saturating, Perquintill};

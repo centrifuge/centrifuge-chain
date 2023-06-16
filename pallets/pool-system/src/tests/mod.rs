@@ -2311,7 +2311,8 @@ fn create_tranche_token_metadata() {
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
 			AssetMetadata {
-				// The decimals of the tranche token need to match the decimals for the pool currency.
+				// The decimals of the tranche token need to match the decimals for the pool
+				// currency.
 				decimals: 12,
 				name: "SuperToken".into(),
 				symbol: "ST".into(),

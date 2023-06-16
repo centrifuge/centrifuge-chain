@@ -283,9 +283,9 @@ pub enum ConnectorsWrappedToken {
 #[cfg(test)]
 mod tests {
 	use frame_support::parameter_types;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche};
 
 	use super::*;
+	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche};
 
 	const FOREIGN: CurrencyId = CurrencyId::ForeignAsset(1u32);
 
@@ -460,11 +460,14 @@ mod tests {
 		// Verify that every variant encodes to what we would expect it to.
 		// If this breaks, we must have changed the order of a variant, added
 		// a new variant in between existing variants, or deleted one.
-		vec![Native, Tranche(42, [42; 16]), ForeignAsset(89), Staking(StakingCurrency::BlockRewards)]
-			.into_iter()
-			.for_each(|x| {
-				assert_eq!(x.encode(), expected_encoded_value(x))
-			});
+		vec![
+			Native,
+			Tranche(42, [42; 16]),
+			ForeignAsset(89),
+			Staking(StakingCurrency::BlockRewards),
+		]
+		.into_iter()
+		.for_each(|x| assert_eq!(x.encode(), expected_encoded_value(x)));
 
 		/// Return the expected encoded representation of a `CurrencyId`.
 		/// This is useful to force at compile time that we handle all existing
@@ -482,7 +485,7 @@ mod tests {
 					let mut r: Vec<u8> = vec![4];
 					r.append(&mut id.encode());
 					r
-				},
+				}
 				Staking(StakingCurrency::BlockRewards) => vec![5, 0],
 			}
 		}

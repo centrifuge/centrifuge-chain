@@ -144,6 +144,9 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
 				tranche_input.metadata.token_symbol.clone();
 
+			// The decimals of the tranche token need to match the decimals of the pool
+			// currency. Otherwise, we'd always need to convert investments to the decimals
+			// of tranche tokens and vice versa
 			let decimals = match T::AssetRegistry::metadata(&currency) {
 				Some(metadata) => metadata.decimals,
 				None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
