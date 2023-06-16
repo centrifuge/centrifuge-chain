@@ -40,19 +40,21 @@ use xcm::{
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
-use crate::utils::AUSD_CURRENCY_ID;
 
 use super::register_dot;
-use crate::xcm::{
-	polkadot::{
-		setup::{
-			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-			BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::{
+		polkadot::{
+			setup::{
+				acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+				BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+			},
+			test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+			tests::register_ausd,
 		},
-		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-		tests::register_ausd,
+		xcm_metadata,
 	},
-	xcm_metadata,
 };
 
 /*

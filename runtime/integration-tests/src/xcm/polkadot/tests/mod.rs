@@ -25,9 +25,11 @@ use xcm::{
 	prelude::{Parachain, X2},
 	VersionedMultiLocation,
 };
-use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::polkadot::setup::{DOT_ASSET_ID, NO_XCM_ASSET_ID};
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::polkadot::setup::{DOT_ASSET_ID, NO_XCM_ASSET_ID},
+};
 
 mod asset_registry;
 mod currency_id_convert;

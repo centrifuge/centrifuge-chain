@@ -49,15 +49,17 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::kusama::{
-	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-		BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::kusama::{
+		setup::{
+			air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
+			KSM_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+		tests::{register_air, register_ausd, register_ksm},
 	},
-	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
-	tests::{register_air, register_ausd, register_ksm},
 };
 
 #[test]

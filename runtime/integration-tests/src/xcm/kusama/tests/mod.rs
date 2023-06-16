@@ -12,9 +12,8 @@ use xcm::{
 	prelude::{Here, Parachain, X2},
 	VersionedMultiLocation,
 };
-use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::kusama::setup::{KSM_ASSET_ID};
+use crate::{utils::AUSD_CURRENCY_ID, xcm::kusama::setup::KSM_ASSET_ID};
 
 mod asset_registry;
 mod currency_id_convert;

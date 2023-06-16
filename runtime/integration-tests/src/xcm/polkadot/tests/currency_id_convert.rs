@@ -48,16 +48,18 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use crate::utils::AUSD_CURRENCY_ID;
 
 use super::register_dot;
-use crate::xcm::polkadot::{
-	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-		BOB, DOT_ASSET_ID, NO_XCM_ASSET_ID, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::polkadot::{
+		setup::{
+			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+			BOB, DOT_ASSET_ID, NO_XCM_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+		tests::{register_ausd, register_cfg, register_cfg_v2, register_no_xcm_token},
 	},
-	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::{register_ausd, register_cfg, register_cfg_v2, register_no_xcm_token},
 };
 
 #[test]

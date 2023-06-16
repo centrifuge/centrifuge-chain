@@ -40,18 +40,20 @@ use xcm::{
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
-use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::{
-	kusama::{
-		setup::{
-			air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-			BOB, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::{
+		kusama::{
+			setup::{
+				air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
+				BOB, PARA_ID_SIBLING,
+			},
+			test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+			tests::register_ausd,
 		},
-		test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
-		tests::register_ausd,
+		xcm_metadata,
 	},
-	xcm_metadata,
 };
 
 /*

@@ -429,8 +429,7 @@ mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
 
 	use super::*;
-	use crate::utils::AUSD_CURRENCY_ID;
-	use crate::xcm::development::tests::register_ausd;
+	use crate::{utils::AUSD_CURRENCY_ID, xcm::development::tests::register_ausd};
 
 	pub fn setup_pre_requirements() {
 		let moonbeam_location = MultiLocation {
