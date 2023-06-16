@@ -298,13 +298,13 @@ fn transfer_non_tranche_tokens_from_local() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
+		// Register GLMR and fund BOB
+		utils::setup_pre_requirements();
+
 		let initial_balance = utils::DEFAULT_BALANCE_GLMR;
 		let amount = utils::DEFAULT_BALANCE_GLMR / 2;
 		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
 		let currency_id = utils::CURRENCY_ID_GLMR;
-
-		// Register GLMR and fund BOB
-		utils::setup_pre_requirements();
 
 		// Cannot transfer to Centrifuge
 		assert_noop!(
@@ -377,6 +377,70 @@ fn transfer_non_tranche_tokens_from_local() {
 			amount
 		);
 		assert!(OrmlTokens::free_balance(currency_id, &BOB.into()) < initial_balance - amount);
+	});
+}
+
+#[test]
+fn transfer_non_tranche_tokens_to_local() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let initial_balance = utils::DEFAULT_BALANCE_GLMR;
+		let amount = utils::DEFAULT_BALANCE_GLMR / 2;
+		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let receiver: AccountId = BOB.into();
+
+		// Mock incoming decrease message
+		let bytes = utils::ConnectorMessage::Transfer {
+			currency: general_currency_index(currency_id),
+			// sender is irrelevant for other -> local
+			sender: ALICE,
+			receiver: receiver.clone().into(),
+			amount,
+		}
+		.serialize();
+
+		assert!(OrmlTokens::total_issuance(currency_id).is_zero());
+
+		// Verify that we do not accept incoming messages if the connection has not been
+		// initialized
+		assert_noop!(
+			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+		);
+		assert_ok!(Connectors::add_connector(
+			RuntimeOrigin::root(),
+			receiver.clone()
+		));
+
+		// Finally, verify that we can now transfer the tranche to the destination
+		// address
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(receiver.clone()),
+			bytes
+		));
+
+		// Verify that the correct amount was minted
+		assert_eq!(OrmlTokens::total_issuance(currency_id), amount);
+		assert_eq!(OrmlTokens::free_balance(currency_id, &receiver), amount);
+
+		// Verify empty transfers throw
+		assert_noop!(
+			Connectors::handle(
+				RuntimeOrigin::signed(receiver.clone()),
+				utils::ConnectorMessage::Transfer {
+					currency: general_currency_index(currency_id),
+					sender: ALICE,
+					receiver: receiver.into(),
+					amount: 0,
+				}
+				.serialize(),
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferAmount
+		);
 	});
 }
 

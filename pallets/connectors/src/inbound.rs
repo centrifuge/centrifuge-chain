@@ -39,7 +39,6 @@ impl<T: Config> Pallet<T> {
 	/// Directly mints the currency into the receiver address.
 	pub fn do_transfer_from_other_domain(
 		currency: GeneralCurrencyIndexOf<T>,
-		_sender: T::AccountId,
 		receiver: T::AccountId,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {

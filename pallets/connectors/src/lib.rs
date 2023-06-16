@@ -664,15 +664,10 @@ pub mod pallet {
 			match msg {
 				Message::Transfer {
 					currency,
-					sender,
 					receiver,
 					amount,
-				} => Self::do_transfer_from_other_domain(
-					currency.into(),
-					sender.into(),
-					receiver.into(),
-					amount,
-				),
+					..
+				} => Self::do_transfer_from_other_domain(currency.into(), receiver.into(), amount),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
