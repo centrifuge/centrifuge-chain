@@ -42,7 +42,7 @@ use crate::{
 		time::secs::*,
 		tokens,
 		tokens::{DECIMAL_BASE_12, YEAR_RATE},
-		AUSD_ASSET_ID,
+		AUSD_CURRENCY_ID,
 	},
 };
 
@@ -143,7 +143,7 @@ pub fn default_pool_calls(
 	pool_setup_calls(
 		admin,
 		pool_id,
-		AUSD_ASSET_ID,
+		AUSD_CURRENCY_ID,
 		100_000 * DECIMAL_BASE_12,
 		create_tranche_input(
 			vec![None, Some(10), Some(7), Some(5), Some(3)],

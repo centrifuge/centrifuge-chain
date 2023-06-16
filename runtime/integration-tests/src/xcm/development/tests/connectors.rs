@@ -429,7 +429,8 @@ mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
 
 	use super::*;
-	use crate::utils::AUSD_ASSET_ID;
+	use crate::utils::AUSD_CURRENCY_ID;
+	use crate::xcm::development::tests::register_ausd;
 
 	pub fn setup_pre_requirements() {
 		let moonbeam_location = MultiLocation {
@@ -495,23 +496,7 @@ mod utils {
 			}),
 		));
 
-		// We first need to register AUSD in the asset registry
-		let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 12,
-			name: "Acala Dollar".into(),
-			symbol: "AUSD".into(),
-			existential_deposit: 1_000,
-			location: None,
-			additional: CustomMetadata {
-				transferability: CrossChainTransferability::Xcm(Default::default()),
-				..CustomMetadata::default()
-			},
-		};
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			ausd_meta,
-			Some(AUSD_ASSET_ID)
-		));
+		register_ausd();
 	}
 
 	pub fn create_pool(pool_id: u64) {
@@ -551,7 +536,7 @@ mod utils {
 					}
 				}
 			],
-			AUSD_ASSET_ID,
+			AUSD_CURRENCY_ID,
 			10_000 * dollar(currency_decimals::AUSD),
 		));
 	}

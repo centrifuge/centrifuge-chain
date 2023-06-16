@@ -19,7 +19,7 @@ use sp_runtime::{AccountId32, Storage};
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
-	AUSD_ASSET_ID, RELAY_ASSET_ID,
+	AUSD_CURRENCY_ID, RELAY_ASSET_ID,
 };
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the
@@ -60,7 +60,7 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					AUSD_ASSET_ID.into(),
+					AUSD_CURRENCY_ID.into(),
 					(100_000 * DECIMAL_BASE_12).into(),
 				)
 			})
@@ -93,7 +93,7 @@ where
 	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	let genesis = MockGenesisConfigAssetRegistry {
-		assets: vec![RELAY_ASSET_ID, AUSD_ASSET_ID],
+		assets: vec![RELAY_ASSET_ID, AUSD_CURRENCY_ID],
 	};
 
 	<MockGenesisConfigAssetRegistry as GenesisBuild<Runtime>>::assimilate_storage(

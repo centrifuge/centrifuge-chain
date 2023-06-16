@@ -40,12 +40,13 @@ use xcm::{
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
+use crate::utils::AUSD_CURRENCY_ID;
 
 use crate::xcm::{
 	kusama::{
 		setup::{
 			air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-			AUSD_ASSET_ID, BOB, PARA_ID_SIBLING,
+			BOB, PARA_ID_SIBLING,
 		},
 		test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 		tests::register_ausd,
@@ -248,13 +249,13 @@ fn transfer_ausd_to_altair() {
 		register_ausd();
 
 		assert_ok!(OrmlTokens::deposit(
-			AUSD_ASSET_ID,
+			AUSD_CURRENCY_ID,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &altair_account()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &altair_account()),
 			0
 		);
 	});
@@ -262,17 +263,17 @@ fn transfer_ausd_to_altair() {
 	Altair::execute_with(|| {
 		register_ausd();
 
-		assert_eq!(OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()), 0,);
+		assert_eq!(OrmlTokens::free_balance(AUSD_CURRENCY_ID, &BOB.into()), 0,);
 	});
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &ALICE.into()),
 			ausd(10),
 		);
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
-			AUSD_ASSET_ID,
+			AUSD_CURRENCY_ID,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -291,14 +292,14 @@ fn transfer_ausd_to_altair() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the altair parachain
 		// account here
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &altair_account()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &altair_account()),
 			transfer_amount
 		);
 	});
@@ -306,7 +307,7 @@ fn transfer_ausd_to_altair() {
 	Altair::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &BOB.into()),
 			transfer_amount - ausd_fee()
 		);
 	});

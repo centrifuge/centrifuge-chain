@@ -40,13 +40,14 @@ use xcm::{
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
+use crate::utils::AUSD_CURRENCY_ID;
 
 use super::register_dot;
 use crate::xcm::{
 	polkadot::{
 		setup::{
 			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-			AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+			BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 		},
 		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
 		tests::register_ausd,
@@ -232,13 +233,13 @@ fn transfer_ausd_to_centrifuge() {
 		register_ausd();
 
 		assert_ok!(OrmlTokens::deposit(
-			AUSD_ASSET_ID,
+			AUSD_CURRENCY_ID,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &centrifuge_account()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &centrifuge_account()),
 			0
 		);
 	});
@@ -246,17 +247,17 @@ fn transfer_ausd_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		register_ausd();
 
-		assert_eq!(OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()), 0,);
+		assert_eq!(OrmlTokens::free_balance(AUSD_CURRENCY_ID, &BOB.into()), 0,);
 	});
 
 	Acala::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &ALICE.into()),
 			ausd(10),
 		);
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
-			AUSD_ASSET_ID,
+			AUSD_CURRENCY_ID,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -275,14 +276,14 @@ fn transfer_ausd_to_centrifuge() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the centrifuge parachain
 		// account here
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &centrifuge_account()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &centrifuge_account()),
 			transfer_amount
 		);
 	});
@@ -290,7 +291,7 @@ fn transfer_ausd_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
+			OrmlTokens::free_balance(AUSD_CURRENCY_ID, &BOB.into()),
 			transfer_amount - ausd_fee()
 		);
 	});

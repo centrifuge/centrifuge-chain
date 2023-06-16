@@ -25,8 +25,9 @@ use xcm::{
 	prelude::{Parachain, X2},
 	VersionedMultiLocation,
 };
+use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::polkadot::setup::{AUSD_ASSET_ID, DOT_ASSET_ID, NO_XCM_ASSET_ID};
+use crate::xcm::polkadot::setup::{DOT_ASSET_ID, NO_XCM_ASSET_ID};
 
 mod asset_registry;
 mod currency_id_convert;
@@ -78,7 +79,7 @@ fn register_ausd() {
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
 		meta,
-		Some(AUSD_ASSET_ID)
+		Some(AUSD_CURRENCY_ID)
 	));
 }
 

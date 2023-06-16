@@ -49,11 +49,12 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+use crate::utils::AUSD_CURRENCY_ID;
 
 use crate::xcm::kusama::{
 	setup::{
 		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
+		BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 	tests::{register_air, register_ausd, register_ksm},
@@ -143,11 +144,11 @@ fn convert_ausd() {
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-			Ok(AUSD_ASSET_ID),
+			Ok(AUSD_CURRENCY_ID),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_ASSET_ID),
+			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_CURRENCY_ID),
 			Some(ausd_location)
 		)
 	});

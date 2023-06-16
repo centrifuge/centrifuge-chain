@@ -12,8 +12,9 @@ use xcm::{
 	prelude::{Here, Parachain, X2},
 	VersionedMultiLocation,
 };
+use crate::utils::AUSD_CURRENCY_ID;
 
-use crate::xcm::kusama::setup::{AUSD_ASSET_ID, KSM_ASSET_ID};
+use crate::xcm::kusama::setup::{KSM_ASSET_ID};
 
 mod asset_registry;
 mod currency_id_convert;
@@ -71,7 +72,7 @@ fn register_ausd() {
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
 		meta,
-		Some(AUSD_ASSET_ID)
+		Some(AUSD_CURRENCY_ID)
 	));
 }
 

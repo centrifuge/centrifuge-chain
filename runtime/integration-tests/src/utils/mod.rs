@@ -25,4 +25,4 @@ pub mod tokens;
 /// The relay native token's asset id
 pub const RELAY_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 /// The AUSD asset id
-pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2000);
