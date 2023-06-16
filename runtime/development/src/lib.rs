@@ -1300,9 +1300,9 @@ parameter_types! {
 	pub const MaxPriceOracleMembers: u32 = 5;
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
 		MaxPriceOracleMembers::get(),
-		// For benchmarking we need a number of members equals to the active loans.
+		// For benchmarking we need a number of members equal to the active loans.
 		// The benchmark distintion can be removed once
-		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 		MaxActiveLoansPerPool::get()
 	);
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
@@ -1328,7 +1328,7 @@ impl orml_oracle::Config for Runtime {
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Members = PriceOracleMembership;
 	// This can be removed once
-	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
