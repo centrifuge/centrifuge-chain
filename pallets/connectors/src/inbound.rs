@@ -13,158 +13,139 @@
 
 use cfg_traits::{
 	ops::{EnsureAdd, EnsureSub},
-	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, PoolInspect,
-	TrancheCurrency,
+	CurrencyInspect, Investment, InvestmentCollector, Permissions,
+};
+use cfg_types::{
+	domain_address::DomainAddress,
+	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
 	ensure,
 	traits::fungibles::{Mutate, Transfer},
 };
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{Convert, Zero},
+	DispatchResult,
+};
 
 use crate::{
-	pallet, pallet::Error, Config, CurrencyIdOf, GeneralCurrencyIndexOf, Pallet, PoolIdOf,
-	TrancheIdOf,
+	pallet::Error, Config, CurrencyIdOf, GeneralCurrencyIndexOf, Pallet, PoolIdOf, TrancheIdOf,
 };
 
 impl<T: Config> Pallet<T> {
-	/// Ensures that the given pool and tranche exists and returns the
-	/// corresponding investment id.
-	pub fn derive_invest_id(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
-	) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
-		ensure!(
-			T::PoolInspect::pool_exists(pool_id),
-			Error::<T>::PoolNotFound
-		);
-		ensure!(
-			T::PoolInspect::tranche_exists(pool_id, tranche_id),
-			Error::<T>::TrancheNotFound
-		);
-
-		Ok(TrancheCurrency::generate(pool_id, tranche_id))
-	}
-
-	/// Ensures that the payment currency of the given investment id matches the
-	/// derived currency and returns the latter.
-	pub fn try_get_payment_currency(
-		invest_id: <T as pallet::Config>::TrancheCurrency,
-		currency_index: GeneralCurrencyIndexOf<T>,
-	) -> Result<CurrencyIdOf<T>, DispatchError> {
-		// retrieve currency id from general index
-		let currency = Self::try_get_currency_id(currency_index)?;
-
-		// get investment info
-		let payment_currency: CurrencyIdOf<T> =
-			<T as pallet::Config>::ForeignInvestmentAccountant::info(invest_id)?
-				.payment_currency()
-				.into();
-		ensure!(
-			payment_currency == currency,
-			Error::<T>::InvalidInvestCurrency
-		);
-
-		Ok(currency)
-	}
-
-	/// Executes a transfer exclusively for non-tranche-tokens.
-	pub fn do_transfer(
+	/// Executes a transfer from another domain exclusively for
+	/// non-tranche-tokens.
+	///
+	/// Directly mints the currency into the receiver address.
+	pub fn do_transfer_from_other_domain(
 		currency: GeneralCurrencyIndexOf<T>,
-		sender: T::AccountId,
+		_sender: T::AccountId,
 		receiver: T::AccountId,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
 		let currency_id = Self::try_get_currency_id(currency)?;
-		T::Tokens::transfer(currency_id, &sender, &receiver, amount, false)?;
+		T::Tokens::mint_into(currency_id, &receiver, amount)?;
 
 		Ok(())
 	}
 
-	/// Executes a transfer exclusively for tranche tokens.
-	pub fn do_transfer_tranche_tokens(
+	/// Executes a transfer from the `DomainLocator` account of the origination
+	/// domain to the receiver exclusively for tranche tokens.
+	///
+	/// Assumes that the amount of tranche tokens has been minted in the
+	/// `DomainLocator` account of the origination domain beforehand.
+	pub fn do_transfer_tranche_tokens_from_other_domain(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
-		sender: T::AccountId,
+		sending_domain: DomainAddress,
 		receiver: T::AccountId,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
-		// TODO(@review): Is my assumption correct that we don't need to do permission
-		// checking here?
+
+		ensure!(
+			T::Permission::has(
+				PermissionScope::Pool(pool_id.clone()),
+				receiver.clone(),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), Self::now())),
+			),
+			Error::<T>::UnauthorizedTransfer
+		);
 
 		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-		T::Tokens::transfer(invest_id.into(), &sender, &receiver, amount, false)?;
+		ensure!(
+			CurrencyIdOf::<T>::is_tranche_token(invest_id.clone().into()),
+			Error::<T>::InvalidTransferCurrency
+		);
+
+		T::Tokens::transfer(
+			invest_id.into(),
+			&T::AccountConverter::convert(sending_domain),
+			&receiver,
+			amount,
+			false,
+		)?;
 
 		Ok(())
 	}
 
-	/// Increases an existing investment order of the investor. Directly mints
-	/// the additional investment amount into the investor account.
+	/// Increases an existing investment order of the investor.
+	///
+	/// Directly mints the additional investment amount into the investor
+	/// account.
 	pub fn do_increase_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		// Retrieve investment details
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
-		let pre_amount =
-			<T as pallet::Config>::ForeignInvestment::investment(&investor, invest_id.clone())?;
+		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_add(amount)?;
 
 		// Mint additional amount
-		<T as pallet::Config>::Tokens::mint_into(currency, &investor, amount)?;
+		T::Tokens::mint_into(currency, &investor, amount)?;
 
-		<T as pallet::Config>::ForeignInvestment::update_investment(
-			&investor,
-			invest_id,
-			post_amount,
-		)?;
+		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
 		Ok(())
 	}
 
-	/// Decreases an existing investment order of the investor. Directly burns
-	/// the decreased investment amount from the investor account.
+	/// Decreases an existing investment order of the investor.
 	///
-	/// Initiates a return `ExecutedDecreaseInvestOrder`
-	/// message to refund the decreased amount on the source domain. The
-	/// dispatch of this message is delayed until the execution of the
-	/// investment, e.g. at least until the next epoch transition.
+	/// Directly burns the decreased investment amount from the investor
+	/// account.
+	///
+	/// Initiates a return `ExecutedDecreaseInvestOrder` message to refund the
+	/// decreased amount on the source domain. The dispatch of this message is
+	/// delayed until the execution of the investment, e.g. at least until the
+	/// next epoch transition.
 	pub fn do_decrease_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		// Retrieve investment details
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
-		let pre_amount =
-			<T as pallet::Config>::ForeignInvestment::investment(&investor, invest_id.clone())?;
+		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
-		<T as pallet::Config>::ForeignInvestment::update_investment(
-			&investor,
-			invest_id,
-			post_amount,
-		)?;
+		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
-		// TODO(@review): We want to burn instead of transferring to some sovereign
-		// account, right?
-		<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
+		// Burn decreased amount
+		T::Tokens::burn_from(currency, &investor, amount)?;
 
 		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder`message to
 		// source destination which should refund the decreased amount.
@@ -174,69 +155,80 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Increases an existing redemption order of the investor. Directly mints
-	/// the additional redemption amount into the investor account.
+	/// Increases an existing redemption order of the investor.
+	///
+	/// Transfers the decreased redemption amount from the holdings of the
+	/// `DomainLocator` account of origination domain of this message into the
+	/// investor account.
+	///
+	/// Assumes that the amount of tranche tokens has been minted in the
+	/// `DomainLocator` account of the origination domain beforehand.
 	pub fn do_increase_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
+		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		// Retrieve investment details
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
 		// Determine post adjustment amount
-		let pre_amount =
-			<T as pallet::Config>::ForeignInvestment::redemption(&investor, invest_id.clone())?;
+		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_add(amount)?;
 
-		// Mint additional amount
-		<T as pallet::Config>::Tokens::mint_into(invest_id.clone().into(), &investor, amount)?;
-
-		<T as pallet::Config>::ForeignInvestment::update_redemption(
+		// Transfer tranche tokens from `DomainLocator` account of origination domain
+		T::Tokens::transfer(
+			invest_id.clone().into(),
+			&T::AccountConverter::convert(sending_domain),
 			&investor,
-			invest_id,
-			post_amount,
+			amount,
+			false,
 		)?;
+
+		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
 
 		Ok(())
 	}
 
-	/// Decreases an existing redemption order of the investor. Directly burns
-	/// the decreased redemption amount from the investor account.
+	/// Decreases an existing redemption order of the investor.
 	///
-	/// Initiates a return `ExecutedDecreaseRedemption`
-	/// message to refund the decreased amount on the source domain. The
-	/// dispatch of this message is delayed until the execution of the
-	/// redemption, e.g. at least until the next epoch transition.
+	/// Transfers the decreased redemption amount from the investor account into
+	/// holdings of the `DomainLocator` account of origination domain of this
+	/// message.
+	///
+	/// Initiates a return `ExecutedDecreaseRedemption` message to refund the
+	/// decreased amount on the source domain. The dispatch of this message is
+	/// delayed until the execution of the redemption, e.g. at least until the
+	/// next epoch transition.
 	pub fn do_decrease_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		amount: <T as pallet::Config>::Balance,
+		amount: <T as Config>::Balance,
+		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		// Retrieve investment details
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		// NOTE: Required for relaying `ExecutedDecreaseRedemption` message
 		let _currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
-		let pre_amount =
-			<T as pallet::Config>::ForeignInvestment::redemption(&investor, invest_id.clone())?;
+		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
-		<T as pallet::Config>::ForeignInvestment::update_redemption(
-			&investor,
-			invest_id.clone(),
-			post_amount,
-		)?;
+		T::ForeignInvestment::update_redemption(&investor, invest_id.clone(), post_amount)?;
 
-		// TODO(@review): We want to burn instead of transferring to some sovereign
-		// account, right?
-		<T as pallet::Config>::Tokens::burn_from(invest_id.into(), &investor, amount)?;
+		// Transfer tranche tokens to `DomainLocator` account of
+		// origination domain
+		T::Tokens::transfer(
+			invest_id.clone().into(),
+			&investor,
+			&T::AccountConverter::convert(sending_domain),
+			amount,
+			false,
+		)?;
 
 		// TODO(subsequent PR): Handle response `ExecutedDecreaseRedemption` message to
 		// source destination which should refund the decreased amount.
@@ -254,10 +246,9 @@ impl<T: Config> Pallet<T> {
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 	) -> DispatchResult {
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		<T as pallet::Config>::ForeignInvestment::collect_investment(investor, invest_id)
+		T::ForeignInvestment::collect_investment(investor, invest_id)
 	}
 
 	/// Collect the results of a user's redeem orders for the given investment
@@ -268,9 +259,8 @@ impl<T: Config> Pallet<T> {
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 	) -> DispatchResult {
-		let invest_id: <T as Config>::TrancheCurrency =
-			Self::derive_invest_id(pool_id, tranche_id)?;
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		<T as pallet::Config>::ForeignInvestment::collect_redemption(investor, invest_id)
+		T::ForeignInvestment::collect_redemption(investor, invest_id)
 	}
 }

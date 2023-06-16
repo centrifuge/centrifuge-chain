@@ -210,9 +210,9 @@ fn update_member() {
 		assert_noop!(
 			Connectors::update_member(
 				RuntimeOrigin::signed(ALICE.into()),
-				new_member.clone(),
 				pool_id,
 				tranche_id,
+				new_member.clone(),
 				valid_until,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
@@ -243,9 +243,9 @@ fn update_member() {
 		// Verify it now works
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(ALICE.into()),
-			new_member.clone(),
 			pool_id.clone(),
 			tranche_id.clone(),
+			new_member.clone(),
 			valid_until.clone(),
 		));
 
@@ -254,9 +254,9 @@ fn update_member() {
 		assert_noop!(
 			Connectors::update_member(
 				RuntimeOrigin::signed(ALICE.into()),
-				DomainAddress::EVM(1284, [9; 20]),
 				pool_id,
 				tranche_id,
+				DomainAddress::EVM(1284, [9; 20]),
 				valid_until,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
@@ -294,7 +294,7 @@ fn update_token_price() {
 }
 
 #[test]
-fn transfer_non_tranche_tokens() {
+fn transfer_non_tranche_tokens_from_cfg() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -381,7 +381,7 @@ fn transfer_non_tranche_tokens() {
 }
 
 #[test]
-fn transfer_tranche_tokens() {
+fn transfer_tranche_tokens_from_cfg() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -451,9 +451,9 @@ fn transfer_tranche_tokens() {
 		// whitelisted.
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(BOB.into()),
-			dest_address.clone(),
 			pool_id,
 			tranche_id,
+			dest_address.clone(),
 			valid_until,
 		));
 
@@ -1305,6 +1305,7 @@ mod utils {
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(1284);
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 	pub const DEFAULT_VALIDITY: Moment = 2555583502;
+	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(1284, [0; 20]);
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
@@ -1614,6 +1615,13 @@ mod utils {
 		) {
 			let valid_until = utils::DEFAULT_VALIDITY;
 
+			// Mint balance into mocked `DomainLocator` account of origination domain
+			assert_ok!(OrmlTokens::mint_into(
+				investment_id(pool_id, default_tranche_id(pool_id)).into(),
+				&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS),
+				amount
+			));
+
 			// Verify redemption has not been made yet
 			assert_eq!(
 				OrmlTokens::free_balance(
@@ -1685,6 +1693,13 @@ mod utils {
 				OrmlTokens::free_balance(
 					investment_id(pool_id, default_tranche_id(pool_id)).into(),
 					&investor
+				),
+				0
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(
+					investment_id(pool_id, default_tranche_id(pool_id)).into(),
+					&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
 				),
 				0
 			);

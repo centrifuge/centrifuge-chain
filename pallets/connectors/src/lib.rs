@@ -339,8 +339,8 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
-			let metadata = T::AssetRegistry::metadata(&currency_id)
+			let currency_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			let metadata = T::AssetRegistry::metadata(&currency_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
@@ -365,7 +365,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update a token price
+		/// Update the price of a tranche token
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
 		#[pallet::call_index(4)]
 		pub fn update_token_price(
@@ -376,6 +376,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
+			// TODO(follow-up PR): Move `get_tranche_token_price` to new trait.
+			// https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?both#fn-update_tranche_token_price
 			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
@@ -398,9 +400,9 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
-			domain_address: DomainAddress,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
+			domain: DomainAddress,
 			valid_until: Moment,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -421,7 +423,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					T::AccountConverter::convert(domain_address.clone()),
+					T::AccountConverter::convert(domain.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::DomainNotWhitelisted
@@ -433,9 +435,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					member: domain_address.address(),
+					member: domain.address(),
 				},
-				domain_address.domain(),
+				domain.domain(),
 			)?;
 
 			Ok(())
@@ -529,9 +531,10 @@ pub mod pallet {
 			);
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// FIXME: Ensure we never transfer tokens from DomainA to DomainB
-			//	 Potentially related to asset metadata update
-			//	 https://github.com/centrifuge/centrifuge-chain/pull/1393
+			// FIXME: Ensure receiving domain is issuer of token, e.g. we never transfer
+			// tokens from OtherDomain A to OtherDomain B
+			// NOTE: Blocked by asset metadata update
+			// https://github.com/centrifuge/centrifuge-chain/pull/1393
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -601,7 +604,8 @@ pub mod pallet {
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			// TODO(subsequent PR): In the future, should be permissioned by trait which
-			// does not exist yet See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-update_member
+			// does not exist yet.
+			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 
 			// TODO(@review): According to spec, this should be restricted to
 			// `AdminOrigin`. However, `do_send_message` requires a 32-byte address for the
@@ -653,24 +657,32 @@ pub mod pallet {
 			let msg: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
 				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 
+			// FIXME(subsequent PR): Derive domain via Gateway InboundQueue
+			// blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
+			let sending_domain: DomainAddress = DomainAddress::EVM(1284, [0u8; 20]);
+
 			match msg {
 				Message::Transfer {
 					currency,
 					sender,
 					receiver,
 					amount,
-				} => Self::do_transfer(currency.into(), sender.into(), receiver.into(), amount),
+				} => Self::do_transfer_from_other_domain(
+					currency.into(),
+					sender.into(),
+					receiver.into(),
+					amount,
+				),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
-					sender,
 					receiver,
 					amount,
 					..
-				} => Self::do_transfer_tranche_tokens(
+				} => Self::do_transfer_tranche_tokens_from_other_domain(
 					pool_id,
 					tranche_id,
-					sender.into(),
+					sending_domain,
 					receiver.into(),
 					amount,
 				),
@@ -706,7 +718,13 @@ pub mod pallet {
 					investor,
 					amount,
 					..
-				} => Self::do_increase_redemption(pool_id, tranche_id, investor.into(), amount),
+				} => Self::do_increase_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					amount,
+					sending_domain,
+				),
 				Message::DecreaseRedeemOrder {
 					pool_id,
 					tranche_id,
@@ -719,6 +737,7 @@ pub mod pallet {
 					investor.into(),
 					currency.into(),
 					amount,
+					sending_domain,
 				),
 				Message::CollectInvest {
 					pool_id,
@@ -854,6 +873,46 @@ pub mod pallet {
 			ensure!(
 				T::AssetRegistry::metadata(&currency).is_some(),
 				Error::<T>::AssetNotFound
+			);
+
+			Ok(currency)
+		}
+
+		/// Ensures that the given pool and tranche exists and returns the
+		/// corresponding investment id.
+		pub fn derive_invest_id(
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			Ok(TrancheCurrency::generate(pool_id, tranche_id))
+		}
+
+		/// Ensures that the payment currency of the given investment id matches
+		/// the derived currency and returns the latter.
+		pub fn try_get_payment_currency(
+			invest_id: <T as pallet::Config>::TrancheCurrency,
+			currency_index: GeneralCurrencyIndexOf<T>,
+		) -> Result<CurrencyIdOf<T>, DispatchError> {
+			// retrieve currency id from general index
+			let currency = Self::try_get_currency_id(currency_index)?;
+
+			// get investment info
+			let payment_currency: CurrencyIdOf<T> =
+				<T as pallet::Config>::ForeignInvestmentAccountant::info(invest_id)?
+					.payment_currency()
+					.into();
+			ensure!(
+				payment_currency == currency,
+				Error::<T>::InvalidInvestCurrency
 			);
 
 			Ok(currency)
