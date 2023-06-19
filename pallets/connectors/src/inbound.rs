@@ -53,7 +53,7 @@ impl<T: Config> Pallet<T> {
 	/// Executes a transfer from the `DomainLocator` account of the origination
 	/// domain to the receiver exclusively for tranche tokens.
 	///
-	/// Assumes that the amount of tranche tokens has been minted in the
+	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
 	pub fn do_transfer_tranche_tokens_from_other_domain(
 		pool_id: PoolIdOf<T>,
@@ -165,7 +165,7 @@ impl<T: Config> Pallet<T> {
 	/// `DomainLocator` account of origination domain of this message into the
 	/// investor account.
 	///
-	/// Assumes that the amount of tranche tokens has been minted in the
+	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
 	pub fn do_increase_redemption(
 		pool_id: PoolIdOf<T>,
