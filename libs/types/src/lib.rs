@@ -30,3 +30,7 @@ pub mod permissions;
 pub mod time;
 pub mod tokens;
 pub mod xcm;
+
+/// The EVM Chain ID
+/// The type should accomodate all chain ids listed on https://chainlist.org/.
+type EVMChainId = u64;

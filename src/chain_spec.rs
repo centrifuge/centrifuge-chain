@@ -26,7 +26,7 @@ use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
-	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
+	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
@@ -1241,10 +1241,10 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					),
 				})),
 				additional: CustomMetadata {
-					xcm: Default::default(),
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
+					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
 			.encode(),
@@ -1267,10 +1267,10 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					),
 				})),
 				additional: CustomMetadata {
-					xcm: Default::default(),
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
+					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
 			.encode(),

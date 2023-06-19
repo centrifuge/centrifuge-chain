@@ -34,13 +34,15 @@ use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
 use sp_std::{time::Duration, vec};
 
-use super::{
-	loan::LoanInfo,
-	pallet::*,
-	pricing::{
-		internal::{InternalPricing, MaxBorrowAmount},
-		Pricing,
+use crate::{
+	entities::{
+		loans::LoanInfo,
+		pricing::{
+			internal::{InternalPricing, MaxBorrowAmount},
+			Pricing,
+		},
 	},
+	pallet::*,
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
@@ -82,7 +84,7 @@ where
 	fn config_mocks() {
 		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 
-		use crate::mock::{MockPermissions, MockPools, MockPrices};
+		use crate::tests::mock::{MockPermissions, MockPools, MockPrices};
 
 		MockPermissions::mock_add(|_, _, _| Ok(()));
 		MockPermissions::mock_has(|_, _, _| true);
@@ -349,4 +351,8 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
+impl_benchmark_test_suite!(
+	Pallet,
+	crate::tests::mock::new_test_ext(),
+	crate::tests::mock::Runtime
+);

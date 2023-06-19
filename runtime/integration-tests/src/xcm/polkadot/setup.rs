@@ -29,6 +29,8 @@ pub const PARA_ID_SIBLING: u32 = 3000;
 pub const DOT_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(91);
 /// The test asset id attributed to AUSD
 pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(42);
+/// An Asset that is NOT XCM transferable
+pub const NO_XCM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(401);
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
