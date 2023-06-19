@@ -779,11 +779,6 @@ pub mod pallet {
 			let Router::Xcm(xcm_domain) =
 				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			#[cfg(feature = "std")]
-			println!("Router: {:?}", xcm_domain);
-			#[cfg(feature = "std")]
-			println!("fee payer: {:?}", fee_payer);
-
 			let contract_call = contract::encoded_contract_call(message.serialize());
 			let ethereum_xcm_call =
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
