@@ -227,7 +227,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Failed to map the asset to the corresponding Connector's General
 		/// Index representation and thus cannot be used as an
-		/// ivnestment currency.
+		/// investment currency.
 		AssetNotFound,
 		/// The metadata of the given asset does not declare it as a pool
 		/// currency and thus it cannot be used as an investment currency.
@@ -259,7 +259,7 @@ pub mod pallet {
 		/// The destination domain is invalid.
 		InvalidDomain,
 		/// The validity is in the past.
-		InvalidValidity,
+		InvalidTrancheInvestorValidity,
 		/// Failed to match the provided GeneralCurrencyIndex against the
 		/// investment currency of the pool.
 		InvalidInvestCurrency,
@@ -402,12 +402,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			domain: DomainAddress,
+			domain_address: DomainAddress,
 			valid_until: Moment,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Sanity checks
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
@@ -416,14 +415,17 @@ pub mod pallet {
 				T::PoolInspect::tranche_exists(pool_id, tranche_id),
 				Error::<T>::TrancheNotFound
 			);
-			ensure!(valid_until > Self::now(), Error::<T>::InvalidValidity);
+			ensure!(
+				valid_until > Self::now(),
+				Error::<T>::InvalidTrancheInvestorValidity
+			);
 
 			// Ensure that the destination address has been whitelisted as a TrancheInvestor
 			// beforehand.
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					T::AccountConverter::convert(domain.clone()),
+					T::AccountConverter::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::DomainNotWhitelisted
@@ -435,9 +437,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					member: domain.address(),
+					member: domain_address.address(),
 				},
-				domain.domain(),
+				domain_address.domain(),
 			)?;
 
 			Ok(())
