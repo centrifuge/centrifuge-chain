@@ -443,7 +443,7 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let para_id = chain_spec::ExtensionsWrapper::try_get(&*config.chain_spec)
+				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in chain spec or CLI."));
 
 				let id = ParaId::from(para_id);
