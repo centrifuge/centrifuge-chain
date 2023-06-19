@@ -43,6 +43,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
     "cfg-traits/runtime-benchmarks",
+    "pallet-ethereum/runtime-benchmarks",
 ]
 std = [
     "codec/std",
@@ -58,4 +59,5 @@ try-runtime = [
     "frame-support/try-runtime",
     "frame-system/try-runtime",
     "cfg-traits/try-runtime",
+    "pallet-ethereum/try-runtime",
 ]

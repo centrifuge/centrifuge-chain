@@ -19,12 +19,9 @@ use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 };
+pub use pallet::*;
 use pallet_evm::GasWeightMapping;
 use sp_core::{H160, H256, U256};
-
-mod weights;
-
-pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -35,9 +32,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_ethereum::Config {
-		type EthereumOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = H160>;
-	}
+	pub trait Config: frame_system::Config + pallet_ethereum::Config {}
 
 	/// Storage for nonce.
 	#[pallet::storage]
