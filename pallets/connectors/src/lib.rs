@@ -86,7 +86,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::{ConnectorsWrappedToken, CustomMetadata},
+		tokens::{ConnectorsWrappedCurrency, CustomMetadata},
 	};
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -188,10 +188,10 @@ pub mod pallet {
 		/// The converter from a DomainAddress to a Substrate AccountId
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
 
-		/// The converter from a [ConnectorsWrappedToken] to `MultiLocation`.
-		type CurrencyConverter: Convert<ConnectorsWrappedToken, MultiLocation>
-			+ Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
-			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>;
+		/// The converter from a [ConnectorsWrappedCurrency] to `MultiLocation`.
+		type CurrencyConverter: Convert<ConnectorsWrappedCurrency, MultiLocation>
+			+ Convert<MultiLocation, Result<ConnectorsWrappedCurrency, ()>>
+			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedCurrency, ()>>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
@@ -241,9 +241,9 @@ pub mod pallet {
 		/// The metadata of the given asset does not declare it as transferable
 		/// via connectors.
 		AssetNotConnectorsTransferable,
-		/// The asset is not a [ConnectorsWrappedToken] and thus cannot be
+		/// The asset is not a [ConnectorsWrappedCurrency] and thus cannot be
 		/// transferred via connectors.
-		AssetNotConnectorsWrappedToken,
+		AssetNotConnectorsWrappedCurrency,
 		/// The given asset does not match the currency of the pool.
 		AssetNotPoolCurrency,
 		/// A pool could not be found.
@@ -547,7 +547,7 @@ pub mod pallet {
 
 			// Check that the registered asset location matches the destination
 			match Self::try_get_wrapped_currency(&currency_id)? {
-				ConnectorsWrappedToken::EVM { chain_id, .. } => {
+				ConnectorsWrappedCurrency::EVM { chain_id, .. } => {
 					ensure!(
 						Domain::EVM(chain_id) == receiver.domain(),
 						Error::<T>::InvalidDomain
@@ -593,7 +593,7 @@ pub mod pallet {
 
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			let ConnectorsWrappedToken::EVM {
+			let ConnectorsWrappedCurrency::EVM {
 				chain_id,
 				address: evm_address,
 			} = Self::try_get_wrapped_currency(&currency_id)?;
@@ -636,7 +636,7 @@ pub mod pallet {
 			// Derive GeneralIndex for currency
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			let ConnectorsWrappedToken::EVM { chain_id, .. } =
+			let ConnectorsWrappedCurrency::EVM { chain_id, .. } =
 				Self::try_get_wrapped_currency(&currency_id)?;
 
 			Self::do_send_message(
@@ -894,14 +894,14 @@ pub mod pallet {
 
 		pub fn try_get_wrapped_currency(
 			currency_id: &CurrencyIdOf<T>,
-		) -> Result<ConnectorsWrappedToken, DispatchError> {
+		) -> Result<ConnectorsWrappedCurrency, DispatchError> {
 			let meta = T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_connectors(),
 				Error::<T>::AssetNotConnectorsTransferable
 			);
 			T::CurrencyConverter::convert(meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?)
-				.map_err(|_| Error::<T>::AssetNotConnectorsWrappedToken.into())
+				.map_err(|_| Error::<T>::AssetNotConnectorsWrappedCurrency.into())
 		}
 
 		/// Ensures that the given pool and tranche exists and returns the

@@ -90,7 +90,7 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use runtime_common::*;
 use runtime_common::{
 	account_conversion::AccountConverter,
-	connectors::ConnectorsWrappedTokenConvert,
+	connectors::ConnectorsWrappedCurrencyConvert,
 	fees::{DealWithFees, WeightToFee},
 	xcm::AccountIdToMultiLocation,
 };
@@ -1568,7 +1568,7 @@ impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type CurrencyConverter = ConnectorsWrappedTokenConvert<ConnectorsPalletIndex>;
+	type CurrencyConverter = ConnectorsWrappedCurrencyConvert<ConnectorsPalletIndex>;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type ForeignInvestmentAccountant = PoolSystem;

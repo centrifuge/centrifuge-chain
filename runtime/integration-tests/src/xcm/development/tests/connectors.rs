@@ -1618,7 +1618,7 @@ mod utils {
 	/// NOTE: If you want to transfer this currency via connectors for the sake
 	/// of tests, assume to run into issues with `pallet_xcm_transactor` due to
 	/// the VersionedMultiLocation overwrite required to convert it into
-	/// `ConnectorsWrappedToken`. We recommend taking another currency.
+	/// `ConnectorsWrappedCurrency`. We recommend taking another currency.
 	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
 	pub const CURRENCY_ID_AUSD: CurrencyId = CurrencyId::ForeignAsset(3);
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
@@ -1634,7 +1634,7 @@ mod utils {
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 	/// Returns a `VersionedMultiLocation` that can be converted into
-	/// `ConnectorsWrappedToken` which is required for cross chain asset
+	/// `ConnectorsWrappedCurrency` which is required for cross chain asset
 	/// registration and transfer.
 	pub fn connector_transferable_multilocation(
 		chain_id: u64,

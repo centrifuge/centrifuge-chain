@@ -289,7 +289,7 @@ impl CrossChainTransferability {
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ConnectorsWrappedToken {
+pub enum ConnectorsWrappedCurrency {
 	/// An EVM-native token
 	EVM {
 		/// The EVM chain id where the token is deployed
