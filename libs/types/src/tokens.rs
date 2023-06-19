@@ -274,6 +274,10 @@ impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
 		matches!(self, Self::Xcm(..) | Self::All(..))
 	}
+
+	pub fn includes_connectors(self) -> bool {
+		matches!(self, Self::Connectors | Self::All(..))
+	}
 }
 
 /// Connectors-wrapped tokens

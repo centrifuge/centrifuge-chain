@@ -463,6 +463,7 @@ pub mod connectors {
 	use xcm::{
 		latest::{MultiLocation, NetworkId},
 		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+		VersionedMultiLocation,
 	};
 
 	/// This type offers conversions between the xcm MultiLocation and our
@@ -489,6 +490,21 @@ pub mod connectors {
 							},
 						),
 				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
+				_ => Err(()),
+			}
+		}
+	}
+
+	impl<Index: Get<PalletIndex>>
+		Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
+	where
+		ConnectorsWrappedTokenConvert<Index>:
+			Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>,
+	{
+		fn convert(location: VersionedMultiLocation) -> Result<ConnectorsWrappedToken, ()> {
+			match location {
+				VersionedMultiLocation::V3(location) => Self::convert(location),
 				_ => Err(()),
 			}
 		}

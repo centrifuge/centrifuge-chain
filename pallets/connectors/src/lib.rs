@@ -33,6 +33,7 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
+use xcm::VersionedMultiLocation;
 pub mod weights;
 
 mod message;
@@ -85,13 +86,13 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CustomMetadata,
+		tokens::{ConnectorsWrappedToken, CustomMetadata},
 	};
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 	use sp_runtime::traits::{AccountIdConversion, Zero};
-	use xcm::latest::OriginKind;
+	use xcm::{latest::OriginKind, v3::MultiLocation};
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -187,6 +188,11 @@ pub mod pallet {
 		/// The converter from a DomainAddress to a Substrate AccountId
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
 
+		/// The converter from a [ConnectorsWrappedToken] to `MultiLocation`.
+		type CurrencyConverter: Convert<ConnectorsWrappedToken, MultiLocation>
+			+ Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
+			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>;
+
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
@@ -232,6 +238,12 @@ pub mod pallet {
 		/// The metadata of the given asset does not declare it as a pool
 		/// currency and thus it cannot be used as an investment currency.
 		AssetMetadataNotPoolCurrency,
+		/// The metadata of the given asset does not declare it as transferable
+		/// via connectors.
+		AssetNotConnectorsTransferable,
+		/// The asset is not a [ConnectorsWrappedToken] and thus cannot be
+		/// transferred via connectors.
+		AssetNotConnectorsWrappedToken,
 		/// The given asset does not match the currency of the pool.
 		AssetNotPoolCurrency,
 		/// A pool could not be found.
@@ -533,10 +545,15 @@ pub mod pallet {
 			);
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// FIXME: Ensure receiving domain is issuer of token, e.g. we never transfer
-			// tokens from OtherDomain A to OtherDomain B
-			// NOTE: Blocked by asset metadata update
-			// https://github.com/centrifuge/centrifuge-chain/pull/1393
+			// Check that the registered asset location matches the destination
+			match Self::try_get_wrapped_currency(&currency_id)? {
+				ConnectorsWrappedToken::EVM { chain_id, .. } => {
+					ensure!(
+						Domain::EVM(chain_id) == receiver.domain(),
+						Error::<T>::InvalidDomain
+					);
+				}
+			}
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -575,22 +592,19 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let currency = Self::try_get_general_index(currency_id)?;
-			// FIXME: Derive domain from currency
-			// locked by https://github.com/centrifuge/centrifuge-chain/pull/1393
-			// let domain_info = AssetRegistry::metadata(currency_id)?.location.into();
-			let domain = Domain::EVM(1284);
 
-			ensure!(domain != Domain::Centrifuge, Error::<T>::InvalidDomain);
+			let ConnectorsWrappedToken::EVM {
+				chain_id,
+				address: evm_address,
+			} = Self::try_get_wrapped_currency(&currency_id)?;
 
 			Self::do_send_message(
 				who,
 				Message::AddCurrency {
 					currency,
-					// FIXME: Derive EVM address from currency
-					// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
-					evm_address: [0u8; 20],
+					evm_address,
 				},
-				domain,
+				Domain::EVM(chain_id),
 			)?;
 
 			Ok(())
@@ -622,15 +636,13 @@ pub mod pallet {
 			// Derive GeneralIndex for currency
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// FIXME: Derive domain from currency
-			// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
-			let domain = Domain::EVM(1284);
-			ensure!(domain != Domain::Centrifuge, Error::<T>::InvalidDomain);
+			let ConnectorsWrappedToken::EVM { chain_id, .. } =
+				Self::try_get_wrapped_currency(&currency_id)?;
 
 			Self::do_send_message(
 				who,
 				Message::AllowPoolCurrency { pool_id, currency },
-				domain,
+				Domain::EVM(chain_id),
 			)?;
 
 			Ok(())
@@ -767,6 +779,11 @@ pub mod pallet {
 			let Router::Xcm(xcm_domain) =
 				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
+			#[cfg(feature = "std")]
+			println!("Router: {:?}", xcm_domain);
+			#[cfg(feature = "std")]
+			println!("fee payer: {:?}", fee_payer);
+
 			let contract_call = contract::encoded_contract_call(message.serialize());
 			let ethereum_xcm_call =
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
@@ -873,6 +890,18 @@ pub mod pallet {
 			);
 
 			Ok(currency)
+		}
+
+		pub fn try_get_wrapped_currency(
+			currency_id: &CurrencyIdOf<T>,
+		) -> Result<ConnectorsWrappedToken, DispatchError> {
+			let meta = T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			ensure!(
+				meta.additional.transferability.includes_connectors(),
+				Error::<T>::AssetNotConnectorsTransferable
+			);
+			T::CurrencyConverter::convert(meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?)
+				.map_err(|_| Error::<T>::AssetNotConnectorsWrappedToken.into())
 		}
 
 		/// Ensures that the given pool and tranche exists and returns the

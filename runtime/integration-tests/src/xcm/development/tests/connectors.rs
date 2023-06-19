@@ -39,7 +39,10 @@ use cfg_types::{
 	investments::InvestmentAccount,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
-	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
+	tokens::{
+		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
+		ForeignAssetId,
+	},
 	xcm::XcmMetadata,
 };
 use codec::Encode;
@@ -298,17 +301,29 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Register GLMR and fund BOB
 		utils::setup_pre_requirements();
 
-		let initial_balance = utils::DEFAULT_BALANCE_GLMR;
-		let amount = utils::DEFAULT_BALANCE_GLMR / 2;
+		let initial_balance = 100_000_000;
+		let amount = initial_balance / 2;
 		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
-		let currency_id = utils::CURRENCY_ID_GLMR;
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let source_account = BOB;
+
+		// Mint sufficient balance
+		assert_ok!(OrmlTokens::mint_into(
+			currency_id,
+			&source_account.into(),
+			initial_balance
+		));
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &source_account.into()),
+			initial_balance
+		);
 
 		// Cannot transfer to Centrifuge
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(source_account.clone().into()),
 				currency_id,
-				DomainAddress::Centrifuge(BOB),
+				DomainAddress::Centrifuge(source_account.clone()),
 				amount,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
@@ -317,7 +332,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Only `ForeignAsset` can be transferred
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(source_account.clone().into()),
 				CurrencyId::Tranche(42u64, [0u8; 16]),
 				dest_address.clone(),
 				amount,
@@ -326,7 +341,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(source_account.clone().into()),
 				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
 				dest_address.clone(),
 				amount,
@@ -335,7 +350,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(source_account.clone().into()),
 				CurrencyId::Native,
 				dest_address.clone(),
 				amount,
@@ -343,10 +358,42 @@ fn transfer_non_tranche_tokens_from_local() {
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
 		);
 
+		// Cannot transfer as long as cross chain transferability is disabled
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(source_account.clone().into()),
+				currency_id,
+				dest_address.clone(),
+				initial_balance,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
+		);
+
+		// Enable Connectors transferability
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			Some(Some(utils::connector_transferable_multilocation(
+				utils::EVM_CHAIN_ID_MOONBEAM,
+				// evm_address is irrelevant here
+				[1u8; 20],
+			))),
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: Default::default()
+			})
+		));
+
 		// Cannot transfer more than owned
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(source_account.clone().into()),
 				currency_id,
 				dest_address.clone(),
 				initial_balance.saturating_add(1),
@@ -355,7 +402,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 
 		assert_ok!(Connectors::transfer(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(source_account.clone().into()),
 			currency_id,
 			dest_address.clone(),
 			amount,
@@ -373,7 +420,10 @@ fn transfer_non_tranche_tokens_from_local() {
 			OrmlTokens::free_balance(currency_id, &domain_account),
 			amount
 		);
-		assert!(OrmlTokens::free_balance(currency_id, &BOB.into()) < initial_balance - amount);
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &source_account.into()),
+			initial_balance - amount
+		);
 	});
 }
 
@@ -731,7 +781,29 @@ fn add_currency() {
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
 
-		let currency_id = utils::CURRENCY_ID_GLMR;
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let location = utils::connector_transferable_multilocation(
+			utils::EVM_CHAIN_ID_MOONBEAM,
+			utils::DEFAULT_EVM_ADDRESS_MOONBEAM,
+		);
+
+		// Enable Connectors transferability
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			Some(Some(location)),
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: Default::default()
+			})
+		));
+
 		assert_ok!(Connectors::add_currency(
 			RuntimeOrigin::signed(BOB.into()),
 			currency_id
@@ -764,29 +836,105 @@ fn add_currency_should_fail() {
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
 		);
+		assert_noop!(
+			Connectors::add_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
 
-		// TODO(subsequent PR): Add noop check for registered `ForeignAsset`
-		// with XCM transferability, e.g. without EVM location and corresponding
-		// address NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+		// Should fail to add currency_id which is missing a registered
+		// MultiLocation
+		let currency_id = CurrencyId::ForeignAsset(100);
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			utils::asset_metadata(
+				"Test".into(),
+				"TEST".into(),
+				12,
+				false,
+				None,
+				CrossChainTransferability::Connectors,
+			),
+			Some(currency_id)
+		));
+		assert_noop!(
+			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+		);
 
-		// TODO(subsequent PR): Add noop check for registered `ForeignAsset`
-		// with missing registered domain router, drafted like below
-		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
-		//
-		// let faulty_currency_id = CurrencyId::ForeignAsset(42);
-		// let meta = utils::asset_metadata("Test".into(), "TEST".into(), 12,
-		// true, None); assert_ok!(OrmlAssetRegistry::register_asset(
-		// 	RuntimeOrigin::root(),
-		// 	meta,
-		// 	Some(faulty_currency_id)
-		// ));
-		// assert_noop!(
-		// 	Connectors::add_currency(
-		// 		RuntimeOrigin::signed(BOB.into()),
-		// 		CurrencyId::ForeignAsset(42)
-		// 	),
-		// 	pallet_connectors::Error::<DevelopmentRuntime>::MissingRouter
-		// );
+		// Add convertable MultiLocation to metadata but remove transferability
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			// Add multilocation to metadata for some random EVM chain id for which no connector is
+			// registered
+			Some(Some(utils::connector_transferable_multilocation(
+				u64::MAX,
+				[1u8; 20],
+			))),
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: Default::default(),
+			}),
+		));
+		assert_noop!(
+			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
+		);
+
+		// Switch transferability from XCM to None
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::None,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: Default::default(),
+			})
+		));
+		assert_noop!(
+			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
+		);
+
+		// Should fail if no domain router is registered for the asset's metadata evm
+		// chain id
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				// Enable cross chain transferability in metadata
+				transferability: CrossChainTransferability::All(XcmMetadata {
+					fee_per_second: Default::default()
+				}),
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: Default::default(),
+			})
+		));
+		assert_noop!(
+			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			pallet_connectors::Error::<DevelopmentRuntime>::MissingRouter
+		);
 	});
 }
 
@@ -799,9 +947,31 @@ fn allow_pool_currency() {
 
 		let currency_id = utils::CURRENCY_ID_AUSD;
 		let pool_id: u64 = 42;
+		let evm_chain_id: u64 = utils::EVM_CHAIN_ID_MOONBEAM;
+		let evm_address = [1u8; 20];
 
 		// Create an AUSD pool
 		utils::create_ausd_pool(pool_id);
+
+		// Enable Connectors transferability
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			Some(Some(utils::connector_transferable_multilocation(
+				evm_chain_id,
+				evm_address,
+			))),
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: true,
+			})
+		));
 
 		assert_ok!(Connectors::allow_pool_currency(
 			RuntimeOrigin::signed(BOB.into()),
@@ -1445,15 +1615,44 @@ mod utils {
 
 	use super::*;
 
+	/// NOTE: If you want to transfer this currency via connectors for the sake
+	/// of tests, assume to run into issues with `pallet_xcm_transactor` due to
+	/// the VersionedMultiLocation overwrite required to convert it into
+	/// `ConnectorsWrappedToken`. We recommend taking another currency.
 	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
 	pub const CURRENCY_ID_AUSD: CurrencyId = CurrencyId::ForeignAsset(3);
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
-	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(1284);
-	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+	pub const EVM_CHAIN_ID_MOONBEAM: u64 = 1284;
+	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(EVM_CHAIN_ID_MOONBEAM);
+	pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
+	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
+		DomainAddress::EVM(EVM_CHAIN_ID_MOONBEAM, DEFAULT_EVM_ADDRESS_MOONBEAM);
 	pub const DEFAULT_VALIDITY: Moment = 2555583502;
-	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress = DomainAddress::EVM(1284, [0; 20]);
+	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
+		DomainAddress::EVM(EVM_CHAIN_ID_MOONBEAM, [0; 20]);
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+
+	/// Returns a `VersionedMultiLocation` that can be converted into
+	/// `ConnectorsWrappedToken` which is required for cross chain asset
+	/// registration and transfer.
+	pub fn connector_transferable_multilocation(
+		chain_id: u64,
+		address: [u8; 20],
+	) -> VersionedMultiLocation {
+		let location = VersionedMultiLocation::V3(MultiLocation {
+			parents: 0,
+			interior: X3(
+				PalletInstance(development_runtime::ConnectorsPalletIndex::get()),
+				GlobalConsensus(NetworkId::Ethereum { chain_id }),
+				AccountKey20 {
+					network: None,
+					key: address,
+				},
+			),
+		});
+		location
+	}
 
 	/// Initializes universally required storage for connectors tests:
 	///  * Set transact info and domain router for Moonbeam `MultiLocation`,
@@ -1462,6 +1661,7 @@ mod utils {
 	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice and Bob.
 	///
 	/// NOTE: AUSD is the default pool currency in `create_pool`.
+	/// Neither AUSD nor GLMR are registered as connector transferable currency!
 	pub fn setup_pre_requirements() {
 		let moonbeam_location = MultiLocation {
 			parents: 1,
