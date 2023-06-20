@@ -988,6 +988,7 @@ fn allow_pool_should_fail() {
 	Development::execute_with(|| {
 		let pool_id: u64 = 42;
 		let currency_id = CurrencyId::ForeignAsset(42);
+		let pool_currency_id = utils::CURRENCY_ID_AUSD;
 
 		utils::setup_pre_requirements();
 		// Should fail if pool does not exist
@@ -1002,7 +1003,7 @@ fn allow_pool_should_fail() {
 
 		// Create an AUSD pool
 		utils::create_ausd_pool(pool_id);
-		assert!(currency_id != utils::CURRENCY_ID_AUSD);
+		assert!(currency_id != pool_currency_id);
 
 		// Should fail if asset is unregistered
 		assert_noop!(
@@ -1088,8 +1089,81 @@ fn allow_pool_should_fail() {
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
 		);
 
-		// TODO(subsequent PR): Add noop test for InvalidDomain
-		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+		// Should fail if currency is not connectors transferable
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			pool_currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::None,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: true,
+			}),
+		));
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				pool_currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
+		);
+
+		// Should fail if currency does not have any MultiLocation in metadata
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			pool_currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: true,
+			}),
+		));
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				pool_currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+		);
+
+		// Should fail if currency does not have ConnectorsWrappedCurrency location in
+		// metadata
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			pool_currency_id,
+			None,
+			None,
+			None,
+			None,
+			Some(Some(VersionedMultiLocation::V3(Default::default()))),
+			Some(CustomMetadata {
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: true,
+			}),
+		));
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				pool_currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedCurrency
+		);
 	});
 }
 
