@@ -1568,7 +1568,6 @@ impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type CurrencyConverter = ConnectorsWrappedCurrencyConvert<ConnectorsPalletIndex>;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type ForeignInvestmentAccountant = PoolSystem;
@@ -1581,6 +1580,7 @@ impl pallet_connectors::Config for Runtime {
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
 	type WeightInfo = ();
+	type WrappedCurrencyConverter = ConnectorsWrappedCurrencyConvert<ConnectorsPalletIndex>;
 }
 
 parameter_types! {

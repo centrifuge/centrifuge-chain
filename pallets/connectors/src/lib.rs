@@ -92,7 +92,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 	use sp_runtime::traits::{AccountIdConversion, Zero};
-	use xcm::{latest::OriginKind, v3::MultiLocation};
+	use xcm::latest::{MultiLocation, OriginKind};
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -103,10 +103,13 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
+		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
+		/// The source of truth for the balance of accounts in native currency.
 		type Balance: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
@@ -115,14 +118,19 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		/// The fixed point number representation for higher precision.
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling
 		/// `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
+		/// The source of truth for pool inspection operations such as its
+		/// existence, the corresponding tranche token or the investment
+		/// currency.
 		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
+		/// The source of truth for investment permissions.
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
@@ -130,8 +138,12 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
+		/// The UNIX timestamp provider type required for checking the validity
+		/// of investments.
 		type Time: UnixTime;
 
+		/// The type for handling transfers, burning and minting of
+		/// multi-assets.
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<
 				Self::AccountId,
@@ -139,10 +151,16 @@ pub mod pallet {
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
 
+		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
 			+ Into<CurrencyIdOf<Self>>
 			+ Clone;
 
+		/// Enables investing and redeeming into investment classes.
+		///
+		/// NOTE: For the time being, `pallet_investments` serves as the
+		/// implementor. However, eventually this should be provided by
+		/// `pallet_foreign_investments`.
 		type ForeignInvestment: Investment<
 				Self::AccountId,
 				Error = DispatchError,
@@ -155,6 +173,11 @@ pub mod pallet {
 				Result = (),
 			>;
 
+		/// Provides information about investments.
+		///
+		/// NOTE: For the time being, `pallet_pool_system` serves as the
+		/// implementor. However, eventually this might need to be changed to
+		/// `pallet_foreign_investments`.
 		type ForeignInvestmentAccountant: InvestmentAccountant<
 			Self::AccountId,
 			Amount = <Self as Config>::Balance,
@@ -162,13 +185,15 @@ pub mod pallet {
 			InvestmentId = <Self as Config>::TrancheCurrency,
 		>;
 
+		/// The source of truth for the transferability of assets via
+		/// Connectors.
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = CurrencyIdOf<Self>,
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
 
-		/// The currency type of transferrable token.
+		/// The currency type of transferrable tokens.
 		type CurrencyId: Parameter
 			+ Member
 			+ Copy
@@ -185,11 +210,15 @@ pub mod pallet {
 				>>::InvestmentInfo as InvestmentProperties<Self::AccountId>>::Currency,
 			> + CurrencyInspect<CurrencyId = <Self as pallet::Config>::CurrencyId>;
 
-		/// The converter from a DomainAddress to a Substrate AccountId
+		/// The converter from a DomainAddress to a Substrate AccountId.
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
 
-		/// The converter from a [ConnectorsWrappedCurrency] to `MultiLocation`.
-		type CurrencyConverter: Convert<ConnectorsWrappedCurrency, MultiLocation>
+		/// The bidirectional converter for [ConnectorsWrappedCurrency] and
+		/// `MultiLocation`.
+		///
+		/// Enables the derivation of the EVM chain id and EVM address from
+		/// the metadata of an asset if it is registered in the [AssetRegistry].
+		type WrappedCurrencyConverter: Convert<ConnectorsWrappedCurrency, MultiLocation>
 			+ Convert<MultiLocation, Result<ConnectorsWrappedCurrency, ()>>
 			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedCurrency, ()>>;
 
@@ -681,7 +710,7 @@ pub mod pallet {
 					receiver,
 					amount,
 					..
-				} => Self::do_transfer_from_other_domain(currency.into(), receiver.into(), amount),
+				} => Self::do_transfer(currency.into(), receiver.into(), amount),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -895,8 +924,10 @@ pub mod pallet {
 				meta.additional.transferability.includes_connectors(),
 				Error::<T>::AssetNotConnectorsTransferable
 			);
-			T::CurrencyConverter::convert(meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?)
-				.map_err(|_| Error::<T>::AssetNotConnectorsWrappedCurrency.into())
+			T::WrappedCurrencyConverter::convert(
+				meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?,
+			)
+			.map_err(|_| Error::<T>::AssetNotConnectorsWrappedCurrency.into())
 		}
 
 		/// Ensures that the given pool and tranche exists and returns the
