@@ -34,7 +34,6 @@ use hex_literal::hex;
 use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
-use sc_telemetry::TelemetryEndpoints;
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -43,12 +42,12 @@ use xcm::{
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
 };
 
-const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
-
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig>;
-pub type CentrifugeChainSpec = sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig>;
-pub type DevelopmentChainSpec = sc_service::GenericChainSpec<development_runtime::GenesisConfig>;
+pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig, Extensions>;
+pub type CentrifugeChainSpec =
+	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
+pub type DevelopmentChainSpec =
+	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -71,8 +70,17 @@ pub struct Extensions {
 
 impl Extensions {
 	/// Try to get the extension from the given `ChainSpec`.
-	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
+	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Extensions> {
 		sc_chain_spec::get_extension(chain_spec.extensions())
+	}
+}
+
+/// Provides non-production extension for the given parachain id by defaulting
+/// to "rococo-local" as relay chain.
+fn development_extensions(para_id: u32) -> Extensions {
+	Extensions {
+		para_id,
+		relay_chain: "rococo-local".into(),
 	}
 }
 
@@ -118,61 +126,6 @@ pub fn centrifuge_config() -> CentrifugeChainSpec {
 	.unwrap()
 }
 
-pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CFG".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	CentrifugeChainSpec::from_genesis(
-		"Centrifuge",
-		"centrifuge",
-		ChainType::Live,
-		move || {
-			centrifuge_genesis(
-				vec![
-					(
-						// 4dsemFj9QroJbpP1Zdd18DXVvYeyo6ymvnGTEvEvs5ikPCxF
-						hex!["700a6abbcdbb6595cf48f019a4409c3670c42552d7f4b5bc317af642d91ceb09"]
-							.into(),
-						hex!["7e2a9759dcef70d18fa271026ba1b891391c22f1531055bf687b34fe547c3029"]
-							.unchecked_into(),
-					),
-					(
-						// 4dCqKqsy3VuQzakfQT2XTGTaMSC2jWK1jL8EaNZyvvApjjMG
-						hex!["526f668def3ef79c8087552cfcecf575b89ac48a903379b5b5ec4f657ed6c67b"]
-							.into(),
-						hex!["087e9792a7ea8eb599d3696dbdbd0b1e957a3a29cc78405d7c84f96a6ecab725"]
-							.unchecked_into(),
-					),
-					(
-						// 4deVxTkHqXeueeNS8dF9fwKFiDJEMujCzEzrhm2aFhkELxLA
-						hex!["6602949762bcfc0e52685f01d9723ea9eb92e4102fae739b7f1143cae518ce74"]
-							.into(),
-						hex!["96504d2fe659a6ab6b4d2ded1340de5d995d25d9aad3be37d948bc5259355512"]
-							.unchecked_into(),
-					),
-				],
-				vec![
-					hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
-				],
-				vec![],
-				Some(1000 * AIR),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("centrifuge"),
-		None,
-		Some(properties),
-		Default::default(),
-	)
-}
-
 pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
@@ -210,7 +163,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -241,71 +194,13 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
 pub fn catalyst_config() -> CentrifugeChainSpec {
 	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
 		.unwrap()
-}
-
-pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	CentrifugeChainSpec::from_genesis(
-		"Catalyst Testnet",
-		"catalyst_testnet",
-		ChainType::Live,
-		move || {
-			centrifuge_genesis(
-				vec![
-					(
-						//4cSqT4wpxaSUwwmJoGvz6pXX31T5iP8SRyxrQRExquaQScwP
-						hex!["30e105ac915a56bdf153e3a233bd767d538a3c76ba98dd4f3eae37487a804d24"]
-							.into(),
-						//4dngEiVgGmMRjaxkQFu8badZrhEetEHu4nFgBmVoBqkrNYTK
-						hex!["6c3f266a8b74b0f5c1d9a93b2ec943b270003fea8218e89ab7ec4e9294a2584a"]
-							.unchecked_into(),
-					),
-					(
-						//4gWsFAXX4NRAgs2nZQ68eLfSGPKdskz6psY2gSLVQvNr63H2
-						hex!["e4e4fab396035fc3c64b3a4127ac93687486fb21fbc5a69e14cae5c3e6025203"]
-							.into(),
-						//4chcpyjgumhQV7rZvegpYf7bCf5xUVfmh6ufr1wuvWEbamsT
-						hex!["3c273686697bc47f164c5e1e80d4b9c7ce4c7b8cfdfcff069cceb0d9a128b920"]
-							.unchecked_into(),
-					),
-					(
-						//4gmT8vkpH8KTpLiwt8CEdrmcF8w5nQFJmYgP56fmTzE58Fvw
-						hex!["f00481d4785faf42c44b77d59bd06b7edc0ed21f7ae00e5898fb43037e383049"]
-							.into(),
-						//4fkLCjk2BZ2QZf21YALguTxAxNCx7KEud7LCjjknchN4cAXE
-						hex!["c2edaf71a4c09ade552fb2b078d9c346e509d7eb9c28356ad3f4f85f58bebe15"]
-							.unchecked_into(),
-					),
-				],
-				vec![
-					hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
-				],
-				vec![],
-				Some(10000000 * CFG),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("catalyst"),
-		None,
-		Some(properties),
-		Default::default(),
-	)
 }
 
 pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
@@ -335,7 +230,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -344,59 +239,6 @@ pub fn altair_config() -> AltairChainSpec {
 		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
 	)
 	.unwrap()
-}
-
-pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "AIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Altair",
-		"altair",
-		ChainType::Live,
-		move || {
-			altair_genesis(
-				vec![
-					(
-						//
-						hex!["b24fb587438bbe05034606dac98162d80be1d21ac6dd6edc989887fa53a8d503"]
-							.into(),
-						hex!["c475e1ba26aa503601f26568ce6989502fc316b41c6d788b58e4cba4ec967a73"]
-							.unchecked_into(),
-					),
-					(
-						//
-						hex!["d46783c911c4d8fb42f8239eb8925857e27ee3bdd121feb43e450241891a5f1e"]
-							.into(),
-						hex!["4ab9526ff43c29426a6288621d85e3cbd45bcb279eab1cf250079b02d2a40e2f"]
-							.unchecked_into(),
-					),
-					(
-						//
-						hex!["f02099f295f6ccd935646f50c6280f4054b7d1f9b126471668f4ac6175677c26"]
-							.into(),
-						hex!["2652d9800f7dcca7592c83857ecc674f34a51f7661d6dc06281565557e5ee217"]
-							.unchecked_into(),
-					),
-				],
-				vec![],
-				vec![],
-				None,
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("altair"),
-		None,
-		Some(properties),
-		Default::default(),
-	)
 }
 
 pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
@@ -436,7 +278,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -467,71 +309,12 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
 pub fn antares_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
-}
-
-pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Antares Testnet",
-		"antares_testnet",
-		ChainType::Live,
-		move || {
-			altair_genesis(
-				// kAMp8Np345RVsnznxHNrsqS3BuNDWqFn5jXNT44vegDF3xcD8
-				vec![
-					(
-						//kAKHQhXnjqLyv1nsCLEWb7fzPNVxXce3m8befa1tQtv1vxFxn
-						hex!["5e4b3571ca8b591a3a4bbe74ef98c175ded537327eb0fee804b2b4bb9e6a4d17"]
-							.into(),
-						//kALq9HKGio1JH3FiP1nBqobG4Uw5ZWruAdisFnYPPV3LnngUq
-						hex!["a2bb652a9722f01408b586aebc14891861809931e523c12e159399b9dd01c150"]
-							.unchecked_into(),
-					),
-					(
-						//kANowgeZWL2DhEzvcK5fZn9S6zWagoS8VivqSfHkxA1UetiAq
-						hex!["fa499346a1c747b839d8f125e668bdd1342dff00c0c958f790bac11cbb08b51d"]
-							.into(),
-						//kANbf9tdTos3tjFwTWu8pys2vjRreayx2cyRKRhGnYU8XMXTK
-						hex!["f0eafc07a1b05d926c5edf842752bbc25d8fe048d7aa4847fafc7b6577a51b7f"]
-							.unchecked_into(),
-					),
-					(
-						//kAHAYwo51dEmSLPXibTGvyB6gZ94uhEvWrW6jWS2Xay4drscH
-						hex!["0097c8435cd03de1e57045221de04c23fc14a36fc82b50ea35ddc0165a7f8626"]
-							.into(),
-						//kAMpz3UFrxHoWsW6JcadsdtZjQenT4yptu4XTMfsnQUJQzyTq
-						hex!["ced887433a5c8c1e0af93bf6c5de96a39fe09be06bc3f747b76fa0cab9ef4a69"]
-							.unchecked_into(),
-					),
-				],
-				vec![
-					hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
-				],
-				vec![],
-				Some(10000000 * AIR),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("antares"),
-		None,
-		Some(properties),
-		Default::default(),
-	)
 }
 
 pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
@@ -561,7 +344,7 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -571,59 +354,6 @@ pub fn algol_config() -> AltairChainSpec {
 
 pub fn charcoal_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
-}
-
-pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
-
-	AltairChainSpec::from_genesis(
-		"Charcoal Testnet",
-		"charcoal_testnet",
-		ChainType::Live,
-		move || {
-			altair_genesis(
-				vec![
-					(
-						// kALpizfCQweMJjhMpDhfozAtLXrLfbkE7iMFWVt92xXrdcoZg
-						hex!["a269a32274ddc7cb7f3a42ffb305c17011a67fbb97c9667a9f8ceb3141b6cb24"]
-							.into(),
-						hex!["f09f14e7b7bf0538793b1ff512fbe88c6f1d0ee08015dba416d27e6950803b21"]
-							.unchecked_into(),
-					),
-					(
-						// kAHvxmKFqevc6uJ3o7VoMZU78HTLZtoh9A4nrWrf3WLhwy76e
-						hex!["2276c356c435f6bcbf7793b6419d1e12f8f270a6a53c28ce02737a9b5c65554d"]
-							.into(),
-						hex!["2211f2a23e278e9f9b8eba37033797c103b6453201369c3a951cf32d6a6e6b59"]
-							.unchecked_into(),
-					),
-					(
-						// kAKFBeQp4fZyYumtDNDu2xapHjoBFr6pzcVpXkEAoohC9JF7k
-						hex!["5c98c66394608ea47747ce7a935fd94a70b508047383e8a6e9bbf3c620531c22"]
-							.into(),
-						hex!["4e5e5a7d116fe3528b9f015ff2f36af8460da4b38eb14a3f1659f278ff888709"]
-							.unchecked_into(),
-					),
-				],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * AIR),
-				para_id,
-				Default::default(),
-			)
-		},
-		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("charcoal"),
-		None,
-		Some(properties),
-		Default::default(),
-	)
 }
 
 pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
@@ -653,7 +383,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -688,7 +418,7 @@ pub fn demo(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -719,7 +449,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -750,7 +480,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		development_extensions(para_id.into()),
 	)
 }
 
