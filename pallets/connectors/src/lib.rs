@@ -890,7 +890,7 @@ pub mod pallet {
 		pub fn try_get_wrapped_currency(
 			currency_id: &CurrencyIdOf<T>,
 		) -> Result<ConnectorsWrappedCurrency, DispatchError> {
-			let meta = T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
 				meta.additional.transferability.includes_connectors(),
 				Error::<T>::AssetNotConnectorsTransferable
