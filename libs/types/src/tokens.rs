@@ -58,6 +58,10 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
+	#[codec(index = 2)]
+	#[deprecated]
+	AUSD,
+
 	/// A foreign asset
 	#[codec(index = 4)]
 	ForeignAsset(ForeignAssetId),

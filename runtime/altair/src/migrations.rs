@@ -194,7 +194,8 @@ mod orml_tokens_migration {
 		ValueQuery,
 	>;
 
-	const ALTAIR_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+	const ALTAIR_DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+	const ALTAIR_NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 
@@ -203,16 +204,17 @@ mod orml_tokens_migration {
 			use frame_support::traits::tokens::fungibles::Mutate;
 
 			/// For all the entries in `Accounts`, gather all the ones under the old `CurrencyId`.
-			/// With those entries, withdraw them, and mint the same amounts under `ForeignAsset`.
-			Accounts::<Runtime>::iter()
-				.filter(|(account, old_currency_id, balance)| {
-					*old_currency_id == before::CurrencyId::AUSD
-				})
-				.for_each(|(account, _, balance)| {
-					// Remove the old entry
-					Accounts::<Runtime>::remove(account.clone(), before::CurrencyId::AUSD);
-					// Create the new one
-					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_AUSD_CURRENCY_ID, &account, balance);
+			/// With those entries, burn them, and mint the same amounts under `ForeignAsset`.
+			orml_tokens::Accounts::<Runtime>::iter()
+				.filter(|(account, old_currency_id, balance)| *old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID)
+				.for_each(|(account, _, account_data)| {
+					let balance = account_data.free;
+					// Burn the amount under the old, hardcoded CurrencyId
+					let _ = <orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(ALTAIR_DEPRECATED_AUSD_CURRENCY_ID, &account, balance.clone());
+					// // Now mint the amount under the new CurrencyID
+					let _ = <orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_NEW_AUSD_CURRENCY_ID, &account, balance);
+
+					// todo(nuno): how do we want to handle the result of these calls?
 				});
 
 			// todo(nuno): weight
