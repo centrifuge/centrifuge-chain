@@ -166,3 +166,57 @@ mod asset_registry {
 		}
 	}
 }
+
+mod orml_tokens_migration {
+	use cfg_primitives::AccountId;
+	use cfg_types::tokens::before;
+	use frame_support::{
+		pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
+	};
+
+	use super::*;
+
+	/// As we dropped `CurrencyId::KSM` and `CurrencyId::AUSD`, we need to
+	/// migrate the balances under the dropped variants in favour of the new,
+	/// corresponding `CurrencyId::ForeignAsset`. We have never transferred KSM
+	/// so we only need to deal with AUSD.
+	pub struct CurrencyIdRefactorMigration;
+
+	// The old orml_asset_registry Metadata storage using v0::CustomMetadata
+	#[storage_alias]
+	type Accounts<T: orml_tokens::Config> = StorageDoubleMap<
+		orml_tokens::Pallet<T>,
+		Blake2_128Concat,
+		AccountId,
+		Twox64Concat,
+		before::CurrencyId,
+		Balance,
+		ValueQuery,
+	>;
+
+	const ALTAIR_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+
+	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
+
+		fn on_runtime_upgrade() -> Weight {
+			use sp_std::{vec, vec::Vec};
+			use frame_support::traits::tokens::fungibles::Mutate;
+
+			/// For all the entries in `Accounts`, gather all the ones under the old `CurrencyId`.
+			/// With those entries, withdraw them, and mint the same amounts under `ForeignAsset`.
+			Accounts::<Runtime>::iter()
+				.filter(|(account, old_currency_id, balance)| {
+					*old_currency_id == before::CurrencyId::AUSD
+				})
+				.for_each(|(account, _, balance)| {
+					// Remove the old entry
+					Accounts::<Runtime>::remove(account.clone(), before::CurrencyId::AUSD);
+					// Create the new one
+					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_AUSD_CURRENCY_ID, &account, balance);
+				});
+
+			// todo(nuno): weight
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(42, 42)
+		}
+	}
+}

@@ -280,6 +280,47 @@ pub enum ConnectorsWrappedToken {
 	},
 }
 
+pub mod before {
+	use cfg_primitives::{PoolId, TrancheId};
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use scale_info::TypeInfo;
+
+	use crate::tokens::{ForeignAssetId, StakingCurrency};
+
+	/// The old definition of `CurrencyId` which included `AUSD` and
+	/// `KSM` as hardcoded variants.
+	#[derive(
+		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	)]
+	pub enum CurrencyId {
+		// The Native token, representing AIR in Altair and CFG in Centrifuge.
+		#[codec(index = 0)]
+		Native,
+
+		/// A Tranche token
+		#[codec(index = 1)]
+		Tranche(PoolId, TrancheId),
+
+		/// Karura KSM
+		#[codec(index = 2)]
+		KSM,
+
+		/// Acala Dollar
+		/// In Altair, it represents AUSD in Kusama;
+		/// In Centrifuge, it represents AUSD in Polkadot;
+		#[codec(index = 3)]
+		AUSD,
+
+		/// A foreign asset
+		#[codec(index = 4)]
+		ForeignAsset(ForeignAssetId),
+
+		/// A staking currency
+		#[codec(index = 5)]
+		Staking(StakingCurrency),
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use frame_support::parameter_types;
@@ -344,58 +385,7 @@ mod tests {
 		use hex::FromHex;
 
 		use super::StakingCurrency;
-		use crate::tokens as after;
-
-		mod before {
-			use cfg_primitives::{PoolId, TrancheId};
-			use codec::{Decode, Encode, MaxEncodedLen};
-			use scale_info::TypeInfo;
-
-			use crate::tokens::{ForeignAssetId, StakingCurrency};
-
-			/// The old definition of `CurrencyId` which included `AUSD` and
-			/// `KSM` as hardcoded variants.
-			#[derive(
-				Clone,
-				Copy,
-				PartialOrd,
-				Ord,
-				PartialEq,
-				Eq,
-				Debug,
-				Encode,
-				Decode,
-				TypeInfo,
-				MaxEncodedLen,
-			)]
-			pub enum CurrencyId {
-				// The Native token, representing AIR in Altair and CFG in Centrifuge.
-				#[codec(index = 0)]
-				Native,
-
-				/// A Tranche token
-				#[codec(index = 1)]
-				Tranche(PoolId, TrancheId),
-
-				/// Karura KSM
-				#[codec(index = 2)]
-				KSM,
-
-				/// Acala Dollar
-				/// In Altair, it represents AUSD in Kusama;
-				/// In Centrifuge, it represents AUSD in Polkadot;
-				#[codec(index = 3)]
-				AUSD,
-
-				/// A foreign asset
-				#[codec(index = 4)]
-				ForeignAsset(ForeignAssetId),
-
-				/// A staking currency
-				#[codec(index = 5)]
-				Staking(StakingCurrency),
-			}
-		}
+		use crate::{tokens as after, tokens::before};
 
 		#[test]
 		fn currency_id_refactor_encode_equality() {
