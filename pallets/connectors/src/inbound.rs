@@ -37,7 +37,7 @@ impl<T: Config> Pallet<T> {
 	/// non-tranche-tokens.
 	///
 	/// Directly mints the currency into the receiver address.
-	pub fn do_transfer_from_other_domain(
+	pub fn do_transfer(
 		currency: GeneralCurrencyIndexOf<T>,
 		receiver: T::AccountId,
 		amount: <T as Config>::Balance,
@@ -55,7 +55,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
-	pub fn do_transfer_tranche_tokens_from_other_domain(
+	pub fn do_tranche_tokens_transfer(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		sending_domain: DomainAddress,

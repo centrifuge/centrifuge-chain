@@ -306,8 +306,9 @@ pub mod pallet {
 		InvalidInvestCurrency,
 		/// The currency is not allowed to be transferred via Connectors.
 		InvalidTransferCurrency,
-		/// The domain has not been whitelisted as a TrancheInvestor.
-		DomainNotWhitelisted,
+		/// The account derived from the [Domain] and [DomainAddress] has not
+		/// been whitelisted as a TrancheInvestor.
+		DomainLocatorNotWhitelisted,
 	}
 
 	#[pallet::call]
@@ -469,7 +470,7 @@ pub mod pallet {
 					T::AccountConverter::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
-				Error::<T>::DomainNotWhitelisted
+				Error::<T>::DomainLocatorNotWhitelisted
 			);
 
 			Self::do_send_message(
@@ -717,7 +718,7 @@ pub mod pallet {
 					receiver,
 					amount,
 					..
-				} => Self::do_transfer_tranche_tokens_from_other_domain(
+				} => Self::do_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
 					sending_domain,
@@ -887,7 +888,9 @@ pub mod pallet {
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.
 		///
-		/// Assumes the currency to be registered in the `AssetRegistry`.
+		/// Requires the currency to be registered in the `AssetRegistry`.
+		///
+		/// NOTE: Reverse operation of [try_get_currency_id].
 		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
 			ensure!(
 				T::AssetRegistry::metadata(&currency).is_some(),
@@ -901,7 +904,7 @@ pub mod pallet {
 
 		/// Returns the local currency identifier from from its general index.
 		///
-		/// Assumes the currency to be registered in the `AssetRegistry`.
+		/// Requires the currency to be registered in the `AssetRegistry`.
 		///
 		/// NOTE: Reverse operation of [try_get_general_index].
 		pub fn try_get_currency_id(
@@ -916,6 +919,11 @@ pub mod pallet {
 			Ok(currency)
 		}
 
+		/// Checks whether the given currency is transferable via Connectors and
+		/// whether its metadata contains a location which can be
+		/// converted to [ConnectorsWrappedCurrency].
+		///
+		/// Requires the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_wrapped_currency(
 			currency_id: &CurrencyIdOf<T>,
 		) -> Result<ConnectorsWrappedCurrency, DispatchError> {

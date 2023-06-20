@@ -218,7 +218,7 @@ fn update_member() {
 				new_member.clone(),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::DomainLocatorNotWhitelisted,
 		);
 
 		// Whitelist destination as TrancheInvestor of this Pool
@@ -259,7 +259,7 @@ fn update_member() {
 				DomainAddress::EVM(1284, [9; 20]),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::DomainLocatorNotWhitelisted,
 		);
 	});
 }
