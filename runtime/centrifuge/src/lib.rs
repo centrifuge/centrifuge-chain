@@ -1398,6 +1398,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1618,8 +1619,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
-	type ChangeGuard = pallet_loans::util::NoLoanChanges<Runtime>;
-	type ChangeId = u64;
+	type ChangeGuard = PoolSystem;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
@@ -1633,6 +1633,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;

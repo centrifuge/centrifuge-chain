@@ -7802,6 +7802,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "strum",
  "xcm",
 ]
 
