@@ -33,7 +33,7 @@ impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> fo
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> O {
+	fn try_successful_origin() -> O {
 		O::from(GatewayOrigin::Local(Default::default()))
 	}
 }
