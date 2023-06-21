@@ -456,7 +456,7 @@ pub mod changes {
 
 pub mod connectors {
 	use cfg_primitives::types::PalletIndex;
-	use cfg_types::tokens::ConnectorsWrappedCurrency;
+	use cfg_types::tokens::ConnectorsWrappedToken;
 	use sp_core::Get;
 	use sp_runtime::traits::Convert;
 	use sp_std::marker::PhantomData;
@@ -467,16 +467,16 @@ pub mod connectors {
 	};
 
 	/// This type offers conversions between the xcm MultiLocation and our
-	/// ConnectorsWrappedCurrency types. This conversion is runtime-dependant,
+	/// ConnectorsWrappedToken types. This conversion is runtime-dependant,
 	/// as it needs to include the Connectors pallet index on the target
 	/// runtime. Therefore, we have `Index` as a generic type param that we use
 	/// to unwrap said pallet index and correctly convert between the two types.
-	pub struct ConnectorsWrappedCurrencyConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
+	pub struct ConnectorsWrappedTokenConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
 
-	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedCurrency, ()>>
-		for ConnectorsWrappedCurrencyConvert<Index>
+	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
 	{
-		fn convert(location: MultiLocation) -> Result<ConnectorsWrappedCurrency, ()> {
+		fn convert(location: MultiLocation) -> Result<ConnectorsWrappedToken, ()> {
 			match location {
 				MultiLocation {
 					parents: 0,
@@ -489,22 +489,20 @@ pub mod connectors {
 								key: address,
 							},
 						),
-				} if pallet_instance == Index::get() => {
-					Ok(ConnectorsWrappedCurrency::EVM { chain_id, address })
-				}
+				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
 				_ => Err(()),
 			}
 		}
 	}
 
 	impl<Index: Get<PalletIndex>>
-		Convert<VersionedMultiLocation, Result<ConnectorsWrappedCurrency, ()>>
-		for ConnectorsWrappedCurrencyConvert<Index>
+		Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
 	where
-		ConnectorsWrappedCurrencyConvert<Index>:
-			Convert<MultiLocation, Result<ConnectorsWrappedCurrency, ()>>,
+		ConnectorsWrappedTokenConvert<Index>:
+			Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>,
 	{
-		fn convert(location: VersionedMultiLocation) -> Result<ConnectorsWrappedCurrency, ()> {
+		fn convert(location: VersionedMultiLocation) -> Result<ConnectorsWrappedToken, ()> {
 			match location {
 				VersionedMultiLocation::V3(location) => Self::convert(location),
 				_ => Err(()),
@@ -512,12 +510,12 @@ pub mod connectors {
 		}
 	}
 
-	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedCurrency, MultiLocation>
-		for ConnectorsWrappedCurrencyConvert<Index>
+	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation>
+		for ConnectorsWrappedTokenConvert<Index>
 	{
-		fn convert(token: ConnectorsWrappedCurrency) -> MultiLocation {
+		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
 			match token {
-				ConnectorsWrappedCurrency::EVM { chain_id, address } => MultiLocation {
+				ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
 					parents: 0,
 					interior: X3(
 						PalletInstance(Index::get()),
@@ -540,7 +538,7 @@ pub mod connectors {
 		use super::*;
 
 		#[test]
-		/// Verify that converting a ConnectorsWrappedCurrency to MultiLocation
+		/// Verify that converting a ConnectorsWrappedToken to MultiLocation
 		/// and back results in the same original value.
 		fn connectors_wrapped_token_convert_identity() {
 			parameter_types! {
@@ -550,7 +548,7 @@ pub mod connectors {
 			const CHAIN_ID: u64 = 123;
 			const ADDRESS: [u8; 20] = [9; 20];
 
-			let wrapped_token = ConnectorsWrappedCurrency::EVM {
+			let wrapped_token = ConnectorsWrappedToken::EVM {
 				chain_id: CHAIN_ID,
 				address: ADDRESS,
 			};
@@ -568,24 +566,24 @@ pub mod connectors {
 			};
 
 			assert_eq!(
-				<ConnectorsWrappedCurrencyConvert<Index> as Convert<
-					ConnectorsWrappedCurrency,
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
+					ConnectorsWrappedToken,
 					MultiLocation,
 				>>::convert(wrapped_token),
 				location
 			);
 
 			assert_eq!(
-				<ConnectorsWrappedCurrencyConvert<Index> as Convert<
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
 					MultiLocation,
-					Result<ConnectorsWrappedCurrency, ()>,
+					Result<ConnectorsWrappedToken, ()>,
 				>>::convert(location),
 				Ok(wrapped_token)
 			);
 		}
 
-		/// Verify that ConnectorsWrappedCurrencyConvert will fail to convert a
-		/// location to a ConnectorsWrappedCurrency if the PalletInstance value
+		/// Verify that ConnectorsWrappedTokenConvert will fail to convert a
+		/// location to a ConnectorsWrappedToken if the PalletInstance value
 		/// doesn't match the Index generic param, i.e, fail if the token
 		/// doesn't appear to be under the Connectors pallet and thus be a
 		/// connectors wrapped token.
@@ -611,9 +609,9 @@ pub mod connectors {
 			};
 
 			assert_eq!(
-				<ConnectorsWrappedCurrencyConvert<Index> as Convert<
+				<ConnectorsWrappedTokenConvert<Index> as Convert<
 					MultiLocation,
-					Result<ConnectorsWrappedCurrency, ()>,
+					Result<ConnectorsWrappedToken, ()>,
 				>>::convert(location),
 				Err(())
 			);
