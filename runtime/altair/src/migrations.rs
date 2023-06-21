@@ -182,18 +182,6 @@ mod orml_tokens_migration {
 	/// so we only need to deal with AUSD.
 	pub struct CurrencyIdRefactorMigration;
 
-	// The old orml_asset_registry Metadata storage using v0::CustomMetadata
-	#[storage_alias]
-	type Accounts<T: orml_tokens::Config> = StorageDoubleMap<
-		orml_tokens::Pallet<T>,
-		Blake2_128Concat,
-		AccountId,
-		Twox64Concat,
-		before::CurrencyId,
-		Balance,
-		ValueQuery,
-	>;
-
 	const ALTAIR_DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
 	const ALTAIR_NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
@@ -203,18 +191,19 @@ mod orml_tokens_migration {
 			use sp_std::{vec, vec::Vec};
 			use frame_support::traits::tokens::fungibles::Mutate;
 
-			/// For all the entries in `Accounts`, gather all the ones under the old `CurrencyId`.
-			/// With those entries, burn them, and mint the same amounts under `ForeignAsset`.
+			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
 				.filter(|(account, old_currency_id, balance)| *old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID)
 				.for_each(|(account, _, account_data)| {
 					let balance = account_data.free;
 					// Burn the amount under the old, hardcoded CurrencyId
-					let _ = <orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(ALTAIR_DEPRECATED_AUSD_CURRENCY_ID, &account, balance.clone());
+					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(ALTAIR_DEPRECATED_AUSD_CURRENCY_ID, &account, balance.clone())
+						.map_err(|e| log::error!("Failed to call burn_from({:?ALTAIR_DEPRECATED_AUSD_CURRENCY_ID}, {:?account}, {balance}): {e}"))
+						.ok();
 					// // Now mint the amount under the new CurrencyID
-					let _ = <orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_NEW_AUSD_CURRENCY_ID, &account, balance);
-
-					// todo(nuno): how do we want to handle the result of these calls?
+					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_NEW_AUSD_CURRENCY_ID, &account, balance)
+						.map_err(|e| log::error!("Failed to mint_into burn_from({:?ALTAIR_NEW_AUSD_CURRENCY_ID}, {:?account}, {balance}): {e}"))
+						.ok();
 				});
 
 			// todo(nuno): weight
