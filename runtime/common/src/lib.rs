@@ -413,26 +413,27 @@ pub mod changes {
 	}
 
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(value: RuntimeChange<T>) -> Self {
-			let RuntimeChange::Loan(LoansChangeOf::<T>::Loan(_, loan_mutation)) = value;
-
+		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
 			let epoch = Requirement::NextEpoch;
 			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 			let blocked = Requirement::BlockedByLockedRedemptions;
 
-			// Requirements gathered from
-			// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-			let requirements = match loan_mutation {
-				LoanMutation::Maturity(_) => vec![week, blocked],
-				LoanMutation::InterestPayments(_) => vec![week, blocked],
-				LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-				LoanMutation::Internal(mutation) => match mutation {
-					InternalMutation::InterestRate(_) => vec![epoch],
-					InternalMutation::ValuationMethod(_) => vec![week, blocked],
-					InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-					InternalMutation::LossGivenDefault(_) => vec![epoch],
-					InternalMutation::DiscountRate(_) => vec![epoch],
+			let requirements = match loans_change {
+				// Requirements gathered from
+				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
+				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
+					LoanMutation::Maturity(_) => vec![week, blocked],
+					LoanMutation::InterestPayments(_) => vec![week, blocked],
+					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
+					LoanMutation::Internal(mutation) => match mutation {
+						InternalMutation::InterestRate(_) => vec![epoch],
+						InternalMutation::ValuationMethod(_) => vec![week, blocked],
+						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
+						InternalMutation::LossGivenDefault(_) => vec![epoch],
+						InternalMutation::DiscountRate(_) => vec![epoch],
+					},
 				},
+				LoansChangeOf::<T>::Policy(policy) => vec![week, blocked],
 			};
 
 			PoolChangeProposal::new(requirements)
