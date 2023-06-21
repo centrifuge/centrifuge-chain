@@ -20,7 +20,7 @@ use frame_support::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use pallet_evm::GasWeightMapping;
+use pallet_evm::ExitReason;
 use sp_core::{H160, H256, U256};
 
 #[frame_support::pallet]
@@ -74,6 +74,9 @@ pub mod pallet {
 				signature,
 			});
 
+			Nonce::<T>::put(nonce.saturating_add(U256::one()));
+
+			// NOTE - the underlying EVM runner will charge the account derived from `from`.
 			let (_target, _value, info) = pallet_ethereum::Pallet::<T>::execute(
 				from,
 				&transaction,
@@ -94,39 +97,43 @@ pub mod pallet {
 				}
 			})?;
 
+			// The other fees related to this transaction were charged by the EVM
+			// runner, we only have to charge for the nonce read operation.
 			match info {
-				CallOrCreateInfo::Call(call_info) => {
-					Nonce::<T>::put(nonce.saturating_add(U256::one()));
-
-					//TODO(cdamian): calculate this without base weight?
-					let weight = pallet_evm::FixedGasWeightMapping::<T>::gas_to_weight(
-						call_info.used_gas.as_u64(),
-						false,
-					);
-
-					Ok(PostDispatchInfo {
-						actual_weight: Some(weight.saturating_add(read_weight)),
+				CallOrCreateInfo::Call(call_info) => match call_info.exit_reason {
+					ExitReason::Succeed(_) => Ok(PostDispatchInfo {
+						actual_weight: Some(read_weight),
 						pays_fee: Pays::Yes,
-					})
-				}
-				CallOrCreateInfo::Create(create_info) => {
-					// This should not be the case since our transaction has
-					// TransactionAction::Call.
-					//
-					// TODO(cdamian): calculate this without base weight?
-					let weight = pallet_evm::FixedGasWeightMapping::<T>::gas_to_weight(
-						create_info.used_gas.as_u64(),
-						false,
-					);
-
-					Err(DispatchErrorWithPostInfo {
+					}),
+					ExitReason::Error(_) => Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
-							actual_weight: Some(weight.saturating_add(read_weight)),
+							actual_weight: Some(read_weight),
 							pays_fee: Pays::Yes,
 						},
-						error: DispatchError::Other("unexpected execute result"),
-					})
-				}
+						error: DispatchError::Other("EVM encountered an error"),
+					}),
+					ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
+						post_info: PostDispatchInfo {
+							actual_weight: Some(read_weight),
+							pays_fee: Pays::Yes,
+						},
+						error: DispatchError::Other("EVM encountered an explicit revert"),
+					}),
+					ExitReason::Fatal(_) => Err(DispatchErrorWithPostInfo {
+						post_info: PostDispatchInfo {
+							actual_weight: Some(read_weight),
+							pays_fee: Pays::Yes,
+						},
+						error: DispatchError::Other("EVM encountered a fatal error"),
+					}),
+				},
+				CallOrCreateInfo::Create(_) => Err(DispatchErrorWithPostInfo {
+					post_info: PostDispatchInfo {
+						actual_weight: Some(read_weight),
+						pays_fee: Pays::Yes,
+					},
+					error: DispatchError::Other("unexpected execute result"),
+				}),
 			}
 		}
 	}
