@@ -26,19 +26,15 @@
 //! | [`Pallet::admin_write_off()`]       | LoanAdmin |
 //! | [`Pallet::close()`]                 | Borrower  |
 //! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
+//! | [`Pallet::apply_loan_mutation()`]   |           |
 //!
 //! The following actions are performed over an entire pool of loans:
 //!
 //! | Extrinsics                               | Role      |
 //! |------------------------------------------|-----------|
-//! | [`Pallet::update_portfolio_valuation()`] |           |
 //! | [`Pallet::propose_write_off_policy()`]   | PoolAdmin |
-//!
-//! The following actions do not apply to an entire pool or a single loan:
-//!
-//! | Extrinsics                 | Role |
-//! |----------------------------|------|
-//! | [`Pallet::apply_change()`] |      |
+//! | [`Pallet::apply_write_off_policy()`]     |           |
+//! | [`Pallet::update_portfolio_valuation()`] |           |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -649,81 +645,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Closes a given loan
-		///
-		/// A loan only can be closed if it's fully repaid by the loan borrower.
-		/// Closing a loan gives back the collateral used for the loan to the
-		/// borrower .
-		#[pallet::weight(T::WeightInfo::close(T::MaxActiveLoansPerPool::get()))]
-		#[pallet::call_index(5)]
-		pub fn close(
-			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			loan_id: T::LoanId,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			let ((closed_loan, borrower), _count) = match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(created_loan) => (created_loan.close()?, Zero::zero()),
-				None => {
-					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
-					(active_loan.close(pool_id)?, count)
-				}
-			};
-
-			Self::ensure_loan_borrower(&who, &borrower)?;
-
-			let collateral = closed_loan.collateral();
-			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
-
-			ClosedLoan::<T>::insert(pool_id, loan_id, closed_loan);
-
-			Self::deposit_event(Event::<T>::Closed {
-				pool_id,
-				loan_id,
-				collateral,
-			});
-
-			Ok(())
-		}
-
-		/// Updates the write off policy with write off rules.
-		///
-		/// The write off policy is used to automatically set a write off
-		/// minimum value to the loan.
-		#[pallet::weight(T::WeightInfo::update_write_off_policy())]
-		#[pallet::call_index(6)]
-		pub fn propose_write_off_policy(
-			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
-			Self::ensure_pool_exists(pool_id)?;
-
-			T::ChangeGuard::note(pool_id, Change::Policy(policy).into())?;
-
-			Ok(())
-		}
-
-		/// Updates the porfolio valuation for the given pool
-		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
-			T::MaxActiveLoansPerPool::get()
-		))]
-		#[pallet::call_index(7)]
-		pub fn update_portfolio_valuation(
-			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-			Self::ensure_pool_exists(pool_id)?;
-
-			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
-
-			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
-		}
-
 		/// Propose a change.
 		/// The change is not performed until you call
 		/// [`Pallet::apply_change()`].
@@ -781,10 +702,68 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Closes a given loan
+		///
+		/// A loan only can be closed if it's fully repaid by the loan borrower.
+		/// Closing a loan gives back the collateral used for the loan to the
+		/// borrower .
+		#[pallet::weight(T::WeightInfo::close(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(5)]
+		pub fn close(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let ((closed_loan, borrower), _count) = match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => (created_loan.close()?, Zero::zero()),
+				None => {
+					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
+					(active_loan.close(pool_id)?, count)
+				}
+			};
+
+			Self::ensure_loan_borrower(&who, &borrower)?;
+
+			let collateral = closed_loan.collateral();
+			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
+
+			ClosedLoan::<T>::insert(pool_id, loan_id, closed_loan);
+
+			Self::deposit_event(Event::<T>::Closed {
+				pool_id,
+				loan_id,
+				collateral,
+			});
+
+			Ok(())
+		}
+
+		/// Updates the write off policy with write off rules.
+		///
+		/// The write off policy is used to automatically set a write off
+		/// minimum value to the loan.
+		#[pallet::weight(T::WeightInfo::propose_write_off_policy())]
+		#[pallet::call_index(6)]
+		pub fn propose_write_off_policy(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
+			Self::ensure_pool_exists(pool_id)?;
+
+			T::ChangeGuard::note(pool_id, Change::Policy(policy).into())?;
+
+			Ok(())
+		}
+
 		/// Apply a proposed change identified by a change id.
 		/// It will only perform the change if the requirements for it
 		/// are fulfilled.
-		#[pallet::weight(100_000_000)]
+		#[pallet::weight(T::WeightInfo::apply_write_off_policy())]
 		#[pallet::call_index(10)]
 		pub fn apply_write_off_policy(
 			origin: OriginFor<T>,
@@ -803,6 +782,25 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Updates the porfolio valuation for the given pool
+		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
+			T::MaxActiveLoansPerPool::get()
+		))]
+		#[pallet::call_index(7)]
+		pub fn update_portfolio_valuation(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+			Self::ensure_pool_exists(pool_id)?;
+
+			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
+
+			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
+		}
+
+		// NOTE: call_index is not ordered.
 	}
 
 	/// Utility methods
