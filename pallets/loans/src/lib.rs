@@ -128,7 +128,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
-	pub type LoanChangeOf<T> =
+	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -143,7 +143,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Represent a runtime change
-		type RuntimeChange: From<LoanChangeOf<Self>> + TryInto<LoanChangeOf<Self>>;
+		type RuntimeChange: From<ChangeOf<Self>> + TryInto<ChangeOf<Self>>;
 
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
@@ -876,7 +876,7 @@ pub mod pallet {
 		fn get_change(
 			pool_id: PoolIdOf<T>,
 			change_id: T::Hash,
-		) -> Result<LoanChangeOf<T>, DispatchError> {
+		) -> Result<ChangeOf<T>, DispatchError> {
 			T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())

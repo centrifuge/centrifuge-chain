@@ -30,7 +30,7 @@ use sp_runtime::{
 	DispatchError, FixedU128,
 };
 
-use crate::{pallet as pallet_loans, LoanChangeOf};
+use crate::{pallet as pallet_loans, ChangeOf};
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
@@ -212,7 +212,7 @@ impl pallet_mock_data::Config for Runtime {
 }
 
 impl pallet_mock_change_guard::Config for Runtime {
-	type Change = LoanChangeOf<Runtime>;
+	type Change = ChangeOf<Runtime>;
 	type ChangeId = H256;
 	type PoolId = PoolId;
 }
@@ -233,7 +233,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
 	type Rate = Rate;
-	type RuntimeChange = LoanChangeOf<Runtime>;
+	type RuntimeChange = ChangeOf<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();

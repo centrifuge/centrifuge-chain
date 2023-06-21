@@ -87,7 +87,7 @@ fn config_mocks() {
 	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
 	MockChangeGuard::mock_note(|_, _| Ok(sp_core::H256::default()));
 	MockChangeGuard::mock_released(|_, _| {
-		Ok(LoanChangeOf::<Runtime>::Policy(
+		Ok(ChangeOf::<Runtime>::Policy(
 			Helper::<Runtime>::create_policy(),
 		))
 	});
@@ -227,11 +227,7 @@ where
 		// We need to call noted again
 		// (that is idempotent for the same change and instant)
 		// to obtain the ChangeId used previously.
-		T::ChangeGuard::note(
-			pool_id,
-			LoanChangeOf::<T>::Policy(Self::create_policy()).into(),
-		)
-		.unwrap()
+		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(Self::create_policy()).into()).unwrap()
 	}
 
 	fn set_policy(pool_id: PoolIdOf<T>) {
