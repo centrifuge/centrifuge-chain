@@ -7369,6 +7369,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ethereum-transaction"
+version = "0.0.1"
+dependencies = [
+ "cfg-traits",
+ "ethabi",
+ "ethereum",
+ "fp-ethereum",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-ethereum",
+ "pallet-evm",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"

@@ -47,6 +47,9 @@ pub mod rewards;
 /// Traits related to connectors.
 pub mod connectors;
 
+/// Traits related to Ethereum.
+pub mod ethereum;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview

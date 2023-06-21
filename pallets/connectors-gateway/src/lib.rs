@@ -158,7 +158,7 @@ pub mod pallet {
 			domain: Domain,
 			router: T::Router,
 		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
+			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
 
@@ -173,7 +173,7 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
+			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(
 				connector.domain() != Domain::Centrifuge,
