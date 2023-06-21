@@ -189,7 +189,7 @@ mod orml_tokens_migration {
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			use codec::Encode;
 
-			let old_ausd_entries: Vec<(AccountId, Balance)> = orml_tokens::Accounts::<Runtime>::iter()
+			let old_ausd_entries: Vec<(AccountId, AccountData<Balance>)> = orml_tokens::Accounts::<Runtime>::iter()
 				.filter(|(account, old_currency_id, account_data)| *old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID)
 				.map(|(account, _, account_data)| (account, account_data))
 				.collect::<_>();
@@ -208,9 +208,9 @@ mod orml_tokens_migration {
 			)>::decode(&mut state.as_ref())
 				.map_err(|_| "Error decoding pre-upgrade state")?;
 
-			old_state.iter().for_each(|(account, account_data)| {
-				ensure!(OrmlTokens::accounts(ALTAIR_NEW_AUSD_CURRENCY_ID, &account) == account_data.clone(), "The account data under the new AUSD Currency does NOT match the old one")
-			});
+			for (account, account_data) in old_state {
+				ensure!(OrmlTokens::accounts(&account, ALTAIR_NEW_AUSD_CURRENCY_ID) == account_data.clone(), "The account data under the new AUSD Currency does NOT match the old one");
+			};
 
 			return Ok(());
 		}
