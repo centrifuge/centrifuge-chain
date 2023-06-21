@@ -218,7 +218,7 @@ fn update_member() {
 				new_member.clone(),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::DomainLocatorNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::InvestorEvmAddressNotWhitelisted,
 		);
 
 		// Whitelist destination as TrancheInvestor of this Pool
@@ -259,7 +259,7 @@ fn update_member() {
 				DomainAddress::EVM(1284, [9; 20]),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::DomainLocatorNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::InvestorEvmAddressNotWhitelisted,
 		);
 	});
 }
@@ -377,12 +377,14 @@ fn transfer_non_tranche_tokens_from_local() {
 			None,
 			None,
 			None,
+			// Changed: Add location which can be converted to ConnectorsWrappedToken
 			Some(Some(utils::connector_transferable_multilocation(
 				utils::EVM_CHAIN_ID_MOONBEAM,
-				// evm_address is irrelevant here
+				// Value of evm_address is irrelevant here
 				[1u8; 20],
 			))),
 			Some(CustomMetadata {
+				// Changed: Allow connectors transferability
 				transferability: CrossChainTransferability::Connectors,
 				mintable: Default::default(),
 				permissioned: Default::default(),
@@ -795,8 +797,10 @@ fn add_currency() {
 			None,
 			None,
 			None,
+			// Changed: Add location which can be converted to ConnectorsWrappedToken
 			Some(Some(location)),
 			Some(CustomMetadata {
+				// Changed: Allow connectors transferability
 				transferability: CrossChainTransferability::Connectors,
 				mintable: Default::default(),
 				permissioned: Default::default(),
@@ -872,13 +876,14 @@ fn add_currency_should_fail() {
 			None,
 			None,
 			None,
-			// Add multilocation to metadata for some random EVM chain id for which no connector is
-			// registered
+			// Changed: Add multilocation to metadata for some random EVM chain id for which no
+			// connector is registered
 			Some(Some(utils::connector_transferable_multilocation(
 				u64::MAX,
 				[1u8; 20],
 			))),
 			Some(CustomMetadata {
+				// Changed: Disallow connector transferability
 				transferability: CrossChainTransferability::Xcm(Default::default()),
 				mintable: Default::default(),
 				permissioned: Default::default(),
@@ -900,6 +905,7 @@ fn add_currency_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
+				// Changed: Disallow cross chain transferability entirely
 				transferability: CrossChainTransferability::None,
 				mintable: Default::default(),
 				permissioned: Default::default(),
@@ -922,7 +928,7 @@ fn add_currency_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
-				// Enable cross chain transferability in metadata
+				// Changed: Enable all cross chain transferability in metadata
 				transferability: CrossChainTransferability::All(XcmMetadata {
 					fee_per_second: Default::default()
 				}),
@@ -961,11 +967,13 @@ fn allow_pool_currency() {
 			None,
 			None,
 			None,
+			// Changed: Add location which can be converted to ConnectorsWrappedToken
 			Some(Some(utils::connector_transferable_multilocation(
 				evm_chain_id,
 				evm_address,
 			))),
 			Some(CustomMetadata {
+				// Changed: Allow connectors transferability
 				transferability: CrossChainTransferability::Connectors,
 				mintable: Default::default(),
 				permissioned: Default::default(),
@@ -1048,9 +1056,11 @@ fn allow_pool_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
+				// Disallow any cross chain transferability
 				transferability: Default::default(),
 				mintable: Default::default(),
 				permissioned: Default::default(),
+				// Changed: Allow as pool currency
 				pool_currency: true,
 			}),
 		));
@@ -1099,9 +1109,11 @@ fn allow_pool_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
+				// Disallow any cross chain transferability
 				transferability: CrossChainTransferability::None,
 				mintable: Default::default(),
 				permissioned: Default::default(),
+				// Changed: Allow to be usable as pool currency
 				pool_currency: true,
 			}),
 		));
@@ -1124,9 +1136,11 @@ fn allow_pool_should_fail() {
 			None,
 			None,
 			Some(CustomMetadata {
+				// Changed: Allow connectors transferability
 				transferability: CrossChainTransferability::Connectors,
 				mintable: Default::default(),
 				permissioned: Default::default(),
+				// Still allow to be pool currency
 				pool_currency: true,
 			}),
 		));
@@ -1139,7 +1153,7 @@ fn allow_pool_should_fail() {
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
 		);
 
-		// Should fail if currency does not have ConnectorsWrappedCurrency location in
+		// Should fail if currency does not have ConnectorsWrappedToken location in
 		// metadata
 		assert_ok!(OrmlAssetRegistry::update_asset(
 			RuntimeOrigin::root(),
@@ -1148,13 +1162,10 @@ fn allow_pool_should_fail() {
 			None,
 			None,
 			None,
+			// Changed: Add some location which cannot be converted to ConnectorsWrappedToken
 			Some(Some(VersionedMultiLocation::V3(Default::default()))),
-			Some(CustomMetadata {
-				transferability: CrossChainTransferability::Connectors,
-				mintable: Default::default(),
-				permissioned: Default::default(),
-				pool_currency: true,
-			}),
+			// No change for transferability required as it is already allowed for Connectors
+			None,
 		));
 		assert_noop!(
 			Connectors::allow_pool_currency(
@@ -1162,7 +1173,7 @@ fn allow_pool_should_fail() {
 				pool_id,
 				pool_currency_id,
 			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedCurrency
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken
 		);
 	});
 }
@@ -1692,7 +1703,7 @@ mod utils {
 	/// NOTE: If you want to transfer this currency via connectors for the sake
 	/// of tests, assume to run into issues with `pallet_xcm_transactor` due to
 	/// the VersionedMultiLocation overwrite required to convert it into
-	/// `ConnectorsWrappedCurrency`. We recommend taking another currency.
+	/// `ConnectorsWrappedToken`. We recommend taking another currency.
 	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
 	pub const CURRENCY_ID_AUSD: CurrencyId = CurrencyId::ForeignAsset(3);
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
@@ -1708,7 +1719,7 @@ mod utils {
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 	/// Returns a `VersionedMultiLocation` that can be converted into
-	/// `ConnectorsWrappedCurrency` which is required for cross chain asset
+	/// `ConnectorsWrappedToken` which is required for cross chain asset
 	/// registration and transfer.
 	pub fn connector_transferable_multilocation(
 		chain_id: u64,
