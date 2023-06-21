@@ -186,10 +186,11 @@ mod orml_tokens_migration {
 	const ALTAIR_NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
-
 		fn on_runtime_upgrade() -> Weight {
-			use sp_std::{vec, vec::Vec};
 			use frame_support::traits::tokens::fungibles::Mutate;
+			use sp_std::{vec, vec::Vec};
+
+			let mut migrated_entries = 0;
 
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
@@ -204,10 +205,16 @@ mod orml_tokens_migration {
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_NEW_AUSD_CURRENCY_ID, &account, balance)
 						.map_err(|e| log::error!("Failed to mint_into burn_from({:?ALTAIR_NEW_AUSD_CURRENCY_ID}, {:?account}, {balance}): {e}"))
 						.ok();
+
+					migrated_entries += 1;
 				});
 
-			// todo(nuno): weight
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(42, 42)
+			// Approximate weight given for every entry migration there are two calls being
+			// made, so counting one read and one write per call. Given that we have very
+			// few entries to be migrated, the specific value isn't quite relevant and we
+			// could just set this to a high-enough value.
+			<Runtime as frame_system::Config>::DbWeight::get()
+				.reads_writes(migrated_entries * 2, migrated_entries * 2)
 		}
 	}
 }
