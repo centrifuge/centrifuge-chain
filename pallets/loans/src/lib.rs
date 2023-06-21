@@ -647,7 +647,7 @@ pub mod pallet {
 
 		/// Propose a change.
 		/// The change is not performed until you call
-		/// [`Pallet::apply_change()`].
+		/// [`Pallet::apply_loan_mutation()`].
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(8)]
 		pub fn propose_loan_mutation(
@@ -685,7 +685,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Loan(loan_id, mutation) = Self::get_change(pool_id, change_id)? else {
+			let Change::Loan(loan_id, mutation) = Self::get_released_change(pool_id, change_id)? else {
                 Err(Error::<T>::UnrelatedChangeId)?
 			};
 
@@ -772,7 +772,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Policy(policy) = Self::get_change(pool_id, change_id)? else {
+			let Change::Policy(policy) = Self::get_released_change(pool_id, change_id)? else {
                 Err(Error::<T>::UnrelatedChangeId)?
 			};
 
@@ -871,7 +871,7 @@ pub mod pallet {
 			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
 		}
 
-		fn get_change(
+		fn get_released_change(
 			pool_id: PoolIdOf<T>,
 			change_id: T::Hash,
 		) -> Result<ChangeOf<T>, DispatchError> {
