@@ -42,19 +42,20 @@ pub fn current_debt_for(interest: f64, balance: Balance) -> Balance {
 pub fn set_up_policy(percentage: f64, penalty: f64) {
 	MockPermissions::mock_has(|_, _, _| true);
 	MockPools::mock_pool_exists(|_| true);
+	MockChangeGuard::mock_released(move |_, _| {
+		Ok(Change::Policy(
+			vec![WriteOffRule::new(
+				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				Rate::from_float(percentage),
+				Rate::from_float(penalty),
+			)]
+			.try_into()
+			.unwrap(),
+		))
+	});
 
-	Loans::update_write_off_policy(
-		RuntimeOrigin::signed(0),
-		POOL_A,
-		vec![WriteOffRule::new(
-			[WriteOffTrigger::PrincipalOverdueDays(1)],
-			Rate::from_float(percentage),
-			Rate::from_float(penalty),
-		)]
-		.try_into()
-		.unwrap(),
-	)
-	.expect("successful policy");
+	Loans::apply_write_off_policy(RuntimeOrigin::signed(ANY), POOL_A, CHANGE_ID)
+		.expect("successful apply");
 
 	MockPermissions::mock_has(|_, _, _| panic!("no has() mock"));
 	MockPools::mock_pool_exists(|_| panic!("no pool_exists() mock"));

@@ -59,6 +59,19 @@ pub const POOL_B: PoolId = 2;
 pub const POOL_A_ACCOUNT: AccountId = 10;
 pub const POOL_OTHER_ACCOUNT: AccountId = 100;
 
+pub const COLLATERAL_VALUE: Balance = 10000;
+pub const DEFAULT_INTEREST_RATE: f64 = 0.5;
+pub const POLICY_PERCENTAGE: f64 = 0.5;
+pub const POLICY_PENALTY: f64 = 0.5;
+pub const REGISTER_PRICE_ID: PriceId = 42;
+pub const UNREGISTER_PRICE_ID: PriceId = 88;
+pub const PRICE_VALUE: Rate = Rate::from_u32(1000);
+pub const QUANTITY: Balance = 20;
+pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
+
+/// Used where the error comes from other pallet impl. unknown from the tests
+pub const DEPENDENCY_ERROR: DispatchError = DispatchError::Other("dependency error");
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -96,6 +109,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 5;
+	#[derive(PartialEq, Debug)]
 	pub const MaxWriteOffPolicySize: u32 = 4;
 }
 
