@@ -171,6 +171,7 @@ mod asset_registry {
 mod orml_tokens_migration {
 	use cfg_primitives::AccountId;
 	use cfg_types::tokens::before;
+	use codec::{Decode, Encode};
 	use frame_support::{
 		ensure, pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
 	};
@@ -184,44 +185,55 @@ mod orml_tokens_migration {
 	/// so we only need to deal with AUSD.
 	pub struct CurrencyIdRefactorMigration;
 
-	const ALTAIR_DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
-	const ALTAIR_NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+	#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+	pub struct OldState {
+		pub total_issuance: Balance,
+		pub entries: Vec<(AccountId, AccountData<Balance>)>,
+	}
+
+	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			use codec::Encode;
 
-			//todo(nuno): include the total issuance on the old currencyId
-
-			let old_ausd_entries: Vec<(AccountId, AccountData<Balance>)> =
+			let total_issuance =
+				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
+			let entries: Vec<(AccountId, AccountData<Balance>)> =
 				orml_tokens::Accounts::<Runtime>::iter()
 					.filter(|(account, old_currency_id, account_data)| {
-						*old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID
+						*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
 					})
 					.map(|(account, _, account_data)| (account, account_data))
 					.collect::<_>();
 
-			Ok(old_ausd_entries.encode())
+			Ok(OldState {
+				total_issuance,
+				entries,
+			}
+			.encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
-			use codec::Decode;
-
 			use crate::OrmlTokens;
 
-			//todo(nuno): Decode the the total issuance on the old currencyId and ensure it
-			// equals the one for the new id
+			let old_state = OldState::decode(&mut state.as_ref())
+				.map_err(|_| "Error decoding pre-upgrade state")?;
 
-			let old_state =
-				sp_std::vec::Vec::<(AccountId, AccountData<Balance>)>::decode(&mut state.as_ref())
-					.map_err(|_| "Error decoding pre-upgrade state")?;
+			let new_total_issuance =
+				orml_tokens::TotalIssuance::<Runtime>::get(NEW_AUSD_CURRENCY_ID);
 
-			for (account, account_data) in old_state {
+			ensure!(
+				old_state.total_issuance == new_total_issuance,
+				"The old AUSD issuance differs from the new one"
+			);
+
+			for (account, account_data) in old_state.entries {
 				ensure!(
-					OrmlTokens::accounts(&account, ALTAIR_NEW_AUSD_CURRENCY_ID)
-						== account_data.clone(),
+					OrmlTokens::accounts(&account, NEW_AUSD_CURRENCY_ID) == account_data.clone(),
 					"The account data under the new AUSD Currency does NOT match the old one"
 				);
 			}
@@ -237,20 +249,20 @@ mod orml_tokens_migration {
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
 				.filter(|(account, old_currency_id, balance)| {
-					*old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID
+					*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
 				})
 				.for_each(|(account, _, account_data)| {
 					let balance = account_data.free;
 					// Burn the amount under the old, hardcoded CurrencyId
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(
-						ALTAIR_DEPRECATED_AUSD_CURRENCY_ID,
+						DEPRECATED_AUSD_CURRENCY_ID,
 						&account,
 						balance.clone(),
 					)
 					.map_err(|e| {
 						log::error!(
 							"Failed to call burn_from({:?}, {:?}, {balance}): {:?}",
-							ALTAIR_DEPRECATED_AUSD_CURRENCY_ID,
+							DEPRECATED_AUSD_CURRENCY_ID,
 							account,
 							e
 						)
@@ -258,14 +270,14 @@ mod orml_tokens_migration {
 					.ok();
 					// // Now mint the amount under the new CurrencyID
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(
-						ALTAIR_NEW_AUSD_CURRENCY_ID,
+						NEW_AUSD_CURRENCY_ID,
 						&account,
 						balance,
 					)
 					.map_err(|e| {
 						log::error!(
 							"Failed to mint_into burn_from({:?}, {:?}, {balance}): {:?}",
-							ALTAIR_NEW_AUSD_CURRENCY_ID,
+							NEW_AUSD_CURRENCY_ID,
 							account,
 							e
 						)
