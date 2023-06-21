@@ -15,30 +15,30 @@
 
 //! This pallet offers extrinsics to handle loans.
 //!
-//! The following actions are performed over loans:
-//!
-//! | Extrinsics                    | Role      |
-//! |-------------------------------|-----------|
-//! | [`Pallet::create()`]          | Borrower  |
-//! | [`Pallet::borrow()`]          | Borrower  |
-//! | [`Pallet::repay()`]           | Borrower  |
-//! | [`Pallet::write_off()`]       |           |
-//! | [`Pallet::admin_write_off()`] | LoanAdmin |
-//! | [`Pallet::close()`]           | Borrower  |
-//!
-//! The following actions are performed over a pool of loans:
-//!
-//! | Extrinsics                               | Role      |
-//! |------------------------------------------|-----------|
-//! | [`Pallet::update_write_off_policy()`]    | PoolAdmin |
-//! | [`Pallet::update_portfolio_valuation()`] | Any       |
-//!
-//! The following actions are performed based on changes:
+//! The following actions are performed over a loan:
 //!
 //! | Extrinsics                          | Role      |
 //! |-------------------------------------|-----------|
+//! | [`Pallet::create()`]                | Borrower  |
+//! | [`Pallet::borrow()`]                | Borrower  |
+//! | [`Pallet::repay()`]                 | Borrower  |
+//! | [`Pallet::write_off()`]             |           |
+//! | [`Pallet::admin_write_off()`]       | LoanAdmin |
+//! | [`Pallet::close()`]                 | Borrower  |
 //! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
-//! | [`Pallet::apply_change()`]          |           |
+//!
+//! The following actions are performed over an entire pool of loans:
+//!
+//! | Extrinsics                               | Role      |
+//! |------------------------------------------|-----------|
+//! | [`Pallet::update_portfolio_valuation()`] |           |
+//! | [`Pallet::propose_write_off_policy()`]   | PoolAdmin |
+//!
+//! The following actions do not apply to an entire pool or a single loan:
+//!
+//! | Extrinsics                 | Role |
+//! |----------------------------|------|
+//! | [`Pallet::apply_change()`] |      |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -128,7 +128,8 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
-	pub type LoanChangeOf<T> = Change<<T as Config>::LoanId, <T as Config>::Rate>;
+	pub type LoanChangeOf<T> =
+		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -385,6 +386,8 @@ pub mod pallet {
 		AmountNotMultipleOfPrice,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
+		/// The Change Id exists but it's not releated with the expected change
+		UnrelatedChangeId,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -690,7 +693,7 @@ pub mod pallet {
 		/// minimum value to the loan.
 		#[pallet::weight(T::WeightInfo::update_write_off_policy())]
 		#[pallet::call_index(6)]
-		pub fn update_write_off_policy(
+		pub fn propose_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
@@ -699,9 +702,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
-
-			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+			T::ChangeGuard::note(pool_id, Change::Policy(policy).into())?;
 
 			Ok(())
 		}
@@ -756,16 +757,16 @@ pub mod pallet {
 		/// are fulfilled.
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(9)]
-		pub fn apply_change(
+		pub fn apply_loan_mutation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			change_id: T::Hash,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?
-				.try_into()
-				.map_err(|_| Error::<T>::NoLoanChangeId)?;
+			let Change::Loan(loan_id, mutation) = Self::get_change(pool_id, change_id)? else {
+                Err(Error::<T>::UnrelatedChangeId)?
+			};
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.mutate_with(mutation.clone())
@@ -776,6 +777,29 @@ pub mod pallet {
 				loan_id,
 				mutation,
 			});
+
+			Ok(())
+		}
+
+		/// Apply a proposed change identified by a change id.
+		/// It will only perform the change if the requirements for it
+		/// are fulfilled.
+		#[pallet::weight(100_000_000)]
+		#[pallet::call_index(10)]
+		pub fn apply_write_off_policy(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			change_id: T::Hash,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let Change::Policy(policy) = Self::get_change(pool_id, change_id)? else {
+                Err(Error::<T>::UnrelatedChangeId)?
+			};
+
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
+
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
 
 			Ok(())
 		}
@@ -847,6 +871,15 @@ pub mod pallet {
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
 			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
+		}
+
+		fn get_change(
+			pool_id: PoolIdOf<T>,
+			change_id: T::Hash,
+		) -> Result<LoanChangeOf<T>, DispatchError> {
+			T::ChangeGuard::released(pool_id, change_id)?
+				.try_into()
+				.map_err(|_| Error::<T>::NoLoanChangeId.into())
 		}
 
 		fn update_portfolio_valuation_for_pool(
