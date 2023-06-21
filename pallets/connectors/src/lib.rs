@@ -30,7 +30,7 @@ use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
-	FixedPointNumber,
+	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
 use xcm::VersionedMultiLocation;
@@ -370,7 +370,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -396,7 +395,7 @@ pub mod pallet {
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
-					decimals,
+					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
 					price,

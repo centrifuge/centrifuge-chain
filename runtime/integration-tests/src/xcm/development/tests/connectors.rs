@@ -152,7 +152,6 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
 				nonexistent_tranche,
-				decimals,
 				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::TrancheNotFound
@@ -171,7 +170,6 @@ fn add_tranche() {
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id,
 			tranche_id,
-			decimals,
 			Domain::EVM(1284),
 		));
 	});
