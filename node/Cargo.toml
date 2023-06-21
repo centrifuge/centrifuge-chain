@@ -115,14 +115,14 @@ runtime-integration-tests = { path = "../runtime/integration-tests", optional = 
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # frontier
-fc-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fc-db = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fc-mapping-sync = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fp-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fc-consensus = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fc-db = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fc-mapping-sync = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fc-rpc = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fc-rpc-core = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-consensus = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-rpc = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-storage = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

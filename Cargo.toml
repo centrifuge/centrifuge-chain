@@ -1,3 +1,5 @@
+cargo-features = ["resolver"]
+
 [workspace]
 members = [
   "libs/mock-builder",
@@ -38,6 +40,8 @@ members = [
   "runtime/integration-tests",
   "node",
 ]
+
+resolver = "2"
 
 #
 # Cargo patch rules for all the paritytech/ based crates.
@@ -454,6 +458,18 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumu
 parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "9b4e0247137f158d1a35118197d34adfa58858b7" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech//cumulus", rev = "9b4e0247137f158d1a35118197d34adfa58858b7" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech//cumulus", rev = "9b4e0247137f158d1a35118197d34adfa58858b7" }
+
+[patch."https://github.com/PureStake/frontier"]
+fp-self-contained = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+fp-evm = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+pallet-base-fee = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+pallet-ethereum = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+pallet-evm-chain-id = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+fc-db = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+fc-mapping-sync = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+fc-rpc = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
+fp-storage = { git = "https://github.com/NunoAlexandre/frontier", rev = "a144b4fec01042b9d49671c72820ec20d3c09ab7" }
 
 # Cargo patch rules for all the PureStake/open-runtime-module-library crates
 [patch."https://github.com/PureStake/open-runtime-module-library"]

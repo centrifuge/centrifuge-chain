@@ -34,11 +34,11 @@ orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Frontier dependencies
-pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-base-fee = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/NunoAlexandre/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
