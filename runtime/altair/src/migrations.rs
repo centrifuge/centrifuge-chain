@@ -12,7 +12,7 @@
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-
+use sp_std::{vec, vec::Vec};
 use crate::Runtime;
 
 pub type UpgradeAltair1028 = (asset_registry::CrossChainTransferabilityMigration,);
@@ -170,9 +170,8 @@ mod asset_registry {
 mod orml_tokens_migration {
 	use cfg_primitives::AccountId;
 	use cfg_types::tokens::before;
-	use frame_support::{
-		pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
-	};
+	use frame_support::{pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat, ensure};
+	use orml_tokens::AccountData;
 
 	use super::*;
 
@@ -186,9 +185,39 @@ mod orml_tokens_migration {
 	const ALTAIR_NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			use codec::Encode;
+
+			let old_ausd_entries: Vec<(AccountId, Balance)> = orml_tokens::Accounts::<Runtime>::iter()
+				.filter(|(account, old_currency_id, account_data)| *old_currency_id == ALTAIR_DEPRECATED_AUSD_CURRENCY_ID)
+				.map(|(account, _, account_data)| (account, account_data))
+				.collect::<_>();
+
+			Ok(old_ausd_entries.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			use codec::Decode;
+			use crate::OrmlTokens;
+
+			let old_state = sp_std::vec::Vec::<(
+				AccountId,
+				AccountData<Balance>,
+			)>::decode(&mut state.as_ref())
+				.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			old_state.iter().for_each(|(account, account_data)| {
+				ensure!(OrmlTokens::accounts(ALTAIR_NEW_AUSD_CURRENCY_ID, &account) == account_data.clone(), "The account data under the new AUSD Currency does NOT match the old one")
+			});
+
+			return Ok(());
+		}
+
+
 		fn on_runtime_upgrade() -> Weight {
 			use frame_support::traits::tokens::fungibles::Mutate;
-			use sp_std::{vec, vec::Vec};
 
 			let mut migrated_entries = 0;
 
@@ -199,11 +228,11 @@ mod orml_tokens_migration {
 					let balance = account_data.free;
 					// Burn the amount under the old, hardcoded CurrencyId
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(ALTAIR_DEPRECATED_AUSD_CURRENCY_ID, &account, balance.clone())
-						.map_err(|e| log::error!("Failed to call burn_from({:?ALTAIR_DEPRECATED_AUSD_CURRENCY_ID}, {:?account}, {balance}): {e}"))
+						.map_err(|e| log::error!("Failed to call burn_from({:?}, {:?}, {balance}): {:?}", ALTAIR_DEPRECATED_AUSD_CURRENCY_ID, account, e))
 						.ok();
 					// // Now mint the amount under the new CurrencyID
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(ALTAIR_NEW_AUSD_CURRENCY_ID, &account, balance)
-						.map_err(|e| log::error!("Failed to mint_into burn_from({:?ALTAIR_NEW_AUSD_CURRENCY_ID}, {:?account}, {balance}): {e}"))
+						.map_err(|e| log::error!("Failed to mint_into burn_from({:?}, {:?}, {balance}): {:?}", ALTAIR_NEW_AUSD_CURRENCY_ID, account, e))
 						.ok();
 
 					migrated_entries += 1;
