@@ -11,12 +11,11 @@
 // GNU General Public License for more details.
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
-use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 use codec::{Decode, Encode};
-use sp_std::vec::Vec;
-
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
+use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+use sp_std::vec::Vec;
 
 use crate::Runtime;
 
@@ -241,9 +240,7 @@ mod orml_tokens_migration {
 
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
-				.filter(|(_, old_currency_id, _)| {
-					*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
-				})
+				.filter(|(_, old_currency_id, _)| *old_currency_id == DEPRECATED_AUSD_CURRENCY_ID)
 				.for_each(|(account, _, account_data)| {
 					let balance = account_data.free;
 					// Burn the amount under the old, hardcoded CurrencyId
