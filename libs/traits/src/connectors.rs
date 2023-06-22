@@ -29,6 +29,9 @@ pub trait Router {
 	/// The outbound message type.
 	type Message;
 
+	/// Initialize the router.
+	fn init(&self) -> DispatchResult;
+
 	/// Send the message to the router's destination.
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult;
 }
