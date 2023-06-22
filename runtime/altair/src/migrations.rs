@@ -184,7 +184,6 @@ mod orml_tokens_migration {
 		pub entries: Vec<(AccountId, AccountData<Balance>)>,
 	}
 
-	#[allow(deprecated)]
 	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
 	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
