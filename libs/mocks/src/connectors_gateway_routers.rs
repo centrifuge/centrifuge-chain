@@ -23,6 +23,10 @@ impl<T: frame_system::Config> Router for DomainRouterMock<T> {
 	type Message = MessageMock;
 	type Sender = T::AccountId;
 
+	fn init(&self) -> DispatchResult {
+		Ok(())
+	}
+
 	fn send(&self, _sender: Self::Sender, _message: Self::Message) -> DispatchResult {
 		Ok(())
 	}
