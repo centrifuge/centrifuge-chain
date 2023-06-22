@@ -59,6 +59,7 @@ pub enum CurrencyId {
 	Tranche(PoolId, TrancheId),
 
 	#[codec(index = 2)]
+	#[allow(deprecated)]
 	#[deprecated]
 	AUSD,
 

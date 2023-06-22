@@ -12,20 +12,23 @@
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-use sp_std::{vec, vec::Vec};
+use codec::{Decode, Encode};
+use sp_std::vec::Vec;
+
+#[cfg(feature = "try-runtime")]
+use frame_support::ensure;
 
 use crate::Runtime;
 
-pub type UpgradeAltair1028 = (asset_registry::CrossChainTransferabilityMigration,);
+pub type UpgradeAltair1028 = (
+	asset_registry::CrossChainTransferabilityMigration,
+	orml_tokens_migration::CurrencyIdRefactorMigration,
+);
 
 mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
-	#[cfg(feature = "try-runtime")]
-	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
-	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
 
 	use super::*;
 	use crate::VERSION;
@@ -76,8 +79,6 @@ mod asset_registry {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			use codec::Encode;
-
 			let old_state: Vec<(CurrencyId, AssetMetadata<Balance, v0::CustomMetadata>)> =
 				Metadata::<Runtime>::iter().collect::<Vec<_>>();
 
@@ -86,8 +87,6 @@ mod asset_registry {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
-			use codec::Decode;
-
 			use crate::OrmlAssetRegistry;
 
 			let old_state = sp_std::vec::Vec::<(
@@ -170,11 +169,6 @@ mod asset_registry {
 
 mod orml_tokens_migration {
 	use cfg_primitives::AccountId;
-	use cfg_types::tokens::before;
-	use codec::{Decode, Encode};
-	use frame_support::{
-		ensure, pallet_prelude::ValueQuery, storage_alias, Blake2_128Concat, Twox64Concat,
-	};
 	use orml_tokens::AccountData;
 
 	use super::*;
@@ -191,19 +185,18 @@ mod orml_tokens_migration {
 		pub entries: Vec<(AccountId, AccountData<Balance>)>,
 	}
 
+	#[allow(deprecated)]
 	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
 	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			use codec::Encode;
-
 			let total_issuance =
 				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
 			let entries: Vec<(AccountId, AccountData<Balance>)> =
 				orml_tokens::Accounts::<Runtime>::iter()
-					.filter(|(account, old_currency_id, account_data)| {
+					.filter(|(_, old_currency_id, _)| {
 						*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
 					})
 					.map(|(account, _, account_data)| (account, account_data))
@@ -248,7 +241,7 @@ mod orml_tokens_migration {
 
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
-				.filter(|(account, old_currency_id, balance)| {
+				.filter(|(_, old_currency_id, _)| {
 					*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
 				})
 				.for_each(|(account, _, account_data)| {
