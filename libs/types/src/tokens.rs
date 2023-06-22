@@ -59,8 +59,8 @@ pub enum CurrencyId {
 	Tranche(PoolId, TrancheId),
 
 	#[codec(index = 2)]
-	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once the orml_tokens'
-	/// balances are migrated to the new CurrencyId for AUSD.
+	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once
+	/// the orml_tokens' balances are migrated to the new CurrencyId for AUSD.
 	AUSD,
 
 	/// A foreign asset
