@@ -48,6 +48,25 @@ impl<T> EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
+	pub fn do_init(&self) -> DispatchResult {
+		pallet_xcm_transactor::Pallet::<T>::set_transact_info(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			self.xcm_domain.location.clone(),
+			self.xcm_domain.transact_info.transact_extra_weight.clone(),
+			self.xcm_domain.transact_info.max_weight.clone(),
+			self.xcm_domain
+				.transact_info
+				.transact_extra_weight_signed
+				.clone(),
+		)?;
+
+		pallet_xcm_transactor::Pallet::<T>::set_fee_per_second(
+			<T as frame_system::Config>::RuntimeOrigin::root(),
+			self.xcm_domain.location.clone(),
+			self.xcm_domain.fee_per_second,
+		)
+	}
+
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let contract_call = self
 			.get_encoded_contract_call(msg.serialize())
@@ -202,6 +221,21 @@ pub struct XcmDomain<CurrencyId> {
 	pub fee_currency: CurrencyId,
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
+	/// The XCM transact info that will be stored in the
+	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
+	pub transact_info: XcmTransactInfo,
+	/// The fee per second that will be stored in the
+	/// `DestinationAssetFeePerSecond` storage of the XCM transactor pallet.
+	pub fee_per_second: u128,
+}
+
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+/// XcmTransactInfo hold all the weight related information required for the XCM
+/// transactor pallet.
+pub struct XcmTransactInfo {
+	pub transact_extra_weight: Weight,
+	pub max_weight: Weight,
+	pub transact_extra_weight_signed: Option<Weight>,
 }
 
 /// NOTE: Remove this custom implementation once the following underlying data
@@ -226,5 +260,7 @@ where
 			.saturating_add(H160::max_encoded_len())
 			// The fee currency (custom bound)
 			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
+			// The XcmTransactInfo
+			.saturating_add(XcmTransactInfo::max_encoded_len())
 	}
 }

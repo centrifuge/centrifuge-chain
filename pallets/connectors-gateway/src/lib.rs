@@ -67,6 +67,9 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
 		/// The incoming and outgoing message type.
+		///
+		/// NOTE - this `Codec` trait is the Centrifuge trait for connectors
+		/// messages.
 		type Message: Codec;
 
 		/// The message router type that is stored for each domain.
@@ -80,7 +83,7 @@ pub mod pallet {
 			+ PartialEq;
 
 		/// The type that processes incoming messages.
-		type Connectors: InboundQueue<Sender = Domain, Message = Self::Message>;
+		type InboundQueue: InboundQueue<Sender = Domain, Message = Self::Message>;
 
 		type WeightInfo: WeightInfo;
 
@@ -123,6 +126,9 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Router initialization failed.
+		RouterInitFailed,
+
 		/// The origin of the message to be processed is invalid.
 		InvalidMessageOrigin,
 
@@ -161,6 +167,8 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
+
+			router.init().map_err(|_| Error::<T>::RouterInitFailed)?;
 
 			<DomainRouters<T>>::insert(domain.clone(), router.clone());
 
@@ -231,15 +239,15 @@ pub mod pallet {
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 						.map_err(|_| Error::<T>::MessageDecode)?;
 
-					T::Connectors::submit(domain_address.domain(), incoming_msg)
-
-					// TODO(cdamian): Should we emit an event here?
+					T::InboundQueue::submit(domain_address.domain(), incoming_msg)
 				}
 				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
 			}
 		}
 	}
 
+	// This gateway pallet will be the OutboundQueue used by other pallets to send
+	// outgoing connectors messages.
 	impl<T: Config> OutboundQueue for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;
