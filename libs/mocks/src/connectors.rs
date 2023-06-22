@@ -34,7 +34,7 @@ impl Codec for MessageMock {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::connectors::{Codec, InboundQueue};
+	use cfg_traits::connectors::InboundQueue;
 	use cfg_types::domain_address::Domain;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
