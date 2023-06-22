@@ -27,7 +27,7 @@ parameter_types! {
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type Connectors = DummyInboundQueue;
+	type InboundQueue = DummyInboundQueue;
 	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type Message = ConnectorsMessage;
