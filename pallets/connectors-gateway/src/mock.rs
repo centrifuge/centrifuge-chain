@@ -76,7 +76,7 @@ impl pallet_mock_connectors::Config for Runtime {
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
-	type Connectors = MockConnectors;
+	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type Message = MessageMock;

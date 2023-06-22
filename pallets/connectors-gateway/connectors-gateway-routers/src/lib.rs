@@ -40,7 +40,7 @@ where
 	T: frame_system::Config
 		+ pallet_xcm_transactor::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_evm::Config,
+		+ pallet_ethereum_transaction::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
 	EthereumXCM(EthereumXCMRouter<T>),
@@ -52,14 +52,18 @@ where
 	T: frame_system::Config
 		+ pallet_xcm_transactor::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_evm::Config,
+		+ pallet_ethereum_transaction::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
 
-	// TODO(cdamian) Add init and call that when the router is added in the gateway
-	// pallet.
+	fn init(&self) -> DispatchResult {
+		match self {
+			DomainRouter::EthereumXCM(r) => r.do_init(),
+			DomainRouter::AxelarEVM(r) => r.do_init(),
+		}
+	}
 
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		match self {

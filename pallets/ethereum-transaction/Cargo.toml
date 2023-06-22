@@ -32,8 +32,20 @@ fp-ethereum = { git = "https://github.com/PureStake/frontier", default-features 
 fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 ethereum = "0.14.0"
 
-# Our custom pallets
+# Our custom traits
 cfg-traits = { path = "../../libs/traits", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+
+pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+
+pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
+
+rand = "0.8.5"
 
 [features]
 default = ["std"]
@@ -44,6 +56,7 @@ runtime-benchmarks = [
     "sp-runtime/runtime-benchmarks",
     "cfg-traits/runtime-benchmarks",
     "pallet-ethereum/runtime-benchmarks",
+    "pallet-evm/runtime-benchmarks",
 ]
 std = [
     "codec/std",
@@ -54,10 +67,12 @@ std = [
     "sp-runtime/std",
     "scale-info/std",
     "pallet-ethereum/std",
+    "pallet-evm/std",
 ]
 try-runtime = [
     "frame-support/try-runtime",
     "frame-system/try-runtime",
     "cfg-traits/try-runtime",
     "pallet-ethereum/try-runtime",
+    "pallet-evm/try-runtime",
 ]
