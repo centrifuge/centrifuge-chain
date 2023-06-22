@@ -84,3 +84,5 @@ impl pallet_ethereum::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
+
+impl pallet_ethereum_transaction for crate::Runtime {}
