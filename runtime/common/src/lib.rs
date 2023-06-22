@@ -433,7 +433,7 @@ pub mod changes {
 						InternalMutation::DiscountRate(_) => vec![epoch],
 					},
 				},
-				LoansChangeOf::<T>::Policy(policy) => vec![week, blocked],
+				LoansChangeOf::<T>::Policy(_) => vec![week, blocked],
 			};
 
 			PoolChangeProposal::new(requirements)

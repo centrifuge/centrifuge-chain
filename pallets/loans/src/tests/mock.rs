@@ -18,11 +18,13 @@ use cfg_mocks::{
 };
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -109,7 +111,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 5;
-	#[derive(PartialEq, Debug)]
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 4;
 }
 

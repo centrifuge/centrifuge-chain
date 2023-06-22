@@ -235,7 +235,7 @@ pub mod pallet {
 
 		/// Max number of write-off groups per pool.
 		#[pallet::constant]
-		type MaxWriteOffPolicySize: Get<u32>;
+		type MaxWriteOffPolicySize: Get<u32> + Parameter;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
