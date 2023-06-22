@@ -9,10 +9,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_traits::connectors::Codec;
+use cfg_traits::{connectors::Codec, ethereum::EthereumTransactor};
 use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use scale_info::{
 	prelude::string::{String, ToString},
 	TypeInfo,
@@ -25,7 +25,9 @@ use crate::{AccountIdOf, MessageOf};
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarEVMRouter<T>
 where
-	T: frame_system::Config + pallet_connectors_gateway::Config + pallet_evm::Config,
+	T: frame_system::Config
+		+ pallet_connectors_gateway::Config
+		+ pallet_ethereum_transaction::Config,
 {
 	pub domain: EVMDomain,
 	pub _marker: PhantomData<T>,
@@ -42,9 +44,8 @@ pub struct EVMDomain {
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct FeeValues {
 	pub value: U256,
-	pub gas_limit: u64,
-	pub max_fee_per_gas: U256,
-	pub max_priority_fee_per_gas: Option<U256>,
+	pub gas_price: U256,
+	pub gas_limit: U256,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -64,57 +65,33 @@ impl ToString for EVMChain {
 
 impl<T> AxelarEVMRouter<T>
 where
-	T: frame_system::Config + pallet_connectors_gateway::Config + pallet_evm::Config,
+	T: frame_system::Config
+		+ pallet_connectors_gateway::Config
+		+ pallet_ethereum_transaction::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
+	pub fn do_init(&self) -> DispatchResult {
+		Ok(())
+	}
+
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let eth_msg = self.get_eth_msg(msg).map_err(|e| DispatchError::Other(e))?;
 
 		// Use the same conversion as the one used in `EnsureAddressTruncated`.
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
 
-		// TODO(cdamian): Fund the derived sender account beforehand?
-		// Derived as per - https://centrifuge.hackmd.io/d2p7IV7iSrWFU1uF7P8nVQ?both#AccountAddress-mapping
-
-		// Sender account A (Alice)
-		// Sender account A' (Alice derived) - first 20bytes of Alice + derivation stuff
-
-		// TODO(cdamian): Do we need extra account related logic, prior to calling this
-		// router, given the following?
+		// TODO(cdamian): This returns a `DispatchResultWithPostInfo`. Should we
+		// propagate that to another layer that will eventually charge for the
+		// weight in the PostDispatchInfo?
 		//
-		// `pallet_evm::runner::stack::Runner::validate` will convert
-		// `sender_evm_address` into a `T::AccountID` and then attempt to return the
-		// nonce and balance for this account, the account mutation flow being:
-		//
-		// AxelarEVMRouter:
-		//
-		// Sender T::AccountId -> Sender H160
-		//
-		// pallet_evm::Pallet::account_basic:
-		//
-		// Sender H160 -> Unknown T::AccountId
-		//
-		// This will most likely mean that the information for
-		// the unknown account will be empty i.e. 0 nonce and 0 balance.
-		pallet_evm::Pallet::<T>::call(
-			// The `call` method uses `EnsureAddressTruncated` to check this `origin`, this ensures
-			// that `origin` is the same as `source`.
-			RawOrigin::Signed(sender.clone()).into(),
+		// NOTE - the derived sender account will be charged for the fees.
+		<pallet_ethereum_transaction::Pallet<T> as EthereumTransactor>::call(
 			sender_evm_address,
 			self.domain.axelar_contract_address.clone(),
-			eth_msg,
+			eth_msg.as_slice(),
 			self.domain.fee_values.value.clone(),
-			self.domain.fee_values.gas_limit.clone(),
-			self.domain.fee_values.max_fee_per_gas.clone(),
-			self.domain.fee_values.max_priority_fee_per_gas.clone(),
-			// The nonce will be retrieved during call validation in
-			// `pallet_evm::runner::stack::Runner::validate` and then increased by the
-			// `evm::executor::stack::StackExecutor` during `transact_call`.
-			//
-			// In order to avoid any potential errors caused by an outdated nonce that we can
-			// retrieve prior to this call, we set this here to None.
-			None,
-			Vec::new(),
+			self.domain.fee_values.gas_price.clone(),
+			self.domain.fee_values.gas_limit.into(),
 		)
 		.map_err(|e| e.error)?;
 

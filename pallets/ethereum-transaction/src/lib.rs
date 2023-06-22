@@ -20,8 +20,16 @@ use frame_support::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use pallet_evm::ExitReason;
+use pallet_evm::{ExitError, ExitFatal, ExitReason};
 use sp_core::{H160, H256, U256};
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+const TRANSACTION_RECOVERY_ID: u64 = 42;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -38,6 +46,16 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
+	impl<T: Config> Pallet<T> {
+		fn get_transaction_signature() -> Option<TransactionSignature> {
+			TransactionSignature::new(
+				TRANSACTION_RECOVERY_ID,
+				H256::from_low_u64_be(1u64),
+				H256::from_low_u64_be(1u64),
+			)
+		}
+	}
+
 	impl<T: Config> EthereumTransactor for Pallet<T> {
 		fn call(
 			from: H160,
@@ -51,18 +69,14 @@ pub mod pallet {
 			let read_weight = T::DbWeight::get().reads(1);
 
 			//TODO(cdamian): Same signature as the one in ethereum-xcm.
-			let signature = TransactionSignature::new(
-				42,
-				H256::from_low_u64_be(1u64),
-				H256::from_low_u64_be(1u64),
-			)
-			.ok_or(DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: Some(read_weight),
-					pays_fee: Pays::Yes,
-				},
-				error: DispatchError::Other("Failed to create transaction signature"),
-			})?;
+			let signature =
+				Pallet::<T>::get_transaction_signature().ok_or(DispatchErrorWithPostInfo {
+					post_info: PostDispatchInfo {
+						actual_weight: Some(read_weight),
+						pays_fee: Pays::Yes,
+					},
+					error: DispatchError::Other("Failed to create transaction signature"),
+				})?;
 
 			let transaction = TransactionV2::Legacy(LegacyTransaction {
 				nonce,
@@ -83,10 +97,7 @@ pub mod pallet {
 				Some(T::config().clone()),
 			)
 			.map_err(|e| {
-				let weight = e
-					.post_info
-					.actual_weight
-					.map_or_else(|| Weight::zero(), |w| w);
+				let weight = e.post_info.actual_weight.map_or(Weight::zero(), |w| w);
 
 				DispatchErrorWithPostInfo {
 					post_info: PostDispatchInfo {
@@ -105,12 +116,12 @@ pub mod pallet {
 						actual_weight: Some(read_weight),
 						pays_fee: Pays::Yes,
 					}),
-					ExitReason::Error(_) => Err(DispatchErrorWithPostInfo {
+					ExitReason::Error(e) => Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(read_weight),
 							pays_fee: Pays::Yes,
 						},
-						error: DispatchError::Other("EVM encountered an error"),
+						error: map_evm_error(e),
 					}),
 					ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
@@ -119,12 +130,12 @@ pub mod pallet {
 						},
 						error: DispatchError::Other("EVM encountered an explicit revert"),
 					}),
-					ExitReason::Fatal(_) => Err(DispatchErrorWithPostInfo {
+					ExitReason::Fatal(e) => Err(DispatchErrorWithPostInfo {
 						post_info: PostDispatchInfo {
 							actual_weight: Some(read_weight),
 							pays_fee: Pays::Yes,
 						},
-						error: DispatchError::Other("EVM encountered a fatal error"),
+						error: map_evm_fatal_error(e),
 					}),
 				},
 				CallOrCreateInfo::Create(_) => Err(DispatchErrorWithPostInfo {
@@ -135,6 +146,35 @@ pub mod pallet {
 					error: DispatchError::Other("unexpected execute result"),
 				}),
 			}
+		}
+	}
+
+	fn map_evm_error(e: ExitError) -> DispatchError {
+		match e {
+			ExitError::StackUnderflow => DispatchError::Other("stack underflow"),
+			ExitError::StackOverflow => DispatchError::Other("stack overflow"),
+			ExitError::InvalidJump => DispatchError::Other("invalid jump"),
+			ExitError::InvalidRange => DispatchError::Other("invalid range"),
+			ExitError::DesignatedInvalid => DispatchError::Other("designated invalid"),
+			ExitError::CallTooDeep => DispatchError::Other("call too deep"),
+			ExitError::CreateCollision => DispatchError::Other("create collision"),
+			ExitError::CreateContractLimit => DispatchError::Other("create contract limit"),
+			ExitError::InvalidCode(_) => DispatchError::Other("invalid op code"),
+			ExitError::OutOfOffset => DispatchError::Other("out of offset"),
+			ExitError::OutOfGas => DispatchError::Other("out of gas"),
+			ExitError::OutOfFund => DispatchError::Other("out of fund"),
+			ExitError::PCUnderflow => DispatchError::Other("PC underflow"),
+			ExitError::CreateEmpty => DispatchError::Other("create empty"),
+			ExitError::Other(_) => DispatchError::Other("evm error"),
+		}
+	}
+
+	fn map_evm_fatal_error(e: ExitFatal) -> DispatchError {
+		match e {
+			ExitFatal::NotSupported => DispatchError::Other("not supported"),
+			ExitFatal::UnhandledInterrupt => DispatchError::Other("unhandled interrupt"),
+			ExitFatal::CallErrorAsFatal(e) => map_evm_error(e),
+			ExitFatal::Other(_) => DispatchError::Other("evm fatal error"),
 		}
 	}
 }

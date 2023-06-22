@@ -24,11 +24,11 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
-ethabi = { version = "16.0", default-features = false }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # EVM
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+ethabi = { version = "16.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Custom crates
 cfg-traits = { path = "../../../libs/traits", default-features = false }
@@ -36,6 +36,7 @@ cfg-types = { path = "../../../libs/types", default-features = false }
 
 # Local pallets
 pallet-connectors-gateway = { path = "../.", default-features = false }
+pallet-ethereum-transaction = { path = "../../ethereum-transaction", default-features = false }
 
 [dev-dependencies]
 rand = "0.8.5"
@@ -45,7 +46,7 @@ xcm-builder = { git = "https://github.com/purestake/polkadot", branch = "moonbea
 xcm-executor = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
 
 pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
