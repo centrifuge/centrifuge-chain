@@ -247,7 +247,7 @@ mod orml_tokens_migration {
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(
 						DEPRECATED_AUSD_CURRENCY_ID,
 						&account,
-						balance.clone(),
+						balance,
 					)
 					.map_err(|e| {
 						log::error!(
