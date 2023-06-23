@@ -1,15 +1,22 @@
 use cfg_mocks::MessageMock;
-use cfg_traits::connectors::Router;
+use cfg_traits::connectors::{Codec, Router};
+use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
 use pallet_evm::AddressMapping;
 use pallet_xcm_transactor::RemoteTransactInfoWithMaxWeight;
 use sp_core::{bounded_vec, crypto::AccountId32, H160, U256};
 use sp_runtime::traits::Convert;
+use xcm::{
+	lts::WeightLimit,
+	v2::OriginKind,
+	v3::{Instruction::*, MultiAsset, Weight},
+};
 
 use super::mock::*;
 use crate::{
-	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMChain,
-	EVMDomain, FeeValues, XcmDomain, XcmTransactInfo,
+	axelar_evm::AxelarEVMRouter,
+	ethereum_xcm::{get_encoded_contract_call, get_encoded_ethereum_xcm_call, EthereumXCMRouter},
+	DomainRouter, EVMChain, EVMDomain, FeeValues, XcmDomain, XcmTransactInfo,
 };
 
 mod axelar_evm {
@@ -201,6 +208,42 @@ mod ethereum_xcm {
 				let msg = MessageMock::Second;
 
 				assert_ok!(domain_router.send(sender, msg));
+
+				let sent_messages = sent_xcm();
+				assert_eq!(sent_messages.len(), 1);
+
+				let weight_limit = xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+
+				let (_, xcm) = sent_messages.first().unwrap();
+				assert!(xcm.0.contains(&WithdrawAsset(
+					(MultiAsset {
+						id: xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: xcm::v3::Fungibility::Fungible(1),
+					})
+					.into()
+				)));
+
+				assert!(xcm.0.contains(&BuyExecution {
+					fees: MultiAsset {
+						id: xcm::v3::AssetId::Concrete(MultiLocation::here()),
+						fun: xcm::v3::Fungibility::Fungible(1),
+					},
+					weight_limit: WeightLimit::Limited(Weight::from_all(
+						weight_limit + xcm_domain.transact_info.transact_extra_weight.ref_time()
+					)),
+				}));
+
+				let msg = MessageMock::Second;
+				let contract_call = get_encoded_contract_call(msg.serialize()).unwrap();
+				let expected_call =
+					get_encoded_ethereum_xcm_call::<Runtime>(xcm_domain.clone(), contract_call)
+						.unwrap();
+
+				assert!(xcm.0.contains(&Transact {
+					origin_kind: OriginKind::SovereignAccount,
+					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					call: expected_call.into(),
+				}));
 			});
 		}
 
