@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::pools::TrancheMetadata;
 use frame_support::{assert_ok, BoundedVec};
 use orml_traits::Change;
 use pallet_pool_system::{
 	pool_types::PoolChanges,
-	tranches::{TrancheInput, TrancheMetadata, TrancheType},
+	tranches::{TrancheInput, TrancheType},
 };
 
 use crate::mock::*;

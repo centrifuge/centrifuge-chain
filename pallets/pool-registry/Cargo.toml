@@ -21,6 +21,7 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # Our own pallets
 pallet-pool-system = { path = "../pool-system", default-features = false }
@@ -45,7 +46,6 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", default-featur
 serde = { version = "1.0.102" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -75,6 +75,7 @@ std = [
   "frame-benchmarking/std",
   "pallet-investments/std",
   "scale-info/std",
+  "xcm/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

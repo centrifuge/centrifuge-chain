@@ -177,6 +177,57 @@ pub trait PoolMutate<AccountId, PoolId> {
 	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 }
 
+/// A trait that supports retrieval and mutation of pool and tranche token metadata.
+pub trait PoolMetadata<Balance, VersionedMultiLocation> {
+	type AssetMetadata;
+	type CustomMetadata;
+	type PoolMetadata;
+	type PoolId: Parameter
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+
+	/// Get the metadata of the given pool.
+	fn get_pool_metadata(pool_id: Self::PoolId) -> Option<Self::PoolMetadata>;
+
+	/// Set the metadata of the given pool.
+	fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult;
+
+	/// Get the metadata of the given pair of pool and tranche id.
+	fn get_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+	) -> Option<Self::AssetMetadata>;
+
+	/// Register the metadata for the currency derived from the given pair of
+	/// pool id and tranche.
+	fn create_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+		metadata: Self::AssetMetadata,
+	) -> DispatchResult;
+
+
+	#[allow(clippy::too_many_arguments)]
+	/// Update the metadata of the given pair of pool and tranche id.
+	fn update_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+		decimals: Option<u32>,
+		name: Option<Vec<u8>>,
+		symbol: Option<Vec<u8>>,
+		existential_deposit: Option<Balance>,
+		location: Option<Option<VersionedMultiLocation>>,
+		additional: Option<Self::CustomMetadata>,
+	) -> DispatchResult;
+}
+
 /// A trait that support pool reserve operations such as withdraw and deposit
 pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId> {
 	type Balance;

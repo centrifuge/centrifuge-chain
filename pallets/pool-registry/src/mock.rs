@@ -24,7 +24,7 @@ use frame_support::{
 	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
-use frame_system::EnsureSigned;
+use frame_system::{EnsureSigned};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_system::{
 	benchmarking::create_pool,
@@ -248,6 +248,7 @@ impl<T> PreConditions<T> for Always {
 }
 
 impl Config for Test {
+	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
@@ -261,6 +262,7 @@ impl Config for Test {
 	type PoolId = u64;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }

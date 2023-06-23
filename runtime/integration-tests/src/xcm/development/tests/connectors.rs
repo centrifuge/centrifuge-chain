@@ -33,7 +33,11 @@ use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
-	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
+	pools::TrancheMetadata,
+	tokens::{
+		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
+		ForeignAssetId,
+	},
 	xcm::XcmMetadata,
 };
 use codec::Encode;
@@ -50,7 +54,7 @@ use pallet_connectors::{
 };
 use pallet_pool_system::{
 	pool_types::PoolDetails,
-	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+	tranches::{TrancheInput, TrancheLoc, TrancheType},
 };
 use runtime_common::{
 	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
