@@ -38,12 +38,6 @@ where
 	pub _marker: PhantomData<T>,
 }
 
-/// The ConnectorsXcmContract handle function name.
-const HANDLE_FUNCTION: &str = "handle";
-
-/// The ConnectorsXcmContract message param name.
-const MESSAGE_PARAM: &str = "message";
-
 impl<T> EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
@@ -68,13 +62,12 @@ where
 	}
 
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
-		let contract_call = self
-			.get_encoded_contract_call(msg.serialize())
+		let contract_call = get_encoded_contract_call(msg.serialize())
 			.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
 
-		let ethereum_xcm_call = self
-			.get_encoded_ethereum_xcm_call(contract_call)
-			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
+		let ethereum_xcm_call =
+			get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), contract_call)
+				.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
 		pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
@@ -93,15 +86,6 @@ where
 			TransactWeights {
 				// Convert the max gas_limit into a max transact weight following
 				// Moonbeam's formula.
-				//
-				// TODO(cdamian): Should we populate:
-				//
-				// - `TransactInfoWithWeightLimit` storage via
-				//   `pallet_xcm_transactor::Pallet::<T>::set_transact_info`
-				// - `DestinationAssetFeePerSecond` storage via
-				//   `pallet_xcm_transactor::Pallet::<T>::set_fee_per_second`
-				//
-				//  accordingly when setting the router in the gateway pallet?
 				transact_required_weight_at_most: Weight::from_all(
 					self.xcm_domain.max_gas_limit * 25_000 + 100_000_000,
 				),
@@ -111,95 +95,101 @@ where
 
 		Ok(())
 	}
+}
 
-	/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
-	/// request to execute `evm_call`.
-	///
-	/// * `xcm_domain` - All the necessary info regarding the xcm-based domain
-	/// where this `ethereum_xcm` call is to be executed
-	/// * `evm_call` - The encoded EVM call calling
-	///   ConnectorsXcmRouter::handle(msg)
-	fn get_encoded_ethereum_xcm_call(&self, evm_call: Vec<u8>) -> Result<Vec<u8>, ()> {
-		let input =
-			BoundedVec::<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>::try_from(
-				evm_call,
-			)
-			.map_err(|_| ())?;
+/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
+/// request to execute `evm_call`.
+///
+/// * `xcm_domain` - All the necessary info regarding the xcm-based domain
+/// where this `ethereum_xcm` call is to be executed
+/// * `evm_call` - The encoded EVM call calling ConnectorsXcmRouter::handle(msg)
+pub(crate) fn get_encoded_ethereum_xcm_call<T>(
+	xcm_domain: XcmDomain<CurrencyIdOf<T>>,
+	evm_call: Vec<u8>,
+) -> Result<Vec<u8>, ()>
+where
+	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
+{
+	let input =
+		BoundedVec::<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>::try_from(
+			evm_call,
+		)
+		.map_err(|_| ())?;
 
-		let mut encoded: Vec<u8> = Vec::new();
+	let mut encoded: Vec<u8> = Vec::new();
 
-		encoded.append(
-			&mut self
-				.xcm_domain
-				.clone()
-				.ethereum_xcm_transact_call_index
-				.clone()
-				.into_inner(),
-		);
-		encoded.append(
-			&mut xcm_primitives::EthereumXcmTransaction::V1(
-				xcm_primitives::EthereumXcmTransactionV1 {
-					gas_limit: U256::from(self.xcm_domain.max_gas_limit),
-					fee_payment: xcm_primitives::EthereumXcmFee::Auto,
-					action: pallet_ethereum::TransactionAction::Call(
-						self.xcm_domain.contract_address,
-					),
-					value: U256::zero(),
-					input,
-					access_list: None,
-				},
-			)
-			.encode(),
-		);
+	encoded.append(
+		&mut xcm_domain
+			.clone()
+			.ethereum_xcm_transact_call_index
+			.clone()
+			.into_inner(),
+	);
+	encoded.append(
+		&mut xcm_primitives::EthereumXcmTransaction::V1(xcm_primitives::EthereumXcmTransactionV1 {
+			gas_limit: U256::from(xcm_domain.max_gas_limit),
+			fee_payment: xcm_primitives::EthereumXcmFee::Auto,
+			action: pallet_ethereum::TransactionAction::Call(xcm_domain.contract_address),
+			value: U256::zero(),
+			input,
+			access_list: None,
+		})
+		.encode(),
+	);
 
-		Ok(encoded)
-	}
+	Ok(encoded)
+}
 
-	/// Return the encoded contract call, i.e,
-	/// ConnectorsXcmRouter::handle(encoded_msg).
-	fn get_encoded_contract_call(&self, encoded_msg: Vec<u8>) -> Result<Bytes, ()> {
-		let contract = self.xcm_router_contract();
-		let encoded_contract_call = contract
-			.function(HANDLE_FUNCTION)
-			.map_err(|_| ())?
-			.encode_input(&[ethabi::Token::Bytes(encoded_msg)])
-			.map_err(|_| ())?;
+/// Return the encoded contract call, i.e,
+/// ConnectorsXcmRouter::handle(encoded_msg).
+pub(crate) fn get_encoded_contract_call(encoded_msg: Vec<u8>) -> Result<Bytes, ()> {
+	let contract = get_xcm_router_contract();
+	let encoded_contract_call = contract
+		.function(HANDLE_FUNCTION)
+		.map_err(|_| ())?
+		.encode_input(&[ethabi::Token::Bytes(encoded_msg)])
+		.map_err(|_| ())?;
 
-		Ok(encoded_contract_call)
-	}
+	Ok(encoded_contract_call)
+}
 
-	/// The ConnectorsXcmRouter Abi as in ethabi::Contract
-	/// Note: We only concern ourselves with the `handle` function of the
-	/// contract since that's all we need to build the calls for remote EVM
-	/// execution.
-	pub fn xcm_router_contract(&self) -> Contract {
-		use sp_std::collections::btree_map::BTreeMap;
+/// The ConnectorsXcmContract handle function name.
+const HANDLE_FUNCTION: &str = "handle";
 
-		let mut functions = BTreeMap::new();
-		#[allow(deprecated)]
-		functions.insert(
-			HANDLE_FUNCTION.into(),
-			vec![ethabi::Function {
-				name: HANDLE_FUNCTION.into(),
-				inputs: vec![ethabi::Param {
-					name: MESSAGE_PARAM.into(),
-					kind: ethabi::ParamType::Bytes,
-					internal_type: None,
-				}],
-				outputs: vec![],
-				constant: false,
-				state_mutability: Default::default(),
+/// The ConnectorsXcmContract message param name.
+const MESSAGE_PARAM: &str = "message";
+
+/// The ConnectorsXcmRouter Abi as in ethabi::Contract
+/// Note: We only concern ourselves with the `handle` function of the
+/// contract since that's all we need to build the calls for remote EVM
+/// execution.
+pub(crate) fn get_xcm_router_contract() -> Contract {
+	use sp_std::collections::btree_map::BTreeMap;
+
+	let mut functions = BTreeMap::new();
+	#[allow(deprecated)]
+	functions.insert(
+		HANDLE_FUNCTION.into(),
+		vec![ethabi::Function {
+			name: HANDLE_FUNCTION.into(),
+			inputs: vec![ethabi::Param {
+				name: MESSAGE_PARAM.into(),
+				kind: ethabi::ParamType::Bytes,
+				internal_type: None,
 			}],
-		);
+			outputs: vec![],
+			constant: false,
+			state_mutability: Default::default(),
+		}],
+	);
 
-		Contract {
-			constructor: None,
-			functions,
-			events: Default::default(),
-			errors: Default::default(),
-			receive: false,
-			fallback: false,
-		}
+	Contract {
+		constructor: None,
+		functions,
+		events: Default::default(),
+		errors: Default::default(),
+		receive: false,
+		fallback: false,
 	}
 }
 
