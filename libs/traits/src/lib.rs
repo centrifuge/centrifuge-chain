@@ -382,9 +382,10 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {
-	type Error: Debug;
-	type InvestmentId;
 	type Amount;
+	type CurrencyId;
+	type Error: Debug;
+	type InvestmentId: Into<Self::CurrencyId>;
 
 	/// Updates the current investment amount of who into the
 	/// investment class to amount.
@@ -395,6 +396,12 @@ pub trait Investment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
+
+	/// Checks whether a currency can be used for buying `InvestmentId`
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
 
 	/// Returns, if possible, the current investment amount of who into the
 	/// given investment class
@@ -412,6 +419,12 @@ pub trait Investment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
+
+	/// Checks whether a currency is accepted as a payout for an `InvestmentId`
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
 
 	/// Returns, if possible, the current redemption amount of who into the
 	/// given investment class
@@ -442,21 +455,6 @@ pub trait InvestmentCollector<AccountId> {
 		who: AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Result, Self::Error>;
-}
-
-/// A trait which exposes investment information required for foreign
-/// investments.
-pub trait ForeignInvestments<CurrencyId> {
-	type AssetRegistry;
-	type Error: Debug;
-	type PoolId;
-
-	/// Checks whether the currency can be used for investing into the given
-	/// pool.
-	fn can_invest_currency_into_pool(
-		invest_id: Self::PoolId,
-		currency: CurrencyId,
-	) -> Result<(), Self::Error>;
 }
 
 /// A trait, when implemented must take care of

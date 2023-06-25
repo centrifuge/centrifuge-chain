@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{connectors::Codec, ForeignInvestments, PoolInspect};
+use cfg_traits::{connectors::Codec, PoolInspect};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	tokens::GeneralCurrencyIndex,
@@ -81,8 +81,7 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		CurrencyInspect, Investment, InvestmentAccountant, InvestmentCollector,
-		InvestmentProperties, Permissions, PoolInspect, TrancheCurrency,
+		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect, TrancheCurrency,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -163,27 +162,16 @@ pub mod pallet {
 		/// `pallet_foreign_investments`.
 		type ForeignInvestment: Investment<
 				Self::AccountId,
+				Amount = <Self as Config>::Balance,
+				CurrencyId = CurrencyIdOf<Self>,
 				Error = DispatchError,
 				InvestmentId = <Self as Config>::TrancheCurrency,
-				Amount = <Self as Config>::Balance,
 			> + InvestmentCollector<
 				Self::AccountId,
 				Error = DispatchError,
 				InvestmentId = <Self as Config>::TrancheCurrency,
 				Result = (),
 			>;
-
-		/// Provides information about investments.
-		///
-		/// NOTE: For the time being, `pallet_pool_system` serves as the
-		/// implementor. However, eventually this might need to be changed to
-		/// `pallet_foreign_investments`.
-		type ForeignInvestmentAccountant: InvestmentAccountant<
-			Self::AccountId,
-			Amount = <Self as Config>::Balance,
-			Error = DispatchError,
-			InvestmentId = <Self as Config>::TrancheCurrency,
-		>;
 
 		/// The source of truth for the transferability of assets via
 		/// Connectors.
@@ -204,11 +192,7 @@ pub mod pallet {
 			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
-			+ From<
-				<<<Self as Config>::ForeignInvestmentAccountant as InvestmentAccountant<
-					Self::AccountId,
-				>>::InvestmentInfo as InvestmentProperties<Self::AccountId>>::Currency,
-			> + CurrencyInspect<CurrencyId = <Self as pallet::Config>::CurrencyId>;
+			+ CurrencyInspect<CurrencyId = <Self as pallet::Config>::CurrencyId>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
@@ -646,6 +630,7 @@ pub mod pallet {
 		pub fn allow_pool_currency(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			// TODO(subsequent PR): In the future, should be permissioned by trait which
@@ -660,7 +645,19 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			// Ensure currency matches the currency of the pool
-			Self::can_invest_currency_into_pool(pool_id, currency_id)?;
+			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			ensure!(
+				T::ForeignInvestment::accepted_payment_currency(invest_id, currency_id),
+				Error::<T>::InvalidInvestCurrency
+			);
+
+			// Ensure the currency is enabled as pool_currency
+			let metadata =
+				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			ensure!(
+				metadata.additional.pool_currency,
+				Error::<T>::AssetMetadataNotPoolCurrency
+			);
 
 			// Derive GeneralIndex for currency
 			let currency = Self::try_get_general_index(currency_id)?;
@@ -964,46 +961,12 @@ pub mod pallet {
 			// retrieve currency id from general index
 			let currency = Self::try_get_currency_id(currency_index)?;
 
-			// get investment info
-			let payment_currency: CurrencyIdOf<T> =
-				<T as pallet::Config>::ForeignInvestmentAccountant::info(invest_id)?
-					.payment_currency()
-					.into();
 			ensure!(
-				payment_currency == currency,
+				T::ForeignInvestment::accepted_payment_currency(invest_id, currency),
 				Error::<T>::InvalidInvestCurrency
 			);
 
 			Ok(currency)
-		}
-	}
-
-	impl<T: Config> cfg_traits::ForeignInvestments<CurrencyIdOf<T>> for Pallet<T> {
-		type AssetRegistry = T::AssetRegistry;
-		type Error = DispatchError;
-		type PoolId = PoolIdOf<T>;
-
-		fn can_invest_currency_into_pool(
-			pool_id: PoolIdOf<T>,
-			currency: CurrencyIdOf<T>,
-		) -> DispatchResult {
-			ensure!(
-				T::PoolInspect::pool_exists(pool_id),
-				Error::<T>::PoolNotFound
-			);
-
-			// Ensure metadata pool currency flag is enabled
-			let metadata =
-				T::AssetRegistry::metadata(&currency).ok_or(Error::<T>::AssetNotFound)?;
-			ensure!(
-				metadata.additional.pool_currency,
-				Error::<T>::AssetMetadataNotPoolCurrency
-			);
-
-			T::PoolInspect::currency_for(pool_id)
-				.filter(|c| c == &currency)
-				.map(|_| ())
-				.ok_or(Error::<T>::AssetNotPoolCurrency.into())
 		}
 	}
 }

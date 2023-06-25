@@ -982,6 +982,7 @@ fn allow_pool_currency() {
 		assert_ok!(Connectors::allow_pool_currency(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
+			default_tranche_id(pool_id),
 			currency_id,
 		));
 	});
@@ -1002,6 +1003,8 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				// Tranche id is arbitrary in this case as pool does not exist
+				[0u8; 16],
 				currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
@@ -1016,6 +1019,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
@@ -1039,6 +1043,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetMetadataNotPoolCurrency
@@ -1067,6 +1072,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotPoolCurrency
@@ -1092,6 +1098,9 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id + 1,
+				// Tranche id is arbitrary in this case, so we don't need to check for the exact
+				// pool_id
+				default_tranche_id(pool_id),
 				CurrencyId::AUSD,
 			),
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
@@ -1119,6 +1128,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				pool_currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
@@ -1146,6 +1156,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				pool_currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
@@ -1169,6 +1180,7 @@ fn allow_pool_should_fail() {
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
+				default_tranche_id(pool_id),
 				pool_currency_id,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken

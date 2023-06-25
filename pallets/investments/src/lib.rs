@@ -190,7 +190,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;
+		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen + Into<CurrencyOf<Self>>;
 
 		/// Something that knows how to handle accounting for the given
 		/// investments and provides metadata about them
@@ -1090,6 +1090,7 @@ where
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	type Amount = T::Amount;
+	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 
@@ -1101,15 +1102,21 @@ where
 		Pallet::<T>::do_update_investment(who.clone(), investment_id, amount)
 	}
 
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool {
+		T::Accountant::info(investment_id)
+			.map(|info| info.payment_currency() == currency)
+			.unwrap_or(false)
+	}
+
 	fn investment(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = InvestOrders::<T>::get(who, investment_id) {
-			Ok(order.amount())
-		} else {
-			Ok(Zero::zero())
-		}
+		Ok(InvestOrders::<T>::get(who, investment_id)
+			.map_or_else(|| Zero::zero(), |order| order.amount()))
 	}
 
 	fn update_redemption(
@@ -1120,15 +1127,21 @@ where
 		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
 	}
 
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool {
+		T::Accountant::info(investment_id)
+			.map(|info| info.payment_currency() == currency)
+			.unwrap_or(false)
+	}
+
 	fn redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = RedeemOrders::<T>::get(who, investment_id) {
-			Ok(order.amount())
-		} else {
-			Ok(Zero::zero())
-		}
+		Ok(RedeemOrders::<T>::get(who, investment_id)
+			.map_or_else(|| Zero::zero(), |order| order.amount()))
 	}
 }
 
