@@ -80,14 +80,14 @@ pub struct NoLoanChanges<T>(PhantomData<T>);
 
 impl<T: Config> ChangeGuard for NoLoanChanges<T> {
 	type Change = LoanChangeOf<T>;
-	type ChangeId = T::ChangeId;
+	type ChangeId = T::Hash;
 	type PoolId = PoolIdOf<T>;
 
-	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<T::ChangeId, DispatchError> {
+	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 
-	fn released(_: PoolIdOf<T>, _: T::ChangeId) -> Result<Self::Change, DispatchError> {
+	fn released(_: PoolIdOf<T>, _: Self::ChangeId) -> Result<Self::Change, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 }

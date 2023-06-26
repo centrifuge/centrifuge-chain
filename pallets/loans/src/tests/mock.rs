@@ -73,7 +73,7 @@ pub type PoolId = u32;
 pub type TrancheId = u64;
 pub type LoanId = u64;
 pub type PriceId = u64;
-pub type ChangeId = u64;
+pub type ChangeId = H256;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -199,14 +199,13 @@ impl pallet_mock_data::Config for Runtime {
 
 impl pallet_mock_change_guard::Config for Runtime {
 	type Change = LoanChangeOf<Runtime>;
-	type ChangeId = u64;
+	type ChangeId = H256;
 	type PoolId = PoolId;
 }
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type ChangeGuard = MockChangeGuard;
-	type ChangeId = ChangeId;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
@@ -220,6 +219,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
 	type Rate = Rate;
+	type RuntimeChange = LoanChangeOf<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();

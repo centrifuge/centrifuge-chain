@@ -159,6 +159,7 @@ impl pallet_pool_system::Config for Test {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = OrmlTokens;

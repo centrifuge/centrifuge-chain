@@ -210,6 +210,8 @@ pub mod constants {
 	pub const SECONDS_PER_MINUTE: u64 = 60;
 	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
 	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
+	pub const SECONDS_PER_WEEK: u64 = SECONDS_PER_DAY * 7;
+	pub const SECONDS_PER_MONTH: u64 = SECONDS_PER_DAY * 30;
 	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`

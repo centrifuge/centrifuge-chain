@@ -40,7 +40,7 @@ use sp_runtime::{
 
 use crate::{
 	self as pallet_pool_system,
-	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	pool_types::{changes::PoolChangeProposal, PoolDetails, ScheduledUpdateDetails},
 	Config, DispatchResult,
 };
 
@@ -330,6 +330,7 @@ impl Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = PoolChangeProposal;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -426,7 +427,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
 			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 			.collect(),
@@ -435,7 +436,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
 			.map(|idx| (idx, 1000 * CURRENCY))
 			.collect(),

@@ -11,14 +11,19 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, UpdateState,
+	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
+	TrancheCurrency, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
+use sp_runtime::traits::Hash;
 
 use super::*;
 use crate::{
-	pool_types::{PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails},
+	pool_types::{
+		changes::{NotedPoolChange, Requirement},
+		PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails,
+	},
 	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
 };
 
@@ -367,6 +372,63 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
+	}
+}
+
+impl<T: Config> ChangeGuard for Pallet<T> {
+	type Change = T::RuntimeChange;
+	type ChangeId = T::Hash;
+	type PoolId = T::PoolId;
+
+	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
+		let noted_change = NotedPoolChange {
+			submitted_time: Self::now(),
+			change,
+		};
+
+		let change_id: Self::ChangeId = T::Hashing::hash(&noted_change.encode());
+		NotedChange::<T>::insert(pool_id, change_id, noted_change.clone());
+
+		Self::deposit_event(Event::ProposedChange {
+			pool_id,
+			change_id,
+			change: noted_change.change,
+		});
+
+		Ok(change_id)
+	}
+
+	fn released(
+		pool_id: Self::PoolId,
+		change_id: Self::ChangeId,
+	) -> Result<Self::Change, DispatchError> {
+		let NotedPoolChange {
+			submitted_time,
+			change,
+		} = NotedChange::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
+
+		let pool_change: PoolChangeProposal = change.clone().into();
+		let pool = Pool::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
+
+		// Default requirement for all changes
+		let mut allowed = !pool.epoch.is_submission_period();
+
+		for requirement in pool_change.requirements() {
+			allowed &= match requirement {
+				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
+				Requirement::DelayTime(secs) => {
+					Self::now().saturating_sub(submitted_time) >= secs as u64
+				}
+				Requirement::BlockedByLockedRedemptions => false, // TODO
+			}
+		}
+
+		allowed
+			.then(|| {
+				NotedChange::<T>::remove(pool_id, change_id);
+				change
+			})
+			.ok_or(Error::<T>::ChangeNotReady.into())
 	}
 }
 
