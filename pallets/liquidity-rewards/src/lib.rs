@@ -39,9 +39,8 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign},
-	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
+pub use cfg_traits::rewards::{
+	AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -55,7 +54,10 @@ pub use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{traits::Zero, FixedPointOperand};
+use sp_runtime::{
+	traits::{EnsureAdd, Zero},
+	FixedPointOperand,
+};
 use sp_std::mem;
 use weights::WeightInfo;
 

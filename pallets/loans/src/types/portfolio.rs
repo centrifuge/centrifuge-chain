@@ -1,12 +1,14 @@
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{Get, UnixTime},
 	BoundedVec, RuntimeDebug,
 };
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureSub, Zero},
+	DispatchError, DispatchResult,
+};
 use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 
 // Portfolio valuation information.

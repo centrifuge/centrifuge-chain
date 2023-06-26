@@ -35,9 +35,6 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
-/// Traits related to operations.
-pub mod ops;
-
 /// Traits related to rewards.
 pub mod rewards;
 

@@ -41,7 +41,7 @@ pub mod weights;
 mod benchmarking;
 
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureMul, EnsureSub},
+	self,
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
 use frame_support::{
@@ -55,7 +55,10 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{traits::Zero, FixedPointOperand, SaturatedConversion, Saturating};
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureMul, EnsureSub, Zero},
+	FixedPointOperand, SaturatedConversion, Saturating,
+};
 use sp_std::{mem, vec::Vec};
 pub use weights::WeightInfo;
 
