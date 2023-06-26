@@ -395,25 +395,26 @@ pub mod oracle {
 }
 
 pub mod changes {
-	use cfg_primitives::SECONDS_PER_WEEK;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans::{
-		types::{InternalMutation, LoanMutation},
-		ChangeOf as LoansChangeOf,
-	};
-	use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
+	use pallet_loans::ChangeOf as LoansChangeOf;
+	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
-	use sp_std::vec;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
 		Loan(LoansChangeOf<T>),
 	}
 
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
 		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
+			use cfg_primitives::SECONDS_PER_WEEK;
+			use pallet_loans::types::{InternalMutation, LoanMutation};
+			use pallet_pool_system::pool_types::changes::Requirement;
+			use sp_std::vec;
+
 			let epoch = Requirement::NextEpoch;
 			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 			let blocked = Requirement::BlockedByLockedRedemptions;
@@ -437,6 +438,19 @@ pub mod changes {
 			};
 
 			PoolChangeProposal::new(requirements)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
+			// We dont add any requirement in case of benchmarking.
+			// We assume checking requirements in the pool is something very fast and
+			// deprecable in relation to reading from any storage.
+			// If tomorrow any requirement requires a lot of time,
+			// it should be precomputed in any pool stage, to make the requirement
+			// validation as fast as possible.
+			PoolChangeProposal::new([])
 		}
 	}
 
