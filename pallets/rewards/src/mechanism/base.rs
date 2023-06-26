@@ -1,11 +1,10 @@
-use cfg_traits::ops::{
-	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub,
-	EnsureSubAssign,
-};
 use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{
-	traits::Zero, ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	traits::{
+		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub, Zero,
+	},
+	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
 use super::{MoveCurrencyError, RewardMechanism};
