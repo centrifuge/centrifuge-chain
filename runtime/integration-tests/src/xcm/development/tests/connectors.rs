@@ -610,8 +610,10 @@ fn transfer_tranche_tokens_to_local() {
 		let amount = 100_000_000;
 		let receiver: AccountId = BOB.into();
 		let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-		let sending_domain_locator =
-			AccountConverter::<DevelopmentRuntime>::convert(utils::DEFAULT_OTHER_DOMAIN_ADDRESS);
+		let sending_domain_locator = DomainLocator::<Domain> {
+			domain: utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.into(),
+		}
+		.into_account_truncating();
 		let tranche_id = default_tranche_id(pool_id);
 		let tranche_tokens: CurrencyId =
 			cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id).into();
@@ -995,7 +997,7 @@ fn allow_pool_should_fail() {
 	Development::execute_with(|| {
 		let pool_id: u64 = 42;
 		let currency_id = CurrencyId::ForeignAsset(42);
-		let pool_currency_id = utils::CURRENCY_ID_AUSD;
+		let ausd_currency_id = utils::CURRENCY_ID_AUSD;
 
 		utils::setup_pre_requirements();
 		// Should fail if pool does not exist
@@ -1010,46 +1012,40 @@ fn allow_pool_should_fail() {
 			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
 		);
 
-		// Create an AUSD pool
-		utils::create_ausd_pool(pool_id);
-		assert!(currency_id != pool_currency_id);
-
-		// Should fail if asset is unregistered
-		assert_noop!(
-			Connectors::allow_pool_currency(
-				RuntimeOrigin::signed(BOB.into()),
-				pool_id,
-				default_tranche_id(pool_id),
-				currency_id,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
-		);
-
-		// Register new asset with pool_currency set to false
+		// Register currency_id with pool_currency set to true
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			utils::asset_metadata(
 				"Test".into(),
 				"TEST".into(),
 				12,
-				false,
+				true,
 				None,
 				Default::default(),
 			),
 			Some(currency_id)
 		));
-		// Should fail if asset is registered but not as pool_currency
+
+		// Create pool
+		utils::create_currency_pool(
+			pool_id,
+			currency_id,
+			10_000 * dollar(12)
+		);
+
+		// Should fail if asset is not pool currency
+		assert!(currency_id != ausd_currency_id);
 		assert_noop!(
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				default_tranche_id(pool_id),
-				currency_id,
+				ausd_currency_id,
 			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetMetadataNotPoolCurrency
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidInvestCurrency
 		);
 
-		// Update currency to have pool_currency metadata
+		// Should fail if currency is not connectors transferable
 		assert_ok!(OrmlAssetRegistry::update_asset(
 			RuntimeOrigin::root(),
 			currency_id,
@@ -1060,14 +1056,13 @@ fn allow_pool_should_fail() {
 			None,
 			Some(CustomMetadata {
 				// Disallow any cross chain transferability
-				transferability: Default::default(),
+				transferability: CrossChainTransferability::None,
 				mintable: Default::default(),
 				permissioned: Default::default(),
-				// Changed: Allow as pool currency
+				// Changed: Allow to be usable as pool currency
 				pool_currency: true,
 			}),
 		));
-		// Should fail if asset is not the pool currency
 		assert_noop!(
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
@@ -1075,7 +1070,59 @@ fn allow_pool_should_fail() {
 				default_tranche_id(pool_id),
 				currency_id,
 			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotPoolCurrency
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
+		);
+
+		// Should fail if currency does not have any MultiLocation in metadata
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				// Changed: Allow connectors transferability
+				transferability: CrossChainTransferability::Connectors,
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				// Still allow to be pool currency
+				pool_currency: true,
+			}),
+		));
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				default_tranche_id(pool_id),
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+		);
+
+		// Should fail if currency does not have ConnectorsWrappedToken location in
+		// metadata
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			// Changed: Add some location which cannot be converted to ConnectorsWrappedToken
+			Some(Some(VersionedMultiLocation::V3(Default::default()))),
+			// No change for transferability required as it is already allowed for Connectors
+			None,
+		));
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				default_tranche_id(pool_id),
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken
 		);
 
 		// Create new pool for non foreign asset
@@ -1100,90 +1147,10 @@ fn allow_pool_should_fail() {
 				pool_id + 1,
 				// Tranche id is arbitrary in this case, so we don't need to check for the exact
 				// pool_id
-				default_tranche_id(pool_id),
+				default_tranche_id(pool_id + 1),
 				CurrencyId::AUSD,
 			),
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
-		);
-
-		// Should fail if currency is not connectors transferable
-		assert_ok!(OrmlAssetRegistry::update_asset(
-			RuntimeOrigin::root(),
-			pool_currency_id,
-			None,
-			None,
-			None,
-			None,
-			None,
-			Some(CustomMetadata {
-				// Disallow any cross chain transferability
-				transferability: CrossChainTransferability::None,
-				mintable: Default::default(),
-				permissioned: Default::default(),
-				// Changed: Allow to be usable as pool currency
-				pool_currency: true,
-			}),
-		));
-		assert_noop!(
-			Connectors::allow_pool_currency(
-				RuntimeOrigin::signed(BOB.into()),
-				pool_id,
-				default_tranche_id(pool_id),
-				pool_currency_id,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
-		);
-
-		// Should fail if currency does not have any MultiLocation in metadata
-		assert_ok!(OrmlAssetRegistry::update_asset(
-			RuntimeOrigin::root(),
-			pool_currency_id,
-			None,
-			None,
-			None,
-			None,
-			None,
-			Some(CustomMetadata {
-				// Changed: Allow connectors transferability
-				transferability: CrossChainTransferability::Connectors,
-				mintable: Default::default(),
-				permissioned: Default::default(),
-				// Still allow to be pool currency
-				pool_currency: true,
-			}),
-		));
-		assert_noop!(
-			Connectors::allow_pool_currency(
-				RuntimeOrigin::signed(BOB.into()),
-				pool_id,
-				default_tranche_id(pool_id),
-				pool_currency_id,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
-		);
-
-		// Should fail if currency does not have ConnectorsWrappedToken location in
-		// metadata
-		assert_ok!(OrmlAssetRegistry::update_asset(
-			RuntimeOrigin::root(),
-			pool_currency_id,
-			None,
-			None,
-			None,
-			None,
-			// Changed: Add some location which cannot be converted to ConnectorsWrappedToken
-			Some(Some(VersionedMultiLocation::V3(Default::default()))),
-			// No change for transferability required as it is already allowed for Connectors
-			None,
-		));
-		assert_noop!(
-			Connectors::allow_pool_currency(
-				RuntimeOrigin::signed(BOB.into()),
-				pool_id,
-				default_tranche_id(pool_id),
-				pool_currency_id,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken
 		);
 	});
 }
@@ -2059,7 +2026,10 @@ mod utils {
 			// are transferred from this account instead of minting
 			assert_ok!(OrmlTokens::mint_into(
 				investment_id(pool_id, default_tranche_id(pool_id)).into(),
-				&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS),
+				&DomainLocator::<Domain> {
+					domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.into(),
+				}
+				.into_account_truncating(),
 				amount
 			));
 

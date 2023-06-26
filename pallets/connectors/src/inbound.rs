@@ -13,10 +13,10 @@
 
 use cfg_traits::{
 	ops::{EnsureAdd, EnsureSub},
-	CurrencyInspect, Investment, InvestmentCollector, Permissions,
+	Investment, InvestmentCollector, Permissions,
 };
 use cfg_types::{
-	domain_address::{Domain, DomainAddress},
+	domain_address::{Domain, DomainAddress, DomainLocator},
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -24,13 +24,11 @@ use frame_support::{
 	traits::fungibles::{Mutate, Transfer},
 };
 use sp_runtime::{
-	traits::{Convert, Zero},
+	traits::{AccountIdConversion, Zero},
 	DispatchResult,
 };
 
-use crate::{
-	pallet::Error, Config, CurrencyIdOf, GeneralCurrencyIndexOf, Pallet, PoolIdOf, TrancheIdOf,
-};
+use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Pallet, PoolIdOf, TrancheIdOf};
 
 impl<T: Config> Pallet<T> {
 	/// Executes a transfer from another domain exclusively for
@@ -64,11 +62,6 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
-		// Check that the source is not the local domain
-		ensure!(
-			sending_domain.domain() != Domain::Centrifuge,
-			Error::<T>::InvalidDomain
-		);
 		ensure!(
 			T::Permission::has(
 				PermissionScope::Pool(pool_id),
@@ -79,14 +72,13 @@ impl<T: Config> Pallet<T> {
 		);
 
 		let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-		ensure!(
-			CurrencyIdOf::<T>::is_tranche_token(invest_id.clone().into()),
-			Error::<T>::InvalidTransferCurrency
-		);
 
 		T::Tokens::transfer(
 			invest_id.into(),
-			&T::AccountConverter::convert(sending_domain),
+			&DomainLocator::<Domain> {
+				domain: sending_domain.domain(),
+			}
+			.into_account_truncating(),
 			&receiver,
 			amount,
 			false,
@@ -184,7 +176,10 @@ impl<T: Config> Pallet<T> {
 		// Transfer tranche tokens from `DomainLocator` account of origination domain
 		T::Tokens::transfer(
 			invest_id.clone().into(),
-			&T::AccountConverter::convert(sending_domain),
+			&DomainLocator::<Domain> {
+				domain: sending_domain.domain(),
+			}
+			.into_account_truncating(),
 			&investor,
 			amount,
 			false,
@@ -229,7 +224,10 @@ impl<T: Config> Pallet<T> {
 		T::Tokens::transfer(
 			invest_id.into(),
 			&investor,
-			&T::AccountConverter::convert(sending_domain),
+			&DomainLocator::<Domain> {
+				domain: sending_domain.domain(),
+			}
+			.into_account_truncating(),
 			amount,
 			false,
 		)?;
