@@ -1,8 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub},
-	InterestAccrual, RateCollection,
-};
+use cfg_traits::{InterestAccrual, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -10,7 +7,10 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
-use sp_runtime::{traits::Zero, DispatchError};
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
+	DispatchError,
+};
 
 use crate::{
 	pallet::{Config, Error},

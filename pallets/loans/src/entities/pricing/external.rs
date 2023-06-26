@@ -1,14 +1,16 @@
 use cfg_primitives::Moment;
 use cfg_traits::{
+	self,
 	data::{DataCollection, DataRegistry},
-	ops::{EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{
+		EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, One, Zero,
+	},
 	DispatchError, DispatchResult,
 };
 

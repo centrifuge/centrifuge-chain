@@ -76,9 +76,9 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		self,
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
-		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
@@ -101,7 +101,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
-		traits::{BadOrigin, One, Zero},
+		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
 	use sp_std::vec::Vec;

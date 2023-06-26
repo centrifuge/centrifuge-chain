@@ -40,10 +40,7 @@ pub use weights::Weights;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::{
-		fees::Fees,
-		ops::{EnsureAdd, EnsureSub},
-	};
+	use cfg_traits::fees::Fees;
 	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
@@ -52,7 +49,10 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use scale_info::TypeInfo;
-	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
+	use sp_runtime::{
+		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub},
+		Saturating,
+	};
 
 	use super::*;
 
