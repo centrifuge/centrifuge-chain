@@ -38,6 +38,7 @@ use crate::{
 	PoolState, UnhealthyState,
 };
 
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 pub mod util {
 	use sp_std::time::Duration;
@@ -77,7 +78,7 @@ pub mod util {
 						},
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				0,
 			)
 			.unwrap();
@@ -130,8 +131,6 @@ pub mod util {
 		}
 	}
 }
-
-const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
