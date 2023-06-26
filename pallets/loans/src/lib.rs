@@ -560,8 +560,7 @@ pub mod pallet {
 
 		/// Writes off an overdue loan.
 		///
-		/// This action will write off based on the write off policy configured
-		/// by [`Pallet::update_write_off_policy()`].
+		/// This action will write off based on the configured write off policy.
 		/// The write off action will only take effect if it writes down more
 		/// (percentage or penalty) than the current write off status of the
 		/// loan. This action will never writes up. i.e:
