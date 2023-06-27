@@ -22,7 +22,11 @@ use crate::Runtime;
 pub type UpgradeAltair1028 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
+	pool_system::MigrateAUSDPools,
 );
+
+const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
@@ -184,9 +188,6 @@ mod orml_tokens_migration {
 		pub entries: Vec<(AccountId, AccountData<Balance>)>,
 	}
 
-	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
-	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
-
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
@@ -282,6 +283,30 @@ mod orml_tokens_migration {
 			// could just set this to a high-enough value.
 			<Runtime as frame_system::Config>::DbWeight::get()
 				.reads_writes(migrated_entries * 2, migrated_entries * 2)
+		}
+	}
+}
+
+mod pool_system {
+	use pallet_pool_system::pool_types::PoolDetails;
+	use super::*;
+
+	pub struct MigrateAUSDPools;
+
+	impl OnRuntimeUpgrade for MigrateAUSDPools {
+		fn on_runtime_upgrade() -> Weight {
+			pallet_pool_system::Pool::<Runtime>::translate(
+				|_, mut details: PoolDetails<CurrencyId, _, _, _,_, _, _, _, _>| {
+					if details.currency == DEPRECATED_AUSD_CURRENCY_ID {
+						details.currency = NEW_AUSD_CURRENCY_ID;
+					}
+
+					Some(details)
+				},
+			);
+
+			let n = pallet_pool_system::Pool::<Runtime>::iter().count() as u64;
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
 		}
 	}
 }
