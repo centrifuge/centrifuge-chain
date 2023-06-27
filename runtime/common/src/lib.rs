@@ -395,62 +395,77 @@ pub mod oracle {
 }
 
 pub mod changes {
-	use cfg_primitives::SECONDS_PER_WEEK;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans::{
-		types::{InternalMutation, LoanMutation},
-		LoanChangeOf,
-	};
-	use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
+	use pallet_loans::ChangeOf as LoansChangeOf;
+	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
-	use sp_std::vec;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoanChangeOf<T>),
+		Loan(LoansChangeOf<T>),
 	}
 
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(value: RuntimeChange<T>) -> Self {
-			let RuntimeChange::Loan(LoanChangeOf::<T>::Loan(_, loan_mutation)) = value;
+		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
+			use cfg_primitives::SECONDS_PER_WEEK;
+			use pallet_loans::types::{InternalMutation, LoanMutation};
+			use pallet_pool_system::pool_types::changes::Requirement;
+			use sp_std::vec;
 
 			let epoch = Requirement::NextEpoch;
 			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 			let blocked = Requirement::BlockedByLockedRedemptions;
 
-			// Requirements gathered from
-			// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-			let requirements = match loan_mutation {
-				LoanMutation::Maturity(_) => vec![week, blocked],
-				LoanMutation::InterestPayments(_) => vec![week, blocked],
-				LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-				LoanMutation::Internal(mutation) => match mutation {
-					InternalMutation::InterestRate(_) => vec![epoch],
-					InternalMutation::ValuationMethod(_) => vec![week, blocked],
-					InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-					InternalMutation::LossGivenDefault(_) => vec![epoch],
-					InternalMutation::DiscountRate(_) => vec![epoch],
+			let requirements = match loans_change {
+				// Requirements gathered from
+				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
+				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
+					LoanMutation::Maturity(_) => vec![week, blocked],
+					LoanMutation::InterestPayments(_) => vec![week, blocked],
+					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
+					LoanMutation::Internal(mutation) => match mutation {
+						InternalMutation::InterestRate(_) => vec![epoch],
+						InternalMutation::ValuationMethod(_) => vec![week, blocked],
+						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
+						InternalMutation::LossGivenDefault(_) => vec![epoch],
+						InternalMutation::DiscountRate(_) => vec![epoch],
+					},
 				},
+				LoansChangeOf::<T>::Policy(_) => vec![week, blocked],
 			};
 
 			PoolChangeProposal::new(requirements)
 		}
 	}
 
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
+			// We dont add any requirement in case of benchmarking.
+			// We assume checking requirements in the pool is something very fast and
+			// deprecable in relation to reading from any storage.
+			// If tomorrow any requirement requires a lot of time,
+			// it should be precomputed in any pool stage, to make the requirement
+			// validation as fast as possible.
+			PoolChangeProposal::new([])
+		}
+	}
+
 	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoanChangeOf<T>) -> RuntimeChange<T> {
+	impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
 			RuntimeChange::Loan(loan_change)
 		}
 	}
 
 	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoanChangeOf<T>> for RuntimeChange<T> {
+	impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
 		type Error = DispatchError;
 
-		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
+		fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
 			let RuntimeChange::Loan(loan_change) = self;
 			Ok(loan_change)
 		}
