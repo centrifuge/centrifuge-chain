@@ -1,5 +1,8 @@
 use super::*;
 
+/// Used where the error comes from other pallet impl. unknown from the tests
+const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
+
 fn config_mocks(withdraw_amount: Balance) {
 	MockPools::mock_withdraw(move |pool_id, to, amount| {
 		assert_eq!(to, BORROWER);
@@ -7,14 +10,16 @@ fn config_mocks(withdraw_amount: Balance) {
 		assert_eq!(withdraw_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(|id| {
-		assert_eq!(*id, REGISTER_PRICE_ID);
-		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+	MockPrices::mock_get(|id| match *id {
+		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+		_ => Err(PRICE_ID_NO_FOUND),
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
-		assert_eq!(*id, REGISTER_PRICE_ID);
 		assert_eq!(*pool_id, POOL_A);
-		Ok(())
+		match *id {
+			REGISTER_PRICE_ID => Ok(()),
+			_ => Err(PRICE_ID_NO_FOUND),
+		}
 	});
 }
 
@@ -196,6 +201,29 @@ fn with_correct_amount_internal_pricing() {
 			assert_eq!(amount, util::current_loan_debt(loan_id));
 		});
 	}
+}
+
+#[test]
+fn with_unregister_price_id() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				max_borrow_quantity: QUANTITY,
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		config_mocks(amount);
+
+		assert_noop!(
+			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+			PRICE_ID_NO_FOUND
+		);
+	});
 }
 
 #[test]
