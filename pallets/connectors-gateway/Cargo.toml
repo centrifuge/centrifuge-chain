@@ -52,7 +52,9 @@ std = [
     "cfg-traits/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "sp-std/std",
+    "sp-core/std",
     "sp-runtime/std",
     "scale-info/std",
 ]

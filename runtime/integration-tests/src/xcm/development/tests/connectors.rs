@@ -27,13 +27,8 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, Moment, PoolId, TrancheId,
-};
-use cfg_traits::{
-	connectors::{Codec as _, InboundQueue},
-	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
-};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_traits::{connectors::Codec, Permissions as _, PoolMutate};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::Rate,

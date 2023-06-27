@@ -20,15 +20,15 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+
 cfg-primitives = { path = "../primitives", default-features = false }
 cfg-traits = { path = "../traits", default-features = false }
 cfg-types = { path = "../types", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 mock-builder = { path = "../../libs/mock-builder" }
-
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -45,6 +45,8 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "orml-traits/std",
+  "pallet-xcm-transactor/std",
+  "xcm/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -53,6 +55,7 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -61,4 +64,5 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "sp-runtime/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
 ]

@@ -79,6 +79,7 @@ runtime-common = { path = "../common" }
 
 [dev-dependencies]
 hex = { version = "0.4.3", default_features = false }
+getrandom = { version = "0.2", features = ["js"] }
 
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
@@ -144,6 +145,7 @@ std = [
   "sp-runtime/std",
   "sp-tracing/std",
   "xcm/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [

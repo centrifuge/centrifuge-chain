@@ -22,11 +22,10 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 
 # XCM
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 # EVM
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 ethabi = { version = "16.0", default-features = false }
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
@@ -45,6 +44,7 @@ cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", branch
 xcm-builder = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
 xcm-executor = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
 
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
@@ -65,8 +65,9 @@ runtime-benchmarks = [
     "cfg-types/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "pallet-connectors-gateway/runtime-benchmarks",
     "pallet-ethereum/runtime-benchmarks",
-    "pallet-evm/std",
+    "pallet-ethereum-transaction/runtime-benchmarks",
     "pallet-xcm-transactor/runtime-benchmarks",
     "xcm-primitives/runtime-benchmarks",
 ]
@@ -75,21 +76,25 @@ std = [
     "cfg-types/std",
     "cfg-traits/std",
     "frame-support/std",
+    "frame-system/std",
     "sp-std/std",
+    "sp-core/std",
     "xcm/std",
+    "pallet-connectors-gateway/std",
     "pallet-xcm-transactor/std",
     "pallet-ethereum/std",
-    "pallet-evm/std",
+    "pallet-ethereum-transaction/std",
     "xcm-primitives/std",
     "ethabi/std",
     "scale-info/std",
 ]
 try-runtime = [
-    "cfg-traits/try-runtime",
     "frame-support/try-runtime",
+    "frame-system/try-runtime",
     "cfg-traits/try-runtime",
     "cfg-types/try-runtime",
+    "pallet-connectors-gateway/try-runtime",
     "pallet-ethereum/try-runtime",
-    "pallet-evm/try-runtime",
+    "pallet-ethereum-transaction/try-runtime",
     "pallet-xcm-transactor/try-runtime",
 ]

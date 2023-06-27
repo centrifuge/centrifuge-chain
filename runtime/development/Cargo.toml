@@ -16,6 +16,7 @@ hex-literal = { version = "0.3.4", optional = true }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119", optional = true }
 static_assertions = "1.1.0"
+getrandom = { version = "0.2", features = ["js"] }
 
 # parachain
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.38" }
@@ -155,7 +156,6 @@ std = [
   "cfg-primitives/std",
   "cfg-types/std",
   "chainbridge/std",
-  "chainbridge/std",
   "codec/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
@@ -189,6 +189,8 @@ std = [
   "pallet-collator-selection/std",
   "pallet-collective/std",
   "pallet-connectors/std",
+  "pallet-connectors-gateway/std",
+  "connectors-gateway-routers/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
@@ -264,6 +266,7 @@ std = [
   "fp-rpc/std",
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [
@@ -313,6 +316,8 @@ runtime-benchmarks = [
   "orml-xtokens/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
   "pallet-connectors/runtime-benchmarks",
+  "pallet-connectors-gateway/runtime-benchmarks",
+  "connectors-gateway-routers/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
@@ -334,12 +339,14 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
-  "pallet-connectors/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
+  "pallet-connectors/try-runtime",
+  "pallet-connectors-gateway/try-runtime",
+  "connectors-gateway-routers/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
   "pallet-keystore/try-runtime",
