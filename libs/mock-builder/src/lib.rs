@@ -235,6 +235,20 @@
 //!
 //! If types for the closure of `mock_*` method and trait method don't match,
 //! you will obtain a runtime error in your tests.
+//!
+//! ## Mock Patterns
+//!
+//! ### Storage pattern
+//!
+//! In some cases it's pretty common making a mock that returns a value that was
+//! set previously by another mock. For this case you can define your "getter"
+//! mock inside the definition of the "setter" mock, as follows:
+//!
+//! ```ignore
+//! MyMock::mock_set(|value| MyMock::mock_get(move || value));
+//! ```
+//!
+//! Any call to `get()` will return the last value given to `set()`.
 
 /// Provide functions for register/execute calls
 pub mod storage;
