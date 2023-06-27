@@ -15,13 +15,15 @@
 
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{PalletError, RuntimeDebug};
+use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
+use sp_runtime::traits::Get;
 
 pub mod policy;
 pub mod portfolio;
 pub mod valuation;
 
+use policy::WriteOffRule;
 use valuation::ValuationMethod;
 
 /// Error related to loan creation
@@ -187,6 +189,7 @@ pub enum LoanMutation<Rate> {
 
 /// Change description
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum Change<LoanId, Rate> {
+pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
 	Loan(LoanId, LoanMutation<Rate>),
+	Policy(BoundedVec<WriteOffRule<Rate>, MaxRules>),
 }

@@ -20,8 +20,9 @@ fn config_mocks(loan_id: LoanId, loan_mutation: &LoanMutation<Rate>) {
 
 	MockChangeGuard::mock_released({
 		let loan_mutation = loan_mutation.clone();
-		move |pool_id, _| {
+		move |pool_id, change_id| {
 			assert_eq!(pool_id, POOL_A);
+			assert_eq!(change_id, CHANGE_ID);
 			Ok(Change::Loan(loan_id, loan_mutation.clone()))
 		}
 	});
@@ -41,6 +42,22 @@ fn without_active_loan() {
 				DEFAULT_MUTATION
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
+		);
+	});
+}
+
+#[test]
+fn with_wrong_policy_change() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_internal_loan());
+		util::borrow_loan(loan_id, 0);
+
+		config_mocks(loan_id, &DEFAULT_MUTATION);
+		MockChangeGuard::mock_released(|_, _| Ok(Change::Policy(vec![].try_into().unwrap())));
+
+		assert_noop!(
+			Loans::apply_loan_mutation(RuntimeOrigin::signed(ANY), POOL_A, CHANGE_ID),
+			Error::<Runtime>::UnrelatedChangeId
 		);
 	});
 }
@@ -217,7 +234,7 @@ fn with_successful_mutation_application() {
 			assert_eq!(pre_pv, mid_pv);
 			assert_eq!(pre_loan, mid_loan);
 
-			assert_ok!(Loans::apply_change(
+			assert_ok!(Loans::apply_loan_mutation(
 				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				CHANGE_ID,

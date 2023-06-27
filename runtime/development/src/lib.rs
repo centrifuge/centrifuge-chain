@@ -1297,6 +1297,7 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRateCount: u32 = MaxActiveLoansPerPool::get();
 	pub const MaxCollectionSize: u32 = MaxActiveLoansPerPool::get();
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 5;
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
