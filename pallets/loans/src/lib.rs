@@ -648,7 +648,7 @@ pub mod pallet {
 		/// The change is not performed until you call
 		/// [`Pallet::apply_loan_mutation()`].
 		#[pallet::weight(T::WeightInfo::propose_loan_mutation(T::MaxActiveLoansPerPool::get()))]
-		#[pallet::call_index(8)]
+		#[pallet::call_index(5)]
 		pub fn propose_loan_mutation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -676,7 +676,7 @@ pub mod pallet {
 		/// It will only perform the change if the requirements for it
 		/// are fulfilled.
 		#[pallet::weight(T::WeightInfo::apply_loan_mutation(T::MaxActiveLoansPerPool::get()))]
-		#[pallet::call_index(9)]
+		#[pallet::call_index(6)]
 		pub fn apply_loan_mutation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -707,7 +707,7 @@ pub mod pallet {
 		/// Closing a loan gives back the collateral used for the loan to the
 		/// borrower .
 		#[pallet::weight(T::WeightInfo::close(T::MaxActiveLoansPerPool::get()))]
-		#[pallet::call_index(5)]
+		#[pallet::call_index(7)]
 		pub fn close(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -744,7 +744,7 @@ pub mod pallet {
 		/// The write off policy is used to automatically set a write off
 		/// minimum value to the loan.
 		#[pallet::weight(T::WeightInfo::propose_write_off_policy())]
-		#[pallet::call_index(6)]
+		#[pallet::call_index(8)]
 		pub fn propose_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -763,7 +763,7 @@ pub mod pallet {
 		/// It will only perform the change if the requirements for it
 		/// are fulfilled.
 		#[pallet::weight(T::WeightInfo::apply_write_off_policy())]
-		#[pallet::call_index(10)]
+		#[pallet::call_index(9)]
 		pub fn apply_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -786,7 +786,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
 			T::MaxActiveLoansPerPool::get()
 		))]
-		#[pallet::call_index(7)]
+		#[pallet::call_index(10)]
 		pub fn update_portfolio_valuation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -798,8 +798,6 @@ pub mod pallet {
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
-
-		// NOTE: call_index is not ordered.
 	}
 
 	/// Utility methods
