@@ -29,7 +29,7 @@ pub struct ExternalPricing<T: Config> {
 
 impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
-		T::PriceRegistry::get(&self.price_id).map(|_| ())
+		Ok(())
 	}
 }
 

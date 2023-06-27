@@ -65,11 +65,11 @@ fn with_wrong_pool() {
 fn apply_without_released() {
 	new_test_ext().execute_with(|| {
 		config_mocks(POOL_A, &vec![].try_into().unwrap());
-		MockChangeGuard::mock_released(|_, _| Err(DEPENDENCY_ERROR));
+		MockChangeGuard::mock_released(|_, _| Err("err".into()));
 
 		assert_noop!(
 			Loans::apply_write_off_policy(RuntimeOrigin::signed(ANY), POOL_A, CHANGE_ID),
-			DEPENDENCY_ERROR
+			DispatchError::Other("err")
 		);
 	});
 }
