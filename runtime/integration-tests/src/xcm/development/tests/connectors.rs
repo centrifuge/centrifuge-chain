@@ -216,7 +216,7 @@ fn update_member() {
 				new_member.clone(),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::InvestorEvmAddressNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::InvestorDomainAddressNotAMember,
 		);
 
 		// Whitelist destination as TrancheInvestor of this Pool
@@ -257,7 +257,7 @@ fn update_member() {
 				DomainAddress::EVM(1284, [9; 20]),
 				valid_until,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::InvestorEvmAddressNotWhitelisted,
+			pallet_connectors::Error::<development_runtime::Runtime>::InvestorDomainAddressNotAMember,
 		);
 	});
 }
@@ -1027,11 +1027,7 @@ fn allow_pool_should_fail() {
 		));
 
 		// Create pool
-		utils::create_currency_pool(
-			pool_id,
-			currency_id,
-			10_000 * dollar(12)
-		);
+		utils::create_currency_pool(pool_id, currency_id, 10_000 * dollar(12));
 
 		// Should fail if asset is not pool currency
 		assert!(currency_id != ausd_currency_id);

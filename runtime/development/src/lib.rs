@@ -1579,7 +1579,7 @@ impl pallet_connectors::Config for Runtime {
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
 	type WeightInfo = ();
-	type WrappedCurrencyConverter = ConnectorsWrappedTokenConvert<ConnectorsPalletIndex>;
+	type WrappedTokenConverter = ConnectorsWrappedTokenConvert<ConnectorsPalletIndex>;
 }
 
 parameter_types! {

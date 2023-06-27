@@ -202,7 +202,7 @@ pub mod pallet {
 		///
 		/// Enables the derivation of the EVM chain id and EVM address from
 		/// the metadata of an asset if it is registered in the `AssetRegistry`.
-		type WrappedCurrencyConverter: Convert<ConnectorsWrappedToken, MultiLocation>
+		type WrappedTokenConverter: Convert<ConnectorsWrappedToken, MultiLocation>
 			+ Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
 			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>;
 
@@ -292,7 +292,7 @@ pub mod pallet {
 		InvalidTransferCurrency,
 		/// The account derived from the [Domain] and [DomainAddress] has not
 		/// been whitelisted as a TrancheInvestor.
-		InvestorEvmAddressNotWhitelisted,
+		InvestorDomainAddressNotAMember,
 	}
 
 	#[pallet::call]
@@ -453,7 +453,7 @@ pub mod pallet {
 					T::AccountConverter::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
-				Error::<T>::InvestorEvmAddressNotWhitelisted
+				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
 			Self::do_send_message(
@@ -470,7 +470,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfer tranche tokens to a given address
+		/// Transfer tranche tokens to a given address.
+		///
+		/// NOTE: The transferring account is not kept alive as we allow its
+		/// death.
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
 		pub fn transfer_tranche_tokens(
@@ -499,10 +502,6 @@ pub mod pallet {
 
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-			ensure!(
-				CurrencyIdOf::<T>::is_tranche_token(invest_id.clone().into()),
-				Error::<T>::InvalidTransferCurrency
-			);
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -513,6 +512,7 @@ pub mod pallet {
 				}
 				.into_account_truncating(),
 				amount,
+				// NOTE: Here, we allow death
 				false,
 			)?;
 
@@ -535,7 +535,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfer non-tranche tokens to a given address
+		/// Transfer non-tranche tokens to a given address.
+		///
+		/// NOTE: The transferring account is not kept alive as we allow its
+		/// death.
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
 		#[pallet::call_index(7)]
 		pub fn transfer(
@@ -559,7 +562,7 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// Check that the registered asset location matches the destination
-			match Self::try_get_wrapped_currency(&currency_id)? {
+			match Self::try_get_wrapped_token(&currency_id)? {
 				ConnectorsWrappedToken::EVM { chain_id, .. } => {
 					ensure!(
 						Domain::EVM(chain_id) == receiver.domain(),
@@ -577,6 +580,7 @@ pub mod pallet {
 				}
 				.into_account_truncating(),
 				amount,
+				// NOTE: Here, we allow death
 				false,
 			)?;
 
@@ -609,7 +613,7 @@ pub mod pallet {
 			let ConnectorsWrappedToken::EVM {
 				chain_id,
 				address: evm_address,
-			} = Self::try_get_wrapped_currency(&currency_id)?;
+			} = Self::try_get_wrapped_token(&currency_id)?;
 
 			Self::do_send_message(
 				who,
@@ -663,7 +667,7 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			let ConnectorsWrappedToken::EVM { chain_id, .. } =
-				Self::try_get_wrapped_currency(&currency_id)?;
+				Self::try_get_wrapped_token(&currency_id)?;
 
 			Self::do_send_message(
 				who,
@@ -920,7 +924,7 @@ pub mod pallet {
 		/// converted to [ConnectorsWrappedToken].
 		///
 		/// Requires the currency to be registered in the `AssetRegistry`.
-		pub fn try_get_wrapped_currency(
+		pub fn try_get_wrapped_token(
 			currency_id: &CurrencyIdOf<T>,
 		) -> Result<ConnectorsWrappedToken, DispatchError> {
 			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
@@ -928,7 +932,7 @@ pub mod pallet {
 				meta.additional.transferability.includes_connectors(),
 				Error::<T>::AssetNotConnectorsTransferable
 			);
-			T::WrappedCurrencyConverter::convert(
+			T::WrappedTokenConverter::convert(
 				meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?,
 			)
 			.map_err(|_| Error::<T>::AssetNotConnectorsWrappedToken.into())
