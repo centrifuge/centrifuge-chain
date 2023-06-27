@@ -289,6 +289,7 @@ mod orml_tokens_migration {
 
 mod pool_system {
 	use pallet_pool_system::pool_types::PoolDetails;
+
 	use super::*;
 
 	pub struct MigrateAUSDPools;
@@ -296,7 +297,7 @@ mod pool_system {
 	impl OnRuntimeUpgrade for MigrateAUSDPools {
 		fn on_runtime_upgrade() -> Weight {
 			pallet_pool_system::Pool::<Runtime>::translate(
-				|_, mut details: PoolDetails<CurrencyId, _, _, _,_, _, _, _, _>| {
+				|_, mut details: PoolDetails<CurrencyId, _, _, _, _, _, _, _, _>| {
 					if details.currency == DEPRECATED_AUSD_CURRENCY_ID {
 						details.currency = NEW_AUSD_CURRENCY_ID;
 					}
