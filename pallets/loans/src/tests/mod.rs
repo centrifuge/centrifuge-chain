@@ -36,9 +36,6 @@ const PRICE_VALUE: Rate = Rate::from_u32(1000);
 const QUANTITY: Balance = 20;
 const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 
-/// Used where the error comes from other pallet impl. unknown from the tests
-const DEPENDENCY_ERROR: DispatchError = DispatchError::Other("dependency error");
-
 pub mod mock;
 use mock::*;
 
