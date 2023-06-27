@@ -47,8 +47,8 @@ use crate::{
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
+		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -201,6 +201,24 @@ where
 		.unwrap();
 	}
 
+	fn propose_mutation(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> T::Hash {
+		let pool_admin = account::<T::AccountId>("loan_admin", 0, 0);
+
+		let loan_mutation = LoanMutation::InterestPayments(InterestPayments::None);
+		Pallet::<T>::propose_loan_mutation(
+			RawOrigin::Signed(pool_admin).into(),
+			pool_id,
+			loan_id,
+			loan_mutation.clone(),
+		)
+		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Loan(loan_id, loan_mutation).into()).unwrap()
+	}
+
 	// Worst case policy where you need to iterate for the whole policy.
 	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
 		vec![
@@ -339,6 +357,30 @@ benchmarks! {
 		Helper::<T>::set_policy(pool_id);
 
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
+
+	propose_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let loan_admin = account("loan_admin", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let mutation = LoanMutation::InterestPayments(InterestPayments::None);
+
+	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, mutation)
+
+	apply_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let any = account("any", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let change_id = Helper::<T>::propose_mutation(pool_id, loan_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
 
 	close {
 		let n in 1..Helper::<T>::max_active_loans() - 1;

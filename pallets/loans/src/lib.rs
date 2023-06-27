@@ -24,9 +24,9 @@
 //! | [`Pallet::repay()`]                 | Borrower  |
 //! | [`Pallet::write_off()`]             |           |
 //! | [`Pallet::admin_write_off()`]       | LoanAdmin |
-//! | [`Pallet::close()`]                 | Borrower  |
 //! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
 //! | [`Pallet::apply_loan_mutation()`]   |           |
+//! | [`Pallet::close()`]                 | Borrower  |
 //!
 //! The following actions are performed over an entire pool of loans:
 //!
@@ -647,7 +647,7 @@ pub mod pallet {
 		/// Propose a change.
 		/// The change is not performed until you call
 		/// [`Pallet::apply_loan_mutation()`].
-		#[pallet::weight(100_000_000)]
+		#[pallet::weight(T::WeightInfo::propose_loan_mutation(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(8)]
 		pub fn propose_loan_mutation(
 			origin: OriginFor<T>,
@@ -675,7 +675,7 @@ pub mod pallet {
 		/// Apply a proposed change identified by a change id.
 		/// It will only perform the change if the requirements for it
 		/// are fulfilled.
-		#[pallet::weight(100_000_000)]
+		#[pallet::weight(T::WeightInfo::apply_loan_mutation(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(9)]
 		pub fn apply_loan_mutation(
 			origin: OriginFor<T>,
