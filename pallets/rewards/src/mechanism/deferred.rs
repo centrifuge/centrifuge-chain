@@ -1,11 +1,11 @@
-use cfg_traits::ops::{
-	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
-};
 use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{One, Saturating, Zero},
+	traits::{
+		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+		One, Saturating, Zero,
+	},
 	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 

@@ -122,17 +122,17 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureInto, EnsureMul, EnsureSub},
-	InterestAccrual, RateCollection,
-};
+use cfg_traits::{InterestAccrual, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating},
+	traits::{
+		AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd, EnsureAddAssign, EnsureDiv,
+		EnsureInto, EnsureMul, EnsureSub, Saturating,
+	},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::{cmp::Ordering, vec::Vec};

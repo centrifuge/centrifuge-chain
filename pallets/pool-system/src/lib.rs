@@ -15,10 +15,7 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
-	Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve,
-};
+use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -51,7 +48,8 @@ pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Get, One, Saturating,
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd,
+		EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, Get, One, Saturating,
 		Zero,
 	},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,

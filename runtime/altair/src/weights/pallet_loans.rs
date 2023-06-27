@@ -131,7 +131,16 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	// Storage: Permissions Permission (r:1 w:0)
 	// Storage: PoolSystem Pool (r:1 w:0)
 	// Storage: Loans WriteOffPolicy (r:0 w:1)
-	fn update_write_off_policy() -> Weight {
+	fn propose_write_off_policy() -> Weight {
+		// Minimum execution time: 108_502 nanoseconds.
+		Weight::from_ref_time(111_501_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
+	// Storage: Permissions Permission (r:1 w:0)
+	// Storage: PoolSystem Pool (r:1 w:0)
+	// Storage: Loans WriteOffPolicy (r:0 w:1)
+	fn apply_write_off_policy() -> Weight {
 		// Minimum execution time: 108_502 nanoseconds.
 		Weight::from_ref_time(111_501_000)
 			.saturating_add(T::DbWeight::get().reads(2))
