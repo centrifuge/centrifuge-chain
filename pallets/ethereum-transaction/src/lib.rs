@@ -9,7 +9,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::ethereum::EthereumTransactor;
@@ -48,6 +47,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn get_transaction_signature() -> Option<TransactionSignature> {
+			//TODO(cdamian): Same signature as the one in ethereum-xcm.
 			TransactionSignature::new(
 				TRANSACTION_RECOVERY_ID,
 				H256::from_low_u64_be(1u64),
@@ -68,7 +68,6 @@ pub mod pallet {
 			let nonce = Nonce::<T>::get();
 			let read_weight = T::DbWeight::get().reads(1);
 
-			//TODO(cdamian): Same signature as the one in ethereum-xcm.
 			let signature =
 				Pallet::<T>::get_transaction_signature().ok_or(DispatchErrorWithPostInfo {
 					post_info: PostDispatchInfo {
