@@ -1438,10 +1438,8 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			// Deprecated, remove in the next runtime upgrade
-			CurrencyId::AUSD => false,
 			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::Staking(_) => false,
-			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
+			_ => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)
 				.unwrap_or(false),
 		}
