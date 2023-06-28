@@ -44,7 +44,10 @@ pub use cfg_traits::rewards::{
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::tokens::{AssetId, Balance},
+	traits::{
+		tokens::{AssetId, Balance},
+		Time,
+	},
 	DefaultNoBound,
 };
 pub use frame_support::{
@@ -65,7 +68,7 @@ use weights::WeightInfo;
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
-	duration: T::BlockNumber,
+	duration: MomentOf<T>,
 	reward: T::Balance,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
 }
@@ -86,11 +89,13 @@ impl<T: Config> Default for EpochData<T> {
 )]
 #[scale_info(skip_type_params(T))]
 pub struct EpochChanges<T: Config> {
-	duration: Option<T::BlockNumber>,
+	duration: Option<MomentOf<T>>,
 	reward: Option<T::Balance>,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
 	currencies: BoundedBTreeMap<T::CurrencyId, T::GroupId, T::MaxChangesPerEpoch>,
 }
+
+pub type MomentOf<T> = <<T as Config>::Timer as Time>::Moment;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -122,6 +127,8 @@ pub mod pallet {
 			+ CurrencyGroupChange<GroupId = Self::GroupId, CurrencyId = Self::CurrencyId>
 			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
+		type Timer: Time;
+
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not
 		/// computed and not stored.
@@ -138,7 +145,7 @@ pub mod pallet {
 		/// This value can be updated later using
 		/// [`Pallet::set_epoch_duration()`]`.
 		#[pallet::constant]
-		type InitialEpochDuration: Get<Self::BlockNumber>;
+		type InitialEpochDuration: Get<MomentOf<Self>>;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -148,15 +155,15 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	/// Contains the timestamp in blocks when the current epoch is finalized.
+	/// Contains the timestamp when the current epoch is finalized.
 	//
 	// Although this value could be stored inside `EpochData`,
 	// we maintain it separately to avoid deserializing the whole EpochData struct each
 	// `on_initialize()` call. EpochData could be relatively big if there many groups.
-	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100
-	// blocks), we only need to perform that action when the epoch finalized, 1% of the time.
+	// We dont have to deserialize the whole struct each time,
+	// we only need to perform that action when the epoch finalized.
 	#[pallet::storage]
-	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, MomentOf<T>, ValueQuery>;
 
 	/// Data associated to the current epoch.
 	#[pallet::storage]
@@ -171,7 +178,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NewEpoch {
-			ends_on: T::BlockNumber,
+			ends_on: MomentOf<T>,
 			reward: T::Balance,
 			last_changes: EpochChanges<T>,
 		},
@@ -186,10 +193,11 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(current_block: T::BlockNumber) -> Weight {
+		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let ends_on = EndOfEpoch::<T>::get();
+			let now = T::Timer::now();
 
-			if ends_on > current_block {
+			if ends_on > now {
 				return T::DbWeight::get().reads(1);
 			}
 
@@ -219,7 +227,7 @@ pub mod pallet {
 						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
 						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
 
-						let ends_on = ends_on.max(current_block).ensure_add(epoch_data.duration)?;
+						let ends_on = ends_on.max(now).ensure_add(epoch_data.duration)?;
 
 						EndOfEpoch::<T>::set(ends_on);
 
@@ -300,10 +308,10 @@ pub mod pallet {
 		/// Current epoch is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_epoch_duration())]
 		#[pallet::call_index(4)]
-		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
+		pub fn set_epoch_duration(origin: OriginFor<T>, duration: MomentOf<T>) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| changes.duration = Some(blocks));
+			NextEpochChanges::<T>::mutate(|changes| changes.duration = Some(duration));
 
 			Ok(())
 		}

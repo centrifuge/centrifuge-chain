@@ -21,9 +21,18 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Liquidity: pallet_liquidity_rewards,
+		Timer: pallet_timestamp,
 		MockRewards: cfg_mocks::pallet_mock_rewards,
 	}
 );
+
+frame_support::parameter_types! {
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	pub const MaxChangesPerEpoch: u32 = 50;
+}
 
 impl frame_system::Config for Test {
 	type AccountData = ();
@@ -52,12 +61,11 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-frame_support::parameter_types! {
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxGroups: u32 = 20;
-
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const MaxChangesPerEpoch: u32 = 50;
+impl pallet_timestamp::Config for Test {
+	type MinimumPeriod = ConstU64<1000>;
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type WeightInfo = ();
 }
 
 impl cfg_mocks::pallet_mock_rewards::Config for Test {
@@ -76,6 +84,7 @@ impl pallet_liquidity_rewards::Config for Test {
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
 	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timer;
 	type Weight = u64;
 	type WeightInfo = ();
 }
