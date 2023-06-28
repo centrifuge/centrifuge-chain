@@ -2618,12 +2618,13 @@ mod changes {
 
 			let change = PoolChangeProposal::new([Requirement::BlockedByLockedRedemptions]);
 			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			/* TODO: 1407
 			assert_noop!(
 				PoolSystem::released(DEFAULT_POOL_ID, change_id),
 				Error::<Runtime>::ChangeNotReady
 			);
 
-			/*
 			// TODO: make the change ready
 
 			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));

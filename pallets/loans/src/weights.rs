@@ -19,6 +19,8 @@ pub trait WeightInfo {
 	fn repay(n: u32) -> Weight;
 	fn write_off(n: u32) -> Weight;
 	fn admin_write_off(n: u32) -> Weight;
+	fn propose_loan_mutation(n: u32) -> Weight;
+	fn apply_loan_mutation(n: u32) -> Weight;
 	fn close(n: u32) -> Weight;
 	fn propose_write_off_policy() -> Weight;
 	fn apply_write_off_policy() -> Weight;
@@ -47,6 +49,14 @@ impl WeightInfo for () {
 	}
 
 	fn close(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn propose_loan_mutation(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn apply_loan_mutation(_: u32) -> Weight {
 		Weight::zero()
 	}
 
