@@ -286,6 +286,7 @@ mod orml_tokens_migration {
 }
 
 mod pool_system {
+	#[cfg(feature = "try-runtime")]
 	use cfg_primitives::PoolId;
 	use pallet_pool_system::pool_types::PoolDetails;
 
