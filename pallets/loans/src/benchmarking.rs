@@ -47,8 +47,8 @@ use crate::{
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
+		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -72,7 +72,7 @@ type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
 fn config_mocks() {
 	use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 
-	use crate::tests::mock::{MockChangeGuard, MockPermissions, MockPools, MockPrices, Runtime};
+	use crate::tests::mock::{MockChangeGuard, MockPermissions, MockPools, MockPrices};
 
 	MockPermissions::mock_add(|_, _, _| Ok(()));
 	MockPermissions::mock_has(|_, _, _| true);
@@ -85,11 +85,9 @@ fn config_mocks() {
 	MockPrices::mock_feed_value(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
-	MockChangeGuard::mock_note(|_, _| Ok(sp_core::H256::default()));
-	MockChangeGuard::mock_released(|_, _| {
-		Ok(ChangeOf::<Runtime>::Policy(
-			Helper::<Runtime>::create_policy(),
-		))
+	MockChangeGuard::mock_note(|_, change| {
+		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
+		Ok(sp_core::H256::default())
 	});
 }
 
@@ -199,6 +197,31 @@ where
 			0.into(),
 		)
 		.unwrap();
+	}
+
+	fn create_mutation() -> LoanMutation<T::Rate> {
+		LoanMutation::InterestPayments(InterestPayments::None)
+	}
+
+	fn propose_mutation(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> T::Hash {
+		let pool_admin = account::<T::AccountId>("loan_admin", 0, 0);
+
+		Pallet::<T>::propose_loan_mutation(
+			RawOrigin::Signed(pool_admin).into(),
+			pool_id,
+			loan_id,
+			Self::create_mutation(),
+		)
+		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(
+			pool_id,
+			ChangeOf::<T>::Loan(loan_id, Self::create_mutation()).into(),
+		)
+		.unwrap()
 	}
 
 	// Worst case policy where you need to iterate for the whole policy.
@@ -339,6 +362,30 @@ benchmarks! {
 		Helper::<T>::set_policy(pool_id);
 
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
+
+	propose_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let loan_admin = account("loan_admin", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let mutation = Helper::<T>::create_mutation();
+
+	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, mutation)
+
+	apply_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let any = account("any", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let change_id = Helper::<T>::propose_mutation(pool_id, loan_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
 
 	close {
 		let n in 1..Helper::<T>::max_active_loans() - 1;
