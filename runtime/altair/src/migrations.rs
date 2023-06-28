@@ -230,7 +230,7 @@ mod orml_tokens_migration {
 				);
 			}
 
-			return Ok(());
+			Ok(())
 		}
 
 		fn on_runtime_upgrade() -> Weight {
@@ -258,7 +258,7 @@ mod orml_tokens_migration {
 						)
 					})
 					.ok();
-					// // Now mint the amount under the new CurrencyID
+					// Now mint the amount under the new CurrencyID
 					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(
 						NEW_AUSD_CURRENCY_ID,
 						&account,

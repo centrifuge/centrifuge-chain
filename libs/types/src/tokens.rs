@@ -25,14 +25,12 @@ use crate::{xcm::XcmMetadata, EVMChainId};
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
-/// as DOT, AUSD, UDST, etc. NOTE: We MUST never change the `#[codec(index =
-/// _)]`  below as doing so results in corrupted storage keys; if changing the
-/// index value of a variant is mandatory, a storage migration must take place
-/// to ensure that the values under an old codec-encoded key are moved to the
-/// new key.
+/// as DOT, AUSD, UDST, etc.
 ///
-/// NOTE: It is vital to leave the `#[codec(index = _)]` marks immutable or else
-/// storage items under a `CurrencyId` key will be corrupted.
+/// NOTE: We MUST NEVER change the `#[codec(index =_)]` below as doing so results in
+/// corrupted storage keys; if changing the index value of a variant is mandatory,
+/// a storage migration must take place to ensure that the values under an old
+/// codec-encoded key are moved to the new key.
 #[derive(
 	Clone,
 	Copy,
@@ -58,7 +56,7 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
-	#[codec(index = 2)]
+	#[codec(index = 3)]
 	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once
 	/// the orml_tokens' balances are migrated to the new CurrencyId for AUSD.
 	AUSD,
@@ -477,7 +475,7 @@ mod tests {
 					r.append(&mut tranche_id.to_vec());
 					r
 				}
-				AUSD => vec![2],
+				AUSD => vec![3],
 				ForeignAsset(id) => {
 					let mut r: Vec<u8> = vec![4];
 					r.append(&mut id.encode());
