@@ -416,7 +416,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 				Requirement::DelayTime(secs) => {
 					Self::now().saturating_sub(submitted_time) >= secs as u64
 				}
-				Requirement::BlockedByLockedRedemptions => false, // TODO
+				Requirement::BlockedByLockedRedemptions => true, // TODO: #1407
 			}
 		}
 
