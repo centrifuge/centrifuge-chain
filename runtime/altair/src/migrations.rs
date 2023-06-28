@@ -278,11 +278,9 @@ mod orml_tokens_migration {
 				});
 
 			// Approximate weight given for every entry migration there are two calls being
-			// made, so counting one read and one write per call. Given that we have very
-			// few entries to be migrated, the specific value isn't quite relevant and we
-			// could just set this to a high-enough value.
+			// made, so counting the reads and writes for each call.
 			<Runtime as frame_system::Config>::DbWeight::get()
-				.reads_writes(migrated_entries * 2, migrated_entries * 2)
+				.reads_writes(migrated_entries * 5, migrated_entries * 4)
 		}
 	}
 }
