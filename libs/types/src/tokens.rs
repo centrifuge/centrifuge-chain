@@ -331,7 +331,7 @@ mod tests {
 	use frame_support::parameter_types;
 
 	use super::*;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, AUSD, Tranche};
+	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche, AUSD};
 
 	const FOREIGN: CurrencyId = ForeignAsset(1u32);
 
@@ -476,7 +476,7 @@ mod tests {
 					r.append(&mut pool_id.encode());
 					r.append(&mut tranche_id.to_vec());
 					r
-				},
+				}
 				AUSD => vec![2],
 				ForeignAsset(id) => {
 					let mut r: Vec<u8> = vec![4];
