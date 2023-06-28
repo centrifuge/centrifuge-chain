@@ -250,7 +250,12 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		T::ForeignInvestment::collect_investment(investor, invest_id)
+		T::ForeignInvestment::collect_investment(investor, invest_id)?;
+
+		// TODO(subsequent PR): Handle response `ExecutedCollectInvest` message to
+		// source destination.
+
+		Ok(())
 	}
 
 	/// Collect the results of a user's redeem orders for the given investment
@@ -263,6 +268,11 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		T::ForeignInvestment::collect_redemption(investor, invest_id)
+		T::ForeignInvestment::collect_redemption(investor, invest_id)?;
+
+		// TODO(subsequent PR): Handle response `ExecutedCollectRedeem` message to
+		// source destination.
+
+		Ok(())
 	}
 }
