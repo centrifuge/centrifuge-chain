@@ -19,7 +19,7 @@ use orml_traits::{DataFeeder, DataProvider};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{Config, LoanChangeOf, PoolIdOf, PriceResultOf};
+use crate::pallet::{ChangeOf, Config, PoolIdOf, PriceResultOf};
 
 const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
@@ -79,15 +79,15 @@ const DEFAULT_CHANGE_ERR: DispatchError =
 pub struct NoLoanChanges<T>(PhantomData<T>);
 
 impl<T: Config> ChangeGuard for NoLoanChanges<T> {
-	type Change = LoanChangeOf<T>;
-	type ChangeId = T::ChangeId;
+	type Change = ChangeOf<T>;
+	type ChangeId = T::Hash;
 	type PoolId = PoolIdOf<T>;
 
-	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<T::ChangeId, DispatchError> {
+	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 
-	fn released(_: PoolIdOf<T>, _: T::ChangeId) -> Result<Self::Change, DispatchError> {
+	fn released(_: PoolIdOf<T>, _: Self::ChangeId) -> Result<Self::Change, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 }

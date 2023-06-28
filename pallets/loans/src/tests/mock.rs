@@ -18,11 +18,13 @@ use cfg_mocks::{
 };
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -30,7 +32,7 @@ use sp_runtime::{
 	DispatchError, FixedU128,
 };
 
-use crate::{pallet as pallet_loans, LoanChangeOf};
+use crate::{pallet as pallet_loans, ChangeOf};
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
@@ -59,6 +61,16 @@ pub const POOL_B: PoolId = 2;
 pub const POOL_A_ACCOUNT: AccountId = 10;
 pub const POOL_OTHER_ACCOUNT: AccountId = 100;
 
+pub const COLLATERAL_VALUE: Balance = 10000;
+pub const DEFAULT_INTEREST_RATE: f64 = 0.5;
+pub const POLICY_PERCENTAGE: f64 = 0.5;
+pub const POLICY_PENALTY: f64 = 0.5;
+pub const REGISTER_PRICE_ID: PriceId = 42;
+pub const UNREGISTER_PRICE_ID: PriceId = 88;
+pub const PRICE_VALUE: Rate = Rate::from_u32(1000);
+pub const QUANTITY: Balance = 20;
+pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -73,7 +85,7 @@ pub type PoolId = u32;
 pub type TrancheId = u64;
 pub type LoanId = u64;
 pub type PriceId = u64;
-pub type ChangeId = u64;
+pub type ChangeId = H256;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -96,6 +108,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 5;
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 4;
 }
 
@@ -198,15 +211,14 @@ impl pallet_mock_data::Config for Runtime {
 }
 
 impl pallet_mock_change_guard::Config for Runtime {
-	type Change = LoanChangeOf<Runtime>;
-	type ChangeId = u64;
+	type Change = ChangeOf<Runtime>;
+	type ChangeId = H256;
 	type PoolId = PoolId;
 }
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type ChangeGuard = MockChangeGuard;
-	type ChangeId = ChangeId;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
@@ -220,6 +232,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
 	type Rate = Rate;
+	type RuntimeChange = ChangeOf<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();

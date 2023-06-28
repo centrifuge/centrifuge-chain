@@ -1,9 +1,5 @@
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
-use cfg_traits::{
-	data::DataCollection,
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
-	RateCollection,
-};
+use cfg_traits::{self, data::DataCollection, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -11,7 +7,10 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Zero},
+	traits::{
+		BlockNumberProvider, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto,
+		EnsureMul, EnsureSub, Zero,
+	},
 	DispatchError,
 };
 

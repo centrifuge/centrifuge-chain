@@ -10,11 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::ops::{EnsureFixedPointNumber, EnsureSub};
 use codec::MaxEncodedLen;
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
-use sp_runtime::ArithmeticError;
+use sp_runtime::{
+	traits::{EnsureFixedPointNumber, EnsureSub},
+	ArithmeticError,
+};
 use sp_std::{ops::Deref, vec};
 
 use super::*;

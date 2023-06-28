@@ -20,7 +20,8 @@ pub trait WeightInfo {
 	fn write_off(n: u32) -> Weight;
 	fn admin_write_off(n: u32) -> Weight;
 	fn close(n: u32) -> Weight;
-	fn update_write_off_policy() -> Weight;
+	fn propose_write_off_policy() -> Weight;
+	fn apply_write_off_policy() -> Weight;
 	fn update_portfolio_valuation(n: u32) -> Weight;
 }
 
@@ -49,7 +50,11 @@ impl WeightInfo for () {
 		Weight::zero()
 	}
 
-	fn update_write_off_policy() -> Weight {
+	fn propose_write_off_policy() -> Weight {
+		Weight::zero()
+	}
+
+	fn apply_write_off_policy() -> Weight {
 		Weight::zero()
 	}
 
