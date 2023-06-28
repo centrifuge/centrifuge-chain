@@ -53,7 +53,7 @@ use development_runtime::{
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::Weight,
-	traits::{fungibles::Mutate, Get},
+	traits::{fungibles::Mutate, Get, PalletInfo},
 };
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
@@ -70,7 +70,7 @@ use runtime_common::{
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
-	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
+	BoundedVec, DispatchError, Perquintill, SaturatedConversion, WeakBoundedVec,
 };
 use utils::investments::{
 	default_tranche_id, general_currency_index, investment_account, investment_id,
@@ -865,7 +865,7 @@ fn add_currency_should_fail() {
 		));
 		assert_noop!(
 			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken
 		);
 
 		// Add convertable MultiLocation to metadata but remove transferability
@@ -1094,7 +1094,7 @@ fn allow_pool_should_fail() {
 				default_tranche_id(pool_id),
 				currency_id,
 			),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsWrappedToken
 		);
 
 		// Should fail if currency does not have ConnectorsWrappedToken location in
@@ -1701,7 +1701,11 @@ mod utils {
 		let location = VersionedMultiLocation::V3(MultiLocation {
 			parents: 0,
 			interior: X3(
-				PalletInstance(development_runtime::ConnectorsPalletIndex::get()),
+				PalletInstance(
+					<DevelopmentRuntime as frame_system::Config>::PalletInfo::index::<Connectors>()
+						.expect("Connectors should have pallet index")
+						.saturated_into(),
+				),
 				GlobalConsensus(NetworkId::Ethereum { chain_id }),
 				AccountKey20 {
 					network: None,

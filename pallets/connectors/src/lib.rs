@@ -22,7 +22,7 @@ use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
-	OriginTrait,
+	OriginTrait, PalletInfo,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
@@ -33,7 +33,12 @@ use sp_runtime::{
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
-use xcm::VersionedMultiLocation;
+use xcm::{
+	latest::NetworkId,
+	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+	VersionedMultiLocation,
+};
+
 pub mod weights;
 
 mod message;
@@ -196,15 +201,6 @@ pub mod pallet {
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
-
-		/// The bidirectional converter for [ConnectorsWrappedToken] and
-		/// `MultiLocation`.
-		///
-		/// Enables the derivation of the EVM chain id and EVM address from
-		/// the metadata of an asset if it is registered in the `AssetRegistry`.
-		type WrappedTokenConverter: Convert<ConnectorsWrappedToken, MultiLocation>
-			+ Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
-			+ Convert<VersionedMultiLocation, Result<ConnectorsWrappedToken, ()>>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
@@ -932,10 +928,26 @@ pub mod pallet {
 				meta.additional.transferability.includes_connectors(),
 				Error::<T>::AssetNotConnectorsTransferable
 			);
-			T::WrappedTokenConverter::convert(
-				meta.location.ok_or(Error::<T>::InvalidTransferCurrency)?,
-			)
-			.map_err(|_| Error::<T>::AssetNotConnectorsWrappedToken.into())
+
+			match meta.location {
+				Some(VersionedMultiLocation::V3(MultiLocation {
+					parents: 0,
+					interior:
+						X3(
+							PalletInstance(pallet_instance),
+							GlobalConsensus(NetworkId::Ethereum { chain_id }),
+							AccountKey20 {
+								network: None,
+								key: address,
+							},
+						),
+				})) if Some(pallet_instance.into())
+					== <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>() =>
+				{
+					Ok(ConnectorsWrappedToken::EVM { chain_id, address })
+				}
+				_ => Err(Error::<T>::AssetNotConnectorsWrappedToken.into()),
+			}
 		}
 
 		/// Ensures that the given pool and tranche exists and returns the
