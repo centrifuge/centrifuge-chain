@@ -18,7 +18,7 @@ cargo --version
 
 case $TARGET in
 	build-node)
-		cargo build --release "$@"
+		cargo build -p centrifuge-chain --release "$@"
 		;;
 
   build-runtime)
@@ -37,7 +37,7 @@ case $TARGET in
     ;;
 
   tests)
-    RUST_MIN_STACK=8388608 cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    RUST_MIN_STACK=8388608 cargo test --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   integration)

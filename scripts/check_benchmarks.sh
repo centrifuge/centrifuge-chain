@@ -34,7 +34,7 @@ else
   exit 1;
 fi
 
-cargo build --release --features runtime-benchmarks
+cargo build -p centrifuge-chain --release --features runtime-benchmarks
 
 all_pallets=$(
   ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq

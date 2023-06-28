@@ -22,7 +22,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup default $RUST_TOOLCHAIN && \
 	rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
-	cargo build "--$PROFILE" $OPTS
+	cargo build -p centrifuge-chain "--$PROFILE" $OPTS
 
 # ===== SECOND STAGE ======
 
