@@ -462,12 +462,15 @@ mod benchmarks_utils {
 				T::AssetRegistry::register_asset(
 					Some(AUSD_CURRENCY_ID),
 					orml_asset_registry::AssetMetadata {
-						decimals: 18,
-						name: "MOCK TOKEN".as_bytes().to_vec(),
-						symbol: "MOCK".as_bytes().to_vec(),
+						decimals: 12,
+						name: "MOCK AUSD".as_bytes().to_vec(),
+						symbol: "MOCKAUSD".as_bytes().to_vec(),
 						existential_deposit: Zero::zero(),
 						location: None,
-						additional: CustomMetadata::default(),
+						additional: CustomMetadata {
+							pool_currency: true,
+							..CustomMetadata::default()
+						},
 					},
 				)
 				.unwrap();

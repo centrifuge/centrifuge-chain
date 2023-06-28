@@ -185,11 +185,14 @@ where
 				Some(AUSD_CURRENCY_ID),
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
-					name: "MOCK TOKEN".as_bytes().to_vec(),
-					symbol: "MOCK".as_bytes().to_vec(),
+					name: "MOCK AUSD".as_bytes().to_vec(),
+					symbol: "MOCKAUSD".as_bytes().to_vec(),
 					existential_deposit: 0,
 					location: None,
-					additional: CustomMetadata::default(),
+					additional: CustomMetadata {
+						pool_currency: true,
+						..CustomMetadata::default()
+					},
 				},
 			)
 			.expect("Registering Pool asset must work");
