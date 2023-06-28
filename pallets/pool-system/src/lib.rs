@@ -65,7 +65,6 @@ pub use weights::*;
 pub mod benchmarking;
 mod impls;
 
-pub mod migrations;
 #[cfg(test)]
 mod mock;
 pub mod pool_types;
