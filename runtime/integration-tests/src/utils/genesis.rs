@@ -146,7 +146,8 @@ where
 					additional: CustomMetadata {
 						pool_currency: asset == AUSD_CURRENCY_ID,
 						..CustomMetadata::default().into()
-					}.into()
+					}
+					.into(),
 				},
 				Some(asset.clone().into()),
 			)
