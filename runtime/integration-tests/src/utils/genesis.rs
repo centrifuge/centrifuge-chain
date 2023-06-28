@@ -143,7 +143,10 @@ where
 					symbol: b"mock_symbol".to_vec(),
 					existential_deposit: 0u128.into(),
 					location: None,
-					additional: CustomMetadata::default().into(),
+					additional: CustomMetadata {
+						pool_currency: asset == AUSD_CURRENCY_ID,
+						..CustomMetadata::default().into()
+					}.into()
 				},
 				Some(asset.clone().into()),
 			)
