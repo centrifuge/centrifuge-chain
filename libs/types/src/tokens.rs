@@ -27,10 +27,10 @@ use crate::{xcm::XcmMetadata, EVMChainId};
 /// Foreign assets gather all the tokens that are native to other chains, such
 /// as DOT, AUSD, UDST, etc.
 ///
-/// NOTE: We MUST NEVER change the `#[codec(index =_)]` below as doing so results in
-/// corrupted storage keys; if changing the index value of a variant is mandatory,
-/// a storage migration must take place to ensure that the values under an old
-/// codec-encoded key are moved to the new key.
+/// NOTE: We MUST NEVER change the `#[codec(index =_)]` below as doing so
+/// results in corrupted storage keys; if changing the index value of a variant
+/// is mandatory, a storage migration must take place to ensure that the values
+/// under an old codec-encoded key are moved to the new key.
 #[derive(
 	Clone,
 	Copy,
