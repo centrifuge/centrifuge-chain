@@ -286,6 +286,7 @@ mod orml_tokens_migration {
 }
 
 mod pool_system {
+	use cfg_primitives::PoolId;
 	use pallet_pool_system::pool_types::PoolDetails;
 
 	use super::*;
@@ -306,6 +307,36 @@ mod pool_system {
 
 			let n = pallet_pool_system::Pool::<Runtime>::iter().count() as u64;
 			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			let ausd_pools: Vec<PoolId> =
+				pallet_pool_system::Pool::<Runtime>::iter()
+					.filter(|(_, details)| {
+						details.currency == DEPRECATED_AUSD_CURRENCY_ID
+					})
+					.map(|(pool_id, _)| pool_id)
+					.collect::<_>();
+
+			Ok(ausd_pools.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			let ausd_pools = sp_std::vec::Vec::<PoolId>::decode(&mut state.as_ref())
+				.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			for pool_id in ausd_pools {
+				let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id).expect("AUSD Pool should exist after the migration was executed");
+
+				ensure!(
+					pool.currency == NEW_AUSD_CURRENCY_ID,
+					"A AUSD pool was NOT migrated to the new AUSD CurrencyId (ForeignAsset(2))",
+				)
+			}
+
+			Ok(())
 		}
 	}
 }
