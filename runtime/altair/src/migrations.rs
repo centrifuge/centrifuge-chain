@@ -311,13 +311,10 @@ mod pool_system {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			let ausd_pools: Vec<PoolId> =
-				pallet_pool_system::Pool::<Runtime>::iter()
-					.filter(|(_, details)| {
-						details.currency == DEPRECATED_AUSD_CURRENCY_ID
-					})
-					.map(|(pool_id, _)| pool_id)
-					.collect::<_>();
+			let ausd_pools: Vec<PoolId> = pallet_pool_system::Pool::<Runtime>::iter()
+				.filter(|(_, details)| details.currency == DEPRECATED_AUSD_CURRENCY_ID)
+				.map(|(pool_id, _)| pool_id)
+				.collect::<_>();
 
 			Ok(ausd_pools.encode())
 		}
@@ -328,7 +325,8 @@ mod pool_system {
 				.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			for pool_id in ausd_pools {
-				let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id).expect("AUSD Pool should exist after the migration was executed");
+				let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)
+					.expect("AUSD Pool should exist after the migration was executed");
 
 				ensure!(
 					pool.currency == NEW_AUSD_CURRENCY_ID,
