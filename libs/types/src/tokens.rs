@@ -331,9 +331,9 @@ mod tests {
 	use frame_support::parameter_types;
 
 	use super::*;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche};
+	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, AUSD, Tranche};
 
-	const FOREIGN: CurrencyId = CurrencyId::ForeignAsset(1u32);
+	const FOREIGN: CurrencyId = ForeignAsset(1u32);
 
 	parameter_types! {
 		pub const ZeroPrefix: [u8; 12] = [0u8; 12];
@@ -458,6 +458,7 @@ mod tests {
 		vec![
 			Native,
 			Tranche(42, [42; 16]),
+			AUSD,
 			ForeignAsset(89),
 			Staking(StakingCurrency::BlockRewards),
 		]
@@ -475,7 +476,8 @@ mod tests {
 					r.append(&mut pool_id.encode());
 					r.append(&mut tranche_id.to_vec());
 					r
-				}
+				},
+				AUSD => vec![2],
 				ForeignAsset(id) => {
 					let mut r: Vec<u8> = vec![4];
 					r.append(&mut id.encode());
