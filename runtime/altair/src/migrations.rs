@@ -56,7 +56,7 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1028 {
+			if VERSION.spec_version <= 1028 {
 				return Weight::zero();
 			}
 
