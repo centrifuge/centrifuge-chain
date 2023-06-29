@@ -25,7 +25,11 @@ pub use pallet::*;
 
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{
+		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
+		traits::{tokens::AssetId, Currency, ReservableCurrency},
+		Twox64Concat,
+	};
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
@@ -43,28 +47,64 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance;
+
+		/// Currency for orderbook fees
+		type ReserveCurrency: ReservableCurrency<Self::AccountId>;
+		/// Id type of Currency Exchanges will take place for
+		type CurrencyId: AssetId
+			+ Parameter
+			+ Debug
+			+ Default
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
+
+		/// Id type for placed Orders
+		type OrderId: AssetId
+			+ Parameter
+			+ Debug
+			+ Default
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
+
+		/// Type for trade-able currency
+		type TradeableAsset: MultiReservableCurrency<
+			Self::AccountId,
+			Balance = DepositBalanceOf<Self>,
+			CurrencyId = CurrencyId,
+		>;
+	}
+	//
+	// Storage and storage types
+	//
+	pub struct Order<AccountId, Balance, TradeableAsset> {
+		placing_account: AccountId,
+		asset_out_type: TradeableAsset,
+		asset_in_type: TradeableAsset,
+		price: Balance,
+		sell_amount: Balance,
 	}
 
-	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
+	pub struct Claim<AccountId, OrderId> {
+		claiming_account: AccountId,
+		order_claiming: OrderId,
+	}
 
-	type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
-	/// Id type of Currency Exchanges will take plae for
-	type CurrencyId: AssetId
-		+ Parameter
-		+ Debug
-		+ Default
-		+ Member
-		+ Copy
-		+ MaybeSerializeDeserialize
-		+ Ord
-		+ TypeInfo
-		+ MaxEncodedLen;
-
-	type TradeableShares: MultiReservableCurrency<
-		Self::AccountId,
-		Balance = DepositBalanceOf<Self>,
-		CurrencyId = CurrencyId,
-	>;
+	/// Stores Nonce for orders for an account placing orders with a
+	/// specific currency pair. This allows us to easily generate a
+	/// deterministic unique order id for each new order, and allowing
+	/// accounts to create multiple orders for a particular currency pair.
+	#[pallet::storage]
+	pub type AccountCurrenciesNonce<T> = StorageMap<_, u64, OptionQuery>;
 }
