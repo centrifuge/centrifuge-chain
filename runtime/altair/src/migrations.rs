@@ -20,9 +20,9 @@ use sp_std::vec::Vec;
 use crate::Runtime;
 
 pub type UpgradeAltair1028 = (
-	asset_registry::CrossChainTransferabilityMigration,
+	// asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
-	pool_system::MigrateAUSDPools,
+	// pool_system::MigrateAUSDPools,
 );
 
 const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
@@ -189,98 +189,11 @@ mod orml_tokens_migration {
 	}
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			let total_issuance =
-				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
-			let entries: Vec<(AccountId, AccountData<Balance>)> =
-				orml_tokens::Accounts::<Runtime>::iter()
-					.filter(|(_, old_currency_id, _)| {
-						*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
-					})
-					.map(|(account, _, account_data)| (account, account_data))
-					.collect::<_>();
-
-			Ok(OldState {
-				total_issuance,
-				entries,
-			}
-			.encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
-			use crate::OrmlTokens;
-
-			let old_state = OldState::decode(&mut state.as_ref())
-				.map_err(|_| "Error decoding pre-upgrade state")?;
-
-			let new_total_issuance =
-				orml_tokens::TotalIssuance::<Runtime>::get(NEW_AUSD_CURRENCY_ID);
-
-			ensure!(
-				old_state.total_issuance == new_total_issuance,
-				"The old AUSD issuance differs from the new one"
-			);
-
-			for (account, account_data) in old_state.entries {
-				ensure!(
-					OrmlTokens::accounts(&account, NEW_AUSD_CURRENCY_ID) == account_data.clone(),
-					"The account data under the new AUSD Currency does NOT match the old one"
-				);
-			}
-
-			Ok(())
-		}
-
 		fn on_runtime_upgrade() -> Weight {
-			use frame_support::traits::tokens::fungibles::Mutate;
+			// Collect all the orml_tokens::Accounts entries
+			let _: Vec<_> = orml_tokens::Accounts::<Runtime>::iter().collect::<_>();
 
-			let mut migrated_entries = 0;
-
-			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
-			orml_tokens::Accounts::<Runtime>::iter()
-				.filter(|(_, old_currency_id, _)| *old_currency_id == DEPRECATED_AUSD_CURRENCY_ID)
-				.for_each(|(account, _, account_data)| {
-					let balance = account_data.free;
-					// Burn the amount under the old, hardcoded CurrencyId
-					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(
-						DEPRECATED_AUSD_CURRENCY_ID,
-						&account,
-						balance,
-					)
-					.map_err(|e| {
-						log::error!(
-							"Failed to call burn_from({:?}, {:?}, {balance}): {:?}",
-							DEPRECATED_AUSD_CURRENCY_ID,
-							account,
-							e
-						)
-					})
-					.ok();
-					// Now mint the amount under the new CurrencyID
-					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(
-						NEW_AUSD_CURRENCY_ID,
-						&account,
-						balance,
-					)
-					.map_err(|e| {
-						log::error!(
-							"Failed to mint_into burn_from({:?}, {:?}, {balance}): {:?}",
-							NEW_AUSD_CURRENCY_ID,
-							account,
-							e
-						)
-					})
-					.ok();
-
-					migrated_entries += 1;
-				});
-
-			// Approximate weight given for every entry migration there are two calls being
-			// made, so counting the reads and writes for each call.
-			<Runtime as frame_system::Config>::DbWeight::get()
-				.reads_writes(migrated_entries * 5, migrated_entries * 4)
+			return Weight::zero();
 		}
 	}
 }
