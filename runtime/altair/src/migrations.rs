@@ -12,10 +12,15 @@
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+#[cfg(feature = "try-runtime")]
+use sp_std::vec::Vec;
 
 use crate::Runtime;
 
-pub type UpgradeAltair1028 = (asset_registry::CrossChainTransferabilityMigration,);
+pub type UpgradeAltair1028 = (
+	asset_registry::CrossChainTransferabilityMigration,
+	OrmlTokensMigration,
+);
 
 mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
@@ -49,7 +54,7 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1028 {
+			if VERSION.spec_version > 1028 {
 				return Weight::zero();
 			}
 
@@ -164,5 +169,17 @@ mod asset_registry {
 				transferability,
 			},
 		}
+	}
+}
+
+// DEBUG
+pub struct OrmlTokensMigration;
+
+impl OnRuntimeUpgrade for OrmlTokensMigration {
+	fn on_runtime_upgrade() -> Weight {
+		// Collect all the orml_tokens::Accounts entries
+		let _: Vec<_> = orml_tokens::Accounts::<Runtime>::iter().collect::<_>();
+
+		return Weight::zero();
 	}
 }
