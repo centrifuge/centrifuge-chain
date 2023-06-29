@@ -24,7 +24,7 @@ pub struct ExternalPricing<T: Config> {
 	pub price_id: T::PriceId,
 
 	/// Maximum number of items associated with the loan of the pricing.
-	pub max_borrow_quantity: T::Balance,
+	pub max_borrow_quantity: Option<T::Balance>,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -78,13 +78,18 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(prices.get(&self.info.price_id)?.0)
 	}
 
-	pub fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.calculate_price()?;
-		let available = self
-			.info
-			.max_borrow_quantity
-			.ensure_sub(self.outstanding_quantity)?;
-		Ok(price.ensure_mul_int(available)?)
+	pub fn max_borrow_amount(
+		&self,
+		desired_amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		match self.info.max_borrow_quantity {
+			Some(quantity) => {
+				let price = self.calculate_price()?;
+				let available = quantity.ensure_sub(self.outstanding_quantity)?;
+				Ok(price.ensure_mul_int(available)?)
+			}
+			None => Ok(desired_amount),
+		}
 	}
 
 	pub fn last_updated(&self) -> Result<Moment, DispatchError> {

@@ -96,7 +96,7 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 		collateral: ASSET_AA,
 		pricing: Pricing::External(ExternalPricing {
 			price_id: REGISTER_PRICE_ID,
-			max_borrow_quantity: QUANTITY,
+			max_borrow_quantity: Some(QUANTITY),
 		}),
 		restrictions: LoanRestrictions {
 			borrows: BorrowRestrictions::NotWrittenOff,
