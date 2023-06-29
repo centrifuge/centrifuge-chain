@@ -20,9 +20,9 @@ use sp_std::vec::Vec;
 use crate::Runtime;
 
 pub type UpgradeAltair1028 = (
-	asset_registry::CrossChainTransferabilityMigration,
+	// asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
-	pool_system::MigrateAUSDPools,
+	// pool_system::MigrateAUSDPools,
 );
 
 const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
@@ -191,6 +191,7 @@ mod orml_tokens_migration {
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			log::info!("CurrencyIdRefactorMigration: pre_upgrade");
 			let total_issuance =
 				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
 			let entries: Vec<(AccountId, AccountData<Balance>)> =
@@ -200,6 +201,12 @@ mod orml_tokens_migration {
 					})
 					.map(|(account, _, account_data)| (account, account_data))
 					.collect::<_>();
+
+			log::info!("CurrencyIdRefactorMigration: pre_upgrade old state {:?}", OldState {
+				total_issuance,
+				entries: entries.clone(),
+			});
+
 
 			Ok(OldState {
 				total_issuance,
@@ -212,11 +219,15 @@ mod orml_tokens_migration {
 		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
 			use crate::OrmlTokens;
 
+			log::info!("CurrencyIdRefactorMigration: post_upgrade");
+
 			let old_state = OldState::decode(&mut state.as_ref())
 				.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			let new_total_issuance =
 				orml_tokens::TotalIssuance::<Runtime>::get(NEW_AUSD_CURRENCY_ID);
+
+			log::info!("CurrencyIdRefactorMigration: post_upgrade new total issuance {}", new_total_issuance);
 
 			ensure!(
 				old_state.total_issuance == new_total_issuance,
@@ -229,6 +240,9 @@ mod orml_tokens_migration {
 					"The account data under the new AUSD Currency does NOT match the old one"
 				);
 			}
+
+			log::info!("CurrencyIdRefactorMigration: great success");
+
 
 			Ok(())
 		}
