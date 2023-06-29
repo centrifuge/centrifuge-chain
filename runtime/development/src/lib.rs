@@ -1777,6 +1777,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type MaxGroups = MaxGroups;
 	type Rewards = LiquidityRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
 	type Weight = u64;
 	type WeightInfo = ();
 }
