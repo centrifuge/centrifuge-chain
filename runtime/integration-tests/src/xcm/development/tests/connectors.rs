@@ -317,17 +317,6 @@ fn transfer_non_tranche_tokens_from_local() {
 			initial_balance
 		);
 
-		// Cannot transfer to Centrifuge
-		assert_noop!(
-			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
-				currency_id,
-				DomainAddress::Centrifuge(source_account.clone()),
-				amount,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
-		);
-
 		// Only `ForeignAsset` can be transferred
 		assert_noop!(
 			Connectors::transfer(
@@ -519,18 +508,6 @@ fn transfer_tranche_tokens_from_local() {
 				amount,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
-		);
-
-		// Verify that we cannot transfer to the local domain
-		assert_noop!(
-			Connectors::transfer_tranche_tokens(
-				RuntimeOrigin::signed(ALICE.into()),
-				pool_id,
-				default_tranche_id(pool_id),
-				DomainAddress::Centrifuge(receiver),
-				amount,
-			),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		);
 
 		// Make receiver the MembersListAdmin of this Pool

@@ -478,6 +478,8 @@ pub mod pallet {
 
 		/// Transfer tranche tokens to a given address.
 		///
+		/// NOTE: Assumes `OutboundQueue` to check whether destination is local.
+		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
@@ -491,11 +493,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Check that the destination is not the local domain
-			ensure!(
-				domain_address.domain() != Domain::Centrifuge,
-				Error::<T>::InvalidDomain
-			);
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
 				T::Permission::has(
@@ -543,6 +540,8 @@ pub mod pallet {
 
 		/// Transfer non-tranche tokens to a given address.
 		///
+		/// NOTE: Assumes `OutboundQueue` to check whether destination is local.
+		///
 		/// NOTE: The transferring account is not kept alive as we allow its
 		/// death.
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
@@ -556,11 +555,6 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
-			// Check that the destination is not the local domain
-			ensure!(
-				receiver.domain() != Domain::Centrifuge,
-				Error::<T>::InvalidDomain
-			);
 			ensure!(
 				!CurrencyIdOf::<T>::is_tranche_token(currency_id),
 				Error::<T>::InvalidTransferCurrency
