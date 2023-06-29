@@ -153,7 +153,7 @@ fn with_unregister_price_id() {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
-				max_borrow_quantity: QUANTITY,
+				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
 			}),
 			..util::base_external_loan()
 		};

@@ -285,7 +285,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => inner.max_borrow_amount(self.total_borrowed)?,
-			ActivePricing::External(inner) => inner.max_borrow_amount()?,
+			ActivePricing::External(inner) => inner.max_borrow_amount(amount)?,
 		};
 
 		ensure!(

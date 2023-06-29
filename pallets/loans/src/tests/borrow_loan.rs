@@ -209,7 +209,7 @@ fn with_unregister_price_id() {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
-				max_borrow_quantity: QUANTITY,
+				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
 			}),
 			..util::base_external_loan()
 		};
@@ -271,6 +271,31 @@ fn with_correct_amount_external_pricing() {
 			loan_id,
 			amount
 		),);
+	});
+}
+
+#[test]
+fn with_unlimited_amount_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: REGISTER_PRICE_ID,
+				max_borrow_amount: ExtMaxBorrowAmount::NoLimit,
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		let amount = PRICE_VALUE.saturating_mul_int(2 /* Could be any value */);
+		config_mocks(amount);
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			amount
+		));
 	});
 }
 
