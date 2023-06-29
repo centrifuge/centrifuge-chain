@@ -13,21 +13,26 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{connectors::Codec, PoolInspect};
+use cfg_traits::{
+	connectors::{InboundQueue, OutboundQueue},
+	PoolInspect,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{
-	fungibles::{Inspect, Mutate, Transfer},
-	OriginTrait, PalletInfo,
+use frame_support::{
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		PalletInfo,
+	},
+	transactional,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_core::U256;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
@@ -94,9 +99,8 @@ pub mod pallet {
 	};
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
-	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 	use sp_runtime::traits::{AccountIdConversion, Zero};
-	use xcm::latest::{MultiLocation, OriginKind};
+	use xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -106,7 +110,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -194,13 +198,19 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
-			+ CurrencyInspect<CurrencyId = <Self as pallet::Config>::CurrencyId>;
+			+ CurrencyInspect<CurrencyId = CurrencyIdOf<Self>>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
+
+		/// The type for processing outgoing messages.
+		type OutboundQueue: OutboundQueue<
+			Sender = Self::AccountId,
+			Message = MessageOf<Self>,
+			Destination = Domain,
+		>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
@@ -318,7 +328,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			<KnownConnectors<T>>::insert(connector, ());
+			KnownConnectors::<T>::insert(connector, ());
 
 			Ok(())
 		}
@@ -338,7 +348,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			Self::do_send_message(who, Message::AddPool { pool_id }, domain)?;
+			T::OutboundQueue::submit(domain, who, Message::AddPool { pool_id })?;
 
 			Ok(())
 		}
@@ -370,7 +380,8 @@ pub mod pallet {
 				.price;
 
 			// Send the message to the domain
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				domain,
 				who,
 				Message::AddTranche {
 					pool_id,
@@ -380,7 +391,6 @@ pub mod pallet {
 					token_symbol,
 					price,
 				},
-				domain,
 			)?;
 
 			Ok(())
@@ -403,14 +413,14 @@ pub mod pallet {
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				domain,
 				who,
 				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
 					price,
 				},
-				domain,
 			)?;
 
 			Ok(())
@@ -452,7 +462,8 @@ pub mod pallet {
 				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				domain_address.domain(),
 				who,
 				Message::UpdateMember {
 					pool_id,
@@ -460,7 +471,6 @@ pub mod pallet {
 					valid_until,
 					member: domain_address.address(),
 				},
-				domain_address.domain(),
 			)?;
 
 			Ok(())
@@ -512,7 +522,8 @@ pub mod pallet {
 				false,
 			)?;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				domain_address.domain(),
 				who.clone(),
 				Message::TransferTrancheTokens {
 					pool_id,
@@ -525,7 +536,6 @@ pub mod pallet {
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
 					receiver: domain_address.address(),
 				},
-				domain_address.domain(),
 			)?;
 
 			Ok(())
@@ -580,7 +590,8 @@ pub mod pallet {
 				false,
 			)?;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				receiver.domain(),
 				who.clone(),
 				Message::Transfer {
 					amount,
@@ -591,7 +602,6 @@ pub mod pallet {
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
 					receiver: receiver.address(),
 				},
-				receiver.domain(),
 			)?;
 
 			Ok(())
@@ -611,13 +621,13 @@ pub mod pallet {
 				address: evm_address,
 			} = Self::try_get_wrapped_token(&currency_id)?;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				Domain::EVM(chain_id),
 				who,
 				Message::AddCurrency {
 					currency,
 					evm_address,
 				},
-				Domain::EVM(chain_id),
 			)?;
 
 			Ok(())
@@ -665,127 +675,11 @@ pub mod pallet {
 			let ConnectorsWrappedToken::EVM { chain_id, .. } =
 				Self::try_get_wrapped_token(&currency_id)?;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
+				Domain::EVM(chain_id),
 				who,
 				Message::AllowPoolCurrency { pool_id, currency },
-				Domain::EVM(chain_id),
 			)?;
-
-			Ok(())
-		}
-
-		/// Handle an incoming message
-		/// TODO(nuno): we probably need a custom origin type for these messages
-		/// to ensure they have come in through XCM. For now, let's have a POC
-		/// here to test the pipeline Ethereum ---> Moonbeam --->
-		/// Centrifuge::connectors
-		/// TODO(subsequent PR): Should be removed as extrinsic before adding to
-		/// prod runtimes. Should be handled automatically via Gateway.
-		#[pallet::call_index(99)]
-		#[pallet::weight(< T as Config >::WeightInfo::handle())]
-		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
-			let sender = ensure_signed(origin.clone())?;
-			ensure!(
-				<KnownConnectors<T>>::contains_key(&sender),
-				Error::<T>::InvalidIncomingMessageOrigin
-			);
-
-			Self::deposit_event(Event::IncomingMessage {
-				sender,
-				message: bytes.clone(),
-			});
-			let msg: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
-				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
-
-			// FIXME(subsequent PR): Derive domain via Gateway InboundQueue
-			// blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
-			let sending_domain: DomainAddress = DomainAddress::EVM(1284, [0u8; 20]);
-
-			match msg {
-				Message::Transfer {
-					currency,
-					receiver,
-					amount,
-					..
-				} => Self::do_transfer(currency.into(), receiver.into(), amount),
-				Message::TransferTrancheTokens {
-					pool_id,
-					tranche_id,
-					receiver,
-					amount,
-					..
-				} => Self::do_tranche_tokens_transfer(
-					pool_id,
-					tranche_id,
-					sending_domain,
-					receiver.into(),
-					amount,
-				),
-				Message::IncreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::do_increase_invest_order(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					currency.into(),
-					amount,
-				),
-				Message::DecreaseInvestOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::do_decrease_invest_order(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					currency.into(),
-					amount,
-				),
-				Message::IncreaseRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					amount,
-					..
-				} => Self::do_increase_redemption(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					amount,
-					sending_domain,
-				),
-				Message::DecreaseRedeemOrder {
-					pool_id,
-					tranche_id,
-					investor,
-					currency,
-					amount,
-				} => Self::do_decrease_redemption(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					currency.into(),
-					amount,
-					sending_domain,
-				),
-				Message::CollectInvest {
-					pool_id,
-					tranche_id,
-					investor,
-				} => Self::do_collect_investment(pool_id, tranche_id, investor.into()),
-				Message::CollectRedeem {
-					pool_id,
-					tranche_id,
-					investor,
-				} => Self::do_collect_redemption(pool_id, tranche_id, investor.into()),
-				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
-			}?;
 
 			Ok(())
 		}
@@ -794,90 +688,6 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
-		}
-
-		/// Send the `message` to the given domain.
-		pub fn do_send_message(
-			fee_payer: T::AccountId,
-			message: MessageOf<T>,
-			domain: Domain,
-		) -> DispatchResult {
-			let Router::Xcm(xcm_domain) =
-				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
-
-			let contract_call = contract::encoded_contract_call(message.serialize());
-			let ethereum_xcm_call =
-				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
-
-			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				T::RuntimeOrigin::root(),
-				// The destination to which the message should be sent
-				xcm_domain.location,
-				fee_payer,
-				// The currency in which we want to pay fees
-				CurrencyPayment {
-					currency: Currency::AsCurrencyId(xcm_domain.fee_currency.into()),
-					fee_amount: None,
-				},
-				// The call to be executed in the destination chain
-				ethereum_xcm_call,
-				OriginKind::SovereignAccount,
-				TransactWeights {
-					// Convert the max gas_limit into a max transact weight following Moonbeam's
-					// formula.
-					transact_required_weight_at_most: Weight::from_ref_time(
-						xcm_domain.max_gas_limit * 25_000 + 100_000_000,
-					),
-					overall_weight: None,
-				},
-			)?;
-
-			Self::deposit_event(Event::MessageSent { message, domain });
-
-			Ok(())
-		}
-
-		/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
-		/// request to execute `evm_call`.
-		///
-		/// * `xcm_domain` - All the necessary info regarding the xcm-based
-		///   domain
-		/// where this `ethereum_xcm` call is to be executed
-		/// * `evm_call` - The encoded EVM call calling
-		///   ConnectorsXcmRouter::handle(msg)
-		pub fn encoded_ethereum_xcm_call(
-			xcm_domain: XcmDomain<CurrencyIdOf<T>>,
-			evm_call: Vec<u8>,
-		) -> Vec<u8> {
-			let mut encoded: Vec<u8> = Vec::new();
-
-			encoded.append(
-				&mut xcm_domain
-					.ethereum_xcm_transact_call_index
-					.clone()
-					.into_inner(),
-			);
-			encoded.append(
-				&mut xcm_primitives::EthereumXcmTransaction::V1(
-					xcm_primitives::EthereumXcmTransactionV1 {
-						gas_limit: U256::from(xcm_domain.max_gas_limit),
-						fee_payment: xcm_primitives::EthereumXcmFee::Auto,
-						action: pallet_ethereum::TransactionAction::Call(
-							xcm_domain.contract_address,
-						),
-						value: U256::zero(),
-						input: BoundedVec::<
-							u8,
-							ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
-						>::try_from(evm_call)
-						.unwrap(),
-						access_list: None,
-					},
-				)
-				.encode(),
-			);
-
-			encoded
 		}
 
 		/// Returns the `u128` general index of a currency as the concatenation
@@ -983,6 +793,110 @@ pub mod pallet {
 			);
 
 			Ok(currency)
+		}
+	}
+
+	impl<T: Config> InboundQueue for Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+	{
+		type Message = MessageOf<T>;
+		type Sender = DomainAddress;
+
+		#[transactional]
+		fn process(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
+			ensure!(
+				KnownConnectors::<T>::contains_key::<&T::AccountId>(&sender.address().into()),
+				Error::<T>::InvalidIncomingMessageOrigin
+			);
+
+			match msg {
+				Message::Transfer {
+					currency,
+					receiver,
+					amount,
+					..
+				} => Self::do_transfer(currency.into(), receiver.into(), amount),
+				Message::TransferTrancheTokens {
+					pool_id,
+					tranche_id,
+					receiver,
+					amount,
+					..
+				} => Self::do_tranche_tokens_transfer(
+					pool_id,
+					tranche_id,
+					sender,
+					receiver.into(),
+					amount,
+				),
+				Message::IncreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_increase_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::DecreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_decrease_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::IncreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					amount,
+					..
+				} => Self::do_increase_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					amount,
+					sender,
+				),
+				Message::DecreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_decrease_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+					sender,
+				),
+				Message::CollectInvest {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::do_collect_investment(pool_id, tranche_id, investor.into()),
+				Message::CollectRedeem {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::do_collect_redemption(pool_id, tranche_id, investor.into()),
+				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
+			}?;
+
+			Ok(())
 		}
 	}
 }

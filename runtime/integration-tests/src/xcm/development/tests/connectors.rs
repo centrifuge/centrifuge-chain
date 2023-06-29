@@ -31,7 +31,8 @@ use cfg_primitives::{
 	currency_decimals, parachains, AccountId, Balance, Moment, PoolId, TrancheId,
 };
 use cfg_traits::{
-	connectors::Codec as _, OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
+	connectors::{Codec as _, InboundQueue},
+	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
@@ -441,33 +442,32 @@ fn transfer_non_tranche_tokens_to_local() {
 		let receiver: AccountId = BOB.into();
 
 		// Mock incoming decrease message
-		let bytes = utils::ConnectorMessage::Transfer {
+		let msg = utils::ConnectorMessage::Transfer {
 			currency: general_currency_index(currency_id),
 			// sender is irrelevant for other -> local
 			sender: ALICE,
 			receiver: receiver.clone().into(),
 			amount,
-		}
-		.serialize();
+		};
 
 		assert!(OrmlTokens::total_issuance(currency_id).is_zero());
 
 		// Verify that we do not accept incoming messages if the connection has not been
 		// initialized
 		assert_noop!(
-			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
 		);
 		assert_ok!(Connectors::add_connector(
 			RuntimeOrigin::root(),
-			receiver.clone()
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
 		));
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(receiver.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Verify that the correct amount was minted
@@ -476,15 +476,14 @@ fn transfer_non_tranche_tokens_to_local() {
 
 		// Verify empty transfers throw
 		assert_noop!(
-			Connectors::handle(
-				RuntimeOrigin::signed(receiver.clone()),
+			Connectors::process(
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				utils::ConnectorMessage::Transfer {
 					currency: general_currency_index(currency_id),
 					sender: ALICE,
 					receiver: receiver.into(),
 					amount: 0,
-				}
-				.serialize(),
+				},
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferAmount
 		);
@@ -628,30 +627,29 @@ fn transfer_tranche_tokens_to_local() {
 		));
 
 		// Mock incoming decrease message
-		let bytes = utils::ConnectorMessage::TransferTrancheTokens {
+		let msg = utils::ConnectorMessage::TransferTrancheTokens {
 			pool_id,
 			tranche_id,
 			sender: sender.address(),
 			domain: Domain::Centrifuge,
 			receiver: receiver.clone().into(),
 			amount,
-		}
-		.serialize();
+		};
 
 		// Verify that we do not accept incoming messages if the connection has not been
 		// initialized
 		assert_noop!(
-			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
 		);
 		assert_ok!(Connectors::add_connector(
 			RuntimeOrigin::root(),
-			receiver.clone()
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
 		));
 
 		// Verify that we first need the receiver to be whitelisted
 		assert_noop!(
-			Connectors::handle(RuntimeOrigin::signed(receiver.clone()), bytes.clone()),
+			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
 		);
 
@@ -678,9 +676,9 @@ fn transfer_tranche_tokens_to_local() {
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(receiver.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Verify that the correct amount of the Tranche token was transferred
@@ -691,8 +689,7 @@ fn transfer_tranche_tokens_to_local() {
 		// TODO(subsequent PR): Verify that we cannot transfer to the local
 		// domain blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
 		// assert_noop!(
-		// 	Connectors::handle(RuntimeOrigin::signed(investor.clone()),
-		// bytes.clone()),
+		// 	Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
 		// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		// );
 	});
@@ -917,30 +914,34 @@ fn add_currency_should_fail() {
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotConnectorsTransferable
 		);
 
-		// Should fail if no domain router is registered for the asset's metadata evm
-		// chain id
-		assert_ok!(OrmlAssetRegistry::update_asset(
-			RuntimeOrigin::root(),
-			currency_id,
-			None,
-			None,
-			None,
-			None,
-			None,
-			Some(CustomMetadata {
-				// Changed: Enable all cross chain transferability in metadata
-				transferability: CrossChainTransferability::All(XcmMetadata {
-					fee_per_second: Default::default()
-				}),
-				mintable: Default::default(),
-				permissioned: Default::default(),
-				pool_currency: Default::default(),
-			})
-		));
-		assert_noop!(
-			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
-			pallet_connectors::Error::<DevelopmentRuntime>::MissingRouter
-		);
+		// TODO(subsequent PR): Reactivate later
+		// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
+
+		// // Should fail if no domain router is registered for the asset's
+		// // metadata evm chain id
+		// assert_ok!(OrmlAssetRegistry::update_asset(
+		// 	RuntimeOrigin::root(),
+		// 	currency_id,
+		// 	None,
+		// 	None,
+		// 	None,
+		// 	None,
+		// 	None,
+		// 	Some(CustomMetadata {
+		// 		// Changed: Enable all cross chain transferability in metadata
+		// 		transferability: CrossChainTransferability::All(XcmMetadata {
+		// 			fee_per_second: Default::default()
+		// 		}),
+		// 		mintable: Default::default(),
+		// 		permissioned: Default::default(),
+		// 		pool_currency: Default::default(),
+		// 	})
+		// ));
+		// assert_noop!(
+		// 	Connectors::add_currency(RuntimeOrigin::signed(BOB.into()),
+		// currency_id),
+		// 	pallet_connectors::Error::<DevelopmentRuntime>::MissingRouter
+		// );
 	});
 }
 
@@ -1208,19 +1209,18 @@ fn inbound_decrease_invest_order() {
 		);
 
 		// Mock incoming decrease message
-		let bytes = utils::ConnectorMessage::DecreaseInvestOrder {
+		let msg = utils::ConnectorMessage::DecreaseInvestOrder {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
 			currency: general_currency_index(currency_id),
 			amount: decrease_amount,
-		}
-		.serialize();
+		};
 
 		// Execute byte message
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(investor.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Verify investment was decreased into investment account
@@ -1297,18 +1297,17 @@ fn inbound_collect_invest_order() {
 		));
 		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
 
-		// Mock collection message bytes
-		let bytes = utils::ConnectorMessage::CollectInvest {
+		// Mock collection message msg
+		let msg = utils::ConnectorMessage::CollectInvest {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
-		}
-		.serialize();
+		};
 
 		// Execute byte message
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(investor.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Remove events before collect execution
@@ -1439,19 +1438,18 @@ fn inbound_decrease_redeem_order() {
 		);
 
 		// Mock incoming decrease message
-		let bytes = utils::ConnectorMessage::DecreaseRedeemOrder {
+		let msg = utils::ConnectorMessage::DecreaseRedeemOrder {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
 			currency: general_currency_index(currency_id),
 			amount: decrease_amount,
-		}
-		.serialize();
+		};
 
 		// Execute byte message
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(investor.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Verify investment was decreased into investment account
@@ -1535,18 +1533,17 @@ fn inbound_collect_redeem_order() {
 			}
 		));
 
-		// Mock collection message bytes
-		let bytes = utils::ConnectorMessage::CollectRedeem {
+		// Mock collection message msg
+		let msg = utils::ConnectorMessage::CollectRedeem {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
-		}
-		.serialize();
+		};
 
 		// Execute byte message
-		assert_ok!(Connectors::handle(
-			RuntimeOrigin::signed(investor.clone()),
-			bytes
+		assert_ok!(Connectors::process(
+			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+			msg
 		));
 
 		// Remove events before collect execution
@@ -1619,39 +1616,6 @@ fn test_vec_to_fixed_array() {
 			0, 0, 0, 0, 0
 		]
 	);
-}
-
-#[test]
-fn encoded_ethereum_xcm_add_pool() {
-	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was
-	// our first successfully ethereum_xcm encoded call tested in Moonbase.
-	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
-
-	let moonbase_location = MultiLocation {
-		parents: 1,
-		interior: X1(Parachain(1000)),
-	};
-	// 38 is the pallet index, 0 is the `transact` extrinsic index.
-	let ethereum_xcm_transact_call_index = BoundedVec::truncate_from(vec![38, 0]);
-	let contract_address = H160::from(
-		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
-	);
-	let domain_info = XcmDomain {
-		location: Box::new(VersionedMultiLocation::V3(moonbase_location)),
-		ethereum_xcm_transact_call_index,
-		contract_address,
-		fee_currency: ForeignAsset(1),
-		max_gas_limit: 700_000,
-	};
-
-	let connectors_message =
-		Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 };
-
-	let contract_call = encoded_contract_call(connectors_message.serialize());
-	let encoded_call = Connectors::encoded_ethereum_xcm_call(domain_info, contract_call);
-	let encoded_call_hex = hex::encode(encoded_call);
-
-	assert_eq!(encoded_call_hex, expected_encoded_hex);
 }
 
 // Verify that the max tranche token symbol and name lengths are what the
@@ -1936,28 +1900,27 @@ mod utils {
 			let valid_until = utils::DEFAULT_VALIDITY;
 
 			// Mock incoming increase invest message
-			let bytes = utils::ConnectorMessage::IncreaseInvestOrder {
+			let msg = utils::ConnectorMessage::IncreaseInvestOrder {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),
 				investor: investor.clone().into(),
 				currency: general_currency_index(currency_id),
 				amount,
-			}
-			.serialize();
+			};
 
 			// Should fail if connector has not been added yet
 			assert_noop!(
-				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
 			);
 			assert_ok!(Connectors::add_connector(
 				RuntimeOrigin::root(),
-				investor.clone()
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
 			));
 
 			// Should fail if investor does not have investor role yet
 			assert_noop!(
-				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 
@@ -1982,9 +1945,9 @@ mod utils {
 				.expect("Should not overflow when incrementing amount");
 
 			// Execute byte message
-			assert_ok!(Connectors::handle(
-				RuntimeOrigin::signed(investor.clone()),
-				bytes.clone()
+			assert_ok!(Connectors::process(
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+				msg.clone()
 			));
 
 			// Verify investment was transferred into investment account
@@ -2050,28 +2013,27 @@ mod utils {
 			);
 
 			// Mock incoming increase invest message
-			let bytes = utils::ConnectorMessage::IncreaseRedeemOrder {
+			let msg = utils::ConnectorMessage::IncreaseRedeemOrder {
 				pool_id: 42,
 				tranche_id: default_tranche_id(pool_id),
 				investor: investor.clone().into(),
 				currency: general_currency_index(currency_id),
 				amount,
-			}
-			.serialize();
+			};
 
 			// Should fail if connector has not been added yet
 			assert_noop!(
-				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
 			);
 			assert_ok!(Connectors::add_connector(
 				RuntimeOrigin::root(),
-				investor.clone()
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
 			));
 
 			// Should fail if investor does not have investor role yet
 			assert_noop!(
-				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 
@@ -2087,9 +2049,9 @@ mod utils {
 				)),
 			));
 
-			assert_ok!(Connectors::handle(
-				RuntimeOrigin::signed(investor.clone()),
-				bytes
+			assert_ok!(Connectors::process(
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+				msg
 			));
 
 			// Verify redemption was transferred into investment account

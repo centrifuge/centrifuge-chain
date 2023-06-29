@@ -30,6 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
+	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -1558,6 +1559,22 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+pub struct DummyOutboundQueue;
+
+impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
+	type Destination = Domain;
+	type Message = pallet_connectors::MessageOf<Runtime>;
+	type Sender = AccountId;
+
+	fn submit(
+		_destination: Domain,
+		_sender: AccountId,
+		_msg: pallet_connectors::MessageOf<Runtime>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1566,6 +1583,7 @@ impl pallet_connectors::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
+	type OutboundQueue = DummyOutboundQueue;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;

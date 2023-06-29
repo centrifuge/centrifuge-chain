@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 use codec::Input;
+use frame_support::dispatch::DispatchResult;
 use sp_std::vec::Vec;
 
 /// An encoding & decoding trait for the purpose of meeting the
@@ -19,4 +20,39 @@ use sp_std::vec::Vec;
 pub trait Codec: Sized {
 	fn serialize(&self) -> Vec<u8>;
 	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
+}
+
+/// The trait required for processing outbound connectors messages.
+pub trait OutboundQueue {
+	// pub trait OutboundQueue<Sender, Message, Destination> {
+	/// The sender type of the outgoing message.
+	type Sender;
+
+	/// The message type that is processed.
+	type Message;
+
+	/// The destination this message should go to.
+	type Destination;
+
+	/// Submit a message to the outbound queue.
+	fn submit(
+		// destination: Destination,
+		// sender: Sender,
+		// msg: Message,
+		destination: Self::Destination,
+		sender: Self::Sender,
+		msg: Self::Message,
+	) -> DispatchResult;
+}
+
+/// The trait required for processing incoming connectors messages.
+pub trait InboundQueue {
+	/// The sender type of the incoming message.
+	type Sender;
+
+	/// The connector message enum.
+	type Message;
+
+	/// Process a message from the inbound queue.
+	fn process(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }

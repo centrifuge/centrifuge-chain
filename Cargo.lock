@@ -7016,7 +7016,6 @@ dependencies = [
  "pallet-ethereum",
  "pallet-timestamp",
  "pallet-uniques",
- "pallet-xcm-transactor",
  "parity-scale-codec 3.4.0",
  "runtime-common",
  "scale-info",
