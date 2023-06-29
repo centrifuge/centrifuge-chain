@@ -9,6 +9,8 @@ use orml_traits::MultiCurrency;
 
 use crate::{self as pallet_nft_sales, *};
 
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 benchmarks! {
 	where_clause {
 		where
@@ -35,7 +37,7 @@ benchmarks! {
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
 		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
-		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::AUSD.into(), amount: 10_000u128.into() };
+		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: AUSD_CURRENCY_ID.into(), amount: 10_000u128.into() };
 
 	}: _(seller_origin, collection_id, item_id, price)
 	verify {
@@ -51,7 +53,7 @@ benchmarks! {
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
 		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
-		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::AUSD.into(), amount: 10_000u128.into() };
+		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: AUSD_CURRENCY_ID.into(), amount: 10_000u128.into() };
 
 		// We need the nft in the storage beforehand to be able to remove it
 		<Sales<T>>::insert(collection_id.clone(), item_id.clone(), Sale { seller: seller_account, price});
@@ -70,7 +72,7 @@ benchmarks! {
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
 		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
-		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::AUSD.into(), amount: 10_000u128.into() };
+		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: AUSD_CURRENCY_ID.into(), amount: 10_000u128.into() };
 
 		// We need the nft in the storage beforehand to be able to remove it
 		<Sales<T>>::insert(collection_id.clone(), item_id.clone(), Sale { seller: seller_account, price: price.clone()});
@@ -78,7 +80,7 @@ benchmarks! {
 		// We need the buyer to have enough balance to pay for the NFT
 		let buyer_account = account::<T::AccountId>("buyer", 0, 0);
 		let buyer_origin: RawOrigin<T::AccountId> = RawOrigin::Signed(buyer_account.clone()).into();
-		deposit_token_balance::<T>(&buyer_account, CurrencyId::AUSD, 100_000u128.into());
+		deposit_token_balance::<T>(&buyer_account, AUSD_CURRENCY_ID, 100_000u128.into());
 
 	}: _(buyer_origin, collection_id, item_id, price)
 	verify {

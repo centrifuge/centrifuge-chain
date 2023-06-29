@@ -182,9 +182,10 @@ parameter_types! {
 	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
-pub(crate) const SELLER: u64 = 0x1;
-pub(crate) const BUYER: u64 = 0x2;
-pub(crate) const BAD_ACTOR: u64 = 0x3;
+pub(crate) const SELLER: u64 = 1;
+pub(crate) const BUYER: u64 = 2;
+pub(crate) const BAD_ACTOR: u64 = 3;
+pub(crate) const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 #[allow(dead_code)]
 // Build the genesis storage according to the mock runtime.
@@ -207,7 +208,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
