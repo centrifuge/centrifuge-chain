@@ -49,7 +49,11 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1028 {
+			// Only run this migration up to Altair 1028, the version in which we expect this
+			// migration to be executed. By being inclusive to lower versions (e.g. 1027) we
+			// are able to test the migration with try-runtime without needing to temporarily
+			// bump Altair's spec_version.
+			if VERSION.spec_version > 1028 {
 				return Weight::zero();
 			}
 
