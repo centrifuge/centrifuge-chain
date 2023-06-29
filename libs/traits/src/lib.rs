@@ -41,8 +41,6 @@ pub mod changes;
 pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
-/// Traits related to operations.
-pub mod ops;
 /// Traits related to rewards.
 pub mod rewards;
 

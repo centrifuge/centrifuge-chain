@@ -15,7 +15,6 @@ use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
-	xcm::XcmMetadata,
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
@@ -2614,7 +2613,7 @@ mod changes {
 			util::default_pool::create();
 
 			let change = PoolChangeProposal::new([Requirement::BlockedByLockedRedemptions]);
-			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			let _change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
 			/* TODO: 1407
 			assert_noop!(

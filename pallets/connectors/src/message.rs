@@ -739,7 +739,7 @@ mod tests {
 	use sp_runtime::traits::One;
 
 	use super::*;
-	use crate::{Codec, Domain, DomainAddress};
+	use crate::{Domain, DomainAddress};
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 

@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureSub},
-	Investment, InvestmentCollector, Permissions,
-};
+use cfg_traits::{Investment, InvestmentCollector, Permissions};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	permissions::{PermissionScope, PoolRole, Role},
@@ -24,7 +21,7 @@ use frame_support::{
 	traits::fungibles::{Mutate, Transfer},
 };
 use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
+	traits::{AccountIdConversion, EnsureAdd, EnsureSub, Zero},
 	DispatchResult,
 };
 
