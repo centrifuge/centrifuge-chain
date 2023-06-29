@@ -106,7 +106,7 @@ pub mod pallet {
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepayLoanError, WrittenOffError,
+		RepaidAmount, RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -328,8 +328,7 @@ pub mod pallet {
 		Repaid {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			amount: T::Balance,
-			unchecked_amount: T::Balance,
+			amount: RepaidAmount<T::Balance>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -535,24 +534,21 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			amount: T::Balance,
-			unchecked_amount: T::Balance,
+			amount: RepaidAmount<T::Balance>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount, unchecked_amount)
+				loan.repay(amount.clone())
 			})?;
 
-			let deposit_amount = amount.ensure_add(unchecked_amount)?;
-			T::Pool::deposit(pool_id, who, deposit_amount)?;
+			T::Pool::deposit(pool_id, who, amount.total()?)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
 				loan_id,
 				amount,
-				unchecked_amount,
 			});
 
 			Ok(())

@@ -69,6 +69,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Balance::zero(),
+			normalized_accrued_notional: T::Balance::zero(),
 		})
 	}
 

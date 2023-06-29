@@ -17,7 +17,10 @@ use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::traits::Get;
+use sp_runtime::{
+	traits::{EnsureAdd, Get},
+	ArithmeticError,
+};
 
 pub mod policy;
 pub mod portfolio;
@@ -55,6 +58,8 @@ pub enum BorrowLoanError {
 pub enum RepayLoanError {
 	/// Emits when the loan can not be borrowed because of a restriction
 	Restriction,
+	/// Emits when the principal amount is more than the borrowed amount
+	MaxPrincipalAmountExceeded,
 }
 
 /// Error related to loan borrowing
@@ -192,4 +197,29 @@ pub enum LoanMutation<Rate> {
 pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
 	Loan(LoanId, LoanMutation<Rate>),
 	Policy(BoundedVec<WriteOffRule<Rate>, MaxRules>),
+}
+
+#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct RepaidAmount<Balance> {
+	pub principal: Balance,
+	pub interest: Balance,
+	pub unchecked: Balance,
+}
+
+impl<Balance: EnsureAdd + Copy> RepaidAmount<Balance> {
+	pub fn effective(&self) -> Result<Balance, ArithmeticError> {
+		self.principal.ensure_add(self.interest)
+	}
+
+	pub fn total(&self) -> Result<Balance, ArithmeticError> {
+		self.principal
+			.ensure_add(self.interest)?
+			.ensure_add(self.unchecked)
+	}
+
+	pub fn ensure_add_assign(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+		self.principal.ensure_add_assign(other.principal)?;
+		self.interest.ensure_add_assign(other.interest)?;
+		self.unchecked.ensure_add_assign(other.unchecked)
+	}
 }
