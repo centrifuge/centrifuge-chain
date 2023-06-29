@@ -5,7 +5,7 @@ use cfg_traits::{
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{self, ensure, RuntimeDebugNoBound};
+use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -16,6 +16,16 @@ use sp_runtime::{
 
 use crate::pallet::{Config, Error, PoolIdOf, PriceOf};
 
+/// Define the max borrow amount of a loan
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum MaxBorrowAmount<Balance> {
+	/// You can borrow until the pool reserve
+	NoLimit,
+
+	/// Maximum number of items associated with the loan of the pricing.
+	Quantity(Balance),
+}
+
 /// External pricing method
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -23,8 +33,8 @@ pub struct ExternalPricing<T: Config> {
 	/// Id of an external price
 	pub price_id: T::PriceId,
 
-	/// Maximum number of items associated with the loan of the pricing.
-	pub max_borrow_quantity: T::Balance,
+	/// Maximum amount that can be borrowed.
+	pub max_borrow_amount: MaxBorrowAmount<T::Balance>,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -78,13 +88,18 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(prices.get(&self.info.price_id)?.0)
 	}
 
-	pub fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.calculate_price()?;
-		let available = self
-			.info
-			.max_borrow_quantity
-			.ensure_sub(self.outstanding_quantity)?;
-		Ok(price.ensure_mul_int(available)?)
+	pub fn max_borrow_amount(
+		&self,
+		desired_amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		match self.info.max_borrow_amount {
+			MaxBorrowAmount::Quantity(quantity) => {
+				let price = self.calculate_price()?;
+				let available = quantity.ensure_sub(self.outstanding_quantity)?;
+				Ok(price.ensure_mul_int(available)?)
+			}
+			MaxBorrowAmount::NoLimit => Ok(desired_amount),
+		}
 	}
 
 	pub fn last_updated(&self) -> Result<Moment, DispatchError> {

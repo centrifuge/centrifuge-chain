@@ -50,13 +50,16 @@ use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
 
 use super::register_dot;
-use crate::xcm::polkadot::{
-	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, NO_XCM_ASSET_ID, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::polkadot::{
+		setup::{
+			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+			BOB, DOT_ASSET_ID, NO_XCM_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+		tests::{register_ausd, register_cfg, register_cfg_v2, register_no_xcm_token},
 	},
-	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::{register_ausd, register_cfg, register_cfg_v2, register_no_xcm_token},
 };
 
 #[test]
@@ -162,11 +165,11 @@ fn convert_ausd() {
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location),
-			Ok(AUSD_ASSET_ID),
+			Ok(AUSD_CURRENCY_ID),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_ASSET_ID),
+			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_CURRENCY_ID),
 			Some(ausd_location)
 		)
 	});
