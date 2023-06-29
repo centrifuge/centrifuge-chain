@@ -153,10 +153,13 @@ pub struct ActiveLoan<T: Config> {
 	/// Total borrowed amount of this loan
 	total_borrowed: T::Balance,
 
-	/// Total repaid amount of this loan
-	total_repaid: T::Balance,
+	/// Total repaid principal amount of this loan
+	total_repaid_principal: T::Balance,
 
-	/// Total repaid amount unchecked of this loan
+	/// Total repaid interest amount of this loan
+	total_repaid_interest: T::Balance,
+
+	/// Total repaid unchecked amount of this loan
 	total_repaid_unchecked: T::Balance,
 }
 

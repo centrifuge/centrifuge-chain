@@ -35,6 +35,12 @@ pub struct ExternalPricing<T: Config> {
 
 	/// Maximum amount that can be borrowed.
 	pub max_borrow_amount: MaxBorrowAmount<T::Balance>,
+
+	/// TODO
+	pub notional: T::Balance,
+
+	/// TODO
+	pub interest_rate: T::Rate,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -52,6 +58,9 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Outstanding quantity that should be repaid.
 	outstanding_quantity: T::Balance,
+
+	/// TODO
+	normalized_accrued_notional: T::Balance,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
