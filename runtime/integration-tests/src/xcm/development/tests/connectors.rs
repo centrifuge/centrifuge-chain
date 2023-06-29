@@ -320,7 +320,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Only `ForeignAsset` can be transferred
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
+				RuntimeOrigin::signed(source_account.into()),
 				CurrencyId::Tranche(42u64, [0u8; 16]),
 				dest_address.clone(),
 				amount,
@@ -329,7 +329,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
+				RuntimeOrigin::signed(source_account.into()),
 				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
 				dest_address.clone(),
 				amount,
@@ -338,7 +338,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
+				RuntimeOrigin::signed(source_account.into()),
 				CurrencyId::Native,
 				dest_address.clone(),
 				amount,
@@ -349,7 +349,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Cannot transfer as long as cross chain transferability is disabled
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
+				RuntimeOrigin::signed(source_account.into()),
 				currency_id,
 				dest_address.clone(),
 				initial_balance,
@@ -383,7 +383,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Cannot transfer more than owned
 		assert_noop!(
 			Connectors::transfer(
-				RuntimeOrigin::signed(source_account.clone().into()),
+				RuntimeOrigin::signed(source_account.into()),
 				currency_id,
 				dest_address.clone(),
 				initial_balance.saturating_add(1),
@@ -392,7 +392,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		);
 
 		assert_ok!(Connectors::transfer(
-			RuntimeOrigin::signed(source_account.clone().into()),
+			RuntimeOrigin::signed(source_account.into()),
 			currency_id,
 			dest_address.clone(),
 			amount,
@@ -1639,7 +1639,7 @@ mod utils {
 		chain_id: u64,
 		address: [u8; 20],
 	) -> VersionedMultiLocation {
-		let location = VersionedMultiLocation::V3(MultiLocation {
+		VersionedMultiLocation::V3(MultiLocation {
 			parents: 0,
 			interior: X3(
 				PalletInstance(
@@ -1653,8 +1653,7 @@ mod utils {
 					key: address,
 				},
 			),
-		});
-		location
+		})
 	}
 
 	/// Initializes universally required storage for connectors tests:
@@ -1924,7 +1923,7 @@ mod utils {
 			// Execute byte message
 			assert_ok!(Connectors::process(
 				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				msg.clone()
+				msg
 			));
 
 			// Verify investment was transferred into investment account
