@@ -646,12 +646,6 @@ pub mod pallet {
 			// TODO(subsequent PR): In the future, should be permissioned by trait which
 			// does not exist yet.
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
-
-			// TODO(@review): According to spec, this should be restricted to
-			// `AdminOrigin`. However, `do_send_message` requires a 32-byte address for the
-			// payment of the fee. We could set the treasury.
-			// https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
-			// let who = T::AdminOrigin::ensure_origin(origin)?;
 			let who = ensure_signed(origin)?;
 
 			// Ensure currency matches the currency of the pool

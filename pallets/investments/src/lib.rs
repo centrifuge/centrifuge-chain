@@ -1116,7 +1116,7 @@ where
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
 		Ok(InvestOrders::<T>::get(who, investment_id)
-			.map_or_else(|| Zero::zero(), |order| order.amount()))
+			.map_or_else(Zero::zero, |order| order.amount()))
 	}
 
 	fn update_redemption(
@@ -1141,7 +1141,7 @@ where
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
 		Ok(RedeemOrders::<T>::get(who, investment_id)
-			.map_or_else(|| Zero::zero(), |order| order.amount()))
+			.map_or_else(Zero::zero, |order| order.amount()))
 	}
 }
 
