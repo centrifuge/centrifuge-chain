@@ -231,7 +231,7 @@ fn with_wrong_big_amount_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY) + 1;
 		config_mocks(amount);
 
 		assert_noop!(
