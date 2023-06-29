@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::CurrencyId;
 use frame_support::{assert_ok, BoundedVec};
 use orml_traits::Change;
 use pallet_pool_system::{
@@ -59,14 +58,15 @@ fn register_pool_and_set_metadata() {
 				},
 			}];
 
-			let currency = CurrencyId::AUSD;
-			let max_reserve: u128 = 10_000 * 1_000_000_000_000_000;
+			let currency = AUSD_CURRENCY_ID;
+			let max_reserve: u128 = 10_000 * 1_000_000_000;
 
 			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
 				.to_vec();
 			let metadata = Some(hash);
 
+			// nuno: failing with MetadataForCurrencyNotFound
 			assert_ok!(PoolRegistry::register(
 				RuntimeOrigin::signed(pool_owner),
 				pool_owner,
