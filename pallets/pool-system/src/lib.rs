@@ -15,10 +15,7 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
-	Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve,
-};
+use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -41,6 +38,7 @@ use orml_traits::{
 };
 pub use pallet::*;
 use pool_types::{
+	changes::{NotedPoolChange, PoolChangeProposal},
 	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,
 };
 use scale_info::TypeInfo;
@@ -50,7 +48,8 @@ pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Get, One, Saturating,
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, EnsureAdd,
+		EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, Get, One, Saturating,
 		Zero,
 	},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
@@ -66,7 +65,6 @@ pub use weights::*;
 pub mod benchmarking;
 mod impls;
 
-pub mod migrations;
 #[cfg(test)]
 mod mock;
 pub mod pool_types;
@@ -260,6 +258,8 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
+		type RuntimeChange: Parameter + Member + MaxEncodedLen + TypeInfo + Into<PoolChangeProposal>;
+
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
 		type UpdateGuard: PoolUpdateGuard<
@@ -385,6 +385,16 @@ pub mod pallet {
 	#[pallet::getter(fn storage_version)]
 	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
+	#[pallet::storage]
+	pub type NotedChange<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::Hash,
+		NotedPoolChange<T::RuntimeChange>,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -420,6 +430,12 @@ pub mod pallet {
 			id: T::PoolId,
 			old: PoolEssenceOf<T>,
 			new: PoolEssenceOf<T>,
+		},
+		/// A change was proposed.
+		ProposedChange {
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+			change: T::RuntimeChange,
 		},
 	}
 
@@ -495,6 +511,10 @@ pub mod pallet {
 		UpdatePrerequesitesNotFulfilled,
 		/// A user has tried to create a pool with an invalid currency
 		InvalidCurrency,
+		/// The external change was not found for the specified ChangeId.
+		ChangeNotFound,
+		/// The external change was found for is not ready yet to be released.
+		ChangeNotReady,
 	}
 
 	#[pallet::call]

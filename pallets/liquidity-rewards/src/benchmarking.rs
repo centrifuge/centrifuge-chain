@@ -73,7 +73,8 @@ benchmarks! {
 		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
+		Pallet::<T>::apply_epoch_changes(&mut Default::default()).unwrap();
+		Pallet::<T>::on_initialize(Zero::zero());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
 
@@ -83,7 +84,8 @@ benchmarks! {
 		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
+		Pallet::<T>::apply_epoch_changes(&mut Default::default()).unwrap();
+		Pallet::<T>::on_initialize(Zero::zero());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
 
@@ -93,7 +95,8 @@ benchmarks! {
 		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
+		Pallet::<T>::apply_epoch_changes(&mut Default::default()).unwrap();
+		Pallet::<T>::on_initialize(Zero::zero());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into())
 
@@ -101,7 +104,7 @@ benchmarks! {
 	}: _(RawOrigin::Root, REWARD.into())
 
 	set_epoch_duration {
-	}: _(RawOrigin::Root, 10.into())
+	}: _(RawOrigin::Root, MomentOf::<T>::zero())
 
 	set_group_weight {
 	}: _(RawOrigin::Root, GROUP_A.into(), WEIGHT.into())

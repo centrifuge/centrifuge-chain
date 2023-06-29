@@ -16,7 +16,7 @@ fn config_mocks(pool_id: PoolId) {
 	});
 	MockPrices::mock_get(|id| match *id {
 		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err(DEPENDENCY_ERROR),
+		_ => Err("Should never be dispatched".into()),
 	});
 }
 
@@ -146,7 +146,7 @@ fn with_wrong_interest_rate() {
 }
 
 #[test]
-fn with_wrong_price_id() {
+fn with_unregister_price_id() {
 	new_test_ext().execute_with(|| {
 		config_mocks(POOL_A);
 
@@ -158,10 +158,7 @@ fn with_wrong_price_id() {
 			..util::base_external_loan()
 		};
 
-		assert_noop!(
-			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-			DEPENDENCY_ERROR
-		);
+		assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 	});
 }
 

@@ -12,9 +12,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::ops::{
-	EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
-};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
@@ -22,7 +19,10 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
-use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, One},
+	ArithmeticError, FixedPointNumber, FixedPointOperand,
+};
 
 /// Discounted cash flow values
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]

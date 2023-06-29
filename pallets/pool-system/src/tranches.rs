@@ -13,10 +13,7 @@
 use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto},
-	TrancheCurrency as TrancheCurrencyT,
-};
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use cfg_types::tokens::{CrossChainTransferability, CustomMetadata};
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
@@ -35,7 +32,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::{
-	traits::{Member, One, Zero},
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, Member, One, Zero},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};

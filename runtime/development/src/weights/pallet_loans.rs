@@ -74,7 +74,27 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(7 as u64))
 	}
 
-	fn update_write_off_policy() -> Weight {
+	fn propose_loan_mutation(n: u32) -> Weight {
+		Weight::from_ref_time(63_153_708) // Standard Error: 2_472
+			.saturating_add(Weight::from_ref_time(325_868).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+	}
+
+	fn apply_loan_mutation(n: u32) -> Weight {
+		Weight::from_ref_time(63_153_708) // Standard Error: 2_472
+			.saturating_add(Weight::from_ref_time(325_868).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(6 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+	}
+
+	fn propose_write_off_policy() -> Weight {
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	}
+
+	fn apply_write_off_policy() -> Weight {
 		Weight::from_ref_time(27_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))

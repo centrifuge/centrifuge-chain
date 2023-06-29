@@ -13,6 +13,7 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
+	changes::ChangeGuard,
 	data::{DataCollection, DataRegistry},
 	InterestAccrual, Permissions, PoolBenchmarkHelper,
 };
@@ -46,8 +47,8 @@ use crate::{
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
+		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -67,6 +68,29 @@ type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
 	PoolIdOf<T>,
 >>::MaxCollectionSize;
 
+#[cfg(test)]
+fn config_mocks() {
+	use cfg_mocks::pallet_mock_data::util::MockDataCollection;
+
+	use crate::tests::mock::{MockChangeGuard, MockPermissions, MockPools, MockPrices};
+
+	MockPermissions::mock_add(|_, _, _| Ok(()));
+	MockPermissions::mock_has(|_, _, _| true);
+	MockPools::mock_pool_exists(|_| true);
+	MockPools::mock_account_for(|_| 0);
+	MockPools::mock_withdraw(|_, _, _| Ok(()));
+	MockPools::mock_deposit(|_, _, _| Ok(()));
+	MockPools::mock_benchmark_create_pool(|_, _| {});
+	MockPools::mock_benchmark_give_ausd(|_, _| {});
+	MockPrices::mock_feed_value(|_, _, _| Ok(()));
+	MockPrices::mock_register_id(|_, _| Ok(()));
+	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
+	MockChangeGuard::mock_note(|_, change| {
+		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
+		Ok(sp_core::H256::default())
+	});
+}
+
 struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
 where
@@ -80,28 +104,9 @@ where
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 {
-	#[cfg(test)]
-	fn config_mocks() {
-		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
-
-		use crate::tests::mock::{MockPermissions, MockPools, MockPrices};
-
-		MockPermissions::mock_add(|_, _, _| Ok(()));
-		MockPermissions::mock_has(|_, _, _| true);
-		MockPools::mock_pool_exists(|_| true);
-		MockPools::mock_account_for(|_| 0);
-		MockPools::mock_withdraw(|_, _, _| Ok(()));
-		MockPools::mock_deposit(|_, _, _| Ok(()));
-		MockPools::mock_benchmark_create_pool(|_, _| {});
-		MockPools::mock_benchmark_give_ausd(|_, _| {});
-		MockPrices::mock_feed_value(|_, _, _| Ok(()));
-		MockPrices::mock_register_id(|_, _| Ok(()));
-		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
-	}
-
 	fn prepare_benchmark() -> PoolIdOf<T> {
 		#[cfg(test)]
-		Self::config_mocks();
+		config_mocks();
 
 		let pool_id = Default::default();
 
@@ -194,6 +199,31 @@ where
 		.unwrap();
 	}
 
+	fn create_mutation() -> LoanMutation<T::Rate> {
+		LoanMutation::InterestPayments(InterestPayments::None)
+	}
+
+	fn propose_mutation(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> T::Hash {
+		let pool_admin = account::<T::AccountId>("loan_admin", 0, 0);
+
+		Pallet::<T>::propose_loan_mutation(
+			RawOrigin::Signed(pool_admin).into(),
+			pool_id,
+			loan_id,
+			Self::create_mutation(),
+		)
+		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(
+			pool_id,
+			ChangeOf::<T>::Loan(loan_id, Self::create_mutation()).into(),
+		)
+		.unwrap()
+	}
+
 	// Worst case policy where you need to iterate for the whole policy.
 	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
 		vec![
@@ -208,15 +238,27 @@ where
 		.unwrap()
 	}
 
-	fn set_policy(pool_id: PoolIdOf<T>) {
+	fn propose_policy(pool_id: PoolIdOf<T>) -> T::Hash {
 		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
-
-		Pallet::<T>::update_write_off_policy(
+		Pallet::<T>::propose_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
 			pool_id,
 			Self::create_policy(),
 		)
 		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(Self::create_policy()).into()).unwrap()
+	}
+
+	fn set_policy(pool_id: PoolIdOf<T>) {
+		let change_id = Self::propose_policy(pool_id);
+
+		let any = account::<T::AccountId>("any", 0, 0);
+		Pallet::<T>::apply_write_off_policy(RawOrigin::Signed(any).into(), pool_id, change_id)
+			.unwrap();
 	}
 
 	fn expire_loan(pool_id: PoolIdOf<T>, loan_id: T::LoanId) {
@@ -321,6 +363,30 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
 
+	propose_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let loan_admin = account("loan_admin", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let mutation = Helper::<T>::create_mutation();
+
+	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, mutation)
+
+	apply_loan_mutation {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let any = account("any", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_id);
+
+		let change_id = Helper::<T>::propose_mutation(pool_id, loan_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
+
 	close {
 		let n in 1..Helper::<T>::max_active_loans() - 1;
 
@@ -332,20 +398,27 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id)
 
-	update_write_off_policy {
+	propose_write_off_policy {
 		let pool_admin = account("pool_admin", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
 		let policy = Helper::<T>::create_policy();
 
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 
+	apply_write_off_policy {
+		let any = account("any", 0, 0);
+		let pool_id = Helper::<T>::prepare_benchmark();
+		let change_id = Helper::<T>::propose_policy(pool_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
+
 	update_portfolio_valuation {
 		let n in 1..Helper::<T>::max_active_loans();
 
-		let borrower = account("borrower", 0, 0);
+		let any = account("any", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
 
-	}: _(RawOrigin::Signed(borrower), pool_id)
+	}: _(RawOrigin::Signed(any), pool_id)
 	verify {
 		assert!(Pallet::<T>::portfolio_valuation(pool_id).value() > Zero::zero());
 	}

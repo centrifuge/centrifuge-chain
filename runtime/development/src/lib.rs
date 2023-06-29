@@ -1033,6 +1033,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1297,13 +1298,14 @@ parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxRateCount: u32 = MaxActiveLoansPerPool::get();
 	pub const MaxCollectionSize: u32 = MaxActiveLoansPerPool::get();
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 5;
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
 		MaxPriceOracleMembers::get(),
-		// For benchmarking we need a number of members equals to the active loans.
+		// For benchmarking we need a number of members equal to the active loans.
 		// The benchmark distintion can be removed once
-		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 		MaxActiveLoansPerPool::get()
 	);
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
@@ -1329,7 +1331,7 @@ impl orml_oracle::Config for Runtime {
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Members = PriceOracleMembership;
 	// This can be removed once
-	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
@@ -1364,8 +1366,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
-	type ChangeGuard = pallet_loans::util::NoLoanChanges<Runtime>;
-	type ChangeId = u64;
+	type ChangeGuard = PoolSystem;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
@@ -1379,6 +1380,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
@@ -1798,6 +1800,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type MaxGroups = MaxGroups;
 	type Rewards = LiquidityRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
 	type Weight = u64;
 	type WeightInfo = ();
 }
