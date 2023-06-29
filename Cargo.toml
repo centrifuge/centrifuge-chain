@@ -54,6 +54,7 @@ members = [
   "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
+  "pallets/order-book",
   "pallets/permissions",
   "pallets/pool-system",
   "pallets/pool-registry",

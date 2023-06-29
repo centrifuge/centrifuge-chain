@@ -1,0 +1,32 @@
+[package]
+[package]
+name = "pallet-order-book"
+description = "Pallet to add order book for currency exchanges.  Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
+version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+homepage = 'https://centrifuge.io'
+license = "LGPL-3.0"
+repository = 'https://github.com/centrifuge/centrifuge-chain'
+edition = "2021"
+
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+
+[dev-dependencies]
+
+[features]
+default = ["std"]
+std = [
+  "frame-support/std",
+  "frame-system/std",
+  "codec/std",
+  "scale-info/std",
+]
