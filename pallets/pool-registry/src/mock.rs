@@ -24,7 +24,7 @@ use frame_support::{
 	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
-use frame_system::{EnsureSigned};
+use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_system::{
 	benchmarking::create_pool,

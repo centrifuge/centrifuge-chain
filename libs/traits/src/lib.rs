@@ -177,7 +177,8 @@ pub trait PoolMutate<AccountId, PoolId> {
 	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 }
 
-/// A trait that supports retrieval and mutation of pool and tranche token metadata.
+/// A trait that supports retrieval and mutation of pool and tranche token
+/// metadata.
 pub trait PoolMetadata<Balance, VersionedMultiLocation> {
 	type AssetMetadata;
 	type CustomMetadata;
@@ -212,7 +213,6 @@ pub trait PoolMetadata<Balance, VersionedMultiLocation> {
 		tranche: Self::TrancheId,
 		metadata: Self::AssetMetadata,
 	) -> DispatchResult;
-
 
 	#[allow(clippy::too_many_arguments)]
 	/// Update the metadata of the given pair of pool and tranche id.
