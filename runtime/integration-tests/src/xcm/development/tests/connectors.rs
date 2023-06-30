@@ -79,6 +79,7 @@ use utils::investments::{
 use xcm_emulator::TestExt;
 
 use crate::{
+	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	xcm::development::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
@@ -303,7 +304,7 @@ fn transfer_non_tranche_tokens_from_local() {
 		let initial_balance = 100_000_000;
 		let amount = initial_balance / 2;
 		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let source_account = BOB;
 
 		// Mint sufficient balance
@@ -367,7 +368,7 @@ fn transfer_non_tranche_tokens_from_local() {
 			None,
 			// Changed: Add location which can be converted to ConnectorsWrappedToken
 			Some(Some(utils::connector_transferable_multilocation(
-				utils::EVM_CHAIN_ID_MOONBEAM,
+				MOONBEAM_EVM_CHAIN_ID,
 				// Value of evm_address is irrelevant here
 				[1u8; 20],
 			))),
@@ -424,7 +425,7 @@ fn transfer_non_tranche_tokens_to_local() {
 		let initial_balance = utils::DEFAULT_BALANCE_GLMR;
 		let amount = utils::DEFAULT_BALANCE_GLMR / 2;
 		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let receiver: AccountId = BOB.into();
 
 		// Mock incoming decrease message
@@ -751,9 +752,9 @@ fn add_currency() {
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
 
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let location = utils::connector_transferable_multilocation(
-			utils::EVM_CHAIN_ID_MOONBEAM,
+			MOONBEAM_EVM_CHAIN_ID,
 			utils::DEFAULT_EVM_ADDRESS_MOONBEAM,
 		);
 
@@ -923,9 +924,9 @@ fn allow_pool_currency() {
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
 
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let pool_id: u64 = 42;
-		let evm_chain_id: u64 = utils::EVM_CHAIN_ID_MOONBEAM;
+		let evm_chain_id: u64 = MOONBEAM_EVM_CHAIN_ID;
 		let evm_address = [1u8; 20];
 
 		// Create an AUSD pool
@@ -969,7 +970,7 @@ fn allow_pool_should_fail() {
 	Development::execute_with(|| {
 		let pool_id: u64 = 42;
 		let currency_id = CurrencyId::ForeignAsset(42);
-		let ausd_currency_id = utils::CURRENCY_ID_AUSD;
+		let ausd_currency_id = AUSD_CURRENCY_ID;
 
 		utils::setup_pre_requirements();
 		// Should fail if pool does not exist
@@ -1133,7 +1134,7 @@ fn inbound_increase_invest_order() {
 		let pool_id = 42;
 		let amount = 100_000_000;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 
 		// Create new pool
@@ -1165,7 +1166,7 @@ fn inbound_decrease_invest_order() {
 		let decrease_amount = invest_amount / 3;
 		let final_amount = invest_amount - decrease_amount;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 
 		// Create new pool
@@ -1231,7 +1232,7 @@ fn inbound_collect_invest_order() {
 		let pool_id = 42;
 		let amount = 100_000_000;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 
 		// Create new pool
@@ -1353,7 +1354,7 @@ fn inbound_increase_redeem_order() {
 		let pool_id = 42;
 		let amount = 100_000_000;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 
 		// Create new pool
@@ -1385,7 +1386,7 @@ fn inbound_decrease_redeem_order() {
 		let decrease_amount = redeem_amount / 3;
 		let final_amount = redeem_amount - decrease_amount;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 
 		// Create new pool
@@ -1461,7 +1462,7 @@ fn inbound_collect_redeem_order() {
 		let pool_id = 42;
 		let amount = 100_000_000;
 		let investor: AccountId = BOB.into();
-		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_id = AUSD_CURRENCY_ID;
 		let currency_decimals = currency_decimals::AUSD;
 		let pool_account =
 			pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
@@ -1600,23 +1601,19 @@ mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
 
 	use super::*;
-	use crate::{utils::AUSD_CURRENCY_ID, xcm::development::tests::register_ausd};
+	use crate::{
+		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+		xcm::development::tests::register_ausd,
+	};
 
-	/// NOTE: If you want to transfer this currency via connectors for the sake
-	/// of tests, assume to run into issues with `pallet_xcm_transactor` due to
-	/// the VersionedMultiLocation overwrite required to convert it into
-	/// `ConnectorsWrappedToken`. We recommend taking another currency.
-	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
-	pub const CURRENCY_ID_AUSD: CurrencyId = CurrencyId::ForeignAsset(3);
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
-	pub const EVM_CHAIN_ID_MOONBEAM: u64 = 1284;
-	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(EVM_CHAIN_ID_MOONBEAM);
+	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 	pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
-		DomainAddress::EVM(EVM_CHAIN_ID_MOONBEAM, DEFAULT_EVM_ADDRESS_MOONBEAM);
+		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
 	pub const DEFAULT_VALIDITY: Moment = 2555583502;
 	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
-		DomainAddress::EVM(EVM_CHAIN_ID_MOONBEAM, [0; 20]);
+		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
@@ -1646,7 +1643,7 @@ mod utils {
 
 	/// Initializes universally required storage for connectors tests:
 	///  * Set transact info and domain router for Moonbeam `MultiLocation`,
-	///  * Set fee for GLMR (`CURRENCY_ID_GLMR`),
+	///  * Set fee for GLMR (`GLIMMER_CURRENCY_ID`),
 	///  * Register GLMR and AUSD in `OrmlAssetRegistry`,
 	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice and Bob.
 	///
@@ -1688,12 +1685,12 @@ mod utils {
 				Some(VersionedMultiLocation::V3(moonbeam_native_token)),
 				CrossChainTransferability::Xcm(Default::default()),
 			),
-			Some(CURRENCY_ID_GLMR)
+			Some(GLIMMER_CURRENCY_ID)
 		));
 
 		// Give Alice and BOB enough glimmer to pay for fees
-		OrmlTokens::deposit(CURRENCY_ID_GLMR, &ALICE.into(), DEFAULT_BALANCE_GLMR);
-		OrmlTokens::deposit(CURRENCY_ID_GLMR, &BOB.into(), DEFAULT_BALANCE_GLMR);
+		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
+		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
 
 		assert_ok!(Connectors::set_domain_router(
 			RuntimeOrigin::root(),
@@ -1705,7 +1702,7 @@ mod utils {
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
 						.expect("Invalid address"),
 				),
-				fee_currency: CURRENCY_ID_GLMR,
+				fee_currency: GLIMMER_CURRENCY_ID,
 				max_gas_limit: 700_000,
 			}),
 		));
@@ -1720,7 +1717,7 @@ mod utils {
 	///  * Two tranches
 	///  * AUSD as pool currency with max reserve 10k.
 	pub fn create_ausd_pool(pool_id: u64) {
-		create_currency_pool(pool_id, CURRENCY_ID_AUSD, dollar(currency_decimals::AUSD))
+		create_currency_pool(pool_id, AUSD_CURRENCY_ID, dollar(currency_decimals::AUSD))
 	}
 
 	/// Creates a new pool for for the given id with the provided currency.
