@@ -228,7 +228,7 @@ where
 	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
 		vec![
 			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdueDays(0)],
+				[WriteOffTrigger::PrincipalOverdue(0)],
 				T::Rate::zero(),
 				T::Rate::zero(),
 			);

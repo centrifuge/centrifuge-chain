@@ -225,7 +225,7 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<bool, DispatchError> {
 		let now = T::Time::now().as_secs();
 		match trigger {
-			WriteOffTrigger::PrincipalOverdueDays(days) => {
+			WriteOffTrigger::PrincipalOverdue(days) => {
 				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
 				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
 			}

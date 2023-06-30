@@ -1,3 +1,5 @@
+use cfg_primitives::SECONDS_PER_DAY;
+
 use super::*;
 
 pub fn total_borrowed_rate(value: f64) -> IntMaxBorrowAmount<Rate> {
@@ -45,7 +47,9 @@ pub fn set_up_policy(percentage: f64, penalty: f64) {
 	MockChangeGuard::mock_released(move |_, _| {
 		Ok(Change::Policy(
 			vec![WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				[WriteOffTrigger::PrincipalOverdue(
+					SECONDS_PER_DAY.try_into().unwrap(),
+				)],
 				Rate::from_float(percentage),
 				Rate::from_float(penalty),
 			)]

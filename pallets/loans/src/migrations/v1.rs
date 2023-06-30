@@ -16,7 +16,7 @@ mod v0 {
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	pub struct WriteOffState<Rate> {
-		pub overdue_days: u32,
+		pub overdue_secs: u32,
 		pub percentage: Rate,
 		pub penalty: Rate,
 	}
@@ -47,7 +47,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 					.into_iter()
 					.map(|old| {
 						WriteOffRule::new(
-							[WriteOffTrigger::PrincipalOverdueDays(old.overdue_days)],
+							[WriteOffTrigger::PrincipalOverdue(old.overdue_secs)],
 							old.percentage,
 							old.penalty,
 						)
@@ -86,7 +86,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 				let mut policy = old_vector.iter().zip(new_vector.iter());
 				policy.all(|(old, new)| {
 					*new == WriteOffRule::new(
-						[WriteOffTrigger::PrincipalOverdueDays(old.overdue_days)],
+						[WriteOffTrigger::PrincipalOverdue(old.overdue_secs)],
 						old.percentage,
 						old.penalty,
 					)
@@ -109,12 +109,12 @@ mod tests {
 				POOL_A,
 				BoundedVec::try_from(vec![
 					v0::WriteOffState {
-						overdue_days: 12,
+						overdue_secs: 12,
 						percentage: Rate::from_float(0.3),
 						penalty: Rate::from_float(0.2),
 					},
 					v0::WriteOffState {
-						overdue_days: 23,
+						overdue_secs: 23,
 						percentage: Rate::from_float(0.4),
 						penalty: Rate::from_float(0.1),
 					},

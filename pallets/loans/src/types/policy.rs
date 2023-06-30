@@ -37,8 +37,8 @@ use strum::EnumCount;
 	EnumCount,
 )]
 pub enum WriteOffTrigger {
-	/// Number in days after the maturity date has passed
-	PrincipalOverdueDays(u32),
+	/// Seconds after the maturity date has passed
+	PrincipalOverdue(u32),
 
 	/// Seconds since the oracle valuation was last updated
 	PriceOutdated(Moment),
@@ -52,8 +52,8 @@ pub struct UniqueWriteOffTrigger(pub WriteOffTrigger);
 impl PartialEq for UniqueWriteOffTrigger {
 	fn eq(&self, other: &Self) -> bool {
 		match self.0 {
-			WriteOffTrigger::PrincipalOverdueDays(_) => {
-				matches!(other.0, WriteOffTrigger::PrincipalOverdueDays(_))
+			WriteOffTrigger::PrincipalOverdue(_) => {
+				matches!(other.0, WriteOffTrigger::PrincipalOverdue(_))
 			}
 			WriteOffTrigger::PriceOutdated(_) => {
 				matches!(other.0, WriteOffTrigger::PriceOutdated(_))
@@ -158,9 +158,9 @@ where
 /// be applied.
 ///
 /// Suppose a policy with the following rules:
-/// - overdue_days: 5,   percentage 10%
-/// - overdue_days: 10,  percentage 30%
-/// - overdue_days: 15,  percentage 20%
+/// - overdue_secs: 5,   percentage 10%
+/// - overdue_secs: 10,  percentage 30%
+/// - overdue_secs: 15,  percentage 20%
 ///
 /// If the loan is not overdue, it will not return any rule.
 /// If the loan is overdue by 4 days, it will not return any rule.
@@ -200,8 +200,8 @@ mod tests {
 	#[test]
 	fn same_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(2)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(2)),
 		])
 		.try_into()
 		.unwrap();
@@ -212,7 +212,7 @@ mod tests {
 	#[test]
 	fn different_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
-			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdue(1)),
 			UniqueWriteOffTrigger(WriteOffTrigger::PriceOutdated(1)),
 		])
 		.try_into()
