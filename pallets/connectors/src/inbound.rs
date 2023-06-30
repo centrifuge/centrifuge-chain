@@ -13,7 +13,7 @@
 
 use cfg_traits::{Investment, InvestmentCollector, Permissions};
 use cfg_types::{
-	domain_address::{Domain, DomainAddress, DomainLocator},
+	domain_address::{Domain, DomainAddress},
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -21,7 +21,7 @@ use frame_support::{
 	traits::fungibles::{Mutate, Transfer},
 };
 use sp_runtime::{
-	traits::{AccountIdConversion, EnsureAdd, EnsureSub, Zero},
+	traits::{Convert, EnsureAdd, EnsureSub, Zero},
 	DispatchResult,
 };
 
@@ -32,7 +32,7 @@ impl<T: Config> Pallet<T> {
 	/// non-tranche-tokens.
 	///
 	/// Directly mints the currency into the receiver address.
-	pub fn do_transfer(
+	pub fn handle_transfer(
 		currency: GeneralCurrencyIndexOf<T>,
 		receiver: T::AccountId,
 		amount: <T as Config>::Balance,
@@ -50,7 +50,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
-	pub fn do_tranche_tokens_transfer(
+	pub fn handle_tranche_tokens_transfer(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		sending_domain: DomainAddress,
@@ -72,10 +72,7 @@ impl<T: Config> Pallet<T> {
 
 		T::Tokens::transfer(
 			invest_id.into(),
-			&DomainLocator::<Domain> {
-				domain: sending_domain.domain(),
-			}
-			.into_account_truncating(),
+			&Domain::convert(sending_domain.domain()),
 			&receiver,
 			amount,
 			false,
@@ -88,7 +85,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Directly mints the additional investment amount into the investor
 	/// account.
-	pub fn do_increase_invest_order(
+	pub fn increase_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -141,9 +138,12 @@ impl<T: Config> Pallet<T> {
 		T::Tokens::burn_from(currency, &investor, amount)?;
 
 		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder`message to
-		// source destination which should refund the decreased amount.
-		// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// Should be handled by pallet-foreign-investments
+		// source destination which should refund the decreased amount. This includes
+		// burning it from the investor account.
+		//
+		// NOTES:
+		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
+		// 	* Should be handled by `pallet-foreign-investments`
 
 		Ok(())
 	}
@@ -156,7 +156,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
-	pub fn do_increase_redemption(
+	pub fn increase_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -173,10 +173,7 @@ impl<T: Config> Pallet<T> {
 		// Transfer tranche tokens from `DomainLocator` account of origination domain
 		T::Tokens::transfer(
 			invest_id.clone().into(),
-			&DomainLocator::<Domain> {
-				domain: sending_domain.domain(),
-			}
-			.into_account_truncating(),
+			&Domain::convert(sending_domain.domain()),
 			&investor,
 			amount,
 			false,
@@ -197,13 +194,13 @@ impl<T: Config> Pallet<T> {
 	/// decreased amount on the source domain. The dispatch of this message is
 	/// delayed until the execution of the redemption, e.g. at least until the
 	/// next epoch transition.
-	pub fn do_decrease_redemption(
+	pub fn decrease_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
-		sending_domain: DomainAddress,
+		_sending_domain: DomainAddress,
 	) -> DispatchResult {
 		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
@@ -214,25 +211,16 @@ impl<T: Config> Pallet<T> {
 		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
-		T::ForeignInvestment::update_redemption(&investor, invest_id.clone(), post_amount)?;
-
-		// Transfer tranche tokens to `DomainLocator` account of
-		// origination domain
-		T::Tokens::transfer(
-			invest_id.into(),
-			&investor,
-			&DomainLocator::<Domain> {
-				domain: sending_domain.domain(),
-			}
-			.into_account_truncating(),
-			amount,
-			false,
-		)?;
+		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
 
 		// TODO(subsequent PR): Handle response `ExecutedDecreaseRedemption` message to
-		// source destination which should refund the decreased amount.
-		// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// Should be handled by pallet-foreign-investments
+		// source destination which should refund the decreased amount. This includes
+		// transferring the amount from the investor to the domain locator account of
+		// the origination domain.
+		//
+		// NOTES:
+		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
+		// 	* Should be handled by `pallet-foreign-investments`
 
 		Ok(())
 	}
@@ -240,7 +228,7 @@ impl<T: Config> Pallet<T> {
 	/// Collect the results of a user's invest orders for the given investment
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
-	pub fn do_collect_investment(
+	pub fn collect_investment(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -258,7 +246,7 @@ impl<T: Config> Pallet<T> {
 	/// Collect the results of a user's redeem orders for the given investment
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
-	pub fn do_collect_redemption(
+	pub fn collect_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,

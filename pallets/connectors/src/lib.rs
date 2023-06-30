@@ -18,7 +18,7 @@ use cfg_traits::{
 	PoolInspect,
 };
 use cfg_types::{
-	domain_address::{Domain, DomainAddress, DomainLocator},
+	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -99,7 +99,7 @@ pub mod pallet {
 	};
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::{AccountIdConversion, Zero};
+	use sp_runtime::traits::Zero;
 	use xcm::latest::MultiLocation;
 
 	use super::*;
@@ -348,8 +348,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			T::OutboundQueue::submit(domain, who, Message::AddPool { pool_id })?;
-
+			T::OutboundQueue::submit(who, domain, Message::AddPool { pool_id })?;
 			Ok(())
 		}
 
@@ -381,8 +380,8 @@ pub mod pallet {
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
-				domain,
 				who,
+				domain,
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
@@ -414,8 +413,8 @@ pub mod pallet {
 				.price;
 
 			T::OutboundQueue::submit(
-				domain,
 				who,
+				domain,
 				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
@@ -463,8 +462,8 @@ pub mod pallet {
 			);
 
 			T::OutboundQueue::submit(
-				domain_address.domain(),
 				who,
+				domain_address.domain(),
 				Message::UpdateMember {
 					pool_id,
 					tranche_id,
@@ -510,18 +509,15 @@ pub mod pallet {
 			T::Tokens::transfer(
 				invest_id.into(),
 				&who,
-				&DomainLocator::<Domain> {
-					domain: domain_address.domain(),
-				}
-				.into_account_truncating(),
+				&Domain::convert(domain_address.domain()),
 				amount,
 				// NOTE: Here, we allow death
 				false,
 			)?;
 
 			T::OutboundQueue::submit(
-				domain_address.domain(),
 				who.clone(),
+				domain_address.domain(),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -575,18 +571,15 @@ pub mod pallet {
 			T::Tokens::transfer(
 				currency_id,
 				&who,
-				&DomainLocator::<Domain> {
-					domain: receiver.domain(),
-				}
-				.into_account_truncating(),
+				&Domain::convert(receiver.domain()),
 				amount,
 				// NOTE: Here, we allow death
 				false,
 			)?;
 
 			T::OutboundQueue::submit(
-				receiver.domain(),
 				who.clone(),
+				receiver.domain(),
 				Message::Transfer {
 					amount,
 					currency,
@@ -616,8 +609,8 @@ pub mod pallet {
 			} = Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
-				Domain::EVM(chain_id),
 				who,
+				Domain::EVM(chain_id),
 				Message::AddCurrency {
 					currency,
 					evm_address,
@@ -664,8 +657,8 @@ pub mod pallet {
 				Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
-				Domain::EVM(chain_id),
 				who,
+				Domain::EVM(chain_id),
 				Message::AllowPoolCurrency { pool_id, currency },
 			)?;
 
@@ -792,26 +785,21 @@ pub mod pallet {
 		type Sender = DomainAddress;
 
 		#[transactional]
-		fn process(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
-			ensure!(
-				KnownConnectors::<T>::contains_key::<&T::AccountId>(&sender.address().into()),
-				Error::<T>::InvalidIncomingMessageOrigin
-			);
-
+		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
 			match msg {
 				Message::Transfer {
 					currency,
 					receiver,
 					amount,
 					..
-				} => Self::do_transfer(currency.into(), receiver.into(), amount),
+				} => Self::handle_transfer(currency.into(), receiver.into(), amount),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
 					receiver,
 					amount,
 					..
-				} => Self::do_tranche_tokens_transfer(
+				} => Self::handle_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
 					sender,
@@ -824,7 +812,7 @@ pub mod pallet {
 					investor,
 					currency,
 					amount,
-				} => Self::do_increase_invest_order(
+				} => Self::increase_invest_order(
 					pool_id,
 					tranche_id,
 					investor.into(),
@@ -850,20 +838,14 @@ pub mod pallet {
 					investor,
 					amount,
 					..
-				} => Self::do_increase_redemption(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					amount,
-					sender,
-				),
+				} => Self::increase_redemption(pool_id, tranche_id, investor.into(), amount, sender),
 				Message::DecreaseRedeemOrder {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
 					amount,
-				} => Self::do_decrease_redemption(
+				} => Self::decrease_redemption(
 					pool_id,
 					tranche_id,
 					investor.into(),
@@ -875,12 +857,12 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::do_collect_investment(pool_id, tranche_id, investor.into()),
+				} => Self::collect_investment(pool_id, tranche_id, investor.into()),
 				Message::CollectRedeem {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::do_collect_redemption(pool_id, tranche_id, investor.into()),
+				} => Self::collect_redemption(pool_id, tranche_id, investor.into()),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

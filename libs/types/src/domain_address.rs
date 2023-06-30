@@ -14,6 +14,7 @@ use cfg_traits::connectors::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_runtime::traits::{AccountIdConversion, Convert};
 use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
@@ -57,6 +58,15 @@ impl Codec for Domain {
 			}
 			_ => Err(codec::Error::from("Unknown Domain variant")),
 		}
+	}
+}
+
+impl<AccountId> Convert<Domain, AccountId> for Domain
+where
+	AccountId: Encode + Decode,
+{
+	fn convert(domain: Domain) -> AccountId {
+		DomainLocator { domain }.into_account_truncating()
 	}
 }
 

@@ -1569,8 +1569,8 @@ impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
 	type Sender = AccountId;
 
 	fn submit(
-		_destination: Domain,
 		_sender: AccountId,
+		_destination: Domain,
 		_msg: pallet_connectors::MessageOf<Runtime>,
 	) -> DispatchResult {
 		Ok(())

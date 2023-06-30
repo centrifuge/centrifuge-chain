@@ -383,7 +383,7 @@ pub trait Investment<AccountId> {
 	type Amount;
 	type CurrencyId;
 	type Error: Debug;
-	type InvestmentId: Into<Self::CurrencyId>;
+	type InvestmentId;
 
 	/// Updates the current investment amount of who into the
 	/// investment class to amount.

@@ -24,23 +24,19 @@ pub trait Codec: Sized {
 
 /// The trait required for processing outbound connectors messages.
 pub trait OutboundQueue {
-	// pub trait OutboundQueue<Sender, Message, Destination> {
 	/// The sender type of the outgoing message.
 	type Sender;
-
-	/// The message type that is processed.
-	type Message;
 
 	/// The destination this message should go to.
 	type Destination;
 
+	/// The message type that is processed.
+	type Message;
+
 	/// Submit a message to the outbound queue.
 	fn submit(
-		// destination: Destination,
-		// sender: Sender,
-		// msg: Message,
-		destination: Self::Destination,
 		sender: Self::Sender,
+		destination: Self::Destination,
 		msg: Self::Message,
 	) -> DispatchResult;
 }
@@ -53,6 +49,6 @@ pub trait InboundQueue {
 	/// The connector message enum.
 	type Message;
 
-	/// Process a message from the inbound queue.
-	fn process(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
+	/// Submit a message to the inbound queue.
+	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }

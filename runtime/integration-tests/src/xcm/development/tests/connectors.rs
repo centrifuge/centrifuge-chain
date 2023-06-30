@@ -35,7 +35,7 @@ use cfg_traits::{
 	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
 };
 use cfg_types::{
-	domain_address::{Domain, DomainAddress, DomainLocator},
+	domain_address::{Domain, DomainAddress},
 	fixed_point::Rate,
 	investments::InvestmentAccount,
 	orders::FulfillmentWithPrice,
@@ -400,10 +400,7 @@ fn transfer_non_tranche_tokens_from_local() {
 
 		// The account to which the currency should have been transferred
 		// to on Centrifuge for bookkeeping purposes.
-		let domain_account: AccountId = DomainLocator::<Domain> {
-			domain: dest_address.into(),
-		}
-		.into_account_truncating();
+		let domain_account: AccountId = Domain::convert(dest_address.domain());
 		// Verify that the correct amount of the token was transferred
 		// to the dest domain account on Centrifuge.
 		assert_eq!(
@@ -441,20 +438,21 @@ fn transfer_non_tranche_tokens_to_local() {
 
 		assert!(OrmlTokens::total_issuance(currency_id).is_zero());
 
-		// Verify that we do not accept incoming messages if the connection has not been
-		// initialized
-		assert_noop!(
-			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
-		);
-		assert_ok!(Connectors::add_connector(
-			RuntimeOrigin::root(),
-			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
-		));
+		// TODO(after PR #1376): Re-activate via Gateway handling
+		// // Verify that we do not accept incoming messages if the connection has not
+		// been // initialized
+		// assert_noop!(
+		// 	Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+		// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+		// );
+		// assert_ok!(Connectors::add_connector(
+		// 	RuntimeOrigin::root(),
+		// 	utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
+		// ));
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -465,7 +463,7 @@ fn transfer_non_tranche_tokens_to_local() {
 
 		// Verify empty transfers throw
 		assert_noop!(
-			Connectors::process(
+			Connectors::submit(
 				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				utils::ConnectorMessage::Transfer {
 					currency: general_currency_index(currency_id),
@@ -557,10 +555,7 @@ fn transfer_tranche_tokens_from_local() {
 
 		// The account to which the tranche should have been transferred
 		// to on Centrifuge for bookkeeping purposes.
-		let domain_account: AccountId = DomainLocator::<Domain> {
-			domain: dest_address.into(),
-		}
-		.into_account_truncating();
+		let domain_account: AccountId = Domain::convert(dest_address.domain());
 
 		// Verify that the correct amount of the Tranche token was transferred
 		// to the dest domain account on Centrifuge.
@@ -586,10 +581,8 @@ fn transfer_tranche_tokens_to_local() {
 		let amount = 100_000_000;
 		let receiver: AccountId = BOB.into();
 		let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-		let sending_domain_locator = DomainLocator::<Domain> {
-			domain: utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.into(),
-		}
-		.into_account_truncating();
+		let sending_domain_locator =
+			Domain::convert(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 		let tranche_id = default_tranche_id(pool_id);
 		let tranche_tokens: CurrencyId =
 			cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id).into();
@@ -613,20 +606,21 @@ fn transfer_tranche_tokens_to_local() {
 			amount,
 		};
 
-		// Verify that we do not accept incoming messages if the connection has not been
-		// initialized
-		assert_noop!(
-			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
-		);
-		assert_ok!(Connectors::add_connector(
-			RuntimeOrigin::root(),
-			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
-		));
+		// TODO(after PR #1376): Re-activate via Gateway handling
+		// // Verify that we do not accept incoming messages if the connection has not
+		// been // initialized
+		// assert_noop!(
+		// 	Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+		// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+		// );
+		// assert_ok!(Connectors::add_connector(
+		// 	RuntimeOrigin::root(),
+		// 	utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
+		// ));
 
 		// Verify that we first need the receiver to be whitelisted
 		assert_noop!(
-			Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+			Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
 		);
 
@@ -653,7 +647,7 @@ fn transfer_tranche_tokens_to_local() {
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -666,7 +660,7 @@ fn transfer_tranche_tokens_to_local() {
 		// TODO(subsequent PR): Verify that we cannot transfer to the local
 		// domain blocked by https://github.com/centrifuge/centrifuge-chain/pull/1376
 		// assert_noop!(
-		// 	Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
+		// 	Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
 		// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		// );
 	});
@@ -1195,7 +1189,7 @@ fn inbound_decrease_invest_order() {
 		};
 
 		// Execute byte message
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -1282,7 +1276,7 @@ fn inbound_collect_invest_order() {
 		};
 
 		// Execute byte message
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -1424,7 +1418,7 @@ fn inbound_decrease_redeem_order() {
 		};
 
 		// Execute byte message
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -1436,13 +1430,6 @@ fn inbound_decrease_redeem_order() {
 				&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
 			),
 			final_amount
-		);
-		assert_eq!(
-			OrmlTokens::free_balance(
-				investment_id(pool_id, default_tranche_id(pool_id)).into(),
-				&investor
-			),
-			0
 		);
 
 		// Order should have been updated
@@ -1518,7 +1505,7 @@ fn inbound_collect_redeem_order() {
 		};
 
 		// Execute byte message
-		assert_ok!(Connectors::process(
+		assert_ok!(Connectors::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 			msg
 		));
@@ -1883,20 +1870,20 @@ mod utils {
 				currency: general_currency_index(currency_id),
 				amount,
 			};
-
-			// Should fail if connector has not been added yet
-			assert_noop!(
-				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
-			);
-			assert_ok!(Connectors::add_connector(
-				RuntimeOrigin::root(),
-				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
-			));
+			// TODO(after PR #1376): Re-activate via Gateway handling
+			// // Should fail if connector has not been added yet
+			// assert_noop!(
+			// 	Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+			// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+			// );
+			// assert_ok!(Connectors::add_connector(
+			// 	RuntimeOrigin::root(),
+			// 	utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
+			// ));
 
 			// Should fail if investor does not have investor role yet
 			assert_noop!(
-				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+				Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 
@@ -1921,7 +1908,7 @@ mod utils {
 				.expect("Should not overflow when incrementing amount");
 
 			// Execute byte message
-			assert_ok!(Connectors::process(
+			assert_ok!(Connectors::submit(
 				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				msg
 			));
@@ -1965,10 +1952,7 @@ mod utils {
 			// are transferred from this account instead of minting
 			assert_ok!(OrmlTokens::mint_into(
 				investment_id(pool_id, default_tranche_id(pool_id)).into(),
-				&DomainLocator::<Domain> {
-					domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.into(),
-				}
-				.into_account_truncating(),
+				&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
 				amount
 			));
 
@@ -1996,20 +1980,20 @@ mod utils {
 				currency: general_currency_index(currency_id),
 				amount,
 			};
-
-			// Should fail if connector has not been added yet
-			assert_noop!(
-				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
-			);
-			assert_ok!(Connectors::add_connector(
-				RuntimeOrigin::root(),
-				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
-			));
+			// TODO(after PR #1376): Re-activate via Gateway handling
+			// // Should fail if connector has not been added yet
+			// assert_noop!(
+			// 	Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+			// 	pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+			// );
+			// assert_ok!(Connectors::add_connector(
+			// 	RuntimeOrigin::root(),
+			// 	utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM.address().into()
+			// ));
 
 			// Should fail if investor does not have investor role yet
 			assert_noop!(
-				Connectors::process(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+				Connectors::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 
@@ -2025,7 +2009,7 @@ mod utils {
 				)),
 			));
 
-			assert_ok!(Connectors::process(
+			assert_ok!(Connectors::submit(
 				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				msg
 			));
