@@ -56,11 +56,6 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
-	#[codec(index = 3)]
-	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once
-	/// the orml_tokens' balances are migrated to the new CurrencyId for AUSD.
-	AUSD,
-
 	/// A foreign asset
 	#[codec(index = 4)]
 	ForeignAsset(ForeignAssetId),
@@ -283,53 +278,12 @@ pub enum ConnectorsWrappedToken {
 	},
 }
 
-pub mod before {
-	use cfg_primitives::{PoolId, TrancheId};
-	use codec::{Decode, Encode, MaxEncodedLen};
-	use scale_info::TypeInfo;
-
-	use crate::tokens::{ForeignAssetId, StakingCurrency};
-
-	/// The old definition of `CurrencyId` which included `AUSD` and
-	/// `KSM` as hardcoded variants.
-	#[derive(
-		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-	)]
-	pub enum CurrencyId {
-		// The Native token, representing AIR in Altair and CFG in Centrifuge.
-		#[codec(index = 0)]
-		Native,
-
-		/// A Tranche token
-		#[codec(index = 1)]
-		Tranche(PoolId, TrancheId),
-
-		/// Karura KSM
-		#[codec(index = 2)]
-		KSM,
-
-		/// Acala Dollar
-		/// In Altair, it represents AUSD in Kusama;
-		/// In Centrifuge, it represents AUSD in Polkadot;
-		#[codec(index = 3)]
-		AUSD,
-
-		/// A foreign asset
-		#[codec(index = 4)]
-		ForeignAsset(ForeignAssetId),
-
-		/// A staking currency
-		#[codec(index = 5)]
-		Staking(StakingCurrency),
-	}
-}
-
 #[cfg(test)]
 mod tests {
 	use frame_support::parameter_types;
 
 	use super::*;
-	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche, AUSD};
+	use crate::tokens::CurrencyId::{ForeignAsset, Native, Staking, Tranche};
 
 	const FOREIGN: CurrencyId = ForeignAsset(1u32);
 
@@ -381,70 +335,6 @@ mod tests {
 		);
 	}
 
-	#[cfg(test)]
-	mod tests {
-		use cfg_primitives::TrancheId;
-		use codec::Encode;
-		use hex::FromHex;
-
-		use super::StakingCurrency;
-		use crate::{tokens as after, tokens::before};
-
-		#[test]
-		fn currency_id_refactor_encode_equality() {
-			// Native
-			assert_eq!(
-				before::CurrencyId::Native.encode(),
-				after::CurrencyId::Native.encode()
-			);
-			assert_eq!(after::CurrencyId::Native.encode(), vec![0]);
-
-			// Tranche
-			assert_eq!(
-				before::CurrencyId::Tranche(33, default_tranche_id()).encode(),
-				after::CurrencyId::Tranche(33, default_tranche_id()).encode()
-			);
-			assert_eq!(
-				after::CurrencyId::Tranche(33, default_tranche_id()).encode(),
-				vec![
-					1, 33, 0, 0, 0, 0, 0, 0, 0, 129, 26, 205, 91, 63, 23, 192, 104, 65, 199, 228,
-					30, 158, 4, 203, 27
-				]
-			);
-
-			// KSM - deprecated
-			assert_eq!(before::CurrencyId::KSM.encode(), vec![2]);
-
-			// AUSD - deprecated
-			assert_eq!(before::CurrencyId::AUSD.encode(), vec![3]);
-
-			// ForeignAsset
-			assert_eq!(
-				before::CurrencyId::ForeignAsset(91).encode(),
-				after::CurrencyId::ForeignAsset(91).encode()
-			);
-			assert_eq!(
-				after::CurrencyId::ForeignAsset(91).encode(),
-				vec![4, 91, 0, 0, 0]
-			);
-
-			// Staking
-			assert_eq!(
-				before::CurrencyId::Staking(StakingCurrency::BlockRewards).encode(),
-				after::CurrencyId::Staking(StakingCurrency::BlockRewards).encode()
-			);
-			assert_eq!(
-				after::CurrencyId::Staking(StakingCurrency::BlockRewards).encode(),
-				vec![5, 0]
-			);
-		}
-
-		fn default_tranche_id() -> TrancheId {
-			<[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b")
-				.expect("Should be valid tranche id")
-		}
-	}
-
 	/// Sanity check for every CurrencyId variant's encoding value.
 	/// This will stop us from accidentally moving or dropping variants
 	/// around which could have silent but serious negative consequences.
@@ -456,7 +346,6 @@ mod tests {
 		vec![
 			Native,
 			Tranche(42, [42; 16]),
-			AUSD,
 			ForeignAsset(89),
 			Staking(StakingCurrency::BlockRewards),
 		]
@@ -475,7 +364,6 @@ mod tests {
 					r.append(&mut tranche_id.to_vec());
 					r
 				}
-				AUSD => vec![3],
 				ForeignAsset(id) => {
 					let mut r: Vec<u8> = vec![4];
 					r.append(&mut id.encode());
