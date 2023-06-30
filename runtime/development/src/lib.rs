@@ -1731,9 +1731,21 @@ impl<
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
-
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
+	pub const MaxChangesPerEpoch: u32 = 50;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+}
+
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type Balance = Balance;
+	type DistributionId = u32;
+	type IBalance = IBalance;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1744,13 +1756,23 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type RewardCurrency = RewardCurrency;
 	type RewardIssuance =
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
-	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
-		Balance,
-		IBalance,
-		FixedI128,
-		MaxCurrencyMovements,
-	>;
+	type RewardMechanism = GapRewardMechanism;
 	type RuntimeEvent = RuntimeEvent;
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
@@ -1774,31 +1796,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 		SingleCurrencyMovement,
 	>;
 	type RuntimeEvent = RuntimeEvent;
-}
-
-frame_support::parameter_types! {
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxGroups: u32 = 20;
-
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
-	pub const MaxChangesPerEpoch: u32 = 50;
-
-	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;
-}
-
-impl pallet_liquidity_rewards::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type GroupId = u32;
-	type InitialEpochDuration = InitialEpochDuration;
-	type MaxChangesPerEpoch = MaxChangesPerEpoch;
-	type MaxGroups = MaxGroups;
-	type Rewards = LiquidityRewardsBase;
-	type RuntimeEvent = RuntimeEvent;
-	type Timer = Timestamp;
-	type Weight = u64;
-	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
@@ -1906,6 +1903,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
+		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
