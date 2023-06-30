@@ -45,8 +45,9 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
 ]
 std = [
