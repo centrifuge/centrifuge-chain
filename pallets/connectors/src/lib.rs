@@ -812,7 +812,7 @@ pub mod pallet {
 					investor,
 					currency,
 					amount,
-				} => Self::increase_invest_order(
+				} => Self::handle_increase_invest_order(
 					pool_id,
 					tranche_id,
 					investor.into(),
@@ -825,7 +825,7 @@ pub mod pallet {
 					investor,
 					currency,
 					amount,
-				} => Self::do_decrease_invest_order(
+				} => Self::handle_decrease_invest_order(
 					pool_id,
 					tranche_id,
 					investor.into(),
@@ -838,14 +838,20 @@ pub mod pallet {
 					investor,
 					amount,
 					..
-				} => Self::increase_redemption(pool_id, tranche_id, investor.into(), amount, sender),
+				} => Self::handle_increase_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					amount,
+					sender,
+				),
 				Message::DecreaseRedeemOrder {
 					pool_id,
 					tranche_id,
 					investor,
 					currency,
 					amount,
-				} => Self::decrease_redemption(
+				} => Self::handle_decrease_redemption(
 					pool_id,
 					tranche_id,
 					investor.into(),
@@ -857,12 +863,12 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::collect_investment(pool_id, tranche_id, investor.into()),
+				} => Self::handle_collect_investment(pool_id, tranche_id, investor.into()),
 				Message::CollectRedeem {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::collect_redemption(pool_id, tranche_id, investor.into()),
+				} => Self::handle_collect_redemption(pool_id, tranche_id, investor.into()),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

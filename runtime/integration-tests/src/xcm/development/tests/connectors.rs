@@ -1203,7 +1203,12 @@ fn inbound_decrease_invest_order() {
 			),
 			final_amount
 		);
-		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+		// The transfer does not happen right away, so should still be in investor's
+		// wallet
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &investor),
+			decrease_amount
+		);
 		assert!(System::events().iter().any(|e| e.event
 			== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
 				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
@@ -1431,6 +1436,14 @@ fn inbound_decrease_redeem_order() {
 				&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
 			),
 			final_amount
+		);
+		// Burning does not happen right away, so should still be in investor's wallet
+		assert_eq!(
+			OrmlTokens::free_balance(
+				investment_id(pool_id, default_tranche_id(pool_id)).into(),
+				&investor
+			),
+			decrease_amount
 		);
 
 		// Order should have been updated

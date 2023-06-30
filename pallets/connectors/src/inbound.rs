@@ -85,7 +85,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Directly mints the additional investment amount into the investor
 	/// account.
-	pub fn increase_invest_order(
+	pub fn handle_increase_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -110,14 +110,11 @@ impl<T: Config> Pallet<T> {
 
 	/// Decreases an existing investment order of the investor.
 	///
-	/// Directly burns the decreased investment amount from the investor
-	/// account.
-	///
 	/// Initiates a return `ExecutedDecreaseInvestOrder` message to refund the
 	/// decreased amount on the source domain. The dispatch of this message is
 	/// delayed until the execution of the investment, e.g. at least until the
 	/// next epoch transition.
-	pub fn do_decrease_invest_order(
+	pub fn handle_decrease_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -126,7 +123,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let _currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
 		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
@@ -134,10 +131,7 @@ impl<T: Config> Pallet<T> {
 
 		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
-		// Burn decreased amount
-		T::Tokens::burn_from(currency, &investor, amount)?;
-
-		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder`message to
+		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder` message to
 		// source destination which should refund the decreased amount. This includes
 		// burning it from the investor account.
 		//
@@ -156,7 +150,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
-	pub fn increase_redemption(
+	pub fn handle_increase_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -186,15 +180,11 @@ impl<T: Config> Pallet<T> {
 
 	/// Decreases an existing redemption order of the investor.
 	///
-	/// Transfers the decreased redemption amount from the investor account into
-	/// holdings of the `DomainLocator` account of origination domain of this
-	/// message.
-	///
 	/// Initiates a return `ExecutedDecreaseRedemption` message to refund the
 	/// decreased amount on the source domain. The dispatch of this message is
 	/// delayed until the execution of the redemption, e.g. at least until the
 	/// next epoch transition.
-	pub fn decrease_redemption(
+	pub fn handle_decrease_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -228,7 +218,7 @@ impl<T: Config> Pallet<T> {
 	/// Collect the results of a user's invest orders for the given investment
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
-	pub fn collect_investment(
+	pub fn handle_collect_investment(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
@@ -246,7 +236,7 @@ impl<T: Config> Pallet<T> {
 	/// Collect the results of a user's redeem orders for the given investment
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
-	pub fn collect_redemption(
+	pub fn handle_collect_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
