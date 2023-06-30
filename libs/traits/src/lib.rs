@@ -195,7 +195,7 @@ pub trait PoolMetadata<Balance, VersionedMultiLocation> {
 	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 
 	/// Get the metadata of the given pool.
-	fn get_pool_metadata(pool_id: Self::PoolId) -> Option<Self::PoolMetadata>;
+	fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError>;
 
 	/// Set the metadata of the given pool.
 	fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult;
@@ -204,7 +204,7 @@ pub trait PoolMetadata<Balance, VersionedMultiLocation> {
 	fn get_tranche_token_metadata(
 		pool_id: Self::PoolId,
 		tranche: Self::TrancheId,
-	) -> Option<Self::AssetMetadata>;
+	) -> Result<Self::AssetMetadata, DispatchError>;
 
 	/// Register the metadata for the currency derived from the given pair of
 	/// pool id and tranche.

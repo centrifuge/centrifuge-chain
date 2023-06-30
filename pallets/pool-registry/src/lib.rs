@@ -201,7 +201,6 @@ pub mod pallet {
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
 		/// No metadata for the given currency found
-		// FIXME: This error is never thrown by this pallet, only by pool-system
 		MetadataForCurrencyNotFound,
 		/// No Metadata found for the given PoolId
 		NoSuchPoolMetadata,
@@ -413,8 +412,8 @@ pub mod pallet {
 		type PoolMetadata = PoolMetadataOf<T>;
 		type TrancheId = T::TrancheId;
 
-		fn get_pool_metadata(pool_id: Self::PoolId) -> Option<Self::PoolMetadata> {
-			PoolMetadata::<T>::get(pool_id)
+		fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError> {
+			PoolMetadata::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPoolMetadata.into())
 		}
 
 		fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult {
@@ -424,9 +423,10 @@ pub mod pallet {
 		fn get_tranche_token_metadata(
 			pool_id: Self::PoolId,
 			tranche_id: Self::TrancheId,
-		) -> Option<Self::AssetMetadata> {
+		) -> Result<Self::AssetMetadata, DispatchError> {
 			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
 			T::AssetRegistry::metadata(&currency_id)
+				.ok_or(Error::<T>::MetadataForCurrencyNotFound.into())
 		}
 
 		fn create_tranche_token_metadata(
