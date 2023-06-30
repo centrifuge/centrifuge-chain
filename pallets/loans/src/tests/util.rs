@@ -1,13 +1,13 @@
 use super::*;
 
-pub fn total_borrowed_rate(value: f64) -> MaxBorrowAmount<Rate> {
-	MaxBorrowAmount::UpToTotalBorrowed {
+pub fn total_borrowed_rate(value: f64) -> IntMaxBorrowAmount<Rate> {
+	IntMaxBorrowAmount::UpToTotalBorrowed {
 		advance_rate: Rate::from_float(value),
 	}
 }
 
-pub fn outstanding_debt_rate(value: f64) -> MaxBorrowAmount<Rate> {
-	MaxBorrowAmount::UpToOutstandingDebt {
+pub fn outstanding_debt_rate(value: f64) -> IntMaxBorrowAmount<Rate> {
+	IntMaxBorrowAmount::UpToOutstandingDebt {
 		advance_rate: Rate::from_float(value),
 	}
 }
@@ -96,7 +96,7 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 		collateral: ASSET_AA,
 		pricing: Pricing::External(ExternalPricing {
 			price_id: REGISTER_PRICE_ID,
-			max_borrow_quantity: QUANTITY,
+			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
 		}),
 		restrictions: LoanRestrictions {
 			borrows: BorrowRestrictions::NotWrittenOff,

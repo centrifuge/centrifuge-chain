@@ -1600,6 +1600,7 @@ mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
 
 	use super::*;
+	use crate::{utils::AUSD_CURRENCY_ID, xcm::development::tests::register_ausd};
 
 	/// NOTE: If you want to transfer this currency via connectors for the sake
 	/// of tests, assume to run into issues with `pallet_xcm_transactor` due to
@@ -1711,18 +1712,7 @@ mod utils {
 
 		// Register AUSD in the asset registry which is the default pool currency in
 		// `create_pool`
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			asset_metadata(
-				"Acala Dollar".into(),
-				"AUSD".into(),
-				12,
-				true,
-				None,
-				CrossChainTransferability::Xcm(Default::default()),
-			),
-			Some(CURRENCY_ID_AUSD)
-		));
+		register_ausd();
 	}
 
 	/// Creates a new pool for the given id with

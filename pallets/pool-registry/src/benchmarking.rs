@@ -47,6 +47,8 @@ const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 const TRANCHE: TrancheIndex = 0;
 const POOL: u64 = 0;
 
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 benchmarks! {
 	where_clause {
 	where
@@ -94,7 +96,7 @@ benchmarks! {
 			RawOrigin::Root
 		};
 		prepare_asset_registry::<T>();
-	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
+	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);

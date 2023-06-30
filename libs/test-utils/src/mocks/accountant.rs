@@ -61,7 +61,7 @@
 ///                 accountant_mock::InvestmentInfo {
 ///                     owner: 1,
 ///                     id: InvestmentId::Tranches(0, [0;16]),
-///                     payment_currency:CurrencyId::AUSD
+///                     payment_currency: AUSD_CURRENCY_ID
 ///                 }
 ///             )
 ///         ]
