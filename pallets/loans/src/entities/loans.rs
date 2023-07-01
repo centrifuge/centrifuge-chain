@@ -1,4 +1,4 @@
-use cfg_primitives::{Moment, SECONDS_PER_DAY};
+use cfg_primitives::Moment;
 use cfg_traits::{self, data::DataCollection, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -8,8 +8,7 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		BlockNumberProvider, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto,
-		EnsureMul, EnsureSub, Zero,
+		BlockNumberProvider, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, Zero,
 	},
 	DispatchError,
 };
@@ -225,10 +224,9 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<bool, DispatchError> {
 		let now = T::Time::now().as_secs();
 		match trigger {
-			WriteOffTrigger::PrincipalOverdue(overdue_secs) => Ok(now
-				>= self
-					.maturity_date()
-					.ensure_add(overdue_secs.clone().into())?),
+			WriteOffTrigger::PrincipalOverdue(overdue_secs) => {
+				Ok(now >= self.maturity_date().ensure_add((*overdue_secs).into())?)
+			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
 				ActivePricing::External(pricing) => {
 					Ok(now >= pricing.last_updated()?.ensure_add(*secs)?)
