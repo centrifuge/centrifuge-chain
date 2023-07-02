@@ -46,14 +46,14 @@ fn distributed_reward_change() {
 		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
 		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_eq!(NextEpochChanges::<Test>::get().reward, None);
 		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION + INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION + INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 2
@@ -77,7 +77,7 @@ fn epoch_change() {
 			Some(EPOCH_DURATION)
 		);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
@@ -87,7 +87,7 @@ fn epoch_change() {
 		);
 		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION + EPOCH_DURATION / 2);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION + EPOCH_DURATION / 2);
 		Liquidity::on_initialize(0);
 
 		assert_eq!(
@@ -95,7 +95,7 @@ fn epoch_change() {
 			INITIAL_EPOCH_DURATION + EPOCH_DURATION
 		);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION + EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION + EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 2
@@ -118,14 +118,14 @@ fn epoch_change_from_advanced_state() {
 			EPOCH_DURATION
 		));
 
-		Timer::set_timestamp(INITIAL_TIME);
+		MockTime::mock_now(|| INITIAL_TIME);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_eq!(EndOfEpoch::<Test>::get(), INITIAL_TIME + EPOCH_DURATION);
 		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
 
-		Timer::set_timestamp(INITIAL_TIME);
+		MockTime::mock_now(|| INITIAL_TIME);
 		Liquidity::on_initialize(0);
 
 		assert_eq!(EndOfEpoch::<Test>::get(), INITIAL_TIME + EPOCH_DURATION);
@@ -154,7 +154,7 @@ fn currency_changes() {
 			Ok(())
 		});
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
@@ -180,7 +180,7 @@ fn weight_changes() {
 			REWARD
 		));
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
@@ -204,7 +204,7 @@ fn weight_changes() {
 		);
 		assert_eq!(ActiveEpochData::<Test>::get().weights.len(), 0);
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION * 2);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION * 2);
 		Liquidity::on_initialize(0);
 
 		// The weights were configured but no used in this epoch.
@@ -235,7 +235,7 @@ fn weight_changes() {
 			Ok(rewards)
 		});
 
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION * 3);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION * 3);
 		Liquidity::on_initialize(0);
 	});
 }
@@ -289,7 +289,7 @@ fn discard_groups_exceed_max_grups() {
 				WEIGHT
 			));
 		}
-		Timer::set_timestamp(INITIAL_EPOCH_DURATION);
+		MockTime::mock_now(|| INITIAL_EPOCH_DURATION);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1

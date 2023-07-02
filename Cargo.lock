@@ -7469,7 +7469,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "num-traits",
- "pallet-timestamp",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "sp-core",

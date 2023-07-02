@@ -21,7 +21,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Liquidity: pallet_liquidity_rewards,
-		Timer: pallet_timestamp,
+		MockTime: cfg_mocks::pallet_mock_time,
 		MockRewards: cfg_mocks::pallet_mock_rewards,
 	}
 );
@@ -61,11 +61,8 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_timestamp::Config for Test {
-	type MinimumPeriod = ConstU64<1000>;
+impl cfg_mocks::pallet_mock_time::Config for Test {
 	type Moment = u64;
-	type OnTimestampSet = ();
-	type WeightInfo = ();
 }
 
 impl cfg_mocks::pallet_mock_rewards::Config for Test {
@@ -84,7 +81,7 @@ impl pallet_liquidity_rewards::Config for Test {
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
 	type RuntimeEvent = RuntimeEvent;
-	type Timer = Timer;
+	type Timer = MockTime;
 	type Weight = u64;
 	type WeightInfo = ();
 }
