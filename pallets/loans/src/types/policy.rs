@@ -38,7 +38,7 @@ use strum::EnumCount;
 )]
 pub enum WriteOffTrigger {
 	/// Seconds after the maturity date has passed
-	PrincipalOverdue(u32),
+	PrincipalOverdue(Moment),
 
 	/// Seconds since the oracle valuation was last updated
 	PriceOutdated(Moment),

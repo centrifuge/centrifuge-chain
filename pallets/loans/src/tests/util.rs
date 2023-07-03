@@ -47,9 +47,7 @@ pub fn set_up_policy(percentage: f64, penalty: f64) {
 	MockChangeGuard::mock_released(move |_, _| {
 		Ok(Change::Policy(
 			vec![WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdue(
-					SECONDS_PER_DAY.try_into().unwrap(),
-				)],
+				[WriteOffTrigger::PrincipalOverdue(SECONDS_PER_DAY)],
 				Rate::from_float(percentage),
 				Rate::from_float(penalty),
 			)]

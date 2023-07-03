@@ -47,7 +47,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 					.into_iter()
 					.map(|old| {
 						WriteOffRule::new(
-							[WriteOffTrigger::PrincipalOverdue(old.overdue_secs)],
+							[WriteOffTrigger::PrincipalOverdue(old.overdue_secs.try_into().unwrap_or(0u64))],
 							old.percentage,
 							old.penalty,
 						)
