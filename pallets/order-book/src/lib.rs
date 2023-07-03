@@ -21,22 +21,32 @@
 
 #[cfg(test)]
 pub(crate) mod mock;
+
 pub use pallet::*;
 
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
+
+	use core::fmt::Debug;
+
+	use cfg_types::tokens::{CustomMetadata, GeneralCurrencyIndex};
+	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::*;
+	use orml_traits::{
+		asset_registry::{self, Inspect as _},
+		MultiCurrency, MultiReservableCurrency,
+	};
+	use scale_info::TypeInfo;
+	use sp_runtime::traits::{AtLeast32BitUnsigned, Hash};
 
 	use super::*;
 
-	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -44,17 +54,19 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
+
+	pub struct Pallet<T>(_);
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
-			<T as frame_system::Config>::AccountId,
-		>>::Balance;
+		type AssetRegistry: asset_registry::Inspect<
+			AssetId = CurrencyIdOf<Self>,
+			Balance = <Self as Config>::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
 
-		/// Currency for orderbook fees
-		type ReserveCurrency: ReservableCurrency<Self::AccountId>;
-		/// Id type of Currency Exchanges will take place for
+		/// Id type of Currency exchanges will take place for
 		type CurrencyId: AssetId
 			+ Parameter
 			+ Debug
@@ -67,8 +79,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// Id type for placed Orders
-		type OrderId: AssetId
-			+ Parameter
+		type OrderId: Parameter
 			+ Debug
 			+ Default
 			+ Member
@@ -78,11 +89,31 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
+		/// Type for placed Orders
+		type Nonce: Parameter
+			+ Debug
+			+ Default
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ AtLeast32BitUnsigned
+			+ MaxEncodedLen;
+
+		type Balance: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+
 		/// Type for trade-able currency
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
-			Balance = DepositBalanceOf<Self>,
-			CurrencyId = CurrencyId,
+			Balance = <Self as pallet::Config>::Balance,
+			CurrencyId = CurrencyIdOf<Self>,
 		>;
 	}
 	//
@@ -101,10 +132,26 @@ pub mod pallet {
 		order_claiming: OrderId,
 	}
 
-	/// Stores Nonce for orders for an account placing orders with a
-	/// specific currency pair. This allows us to easily generate a
-	/// deterministic unique order id for each new order, and allowing
-	/// accounts to create multiple orders for a particular currency pair.
+	/// Stores Nonce for orders placed
+	/// Given that Nonce is to ensure that all orders have a unique ID, we can
+	/// use just one Nonce, which means that we only have one val in storage,
+	/// and we don't have to insert new map values upon a new account/currency
+	/// order creation.
 	#[pallet::storage]
-	pub type AccountCurrenciesNonce<T> = StorageMap<_, u64, OptionQuery>;
+	pub type NonceStore<T: Config> = StorageValue<_, T::Nonce, OptionQuery>;
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {}
+
+	impl<T: Config> Pallet<T> {
+		pub fn gen_hash(
+			placer: &T::AccountId,
+			asset_out: T::CurrencyId,
+			asset_in: T::CurrencyId,
+			nonce: T::Nonce,
+		) -> T::Hash {
+			(&placer, asset_in, asset_out, nonce).using_encoded(T::Hashing::hash)
+		}
+	}
 }

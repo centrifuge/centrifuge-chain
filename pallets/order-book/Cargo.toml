@@ -1,7 +1,6 @@
 [package]
-[package]
 name = "pallet-order-book"
-description = "Pallet to add order book for currency exchanges.  Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
+ description = "Pallet to add order book for currency exchanges.  Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
 version = "0.1.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 homepage = 'https://centrifuge.io'
@@ -16,17 +15,49 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.119" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+
+cfg-types = { path = "../../libs/types", default-features = false }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
+# Orml crates
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 
 [features]
-default = ["std"]
+default = ['std']
+runtime-benchmarks = [
+  'frame-benchmarking/runtime-benchmarks',
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  'sp-runtime/runtime-benchmarks',
+  'cfg-types/runtime-benchmarks',
+]
 std = [
-  "frame-support/std",
-  "frame-system/std",
-  "codec/std",
-  "scale-info/std",
+  'codec/std',
+  'scale-info/std',
+  'frame-support/std',
+  'frame-system/std',
+  "frame-benchmarking/std",
+  'sp-runtime/std',
+  'sp-std/std',
+  'cfg-types/std',
+  'serde/std',
+  'sp-core/std',
+]
+try-runtime = [
+  'frame-support/try-runtime',
+  'frame-support/try-runtime',
+  'cfg-types/try-runtime',
+  'sp-runtime/try-runtime',
+  'frame-system/try-runtime',
 ]
