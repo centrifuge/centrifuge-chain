@@ -40,6 +40,7 @@ use cfg_types::{
 	investments::InvestmentAccount,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
+	pools::TrancheMetadata,
 	tokens::{
 		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
 		ForeignAssetId,
@@ -63,7 +64,7 @@ use pallet_connectors::{
 };
 use pallet_pool_system::{
 	pool_types::PoolDetails,
-	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+	tranches::{TrancheInput, TrancheLoc, TrancheType},
 };
 use runtime_common::{
 	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
