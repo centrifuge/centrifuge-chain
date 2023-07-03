@@ -116,7 +116,7 @@ package policy {
 
 package interest {
     class ActiveInterestRate {
-        interest_rate: InterestRate,
+        rate: InterestRate,
         normalized_debt: Balance,
         penalty: Rate
     }
@@ -142,7 +142,7 @@ package pricing {
 
         class InternalActivePricing {
             info: InternalPricing
-            interest_rate: ActiveInterestRate
+            interest: ActiveInterestRate
         }
 
         InternalActivePricing *-r-> ActiveInterestRate
@@ -166,7 +166,7 @@ package pricing {
         class ExternalActivePricing {
             info: ExternalPricing
             outstanding_quantity: Balance,
-            interest_rate: ActiveInterestRate
+            interest: ActiveInterestRate
         }
 
         ExternalActivePricing *-r-> ActiveInterestRate

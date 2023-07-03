@@ -58,7 +58,7 @@ pub struct ExternalActivePricing<T: Config> {
 	outstanding_quantity: T::Balance,
 
 	/// Current interest rate
-	pub interest_rate: ActiveInterestRate<T>,
+	pub interest: ActiveInterestRate<T>,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -71,7 +71,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Balance::zero(),
-			interest_rate: ActiveInterestRate::activate(interest_rate)?,
+			interest: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
 
@@ -80,7 +80,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		pool_id: PoolIdOf<T>,
 	) -> Result<(ExternalPricing<T>, T::Rate), DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
-		Ok((self.info, self.interest_rate.deactivate()?))
+		Ok((self.info, self.interest.deactivate()?))
 	}
 
 	pub fn current_price(&self) -> Result<T::Rate, DispatchError> {
@@ -102,7 +102,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			.notional
 			.ensure_mul_int(self.outstanding_quantity)?;
 
-		let debt = self.interest_rate.current_debt()?;
+		let debt = self.interest.current_debt()?;
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
@@ -148,7 +148,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.outstanding_quantity = quantity.ensure_add(self.outstanding_quantity)?;
 
-		self.interest_rate.adjust_debt(
+		self.interest.adjust_debt(
 			adjustment.try_map(|quantity| self.info.notional.ensure_mul_int(quantity))?,
 		)?;
 

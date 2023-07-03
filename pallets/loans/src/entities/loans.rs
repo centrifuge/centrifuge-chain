@@ -206,8 +206,8 @@ impl<T: Config> ActiveLoan<T> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
 			penalty: match &self.pricing {
-				ActivePricing::Internal(inner) => inner.interest_rate.penalty(),
-				ActivePricing::External(inner) => inner.interest_rate.penalty(),
+				ActivePricing::Internal(inner) => inner.interest.penalty(),
+				ActivePricing::External(inner) => inner.interest.penalty(),
 			},
 		}
 	}
@@ -375,8 +375,8 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
 		let penalty = new_status.penalty;
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.interest_rate.set_penalty(penalty)?,
-			ActivePricing::External(inner) => inner.interest_rate.set_penalty(penalty)?,
+			ActivePricing::Internal(inner) => inner.interest.set_penalty(penalty)?,
+			ActivePricing::External(inner) => inner.interest.set_penalty(penalty)?,
 		}
 
 		self.write_off_percentage = new_status.percentage;
@@ -386,8 +386,8 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
-			ActivePricing::Internal(inner) => !inner.interest_rate.has_debt(),
-			ActivePricing::External(inner) => !inner.interest_rate.has_debt(),
+			ActivePricing::Internal(inner) => !inner.interest.has_debt(),
+			ActivePricing::External(inner) => !inner.interest.has_debt(),
 		};
 
 		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));

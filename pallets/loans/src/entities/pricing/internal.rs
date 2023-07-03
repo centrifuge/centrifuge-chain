@@ -64,7 +64,7 @@ pub struct InternalActivePricing<T: Config> {
 	info: InternalPricing<T>,
 
 	/// Current interest rate
-	pub interest_rate: ActiveInterestRate<T>,
+	pub interest: ActiveInterestRate<T>,
 }
 
 impl<T: Config> InternalActivePricing<T> {
@@ -74,12 +74,12 @@ impl<T: Config> InternalActivePricing<T> {
 	) -> Result<Self, DispatchError> {
 		Ok(Self {
 			info,
-			interest_rate: ActiveInterestRate::activate(interest_rate)?,
+			interest: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
 
 	pub fn deactivate(self) -> Result<(InternalPricing<T>, T::Rate), DispatchError> {
-		Ok((self.info, self.interest_rate.deactivate()?))
+		Ok((self.info, self.interest.deactivate()?))
 	}
 
 	fn compute_present_value(
@@ -94,7 +94,7 @@ impl<T: Config> InternalActivePricing<T> {
 				Ok(dcf.compute_present_value(
 					debt,
 					now,
-					self.interest_rate.rate(),
+					self.interest.rate(),
 					maturity_date,
 					origination_date,
 				)?)
@@ -108,7 +108,7 @@ impl<T: Config> InternalActivePricing<T> {
 		origination_date: Moment,
 		maturity_date: Moment,
 	) -> Result<T::Balance, DispatchError> {
-		let debt = self.interest_rate.current_debt()?;
+		let debt = self.interest.current_debt()?;
 		self.compute_present_value(debt, origination_date, maturity_date)
 	}
 
@@ -121,7 +121,7 @@ impl<T: Config> InternalActivePricing<T> {
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		let debt = self.interest_rate.current_debt_cached(cache)?;
+		let debt = self.interest.current_debt_cached(cache)?;
 		self.compute_present_value(debt, origination_date, maturity_date)
 	}
 
@@ -129,7 +129,7 @@ impl<T: Config> InternalActivePricing<T> {
 		&self,
 		current_principal: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let debt = self.interest_rate.current_debt()?;
+		let debt = self.interest.current_debt()?;
 		Ok(debt.ensure_sub(current_principal)?)
 	}
 
@@ -143,12 +143,12 @@ impl<T: Config> InternalActivePricing<T> {
 				.saturating_sub(total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.interest_rate.current_debt()?),
+				.saturating_sub(self.interest.current_debt()?),
 		})
 	}
 
 	pub fn adjust(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
-		self.interest_rate.adjust_debt(adjustment)
+		self.interest.adjust_debt(adjustment)
 	}
 
 	fn mut_dcf(&mut self) -> Result<&mut DiscountedCashFlow<T::Rate>, DispatchError> {
@@ -161,7 +161,7 @@ impl<T: Config> InternalActivePricing<T> {
 	pub fn mutate_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
 		match mutation {
 			InternalMutation::InterestRate(rate) => {
-				self.interest_rate.set_base_interest_rate(rate)?;
+				self.interest.set_base_rate(rate)?;
 			}
 			InternalMutation::ValuationMethod(method) => self.info.valuation_method = method,
 			InternalMutation::ProbabilityOfDefault(rate) => {
