@@ -13,12 +13,12 @@
 
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use pallet_connectors_gatway::GatwayOrigin;
+use pallet_connectors_gateway::GatwayOrigin;
 use precompile_utils::prelude::*;
 use sp_core::{ConstU32, Get, H160, U256};
 
 /// Precompile implementing IAxelarForecallable.
-/// MUST be used as the receiver of calls over the axelar bridge
+/// MUST be used as the receiver of calls over the Axelar bridge.
 pub struct AxelarForecallable<Runtime, Gateway, MaxPayload>(
 	core::marker::PhantomData<(Runtime, Gateway, MaxPayload)>,
 );
@@ -26,8 +26,7 @@ pub struct AxelarForecallable<Runtime, Gateway, MaxPayload>(
 #[precompile_utils::precompile]
 impl<Runtime, Axelar, MaxPayload> AxelarForecallable<Runtime, Axelar, MaxPayload>
 where
-	Runtime: frame_system::Config,
-	Runtime: pallet_evm::Config + pallet_connectors_gateway::Config,
+	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
 	Axelar: Get<H160>,
@@ -48,11 +47,11 @@ where
 	//
 	#[precompile::public("forecall(string,string,bytes,address)")]
 	fn forecall(
-		handle: &mut impl PrecompileHandle,
-		source_chain: U256,
-		sourceAddress: U256,
-		payload: BoundedVec<u8, ConstU32<32>>,
-		forecaller: Address,
+		_handle: &mut impl PrecompileHandle,
+		_source_chain: U256,
+		_source_address: U256,
+		_payload: BoundedVec<u8, ConstU32<32>>,
+		_forecaller: Address,
 	) -> EvmResult<bool> {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(false)
@@ -89,7 +88,7 @@ where
 		//    - Queryable via: pallet_evm::<AccountStorages<Runtime>>::get(address,
 		//      index, value);
 		//    - How does storage work: https://programtheblockchain.com/posts/2018/03/09/understanding-ethereum-smart-contract-storage/#:~:text=Each%20smart%20contract%20running%20in,are%202256%20such%20values.
-		// - IF true, forward to pallet-connectors-gatway process_msg
+		// - IF true, forward to pallet-connectors-gateway process_msg
 
 		// TODO: Handle error
 		/*
@@ -122,13 +121,13 @@ where
 	//
 	#[precompile::public("forecallWithToken(address,uint256)")]
 	fn forecall_with_token(
-		handle: &mut impl PrecompileHandle,
-		source_chain: U256,
-		source_address: U256,
-		payload: BoundedVec<u8, ConstU32<32>>,
-		token_symbol: U256,
-		amount: U256,
-		forecaller: Address,
+		_handle: &mut impl PrecompileHandle,
+		_source_chain: U256,
+		_source_address: U256,
+		_payload: BoundedVec<u8, ConstU32<32>>,
+		_token_symbol: U256,
+		_amount: U256,
+		_forecaller: Address,
 	) -> EvmResult<bool> {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(false)
@@ -151,13 +150,13 @@ where
 	//
 	#[precompile::public("executeWithToken(address,uint256)")]
 	fn execute_with_token(
-		handle: &mut impl PrecompileHandle,
-		command_id: U256,
-		source_chain: U256,
-		source_address: U256,
-		payload: BoundedVec<u8, ConstU32<32>>,
-		token_symbol: U256,
-		amount: U256,
+		_handle: &mut impl PrecompileHandle,
+		_command_id: U256,
+		_source_chain: U256,
+		_source_address: U256,
+		_payload: BoundedVec<u8, ConstU32<32>>,
+		_token_symbol: U256,
+		_amount: U256,
 	) -> EvmResult<bool> {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(false)
