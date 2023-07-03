@@ -13,7 +13,7 @@
 use ethabi::{Bytes, Contract};
 use sp_std::{vec, vec::Vec};
 
-/// The ConnectorsXcmContract handle function name
+/// The ConnectorsXcmContract handle function name.
 static HANDLE_FUNCTION: &str = "handle";
 
 /// Return the encoded contract call, i.e,
@@ -29,7 +29,7 @@ pub fn encoded_contract_call(encoded_msg: Vec<u8>) -> Bytes {
 	encoded_contract_call
 }
 
-/// The ConnectorsXcmRouter Abi as in ethabi::Contract
+/// The ConnectorsXcmRouter Abi as in ethabi::Contract.
 /// Note: We only concern ourselves with the `handle` function of the contract
 /// since that's all we need to build the calls for remote EVM execution.
 pub fn xcm_router_contract() -> Contract {

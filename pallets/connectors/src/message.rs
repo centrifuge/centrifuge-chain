@@ -1,10 +1,9 @@
 use cfg_primitives::Moment;
+use cfg_traits::connectors::Codec;
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
-
-use crate::Codec;
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32
@@ -350,16 +349,16 @@ impl<
 			Message::AddPool { pool_id } => {
 				encoded_message(self.call_type(), vec![encode_be(pool_id)])
 			}
-			Message::AllowPoolCurrency { currency, pool_id } => encoded_message(
+			Message::AllowPoolCurrency { pool_id, currency } => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), encode_be(currency)],
 			),
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
-				decimals,
 				token_name,
 				token_symbol,
+				decimals,
 				price,
 			} => encoded_message(
 				self.call_type(),
@@ -383,26 +382,26 @@ impl<
 			Message::UpdateMember {
 				pool_id,
 				tranche_id,
-				member: address,
+				member,
 				valid_until,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					address.to_vec(),
+					member.to_vec(),
 					valid_until.to_be_bytes().to_vec(),
 				],
 			),
 			Message::Transfer {
-				currency: token,
+				currency,
 				sender,
 				receiver,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
-					encode_be(token),
+					encode_be(currency),
 					sender.to_vec(),
 					receiver.to_vec(),
 					encode_be(amount),
@@ -430,7 +429,7 @@ impl<
 				pool_id,
 				tranche_id,
 				investor: address,
-				currency: token,
+				currency,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -438,73 +437,73 @@ impl<
 					encode_be(pool_id),
 					tranche_id.encode(),
 					address.to_vec(),
-					encode_be(token),
+					encode_be(currency),
 					encode_be(amount),
 				],
 			),
 			Message::DecreaseInvestOrder {
 				pool_id,
 				tranche_id,
-				investor: address,
-				currency: token,
+				investor,
+				currency,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					address.to_vec(),
-					encode_be(token),
+					investor.to_vec(),
+					encode_be(currency),
 					encode_be(amount),
 				],
 			),
 			Message::IncreaseRedeemOrder {
 				pool_id,
 				tranche_id,
-				investor: address,
-				currency: token,
+				investor,
+				currency,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					address.to_vec(),
-					encode_be(token),
+					investor.to_vec(),
+					encode_be(currency),
 					encode_be(amount),
 				],
 			),
 			Message::DecreaseRedeemOrder {
 				pool_id,
 				tranche_id,
-				investor: address,
-				currency: token,
+				investor,
+				currency,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					address.to_vec(),
-					encode_be(token),
+					investor.to_vec(),
+					encode_be(currency),
 					encode_be(amount),
 				],
 			),
 			Message::CollectInvest {
 				pool_id,
 				tranche_id,
-				investor: address,
+				investor,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
+				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
 			),
 			Message::CollectRedeem {
 				pool_id,
 				tranche_id,
-				investor: address,
+				investor,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
+				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
 			),
 			Message::ExecutedDecreaseInvestOrder {
 				pool_id,
@@ -740,7 +739,7 @@ mod tests {
 	use sp_runtime::traits::One;
 
 	use super::*;
-	use crate::{Codec, Domain, DomainAddress};
+	use crate::{Domain, DomainAddress};
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 

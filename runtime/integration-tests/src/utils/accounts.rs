@@ -161,7 +161,7 @@ impl Keyring {
 	pub fn pair(self) -> Pair {
 		let path = match self {
 			Keyring::Admin => "Admin".to_owned(),
-			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{}", tranche_index),
+			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{tranche_index}"),
 			Keyring::Alice => "Alice".to_owned(),
 			Keyring::Bob => "Bob".to_owned(),
 			Keyring::Charlie => "Charlie".to_owned(),
@@ -182,7 +182,7 @@ impl Keyring {
 	pub fn to_seed(self) -> String {
 		let path = match self {
 			Keyring::Admin => "Admin".to_owned(),
-			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{}", tranche_index),
+			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{tranche_index}"),
 			Keyring::Alice => "Alice".to_owned(),
 			Keyring::Bob => "Bob".to_owned(),
 			Keyring::Charlie => "Charlie".to_owned(),
