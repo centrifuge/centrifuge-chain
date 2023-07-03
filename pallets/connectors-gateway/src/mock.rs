@@ -1,4 +1,5 @@
 use cfg_mocks::{pallet_mock_connectors, DomainRouterMock, MessageMock};
+use cfg_types::domain_address::Domain;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256};
 use sp_runtime::{
@@ -28,6 +29,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxConnectorsPerDomain: u32 = 3;
+	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
 impl frame_system::Config for Runtime {
@@ -79,6 +81,7 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type Router = DomainRouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

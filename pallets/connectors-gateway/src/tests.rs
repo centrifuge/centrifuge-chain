@@ -266,6 +266,8 @@ mod remove_connector {
 }
 
 mod process_msg {
+	use sp_core::bounded::BoundedVec;
+
 	use super::*;
 
 	#[test]
@@ -297,7 +299,7 @@ mod process_msg {
 
 			assert_ok!(ConnectorsGateway::process_msg(
 				GatewayOrigin::Local(domain_address).into(),
-				encoded_msg
+				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
 		});
 	}
@@ -305,10 +307,13 @@ mod process_msg {
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
-			let msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock::First.serialize();
 
 			assert_noop!(
-				ConnectorsGateway::process_msg(RuntimeOrigin::root(), msg),
+				ConnectorsGateway::process_msg(
+					RuntimeOrigin::root(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+				),
 				BadOrigin,
 			);
 		});
@@ -318,10 +323,13 @@ mod process_msg {
 	fn invalid_message_origin() {
 		new_test_ext().execute_with(|| {
 			let domain_address = DomainAddress::Centrifuge(get_random_test_account_id().into());
-			let msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock::First.serialize();
 
 			assert_noop!(
-				ConnectorsGateway::process_msg(GatewayOrigin::Local(domain_address).into(), msg),
+				ConnectorsGateway::process_msg(
+					GatewayOrigin::Local(domain_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+				),
 				Error::<Runtime>::InvalidMessageOrigin,
 			);
 		});
@@ -332,10 +340,13 @@ mod process_msg {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
-			let msg = MessageMock::First.serialize();
+			let encoded_msg = MessageMock::First.serialize();
 
 			assert_noop!(
-				ConnectorsGateway::process_msg(GatewayOrigin::Local(domain_address).into(), msg),
+				ConnectorsGateway::process_msg(
+					GatewayOrigin::Local(domain_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+				),
 				Error::<Runtime>::UnknownConnector,
 			);
 		});
@@ -357,10 +368,13 @@ mod process_msg {
 
 			event_exists(Event::<Runtime>::ConnectorAdded(domain_address.clone()));
 
-			let msg: Vec<u8> = vec![11];
+			let encoded_msg: Vec<u8> = vec![11];
 
 			assert_noop!(
-				ConnectorsGateway::process_msg(GatewayOrigin::Local(domain_address).into(), msg),
+				ConnectorsGateway::process_msg(
+					GatewayOrigin::Local(domain_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+				),
 				Error::<Runtime>::MessageDecode,
 			);
 		});
@@ -398,7 +412,7 @@ mod process_msg {
 			assert_noop!(
 				ConnectorsGateway::process_msg(
 					GatewayOrigin::Local(domain_address).into(),
-					encoded_msg
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,
 			);

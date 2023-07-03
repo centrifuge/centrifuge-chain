@@ -33,7 +33,7 @@ pub mod pallet {
 	use codec::{EncodeLike, FullCodec};
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::OriginFor;
-	use sp_std::{convert::TryInto, vec::Vec};
+	use sp_std::convert::TryInto;
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -89,6 +89,10 @@ pub mod pallet {
 		/// Maximum number of connectors for a domain.
 		#[pallet::constant]
 		type MaxConnectorsPerDomain: Get<u32>;
+
+		/// Maximum size of an incoming message.
+		#[pallet::constant]
+		type MaxIncomingMessageSize: Get<u32>;
 	}
 
 	#[pallet::event]
@@ -225,7 +229,10 @@ pub mod pallet {
 		/// Process an incoming message.
 		#[pallet::weight(0)]
 		#[pallet::call_index(3)]
-		pub fn process_msg(origin: OriginFor<T>, msg: Vec<u8>) -> DispatchResult {
+		pub fn process_msg(
+			origin: OriginFor<T>,
+			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
+		) -> DispatchResult {
 			let domain_address = T::LocalOrigin::ensure_origin(origin)?;
 
 			match domain_address {
