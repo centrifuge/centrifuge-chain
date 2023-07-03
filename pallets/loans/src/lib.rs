@@ -42,7 +42,6 @@
 
 pub mod migrations {
 	pub mod nuke;
-	pub mod v1;
 }
 
 /// High level types that uses `pallet::Config`
