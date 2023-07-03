@@ -222,6 +222,7 @@ pub mod pallet {
 			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		type Amount = BalanceOf<T>;
+		type CurrencyId = CurrencyOf<T>;
 		type Error = DispatchError;
 		type InvestmentId = T::InvestmentId;
 
@@ -231,6 +232,15 @@ pub mod pallet {
 			amount: Self::Amount,
 		) -> Result<(), Self::Error> {
 			Self::update_invest_order(investment_id, amount)
+		}
+
+		fn accepted_payment_currency(
+			investment_id: Self::InvestmentId,
+			currency: Self::CurrencyId,
+		) -> bool {
+			T::Accountant::info(investment_id)
+				.map(|info| info.payment_currency() == currency)
+				.unwrap_or(false)
 		}
 
 		fn investment(
@@ -248,6 +258,15 @@ pub mod pallet {
 			amount: Self::Amount,
 		) -> Result<(), Self::Error> {
 			Self::update_redeem_order(investment_id, amount)
+		}
+
+		fn accepted_payout_currency(
+			investment_id: Self::InvestmentId,
+			currency: Self::CurrencyId,
+		) -> bool {
+			T::Accountant::info(investment_id)
+				.map(|info| info.payment_currency() == currency)
+				.unwrap_or(false)
 		}
 
 		fn redemption(
