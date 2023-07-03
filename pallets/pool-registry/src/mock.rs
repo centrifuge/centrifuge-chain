@@ -248,6 +248,7 @@ impl<T> PreConditions<T> for Always {
 }
 
 impl Config for Test {
+	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
@@ -261,6 +262,7 @@ impl Config for Test {
 	type PoolId = u64;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }

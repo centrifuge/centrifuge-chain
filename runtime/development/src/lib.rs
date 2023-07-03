@@ -30,6 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
+	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -1044,6 +1045,7 @@ impl pallet_pool_system::Config for Runtime {
 }
 
 impl pallet_pool_registry::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
@@ -1057,6 +1059,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
 }
@@ -1556,13 +1559,31 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+pub struct DummyOutboundQueue;
+
+impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
+	type Destination = Domain;
+	type Message = pallet_connectors::MessageOf<Runtime>;
+	type Sender = AccountId;
+
+	fn submit(
+		_sender: AccountId,
+		_destination: Domain,
+		_msg: pallet_connectors::MessageOf<Runtime>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
+	type OutboundQueue = DummyOutboundQueue;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;
@@ -1700,8 +1721,8 @@ impl<
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolen. This makes the redundant has not role error       that
-			// downstream pallets always need to generate not needed anymore.
+			// instead of a boolean. This makes the redundant "does not have role" error,
+			// which downstream pallets always need to generate, not needed anymore.
 			Err(DispatchError::Other(
 				"Account does not have the TrancheInvestor permission.",
 			))
@@ -1712,9 +1733,21 @@ impl<
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
-
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
+	pub const MaxChangesPerEpoch: u32 = 50;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+}
+
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type Balance = Balance;
+	type DistributionId = u32;
+	type IBalance = IBalance;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1725,13 +1758,23 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type RewardCurrency = RewardCurrency;
 	type RewardIssuance =
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
-	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
-		Balance,
-		IBalance,
-		FixedI128,
-		MaxCurrencyMovements,
-	>;
+	type RewardMechanism = GapRewardMechanism;
 	type RuntimeEvent = RuntimeEvent;
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
@@ -1755,31 +1798,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 		SingleCurrencyMovement,
 	>;
 	type RuntimeEvent = RuntimeEvent;
-}
-
-frame_support::parameter_types! {
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxGroups: u32 = 20;
-
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
-	pub const MaxChangesPerEpoch: u32 = 50;
-
-	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;
-}
-
-impl pallet_liquidity_rewards::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type GroupId = u32;
-	type InitialEpochDuration = InitialEpochDuration;
-	type MaxChangesPerEpoch = MaxChangesPerEpoch;
-	type MaxGroups = MaxGroups;
-	type Rewards = LiquidityRewardsBase;
-	type RuntimeEvent = RuntimeEvent;
-	type Timer = Timestamp;
-	type Weight = u64;
-	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
@@ -1887,6 +1905,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
+		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

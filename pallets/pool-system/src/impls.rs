@@ -85,6 +85,10 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
 		PoolLocator { pool_id }.into_account_truncating()
 	}
+
+	fn currency_for(pool_id: Self::PoolId) -> Option<T::CurrencyId> {
+		Pool::<T>::get(pool_id).map(|pool| pool.currency)
+	}
 }
 
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
@@ -435,14 +439,16 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
 	use cfg_traits::{Investment, PoolBenchmarkHelper};
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_types::{
+		pools::TrancheMetadata,
+		tokens::{CurrencyId, CustomMetadata},
+	};
 	use frame_benchmarking::account;
 	use frame_support::traits::Currency;
 	use frame_system::RawOrigin;
 	use sp_std::vec;
 
 	use super::*;
-	use crate::tranches::TrancheMetadata;
 
 	const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 

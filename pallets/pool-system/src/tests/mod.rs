@@ -14,6 +14,7 @@ use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
+	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -32,7 +33,7 @@ use crate::{
 	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
 	tranches::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
-		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+		TrancheInput, TrancheSolution, TrancheType, Tranches,
 	},
 	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolInspect,
 	PoolState, UnhealthyState,
@@ -2617,7 +2618,7 @@ mod changes {
 			util::default_pool::create();
 
 			let change = PoolChangeProposal::new([Requirement::BlockedByLockedRedemptions]);
-			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			let _change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
 			/* TODO: 1407
 			assert_noop!(
