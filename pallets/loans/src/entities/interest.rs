@@ -14,7 +14,7 @@ use crate::pallet::Config;
 #[scale_info(skip_type_params(T))]
 pub struct ActiveInterestRate<T: Config> {
 	interest_rate: T::Rate,
-	normalized_debt: T::Balance,
+	normalized_acc: T::Balance,
 	penalty: T::Rate,
 }
 
@@ -23,7 +23,7 @@ impl<T: Config> ActiveInterestRate<T> {
 		T::InterestAccrual::reference_rate(interest_rate)?;
 		Ok(Self {
 			interest_rate,
-			normalized_debt: T::Balance::zero(),
+			normalized_acc: T::Balance::zero(),
 			penalty: T::Rate::zero(),
 		})
 	}
@@ -34,7 +34,7 @@ impl<T: Config> ActiveInterestRate<T> {
 	}
 
 	pub fn has_debt(&self) -> bool {
-		!self.normalized_debt.is_zero()
+		!self.normalized_acc.is_zero()
 	}
 
 	pub fn rate(&self) -> T::Rate {
@@ -47,20 +47,20 @@ impl<T: Config> ActiveInterestRate<T> {
 
 	pub fn current_debt(&self) -> Result<T::Balance, DispatchError> {
 		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.interest_rate, self.normalized_debt, now)
+		T::InterestAccrual::calculate_debt(self.interest_rate, self.normalized_acc, now)
 	}
 
 	pub fn current_debt_cached<Rates>(&self, cache: &Rates) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		cache.current_debt(self.interest_rate, self.normalized_debt)
+		cache.current_debt(self.interest_rate, self.normalized_acc)
 	}
 
 	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+		self.normalized_acc = T::InterestAccrual::adjust_normalized_debt(
 			self.interest_rate,
-			self.normalized_debt,
+			self.normalized_acc,
 			adjustment,
 		)?;
 
@@ -86,10 +86,10 @@ impl<T: Config> ActiveInterestRate<T> {
 
 		T::InterestAccrual::reference_rate(new_interest_rate)?;
 
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
+		self.normalized_acc = T::InterestAccrual::renormalize_debt(
 			old_interest_rate,
 			new_interest_rate,
-			self.normalized_debt,
+			self.normalized_acc,
 		)?;
 		self.interest_rate = new_interest_rate;
 		self.penalty = new_penalty;
