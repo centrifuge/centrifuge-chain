@@ -57,6 +57,10 @@ pub mod pallet {
 			register_call!(f);
 		}
 
+		pub fn mock_currency_for(f: impl Fn(T::PoolId) -> Option<T::CurrencyId> + 'static) {
+			register_call!(f);
+		}
+
 		pub fn mock_withdraw(
 			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
 		) {
@@ -100,6 +104,10 @@ pub mod pallet {
 		}
 
 		fn account_for(a: T::PoolId) -> T::AccountId {
+			execute_call!(a)
+		}
+
+		fn currency_for(a: T::PoolId) -> Option<T::CurrencyId> {
 			execute_call!(a)
 		}
 	}

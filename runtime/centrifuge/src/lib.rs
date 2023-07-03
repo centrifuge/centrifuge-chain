@@ -1521,8 +1521,8 @@ impl<
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolen. This makes the redundant has not role error       that
-			// downstream pallets always need to generate not needed anymore.
+			// instead of a boolean. This makes the redundant "does not have role" error,
+			// which downstream pallets always need to generate, not needed anymore.
 			Err(DispatchError::Other(
 				"Account does not have the TrancheInvestor permission.",
 			))

@@ -30,6 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
+	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -1558,13 +1559,31 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+pub struct DummyOutboundQueue;
+
+impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
+	type Destination = Domain;
+	type Message = pallet_connectors::MessageOf<Runtime>;
+	type Sender = AccountId;
+
+	fn submit(
+		_sender: AccountId,
+		_destination: Domain,
+		_msg: pallet_connectors::MessageOf<Runtime>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
+	type OutboundQueue = DummyOutboundQueue;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;
@@ -1702,8 +1721,8 @@ impl<
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolen. This makes the redundant has not role error       that
-			// downstream pallets always need to generate not needed anymore.
+			// instead of a boolean. This makes the redundant "does not have role" error,
+			// which downstream pallets always need to generate, not needed anymore.
 			Err(DispatchError::Other(
 				"Account does not have the TrancheInvestor permission.",
 			))

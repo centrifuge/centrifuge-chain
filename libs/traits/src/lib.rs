@@ -35,14 +35,14 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
-/// Traits related to rewards.
-pub mod rewards;
-
-/// Traits related to data registry & collections.
-pub mod data;
-
 /// Traits related to checked changes.
 pub mod changes;
+/// Traits related to connectors.
+pub mod connectors;
+/// Traits related to data registry and collection.
+pub mod data;
+/// Traits related to rewards.
+pub mod rewards;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -142,6 +142,9 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 
 	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
+
+	// Get the currency used for the given `pool_id`.
+	fn currency_for(pool_id: Self::PoolId) -> Option<CurrencyId>;
 }
 
 /// Variants for valid Pool updates to send out as events
@@ -428,9 +431,10 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {
+	type Amount;
+	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
-	type Amount;
 
 	/// Updates the current investment amount of who into the
 	/// investment class to amount.
@@ -441,6 +445,12 @@ pub trait Investment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
+
+	/// Checks whether a currency can be used for buying `InvestmentId`
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
 
 	/// Returns, if possible, the current investment amount of who into the
 	/// given investment class
@@ -459,12 +469,41 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
+	/// Checks whether a currency is accepted as a payout for an `InvestmentId`
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
+
 	/// Returns, if possible, the current redemption amount of who into the
 	/// given investment class
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
+}
+
+/// A trait which allows to collect existing investments and redemptions.
+pub trait InvestmentCollector<AccountId> {
+	type Error: Debug;
+	type InvestmentId;
+	type Result: Debug;
+
+	/// Collect the results of a user's invest orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_investment(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
+
+	/// Collect the results of a users redeem orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_redemption(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
 }
 
 /// A trait, when implemented must take care of
@@ -677,16 +716,24 @@ pub mod fees {
 }
 
 /// Trait to determine whether a sending account and currency have a
-/// restriction, and if so is there an allowance for the reciever location.
+/// restriction, and if so is there an allowance for the receiver location.
 pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
 	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
 	/// Determines whether the `send` account is allowed to make a transfer to
-	/// the  `receive` location with `currency` type currency. Returns result
+	/// the `receive` location with `currency` type currency. Returns result
 	/// wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
-		recieve: Self::Location,
+		receive: Self::Location,
 		currency: Self::CurrencyId,
 	) -> DispatchResult;
+}
+
+/// Trait to retrieve information about currencies.
+pub trait CurrencyInspect {
+	type CurrencyId;
+
+	/// Checks whether the provided currency is a tranche token.
+	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
