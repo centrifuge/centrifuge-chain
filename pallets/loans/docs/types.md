@@ -114,6 +114,16 @@ package policy {
     WriteOffRule *--> WriteOffStatus
 }
 
+package interest {
+    class ActiveInterestRate {
+        interest_rate: InterestRate,
+        normalized_debt: Balance,
+        penalty: Rate
+    }
+
+    ActiveInterestRate *--> InterestRate
+}
+
 package pricing {
     package internal {
         enum MaxBorrowAmount {
@@ -125,26 +135,23 @@ package pricing {
             collateral_value: Balance
             valuation_method: ValuationMethod
             max_borrow_amount: MaxBorrowAmount
-            interest_rate: InterestRate
         }
 
         InternalPricing *--> MaxBorrowAmount
         InternalPricing *-d--> valuation::ValuationMethod
-        InternalPricing *-r-> InterestRate
 
         class InternalActivePricing {
             info: InternalPricing
-            write_off_penalty: Rate,
-            principal: Balance,
-            normalized_accrued_debt: Balance
+            interest_rate: ActiveInterestRate
         }
 
-        InternalActivePricing *-r-> InternalPricing
+        InternalActivePricing *-r-> ActiveInterestRate
+        InternalActivePricing *--> InternalPricing
     }
 
     package external {
         enum MaxBorrowAmount {
-            Quantity: Rate,
+            Quantity: Rate
             NoLimit
         }
 
@@ -152,20 +159,19 @@ package pricing {
             price_id: Price,
             max_borrow_quantity: Balance,
             notional: Rate,
-            interest_rate: InterestRate
         }
 
         ExternalPricing *--> MaxBorrowAmount
-        ExternalPricing *-r-> InterestRate
 
         class ExternalActivePricing {
             info: ExternalPricing
             outstanding_quantity: Balance,
-            normalized_notional: Balance
+            interest_rate: ActiveInterestRate
         }
-    }
 
-    ExternalActivePricing *-r-> ExternalPricing
+        ExternalActivePricing *-r-> ActiveInterestRate
+        ExternalActivePricing *--> ExternalPricing
+    }
 
     enum Pricing {
         Internal: InternalPricing
@@ -222,6 +228,7 @@ package loan {
     LoanInfo *--> RepaymentSchedule
     LoanInfo *-r-> LoanRestrictions
     LoanInfo *--> pricing::Pricing
+    LoanInfo *--> ActiveInterestRate
 
     CreatedLoan *--> LoanInfo
     ActiveLoan *--> pricing::ActivePricing
