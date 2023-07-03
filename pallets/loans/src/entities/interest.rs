@@ -72,7 +72,7 @@ impl<T: Config> ActiveInterestRate<T> {
 		self.update_interest_rate(base_interest_rate, new_penalty)
 	}
 
-	pub fn set_interest_rate(&mut self, base_interest_rate: T::Rate) -> DispatchResult {
+	pub fn set_base_interest_rate(&mut self, base_interest_rate: T::Rate) -> DispatchResult {
 		self.update_interest_rate(base_interest_rate, self.penalty)
 	}
 
