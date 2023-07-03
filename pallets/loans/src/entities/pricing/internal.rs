@@ -129,10 +129,8 @@ impl<T: Config> InternalActivePricing<T> {
 		&self,
 		current_principal: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(self
-			.interest_rate
-			.current_debt()?
-			.ensure_sub(current_principal)?)
+		let debt = self.interest_rate.current_debt()?;
+		Ok(debt.ensure_sub(current_principal)?)
 	}
 
 	pub fn max_borrow_amount(

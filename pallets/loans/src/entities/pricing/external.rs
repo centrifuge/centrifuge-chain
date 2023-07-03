@@ -97,12 +97,13 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
-		let principal = self
+		let outstanding_notional = self
 			.info
 			.notional
 			.ensure_mul_int(self.outstanding_quantity)?;
 
-		Ok(self.interest_rate.current_debt()?.ensure_sub(principal)?)
+		let debt = self.interest_rate.current_debt()?;
+		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {

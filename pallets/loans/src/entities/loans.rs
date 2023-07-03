@@ -407,8 +407,8 @@ impl<T: Config> ActiveLoan<T> {
 				(Pricing::Internal(pricing), interest_rate)
 			}
 			ActivePricing::External(inner) => {
-				let (princing, interest_rate) = inner.deactivate(pool_id)?;
-				(Pricing::External(princing), interest_rate)
+				let (pricing, interest_rate) = inner.deactivate(pool_id)?;
+				(Pricing::External(pricing), interest_rate)
 			}
 		};
 
