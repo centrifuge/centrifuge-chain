@@ -22,7 +22,7 @@ use cfg_types::{
 use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_traits::asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate};
+use orml_traits::asset_registry::{Inspect, Mutate};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
@@ -145,11 +145,11 @@ pub mod pallet {
 
 		/// The registry type used for retrieving and updating tranche metadata
 		/// as part of the `PoolMetadata` trait implementation
-		type AssetRegistry: OrmlMutate<
+		type AssetRegistry: Mutate<
 				AssetId = Self::CurrencyId,
 				Balance = Self::Balance,
 				CustomMetadata = CustomMetadata,
-			> + OrmlInspect<
+			> + Inspect<
 				AssetId = Self::CurrencyId,
 				Balance = Self::Balance,
 				CustomMetadata = CustomMetadata,
