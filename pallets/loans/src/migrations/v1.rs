@@ -1,9 +1,11 @@
+use cfg_primitives::SECONDS_PER_DAY;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	pallet_prelude::*, storage::bounded_vec::BoundedVec, storage_alias, traits::OnRuntimeUpgrade,
 	weights::Weight, Blake2_128Concat, RuntimeDebug,
 };
 use scale_info::TypeInfo;
+use sp_runtime::traits::EnsureMul;
 use sp_std::vec::Vec;
 
 use crate::{
@@ -16,7 +18,7 @@ mod v0 {
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	pub struct WriteOffState<Rate> {
-		pub overdue_secs: u32,
+		pub overdue_days: u32,
 		pub percentage: Rate,
 		pub penalty: Rate,
 	}
@@ -47,7 +49,13 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 					.into_iter()
 					.map(|old| {
 						WriteOffRule::new(
-							[WriteOffTrigger::PrincipalOverdue(old.overdue_secs.try_into().unwrap_or(0u64))],
+							[WriteOffTrigger::PrincipalOverdue(
+								old.overdue_days
+									.try_into()
+									.unwrap_or(0u64)
+									.ensure_mul(SECONDS_PER_DAY)
+									.unwrap_or(064),
+							)],
 							old.percentage,
 							old.penalty,
 						)
@@ -109,12 +117,12 @@ mod tests {
 				POOL_A,
 				BoundedVec::try_from(vec![
 					v0::WriteOffState {
-						overdue_secs: 12,
+						overdue_days: 12,
 						percentage: Rate::from_float(0.3),
 						penalty: Rate::from_float(0.2),
 					},
 					v0::WriteOffState {
-						overdue_secs: 23,
+						overdue_days: 23,
 						percentage: Rate::from_float(0.4),
 						penalty: Rate::from_float(0.1),
 					},
