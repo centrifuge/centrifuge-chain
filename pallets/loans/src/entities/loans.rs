@@ -1,5 +1,5 @@
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
-use cfg_traits::{self, data::DataCollection, RateCollection};
+use cfg_traits::{self, data::DataCollection, InterestAccrual, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -39,6 +39,9 @@ pub struct LoanInfo<T: Config> {
 	/// Collateral used for this loan
 	pub collateral: AssetOf<T>,
 
+	/// Interest rate per year
+	pub interest_rate: T::Rate,
+
 	/// Pricing properties for this loan
 	pub pricing: Pricing<T>,
 
@@ -57,6 +60,8 @@ impl<T: Config> LoanInfo<T> {
 			Pricing::Internal(pricing) => pricing.validate()?,
 			Pricing::External(pricing) => pricing.validate()?,
 		}
+
+		T::InterestAccrual::validate_rate(self.interest_rate)?;
 
 		ensure!(
 			self.schedule.is_valid(now),
@@ -173,12 +178,12 @@ impl<T: Config> ActiveLoan<T> {
 			write_off_percentage: T::Rate::zero(),
 			origination_date: now,
 			pricing: match info.pricing {
-				Pricing::Internal(info) => {
-					ActivePricing::Internal(InternalActivePricing::new(info)?)
-				}
-				Pricing::External(info) => {
-					ActivePricing::External(ExternalActivePricing::new(info, pool_id)?)
-				}
+				Pricing::Internal(inner) => ActivePricing::Internal(
+					InternalActivePricing::activate(inner, info.interest_rate)?,
+				),
+				Pricing::External(inner) => ActivePricing::External(
+					ExternalActivePricing::activate(inner, info.interest_rate, pool_id)?,
+				),
 			},
 			total_borrowed: T::Balance::zero(),
 			total_repaid: RepaidAmount::default(),
@@ -201,8 +206,8 @@ impl<T: Config> ActiveLoan<T> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
 			penalty: match &self.pricing {
-				ActivePricing::Internal(inner) => inner.write_off_penalty(),
-				ActivePricing::External(_) => T::Rate::zero(),
+				ActivePricing::Internal(inner) => inner.interest_rate.penalty(),
+				ActivePricing::External(inner) => inner.interest_rate.penalty(),
 			},
 		}
 	}
@@ -234,14 +239,10 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let debt = inner.calculate_debt()?;
 				let maturity_date = self.schedule.maturity.date();
-				inner.compute_present_value(debt, self.origination_date, maturity_date)?
+				inner.present_value(self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => {
-				let price = inner.calculate_price()?;
-				inner.compute_present_value(price)?
-			}
+			ActivePricing::External(inner) => inner.present_value()?,
 		};
 
 		self.write_down(value)
@@ -262,14 +263,10 @@ impl<T: Config> ActiveLoan<T> {
 	{
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
-				let debt = inner.calculate_debt_by(rates)?;
 				let maturity_date = self.schedule.maturity.date();
-				inner.compute_present_value(debt, self.origination_date, maturity_date)?
+				inner.present_value_cached(rates, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => {
-				let price = inner.calculate_price_by(prices)?;
-				inner.compute_present_value(price)?
-			}
+			ActivePricing::External(inner) => inner.present_value_cached(prices)?,
 		};
 
 		self.write_down(value)
@@ -310,9 +307,10 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_borrowed.ensure_add_assign(amount)?;
 
+		let adjustment = Adjustment::Increase(amount);
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.adjust_debt(Adjustment::Increase(amount))?,
-			ActivePricing::External(inner) => inner.adjust_debt(Adjustment::Increase(amount))?,
+			ActivePricing::Internal(inner) => inner.adjust(adjustment)?,
+			ActivePricing::External(inner) => inner.adjust(adjustment)?,
 		}
 
 		Ok(())
@@ -328,10 +326,10 @@ impl<T: Config> ActiveLoan<T> {
 					.total_borrowed
 					.ensure_sub(self.total_repaid.principal)?;
 
-				(inner.interest_accrued(principal)?, principal)
+				(inner.current_interest(principal)?, principal)
 			}
 			ActivePricing::External(inner) => {
-				(inner.interest_accrued()?, inner.outstanding_amount()?)
+				(inner.current_interest()?, inner.outstanding_amount()?)
 			}
 		};
 
@@ -365,21 +363,20 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_repaid.ensure_add_assign(&amount)?;
 
+		let adjustment = Adjustment::Decrease(amount.effective()?);
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => {
-				inner.adjust_debt(Adjustment::Decrease(amount.effective()?))?
-			}
-			ActivePricing::External(inner) => {
-				inner.adjust_debt(Adjustment::Decrease(amount.effective()?))?
-			}
+			ActivePricing::Internal(inner) => inner.adjust(adjustment)?,
+			ActivePricing::External(inner) => inner.adjust(adjustment)?,
 		}
 
 		Ok(amount)
 	}
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
-		if let ActivePricing::Internal(inner) = &mut self.pricing {
-			inner.set_penalty(new_status.penalty)?;
+		let penalty = new_status.penalty;
+		match &mut self.pricing {
+			ActivePricing::Internal(inner) => inner.interest_rate.set_penalty(penalty)?,
+			ActivePricing::External(inner) => inner.interest_rate.set_penalty(penalty)?,
 		}
 
 		self.write_off_percentage = new_status.percentage;
@@ -389,8 +386,8 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
-			ActivePricing::Internal(inner) => !inner.has_debt(),
-			ActivePricing::External(inner) => !inner.has_debt(),
+			ActivePricing::Internal(inner) => !inner.interest_rate.has_debt(),
+			ActivePricing::External(inner) => !inner.interest_rate.has_debt(),
 		};
 
 		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));
@@ -404,14 +401,23 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
+		let (pricing, interest_rate) = match self.pricing {
+			ActivePricing::Internal(inner) => {
+				let (pricing, interest_rate) = inner.deactivate()?;
+				(Pricing::Internal(pricing), interest_rate)
+			}
+			ActivePricing::External(inner) => {
+				let (princing, interest_rate) = inner.deactivate(pool_id)?;
+				(Pricing::External(princing), interest_rate)
+			}
+		};
+
 		let loan = ClosedLoan {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
 			info: LoanInfo {
-				pricing: match self.pricing {
-					ActivePricing::Internal(inner) => Pricing::Internal(inner.end()?),
-					ActivePricing::External(inner) => Pricing::External(inner.end(pool_id)?),
-				},
+				pricing,
 				collateral: self.collateral,
+				interest_rate,
 				schedule: self.schedule,
 				restrictions: self.restrictions,
 			},

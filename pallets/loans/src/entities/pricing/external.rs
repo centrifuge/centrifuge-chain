@@ -2,18 +2,20 @@ use cfg_primitives::Moment;
 use cfg_traits::{
 	self,
 	data::{DataCollection, DataRegistry},
-	InterestAccrual,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{self, ensure, traits::UnixTime, RuntimeDebug, RuntimeDebugNoBound};
+use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureDiv, EnsureFixedPointNumber, EnsureSub, One, Zero},
 	DispatchError, DispatchResult,
 };
 
-use crate::pallet::{Config, Error, PoolIdOf, PriceOf};
+use crate::{
+	entities::interest::ActiveInterestRate,
+	pallet::{Config, Error, PoolIdOf, PriceOf},
+};
 
 /// Define the max borrow amount of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
@@ -37,14 +39,11 @@ pub struct ExternalPricing<T: Config> {
 
 	/// Reference price used to calculate the interest
 	pub notional: T::Rate,
-
-	/// Interest rate per year with any penalty applied
-	pub interest_rate: T::Rate,
 }
 
 impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
-		T::InterestAccrual::validate_rate(self.interest_rate)
+		Ok(())
 	}
 }
 
@@ -58,54 +57,65 @@ pub struct ExternalActivePricing<T: Config> {
 	/// Outstanding quantity that should be repaid.
 	outstanding_quantity: T::Balance,
 
-	/// Normalized notional debt used to calculate the outstanding debt.
-	normalized_notional: T::Balance,
+	/// Current interest rate
+	pub interest_rate: ActiveInterestRate<T>,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
-	pub fn new(info: ExternalPricing<T>, pool_id: PoolIdOf<T>) -> Result<Self, DispatchError> {
+	pub fn activate(
+		info: ExternalPricing<T>,
+		interest_rate: T::Rate,
+		pool_id: PoolIdOf<T>,
+	) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
-		T::InterestAccrual::reference_rate(info.interest_rate)?;
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Balance::zero(),
-			normalized_notional: T::Balance::zero(),
+			interest_rate: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
 
-	pub fn end(self, pool_id: PoolIdOf<T>) -> Result<ExternalPricing<T>, DispatchError> {
+	pub fn deactivate(
+		self,
+		pool_id: PoolIdOf<T>,
+	) -> Result<(ExternalPricing<T>, T::Rate), DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
-		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
-		Ok(self.info)
+		Ok((self.info, self.interest_rate.deactivate()?))
 	}
 
-	pub fn has_debt(&self) -> bool {
-		!self.normalized_notional.is_zero()
+	pub fn current_price(&self) -> Result<T::Rate, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
 	}
 
-	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_notional, now)
+	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
 	}
 
-	pub fn interest_accrued(&self) -> Result<T::Balance, DispatchError> {
+	pub fn outstanding_amount(&self) -> Result<T::Balance, DispatchError> {
+		let price = self.current_price()?;
+		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
+	}
+
+	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
 		let principal = self
 			.info
 			.notional
 			.ensure_mul_int(self.outstanding_quantity)?;
 
-		Ok(self.calculate_debt()?.ensure_sub(principal)?)
+		Ok(self.interest_rate.current_debt()?.ensure_sub(principal)?)
 	}
 
-	pub fn calculate_price(&self) -> Result<T::Rate, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
+		let price = self.current_price()?;
+		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
 	}
 
-	pub fn calculate_price_by<Prices>(&self, prices: &Prices) -> Result<T::Rate, DispatchError>
+	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
 	where
 		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
-		Ok(prices.get(&self.info.price_id)?.0)
+		let price = cache.get(&self.info.price_id)?.0;
+		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
 	}
 
 	pub fn max_borrow_amount(
@@ -114,7 +124,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		match self.info.max_borrow_amount {
 			MaxBorrowAmount::Quantity(quantity) => {
-				let price = self.calculate_price()?;
+				let price = self.current_price()?;
 				let available = quantity.ensure_sub(self.outstanding_quantity)?;
 				Ok(price.ensure_mul_int(available)?)
 			}
@@ -122,22 +132,9 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
-	}
-
-	pub fn outstanding_amount(&self) -> Result<T::Balance, DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id)?.0;
-		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
-	}
-
-	pub fn compute_present_value(&self, price: T::Rate) -> Result<T::Balance, DispatchError> {
-		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
-	}
-
-	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
+	pub fn adjust(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
 		let quantity = adjustment.try_map(|amount| -> Result<_, DispatchError> {
-			let price = self.calculate_price()?;
+			let price = self.current_price()?;
 			let quantity = T::Rate::one().ensure_div(price)?.ensure_mul_int(amount)?;
 
 			ensure!(
@@ -150,9 +147,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		self.outstanding_quantity = quantity.ensure_add(self.outstanding_quantity)?;
 
-		self.normalized_notional = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_notional,
+		self.interest_rate.adjust_debt(
 			adjustment.try_map(|quantity| self.info.notional.ensure_mul_int(quantity))?,
 		)?;
 

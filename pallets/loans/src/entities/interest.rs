@@ -13,9 +13,9 @@ use crate::pallet::Config;
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveInterestRate<T: Config> {
-	pub interest_rate: T::Rate,
-	pub normalized_debt: T::Balance,
-	pub penalty: T::Rate,
+	interest_rate: T::Rate,
+	normalized_debt: T::Balance,
+	penalty: T::Rate,
 }
 
 impl<T: Config> ActiveInterestRate<T> {
@@ -37,14 +37,22 @@ impl<T: Config> ActiveInterestRate<T> {
 		!self.normalized_debt.is_zero()
 	}
 
-	pub fn curent_debt(&self) -> Result<T::Balance, DispatchError> {
+	pub fn rate(&self) -> T::Rate {
+		self.interest_rate
+	}
+
+	pub fn penalty(&self) -> T::Rate {
+		self.penalty
+	}
+
+	pub fn current_debt(&self) -> Result<T::Balance, DispatchError> {
 		let now = T::Time::now().as_secs();
 		T::InterestAccrual::calculate_debt(self.interest_rate, self.normalized_debt, now)
 	}
 
-	pub fn current_debt_cached<Cache>(&self, cache: &Cache) -> Result<T::Balance, DispatchError>
+	pub fn current_debt_cached<Rates>(&self, cache: &Rates) -> Result<T::Balance, DispatchError>
 	where
-		Cache: RateCollection<T::Rate, T::Balance, T::Balance>,
+		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
 		cache.current_debt(self.interest_rate, self.normalized_debt)
 	}
