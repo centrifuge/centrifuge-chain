@@ -322,16 +322,23 @@ impl<T: Config> ActiveLoan<T> {
 		&self,
 		mut amount: RepaidAmount<T::Balance>,
 	) -> Result<RepaidAmount<T::Balance>, DispatchError> {
-		let debt = match &self.pricing {
-			ActivePricing::Internal(inner) => inner.calculate_debt()?,
-			ActivePricing::External(inner) => inner.calculate_debt()?,
+		let (interest_accrued, max_repay_principal) = match &self.pricing {
+			ActivePricing::Internal(inner) => {
+				let principal = self
+					.total_borrowed
+					.ensure_sub(self.total_repaid.principal)?;
+
+				(inner.interest_accrued(principal)?, principal)
+			}
+			ActivePricing::External(inner) => {
+				(inner.interest_accrued()?, inner.outstanding_amount()?)
+			}
 		};
-		let interest_accrued = debt - self.total_repaid.principal;
 
 		amount.interest = amount.interest.min(interest_accrued);
 
 		ensure!(
-			amount.principal <= self.total_borrowed,
+			amount.principal <= max_repay_principal,
 			Error::<T>::from(RepayLoanError::MaxPrincipalAmountExceeded)
 		);
 
@@ -340,7 +347,7 @@ impl<T: Config> ActiveLoan<T> {
 				RepayRestrictions::None => true,
 				RepayRestrictions::FullOnce => {
 					self.total_repaid.effective()?.is_zero()
-						&& amount.principal == self.total_borrowed
+						&& amount.principal == max_repay_principal
 						&& amount.interest == interest_accrued
 				}
 			},

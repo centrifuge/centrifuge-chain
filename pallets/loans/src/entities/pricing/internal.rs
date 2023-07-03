@@ -121,6 +121,13 @@ impl<T: Config> InternalActivePricing<T> {
 		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
 	}
 
+	pub fn interest_accrued(
+		&self,
+		current_principal: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(self.calculate_debt()?.ensure_sub(current_principal)?)
+	}
+
 	pub fn calculate_debt_by<Rates>(&self, rates: &Rates) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,

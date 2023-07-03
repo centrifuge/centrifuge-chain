@@ -146,7 +146,7 @@ package pricing {
         class ExternalPricing {
             price_id: Price,
             max_borrow_quantity: Balance,
-            notional: Balance,
+            notional: Rate,
             interest_rate: InterestRate
         }
 
@@ -155,7 +155,7 @@ package pricing {
         class ExternalActivePricing {
             info: ExternalPricing
             outstanding_quantity: Balance,
-            normalized_accrued_notional: Balance
+            normalized_notional: Balance
         }
     }
 
