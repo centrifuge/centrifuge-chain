@@ -143,6 +143,11 @@ package pricing {
     }
 
     package external {
+        enum MaxBorrowAmount {
+            Quantity: Rate,
+            NoLimit
+        }
+
         class ExternalPricing {
             price_id: Price,
             max_borrow_quantity: Balance,
@@ -150,6 +155,7 @@ package pricing {
             interest_rate: InterestRate
         }
 
+        ExternalPricing *--> MaxBorrowAmount
         ExternalPricing *-r-> InterestRate
 
         class ExternalActivePricing {
