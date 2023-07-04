@@ -166,7 +166,7 @@ fn with_price_outdated() {
 			util::get_loan(loan_id).write_off_status(),
 			WriteOffStatus {
 				percentage: Rate::from_float(POLICY_PERCENTAGE),
-				penalty: Rate::from_float(0.0),
+				penalty: Rate::from_float(POLICY_PENALTY),
 			}
 		);
 	});

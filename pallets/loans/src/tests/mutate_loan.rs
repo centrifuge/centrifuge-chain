@@ -184,8 +184,8 @@ fn with_successful_mutation_application() {
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
+			interest_rate: Rate::from_float(0.1),
 			pricing: Pricing::Internal(InternalPricing {
-				interest_rate: Rate::from_float(0.1),
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.1),
 					loss_given_default: Rate::from_float(0.1),
@@ -243,7 +243,7 @@ fn with_successful_mutation_application() {
 			let post_pv = util::current_loan_pv(loan_id);
 			let post_loan = util::get_loan(loan_id);
 
-			// Applying changes modify both the PV or the loan
+			// Applying changes modify both the PV and the loan
 			assert_ne!(mid_pv, post_pv);
 			assert_ne!(mid_loan, post_loan);
 		}

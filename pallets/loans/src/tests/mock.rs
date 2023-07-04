@@ -67,7 +67,8 @@ pub const POLICY_PERCENTAGE: f64 = 0.5;
 pub const POLICY_PENALTY: f64 = 0.5;
 pub const REGISTER_PRICE_ID: PriceId = 42;
 pub const UNREGISTER_PRICE_ID: PriceId = 88;
-pub const PRICE_VALUE: Rate = Rate::from_u32(1000);
+pub const PRICE_VALUE: Rate = Rate::from_u32(999);
+pub const NOTIONAL: Rate = Rate::from_u32(1000);
 pub const QUANTITY: Balance = 20;
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 

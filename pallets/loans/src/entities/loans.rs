@@ -307,10 +307,11 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_borrowed.ensure_add_assign(amount)?;
 
-		let adjustment = Adjustment::Increase(amount);
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.adjust(adjustment)?,
-			ActivePricing::External(inner) => inner.adjust(adjustment)?,
+			ActivePricing::Internal(inner) => inner.adjust(Adjustment::Increase(amount))?,
+			ActivePricing::External(inner) => {
+				inner.adjust(Adjustment::Increase(amount), Zero::zero())?
+			}
 		}
 
 		Ok(())
@@ -363,10 +364,13 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_repaid.ensure_add_assign(&amount)?;
 
-		let adjustment = Adjustment::Decrease(amount.effective()?);
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.adjust(adjustment)?,
-			ActivePricing::External(inner) => inner.adjust(adjustment)?,
+			ActivePricing::Internal(inner) => {
+				inner.adjust(Adjustment::Decrease(amount.effective()?))?
+			}
+			ActivePricing::External(inner) => {
+				inner.adjust(Adjustment::Decrease(amount.principal), amount.interest)?
+			}
 		}
 
 		Ok(amount)

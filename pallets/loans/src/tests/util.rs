@@ -22,8 +22,8 @@ pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
 
 pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 	match get_loan(loan_id).pricing() {
-		ActivePricing::Internal(pricing) => pricing.calculate_debt().unwrap(),
-		ActivePricing::External(pricing) => pricing.calculate_debt().unwrap(),
+		ActivePricing::Internal(pricing) => pricing.interest.current_debt().unwrap(),
+		ActivePricing::External(pricing) => pricing.interest.current_debt().unwrap(),
 	}
 }
 
@@ -64,7 +64,6 @@ pub fn set_up_policy(percentage: f64, penalty: f64) {
 pub fn base_internal_pricing() -> InternalPricing<Runtime> {
 	InternalPricing {
 		collateral_value: COLLATERAL_VALUE,
-		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
 		max_borrow_amount: util::total_borrowed_rate(1.0),
 		valuation_method: ValuationMethod::OutstandingDebt,
 	}
@@ -77,12 +76,21 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
+		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
 		collateral: ASSET_AA,
 		pricing: Pricing::Internal(base_internal_pricing()),
 		restrictions: LoanRestrictions {
 			borrows: BorrowRestrictions::NotWrittenOff,
 			repayments: RepayRestrictions::None,
 		},
+	}
+}
+
+pub fn base_external_pricing() -> ExternalPricing<Runtime> {
+	ExternalPricing {
+		price_id: REGISTER_PRICE_ID,
+		max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
+		notional: NOTIONAL,
 	}
 }
 
@@ -93,11 +101,9 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
+		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
 		collateral: ASSET_AA,
-		pricing: Pricing::External(ExternalPricing {
-			price_id: REGISTER_PRICE_ID,
-			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
-		}),
+		pricing: Pricing::External(base_external_pricing()),
 		restrictions: LoanRestrictions {
 			borrows: BorrowRestrictions::NotWrittenOff,
 			repayments: RepayRestrictions::None,
@@ -147,8 +153,11 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
 		RuntimeOrigin::signed(BORROWER),
 		POOL_A,
 		loan_id,
-		repay_amount,
-		0,
+		RepaidAmount {
+			principal: repay_amount,
+			interest: u128::MAX,
+			unchecked: 0,
+		},
 	)
 	.expect("successful repaying");
 

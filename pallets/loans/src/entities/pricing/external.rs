@@ -8,8 +8,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureDiv, EnsureFixedPointNumber, EnsureSub, One, Zero},
-	DispatchError, DispatchResult,
+	traits::{EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureSub, One, Zero},
+	DispatchError, DispatchResult, FixedPointNumber,
 };
 
 use crate::{
@@ -133,24 +133,36 @@ impl<T: Config> ExternalActivePricing<T> {
 		}
 	}
 
-	pub fn adjust(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
-		let quantity = adjustment.try_map(|amount| -> Result<_, DispatchError> {
+	pub fn adjust(
+		&mut self,
+		principal_adj: Adjustment<T::Balance>,
+		interest: T::Balance,
+	) -> DispatchResult {
+		let quantity_adj = principal_adj.try_map(|principal| -> Result<_, DispatchError> {
 			let price = self.current_price()?;
-			let quantity = T::Rate::one().ensure_div(price)?.ensure_mul_int(amount)?;
+
+			let quantity = T::Rate::saturating_from_integer(principal)
+				.ensure_div(price)?
+				.ensure_mul_int(One::one())?;
 
 			ensure!(
-				price.ensure_mul_int(quantity)? == amount,
+				price.ensure_mul_int(quantity)? == principal,
 				Error::<T>::AmountNotMultipleOfPrice
 			);
 
 			Ok(quantity)
 		})?;
 
-		self.outstanding_quantity = quantity.ensure_add(self.outstanding_quantity)?;
+		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
 
-		self.interest.adjust_debt(
-			adjustment.try_map(|quantity| self.info.notional.ensure_mul_int(quantity))?,
-		)?;
+		let interest_adj = quantity_adj.try_map(|quantity| {
+			self.info
+				.notional
+				.ensure_mul_int(quantity)?
+				.ensure_add(interest)
+		})?;
+
+		self.interest.adjust_debt(interest_adj)?;
 
 		Ok(())
 	}
