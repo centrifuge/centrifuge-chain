@@ -71,6 +71,12 @@ enum InterestRate {
 
 InterestRate *--> CompoundingCadence
 
+class RepaidAmount {
+    principal: Balance
+    interest: Balance
+    unscheduled: Balance
+}
+
 package portfolio {
     class PortfolioValuation {
         value: Balance
@@ -213,9 +219,7 @@ package loan {
         write_off_percentage: Rate
         origination_date: Moment
         total_borrowed: Balance
-        total_repaid_principal: Balance
-        total_repaid_interest: Balance
-        total_repaid_unchecked: Balance
+        total_repaid: RepaidAmount
     }
 
     class ClosedLoan {
@@ -231,9 +235,12 @@ package loan {
     LoanInfo *--> ActiveInterestRate
 
     CreatedLoan *--> LoanInfo
+
     ActiveLoan *--> pricing::ActivePricing
     ActiveLoan *-d--> RepaymentSchedule
     ActiveLoan *-r-> LoanRestrictions
+    ActiveLoan *-r-> RepaidAmount
+
     ClosedLoan *--> LoanInfo
 }
 
