@@ -262,7 +262,7 @@ fn with_restriction_full_once() {
 }
 
 #[test]
-fn twice() {
+fn twice_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -295,7 +295,48 @@ fn twice() {
 }
 
 #[test]
-fn twice_with_elapsed_time() {
+fn twice_external() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		util::borrow_loan(loan_id, amount);
+
+		config_mocks(amount / 2);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: amount / 2,
+				interest: 0,
+				unchecked: 0,
+			},
+		));
+
+		assert_eq!(
+			NOTIONAL.saturating_mul_int(QUANTITY / 2),
+			util::current_loan_debt(loan_id)
+		);
+
+		let remaining = PRICE_VALUE.saturating_mul_int(QUANTITY / 2);
+		config_mocks(remaining);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: remaining,
+				interest: 0,
+				unchecked: 0,
+			},
+		));
+		assert_eq!(0, util::current_loan_debt(loan_id));
+	});
+}
+
+#[test]
+fn twice_internal_with_elapsed_time() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -328,6 +369,69 @@ fn twice_with_elapsed_time() {
 			loan_id,
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
+				interest: 0,
+				unchecked: 0,
+			},
+		));
+
+		// Because of the interest, it has no fully repaid, we need an extra payment.
+		let still_to_pay = util::current_loan_debt(loan_id);
+		assert_ne!(0, still_to_pay);
+
+		config_mocks(still_to_pay);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: 0,
+				interest: still_to_pay,
+				unchecked: 0,
+			},
+		));
+
+		assert_eq!(0, util::current_loan_debt(loan_id));
+	});
+}
+
+#[test]
+fn twice_external_with_elapsed_time() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		util::borrow_loan(loan_id, amount);
+
+		config_mocks(amount / 2);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: amount / 2,
+				interest: 0,
+				unchecked: 0,
+			},
+		));
+
+		advance_time(YEAR / 2);
+
+		assert_eq!(
+			util::current_debt_for(
+				util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+				NOTIONAL.saturating_mul_int(QUANTITY / 2),
+			),
+			util::current_loan_debt(loan_id)
+		);
+
+		let remaining = PRICE_VALUE.saturating_mul_int(QUANTITY / 2);
+		config_mocks(remaining);
+
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: remaining,
 				interest: 0,
 				unchecked: 0,
 			},
@@ -507,6 +611,3 @@ fn with_unchecked_repayment() {
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 	});
 }
-
-//TODO
-// - External with interest
