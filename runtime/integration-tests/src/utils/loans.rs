@@ -183,17 +183,11 @@ pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Runtime
 	})
 }
 
-pub fn repay_call(
-	pool_id: PoolId,
-	loan_id: LoanId,
-	amount: Balance,
-	unchecked_amount: Balance,
-) -> RuntimeCall {
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: RepaidAmount) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
 		amount,
-		unchecked_amount,
 	})
 }
 
