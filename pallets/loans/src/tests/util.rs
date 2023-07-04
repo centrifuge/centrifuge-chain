@@ -158,7 +158,7 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
 		RepaidAmount {
 			principal: repay_amount,
 			interest: u128::MAX,
-			unchecked: 0,
+			unscheduled: 0,
 		},
 	)
 	.expect("successful repaying");

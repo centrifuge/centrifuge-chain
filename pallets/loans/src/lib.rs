@@ -524,7 +524,7 @@ pub mod pallet {
 		/// The repay action should fulfill the repay restrictions
 		/// configured at [`types::RepayRestrictions`].
 		/// If the repaying `amount` is more than current debt, only current
-		/// debt is transferred. This does not apply to `unchecked_amount`,
+		/// debt is transferred. This does not apply to `unscheduled_amount`,
 		/// which can be used to repay more than the outstanding debt.
 		/// The portfolio  valuation of the pool is updated to reflect the new
 		/// present value of the loan.

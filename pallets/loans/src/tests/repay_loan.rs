@@ -27,7 +27,7 @@ fn without_borrow_first() {
 				RepaidAmount {
 					principal: COLLATERAL_VALUE,
 					interest: u128::MAX,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
@@ -48,7 +48,7 @@ fn with_wrong_loan_id() {
 				RepaidAmount {
 					principal: COLLATERAL_VALUE,
 					interest: u128::MAX,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
@@ -71,7 +71,7 @@ fn from_other_borrower() {
 				RepaidAmount {
 					principal: COLLATERAL_VALUE,
 					interest: u128::MAX,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::NotLoanBorrower
@@ -96,7 +96,7 @@ fn has_been_written_off() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE,
 				interest: u128::MAX,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 	});
@@ -116,7 +116,7 @@ fn with_success_partial() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 		assert_eq!(0, util::current_loan_debt(loan_id));
@@ -137,7 +137,7 @@ fn with_success_total() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 		assert_eq!(0, util::current_loan_debt(loan_id));
@@ -160,7 +160,7 @@ fn with_more_than_required() {
 				RepaidAmount {
 					principal: COLLATERAL_VALUE * 2,
 					interest: 0,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
@@ -173,7 +173,7 @@ fn with_more_than_required() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE,
 				interest: u128::MAX, // Here there is no limit
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -187,7 +187,7 @@ fn with_more_than_required() {
 				RepaidAmount {
 					principal: 1, // All was already repaid
 					interest: 0,
-					unchecked: 0,
+					unscheduled: 0,
 				}
 			),
 			Error::<Runtime>::from(RepayLoanError::MaxPrincipalAmountExceeded)
@@ -199,7 +199,7 @@ fn with_more_than_required() {
 			RepaidAmount {
 				principal: 0,
 				interest: u128::MAX, //Discarded
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 	});
@@ -226,7 +226,7 @@ fn with_restriction_full_once() {
 				RepaidAmount {
 					principal: COLLATERAL_VALUE / 2,
 					interest: 0,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::from(RepayLoanError::Restriction) // Full amount
@@ -240,7 +240,7 @@ fn with_restriction_full_once() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -253,7 +253,7 @@ fn with_restriction_full_once() {
 				RepaidAmount {
 					principal: 0,
 					interest: 0,
-					unchecked: 0,
+					unscheduled: 0,
 				}
 			),
 			Error::<Runtime>::from(RepayLoanError::Restriction)
@@ -275,7 +275,7 @@ fn twice_internal() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
@@ -287,7 +287,7 @@ fn twice_internal() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 		assert_eq!(0, util::current_loan_debt(loan_id));
@@ -309,7 +309,7 @@ fn twice_external() {
 			RepaidAmount {
 				principal: amount / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -328,7 +328,7 @@ fn twice_external() {
 			RepaidAmount {
 				principal: remaining,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 		assert_eq!(0, util::current_loan_debt(loan_id));
@@ -349,7 +349,7 @@ fn twice_internal_with_elapsed_time() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -370,7 +370,7 @@ fn twice_internal_with_elapsed_time() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -386,7 +386,7 @@ fn twice_internal_with_elapsed_time() {
 			RepaidAmount {
 				principal: 0,
 				interest: still_to_pay,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -409,7 +409,7 @@ fn twice_external_with_elapsed_time() {
 			RepaidAmount {
 				principal: amount / 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -433,7 +433,7 @@ fn twice_external_with_elapsed_time() {
 			RepaidAmount {
 				principal: remaining,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -449,7 +449,7 @@ fn twice_external_with_elapsed_time() {
 			RepaidAmount {
 				principal: 0,
 				interest: still_to_pay,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -479,7 +479,7 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 			RepaidAmount {
 				principal: COLLATERAL_VALUE,
 				interest: u128::MAX,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -504,7 +504,7 @@ fn external_pricing_same() {
 			RepaidAmount {
 				principal: amount,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -529,7 +529,7 @@ fn external_pricing_goes_up() {
 			RepaidAmount {
 				principal: amount * 2,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -555,7 +555,7 @@ fn external_pricing_goes_down() {
 			RepaidAmount {
 				principal: amount,
 				interest: 0,
-				unchecked: 0,
+				unscheduled: 0,
 			},
 		));
 
@@ -580,7 +580,7 @@ fn external_pricing_with_wrong_quantity() {
 				RepaidAmount {
 					principal: amount - 1,
 					interest: 0,
-					unchecked: 0,
+					unscheduled: 0,
 				},
 			),
 			Error::<Runtime>::AmountNotMultipleOfPrice
@@ -589,7 +589,7 @@ fn external_pricing_with_wrong_quantity() {
 }
 
 #[test]
-fn with_unchecked_repayment() {
+fn with_unscheduled_repayment() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -602,11 +602,11 @@ fn with_unchecked_repayment() {
 			RepaidAmount {
 				principal: 0,
 				interest: 0,
-				unchecked: 1234,
+				unscheduled: 1234,
 			},
 		));
 
-		// Nothing repaid with unchecked amount,
+		// Nothing repaid with unscheduled amount,
 		// so I still have the whole amount as debt
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 	});

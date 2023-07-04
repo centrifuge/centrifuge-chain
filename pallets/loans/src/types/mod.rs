@@ -203,7 +203,7 @@ pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
 pub struct RepaidAmount<Balance> {
 	pub principal: Balance,
 	pub interest: Balance,
-	pub unchecked: Balance,
+	pub unscheduled: Balance,
 }
 
 impl<Balance: EnsureAdd + Copy> RepaidAmount<Balance> {
@@ -214,12 +214,12 @@ impl<Balance: EnsureAdd + Copy> RepaidAmount<Balance> {
 	pub fn total(&self) -> Result<Balance, ArithmeticError> {
 		self.principal
 			.ensure_add(self.interest)?
-			.ensure_add(self.unchecked)
+			.ensure_add(self.unscheduled)
 	}
 
 	pub fn ensure_add_assign(&mut self, other: &Self) -> Result<(), ArithmeticError> {
 		self.principal.ensure_add_assign(other.principal)?;
 		self.interest.ensure_add_assign(other.interest)?;
-		self.unchecked.ensure_add_assign(other.unchecked)
+		self.unscheduled.ensure_add_assign(other.unscheduled)
 	}
 }

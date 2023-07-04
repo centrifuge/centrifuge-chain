@@ -196,7 +196,7 @@ where
 			RepaidAmount {
 				principal: 10.into(),
 				interest: T::Balance::max_value(),
-				unchecked: 0.into(),
+				unscheduled: 0.into(),
 			},
 		)
 		.unwrap();
@@ -341,7 +341,7 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-		let repaid = RepaidAmount { principal: 10.into(), interest: 0.into(), unchecked: 0.into() };
+		let repaid = RepaidAmount { principal: 10.into(), interest: 0.into(), unscheduled: 0.into() };
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, repaid)
 
