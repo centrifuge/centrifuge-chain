@@ -176,7 +176,6 @@ pub struct LoanRestrictions {
 /// Active loan mutation for internal pricing
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InternalMutation<Rate> {
-	InterestRate(Rate),
 	ValuationMethod(ValuationMethod<Rate>),
 	ProbabilityOfDefault(Rate),
 	LossGivenDefault(Rate),
@@ -187,6 +186,7 @@ pub enum InternalMutation<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
+	InterestRate(Rate),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
 	Internal(InternalMutation<Rate>),

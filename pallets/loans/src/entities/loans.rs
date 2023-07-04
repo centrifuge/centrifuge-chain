@@ -435,6 +435,10 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn mutate_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
 		match mutation {
 			LoanMutation::Maturity(maturity) => self.schedule.maturity = maturity,
+			LoanMutation::InterestRate(rate) => match &mut self.pricing {
+				ActivePricing::Internal(inner) => inner.interest.set_base_rate(rate)?,
+				ActivePricing::External(inner) => inner.interest.set_base_rate(rate)?,
+			},
 			LoanMutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
 			LoanMutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
 			LoanMutation::Internal(mutation) => match &mut self.pricing {

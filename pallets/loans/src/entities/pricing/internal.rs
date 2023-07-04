@@ -160,9 +160,6 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn mutate_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
 		match mutation {
-			InternalMutation::InterestRate(rate) => {
-				self.interest.set_base_rate(rate)?;
-			}
 			InternalMutation::ValuationMethod(method) => self.info.valuation_method = method,
 			InternalMutation::ProbabilityOfDefault(rate) => {
 				self.mut_dcf()?.probability_of_default = rate;
