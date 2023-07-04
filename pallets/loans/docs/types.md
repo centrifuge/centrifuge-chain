@@ -143,8 +143,8 @@ package pricing {
             max_borrow_amount: MaxBorrowAmount
         }
 
-        InternalPricing *--> MaxBorrowAmount
-        InternalPricing *-d--> valuation::ValuationMethod
+        InternalPricing *-l-> MaxBorrowAmount
+        InternalPricing *-d-> valuation::ValuationMethod
 
         class InternalActivePricing {
             info: InternalPricing
@@ -167,7 +167,7 @@ package pricing {
             notional: Rate,
         }
 
-        ExternalPricing *--> MaxBorrowAmount
+        ExternalPricing *-l-> MaxBorrowAmount
 
         class ExternalActivePricing {
             info: ExternalPricing
