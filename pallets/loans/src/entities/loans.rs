@@ -160,7 +160,7 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Until this date all principal & interest
 	/// payments occurred as scheduled.
-	cashflows_on_schedule_until: Moment,
+	repayments_on_schedule_until: Moment,
 }
 
 impl<T: Config> ActiveLoan<T> {
@@ -188,7 +188,7 @@ impl<T: Config> ActiveLoan<T> {
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
 			total_repaid_unchecked: T::Balance::zero(),
-			cashflows_on_schedule_until: now,
+			repayments_on_schedule_until: now,
 		})
 	}
 
