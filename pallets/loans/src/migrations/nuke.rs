@@ -20,7 +20,7 @@ mod old {
 	/// If this storage is not found, the nuking process is aborted.
 	#[storage_alias]
 	pub(crate) type NextLoanId<T: Config> =
-		StorageMap<Pallet<T>, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery>;
+		StorageMap<Pallet<T>, Blake2_128Concat, <T as Config>::PoolId, u128, ValueQuery>;
 }
 
 /// This migration nukes all storages from the pallet individually.

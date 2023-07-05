@@ -1628,6 +1628,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
+	type PoolId = PoolId;
 	type Pool = PoolSystem;
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
