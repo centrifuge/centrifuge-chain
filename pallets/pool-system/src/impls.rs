@@ -10,10 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{
-	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
-	TrancheCurrency, UpdateState,
-};
+use cfg_traits::{changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, TrancheTokenPrice, UpdateState};
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
 use sp_runtime::traits::Hash;
@@ -43,7 +40,22 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.is_some()
 	}
 
-	fn get_tranche_token_price(
+	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
+		PoolLocator { pool_id }.into_account_truncating()
+	}
+
+	fn currency_for(pool_id: Self::PoolId) -> Option<T::CurrencyId> {
+		Pool::<T>::get(pool_id).map(|pool| pool.currency)
+	}
+}
+
+impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
+	type Moment = Moment;
+	type PoolId = T::PoolId;
+	type Rate = T::Rate;
+	type TrancheId = T::TrancheId;
+
+	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
@@ -80,14 +92,6 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			price,
 			last_updated: nav_last_updated,
 		})
-	}
-
-	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
-		PoolLocator { pool_id }.into_account_truncating()
-	}
-
-	fn currency_for(pool_id: Self::PoolId) -> Option<T::CurrencyId> {
-		Pool::<T>::get(pool_id).map(|pool| pool.currency)
 	}
 }
 

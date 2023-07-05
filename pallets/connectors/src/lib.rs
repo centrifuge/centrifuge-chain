@@ -15,7 +15,6 @@ use core::convert::TryFrom;
 
 use cfg_traits::{
 	connectors::{InboundQueue, OutboundQueue},
-	PoolInspect,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -67,18 +66,8 @@ pub enum ParachainId {
 }
 
 // Type aliases
-pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
-	<T as frame_system::Config>::AccountId,
-	CurrencyIdOf<T>,
->>::PoolId;
-
-pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
-	<T as frame_system::Config>::AccountId,
-	CurrencyIdOf<T>,
->>::TrancheId;
-
 pub type MessageOf<T> =
-	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
+	Message<Domain, <T as Config>::PoolId, <T as Config>::TrancheId, <T as Config>::Balance, <T as Config>::Rate>;
 
 pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
@@ -89,10 +78,9 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
+	use codec::HasCompact;
 	use cfg_primitives::Moment;
-	use cfg_traits::{
-		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect, TrancheCurrency,
-	};
+	use cfg_traits::{CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect, TrancheCurrency, TrancheTokenPrice};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::{ConnectorsWrappedToken, CustomMetadata},
@@ -126,6 +114,22 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		type PoolId: Member
+		+ Parameter
+		+ Default
+		+ Copy
+		+ HasCompact
+		+ MaxEncodedLen
+		+ core::fmt::Debug;
+
+		type TrancheId: Member
+		+ Parameter
+		+ Default
+		+ Copy
+		+ MaxEncodedLen
+		+ TypeInfo
+		+ From<[u8; 16]>;
+
 		/// The fixed point number representation for higher precision.
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
@@ -136,13 +140,15 @@ pub mod pallet {
 		/// The source of truth for pool inspection operations such as its
 		/// existence, the corresponding tranche token or the investment
 		/// currency.
-		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
+		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate, PoolId = Self::PoolId, TrancheId = Self::TrancheId>;
+
+		type TrancheTokenPrice: TrancheTokenPrice<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate, PoolId = Self::PoolId, TrancheId = Self::TrancheId>;
 
 		/// The source of truth for investment permissions.
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
-			Role = Role<TrancheIdOf<Self>, Moment>,
+			Scope = PermissionScope<Self::PoolId, CurrencyIdOf<Self>>,
+			Role = Role<Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
 
@@ -160,7 +166,7 @@ pub mod pallet {
 			> + Transfer<Self::AccountId>;
 
 		/// The currency type of investments.
-		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
+		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
 			+ Into<CurrencyIdOf<Self>>
 			+ Clone;
 
@@ -338,7 +344,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn add_pool(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -357,8 +363,8 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -374,7 +380,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
@@ -400,15 +406,15 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
 			// TODO(follow-up PR): Move `get_tranche_token_price` to new trait.
 			// https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?both#fn-update_tranche_token_price
-			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+			let price =  T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
@@ -430,8 +436,8 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
 			valid_until: Moment,
 		) -> DispatchResult {
@@ -485,8 +491,8 @@ pub mod pallet {
 		#[pallet::call_index(6)]
 		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
@@ -626,8 +632,8 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		pub fn allow_pool_currency(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			// TODO(subsequent PR): In the future, should be permissioned by trait which
@@ -744,8 +750,8 @@ pub mod pallet {
 		/// Ensures that the given pool and tranche exists and returns the
 		/// corresponding investment id.
 		pub fn derive_invest_id(
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
