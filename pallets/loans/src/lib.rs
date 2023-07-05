@@ -69,7 +69,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use codec::HasCompact;
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		self,
@@ -81,6 +80,7 @@ pub mod pallet {
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
+	use codec::HasCompact;
 	use entities::loans::{self, ActiveLoan, LoanInfo};
 	use frame_support::{
 		pallet_prelude::*,
@@ -198,7 +198,12 @@ pub mod pallet {
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 
 		/// Access to the pool
-		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance, PoolId = Self::PoolId>;
+		type Pool: PoolReserve<
+			Self::AccountId,
+			Self::CurrencyId,
+			Balance = Self::Balance,
+			PoolId = Self::PoolId,
+		>;
 
 		/// Used to verify permissions of users
 		type Permissions: Permissions<

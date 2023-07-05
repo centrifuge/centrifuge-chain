@@ -228,8 +228,8 @@ impl pallet_loans::Config for Runtime {
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = MockPermissions;
-	type PoolId = PoolId;
 	type Pool = MockPools;
+	type PoolId = PoolId;
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
 	type Rate = Rate;

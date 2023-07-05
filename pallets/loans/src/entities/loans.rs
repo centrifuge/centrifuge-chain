@@ -389,10 +389,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(
-		self,
-		pool_id: T::PoolId,
-	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+	pub fn close(self, pool_id: T::PoolId) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		let loan = ClosedLoan {
