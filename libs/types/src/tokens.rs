@@ -92,6 +92,14 @@ impl From<StakingCurrency> for CurrencyId {
 	}
 }
 
+impl cfg_traits::CurrencyInspect for CurrencyId {
+	type CurrencyId = CurrencyId;
+
+	fn is_tranche_token(currency: Self::CurrencyId) -> bool {
+		matches!(currency, CurrencyId::Tranche(_, _))
+	}
+}
+
 /// A general index wrapper for a given currency representation which is the
 /// concatenation of the generic prefix and the identifier of the respective
 /// currency.
@@ -139,6 +147,19 @@ where
 			.map_err(|_| DispatchError::Corruption)?;
 
 		Ok(CurrencyId::ForeignAsset(u32::from_be_bytes(currency_bytes)))
+	}
+}
+
+impl<Index, Prefix> From<u128> for GeneralCurrencyIndex<Index, Prefix>
+where
+	Index: From<u128>,
+	Prefix: Get<[u8; 12]>,
+{
+	fn from(value: u128) -> Self {
+		GeneralCurrencyIndex {
+			index: value.into(),
+			_phantom: Default::default(),
+		}
 	}
 }
 
@@ -256,6 +277,10 @@ pub enum CrossChainTransferability {
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
 		matches!(self, Self::Xcm(..) | Self::All(..))
+	}
+
+	pub fn includes_connectors(self) -> bool {
+		matches!(self, Self::Connectors | Self::All(..))
 	}
 }
 

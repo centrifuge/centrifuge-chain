@@ -1351,6 +1351,7 @@ impl PoolUpdateGuard for UpdateGuard {
 }
 
 impl pallet_pool_registry::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
@@ -1364,6 +1365,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
 }
@@ -1519,8 +1521,8 @@ impl<
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
-			// instead of a boolen. This makes the redundant has not role error       that
-			// downstream pallets always need to generate not needed anymore.
+			// instead of a boolean. This makes the redundant "does not have role" error,
+			// which downstream pallets always need to generate, not needed anymore.
 			Err(DispatchError::Other(
 				"Account does not have the TrancheInvestor permission.",
 			))
@@ -1627,6 +1629,7 @@ impl pallet_loans::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
+	type PoolId = PoolId;
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
 	type Rate = Rate;

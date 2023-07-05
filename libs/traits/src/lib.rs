@@ -35,14 +35,14 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
-/// Traits related to rewards.
-pub mod rewards;
-
-/// Traits related to data registry & collections.
-pub mod data;
-
 /// Traits related to checked changes.
 pub mod changes;
+/// Traits related to connectors.
+pub mod connectors;
+/// Traits related to data registry and collection.
+pub mod data;
+/// Traits related to rewards.
+pub mod rewards;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -119,29 +119,33 @@ pub trait PoolNAV<PoolId, Amount> {
 /// A trait that support pool inspection operations such as pool existence
 /// checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter
-		+ Member
-		+ Debug
-		+ Copy
-		+ Default
-		+ TypeInfo
-		+ Encode
-		+ Decode
-		+ MaxEncodedLen;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	type PoolId;
+	type TrancheId;
 	type Rate;
 	type Moment;
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
-	fn get_tranche_token_price(
-		pool_id: Self::PoolId,
-		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 
 	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
+
+	/// Get the currency used for the given `pool_id`.
+	fn currency_for(pool_id: Self::PoolId) -> Option<CurrencyId>;
+}
+
+/// Get the latest price for a given tranche token
+pub trait TrancheTokenPrice<AccountId, CurrencyId> {
+	type PoolId;
+	type TrancheId;
+	type Rate;
+	type Moment;
+
+	fn get(
+		pool_id: Self::PoolId,
+		tranche_id: Self::TrancheId,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
 /// Variants for valid Pool updates to send out as events
@@ -175,6 +179,57 @@ pub trait PoolMutate<AccountId, PoolId> {
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
 	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
+}
+
+/// A trait that supports retrieval and mutation of pool and tranche token
+/// metadata.
+pub trait PoolMetadata<Balance, VersionedMultiLocation> {
+	type AssetMetadata;
+	type CustomMetadata;
+	type PoolMetadata;
+	type PoolId: Parameter
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+
+	/// Get the metadata of the given pool.
+	fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError>;
+
+	/// Set the metadata of the given pool.
+	fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult;
+
+	/// Get the metadata of the given pair of pool and tranche id.
+	fn get_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+	) -> Result<Self::AssetMetadata, DispatchError>;
+
+	/// Register the metadata for the currency derived from the given pair of
+	/// pool id and tranche.
+	fn create_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+		metadata: Self::AssetMetadata,
+	) -> DispatchResult;
+
+	#[allow(clippy::too_many_arguments)]
+	/// Update the metadata of the given pair of pool and tranche id.
+	fn update_tranche_token_metadata(
+		pool_id: Self::PoolId,
+		tranche: Self::TrancheId,
+		decimals: Option<u32>,
+		name: Option<Vec<u8>>,
+		symbol: Option<Vec<u8>>,
+		existential_deposit: Option<Balance>,
+		location: Option<Option<VersionedMultiLocation>>,
+		additional: Option<Self::CustomMetadata>,
+	) -> DispatchResult;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
@@ -377,9 +432,10 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {
+	type Amount;
+	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
-	type Amount;
 
 	/// Updates the current investment amount of who into the
 	/// investment class to amount.
@@ -390,6 +446,12 @@ pub trait Investment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
+
+	/// Checks whether a currency can be used for buying `InvestmentId`
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
 
 	/// Returns, if possible, the current investment amount of who into the
 	/// given investment class
@@ -408,12 +470,41 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
+	/// Checks whether a currency is accepted as a payout for an `InvestmentId`
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
+
 	/// Returns, if possible, the current redemption amount of who into the
 	/// given investment class
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
+}
+
+/// A trait which allows to collect existing investments and redemptions.
+pub trait InvestmentCollector<AccountId> {
+	type Error: Debug;
+	type InvestmentId;
+	type Result: Debug;
+
+	/// Collect the results of a user's invest orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_investment(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
+
+	/// Collect the results of a users redeem orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_redemption(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
 }
 
 /// A trait, when implemented must take care of
@@ -626,16 +717,24 @@ pub mod fees {
 }
 
 /// Trait to determine whether a sending account and currency have a
-/// restriction, and if so is there an allowance for the reciever location.
+/// restriction, and if so is there an allowance for the receiver location.
 pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
 	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
 	/// Determines whether the `send` account is allowed to make a transfer to
-	/// the  `receive` location with `currency` type currency. Returns result
+	/// the `receive` location with `currency` type currency. Returns result
 	/// wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
-		recieve: Self::Location,
+		receive: Self::Location,
 		currency: Self::CurrencyId,
 	) -> DispatchResult;
+}
+
+/// Trait to retrieve information about currencies.
+pub trait CurrencyInspect {
+	type CurrencyId;
+
+	/// Checks whether the provided currency is a tranche token.
+	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }

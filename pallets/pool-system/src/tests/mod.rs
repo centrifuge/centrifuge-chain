@@ -10,10 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
+use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT, TrancheTokenPrice};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
+	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -32,10 +33,10 @@ use crate::{
 	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
 	tranches::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
-		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+		TrancheInput, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolInspect,
-	PoolState, UnhealthyState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolState,
+	UnhealthyState,
 };
 
 const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
@@ -570,10 +571,10 @@ fn epoch() {
 		));
 
 		assert_eq!(
-			<PoolSystem as PoolInspect<
+			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
 			Rate::one()
@@ -708,9 +709,12 @@ fn epoch() {
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = PoolSystem::pool(0).unwrap();
-		let senior_price = PoolSystem::get_tranche_token_price(0, SeniorTrancheId::get())
-			.unwrap()
-			.price;
+		let senior_price = <PoolSystem as TrancheTokenPrice<
+			<Runtime as frame_system::Config>::AccountId,
+			<Runtime as Config>::CurrencyId,
+		>>::get(0, SeniorTrancheId::get())
+		.unwrap()
+		.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert_eq!(
 			pool.tranches.residual_tranche().unwrap().reserve,
@@ -732,10 +736,10 @@ fn epoch() {
 		);
 
 		assert_eq!(
-			<PoolSystem as PoolInspect<
+			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
 			Rate::from_inner(1004126524122317386524000000)

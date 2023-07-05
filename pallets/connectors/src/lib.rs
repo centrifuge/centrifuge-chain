@@ -13,23 +13,34 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::PoolInspect;
-use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
-use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
-use codec::{Decode, Encode, Input, MaxEncodedLen};
-use frame_support::traits::{
-	fungibles::{Inspect, Mutate, Transfer},
-	OriginTrait,
+use cfg_traits::connectors::{InboundQueue, OutboundQueue};
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	tokens::GeneralCurrencyIndex,
+};
+use cfg_utils::vec_to_fixed_array;
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		PalletInfo,
+	},
+	transactional,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_core::U256;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
-	FixedPointNumber,
+	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
+use xcm::{
+	latest::NetworkId,
+	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+	VersionedMultiLocation,
+};
+
 pub mod weights;
 
 mod message;
@@ -41,6 +52,8 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
+mod inbound;
+
 /// The Parachains that Centrifuge Connectors support.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -50,69 +63,38 @@ pub enum ParachainId {
 	Moonbeam,
 }
 
-/// An encoding & decoding trait for the purpose of meeting the
-/// Connectors General Message Passing Format
-pub trait Codec: Sized {
-	fn serialize(&self) -> Vec<u8>;
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
-}
-
-impl Codec for Domain {
-	fn serialize(&self) -> Vec<u8> {
-		match self {
-			Self::Centrifuge => vec![0; 9],
-			Self::EVM(chain_id) => {
-				let mut output: Vec<u8> = 1u8.encode();
-				output.append(&mut chain_id.to_be_bytes().to_vec());
-
-				output
-			}
-		}
-	}
-
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let variant = input.read_byte()?;
-
-		match variant {
-			0 => Ok(Self::Centrifuge),
-			1 => {
-				let chain_id = decode_be_bytes::<8, _, _>(input)?;
-				Ok(Self::EVM(chain_id))
-			}
-			_ => Err(codec::Error::from("Unknown Domain variant")),
-		}
-	}
-}
-
 // Type aliases
-pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
-	<T as frame_system::Config>::AccountId,
-	CurrencyIdOf<T>,
->>::PoolId;
-
-pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
-	<T as frame_system::Config>::AccountId,
-	CurrencyIdOf<T>,
->>::TrancheId;
-
-pub type MessageOf<T> =
-	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
+pub type MessageOf<T> = Message<
+	Domain,
+	<T as Config>::PoolId,
+	<T as Config>::TrancheId,
+	<T as Config>::Balance,
+	<T as Config>::Rate,
+>;
 
 pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
+
+pub type GeneralCurrencyIndexType = u128;
+
+pub type GeneralCurrencyIndexOf<T> =
+	GeneralCurrencyIndex<GeneralCurrencyIndexType, <T as pallet::Config>::GeneralCurrencyPrefix>;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
+	use cfg_traits::{
+		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect,
+		TrancheCurrency, TrancheTokenPrice,
+	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::{CustomMetadata, GeneralCurrencyIndex},
+		tokens::{ConnectorsWrappedToken, CustomMetadata},
 	};
-	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
+	use codec::HasCompact;
+	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
-	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
-	use sp_runtime::traits::{AccountIdConversion, Zero};
-	use xcm::latest::OriginKind;
+	use sp_runtime::traits::Zero;
+	use xcm::latest::MultiLocation;
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -122,11 +104,14 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
+	pub trait Config: frame_system::Config {
+		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
+		/// The source of truth for the balance of accounts in native currency.
 		type Balance: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
@@ -135,23 +120,62 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
+
+		type TrancheId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ TypeInfo
+			+ From<[u8; 16]>;
+
+		/// The fixed point number representation for higher precision.
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling
 		/// `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
+		/// The source of truth for pool inspection operations such as its
+		/// existence, the corresponding tranche token or the investment
+		/// currency.
+		type PoolInspect: PoolInspect<
+			Self::AccountId,
+			CurrencyIdOf<Self>,
+			Rate = Self::Rate,
+			PoolId = Self::PoolId,
+			TrancheId = Self::TrancheId,
+		>;
 
+		type TrancheTokenPrice: TrancheTokenPrice<
+			Self::AccountId,
+			CurrencyIdOf<Self>,
+			Rate = Self::Rate,
+			PoolId = Self::PoolId,
+			TrancheId = Self::TrancheId,
+		>;
+
+		/// The source of truth for investment permissions.
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
-			Role = Role<TrancheIdOf<Self>, Moment>,
+			Scope = PermissionScope<Self::PoolId, CurrencyIdOf<Self>>,
+			Role = Role<Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
 
+		/// The UNIX timestamp provider type required for checking the validity
+		/// of investments.
 		type Time: UnixTime;
 
+		/// The type for handling transfers, burning and minting of
+		/// multi-assets.
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<
 				Self::AccountId,
@@ -159,16 +183,38 @@ pub mod pallet {
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
 
-		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
-			+ Into<CurrencyIdOf<Self>>;
+		/// The currency type of investments.
+		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
+			+ Into<CurrencyIdOf<Self>>
+			+ Clone;
 
+		/// Enables investing and redeeming into investment classes.
+		///
+		/// NOTE: For the time being, `pallet_investments` serves as the
+		/// implementor. However, eventually this should be provided by
+		/// `pallet_foreign_investments`.
+		type ForeignInvestment: Investment<
+				Self::AccountId,
+				Amount = <Self as Config>::Balance,
+				CurrencyId = CurrencyIdOf<Self>,
+				Error = DispatchError,
+				InvestmentId = <Self as Config>::TrancheCurrency,
+			> + InvestmentCollector<
+				Self::AccountId,
+				Error = DispatchError,
+				InvestmentId = <Self as Config>::TrancheCurrency,
+				Result = (),
+			>;
+
+		/// The source of truth for the transferability of assets via
+		/// Connectors.
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = CurrencyIdOf<Self>,
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
 
-		/// The currency type of transferrable token.
+		/// The currency type of transferrable tokens.
 		type CurrencyId: Parameter
 			+ Member
 			+ Copy
@@ -176,14 +222,19 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
-			+ TryInto<
-				GeneralCurrencyIndex<u128, <Self as Config>::GeneralCurrencyPrefix>,
-				Error = DispatchError,
-			>;
+			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
+			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
+			+ CurrencyInspect<CurrencyId = CurrencyIdOf<Self>>;
 
-		/// The converter from a DomainAddress to a Substrate AccountId
+		/// The converter from a DomainAddress to a Substrate AccountId.
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
+
+		/// The type for processing outgoing messages.
+		type OutboundQueue: OutboundQueue<
+			Sender = Self::AccountId,
+			Message = MessageOf<Self>,
+			Destination = Domain,
+		>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
@@ -224,36 +275,61 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Failed to map the asset to the corresponding Connector's General
-		/// Index representation
+		/// Index representation and thus cannot be used as an
+		/// investment currency.
 		AssetNotFound,
-		/// A pool could not be found
+		/// The metadata of the given asset does not declare it as a pool
+		/// currency and thus it cannot be used as an investment currency.
+		AssetMetadataNotPoolCurrency,
+		/// The metadata of the given asset does not declare it as transferable
+		/// via connectors.
+		AssetNotConnectorsTransferable,
+		/// The asset is not a [ConnectorsWrappedToken] and thus cannot be
+		/// transferred via connectors.
+		AssetNotConnectorsWrappedToken,
+		/// The given asset does not match the currency of the pool.
+		AssetNotPoolCurrency,
+		/// A pool could not be found.
 		PoolNotFound,
-		/// A tranche could not be found
+		/// A tranche could not be found.
 		TrancheNotFound,
-		/// Could not find the metadata of a tranche token
+		/// Could not find the metadata of a tranche token.
 		TrancheMetadataNotFound,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
 		MissingTranchePrice,
-		/// Router not set for a given domain
+		/// Router not set for a given domain.
 		MissingRouter,
-		/// Transfer amount must be non-zero
+		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
-		/// A transfer to a non-whitelisted destination was attempted
+		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
-		/// Failed to build Ethereum_Xcm call
+		/// Failed to build Ethereum_Xcm call.
 		FailedToBuildEthereumXcmCall,
-		/// The origin of an incoming message is not in the allow-list
+		/// The origin of an incoming message is not in the allow-list.
 		InvalidIncomingMessageOrigin,
-		/// Failed to decode an incoming message
+		/// Failed to decode an incoming message.
 		InvalidIncomingMessage,
-		/// A transfer attempt from the local to the local domain
-		InvalidTransferDomain,
+		/// The destination domain is invalid.
+		InvalidDomain,
+		/// The validity is in the past.
+		InvalidTrancheInvestorValidity,
+		/// Failed to match the provided GeneralCurrencyIndex against the
+		/// investment currency of the pool.
+		InvalidInvestCurrency,
+		/// The currency is not allowed to be transferred via Connectors.
+		InvalidTransferCurrency,
+		/// The account derived from the [Domain] and [DomainAddress] has not
+		/// been whitelisted as a TrancheInvestor.
+		InvestorDomainAddressNotAMember,
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+	{
 		/// Set a Domain's router
 		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
 		#[pallet::call_index(0)]
@@ -276,7 +352,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			<KnownConnectors<T>>::insert(connector, ());
+			KnownConnectors::<T>::insert(connector, ());
 
 			Ok(())
 		}
@@ -286,7 +362,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn add_pool(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -296,8 +372,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			Self::do_send_message(who, Message::AddPool { pool_id }, domain)?;
-
+			T::OutboundQueue::submit(who, domain, Message::AddPool { pool_id })?;
 			Ok(())
 		}
 
@@ -306,9 +381,8 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			decimals: u8,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -319,55 +393,55 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
-			let metadata = T::AssetRegistry::metadata(&currency_id)
+			let currency_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			let metadata = T::AssetRegistry::metadata(&currency_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
 			// Send the message to the domain
-			Self::do_send_message(
+			T::OutboundQueue::submit(
 				who,
+				domain,
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
-					decimals,
+					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
 					price,
 				},
-				domain,
 			)?;
 
 			Ok(())
 		}
 
-		/// Update a token price
+		/// Update the price of a tranche token
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
 		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
 				who,
+				domain,
 				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
 					price,
 				},
-				domain,
 			)?;
 
 			Ok(())
@@ -378,72 +452,69 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
 			valid_until: Moment,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Check that the origin is allowed to add other members
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+			ensure!(
+				valid_until > Self::now(),
+				Error::<T>::InvalidTrancheInvestorValidity
+			);
+
+			// Ensure that the destination address has been whitelisted as a TrancheInvestor
+			// beforehand.
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::InvestorAdmin)
+					T::AccountConverter::convert(domain_address.clone()),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
-				BadOrigin
+				Error::<T>::InvestorDomainAddressNotAMember
 			);
 
-			// Now add the destination address as a TrancheInvestor of the given tranche if
-			// not already one. This check is necessary shall a user have called
-			// `update_member` already but the call has failed on the EVM side and needs to
-			// be retried.
-			if !T::Permission::has(
-				PermissionScope::Pool(pool_id),
-				T::AccountConverter::convert(domain_address.clone()),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-			) {
-				T::Permission::add(
-					PermissionScope::Pool(pool_id),
-					T::AccountConverter::convert(domain_address.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-				)?;
-			}
-
-			Self::do_send_message(
+			T::OutboundQueue::submit(
 				who,
+				domain_address.domain(),
 				Message::UpdateMember {
 					pool_id,
 					tranche_id,
 					valid_until,
 					member: domain_address.address(),
 				},
-				domain_address.domain(),
 			)?;
 
 			Ok(())
 		}
 
-		/// Transfer tranche tokens to a given address
+		/// Transfer tranche tokens to a given address.
+		///
+		/// NOTE: Assumes `OutboundQueue` to check whether destination is local.
+		///
+		/// NOTE: The transferring account is not kept alive as we allow its
+		/// death.
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
 		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Check that the destination is not the local domain
-			ensure!(
-				domain_address.domain() != Domain::Centrifuge,
-				Error::<T>::InvalidTransferDomain
-			);
-
-			// Check that the destination is a member of this tranche token
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
@@ -453,22 +524,22 @@ pub mod pallet {
 				Error::<T>::UnauthorizedTransfer
 			);
 
-			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
+			// Ensure pool and tranche exist and derive invest id
+			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				T::TrancheCurrency::generate(pool_id, tranche_id).into(),
+				invest_id.into(),
 				&who,
-				&DomainLocator::<Domain> {
-					domain: domain_address.domain(),
-				}
-				.into_account_truncating(),
+				&Domain::convert(domain_address.domain()),
 				amount,
+				// NOTE: Here, we allow death
 				false,
 			)?;
 
-			Self::do_send_message(
+			T::OutboundQueue::submit(
 				who.clone(),
+				domain_address.domain(),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -480,33 +551,138 @@ pub mod pallet {
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
 					receiver: domain_address.address(),
 				},
-				domain_address.domain(),
 			)?;
 
 			Ok(())
 		}
 
-		/// Handle an incoming message
-		/// TODO(nuno): we probably need a custom origin type for these messages
-		/// to ensure they have come in through XCM. For now, let's have a POC
-		/// here to test the pipeline Ethereum ---> Moonbeam --->
-		/// Centrifuge::connectors
-		#[pallet::call_index(99)]
-		#[pallet::weight(< T as Config >::WeightInfo::handle())]
-		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
-			let sender = ensure_signed(origin.clone())?;
+		/// Transfer non-tranche tokens to a given address.
+		///
+		/// NOTE: Assumes `OutboundQueue` to check whether destination is local.
+		///
+		/// NOTE: The transferring account is not kept alive as we allow its
+		/// death.
+		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::call_index(7)]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: DomainAddress,
+			amount: <T as pallet::Config>::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
-				<KnownConnectors<T>>::contains_key(&sender),
-				Error::<T>::InvalidIncomingMessageOrigin
+				!CurrencyIdOf::<T>::is_tranche_token(currency_id),
+				Error::<T>::InvalidTransferCurrency
+			);
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			// Check that the registered asset location matches the destination
+			match Self::try_get_wrapped_token(&currency_id)? {
+				ConnectorsWrappedToken::EVM { chain_id, .. } => {
+					ensure!(
+						Domain::EVM(chain_id) == receiver.domain(),
+						Error::<T>::InvalidDomain
+					);
+				}
+			}
+
+			// Transfer to the domain account for bookkeeping
+			T::Tokens::transfer(
+				currency_id,
+				&who,
+				&Domain::convert(receiver.domain()),
+				amount,
+				// NOTE: Here, we allow death
+				false,
+			)?;
+
+			T::OutboundQueue::submit(
+				who.clone(),
+				receiver.domain(),
+				Message::Transfer {
+					amount,
+					currency,
+					sender: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					receiver: receiver.address(),
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Add a currency to the set of known currencies on the domain derived
+		/// from the given currency.
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		#[pallet::call_index(8)]
+		pub fn add_currency(origin: OriginFor<T>, currency_id: CurrencyIdOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let ConnectorsWrappedToken::EVM {
+				chain_id,
+				address: evm_address,
+			} = Self::try_get_wrapped_token(&currency_id)?;
+
+			T::OutboundQueue::submit(
+				who,
+				Domain::EVM(chain_id),
+				Message::AddCurrency {
+					currency,
+					evm_address,
+				},
+			)?;
+
+			Ok(())
+		}
+
+		/// Allow a currency to be used as a pool currency and to invest in a
+		/// pool on the domain derived from the given currency.
+		#[pallet::call_index(90)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn allow_pool_currency(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			currency_id: CurrencyIdOf<T>,
+		) -> DispatchResult {
+			// TODO(subsequent PR): In the future, should be permissioned by trait which
+			// does not exist yet.
+			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
+			let who = ensure_signed(origin)?;
+
+			// Ensure currency matches the currency of the pool
+			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			ensure!(
+				T::ForeignInvestment::accepted_payment_currency(invest_id, currency_id),
+				Error::<T>::InvalidInvestCurrency
 			);
 
-			Self::deposit_event(Event::IncomingMessage {
-				sender,
-				message: bytes.clone(),
-			});
-			// todo: do someting with the decoded message later on
-			let _: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
-				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
+			// Ensure the currency is enabled as pool_currency
+			let metadata =
+				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			ensure!(
+				metadata.additional.pool_currency,
+				Error::<T>::AssetMetadataNotPoolCurrency
+			);
+
+			// Derive GeneralIndex for currency
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let ConnectorsWrappedToken::EVM { chain_id, .. } =
+				Self::try_get_wrapped_token(&currency_id)?;
+
+			T::OutboundQueue::submit(
+				who,
+				Domain::EVM(chain_id),
+				Message::AllowPoolCurrency { pool_id, currency },
+			)?;
 
 			Ok(())
 		}
@@ -517,105 +693,208 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
-		/// Send the `message` to the given domain.
-		pub fn do_send_message(
-			fee_payer: T::AccountId,
-			message: MessageOf<T>,
-			domain: Domain,
-		) -> DispatchResult {
-			let Router::Xcm(xcm_domain) =
-				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
-
-			let contract_call = contract::encoded_contract_call(message.serialize());
-			let ethereum_xcm_call =
-				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
-
-			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				T::RuntimeOrigin::root(),
-				// The destination to which the message should be sent
-				xcm_domain.location,
-				fee_payer,
-				// The currency in which we want to pay fees
-				CurrencyPayment {
-					currency: Currency::AsCurrencyId(xcm_domain.fee_currency.into()),
-					fee_amount: None,
-				},
-				// The call to be executed in the destination chain
-				ethereum_xcm_call,
-				OriginKind::SovereignAccount,
-				TransactWeights {
-					// Convert the max gas_limit into a max transact weight following Moonbeam's
-					// formula.
-					transact_required_weight_at_most: Weight::from_ref_time(
-						xcm_domain.max_gas_limit * 25_000 + 100_000_000,
-					),
-					overall_weight: None,
-				},
-			)?;
-
-			Self::deposit_event(Event::MessageSent { message, domain });
-
-			Ok(())
-		}
-
-		/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
-		/// request to execute `evm_call`.
-		///
-		/// * `xcm_domain` - All the necessary info regarding the xcm-based
-		///   domain
-		/// where this `ethereum_xcm` call is to be executed
-		/// * `evm_call` - The encoded EVM call calling
-		///   ConnectorsXcmRouter::handle(msg)
-		pub fn encoded_ethereum_xcm_call(
-			xcm_domain: XcmDomain<CurrencyIdOf<T>>,
-			evm_call: Vec<u8>,
-		) -> Vec<u8> {
-			let mut encoded: Vec<u8> = Vec::new();
-
-			encoded.append(
-				&mut xcm_domain
-					.ethereum_xcm_transact_call_index
-					.clone()
-					.into_inner(),
-			);
-			encoded.append(
-				&mut xcm_primitives::EthereumXcmTransaction::V1(
-					xcm_primitives::EthereumXcmTransactionV1 {
-						gas_limit: U256::from(xcm_domain.max_gas_limit),
-						fee_payment: xcm_primitives::EthereumXcmFee::Auto,
-						action: pallet_ethereum::TransactionAction::Call(
-							xcm_domain.contract_address,
-						),
-						value: U256::zero(),
-						input: BoundedVec::<
-							u8,
-							ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
-						>::try_from(evm_call)
-						.unwrap(),
-						access_list: None,
-					},
-				)
-				.encode(),
-			);
-
-			encoded
-		}
-
 		/// Returns the `u128` general index of a currency as the concatenation
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.
 		///
-		/// Assumes the currency to be registered in the `AssetRegistry`.
+		/// Requires the currency to be registered in the `AssetRegistry`.
+		///
+		/// NOTE: Reverse operation of `try_get_currency_id`.
 		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
 			ensure!(
 				T::AssetRegistry::metadata(&currency).is_some(),
 				Error::<T>::AssetNotFound
 			);
 
-			let general_index: GeneralCurrencyIndex<u128, T::GeneralCurrencyPrefix> =
-				CurrencyIdOf::<T>::try_into(currency)?;
+			let general_index: GeneralCurrencyIndexOf<T> = CurrencyIdOf::<T>::try_into(currency)?;
 
 			Ok(general_index.index)
+		}
+
+		/// Returns the local currency identifier from from its general index.
+		///
+		/// Requires the currency to be registered in the `AssetRegistry`.
+		///
+		/// NOTE: Reverse operation of `try_get_general_index`.
+		pub fn try_get_currency_id(
+			index: GeneralCurrencyIndexOf<T>,
+		) -> Result<CurrencyIdOf<T>, DispatchError> {
+			let currency = CurrencyIdOf::<T>::try_from(index)?;
+			ensure!(
+				T::AssetRegistry::metadata(&currency).is_some(),
+				Error::<T>::AssetNotFound
+			);
+
+			Ok(currency)
+		}
+
+		/// Checks whether the given currency is transferable via Connectors and
+		/// whether its metadata contains a location which can be
+		/// converted to [ConnectorsWrappedToken].
+		///
+		/// Requires the currency to be registered in the `AssetRegistry`.
+		pub fn try_get_wrapped_token(
+			currency_id: &CurrencyIdOf<T>,
+		) -> Result<ConnectorsWrappedToken, DispatchError> {
+			let meta = T::AssetRegistry::metadata(currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			ensure!(
+				meta.additional.transferability.includes_connectors(),
+				Error::<T>::AssetNotConnectorsTransferable
+			);
+
+			match meta.location {
+				Some(VersionedMultiLocation::V3(MultiLocation {
+					parents: 0,
+					interior:
+						X3(
+							PalletInstance(pallet_instance),
+							GlobalConsensus(NetworkId::Ethereum { chain_id }),
+							AccountKey20 {
+								network: None,
+								key: address,
+							},
+						),
+				})) if Some(pallet_instance.into())
+					== <T as frame_system::Config>::PalletInfo::index::<Pallet<T>>() =>
+				{
+					Ok(ConnectorsWrappedToken::EVM { chain_id, address })
+				}
+				_ => Err(Error::<T>::AssetNotConnectorsWrappedToken.into()),
+			}
+		}
+
+		/// Ensures that the given pool and tranche exists and returns the
+		/// corresponding investment id.
+		pub fn derive_invest_id(
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+		) -> Result<<T as pallet::Config>::TrancheCurrency, DispatchError> {
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			Ok(TrancheCurrency::generate(pool_id, tranche_id))
+		}
+
+		/// Ensures that the payment currency of the given investment id matches
+		/// the derived currency and returns the latter.
+		pub fn try_get_payment_currency(
+			invest_id: <T as pallet::Config>::TrancheCurrency,
+			currency_index: GeneralCurrencyIndexOf<T>,
+		) -> Result<CurrencyIdOf<T>, DispatchError> {
+			// retrieve currency id from general index
+			let currency = Self::try_get_currency_id(currency_index)?;
+
+			ensure!(
+				T::ForeignInvestment::accepted_payment_currency(invest_id, currency),
+				Error::<T>::InvalidInvestCurrency
+			);
+
+			Ok(currency)
+		}
+	}
+
+	impl<T: Config> InboundQueue for Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+	{
+		type Message = MessageOf<T>;
+		type Sender = DomainAddress;
+
+		#[transactional]
+		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
+			match msg {
+				Message::Transfer {
+					currency,
+					receiver,
+					amount,
+					..
+				} => Self::handle_transfer(currency.into(), receiver.into(), amount),
+				Message::TransferTrancheTokens {
+					pool_id,
+					tranche_id,
+					receiver,
+					amount,
+					..
+				} => Self::handle_tranche_tokens_transfer(
+					pool_id,
+					tranche_id,
+					sender,
+					receiver.into(),
+					amount,
+				),
+				Message::IncreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::handle_increase_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::DecreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::handle_decrease_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::IncreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					amount,
+					..
+				} => Self::handle_increase_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					amount,
+					sender,
+				),
+				Message::DecreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::handle_decrease_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+					sender,
+				),
+				Message::CollectInvest {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::handle_collect_investment(pool_id, tranche_id, investor.into()),
+				Message::CollectRedeem {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::handle_collect_redemption(pool_id, tranche_id, investor.into()),
+				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
+			}?;
+
+			Ok(())
 		}
 	}
 }

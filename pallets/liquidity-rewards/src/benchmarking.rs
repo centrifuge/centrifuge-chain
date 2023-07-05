@@ -1,7 +1,5 @@
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::RawOrigin;
-#[cfg(test)]
-use mock::MockRewards;
 use sp_runtime::traits::One;
 
 use super::*;
@@ -15,6 +13,8 @@ const CURRENCY_ID_A: u32 = 42;
 fn init_test_mock() -> impl Sized {
 	#[cfg(test)]
 	{
+		use mock::{MockRewards, MockTime};
+
 		MockRewards::mock_is_ready(|_| true);
 		MockRewards::mock_group_stake(|_| 100);
 		MockRewards::mock_reward_group(|_, _| Ok(0));
@@ -22,6 +22,7 @@ fn init_test_mock() -> impl Sized {
 		MockRewards::mock_withdraw_stake(|_, _, _| Ok(()));
 		MockRewards::mock_claim_reward(|_, _| Ok(0));
 		MockRewards::mock_attach_currency(|_, _| Ok(()));
+		MockTime::mock_now(|| 0);
 	}
 }
 

@@ -14,7 +14,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult,
 };
 
-use crate::pallet::{Config, Error, PoolIdOf, PriceOf};
+use crate::pallet::{Config, Error, PriceOf};
 
 /// Define the max borrow amount of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
@@ -55,7 +55,7 @@ pub struct ExternalActivePricing<T: Config> {
 }
 
 impl<T: Config> ExternalActivePricing<T> {
-	pub fn new(info: ExternalPricing<T>, pool_id: PoolIdOf<T>) -> Result<Self, DispatchError> {
+	pub fn new(info: ExternalPricing<T>, pool_id: T::PoolId) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self {
 			info,
@@ -63,7 +63,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		})
 	}
 
-	pub fn end(self, pool_id: PoolIdOf<T>) -> Result<ExternalPricing<T>, DispatchError> {
+	pub fn end(self, pool_id: T::PoolId) -> Result<ExternalPricing<T>, DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
 		Ok(self.info)
 	}

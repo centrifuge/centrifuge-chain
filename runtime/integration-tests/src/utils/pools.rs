@@ -18,6 +18,7 @@ use cfg_types::{
 	consts::pools::*,
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role},
+	pools::TrancheMetadata,
 	tokens::CurrencyId,
 };
 use codec::Encode;
@@ -26,7 +27,7 @@ use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pool_registry::Call as PoolRegistryCall;
 use pallet_pool_system::{
-	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType},
+	tranches::{TrancheIndex, TrancheInput, TrancheType},
 	Call as PoolSystemCall,
 };
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};

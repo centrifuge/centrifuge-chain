@@ -180,7 +180,7 @@ pub mod pallet {
 
 		type Rate: FixedPointNumber + codec::FullCodec + TypeInfo + MaxEncodedLen;
 
-		type MaxCurrencyMovements: Get<u32> + sp_std::fmt::Debug;
+		type MaxCurrencyMovements: Get<u32>;
 	}
 
 	#[pallet::pallet]
