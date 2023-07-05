@@ -26,7 +26,7 @@ benchmarks! {
 	calculate_accumulated_rate {
 		let n in 1..25;
 		let now: Moment = (1 << n) - 1;
-		let rate = interest_rate_per_sec(T::InterestRate::saturating_from_rational(10, 100)).unwrap();
+		let rate = interest_rate_per_sec(T::Rate::saturating_from_rational(10, 100)).unwrap();
 	}: { Pallet::<T>::calculate_accumulated_rate(rate, One::one(), 0, now).unwrap() }
 	verify {
 	}

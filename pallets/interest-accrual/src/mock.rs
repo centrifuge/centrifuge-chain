@@ -60,7 +60,7 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
+	type Rate = Rate;
 	type MaxRateCount = MaxRateCount;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;

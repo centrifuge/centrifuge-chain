@@ -282,44 +282,59 @@ pub trait CurrencyPrice<CurrencyId> {
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum CompoundingSchedule {
+	/// Interest compounds every second
+	Secondly,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum InterestRate<Rate> {
+	/// Interest accrues at a fixed rate
+	Fixed {
+		rate_per_year: Rate,
+		compounding: CompoundingSchedule,
+	},
+}
+
 /// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+pub trait InterestAccrual<Rate, Balance, Adjustment> {
 	/// The maximum number of rates this `InterestAccrual` can
 	/// contain. It is necessary for rate calculations in consumers of
 	/// this pallet, but is otherwise unused in this interface.
 	type MaxRateCount: Get<u32>;
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
-	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
+	type Rates: RateCollection<Rate, Balance, Self::NormalizedDebt>;
 
 	/// Calculate the debt at an specific moment
 	fn calculate_debt(
-		interest_rate_per_year: InterestRate,
+		interest_rate_per_year: InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_year: InterestRate,
+		interest_rate_per_year: InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
 	/// Re-normalize a debt for a new interest rate
 	fn renormalize_debt(
-		old_interest_rate: InterestRate,
-		new_interest_rate: InterestRate,
+		old_interest_rate: InterestRate<Rate>,
+		new_interest_rate: InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
 	/// Validate and indicate that a yearly rate is in use
-	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
+	fn reference_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
+	fn unreference_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
 
 	/// Ask if the rate is valid to use by the implementation
-	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
+	fn validate_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
 
 	/// Returns a collection of pre-computed rates to perform multiple
 	/// operations with
@@ -327,11 +342,11 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 }
 
 /// A collection of pre-computed interest rates for performing interest accrual
-pub trait RateCollection<InterestRate, Balance, NormalizedDebt> {
+pub trait RateCollection<Rate, Balance, NormalizedDebt> {
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
 		&self,
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_sec: Rate,
 		normalized_debt: NormalizedDebt,
 	) -> Result<Balance, DispatchError>;
 }
