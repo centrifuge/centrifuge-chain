@@ -128,7 +128,7 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		+ Encode
 		+ Decode
 		+ MaxEncodedLen;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	type TrancheId;
 	type Rate;
 	type Moment;
 
@@ -145,16 +145,8 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 
 /// Get the latest price for a given tranche token
 pub trait TrancheTokenPrice<AccountId, CurrencyId> {
-	type PoolId: Parameter
-		+ Member
-		+ Debug
-		+ Copy
-		+ Default
-		+ TypeInfo
-		+ Encode
-		+ Decode
-		+ MaxEncodedLen;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	type PoolId;
+	type TrancheId;
 	type Rate;
 	type Moment;
 
