@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_types::domain_address::DomainAddress;
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
@@ -31,17 +30,23 @@ pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-ap
 
 /// Precompile implementing IAxelarForecallable.
 /// MUST be used as the receiver of calls over the Axelar bridge.
-/// `Axelar` defines the address of our local Axelar bridge contract.
-pub struct AxelarForecallable<Runtime, Axelar>(core::marker::PhantomData<(Runtime, Axelar)>);
+/// - `Axelar` defines the address of our local Axelar bridge contract.
+/// - `ConvertSourceChain` converts an string carrying an Axelar chain
+///   identifier and creates an EVMChainId from that
+pub struct AxelarForecallable<Runtime, Axelar, ConvertSource>(
+	core::marker::PhantomData<(Runtime, Axelar, ConvertSource)>,
+);
 
 #[precompile_utils::precompile]
-impl<Runtime, Axelar> AxelarForecallable<Runtime, Axelar>
+impl<Runtime, Axelar, ConvertSource> AxelarForecallable<Runtime, Axelar, ConvertSource>
 where
 	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin:
 		From<pallet_connectors_gateway::GatewayOrigin>,
 	Axelar: Get<H160>,
+	ConvertSource:
+		sp_runtime::traits::Convert<(Vec<u8>, Vec<u8>), cfg_types::domain_address::DomainAddress>,
 {
 	// Mimics:
 	//
@@ -100,10 +105,10 @@ where
 		let key = H256::from(sp_io::hashing::keccak_256(&ethabi::encode(&[
 			Token::FixedBytes(PREFIX_CONTRACT_CALL_APPROVED.into()),
 			Token::FixedBytes(command_id.as_bytes().into()),
-			Token::String(source_chain.try_into().map_err(|_| {
+			Token::String(source_chain.clone().try_into().map_err(|_| {
 				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
 			})?),
-			Token::String(source_address.try_into().map_err(|_| {
+			Token::String(source_address.clone().try_into().map_err(|_| {
 				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
 			})?),
 			// TODO: Check if this is really the address of this precompile
@@ -113,16 +118,10 @@ where
 
 		Self::execute_call(key, || {
 			pallet_connectors_gateway::Pallet::<Runtime>::process_msg(
-				pallet_connectors_gateway::GatewayOrigin::Local(DomainAddress::EVM(
-					// TODO: Allow conversion from string bytes
-					//       This means probably matching strings internally based in
-					//       on how Axelar is identifying chains
-					//source_chain.as_bytes().try_into()?,
-					// TODO: Allow conversion from string bytes
-					//       This means probably just casting .
-					//source_address.as_bytes().try_into()?,
-					1, [0u8; 20],
-				))
+				pallet_connectors_gateway::GatewayOrigin::Local(ConvertSource::convert((
+					source_chain.as_bytes().to_vec(),
+					source_address.as_bytes().to_vec(),
+				)))
 				.into(),
 				payload.into(),
 			)
