@@ -11,31 +11,36 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_types::domain_address::DomainAddress;
+use ethabi::Token;
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use precompile_utils::prelude::*;
 use sp_core::{ConstU32, Get, H160, H256, U256};
+use sp_runtime::DispatchResult;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
+pub const MAX_PAYLOAD_BYTES: u32 = 32;
 
 pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
+pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
+
 /// Precompile implementing IAxelarForecallable.
 /// MUST be used as the receiver of calls over the Axelar bridge.
-pub struct AxelarForecallable<Runtime, Gateway, const MAX_PAYLOAD_BYTES: u32>(
-	core::marker::PhantomData<(Runtime, Gateway, MaxPayload)>,
-);
+/// `Axelar` defines the address of our local Axelar bridge contract.
+pub struct AxelarForecallable<Runtime, Axelar>(core::marker::PhantomData<(Runtime, Axelar)>);
 
 #[precompile_utils::precompile]
-impl<Runtime, Axelar, const MAX_PAYLOAD_BYTES: u32>
-	AxelarForecallable<Runtime, Axelar, MAX_PAYLOAD_BYTES>
+impl<Runtime, Axelar> AxelarForecallable<Runtime, Axelar>
 where
 	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
+	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin:
+		From<pallet_connectors_gateway::GatewayOrigin>,
 	Axelar: Get<H160>,
 {
 	// Mimics:
@@ -79,36 +84,49 @@ where
 	//
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		_handle: &mut impl PrecompileHandle,
-		_command_id: H256,
-		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
-		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-		_payload: Bytes<MAX_PAYLOAD_BYTES>,
+		handle: &mut impl PrecompileHandle,
+		command_id: H256,
+		source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
 		// CREATE HASH OF PAYLOAD
 		// - bytes32 payloadHash = keccak256(payload);
+		let payload_hash = H256::from(sp_io::hashing::keccak_256(payload.as_bytes()));
 
 		// CHECK EVM STORAGE OF GATEWAY
 		// - keccak256(abi.encode(PREFIX_CONTRACT_CALL_APPROVED, commandId, sourceChain,
 		//   sourceAddress, contractAddress, payloadHash));
-		//    - Queryable via: pallet_evm::<AccountStorages<Runtime>>::get(address,
-		//      index, value);
-		//    - How does storage work: https://programtheblockchain.com/posts/2018/03/09/understanding-ethereum-smart-contract-storage/#:~:text=Each%20smart%20contract%20running%20in,are%202256%20such%20values.
-		// - IF true, forward to pallet-connectors-gateway process_msg
+		let key = H256::from(sp_io::hashing::keccak_256(&ethabi::encode(&[
+			Token::FixedBytes(PREFIX_CONTRACT_CALL_APPROVED.into()),
+			Token::FixedBytes(command_id.as_bytes().into()),
+			Token::String(source_chain.try_into().map_err(|_| {
+				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
+			})?),
+			Token::String(source_address.try_into().map_err(|_| {
+				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
+			})?),
+			// TODO: Check if this is really the address of this precompile
+			Token::Address(handle.context().address),
+			Token::FixedBytes(payload_hash.as_bytes().into()),
+		])));
 
-		// TODO: Handle error
-		/*
-		pallet_connectors_gateway::Pallet::<Runtime>::process_msg(GatewayOrigin::Local(
-			DomainAddress::Evm {
-				chain_id: ???,
-				address: ???,
-			},
-			payload,
-		))
-		.unwrap();
-		 */
-
-		Ok(())
+		Self::execute_call(key, || {
+			pallet_connectors_gateway::Pallet::<Runtime>::process_msg(
+				pallet_connectors_gateway::GatewayOrigin::Local(DomainAddress::EVM(
+					// TODO: Allow conversion from string bytes
+					//       This means probably matching strings internally based in
+					//       on how Axelar is identifying chains
+					//source_chain.as_bytes().try_into()?,
+					// TODO: Allow conversion from string bytes
+					//       This means probably just casting .
+					//source_address.as_bytes().try_into()?,
+					1, [0u8; 20],
+				))
+				.into(),
+				payload.into(),
+			)
+		})
 	}
 
 	// Mimics:
@@ -166,5 +184,99 @@ where
 	) -> EvmResult {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(())
+	}
+
+	fn execute_call(key: H256, f: impl FnOnce() -> DispatchResult) -> EvmResult {
+		// TODO: Is the storage address actual the Gateway contract address ???
+		let valid = Self::get_validate_call(Axelar::get(), key);
+
+		if valid {
+			// Prevent re-entrance
+			Self::set_validate_call(Axelar::get(), key, false);
+
+			f().map(|_| ())
+				.map_err(|e| TryDispatchError::Substrate(e))?;
+
+			// Invalidate the storage entry of the call executed successfully
+			// TODO: Is the storage address actual the Gateway contract address ???
+			Self::set_validate_call(Axelar::get(), key, false);
+
+			Ok(())
+		} else {
+			Err(RevertReason::Custom("Call not validated".to_string()).into())
+		}
+	}
+
+	fn get_validate_call(from: H160, key: H256) -> bool {
+		Self::h256_to_bool(pallet_evm::AccountStorages::<Runtime>::get(
+			from,
+			Self::get_index_validate_call(key),
+		))
+	}
+
+	fn set_validate_call(from: H160, key: H256, valid: bool) {
+		pallet_evm::AccountStorages::<Runtime>::set(
+			from,
+			Self::get_index_validate_call(key),
+			Self::bool_to_h256(valid),
+		)
+	}
+
+	fn get_index_validate_call(key: H256) -> H256 {
+		// Generate right index:
+		//
+		// From the solidty contract of Axelar (EnternalStorage.sol)
+		//     mapping(bytes32 => uint256) private _uintStorage; -> Slot 0
+		//     mapping(bytes32 => string) private _stringStorage; -> Slot 1
+		//     mapping(bytes32 => address) private _addressStorage; -> Slot 2
+		//     mapping(bytes32 => bytes) private _bytesStorage; -> Slot 3
+		//     mapping(bytes32 => bool) private _boolStorage; -> Slot 4
+		//     mapping(bytes32 => int256) private _intStorage; -> Slot 5
+		//
+		// This means our slot is U256::from(6)
+		let slot = U256::from(6);
+
+		let mut bytes = Vec::new();
+		bytes.extend_from_slice(key.as_bytes());
+
+		// TODO: Is endnianess correct here?
+		let mut be_bytes: [u8; 32] = [0u8; 32];
+		slot.to_big_endian(&mut be_bytes);
+		bytes.extend_from_slice(&be_bytes);
+
+		H256::from(sp_io::hashing::keccak_256(&bytes))
+	}
+
+	// In Solidity, a boolean value (bool) is stored as a single byte (8 bits) in
+	// contract storage. The byte value 0x01 represents true, and the byte value
+	// 0x00 represents false.
+	//
+	// When you declare a boolean variable within a contract and store its value in
+	// storage, the contract reserves one storage slot, which is 32 bytes (256 bits)
+	// in size. However, only the first byte (8 bits) of that storage slot is used
+	// to store the boolean value. The remaining 31 bytes are left unused.
+	fn h256_to_bool(value: H256) -> bool {
+		let first = value.0[0];
+
+		// TODO; Should we check the other values too and error out then?
+		first == 1
+	}
+
+	// In Solidity, a boolean value (bool) is stored as a single byte (8 bits) in
+	// contract storage. The byte value 0x01 represents true, and the byte value
+	// 0x00 represents false.
+	//
+	// When you declare a boolean variable within a contract and store its value in
+	// storage, the contract reserves one storage slot, which is 32 bytes (256 bits)
+	// in size. However, only the first byte (8 bits) of that storage slot is used
+	// to store the boolean value. The remaining 31 bytes are left unused.
+	fn bool_to_h256(value: bool) -> H256 {
+		let mut bytes: [u8; 32] = [0u8; 32];
+
+		if value {
+			bytes[0] = 1;
+		}
+
+		H256::from(bytes)
 	}
 }

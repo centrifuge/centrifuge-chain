@@ -13,13 +13,15 @@ scale-info = { version = "2.3.0", default-features = false, features = ["derive"
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 precompile-utils  = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 fp-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+ethabi = {version = "18.0.0", default-features = false }
 
 pallet-connectors-gateway = {path = "../../connectors-gateway" }
-
+cfg-types = {path = "../../../libs/types"}
 
 [features]
 default = ["std"]
@@ -29,12 +31,15 @@ std = [
     "frame-system/std",
     "sp-std/std",
     "sp-core/std",
+    "sp-io/std",
     "sp-runtime/std",
     "scale-info/std",
     "fp-evm/std",
     "precompile-utils/std",
     "pallet-evm/std",
-    "pallet-connectors-gateway/std"
+    "pallet-connectors-gateway/std",
+    "cfg-types/std",
+    "ethabi/std"
 ]
 try-runtime = [
     "frame-support/try-runtime",
