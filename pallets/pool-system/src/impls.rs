@@ -10,7 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, TrancheTokenPrice, UpdateState};
+use cfg_traits::{
+	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
+	TrancheCurrency, TrancheTokenPrice, UpdateState,
+};
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
 use sp_runtime::traits::Hash;

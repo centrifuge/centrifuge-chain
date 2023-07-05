@@ -24,7 +24,10 @@ pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
 };
-use cfg_traits::{CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _, TrancheTokenPrice};
+use cfg_traits::{
+	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard,
+	PreConditions, PriceValue, TrancheCurrency as _, TrancheTokenPrice,
+};
 use cfg_types::{
 	consts::pools::*,
 	domain_address::Domain,
@@ -1152,9 +1155,10 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 		match base {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				match <pallet_pool_system::Pallet<Runtime> as TrancheTokenPrice<
-				AccountId,
-				CurrencyId,
-			>>::get(pool_id, tranche_id) {
+					AccountId,
+					CurrencyId,
+				>>::get(pool_id, tranche_id)
+				{
 					// If a specific quote is requested, this needs to match the actual quote.
 					Some(price) if Some(price.pair.quote) != quote => None,
 					Some(price) => Some(price),
@@ -1577,20 +1581,20 @@ impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type PoolId = PoolId;
-	type TrancheId = TrancheId;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
 	type OutboundQueue = DummyOutboundQueue;
 	type Permission = Permissions;
+	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type TrancheTokenPrice = PoolSystem;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
 	type WeightInfo = ();
 }
 

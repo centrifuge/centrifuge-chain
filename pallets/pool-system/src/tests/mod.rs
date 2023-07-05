@@ -35,8 +35,8 @@ use crate::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
 		TrancheInput, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool,
-	PoolState, UnhealthyState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolState,
+	UnhealthyState,
 };
 
 const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
@@ -713,8 +713,8 @@ fn epoch() {
 			<Runtime as frame_system::Config>::AccountId,
 			<Runtime as Config>::CurrencyId,
 		>>::get(0, SeniorTrancheId::get())
-			.unwrap()
-			.price;
+		.unwrap()
+		.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert_eq!(
 			pool.tranches.residual_tranche().unwrap().reserve,

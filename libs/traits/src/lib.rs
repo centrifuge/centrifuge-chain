@@ -146,18 +146,17 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 /// Get the latest price for a given tranche token
 pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 	type PoolId: Parameter
-	+ Member
-	+ Debug
-	+ Copy
-	+ Default
-	+ TypeInfo
-	+ Encode
-	+ Decode
-	+ MaxEncodedLen;
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
 	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 	type Rate;
 	type Moment;
-
 
 	fn get(
 		pool_id: Self::PoolId,

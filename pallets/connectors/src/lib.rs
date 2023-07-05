@@ -13,9 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{
-	connectors::{InboundQueue, OutboundQueue},
-};
+use cfg_traits::connectors::{InboundQueue, OutboundQueue};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	tokens::GeneralCurrencyIndex,
@@ -66,8 +64,13 @@ pub enum ParachainId {
 }
 
 // Type aliases
-pub type MessageOf<T> =
-	Message<Domain, <T as Config>::PoolId, <T as Config>::TrancheId, <T as Config>::Balance, <T as Config>::Rate>;
+pub type MessageOf<T> = Message<
+	Domain,
+	<T as Config>::PoolId,
+	<T as Config>::TrancheId,
+	<T as Config>::Balance,
+	<T as Config>::Rate,
+>;
 
 pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
@@ -78,13 +81,16 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use codec::HasCompact;
 	use cfg_primitives::Moment;
-	use cfg_traits::{CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect, TrancheCurrency, TrancheTokenPrice};
+	use cfg_traits::{
+		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect,
+		TrancheCurrency, TrancheTokenPrice,
+	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::{ConnectorsWrappedToken, CustomMetadata},
 	};
+	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Zero;
@@ -115,20 +121,20 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		type PoolId: Member
-		+ Parameter
-		+ Default
-		+ Copy
-		+ HasCompact
-		+ MaxEncodedLen
-		+ core::fmt::Debug;
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
 		type TrancheId: Member
-		+ Parameter
-		+ Default
-		+ Copy
-		+ MaxEncodedLen
-		+ TypeInfo
-		+ From<[u8; 16]>;
+			+ Parameter
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ TypeInfo
+			+ From<[u8; 16]>;
 
 		/// The fixed point number representation for higher precision.
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
@@ -140,9 +146,21 @@ pub mod pallet {
 		/// The source of truth for pool inspection operations such as its
 		/// existence, the corresponding tranche token or the investment
 		/// currency.
-		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate, PoolId = Self::PoolId, TrancheId = Self::TrancheId>;
+		type PoolInspect: PoolInspect<
+			Self::AccountId,
+			CurrencyIdOf<Self>,
+			Rate = Self::Rate,
+			PoolId = Self::PoolId,
+			TrancheId = Self::TrancheId,
+		>;
 
-		type TrancheTokenPrice: TrancheTokenPrice<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate, PoolId = Self::PoolId, TrancheId = Self::TrancheId>;
+		type TrancheTokenPrice: TrancheTokenPrice<
+			Self::AccountId,
+			CurrencyIdOf<Self>,
+			Rate = Self::Rate,
+			PoolId = Self::PoolId,
+			TrancheId = Self::TrancheId,
+		>;
 
 		/// The source of truth for investment permissions.
 		type Permission: Permissions<
@@ -412,7 +430,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			let price =  T::TrancheTokenPrice::get(pool_id, tranche_id)
+			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
