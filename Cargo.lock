@@ -1547,6 +1547,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "connectors-gateway-axelar-precompile"
+version = "0.1.0"
+dependencies = [
+ "fp-evm 3.0.0-dev (git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.38)",
+ "frame-support",
+ "frame-system",
+ "pallet-connectors-gateway",
+ "pallet-evm 6.0.0-dev (git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.38)",
+ "parity-scale-codec 3.4.0",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "connectors-gateway-routers"
 version = "0.0.1"
 dependencies = [
@@ -1578,23 +1595,6 @@ dependencies = [
  "xcm-builder",
  "xcm-executor",
  "xcm-primitives",
-]
-
-[[package]]
-name = "connectors-gatway-axelar-precompile"
-version = "0.1.0"
-dependencies = [
- "fp-evm 3.0.0-dev (git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.38)",
- "frame-support",
- "frame-system",
- "pallet-connectors-gateway",
- "pallet-evm 6.0.0-dev (git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.38)",
- "parity-scale-codec 3.4.0",
- "precompile-utils",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
