@@ -320,7 +320,13 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	fn ensure_can_repay(
+	/// Process the given amount to ensure it's a correct repayment.
+	/// - Taking current interest accrued and maximal repay prinicpal from
+	///   pricing
+	/// - Adapting interest repayment to be as maximum as the current interest
+	///   accrued
+	/// - Checking repay restrictions
+	fn prepare_repayment(
 		&self,
 		mut amount: RepaidAmount<T::Balance>,
 	) -> Result<RepaidAmount<T::Balance>, DispatchError> {
@@ -363,7 +369,7 @@ impl<T: Config> ActiveLoan<T> {
 		&mut self,
 		amount: RepaidAmount<T::Balance>,
 	) -> Result<RepaidAmount<T::Balance>, DispatchError> {
-		let amount = self.ensure_can_repay(amount)?;
+		let amount = self.prepare_repayment(amount)?;
 
 		self.total_repaid.ensure_add_assign(&amount)?;
 

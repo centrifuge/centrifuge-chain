@@ -13,8 +13,17 @@ use crate::pallet::Config;
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveInterestRate<T: Config> {
+	/// The current interest rate value (per year).
+	/// It the rate it has been penalized,
+	/// it contains the result of applying that penalty:
+	/// rate = base_rate + penalty
 	rate: T::Rate,
+
+	/// Normalized accumulation of the interest rate.
+	/// Used to get the current interest per second
 	normalized_acc: T::Balance,
+
+	/// Penalty applied to this interest rate
 	penalty: T::Rate,
 }
 
