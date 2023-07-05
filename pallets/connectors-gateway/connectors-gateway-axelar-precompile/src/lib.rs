@@ -233,8 +233,8 @@ where
 		//     mapping(bytes32 => bool) private _boolStorage; -> Slot 4
 		//     mapping(bytes32 => int256) private _intStorage; -> Slot 5
 		//
-		// This means our slot is U256::from(6)
-		let slot = U256::from(6);
+		// This means our slot is U256::from(4)
+		let slot = U256::from(4);
 
 		let mut bytes = Vec::new();
 		bytes.extend_from_slice(key.as_bytes());
