@@ -88,7 +88,7 @@ fn with_restriction_full_once() {
 		let loan_id = util::create_loan(LoanInfo {
 			restrictions: LoanRestrictions {
 				borrows: BorrowRestrictions::FullOnce,
-				repayments: RepayRestrictions::FullOnce,
+				repayments: RepayRestrictions::None,
 			},
 			..util::base_internal_loan()
 		});

@@ -211,7 +211,7 @@ fn with_restriction_full_once() {
 		let loan_id = util::create_loan(LoanInfo {
 			restrictions: LoanRestrictions {
 				borrows: BorrowRestrictions::FullOnce,
-				repayments: RepayRestrictions::FullOnce,
+				repayments: RepayRestrictions::Full,
 			},
 			..util::base_internal_loan()
 		});
@@ -245,19 +245,16 @@ fn with_restriction_full_once() {
 		));
 
 		config_mocks(0);
-		assert_noop!(
-			Loans::repay(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				RepaidAmount {
-					principal: 0,
-					interest: 0,
-					unscheduled: 0,
-				}
-			),
-			Error::<Runtime>::from(RepayLoanError::Restriction)
-		);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidAmount {
+				principal: 0,
+				interest: 0,
+				unscheduled: 0,
+			}
+		));
 	});
 }
 

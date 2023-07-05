@@ -159,8 +159,8 @@ pub enum RepayRestrictions {
 	/// No restrictions
 	None,
 
-	/// You only can repay the full loan value once.
-	FullOnce,
+	/// You only can repay the full loan value.
+	Full,
 }
 
 /// Define the loan restrictions

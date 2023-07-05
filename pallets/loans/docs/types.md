@@ -48,7 +48,7 @@ enum BorrowRestrictions {
 
 enum RepayRestrictions {
     None
-    FullOnce
+    Full
 }
 
 class LoanRestrictions {

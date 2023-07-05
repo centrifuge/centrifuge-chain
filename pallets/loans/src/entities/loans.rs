@@ -353,10 +353,8 @@ impl<T: Config> ActiveLoan<T> {
 		ensure!(
 			match self.restrictions.repayments {
 				RepayRestrictions::None => true,
-				RepayRestrictions::FullOnce => {
-					self.total_repaid.effective()?.is_zero()
-						&& amount.principal == max_repay_principal
-						&& amount.interest == interest_accrued
+				RepayRestrictions::Full => {
+					amount.principal == max_repay_principal && amount.interest == interest_accrued
 				}
 			},
 			Error::<T>::from(RepayLoanError::Restriction)
