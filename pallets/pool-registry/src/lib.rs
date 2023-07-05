@@ -87,15 +87,6 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// A fixed-point number which represents an
-		/// interest rate.
-		type InterestRate: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
-
 		type ModifyPool: PoolMutate<
 			Self::AccountId,
 			Self::PoolId,

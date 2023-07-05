@@ -1048,7 +1048,6 @@ impl pallet_pool_registry::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
@@ -1354,7 +1353,7 @@ impl pallet_data_collector::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
+	type Rate = Rate;
 	// TODO: This is a stopgap value until we can calculate it correctly with
 	// updated benchmarks. See #1024
 	type MaxRateCount = MaxRateCount;

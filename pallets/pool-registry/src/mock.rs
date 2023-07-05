@@ -253,7 +253,6 @@ impl Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
