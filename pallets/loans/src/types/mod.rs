@@ -14,6 +14,7 @@
 //! Contains base types without Config references
 
 use cfg_primitives::Moment;
+use cfg_traits::InterestRate;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -207,7 +208,7 @@ pub enum InternalMutation<Rate> {
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
 	MaturityExtension(Moment),
-	InterestRate(Rate),
+	InterestRate(InterestRate<Rate>),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
 	Internal(InternalMutation<Rate>),

@@ -1,5 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_traits::RateCollection;
+use cfg_traits::{InterestRate, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -70,7 +70,7 @@ pub struct InternalActivePricing<T: Config> {
 impl<T: Config> InternalActivePricing<T> {
 	pub fn activate(
 		info: InternalPricing<T>,
-		interest_rate: T::Rate,
+		interest_rate: InterestRate<T::Rate>,
 	) -> Result<Self, DispatchError> {
 		Ok(Self {
 			info,
@@ -78,7 +78,7 @@ impl<T: Config> InternalActivePricing<T> {
 		})
 	}
 
-	pub fn deactivate(self) -> Result<(InternalPricing<T>, T::Rate), DispatchError> {
+	pub fn deactivate(self) -> Result<(InternalPricing<T>, InterestRate<T::Rate>), DispatchError> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 

@@ -1,3 +1,5 @@
+use cfg_traits::{CompoundingSchedule, InterestRate};
+
 use super::*;
 
 const DEFAULT_MUTATION: LoanMutation<Rate> = LoanMutation::InterestPayments(InterestPayments::None);
@@ -166,7 +168,10 @@ mod wrong_mutation {
 			util::borrow_loan(loan_id, 0);
 
 			// Too high
-			let mutation = LoanMutation::InterestRate(Rate::from_float(3.0));
+			let mutation = LoanMutation::InterestRate(InterestRate::Fixed {
+				rate_per_year: Rate::from_float(3.0),
+				compounding: CompoundingSchedule::Secondly,
+			});
 
 			config_mocks(loan_id, &mutation);
 			assert_noop!(
@@ -211,7 +216,10 @@ fn with_successful_mutation_application() {
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
-			interest_rate: Rate::from_float(0.1),
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: Rate::from_float(0.1),
+				compounding: CompoundingSchedule::Secondly,
+			},
 			pricing: Pricing::Internal(InternalPricing {
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.1),
@@ -234,7 +242,10 @@ fn with_successful_mutation_application() {
 				extension: (YEAR * 2).as_secs(),
 			}),
 			LoanMutation::MaturityExtension(YEAR.as_secs()),
-			LoanMutation::InterestRate(Rate::from_float(0.5)),
+			LoanMutation::InterestRate(InterestRate::Fixed {
+				rate_per_year: Rate::from_float(0.5),
+				compounding: CompoundingSchedule::Secondly,
+			}),
 			LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(Rate::from_float(
 				0.5,
 			))),
@@ -255,7 +266,7 @@ fn with_successful_mutation_application() {
 				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
-				mutation
+				mutation,
 			));
 
 			let mid_pv = util::current_loan_pv(loan_id);

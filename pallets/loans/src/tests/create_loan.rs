@@ -1,3 +1,5 @@
+use cfg_traits::{CompoundingSchedule, InterestRate};
+
 use super::*;
 
 fn config_mocks(pool_id: PoolId) {
@@ -131,7 +133,10 @@ fn with_wrong_interest_rate() {
 		config_mocks(POOL_A);
 
 		let loan = LoanInfo {
-			interest_rate: Rate::from_float(3.0), // Too high
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: Rate::from_float(3.0),
+				compounding: CompoundingSchedule::Secondly,
+			}, // Too high
 			..util::base_internal_loan()
 		};
 
