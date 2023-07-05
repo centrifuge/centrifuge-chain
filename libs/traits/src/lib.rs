@@ -135,16 +135,35 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
-	fn get_tranche_token_price(
-		pool_id: Self::PoolId,
-		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 
 	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
 
-	// Get the currency used for the given `pool_id`.
+	/// Get the currency used for the given `pool_id`.
 	fn currency_for(pool_id: Self::PoolId) -> Option<CurrencyId>;
+}
+
+/// Get the latest price for a given tranche token
+pub trait TrancheTokenPrice<AccountId, CurrencyId> {
+	type PoolId: Parameter
+	+ Member
+	+ Debug
+	+ Copy
+	+ Default
+	+ TypeInfo
+	+ Encode
+	+ Decode
+	+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	type Rate;
+	type Moment;
+
+
+	// todo(nuno): move all codebase from `get_tranche_token_price`
+	fn get(
+		pool_id: Self::PoolId,
+		tranche_id: Self::TrancheId,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
 /// Variants for valid Pool updates to send out as events
