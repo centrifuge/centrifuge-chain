@@ -11,11 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::{CompoundingSchedule, InterestRate};
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber,
 };
-use cfg_traits::{InterestRate, CompoundingSchedule};
 
 use crate::{
 	mock::{Rate, Runtime},
@@ -29,10 +29,46 @@ fn test_rate_validation() {
 	let normal_rate = Rate::saturating_from_rational(5, 100);
 	let too_many_decimals = Rate::saturating_from_rational(55, 100000);
 
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: high_rate, compounding: CompoundingSchedule::Secondly }).is_err());
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: min_rate, compounding: CompoundingSchedule::Secondly }).is_ok());
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: normal_rate, compounding: CompoundingSchedule::Secondly }).is_ok());
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: One::one(), compounding: CompoundingSchedule::Secondly }).is_ok());
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: Zero::zero(), compounding: CompoundingSchedule::Secondly }).is_ok());
-	assert!(Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed { rate_per_year: too_many_decimals, compounding: CompoundingSchedule::Secondly }).is_err());
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: high_rate,
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_err()
+	);
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: min_rate,
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_ok()
+	);
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: normal_rate,
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_ok()
+	);
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: One::one(),
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_ok()
+	);
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: Zero::zero(),
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_ok()
+	);
+	assert!(
+		Pallet::<Runtime>::validate_interest_rate(InterestRate::Fixed {
+			rate_per_year: too_many_decimals,
+			compounding: CompoundingSchedule::Secondly
+		})
+		.is_err()
+	);
 }

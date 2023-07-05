@@ -26,6 +26,10 @@ use frame_support::{
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
+use sp_arithmetic::{
+	traits::{EnsureAdd, EnsureSub},
+	ArithmeticError,
+};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
@@ -295,6 +299,38 @@ pub enum InterestRate<Rate> {
 		rate_per_year: Rate,
 		compounding: CompoundingSchedule,
 	},
+}
+
+impl<Rate: EnsureAdd + EnsureSub> InterestRate<Rate> {
+	pub fn ensure_add(self, rate: Rate) -> Result<InterestRate<Rate>, ArithmeticError> {
+		match self {
+			InterestRate::Fixed {
+				rate_per_year,
+				compounding,
+			} => {
+				let new_rate = rate_per_year.ensure_add(rate)?;
+				Ok(InterestRate::Fixed {
+					rate_per_year: new_rate,
+					compounding,
+				})
+			}
+		}
+	}
+
+	pub fn ensure_sub(self, rate: Rate) -> Result<InterestRate<Rate>, ArithmeticError> {
+		match self {
+			InterestRate::Fixed {
+				rate_per_year,
+				compounding,
+			} => {
+				let new_rate = rate_per_year.ensure_sub(rate)?;
+				Ok(InterestRate::Fixed {
+					rate_per_year: new_rate,
+					compounding,
+				})
+			}
+		}
+	}
 }
 
 /// A trait that can be used to calculate interest accrual for debt

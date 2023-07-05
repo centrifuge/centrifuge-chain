@@ -1353,10 +1353,10 @@ impl pallet_data_collector::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type Rate = Rate;
 	// TODO: This is a stopgap value until we can calculate it correctly with
 	// updated benchmarks. See #1024
 	type MaxRateCount = MaxRateCount;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
