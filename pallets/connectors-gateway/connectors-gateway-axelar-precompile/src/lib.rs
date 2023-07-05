@@ -134,16 +134,16 @@ where
 	//
 	// Note: NOT SUPPORTED
 	//
-	#[precompile::public("executeWithToken(bytes32,string,string,bytes,string,uint256)")]
+	#[precompile::public("executeWithToken(address,uint256)")]
 	fn execute_with_token(
 		_handle: &mut impl PrecompileHandle,
-		_command_id: H256,
-		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
-		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-		_payload: Bytes<MAX_PAYLOAD_BYTES>,
-		_token_symbol: String<MAX_TOKEN_SYMBOL_BYTES>,
+		_command_id: U256,
+		_source_chain: U256,
+		_source_address: U256,
+		_payload: BoundedVec<u8, ConstU32<32>>,
+		_token_symbol: U256,
 		_amount: U256,
-	) -> EvmResult {
+	) -> EvmResult<bool> {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(())
 	}
