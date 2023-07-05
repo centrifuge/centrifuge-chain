@@ -160,6 +160,10 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Total repaid amount of this loan
 	total_repaid: RepaidAmount<T::Balance>,
+
+	/// Until this date all principal & interest
+	/// payments occurred as scheduled.
+	repayments_on_schedule_until: Moment,
 }
 
 impl<T: Config> ActiveLoan<T> {
@@ -186,6 +190,7 @@ impl<T: Config> ActiveLoan<T> {
 			},
 			total_borrowed: T::Balance::zero(),
 			total_repaid: RepaidAmount::default(),
+			repayments_on_schedule_until: now,
 		})
 	}
 
