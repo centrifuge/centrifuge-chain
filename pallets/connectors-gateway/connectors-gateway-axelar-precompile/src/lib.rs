@@ -22,12 +22,9 @@ use sp_runtime::{DispatchError, DispatchResult};
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
-pub const MAX_PAYLOAD_BYTES: u32 = 32;
 
 pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
-
-pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
 
 /// Precompile implementing IAxelarForecallable.
 /// MUST be used as the receiver of calls over the Axelar bridge.
@@ -46,8 +43,7 @@ impl<Runtime, Axelar, ConvertSource> AxelarForecallable<Runtime, Axelar, Convert
 where
 	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin:
-		From<pallet_connectors_gateway::GatewayOrigin>,
+	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
 	Axelar: Get<H160>,
 	ConvertSource: sp_runtime::traits::Convert<
 		(Vec<u8>, Vec<u8>),
@@ -72,15 +68,14 @@ where
 	//
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		handle: &mut impl PrecompileHandle,
-		command_id: H256,
-		source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
-		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-		payload: Bytes<MAX_PAYLOAD_BYTES>,
+		_handle: &mut impl PrecompileHandle,
+		_command_id: H256,
+		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		_payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
 		// CREATE HASH OF PAYLOAD
 		// - bytes32 payloadHash = keccak256(payload);
-		let payload_hash = H256::from(sp_io::hashing::keccak_256(payload.as_bytes()));
 
 		// CHECK EVM STORAGE OF GATEWAY
 		// - keccak256(abi.encode(PREFIX_CONTRACT_CALL_APPROVED, commandId, sourceChain,
