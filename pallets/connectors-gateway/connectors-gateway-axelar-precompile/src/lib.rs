@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_types::domain_address::DomainAddress;
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
@@ -39,7 +40,7 @@ pub struct AxelarForecallable<Runtime, Axelar, ConvertSource>(
 );
 
 #[precompile_utils::precompile]
-impl<Runtime, Axelar, ConvertSource> AxelarForecallable<Runtime, Axelar, ConvertSource>
+impl<Runtime, Axelar> AxelarForecallable<Runtime, Axelar>
 where
 	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
@@ -83,10 +84,10 @@ where
 		let key = H256::from(sp_io::hashing::keccak_256(&ethabi::encode(&[
 			Token::FixedBytes(PREFIX_CONTRACT_CALL_APPROVED.into()),
 			Token::FixedBytes(command_id.as_bytes().into()),
-			Token::String(source_chain.clone().try_into().map_err(|_| {
+			Token::String(source_chain.try_into().map_err(|_| {
 				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
 			})?),
-			Token::String(source_address.clone().try_into().map_err(|_| {
+			Token::String(source_address.try_into().map_err(|_| {
 				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
 			})?),
 			// TODO: Check if this is really the address of this precompile
