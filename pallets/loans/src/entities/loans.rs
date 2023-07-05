@@ -17,7 +17,7 @@ use super::pricing::{
 	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
 };
 use crate::{
-	pallet::{AssetOf, Config, Error, PoolIdOf, PriceOf},
+	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
@@ -85,7 +85,7 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(self, pool_id: PoolIdOf<T>) -> Result<ActiveLoan<T>, DispatchError> {
+	pub fn activate(self, pool_id: T::PoolId) -> Result<ActiveLoan<T>, DispatchError> {
 		ActiveLoan::new(pool_id, self.info, self.borrower, T::Time::now().as_secs())
 	}
 
@@ -165,7 +165,7 @@ pub struct ActiveLoan<T: Config> {
 
 impl<T: Config> ActiveLoan<T> {
 	pub fn new(
-		pool_id: PoolIdOf<T>,
+		pool_id: T::PoolId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
 		now: Moment,
@@ -389,10 +389,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(
-		self,
-		pool_id: PoolIdOf<T>,
-	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+	pub fn close(self, pool_id: T::PoolId) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		let loan = ClosedLoan {
