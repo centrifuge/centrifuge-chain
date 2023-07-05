@@ -1,7 +1,7 @@
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
+	use cfg_traits::{PoolInspect, PoolReserve, PriceValue, TrancheTokenPrice};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
@@ -43,13 +43,6 @@ pub mod pallet {
 		}
 
 		pub fn tranche_exists(f: impl Fn(T::PoolId, T::TrancheId) -> bool + 'static) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
-		pub fn get_tranche_token_price(
-			f: impl Fn(T::PoolId, T::TrancheId) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>>
-				+ 'static,
-		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
@@ -96,19 +89,26 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn get_tranche_token_price(
-			a: T::PoolId,
-			b: T::TrancheId,
-		) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
-			execute_call!((a, b))
-		}
-
 		fn account_for(a: T::PoolId) -> T::AccountId {
 			execute_call!(a)
 		}
 
 		fn currency_for(a: T::PoolId) -> Option<T::CurrencyId> {
 			execute_call!(a)
+		}
+	}
+
+	impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
+		type Moment = Moment;
+		type PoolId = T::PoolId;
+		type Rate = T::Rate;
+		type TrancheId = T::TrancheId;
+
+		fn get(
+			a: T::PoolId,
+			b: T::TrancheId,
+		) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
+			execute_call!((a, b))
 		}
 	}
 

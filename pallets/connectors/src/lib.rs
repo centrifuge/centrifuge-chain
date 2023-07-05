@@ -412,8 +412,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// TODO(follow-up PR): Move `get_tranche_token_price` to new trait.
-			// https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?both#fn-update_tranche_token_price
 			let price =  T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;

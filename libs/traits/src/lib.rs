@@ -159,7 +159,6 @@ pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 	type Moment;
 
 
-	// todo(nuno): move all codebase from `get_tranche_token_price`
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
