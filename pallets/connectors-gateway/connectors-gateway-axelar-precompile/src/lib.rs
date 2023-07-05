@@ -13,24 +13,30 @@
 
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use pallet_connectors_gateway::GatewayOrigin;
 use precompile_utils::prelude::*;
-use sp_core::{ConstU32, Get, H160, U256};
+use sp_core::{ConstU32, Get, H160, H256, U256};
+
+pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
+pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
+pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
+
+pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
+pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
 /// Precompile implementing IAxelarForecallable.
 /// MUST be used as the receiver of calls over the Axelar bridge.
-pub struct AxelarForecallable<Runtime, Gateway, MaxPayload>(
+pub struct AxelarForecallable<Runtime, Gateway, const MAX_PAYLOAD_BYTES: u32>(
 	core::marker::PhantomData<(Runtime, Gateway, MaxPayload)>,
 );
 
 #[precompile_utils::precompile]
-impl<Runtime, Axelar, MaxPayload> AxelarForecallable<Runtime, Axelar, MaxPayload>
+impl<Runtime, Axelar, const MAX_PAYLOAD_BYTES: u32>
+	AxelarForecallable<Runtime, Axelar, MAX_PAYLOAD_BYTES>
 where
 	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
 	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
 	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<Runtime::AccountId>>,
 	Axelar: Get<H160>,
-	MaxPayload: Get<u32>,
 {
 	// Mimics:
 	//
@@ -48,13 +54,13 @@ where
 	#[precompile::public("forecall(string,string,bytes,address)")]
 	fn forecall(
 		_handle: &mut impl PrecompileHandle,
-		_source_chain: U256,
-		_source_address: U256,
-		_payload: BoundedVec<u8, ConstU32<32>>,
+		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		_payload: Bytes<MAX_PAYLOAD_BYTES>,
 		_forecaller: Address,
-	) -> EvmResult<bool> {
+	) -> EvmResult {
 		// TODO: Check whether this is enough or if we should error out
-		Ok(false)
+		Ok(())
 	}
 
 	// Mimics:
@@ -73,12 +79,12 @@ where
 	//
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		handle: &mut impl PrecompileHandle,
-		command_id: U256,
-		source_chain: U256,
-		source_address: U256,
-		payload: BoundedVec<u8, ConstU32<32>>,
-	) -> EvmResult<bool> {
+		_handle: &mut impl PrecompileHandle,
+		_command_id: H256,
+		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		_payload: Bytes<MAX_PAYLOAD_BYTES>,
+	) -> EvmResult {
 		// CREATE HASH OF PAYLOAD
 		// - bytes32 payloadHash = keccak256(payload);
 
@@ -102,7 +108,7 @@ where
 		.unwrap();
 		 */
 
-		Ok(false)
+		Ok(())
 	}
 
 	// Mimics:
@@ -119,18 +125,18 @@ where
 	//     }
 	// Note: NOT SUPPORTED
 	//
-	#[precompile::public("forecallWithToken(address,uint256)")]
+	#[precompile::public("forecallWithToken(string,string,bytes,string,uint256,address)")]
 	fn forecall_with_token(
 		_handle: &mut impl PrecompileHandle,
-		_source_chain: U256,
-		_source_address: U256,
-		_payload: BoundedVec<u8, ConstU32<32>>,
-		_token_symbol: U256,
+		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		_payload: Bytes<MAX_PAYLOAD_BYTES>,
+		_token_symbol: String<MAX_TOKEN_SYMBOL_BYTES>,
 		_amount: U256,
 		_forecaller: Address,
-	) -> EvmResult<bool> {
+	) -> EvmResult {
 		// TODO: Check whether this is enough or if we should error out
-		Ok(false)
+		Ok(())
 	}
 
 	// Mimics:
@@ -148,17 +154,17 @@ where
 	//
 	// Note: NOT SUPPORTED
 	//
-	#[precompile::public("executeWithToken(address,uint256)")]
+	#[precompile::public("executeWithToken(bytes32,string,string,bytes,string,uint256)")]
 	fn execute_with_token(
 		_handle: &mut impl PrecompileHandle,
-		_command_id: U256,
-		_source_chain: U256,
-		_source_address: U256,
-		_payload: BoundedVec<u8, ConstU32<32>>,
-		_token_symbol: U256,
+		_command_id: H256,
+		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
+		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+		_payload: Bytes<MAX_PAYLOAD_BYTES>,
+		_token_symbol: String<MAX_TOKEN_SYMBOL_BYTES>,
 		_amount: U256,
-	) -> EvmResult<bool> {
+	) -> EvmResult {
 		// TODO: Check whether this is enough or if we should error out
-		Ok(false)
+		Ok(())
 	}
 }
