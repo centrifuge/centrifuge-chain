@@ -13,7 +13,7 @@
 
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use pallet_connectors_gateway::GatwayOrigin;
+use pallet_connectors_gateway::GatewayOrigin;
 use precompile_utils::prelude::*;
 use sp_core::{ConstU32, Get, H160, U256};
 

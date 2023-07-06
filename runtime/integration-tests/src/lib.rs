@@ -14,6 +14,7 @@
 #![cfg(test)]
 #![allow(unused)]
 
+mod connectors_gateway;
 mod pools;
 mod rewards;
 mod runtime_apis;

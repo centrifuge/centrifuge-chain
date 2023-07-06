@@ -191,12 +191,12 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |submitters| {
-				if submitters.iter().find(|s| s.eq(&&connector)).is_some() {
+			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |connectors| {
+				if connectors.iter().find(|s| s.eq(&&connector)).is_some() {
 					return Err(Error::<T>::ConnectorAlreadyAdded.into());
 				}
 
-				submitters
+				connectors
 					.try_push(connector.clone())
 					.map_err(|_| Error::<T>::MaxConnectorsReached)?;
 
@@ -209,18 +209,18 @@ pub mod pallet {
 		/// Remove a connector from a specific domain.
 		#[pallet::weight(< T as Config >::WeightInfo::remove_connector())]
 		#[pallet::call_index(2)]
-		pub fn remove_connector(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
+		pub fn remove_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
-			<ConnectorsAllowlist<T>>::try_mutate(submitter.domain(), |submitters| {
-				let index = submitters
+			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |connectors| {
+				let index = connectors
 					.iter()
-					.position(|s| s.eq(&submitter))
+					.position(|s| s.eq(&connector))
 					.ok_or(Error::<T>::ConnectorNotFound)?;
 
-				submitters.remove(index);
+				connectors.remove(index);
 
-				Self::deposit_event(Event::ConnectorRemoved(submitter));
+				Self::deposit_event(Event::ConnectorRemoved(connector));
 
 				Ok(())
 			})
