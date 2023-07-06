@@ -229,23 +229,22 @@ where
 	Runtime: pallet_collective::Config<Instance>,
 	Runtime::AccountId: From<AccountId32>,
 {
-	let default_accounts: Vec<Runtime::AccountId> = default_accounts()
-		.into_iter()
-		.map(|acc| acc.to_account_id().into())
-		.collect();
-
-	council_members::<Runtime, Instance>(default_accounts, storage)
+	council_members::<Runtime, Instance>(default_accounts(), storage)
 }
 
 /// Sets the provided account IDs as council members.
-pub fn council_members<Runtime, Instance>(members: Vec<Runtime::AccountId>, storage: &mut Storage)
+pub fn council_members<Runtime, Instance>(members: Vec<Keyring>, storage: &mut Storage)
 where
 	Instance: 'static,
 	Runtime: pallet_collective::Config<Instance>,
+	Runtime::AccountId: From<AccountId32>,
 {
 	pallet_collective::GenesisConfig::<Runtime, Instance> {
 		phantom: Default::default(),
-		members,
+		members: members
+			.into_iter()
+			.map(|acc| acc.to_account_id().into())
+			.collect(),
 	}
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Pallet collective genesis build is not allowed to fail")

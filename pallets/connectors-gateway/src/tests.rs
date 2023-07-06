@@ -114,7 +114,9 @@ mod add_connector {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert_eq!(storage_entry[0], domain_address);
 
-			event_exists(Event::<Runtime>::ConnectorAdded(domain_address));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address,
+			});
 		});
 	}
 
@@ -221,7 +223,9 @@ mod remove_connector {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert_eq!(storage_entry[0], domain_address);
 
-			event_exists(Event::<Runtime>::ConnectorAdded(domain_address.clone()));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address.clone(),
+			});
 
 			assert_ok!(ConnectorsGateway::remove_connector(
 				RuntimeOrigin::root(),
@@ -231,7 +235,9 @@ mod remove_connector {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert!(storage_entry.is_empty());
 
-			event_exists(Event::<Runtime>::ConnectorRemoved(domain_address.clone()));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address.clone(),
+			});
 		});
 	}
 
@@ -284,7 +290,9 @@ mod process_msg {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert_eq!(storage_entry[0], domain_address);
 
-			event_exists(Event::<Runtime>::ConnectorAdded(domain_address.clone()));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address.clone(),
+			});
 
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
@@ -366,7 +374,9 @@ mod process_msg {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert_eq!(storage_entry[0], domain_address);
 
-			event_exists(Event::<Runtime>::ConnectorAdded(domain_address.clone()));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address.clone(),
+			});
 
 			let encoded_msg: Vec<u8> = vec![11];
 
@@ -394,7 +404,9 @@ mod process_msg {
 			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
 			assert_eq!(storage_entry[0], domain_address);
 
-			event_exists(Event::<Runtime>::ConnectorAdded(domain_address.clone()));
+			event_exists(Event::<Runtime>::ConnectorAdded {
+				connector: domain_address.clone(),
+			});
 
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
