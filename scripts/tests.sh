@@ -18,8 +18,7 @@ cargo_action() {
     echo -e "$testing_prompt cargo $action -p $package $features"
     cargo $action -p $package $features
 
-    if [[ $1 -ne 0 ]]
-    then
+    if [[ $1 -ne 0 ]]; then
         echo "Aborting!"
         exit 1
     fi
@@ -33,7 +32,11 @@ if [[ -z "$start_from" ]]; then
     go=1
 fi
 
-cargo install cargo-workspaces
+cargo workspaces list > /dev/null
+if [[ $1 -ne 0 ]]; then
+    echo try: \'cargo install cargo-workspaces\' before using this crate
+fi
+
 
 for crate in $all_crates
 do
@@ -57,7 +60,7 @@ do
     cargo_action check $crate "-F runtime-benchmarks"
     cargo_action test $crate "-F runtime-benchmarks" --no-run
 
-    if [[ "$crate" == "runtime-integration-test" ]]; then
+    if [[ "$crate" == "runtime-integration-tests" ]]; then
         # runtime-integration-test does not have try-runtime feature
         continue
     fi
@@ -70,4 +73,4 @@ do
 done
 
 # Run all tests all
-cargo test -w -F runtime-benchmarks,try-runtime
+cargo test -workspace -F runtime-benchmarks,try-runtime
