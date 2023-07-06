@@ -63,7 +63,9 @@ pub fn execute_via_democracy(
 	original_call: RuntimeCall,
 	council_threshold: MemberCount,
 	voting_period: BlockNumber,
-) {
+	starting_prop_index: PropIndex,
+	starting_ref_index: ReferendumIndex,
+) -> (PropIndex, ReferendumIndex) {
 	let original_call_hash = BlakeTwo256::hash_of(&original_call);
 
 	env::run!(
@@ -90,7 +92,7 @@ pub fn execute_via_democracy(
 		&council_members,
 		external_propose_majority_call,
 		council_threshold,
-		0,
+		starting_prop_index,
 	);
 
 	let fast_track_call = fast_track(original_call_hash, voting_period, 0);
@@ -100,7 +102,7 @@ pub fn execute_via_democracy(
 		&council_members,
 		fast_track_call,
 		council_threshold,
-		1,
+		starting_prop_index + 1,
 	);
 
 	let vote = AccountVote::<Balance>::Standard {
@@ -111,7 +113,9 @@ pub fn execute_via_democracy(
 		balance: 1_000_000u128,
 	};
 
-	execute_democracy_vote(test_env, &council_members, 0, vote);
+	execute_democracy_vote(test_env, &council_members, starting_ref_index, vote);
+
+	(starting_prop_index + 2, starting_ref_index + 1)
 }
 
 fn execute_democracy_vote(

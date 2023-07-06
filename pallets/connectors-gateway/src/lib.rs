@@ -102,10 +102,10 @@ pub mod pallet {
 		DomainRouterSet { domain: Domain, router: T::Router },
 
 		/// A connector was added to a domain.
-		ConnectorAdded(DomainAddress),
+		ConnectorAdded { connector: DomainAddress },
 
 		/// A connector was removed from a domain.
-		ConnectorRemoved(DomainAddress),
+		ConnectorRemoved { connector: DomainAddress },
 	}
 
 	/// Storage for domain routers.
@@ -200,7 +200,7 @@ pub mod pallet {
 					.try_push(connector.clone())
 					.map_err(|_| Error::<T>::MaxConnectorsReached)?;
 
-				Self::deposit_event(Event::ConnectorAdded(connector));
+				Self::deposit_event(Event::ConnectorAdded { connector });
 
 				Ok(())
 			})
@@ -220,7 +220,7 @@ pub mod pallet {
 
 				connectors.remove(index);
 
-				Self::deposit_event(Event::ConnectorRemoved(connector));
+				Self::deposit_event(Event::ConnectorRemoved { connector });
 
 				Ok(())
 			})
