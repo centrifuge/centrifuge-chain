@@ -63,7 +63,7 @@ impl<T: Config> ActiveInterestRate<T> {
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		cache.current_debt(self.interest_rate, self.normalized_acc)
+		cache.current_debt(*self.interest_rate.rate_per_year(), self.normalized_acc)
 	}
 
 	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {

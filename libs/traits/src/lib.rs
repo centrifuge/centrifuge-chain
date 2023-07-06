@@ -301,6 +301,14 @@ pub enum InterestRate<Rate> {
 	},
 }
 
+impl<Rate> InterestRate<Rate> {
+	pub fn rate_per_year(&self) -> &Rate {
+		match self {
+			InterestRate::Fixed { rate_per_year, .. } => rate_per_year,
+		}
+	}
+}
+
 impl<Rate: EnsureAdd + EnsureSub> InterestRate<Rate> {
 	pub fn ensure_add(self, rate: Rate) -> Result<InterestRate<Rate>, ArithmeticError> {
 		match self {
@@ -382,7 +390,7 @@ pub trait RateCollection<Rate, Balance, NormalizedDebt> {
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
 		&self,
-		interest_rate_per_sec: Rate,
+		interest_rate_per_year: Rate,
 		normalized_debt: NormalizedDebt,
 	) -> Result<Balance, DispatchError>;
 }
