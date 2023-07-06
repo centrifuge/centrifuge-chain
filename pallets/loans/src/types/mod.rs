@@ -18,7 +18,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, Get},
+	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, Get},
 	ArithmeticError,
 };
 
@@ -85,25 +85,45 @@ pub enum MutationError {
 	DiscountedCashFlowExpected,
 	/// Emits when a modification expect the loan to have an iternal pricing.
 	InternalPricingExpected,
+	/// Maturity extensions exceed max extension allowed.
+	MaturityExtendedToMuch,
 }
 
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum Maturity {
 	/// Fixed point in time, in secs
-	Fixed(Moment),
+	Fixed {
+		/// Secs when maturity ends
+		date: Moment,
+		/// Date extension without special permissions
+		extension: Moment,
+	},
 }
 
 impl Maturity {
+	pub fn fixed(date: Moment) -> Self {
+		Self::Fixed { date, extension: 0 }
+	}
+
 	pub fn date(&self) -> Moment {
 		match self {
-			Maturity::Fixed(moment) => *moment,
+			Maturity::Fixed { date, .. } => *date,
 		}
 	}
 
 	pub fn is_valid(&self, now: Moment) -> bool {
 		match self {
-			Maturity::Fixed(moment) => *moment > now,
+			Maturity::Fixed { date, .. } => *date > now,
+		}
+	}
+
+	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
+		match self {
+			Maturity::Fixed { date, extension } => {
+				date.ensure_add_assign(value)?;
+				extension.ensure_sub_assign(value)
+			}
 		}
 	}
 }
@@ -186,6 +206,7 @@ pub enum InternalMutation<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
+	MaturityExtension(Moment),
 	InterestRate(Rate),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),

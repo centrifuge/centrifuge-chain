@@ -157,7 +157,10 @@ fn with_successful_mutation_application() {
 	new_test_ext().execute_with(|| {
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+				maturity: Maturity::Fixed {
+					date: (now() + YEAR).as_secs(),
+					extension: YEAR.as_secs(),
+				},
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
@@ -179,7 +182,11 @@ fn with_successful_mutation_application() {
 		let mutations = vec![
 			// LoanMutation::InterestPayments(..), No changes, only one variant
 			// LoanMutation::PayDownSchedule(..), No changes, only one variant
-			LoanMutation::Maturity(Maturity::Fixed((now() + YEAR * 2).as_secs())),
+			LoanMutation::Maturity(Maturity::Fixed {
+				date: (now() + YEAR * 2).as_secs(),
+				extension: (YEAR * 2).as_secs(),
+			}),
+			LoanMutation::MaturityExtension(YEAR.as_secs()),
 			LoanMutation::InterestRate(Rate::from_float(0.5)),
 			LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(Rate::from_float(
 				0.5,

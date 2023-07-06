@@ -439,6 +439,11 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn mutate_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
 		match mutation {
 			LoanMutation::Maturity(maturity) => self.schedule.maturity = maturity,
+			LoanMutation::MaturityExtension(extension) => self
+				.schedule
+				.maturity
+				.extends(extension)
+				.map_err(|_| Error::<T>::from(MutationError::MaturityExtendedToMuch))?,
 			LoanMutation::InterestRate(rate) => match &mut self.pricing {
 				ActivePricing::Internal(inner) => inner.interest.set_base_rate(rate)?,
 				ActivePricing::External(inner) => inner.interest.set_base_rate(rate)?,
@@ -458,6 +463,6 @@ impl<T: Config> ActiveLoan<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Moment) {
-		self.schedule.maturity = crate::types::Maturity::Fixed(duration);
+		self.schedule.maturity = crate::types::Maturity::fixed(duration);
 	}
 }

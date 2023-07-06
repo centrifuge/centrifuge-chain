@@ -88,7 +88,7 @@ fn with_wrong_schedule() {
 
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed(now().as_secs()),
+				maturity: Maturity::fixed(now().as_secs()),
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
