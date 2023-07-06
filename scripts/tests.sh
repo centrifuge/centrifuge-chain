@@ -47,7 +47,7 @@ do
     fi
 
     cargo_action check $crate
-    cargo_action test $crate
+    cargo_action test $crate --no-run
 
     if [[ "$crate" == "proofs" ]]; then
         # proofs does not have either try-runtime or runtime-benchmarks features
@@ -55,7 +55,7 @@ do
     fi
 
     cargo_action check $crate "-F runtime-benchmarks"
-    cargo_action test $crate "-F runtime-benchmarks"
+    cargo_action test $crate "-F runtime-benchmarks" --no-run
 
     if [[ "$crate" == "runtime-integration-test" ]]; then
         # runtime-integration-test does not have try-runtime feature
@@ -63,8 +63,11 @@ do
     fi
 
     cargo_action check $crate "-F try-runtime"
-    cargo_action test $crate "-F try-runtime"
+    cargo_action test $crate "-F try-runtime" --no-run
 
     cargo_action check $crate "-F runtime-benchmarks,try-runtime"
-    cargo_action test $crate "-F runtime-benchmarks,try-runtime"
+    cargo_action test $crate "-F runtime-benchmarks,try-runtime" --no-run
 done
+
+# Run all tests all
+cargo test -w -F runtime-benchmarks,try-runtime
