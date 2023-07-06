@@ -96,7 +96,7 @@ pub enum Maturity {
 	Fixed {
 		/// Secs when maturity ends
 		date: Moment,
-		/// Date extension without special permissions
+		/// Extension in secs, without special permissions
 		extension: Moment,
 	},
 }

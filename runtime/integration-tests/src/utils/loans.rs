@@ -115,7 +115,7 @@ pub fn issue_default_loan(
 ) -> Vec<RuntimeCall> {
 	let loan_info = LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed(maturity),
+			maturity: Maturity::fixed(maturity),
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
