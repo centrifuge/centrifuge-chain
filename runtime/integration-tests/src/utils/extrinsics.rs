@@ -64,9 +64,11 @@ pub fn xt_centrifuge(
 		(version.spec_version, version.transaction_version)
 	};
 
-	env.centrifuge
-		.with_state(|| sign_centrifuge(who, nonce, call, spec_version, tx_version, genesis_hash))
-		.map_err(|_| ())
+	let res = env
+		.centrifuge
+		.with_state(|| sign_centrifuge(who, nonce, call, spec_version, tx_version, genesis_hash));
+
+	res.map_err(|_| ())
 }
 
 /// Generates an signed-extrinisc for relay-chain.

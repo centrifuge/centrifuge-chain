@@ -22,6 +22,9 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
+pallet-preimage = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
@@ -92,6 +95,8 @@ pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-rewards = { path = "../../pallets/rewards" }
+pallet-connectors-gateway = { path = "../../pallets/connectors-gateway" }
+connectors-gateway-routers = { path="../../pallets/connectors-gateway/connectors-gateway-routers" }
 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

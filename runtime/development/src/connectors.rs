@@ -23,6 +23,7 @@ type ConnectorsMessage = pallet_connectors::Message<Domain, PoolId, TrancheId, B
 parameter_types! {
 	// TODO(cdamian): Double-check these.
 	pub const MaxConnectorsPerDomain: u32 = 10;
+	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
 impl pallet_connectors_gateway::Config for Runtime {
@@ -30,6 +31,7 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type InboundQueue = DummyInboundQueue;
 	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = ConnectorsMessage;
 	type Router = connectors_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

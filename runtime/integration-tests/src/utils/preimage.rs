@@ -10,27 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::CurrencyId;
+use codec::Encode;
+use pallet_preimage::Call as PreimageCall;
 
-pub mod accounts;
-pub mod collective;
-pub mod connectors_gateway;
-pub mod democracy;
-pub mod env;
-pub mod extrinsics;
-pub mod genesis;
-pub mod loans;
-pub mod logs;
-pub mod pools;
-pub mod preimage;
-pub mod time;
-pub mod tokens;
+use crate::chain::centrifuge::{Runtime, RuntimeCall};
 
-/// The relay native token's asset id
-pub const RELAY_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-/// The Glimmer asset id
-pub const GLIMMER_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1000);
-/// The AUSD asset id
-pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2000);
-/// The EVM Chain id of Moonbea
-pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
+pub fn note_preimage(call: &RuntimeCall) -> RuntimeCall {
+	let encoded_call = call.encode();
+
+	RuntimeCall::Preimage(PreimageCall::note_preimage {
+		bytes: encoded_call,
+	})
+}
