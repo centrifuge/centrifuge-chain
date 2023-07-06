@@ -19,7 +19,7 @@ use orml_traits::{DataFeeder, DataProvider};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{ChangeOf, Config, PoolIdOf, PriceResultOf};
+use crate::pallet::{ChangeOf, Config, PriceResultOf};
 
 const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
@@ -27,7 +27,7 @@ const DEFAULT_PRICE_ERR: DispatchError =
 /// Type used to configure the pallet without a price registry
 pub struct NoPriceRegistry<T>(PhantomData<T>);
 
-impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
+impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
 	type Collection = NoPriceCollection<T>;
 	type Data = PriceResultOf<T>;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -37,15 +37,15 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 		Err(DEFAULT_PRICE_ERR)
 	}
 
-	fn collection(_: &PoolIdOf<T>) -> Self::Collection {
+	fn collection(_: &T::PoolId) -> Self::Collection {
 		NoPriceCollection(PhantomData::default())
 	}
 
-	fn register_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
+	fn register_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {
 		Err(DEFAULT_PRICE_ERR)
 	}
 
-	fn unregister_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
+	fn unregister_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {
 		Err(DEFAULT_PRICE_ERR)
 	}
 }
@@ -81,13 +81,13 @@ pub struct NoLoanChanges<T>(PhantomData<T>);
 impl<T: Config> ChangeGuard for NoLoanChanges<T> {
 	type Change = ChangeOf<T>;
 	type ChangeId = T::Hash;
-	type PoolId = PoolIdOf<T>;
+	type PoolId = T::PoolId;
 
-	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<Self::ChangeId, DispatchError> {
+	fn note(_: T::PoolId, _: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 
-	fn released(_: PoolIdOf<T>, _: Self::ChangeId) -> Result<Self::Change, DispatchError> {
+	fn released(_: T::PoolId, _: Self::ChangeId) -> Result<Self::Change, DispatchError> {
 		Err(DEFAULT_CHANGE_ERR)
 	}
 }

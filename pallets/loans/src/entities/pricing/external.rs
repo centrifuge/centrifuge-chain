@@ -14,7 +14,7 @@ use sp_runtime::{
 
 use crate::{
 	entities::interest::ActiveInterestRate,
-	pallet::{Config, Error, PoolIdOf, PriceOf},
+	pallet::{Config, Error, PriceOf},
 };
 
 /// Define the max borrow amount of a loan
@@ -65,7 +65,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn activate(
 		info: ExternalPricing<T>,
 		interest_rate: T::Rate,
-		pool_id: PoolIdOf<T>,
+		pool_id: T::PoolId,
 	) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self {
@@ -77,7 +77,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn deactivate(
 		self,
-		pool_id: PoolIdOf<T>,
+		pool_id: T::PoolId,
 	) -> Result<(ExternalPricing<T>, T::Rate), DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
 		Ok((self.info, self.interest.deactivate()?))

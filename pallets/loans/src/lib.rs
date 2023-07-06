@@ -81,6 +81,7 @@ pub mod pallet {
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
+	use codec::HasCompact;
 	use entities::loans::{self, ActiveLoan, LoanInfo};
 	use frame_support::{
 		pallet_prelude::*,
@@ -113,13 +114,8 @@ pub mod pallet {
 
 	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
 		<T as Config>::PriceId,
-		PoolIdOf<T>,
+		<T as Config>::PoolId,
 	>>::Collection;
-
-	pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
-		<T as frame_system::Config>::AccountId,
-		<T as Config>::CurrencyId,
-	>>::PoolId;
 
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
@@ -199,19 +195,27 @@ pub mod pallet {
 		type NonFungible: Transfer<Self::AccountId>
 			+ Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>;
 
+		/// The PoolId type
+		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+
 		/// Access to the pool
-		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
+		type Pool: PoolReserve<
+			Self::AccountId,
+			Self::CurrencyId,
+			Balance = Self::Balance,
+			PoolId = Self::PoolId,
+		>;
 
 		/// Used to verify permissions of users
 		type Permissions: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
+			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
 			Role = Role,
 			Error = DispatchError,
 		>;
 
 		/// Used to fetch and update Oracle prices
-		type PriceRegistry: DataRegistry<Self::PriceId, PoolIdOf<Self>, Data = PriceResultOf<Self>>;
+		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceResultOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -224,7 +228,7 @@ pub mod pallet {
 		/// Used to notify the runtime about changes that require special
 		/// treatment.
 		type ChangeGuard: ChangeGuard<
-			PoolId = PoolIdOf<Self>,
+			PoolId = Self::PoolId,
 			ChangeId = Self::Hash,
 			Change = Self::RuntimeChange,
 		>;
@@ -244,14 +248,14 @@ pub mod pallet {
 	/// Contains the last loan id generated
 	#[pallet::storage]
 	pub(crate) type LastLoanId<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, T::LoanId, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, T::LoanId, ValueQuery>;
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
 	pub(crate) type CreatedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		PoolIdOf<T>,
+		T::PoolId,
 		Blake2_128Concat,
 		T::LoanId,
 		loans::CreatedLoan<T>,
@@ -268,7 +272,7 @@ pub mod pallet {
 	pub(crate) type ActiveLoans<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
-		PoolIdOf<T>,
+		T::PoolId,
 		BoundedVec<(T::LoanId, ActiveLoan<T>), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
@@ -280,7 +284,7 @@ pub mod pallet {
 	pub(crate) type ClosedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		PoolIdOf<T>,
+		T::PoolId,
 		Blake2_128Concat,
 		T::LoanId,
 		loans::ClosedLoan<T>,
@@ -292,7 +296,7 @@ pub mod pallet {
 	pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
-		PoolIdOf<T>,
+		T::PoolId,
 		BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		ValueQuery,
 	>;
@@ -303,7 +307,7 @@ pub mod pallet {
 	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
-		PoolIdOf<T>,
+		T::PoolId,
 		portfolio::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
 		ValueQuery,
 		InitialPortfolioValuation<T::Time>,
@@ -314,48 +318,48 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A loan was created
 		Created {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			loan_info: LoanInfo<T>,
 		},
 		/// An amount was borrowed for a loan
 		Borrowed {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: T::Balance,
 		},
 		/// An amount was repaid for a loan
 		Repaid {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: RepaidAmount<T::Balance>,
 		},
 		/// A loan was written off
 		WrittenOff {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			status: WriteOffStatus<T::Rate>,
 		},
 		/// An active loan was mutated
 		Mutated {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			mutation: LoanMutation<T::Rate>,
 		},
 		/// A loan was closed
 		Closed {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
 		},
 		/// The Portfolio Valuation for a pool was updated.
 		PortfolioValuationUpdated {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			valuation: T::Balance,
 			update_type: PortfolioValuationUpdateType,
 		},
 		WriteOffPolicyUpdated {
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 	}
@@ -446,7 +450,7 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		pub fn create(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			info: LoanInfo<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -483,7 +487,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn borrow(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: T::Balance,
 		) -> DispatchResult {
@@ -532,7 +536,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn repay(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: RepaidAmount<T::Balance>,
 		) -> DispatchResult {
@@ -573,7 +577,7 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		pub fn write_off(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -610,7 +614,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
 			penalty: T::Rate,
@@ -647,7 +651,7 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		pub fn propose_loan_mutation(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			mutation: LoanMutation<T::Rate>,
 		) -> DispatchResult {
@@ -675,7 +679,7 @@ pub mod pallet {
 		#[pallet::call_index(6)]
 		pub fn apply_loan_mutation(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			change_id: T::Hash,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -706,7 +710,7 @@ pub mod pallet {
 		#[pallet::call_index(7)]
 		pub fn close(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -743,7 +747,7 @@ pub mod pallet {
 		#[pallet::call_index(8)]
 		pub fn propose_write_off_policy(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -762,7 +766,7 @@ pub mod pallet {
 		#[pallet::call_index(9)]
 		pub fn apply_write_off_policy(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			change_id: T::Hash,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -785,7 +789,7 @@ pub mod pallet {
 		#[pallet::call_index(10)]
 		pub fn update_portfolio_valuation(
 			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
@@ -805,7 +809,7 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
-		fn ensure_role(pool_id: PoolIdOf<T>, who: &T::AccountId, role: PoolRole) -> DispatchResult {
+		fn ensure_role(pool_id: T::PoolId, who: &T::AccountId, role: PoolRole) -> DispatchResult {
 			T::Permissions::has(
 				PermissionScope::Pool(pool_id),
 				who.clone(),
@@ -831,7 +835,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn ensure_pool_exists(pool_id: PoolIdOf<T>) -> DispatchResult {
+		fn ensure_pool_exists(pool_id: T::PoolId) -> DispatchResult {
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
 			Ok(())
 		}
@@ -849,7 +853,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn generate_loan_id(pool_id: PoolIdOf<T>) -> Result<T::LoanId, ArithmeticError> {
+		fn generate_loan_id(pool_id: T::PoolId) -> Result<T::LoanId, ArithmeticError> {
 			LastLoanId::<T>::try_mutate(pool_id, |last_loan_id| {
 				last_loan_id.ensure_add_assign(One::one())?;
 				Ok(*last_loan_id)
@@ -857,7 +861,7 @@ pub mod pallet {
 		}
 
 		fn find_write_off_rule(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
@@ -865,7 +869,7 @@ pub mod pallet {
 		}
 
 		fn get_released_change(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			change_id: T::Hash,
 		) -> Result<ChangeOf<T>, DispatchError> {
 			T::ChangeGuard::released(pool_id, change_id)?
@@ -874,7 +878,7 @@ pub mod pallet {
 		}
 
 		fn update_portfolio_valuation_for_pool(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
 			let prices = T::PriceRegistry::collection(&pool_id);
@@ -898,7 +902,7 @@ pub mod pallet {
 		}
 
 		fn insert_active_loan(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
@@ -922,7 +926,7 @@ pub mod pallet {
 		}
 
 		fn update_active_loan<F, R>(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			f: F,
 		) -> Result<(R, u32), DispatchError>
@@ -952,7 +956,7 @@ pub mod pallet {
 		}
 
 		fn take_active_loan(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
@@ -969,7 +973,7 @@ pub mod pallet {
 		}
 
 		fn get_active_loan(
-			pool_id: PoolIdOf<T>,
+			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
 			let active_loans = ActiveLoans::<T>::get(pool_id);
@@ -984,7 +988,7 @@ pub mod pallet {
 
 		#[cfg(feature = "runtime-benchmarks")]
 		/// Set the maturity date of the loan to this instant.
-		pub fn expire(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> DispatchResult {
+		pub fn expire(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.set_maturity(T::Time::now().as_secs());
 				Ok(())
@@ -994,23 +998,23 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T>
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
 	where
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	{
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
-		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
+		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Moment)> {
 			let portfolio = PortfolioValuation::<T>::get(pool_id);
 			Some((portfolio.value(), portfolio.last_updated()))
 		}
 
-		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
 			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
 		}
 
-		fn initialise(_: OriginFor<T>, _: PoolIdOf<T>, _: T::ItemId) -> DispatchResult {
+		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
 			// This Loans implementation does not need to initialize explicitally.
 			Ok(())
 		}

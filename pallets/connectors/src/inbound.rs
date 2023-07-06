@@ -25,7 +25,7 @@ use sp_runtime::{
 	DispatchResult,
 };
 
-use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Pallet, PoolIdOf, TrancheIdOf};
+use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Pallet};
 
 impl<T: Config> Pallet<T> {
 	/// Executes a transfer from another domain exclusively for
@@ -51,8 +51,8 @@ impl<T: Config> Pallet<T> {
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
 	pub fn handle_tranche_tokens_transfer(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		sending_domain: DomainAddress,
 		receiver: T::AccountId,
 		amount: <T as Config>::Balance,
@@ -86,8 +86,8 @@ impl<T: Config> Pallet<T> {
 	/// Directly mints the additional investment amount into the investor
 	/// account.
 	pub fn handle_increase_invest_order(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
@@ -115,8 +115,8 @@ impl<T: Config> Pallet<T> {
 	/// delayed until the execution of the investment, e.g. at least until the
 	/// next epoch transition.
 	pub fn handle_decrease_invest_order(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
@@ -151,8 +151,8 @@ impl<T: Config> Pallet<T> {
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
 	pub fn handle_increase_redemption(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		amount: <T as Config>::Balance,
 		sending_domain: DomainAddress,
@@ -185,8 +185,8 @@ impl<T: Config> Pallet<T> {
 	/// delayed until the execution of the redemption, e.g. at least until the
 	/// next epoch transition.
 	pub fn handle_decrease_redemption(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
@@ -219,8 +219,8 @@ impl<T: Config> Pallet<T> {
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
 	pub fn handle_collect_investment(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
@@ -237,8 +237,8 @@ impl<T: Config> Pallet<T> {
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
 	pub fn handle_collect_redemption(
-		pool_id: PoolIdOf<T>,
-		tranche_id: TrancheIdOf<T>,
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;

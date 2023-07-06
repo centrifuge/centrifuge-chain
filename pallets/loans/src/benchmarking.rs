@@ -65,7 +65,7 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 
 type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
 	<T as Config>::PriceId,
-	PoolIdOf<T>,
+	<T as Config>::PoolId,
 >>::MaxCollectionSize;
 
 #[cfg(test)]
@@ -100,11 +100,11 @@ where
 	T::ItemId: From<u16>,
 	T::PriceId: From<u32>,
 	T::Pool:
-		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+		PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 {
-	fn prepare_benchmark() -> PoolIdOf<T> {
+	fn prepare_benchmark() -> T::PoolId {
 		#[cfg(test)]
 		config_mocks();
 
@@ -161,7 +161,7 @@ where
 		}
 	}
 
-	fn create_loan(pool_id: PoolIdOf<T>, item_id: T::ItemId) -> T::LoanId {
+	fn create_loan(pool_id: T::PoolId, item_id: T::ItemId) -> T::LoanId {
 		let borrower = account("borrower", 0, 0);
 
 		T::NonFungible::mint_into(&COLLECION_ID.into(), &item_id, &borrower).unwrap();
@@ -176,7 +176,7 @@ where
 		LastLoanId::<T>::get(pool_id)
 	}
 
-	fn borrow_loan(pool_id: PoolIdOf<T>, loan_id: T::LoanId) {
+	fn borrow_loan(pool_id: T::PoolId, loan_id: T::LoanId) {
 		let borrower = account("borrower", 0, 0);
 		Pallet::<T>::borrow(
 			RawOrigin::Signed(borrower).into(),
@@ -187,7 +187,7 @@ where
 		.unwrap();
 	}
 
-	fn fully_repay_loan(pool_id: PoolIdOf<T>, loan_id: T::LoanId) {
+	fn fully_repay_loan(pool_id: T::PoolId, loan_id: T::LoanId) {
 		let borrower = account("borrower", 0, 0);
 		Pallet::<T>::repay(
 			RawOrigin::Signed(borrower).into(),
@@ -206,7 +206,7 @@ where
 		LoanMutation::InterestPayments(InterestPayments::None)
 	}
 
-	fn propose_mutation(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> T::Hash {
+	fn propose_mutation(pool_id: T::PoolId, loan_id: T::LoanId) -> T::Hash {
 		let pool_admin = account::<T::AccountId>("loan_admin", 0, 0);
 
 		Pallet::<T>::propose_loan_mutation(
@@ -241,7 +241,7 @@ where
 		.unwrap()
 	}
 
-	fn propose_policy(pool_id: PoolIdOf<T>) -> T::Hash {
+	fn propose_policy(pool_id: T::PoolId) -> T::Hash {
 		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
 		Pallet::<T>::propose_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
@@ -256,7 +256,7 @@ where
 		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(Self::create_policy()).into()).unwrap()
 	}
 
-	fn set_policy(pool_id: PoolIdOf<T>) {
+	fn set_policy(pool_id: T::PoolId) {
 		let change_id = Self::propose_policy(pool_id);
 
 		let any = account::<T::AccountId>("any", 0, 0);
@@ -264,11 +264,11 @@ where
 			.unwrap();
 	}
 
-	fn expire_loan(pool_id: PoolIdOf<T>, loan_id: T::LoanId) {
+	fn expire_loan(pool_id: T::PoolId, loan_id: T::LoanId) {
 		Pallet::<T>::expire(pool_id, loan_id).unwrap();
 	}
 
-	fn initialize_active_state(n: u32) -> PoolIdOf<T> {
+	fn initialize_active_state(n: u32) -> T::PoolId {
 		let pool_id = Self::prepare_benchmark();
 
 		for i in 1..MaxRateCountOf::<T>::get() {
@@ -309,7 +309,7 @@ benchmarks! {
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
-		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+		T::Pool: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 		T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 	}

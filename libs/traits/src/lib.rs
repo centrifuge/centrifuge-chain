@@ -119,32 +119,33 @@ pub trait PoolNAV<PoolId, Amount> {
 /// A trait that support pool inspection operations such as pool existence
 /// checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter
-		+ Member
-		+ Debug
-		+ Copy
-		+ Default
-		+ TypeInfo
-		+ Encode
-		+ Decode
-		+ MaxEncodedLen;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+	type PoolId;
+	type TrancheId;
 	type Rate;
 	type Moment;
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
-	fn get_tranche_token_price(
-		pool_id: Self::PoolId,
-		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 
 	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
 
-	// Get the currency used for the given `pool_id`.
+	/// Get the currency used for the given `pool_id`.
 	fn currency_for(pool_id: Self::PoolId) -> Option<CurrencyId>;
+}
+
+/// Get the latest price for a given tranche token
+pub trait TrancheTokenPrice<AccountId, CurrencyId> {
+	type PoolId;
+	type TrancheId;
+	type Rate;
+	type Moment;
+
+	fn get(
+		pool_id: Self::PoolId,
+		tranche_id: Self::TrancheId,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
 /// Variants for valid Pool updates to send out as events
