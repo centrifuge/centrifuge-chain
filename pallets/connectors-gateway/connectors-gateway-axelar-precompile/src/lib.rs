@@ -108,7 +108,7 @@ where
 				pallet_connectors_gateway::GatewayOrigin::Local(ConvertSource::convert((
 					source_chain.as_bytes().to_vec(),
 					source_address.as_bytes().to_vec(),
-				))?)
+				)))
 				.into(),
 				msg,
 			)
@@ -197,8 +197,8 @@ where
 		let mut bytes = Vec::new();
 		bytes.extend_from_slice(key.as_bytes());
 
-		let mut be_bytes: [u8; 32] = [0u8; 32];
 		// TODO: Is endnianess correct here?
+		let mut be_bytes: [u8; 32] = [0u8; 32];
 		slot.to_big_endian(&mut be_bytes);
 		bytes.extend_from_slice(&be_bytes);
 
