@@ -14,7 +14,7 @@ res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 # Changes to specific pallets
 ## Connectors related logic
-pallets/connectors/* @NunoAlexandre @offerijns
+pallets/connectors/* @NunoAlexandre @offerijns @wischli
 
 ## Rewards related logic
 pallets/rewards/* @lemunozm @mikiquantum
@@ -34,7 +34,7 @@ pallets/pool-registry/* @mustermeiszer
 pallets/pool-system/* @mustermeiszer @branan @offerijns
 
 ## Pallet Pool-System
-pallets/loans-ref/* @mustermeiszer @branan @offerijns @lemunozm
+pallets/loans/* @mustermeiszer @branan @offerijns @lemunozm
 
 ## Pallet Interest-Accrual
 pallets/interest-accrual/* @branan @lemunozm
@@ -49,7 +49,10 @@ pallets/permissions/* @mustermeiszer
 pallets/restricted-tokens/* @mustermeiszer
 
 ## Pallet Collection-Data-Feed
-pallets/collection-data-feed/* @lemunozm
+pallets/data-collector/* @lemunozm
+
+## Pallet Collection-Data-Feed
+pallets/fees/* @lemunozm @mikiquantum
 
 # Changes to libs
 ## Changes to specific libraries
@@ -57,17 +60,18 @@ pallets/collection-data-feed/* @lemunozm
 ### mock-builder crate
 libs/mock-builder/* @lemunozm
 
-### cfg-traits crate
-#### rewards module
-libs/traits/src/rewards.rs @lemunozm
+### cfg-mocks crate
+libs/mocks/* @lemunozm
 
-#### rewards module
+### cfg-traits crate
+libs/traits/src/rewards.rs @lemunozm
+libs/traits/src/changes.rs @lemunozm
 libs/traits/src/data.rs @lemunozm
 
-#### ensure module
-libs/traits/src/ops.rs @lemunozm
-
 # Changes to runtime
+## Changes to runtime-common
+runtime/common/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns @lemunozm
+
 ## Changes to centrifuge-runtime
 runtime/altair/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns
 
@@ -79,7 +83,7 @@ runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerij
 runtime/integration-tests/* @mustermeiszer @NunoAlexandre
 
 ### Changes to runtime/integration-tests/rewards
-runtime/integration-tests/rewards/* @wischli
+runtime/integration-tests/rewards/* @wischli @lemunozm
 
 ### Changes to runtime/integration-tests/xcm/
 runtime/integration-tests/xcm/* @NunoAlexandre
