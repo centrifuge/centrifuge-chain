@@ -16,7 +16,7 @@ use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use precompile_utils::prelude::*;
 use sp_core::{ConstU32, Get, H160, H256, U256};
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
@@ -45,8 +45,10 @@ where
 	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin:
 		From<pallet_connectors_gateway::GatewayOrigin>,
 	Axelar: Get<H160>,
-	ConvertSource:
-		sp_runtime::traits::Convert<(Vec<u8>, Vec<u8>), cfg_types::domain_address::DomainAddress>,
+	ConvertSource: sp_runtime::traits::Convert<
+		(Vec<u8>, Vec<u8>),
+		Result<cfg_types::domain_address::DomainAddress, EvmResult>,
+	>,
 {
 	// Mimics:
 	//
@@ -121,7 +123,7 @@ where
 				pallet_connectors_gateway::GatewayOrigin::Local(ConvertSource::convert((
 					source_chain.as_bytes().to_vec(),
 					source_address.as_bytes().to_vec(),
-				)))
+				))?)
 				.into(),
 				payload.into(),
 			)
@@ -238,8 +240,8 @@ where
 		let mut bytes = Vec::new();
 		bytes.extend_from_slice(key.as_bytes());
 
-		// TODO: Is endnianess correct here?
 		let mut be_bytes: [u8; 32] = [0u8; 32];
+		// TODO: Is endnianess correct here?
 		slot.to_big_endian(&mut be_bytes);
 		bytes.extend_from_slice(&be_bytes);
 
