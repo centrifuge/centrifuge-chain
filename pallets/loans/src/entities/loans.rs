@@ -443,7 +443,7 @@ impl<T: Config> ActiveLoan<T> {
 				.schedule
 				.maturity
 				.extends(extension)
-				.map_err(|_| Error::<T>::from(MutationError::MaturityExtendedToMuch))?,
+				.map_err(|_| Error::<T>::from(MutationError::MaturityExtendedTooMuch))?,
 			LoanMutation::InterestRate(rate) => match &mut self.pricing {
 				ActivePricing::Internal(inner) => inner.interest.set_base_rate(rate)?,
 				ActivePricing::External(inner) => inner.interest.set_base_rate(rate)?,

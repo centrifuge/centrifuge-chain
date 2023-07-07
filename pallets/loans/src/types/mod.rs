@@ -86,7 +86,7 @@ pub enum MutationError {
 	/// Emits when a modification expect the loan to have an iternal pricing.
 	InternalPricingExpected,
 	/// Maturity extensions exceed max extension allowed.
-	MaturityExtendedToMuch,
+	MaturityExtendedTooMuch,
 }
 
 /// Specify the expected repayments date
