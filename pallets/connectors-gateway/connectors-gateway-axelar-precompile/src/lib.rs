@@ -30,9 +30,12 @@ pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-ap
 
 /// Precompile implementing IAxelarForecallable.
 /// MUST be used as the receiver of calls over the Axelar bridge.
-/// - `Axelar` defines the address of our local Axelar bridge contract.
-/// - `ConvertSourceChain` converts an string carrying an Axelar chain
-///   identifier and creates an EVMChainId from that
+/// - `Axelar` defines the address of our local Axelar bridge contract
+///   (AxelarGatewayProxy.sol).
+/// - `ConvertSource` converts a Tuple `(String, String)` and tries to convert
+///   this into a `DomainAddress`.
+///    - First string: Defines `sourceChain`
+///    - Second string: Defines `sourceAddress`
 pub struct AxelarForecallable<Runtime, Axelar, ConvertSource>(
 	core::marker::PhantomData<(Runtime, Axelar, ConvertSource)>,
 );
