@@ -50,7 +50,7 @@ where
 	Axelar: Get<H160>,
 	ConvertSource: sp_runtime::traits::Convert<
 		(Vec<u8>, Vec<u8>),
-		Result<cfg_types::domain_address::DomainAddress, EvmResult>,
+		Result<cfg_types::domain_address::DomainAddress, DispatchError>,
 	>,
 {
 	// Mimics:
