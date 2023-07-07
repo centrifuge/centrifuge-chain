@@ -12,6 +12,9 @@ src/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 # Changes to chain-specs
 res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
+# Changes to toml files
+*.toml @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm @wischli
+
 # Changes to specific pallets
 ## Connectors related logic
 pallets/connectors/* @NunoAlexandre @offerijns @wischli
