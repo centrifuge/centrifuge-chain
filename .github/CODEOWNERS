@@ -17,7 +17,7 @@ res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 # Changes to specific pallets
 ## Connectors related logic
-pallets/connectors/* @NunoAlexandre @offerijns @wischli
+pallets/connectors/* @NunoAlexandre @cdamian @wischli @mustermeiszer
 
 ## Rewards related logic
 pallets/rewards/* @lemunozm @mikiquantum
