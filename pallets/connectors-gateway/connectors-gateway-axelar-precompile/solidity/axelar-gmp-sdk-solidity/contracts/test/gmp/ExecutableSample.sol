@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 
+<<<<<<< Updated upstream
 pragma solidity 0.8.9;
+=======
+pragma solidity ^0.8.18;
+>>>>>>> Stashed changes
 
 import { ExpressExecutable } from '../../express/ExpressExecutable.sol';
 import { IAxelarGateway } from '../../interfaces/IAxelarGateway.sol';
