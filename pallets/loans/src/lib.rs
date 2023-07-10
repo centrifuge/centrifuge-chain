@@ -46,6 +46,7 @@ pub mod migrations {
 
 /// High level types that uses `pallet::Config`
 pub mod entities {
+	pub mod balance;
 	pub mod interest;
 	pub mod loans;
 	pub mod pricing;

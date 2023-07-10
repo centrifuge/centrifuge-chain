@@ -55,7 +55,7 @@ pub struct ExternalActivePricing<T: Config> {
 	info: ExternalPricing<T>,
 
 	/// Outstanding quantity that should be repaid.
-	outstanding_quantity: T::Balance,
+	outstanding_quantity: Natural<T::Balance>,
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,

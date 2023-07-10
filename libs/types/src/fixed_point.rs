@@ -18,7 +18,7 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
+use codec::{CompactAs, Decode, Encode, Error, Input, MaxEncodedLen};
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
@@ -427,8 +427,6 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 /// A fixed point number representation in the range.
 #[doc = "_Fixed Point 128 bits unsigned with 27 precision for Rate"]
 #[derive(
-	Encode,
-	Decode,
 	CompactAs,
 	Default,
 	Copy,
@@ -440,7 +438,39 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	scale_info::TypeInfo,
 	MaxEncodedLen,
 )]
-pub struct Rate(u128);
+pub struct Rate<const DIV: u128 = 1_000_000_000_000_000_000_000_000_000u128>(u128);
+
+impl<const DIV: u128> Decode for Rate<DIV> {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+		todo!()
+	}
+}
+
+impl<const DIV: u128> Encode for Rate<DIV> {
+	fn size_hint(&self) -> usize {
+		0
+	}
+
+	fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+		self.using_encoded(|buf| dest.write(buf));
+	}
+
+	fn encode(&self) -> Vec<u8> {
+		let mut r = Vec::with_capacity(self.size_hint());
+		self.encode_to(&mut r);
+		r
+	}
+
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		f(&self.encode())
+	}
+
+	fn encoded_size(&self) -> usize {
+		let mut size_tracker = SizeTracker { written: 0 };
+		self.encode_to(&mut size_tracker);
+		size_tracker.written
+	}
+}
 
 impl From<u128> for Rate {
 	fn from(int: u128) -> Self {
@@ -454,10 +484,10 @@ impl<N: FixedPointOperand, D: FixedPointOperand> From<(N, D)> for Rate {
 	}
 }
 
-impl FixedPointNumber for Rate {
+impl<const DIV: u128> FixedPointNumber for Rate<DIV> {
 	type Inner = u128;
 
-	const DIV: Self::Inner = 1_000_000_000_000_000_000_000_000_000;
+	const DIV: Self::Inner = DIV;
 	const SIGNED: bool = false;
 
 	fn from_inner(inner: Self::Inner) -> Self {
