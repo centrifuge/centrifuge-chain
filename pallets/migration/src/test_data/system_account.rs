@@ -24009,6 +24009,7 @@ pub const SYSTEM_ACCOUNT: [AccountKeyValue; 1715] = [
 	},
 ];
 
+#[derive(Clone)]
 pub struct AccountKeyValue {
 	pub key: [u8; 80],
 	pub value: [u8; 80],

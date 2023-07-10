@@ -40,6 +40,11 @@ pallet-evm = { git = "https://github.com/PureStake/frontier", default-features =
 pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
+# There is a bug in the frontier repo that adds pallet-ethereum without a try-runtime dependency
+# for this crate which makes our compilation fail with the i_know_what_i_am_doing error.
+# It seem fixed in 0.9.39, and this dependency can be removed from this file safely.
+fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -89,6 +94,7 @@ std = [
   "serde/std",
   "scale-info/std",
   "xcm/std",
+  "fp-self-contained/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -132,4 +138,5 @@ try-runtime = [
   "sp-runtime/try-runtime",
   "pallet-ethereum/try-runtime",
   "pallet-evm-chain-id/try-runtime",
+  "fp-self-contained/try-runtime",
 ]
