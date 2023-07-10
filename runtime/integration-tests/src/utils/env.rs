@@ -95,6 +95,11 @@ pub mod macros {
 						.with_state(|| frame_system::Pallet::<Runtime>::block_number())
 						.expect("Failed retrieving latest block");
 
+				if latest == 0 {
+					$env.evolve().unwrap();
+					continue
+				}
+
 				let scale_events = $env
 					.events($chain, EventRange::One(latest))
 					.expect("Failed fetching events");
@@ -124,8 +129,7 @@ pub mod macros {
 					break
 				}
 
-				let evolve_res = $env.evolve();
-				assert_ok!(evolve_res);
+				$env.evolve().unwrap();
 			}
 
 			let scale_events = $env.events($chain, EventRange::All).expect("Failed fetching events");
@@ -274,13 +278,13 @@ pub mod macros {
 			};
 
 			let mut searched_events = Vec::new();
-			for record in event_records {
+			for record in event_records.clone() {
 				if matches(&record.event) {
 					searched_events.push(record.event);
 				}
 			}
 
-			searched_events
+			(searched_events, event_records)
 		}};
 	}
 

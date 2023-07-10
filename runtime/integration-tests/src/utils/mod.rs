@@ -17,6 +17,7 @@ pub mod collective;
 pub mod connectors_gateway;
 pub mod democracy;
 pub mod env;
+pub mod evm;
 pub mod extrinsics;
 pub mod genesis;
 pub mod loans;
