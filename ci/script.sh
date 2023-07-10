@@ -37,7 +37,7 @@ case $TARGET in
     ;;
 
   tests)
-    cargo test --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   integration)
