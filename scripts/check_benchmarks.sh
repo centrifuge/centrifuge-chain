@@ -35,7 +35,7 @@ else
 fi
 
 # We use the same features as CI tests to reuse the artifacts
-cargo build -p centrifuge-chain --release --features runtime-benchmarks,try-runtime,fast-benchmarks
+cargo build -p centrifuge-chain --release --features runtime-benchmarks,try-runtime,fast-runtime
 
 
 all_pallets=$(
