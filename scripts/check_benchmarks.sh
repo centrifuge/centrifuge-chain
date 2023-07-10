@@ -34,7 +34,9 @@ else
   exit 1;
 fi
 
-cargo build -p centrifuge-chain --release --features runtime-benchmarks
+# We use the same features as CI tests to reuse the artifacts
+cargo build -p centrifuge-chain --release --features runtime-benchmarks,try-runtime,fast-benchmarks
+
 
 all_pallets=$(
   ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq
