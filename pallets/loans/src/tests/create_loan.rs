@@ -131,10 +131,7 @@ fn with_wrong_interest_rate() {
 		config_mocks(POOL_A);
 
 		let loan = LoanInfo {
-			pricing: Pricing::Internal(InternalPricing {
-				interest_rate: Rate::from_float(3.0), // Too high
-				..util::base_internal_pricing()
-			}),
+			interest_rate: Rate::from_float(3.0), // Too high
 			..util::base_internal_loan()
 		};
 
@@ -153,7 +150,7 @@ fn with_unregister_price_id() {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
-				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
+				..util::base_external_pricing()
 			}),
 			..util::base_external_loan()
 		};

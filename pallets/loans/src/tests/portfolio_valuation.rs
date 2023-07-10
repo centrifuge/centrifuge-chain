@@ -127,7 +127,7 @@ fn filled_and_cleaned() {
 			..util::base_internal_loan()
 		});
 		util::borrow_loan(loan_2, COLLATERAL_VALUE);
-		util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
+		util::repay_loan(loan_2, COLLATERAL_VALUE / 2);
 
 		advance_time(YEAR + DAY);
 
@@ -136,7 +136,7 @@ fn filled_and_cleaned() {
 		advance_time(YEAR / 2);
 
 		util::repay_loan(loan_1, amount);
-		util::repay_loan(loan_2, COLLATERAL_VALUE * 2);
+		util::repay_loan(loan_2, COLLATERAL_VALUE / 2);
 
 		advance_time(YEAR / 2);
 

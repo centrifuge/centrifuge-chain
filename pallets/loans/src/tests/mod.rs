@@ -20,8 +20,8 @@ use super::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowLoanError, BorrowRestrictions, Change, CloseLoanError, CreateLoanError,
 		InterestPayments, InternalMutation, LoanMutation, LoanRestrictions, Maturity,
-		MutationError, PayDownSchedule, RepayLoanError, RepayRestrictions, RepaymentSchedule,
-		WrittenOffError,
+		MutationError, PayDownSchedule, RepaidAmount, RepayLoanError, RepayRestrictions,
+		RepaymentSchedule, WrittenOffError,
 	},
 };
 
