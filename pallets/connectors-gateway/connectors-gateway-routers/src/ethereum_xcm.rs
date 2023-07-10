@@ -56,7 +56,7 @@ where
 
 		pallet_xcm_transactor::Pallet::<T>::set_fee_per_second(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
-			self.xcm_domain.location.clone(),
+			self.xcm_domain.fee_asset_location.clone(),
 			self.xcm_domain.fee_per_second,
 		)
 	}
@@ -197,7 +197,7 @@ pub(crate) fn get_xcm_router_contract() -> Contract {
 /// calls to a specific XCM-based Domain.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 pub struct XcmDomain<CurrencyId> {
-	/// The xcm multilocation of the domain
+	/// The XCM multilocation of the domain
 	pub location: Box<VersionedMultiLocation>,
 	/// The ethereum_xcm::Call::transact call index on a given domain.
 	/// It should contain the pallet index + the `transact` call index, to which
@@ -207,16 +207,18 @@ pub struct XcmDomain<CurrencyId> {
 		BoundedVec<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>,
 	/// The ConnectorsXcmRouter contract address on a given domain
 	pub contract_address: H160,
-	/// The currency in which execution fees will be paid on
-	pub fee_currency: CurrencyId,
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
 	/// The XCM transact info that will be stored in the
 	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
 	pub transact_info: XcmTransactInfo,
+	/// The currency in which execution fees will be paid on
+	pub fee_currency: CurrencyId,
 	/// The fee per second that will be stored in the
 	/// `DestinationAssetFeePerSecond` storage of the XCM transactor pallet.
 	pub fee_per_second: u128,
+	/// The location of the asset used for paying XCM fees.
+	pub fee_asset_location: Box<VersionedMultiLocation>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -239,7 +241,9 @@ where
 	fn max_encoded_len() -> usize {
 		// The domain's `VersionedMultiLocation` (custom bound)
 		MultiLocation::max_encoded_len()
-			// From the enum wrapping of `VersionedMultiLocation`
+			// From the enum wrapping of `VersionedMultiLocation` for the XCM domain location.
+			.saturating_add(1)
+			// From the enum wrapping of `VersionedMultiLocation` for the asset fee location.
 			.saturating_add(1)
 			// The ethereum xcm call index (default bound)
 			.saturating_add(BoundedVec::<

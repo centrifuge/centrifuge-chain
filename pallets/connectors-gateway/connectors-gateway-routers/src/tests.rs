@@ -1,4 +1,5 @@
 use cfg_mocks::MessageMock;
+use cfg_primitives::CFG;
 use cfg_traits::connectors::{Codec, Router};
 use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
@@ -30,7 +31,7 @@ mod axelar_evm {
 				H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
 			let derived_sender = IdentityAddressMapping::into_account_id(sender_h160);
 
-			Balances::mint_into(&derived_sender.into(), 1_000_000_000_000_000).unwrap();
+			Balances::mint_into(&derived_sender.into(), 1_000_000 * CFG).unwrap();
 
 			let axelar_contract_address = H160::from_low_u64_be(1);
 			let connectors_contract_address = H160::from_low_u64_be(2);
@@ -111,14 +112,15 @@ mod ethereum_xcm {
 					location: Box::new(dest.clone().into_versioned()),
 					ethereum_xcm_transact_call_index: bounded_vec![0],
 					contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
-					fee_currency: currency_id,
 					max_gas_limit: 10,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 100_000_000_000.into(),
 						transact_extra_weight_signed: None,
 					},
+					fee_currency: currency_id,
 					fee_per_second: 1u128,
+					fee_asset_location: Box::new(dest.clone().into_versioned()),
 				};
 
 				let domain_router =
@@ -165,14 +167,15 @@ mod ethereum_xcm {
 					location: Box::new(dest.clone().into_versioned()),
 					ethereum_xcm_transact_call_index: bounded_vec![0],
 					contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
-					fee_currency: currency_id,
 					max_gas_limit: 10,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 100_000_000_000.into(),
 						transact_extra_weight_signed: None,
 					},
+					fee_currency: currency_id,
 					fee_per_second: 1u128,
+					fee_asset_location: Box::new(dest.clone().into_versioned()),
 				};
 
 				let domain_router =
@@ -257,14 +260,15 @@ mod ethereum_xcm {
 					location: Box::new(dest.clone().into_versioned()),
 					ethereum_xcm_transact_call_index: bounded_vec![0],
 					contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
-					fee_currency: currency_id,
 					max_gas_limit: 10,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 100_000_000_000.into(),
 						transact_extra_weight_signed: None,
 					},
+					fee_currency: currency_id,
 					fee_per_second: 1u128,
+					fee_asset_location: Box::new(dest.clone().into_versioned()),
 				};
 
 				let domain_router =
@@ -292,14 +296,15 @@ mod ethereum_xcm {
 					location: Box::new(dest.clone().into_versioned()),
 					ethereum_xcm_transact_call_index: bounded_vec![0],
 					contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
-					fee_currency: currency_id,
 					max_gas_limit: 10,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 100_000_000_000.into(),
 						transact_extra_weight_signed: None,
 					},
+					fee_currency: currency_id,
 					fee_per_second: 1u128,
+					fee_asset_location: Box::new(dest.clone().into_versioned()),
 				};
 
 				let domain_router =
@@ -336,14 +341,15 @@ mod ethereum_xcm {
 					location: Box::new(dest.clone().into_versioned()),
 					ethereum_xcm_transact_call_index: bounded_vec![0],
 					contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
-					fee_currency: currency_id,
 					max_gas_limit: 10,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 100_000_000_000.into(),
 						transact_extra_weight_signed: None,
 					},
+					fee_currency: currency_id,
 					fee_per_second: 1u128,
+					fee_asset_location: Box::new(dest.clone().into_versioned()),
 				};
 
 				let domain_router =
