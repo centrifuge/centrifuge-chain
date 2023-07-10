@@ -18,6 +18,7 @@ use cfg_types::{
 	consts::pools::*,
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role},
+	pools::TrancheMetadata,
 	tokens::CurrencyId,
 };
 use codec::Encode;
@@ -26,7 +27,7 @@ use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pool_registry::Call as PoolRegistryCall;
 use pallet_pool_system::{
-	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType},
+	tranches::{TrancheIndex, TrancheInput, TrancheType},
 	Call as PoolSystemCall,
 };
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
@@ -42,6 +43,7 @@ use crate::{
 		time::secs::*,
 		tokens,
 		tokens::{DECIMAL_BASE_12, YEAR_RATE},
+		AUSD_CURRENCY_ID,
 	},
 };
 
@@ -132,7 +134,7 @@ pub fn custom_pool(
 ///    with id 3
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche
 ///    with id 4
-/// * Currency: CurrencyId::AUSD,
+/// * Currency: AUSD (Acala USD),
 /// * MaxReserve: 100_000 AUSD
 pub fn default_pool_calls(
 	admin: AccountId,
@@ -142,7 +144,7 @@ pub fn default_pool_calls(
 	pool_setup_calls(
 		admin,
 		pool_id,
-		CurrencyId::AUSD,
+		AUSD_CURRENCY_ID,
 		100_000 * DECIMAL_BASE_12,
 		create_tranche_input(
 			vec![None, Some(10), Some(7), Some(5), Some(3)],

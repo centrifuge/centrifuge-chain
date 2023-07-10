@@ -14,7 +14,10 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::{Moment, PoolEpochId};
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
-use cfg_types::tokens::{CurrencyId, TrancheCurrency};
+use cfg_types::{
+	pools::TrancheMetadata,
+	tokens::{CurrencyId, TrancheCurrency},
+};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::fungibles::Inspect;
 use frame_system::RawOrigin;
@@ -27,7 +30,7 @@ use pallet_pool_system::benchmarking::{
 };
 use pallet_pool_system::{
 	pool_types::PoolChanges,
-	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType, TrancheUpdate},
+	tranches::{TrancheIndex, TrancheInput, TrancheType, TrancheUpdate},
 };
 use sp_runtime::{
 	traits::{One, Zero},
@@ -46,6 +49,8 @@ const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 
 const TRANCHE: TrancheIndex = 0;
 const POOL: u64 = 0;
+
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 benchmarks! {
 	where_clause {
@@ -94,7 +99,7 @@ benchmarks! {
 			RawOrigin::Root
 		};
 		prepare_asset_registry::<T>();
-	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
+	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -149,7 +154,7 @@ benchmarks! {
 			tranches: Change::NewValue(tranches.clone()),
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+			tranche_metadata: Change::NewValue(build_update_tranche_token_metadata::<T>()),
 		};
 	}: update(RawOrigin::Signed(admin), POOL, changes)
 	verify {
@@ -175,7 +180,7 @@ benchmarks! {
 			tranches: Change::NewValue(build_update_tranches::<T>(n)),
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+			tranche_metadata: Change::NewValue(build_update_tranche_token_metadata::<T>()),
 		};
 
 		// Invest so we can redeem later
@@ -213,7 +218,7 @@ fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
 	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
 }
 
-fn build_update_tranche_metadata<T: Config>(
+fn build_update_tranche_token_metadata<T: Config>(
 ) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
 	vec![TrancheMetadata {
 		token_name: BoundedVec::default(),

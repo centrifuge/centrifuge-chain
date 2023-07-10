@@ -65,14 +65,24 @@ where
 				.expect("Depositing stake should work");
 			}
 
-			for (group_id, amount) in rewards {
-				<Rewards as DistributedRewards>::distribute_reward(amount, [group_id])
+			for (group_id, amount) in &rewards {
+				<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
 					.expect("Distributing rewards should work");
+			}
+
+			if let RewardDomain::Liquidity = domain {
+				/// For the gap mechanism, used by liquidity rewards,
+				/// we need another distribution to allow the participant claim
+				/// rewards
+				for (group_id, amount) in &rewards {
+					<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
+						.expect("Distributing rewards should work");
+				}
 			}
 		})
 		.with_api(|api, latest| {
 			let currencies = api
-				.list_currencies(&latest, domain.clone(), staker.clone())
+				.list_currencies(&latest, domain, staker.clone())
 				.expect("There should be staked currencies");
 			assert_eq!(currencies.clone().len(), 1);
 

@@ -1,4 +1,4 @@
-use cfg_primitives::{Moment, SECONDS_PER_DAY};
+use cfg_primitives::Moment;
 use cfg_traits::{self, data::DataCollection, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -8,8 +8,7 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		BlockNumberProvider, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto,
-		EnsureMul, EnsureSub, Zero,
+		BlockNumberProvider, EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, Zero,
 	},
 	DispatchError,
 };
@@ -18,7 +17,7 @@ use super::pricing::{
 	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
 };
 use crate::{
-	pallet::{AssetOf, Config, Error, PoolIdOf, PriceOf},
+	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
@@ -86,7 +85,7 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(self, pool_id: PoolIdOf<T>) -> Result<ActiveLoan<T>, DispatchError> {
+	pub fn activate(self, pool_id: T::PoolId) -> Result<ActiveLoan<T>, DispatchError> {
 		ActiveLoan::new(pool_id, self.info, self.borrower, T::Time::now().as_secs())
 	}
 
@@ -158,11 +157,15 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Total repaid amount unchecked of this loan
 	total_repaid_unchecked: T::Balance,
+
+	/// Until this date all principal & interest
+	/// payments occurred as scheduled.
+	repayments_on_schedule_until: Moment,
 }
 
 impl<T: Config> ActiveLoan<T> {
 	pub fn new(
-		pool_id: PoolIdOf<T>,
+		pool_id: T::PoolId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
 		now: Moment,
@@ -185,6 +188,7 @@ impl<T: Config> ActiveLoan<T> {
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
 			total_repaid_unchecked: T::Balance::zero(),
+			repayments_on_schedule_until: now,
 		})
 	}
 
@@ -225,9 +229,8 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<bool, DispatchError> {
 		let now = T::Time::now().as_secs();
 		match trigger {
-			WriteOffTrigger::PrincipalOverdueDays(days) => {
-				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
-				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
+			WriteOffTrigger::PrincipalOverdue(overdue_secs) => {
+				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
 				ActivePricing::External(pricing) => {
@@ -285,7 +288,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => inner.max_borrow_amount(self.total_borrowed)?,
-			ActivePricing::External(inner) => inner.max_borrow_amount()?,
+			ActivePricing::External(inner) => inner.max_borrow_amount(amount)?,
 		};
 
 		ensure!(
@@ -386,10 +389,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(
-		self,
-		pool_id: PoolIdOf<T>,
-	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+	pub fn close(self, pool_id: T::PoolId) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		let loan = ClosedLoan {

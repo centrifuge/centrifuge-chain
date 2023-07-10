@@ -5,7 +5,12 @@
 //! the closure function pointer (`u64`) and the pointer to the closure metadata
 //! (`u64`).
 
-use std::{cell::RefCell, collections::HashMap, fmt};
+use std::{
+	cell::RefCell,
+	collections::HashMap,
+	fmt,
+	sync::{Arc, Mutex},
+};
 
 use super::util::TypeSignature;
 
@@ -23,8 +28,10 @@ struct CallInfo {
 	type_signature: TypeSignature,
 }
 
+type Registry = HashMap<CallId, Arc<Mutex<CallInfo>>>;
+
 thread_local! {
-	static CALLS: RefCell<HashMap<CallId, CallInfo>> = RefCell::new(HashMap::default());
+	static CALLS: RefCell<Registry> = RefCell::new(HashMap::default());
 }
 
 #[derive(Debug, PartialEq)]
@@ -74,7 +81,7 @@ pub fn register_call<F: Fn(I) -> O + 'static, I, O>(f: F) -> CallId {
 	CALLS.with(|state| {
 		let registry = &mut *state.borrow_mut();
 		let call_id = registry.len() as u64;
-		registry.insert(call_id, call);
+		registry.insert(call_id, Arc::new(Mutex::new(call)));
 		call_id
 	})
 }
@@ -83,33 +90,37 @@ pub fn register_call<F: Fn(I) -> O + 'static, I, O>(f: F) -> CallId {
 pub fn execute_call<I, O>(call_id: CallId, input: I) -> Result<O, Error> {
 	let expected_type_signature = TypeSignature::new::<I, O>();
 
-	CALLS.with(|state| {
+	let call = CALLS.with(|state| {
 		let registry = &*state.borrow();
 		let call = registry.get(&call_id).ok_or(Error::CallNotFound)?;
+		Ok(call.clone())
+	})?;
 
-		// We need the runtime type check since we lost the type at compile time.
-		if expected_type_signature != call.type_signature {
-			return Err(Error::TypeNotMatch {
-				expected: expected_type_signature,
-				found: call.type_signature.clone(),
-			});
-		}
+	let call = call.lock().unwrap();
 
-		// SAFETY:
-		// 1. The existence of this closure ptr in consequent calls is ensured
-		// thanks to Box::into_raw() at register_call(),
-		// which takes the Box ownership without dropping it. So, ptr exists forever.
-		// 2. The type of the transmuted call is ensured in runtime by the above type
-		// signature check.
-		// 3. The pointer is correctly aligned because it was allocated by a Box.
-		let f: &dyn Fn(I) -> O = unsafe {
-			#[allow(clippy::useless_transmute)] // Clippy hints something erroneous
-			let ptr: *const dyn Fn(I) -> O = std::mem::transmute(call.ptr);
-			&*ptr
-		};
+	// We need the runtime type check since we lost the type at compile time.
+	if expected_type_signature != call.type_signature {
+		return Err(Error::TypeNotMatch {
+			expected: expected_type_signature,
+			found: call.type_signature.clone(),
+		});
+	}
 
-		Ok(f(input))
-	})
+	// SAFETY:
+	// 1. The existence of this closure ptr in consequent calls is ensured
+	// thanks to Box::into_raw() at register_call(),
+	// which takes the Box ownership without dropping it. So, ptr exists forever.
+	// 2. The type of the transmuted call is ensured in runtime by the above type
+	// signature check.
+	// 3. The pointer is correctly aligned because it was allocated by a Box.
+	// 4. The closure is called once at the same time thanks to the mutex.
+	let f: &dyn Fn(I) -> O = unsafe {
+		#[allow(clippy::useless_transmute)] // Clippy hints something erroneous
+		let ptr: *const dyn Fn(I) -> O = std::mem::transmute(call.ptr);
+		&*ptr
+	};
+
+	Ok(f(input))
 }
 
 #[cfg(test)]

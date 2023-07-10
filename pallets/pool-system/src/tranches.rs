@@ -14,9 +14,12 @@ use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::tokens::{CrossChainTransferability, CustomMetadata};
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
+use cfg_types::{
+	pools::TrancheMetadata,
+	tokens::{CrossChainTransferability, CustomMetadata},
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -116,18 +119,6 @@ where
 			) => interest_prev >= interest_next,
 		}
 	}
-}
-
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-// TODO: Why same struct twice? pool-registry and pool-system. Maybe because of
-// circular dependencies?
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

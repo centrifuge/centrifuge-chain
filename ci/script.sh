@@ -17,9 +17,9 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	build-node)
-		cargo build -p centrifuge-chain --release "$@"
-		;;
+  build-node)
+    cargo build -p centrifuge-chain --release "$@"
+    ;;
 
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN

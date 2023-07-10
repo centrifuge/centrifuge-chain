@@ -97,7 +97,7 @@ fn with_wrong_loan_mutation_change() {
 fn with_successful_overwriting() {
 	new_test_ext().execute_with(|| {
 		let policy: BoundedVec<_, _> = vec![WriteOffRule::new(
-			[WriteOffTrigger::PrincipalOverdueDays(1)],
+			[WriteOffTrigger::PrincipalOverdue(1)],
 			Rate::from_float(POLICY_PERCENTAGE),
 			Rate::from_float(POLICY_PENALTY),
 		)]
@@ -186,19 +186,19 @@ fn with_success() {
 			),
 			WriteOffRule::new(
 				[
-					WriteOffTrigger::PrincipalOverdueDays(1),
+					WriteOffTrigger::PrincipalOverdue(1),
 					WriteOffTrigger::PriceOutdated(0),
 				],
 				Rate::from_float(0.2),
 				Rate::from_float(0.2),
 			),
 			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdueDays(4)],
+				[WriteOffTrigger::PrincipalOverdue(4)],
 				Rate::from_float(0.5),
 				Rate::from_float(0.5),
 			),
 			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdueDays(9)],
+				[WriteOffTrigger::PrincipalOverdue(9)],
 				Rate::from_float(0.3),
 				Rate::from_float(0.9),
 			),

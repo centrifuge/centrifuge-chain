@@ -50,13 +50,16 @@ use xcm::{
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
 
-use crate::xcm::kusama::{
-	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
+use crate::{
+	utils::AUSD_CURRENCY_ID,
+	xcm::kusama::{
+		setup::{
+			air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
+			KSM_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+		tests::{register_air, register_ausd, register_ksm},
 	},
-	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
-	tests::{register_air, register_ausd, register_ksm},
 };
 
 #[test]
@@ -113,7 +116,7 @@ fn convert_tranche() {
 
 	Altair::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
 			Err(tranche_multilocation),
 		);
 	});
@@ -143,11 +146,11 @@ fn convert_ausd() {
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-			Ok(AUSD_ASSET_ID),
+			Ok(AUSD_CURRENCY_ID),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_ASSET_ID),
+			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_CURRENCY_ID),
 			Some(ausd_location)
 		)
 	});
@@ -161,7 +164,7 @@ fn convert_ksm() {
 		register_ksm();
 
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location),
 			Ok(KSM_ASSET_ID),
 		);
 
@@ -183,7 +186,7 @@ fn convert_unkown_multilocation() {
 	);
 
 	Altair::execute_with(|| {
-		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
 	});
 }
 

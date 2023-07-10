@@ -26,8 +26,9 @@ use frame_support::{
 };
 use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+#[cfg(feature = "runtime-benchmarks")]
+use pallet_pool_system::benchmarking::create_pool;
 use pallet_pool_system::{
-	benchmarking::create_pool,
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
 	tranches::TrancheInput,
 };
@@ -43,6 +44,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type TrancheId = [u8; 16];
 
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 parameter_types! {
@@ -221,6 +223,7 @@ impl<
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
 	) -> DispatchResult {
+		#[cfg(feature = "runtime-benchmarks")]
 		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
 		Ok(())
 	}
@@ -247,6 +250,7 @@ impl<T> PreConditions<T> for Always {
 }
 
 impl Config for Test {
+	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
@@ -260,6 +264,7 @@ impl Config for Test {
 	type PoolId = u64;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
@@ -328,7 +333,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::Staking(_) => false,
 			_ => true,
 		}
 	}
@@ -457,7 +462,7 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<Test> {
 			balances: (0..10)
 				.into_iter()
-				.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+				.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 				.collect(),
 		}
 		.assimilate_storage(&mut storage)
@@ -474,9 +479,9 @@ impl TestExternalitiesBuilder {
 
 		orml_asset_registry_mock::GenesisConfig {
 			metadata: vec![(
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				AssetMetadata {
-					decimals: 18,
+					decimals: 12,
 					name: "MOCK TOKEN".as_bytes().to_vec(),
 					symbol: "MOCK".as_bytes().to_vec(),
 					existential_deposit: 0,

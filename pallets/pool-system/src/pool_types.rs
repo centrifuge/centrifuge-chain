@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_types::epoch::EpochState;
+use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
@@ -28,8 +28,7 @@ use sp_runtime::{
 use sp_std::{cmp::PartialEq, vec::Vec};
 
 use crate::tranches::{
-	EpochExecutionTranches, TrancheEssence, TrancheMetadata, TrancheSolution, TrancheUpdate,
-	Tranches,
+	EpochExecutionTranches, TrancheEssence, TrancheSolution, TrancheUpdate, Tranches,
 };
 
 // The TypeId impl we derive pool-accounts from

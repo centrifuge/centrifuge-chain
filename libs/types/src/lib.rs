@@ -27,6 +27,7 @@ pub mod locations;
 pub mod oracles;
 pub mod orders;
 pub mod permissions;
+pub mod pools;
 pub mod time;
 pub mod tokens;
 pub mod xcm;

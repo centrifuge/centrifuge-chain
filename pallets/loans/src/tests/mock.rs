@@ -229,6 +229,7 @@ impl pallet_loans::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = MockPermissions;
 	type Pool = MockPools;
+	type PoolId = PoolId;
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
 	type Rate = Rate;

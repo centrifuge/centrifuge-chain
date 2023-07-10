@@ -29,32 +29,34 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate", default-feat
 
 [dev-dependencies]
 # Substrate crates & pallets
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 # Orml crates
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
 
 # Local crates
-cfg-primitives = { path = "../../libs/primitives", default-features = true }
-cfg-types = { path = "../../libs/types", default-features = true }
+cfg-primitives = { path = "../../libs/primitives" }
+cfg-types = { path = "../../libs/types" }
 
 [features]
 default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
-  "pallet-balances",
-  "pallet-uniques",
-  "cfg-types",
-  "cfg-primitives",
-  "orml-tokens",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-uniques/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
   "orml-traits",
+  "orml-tokens/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-uniques/runtime-benchmarks",
 ]
 std = [
   "codec/std",

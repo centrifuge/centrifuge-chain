@@ -9,8 +9,8 @@ use super::{
 	entities::{
 		loans::{ActiveLoan, LoanInfo},
 		pricing::{
-			external::ExternalPricing,
-			internal::{InternalPricing, MaxBorrowAmount},
+			external::{ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
+			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
 			ActivePricing, Pricing,
 		},
 	},

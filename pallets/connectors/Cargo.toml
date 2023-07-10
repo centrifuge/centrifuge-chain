@@ -41,7 +41,6 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 [dev-dependencies]
@@ -59,9 +58,6 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = tr
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 
-# Local crates
-runtime-common = { path = "../../runtime/common", default-features = true }
-
 [features]
 default = ["std"]
 runtime-benchmarks = [
@@ -75,7 +71,6 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
-  "pallet-xcm-transactor/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
 ]
@@ -91,9 +86,7 @@ std = [
   "orml-tokens/std",
   "orml-traits/std",
   "pallet-balances/std",
-  "runtime-common/std",
   "xcm/std",
-  "pallet-xcm-transactor/std",
   "pallet-ethereum/std",
   "xcm-primitives/std",
   "ethabi/std",
@@ -113,7 +106,6 @@ try-runtime = [
   "cfg-utils/try-runtime",
   "frame-system/try-runtime",
   "pallet-ethereum/try-runtime",
-  "pallet-xcm-transactor/try-runtime",
   "fp-self-contained/try-runtime",
   "sp-runtime/try-runtime",
 ]

@@ -42,6 +42,8 @@ runtime-benchmarks = [
   'sp-runtime/runtime-benchmarks',
   'cfg-types/runtime-benchmarks',
   'cfg-traits/runtime-benchmarks',
+  'cfg-mocks/runtime-benchmarks',
+  'pallet-balances/runtime-benchmarks',
 ]
 std = [
   'codec/std',
