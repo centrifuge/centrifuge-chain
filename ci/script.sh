@@ -41,6 +41,7 @@ case $TARGET in
     ;;
 
   integration)
+    # We use the same features as tests to reuse the artifacts
     cargo test -p runtime-integration-tests --release --features runtime-benchmarks,try-runtime,fast-runtime
     ;;
 
