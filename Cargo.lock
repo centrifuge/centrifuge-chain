@@ -1313,10 +1313,13 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-aura",
+ "pallet-evm 6.0.0-dev (git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.38)",
  "pallet-timestamp",
  "parity-scale-codec 3.4.0",
  "scale-info",
+ "serde",
  "sp-consensus-aura",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]

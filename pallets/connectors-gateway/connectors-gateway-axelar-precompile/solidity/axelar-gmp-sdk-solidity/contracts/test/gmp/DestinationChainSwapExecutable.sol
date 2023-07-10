@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 
+<<<<<<< Updated upstream
 pragma solidity 0.8.9;
+=======
+pragma solidity ^0.8.18;
+>>>>>>> Stashed changes
 
 import { AxelarExecutable } from '../../executable/AxelarExecutable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';

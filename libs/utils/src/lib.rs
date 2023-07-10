@@ -78,6 +78,61 @@ where
 	pallet_timestamp::Pallet::<T>::set_timestamp(timestamp);
 }
 
+pub mod evm {
+	use std::marker::PhantomData;
+
+	use frame_support::traits::GenesisBuild;
+	#[cfg(feature = "std")]
+	use serde::{Deserialize, Serialize};
+	use sp_core::U256;
+	use sp_runtime::{app_crypto::sp_core::H160, traits::Get};
+
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	pub struct CodeDeployer<Origin> {
+		codes: Vec<(H160, Vec<u8>)>,
+		_phantom: PhantomData<Origin>,
+	}
+
+	impl<Origin> Default for CodeDeployer<Origin> {
+		fn default() -> Self {
+			CodeDeployer {
+				codes: Vec::new(),
+				_phantom: PhantomData::default(),
+			}
+		}
+	}
+
+	impl<T: frame_system::Config + pallet_evm::Config, Origin: Get<T::RuntimeOrigin>>
+		GenesisBuild<T> for CodeDeployer<Origin>
+	{
+		fn build(&self) {
+			for (who, code) in self.codes.clone() {
+				//          origin: OriginFor<T>,
+				// 			source: H160,
+				// 			init: Vec<u8>,
+				// 			value: U256,
+				// 			gas_limit: u64,
+				// 			max_fee_per_gas: U256,
+				// 			max_priority_fee_per_gas: Option<U256>,
+				// 			nonce: Option<U256>,
+				// 			access_list: Vec<(H160, Vec<H256>)>,
+				pallet_evm::Pallet::<T>::create(
+					Origin::get(),
+					who,
+					code,
+					U256::MAX,
+					u64::MAX,
+					U256::MAX,
+					None,
+					None,
+					Vec::new(),
+				)
+				.expect("Deploying code in genesis failed.");
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
