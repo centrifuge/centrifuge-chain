@@ -120,8 +120,7 @@ fn with_wrong_interest_rate() {
 		util::borrow_loan(loan_id, 0);
 
 		// Too high
-		let mutation =
-			LoanMutation::Internal(InternalMutation::InterestRate(Rate::from_float(3.0)));
+		let mutation = LoanMutation::InterestRate(Rate::from_float(3.0));
 
 		config_mocks(loan_id, &mutation);
 		assert_noop!(
@@ -132,28 +131,6 @@ fn with_wrong_interest_rate() {
 				mutation,
 			),
 			pallet_interest_accrual::Error::<Runtime>::InvalidRate
-		);
-	});
-}
-
-#[test]
-fn with_wrong_internal() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-		util::borrow_loan(loan_id, 0);
-
-		let mutation =
-			LoanMutation::Internal(InternalMutation::InterestRate(Rate::from_float(0.2)));
-
-		config_mocks(loan_id, &mutation);
-		assert_noop!(
-			Loans::propose_loan_mutation(
-				RuntimeOrigin::signed(LOAN_ADMIN),
-				POOL_A,
-				loan_id,
-				mutation,
-			),
-			Error::<Runtime>::MutationError(MutationError::InternalPricingExpected)
 		);
 	});
 }
@@ -184,8 +161,8 @@ fn with_successful_mutation_application() {
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
+			interest_rate: Rate::from_float(0.1),
 			pricing: Pricing::Internal(InternalPricing {
-				interest_rate: Rate::from_float(0.1),
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.1),
 					loss_given_default: Rate::from_float(0.1),
@@ -203,7 +180,7 @@ fn with_successful_mutation_application() {
 			// LoanMutation::InterestPayments(..), No changes, only one variant
 			// LoanMutation::PayDownSchedule(..), No changes, only one variant
 			LoanMutation::Maturity(Maturity::Fixed((now() + YEAR * 2).as_secs())),
-			LoanMutation::Internal(InternalMutation::InterestRate(Rate::from_float(0.5))),
+			LoanMutation::InterestRate(Rate::from_float(0.5)),
 			LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(Rate::from_float(
 				0.5,
 			))),
@@ -243,7 +220,7 @@ fn with_successful_mutation_application() {
 			let post_pv = util::current_loan_pv(loan_id);
 			let post_loan = util::get_loan(loan_id);
 
-			// Applying changes modify both the PV or the loan
+			// Applying changes modify both the PV and the loan
 			assert_ne!(mid_pv, post_pv);
 			assert_ne!(mid_loan, post_loan);
 		}

@@ -46,6 +46,7 @@ pub mod migrations {
 
 /// High level types that uses `pallet::Config`
 pub mod entities {
+	pub mod interest;
 	pub mod loans;
 	pub mod pricing;
 }
@@ -106,7 +107,7 @@ pub mod pallet {
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepayLoanError, WrittenOffError,
+		RepaidAmount, RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -331,8 +332,7 @@ pub mod pallet {
 		Repaid {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
-			unchecked_amount: T::Balance,
+			amount: RepaidAmount<T::Balance>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -528,7 +528,7 @@ pub mod pallet {
 		/// The repay action should fulfill the repay restrictions
 		/// configured at [`types::RepayRestrictions`].
 		/// If the repaying `amount` is more than current debt, only current
-		/// debt is transferred. This does not apply to `unchecked_amount`,
+		/// debt is transferred. This does not apply to `unscheduled_amount`,
 		/// which can be used to repay more than the outstanding debt.
 		/// The portfolio  valuation of the pool is updated to reflect the new
 		/// present value of the loan.
@@ -538,24 +538,21 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
-			unchecked_amount: T::Balance,
+			amount: RepaidAmount<T::Balance>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount, unchecked_amount)
+				loan.repay(amount.clone())
 			})?;
 
-			let deposit_amount = amount.ensure_add(unchecked_amount)?;
-			T::Pool::deposit(pool_id, who, deposit_amount)?;
+			T::Pool::deposit(pool_id, who, amount.total()?)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
 				loan_id,
 				amount,
-				unchecked_amount,
 			});
 
 			Ok(())
