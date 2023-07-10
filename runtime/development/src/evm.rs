@@ -15,6 +15,7 @@ use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, Consen
 use pallet_evm::EnsureAddressTruncated;
 use runtime_common::{
 	account_conversion::AccountConverter,
+	contract_creation::ContractCreation,
 	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
@@ -57,7 +58,7 @@ impl pallet_evm::Config for crate::Runtime {
 	type FindAuthor = FindAuthorTruncated<Aura>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
-	type OnCreate = ();
+	type OnCreate = ContractCreation<crate::Runtime>;
 	type PrecompilesType = CentrifugePrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
@@ -85,4 +86,6 @@ impl pallet_ethereum::Config for crate::Runtime {
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
 
-impl pallet_ethereum_transaction::Config for crate::Runtime {}
+impl pallet_ethereum_transaction::Config for crate::Runtime {
+	type RuntimeEvent = crate::RuntimeEvent;
+}
