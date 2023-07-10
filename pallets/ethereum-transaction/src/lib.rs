@@ -21,6 +21,7 @@ use frame_support::{
 pub use pallet::*;
 use pallet_evm::{ExitError, ExitFatal, ExitReason};
 use sp_core::{H160, H256, U256};
+use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -39,11 +40,26 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_ethereum::Config {}
+	pub trait Config: frame_system::Config + pallet_ethereum::Config {
+		/// The event type.
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+	}
 
 	/// Storage for nonce.
 	#[pallet::storage]
 	pub(crate) type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub (super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// A call was executed.
+		Executed {
+			from: H160,
+			to: H160,
+			exit_reason: ExitReason,
+			value: Vec<u8>,
+		},
+	}
 
 	impl<T: Config> Pallet<T> {
 		fn get_transaction_signature() -> Option<TransactionSignature> {
@@ -110,33 +126,42 @@ pub mod pallet {
 			// The other fees related to this transaction were charged by the EVM
 			// runner, we only have to charge for the nonce read operation.
 			match info {
-				CallOrCreateInfo::Call(call_info) => match call_info.exit_reason {
-					ExitReason::Succeed(_) => Ok(PostDispatchInfo {
-						actual_weight: Some(read_weight),
-						pays_fee: Pays::Yes,
-					}),
-					ExitReason::Error(e) => Err(DispatchErrorWithPostInfo {
-						post_info: PostDispatchInfo {
+				CallOrCreateInfo::Call(call_info) => {
+					Self::deposit_event(Event::Executed {
+						from,
+						to,
+						exit_reason: call_info.exit_reason.clone(),
+						value: call_info.value.clone(),
+					});
+
+					match call_info.exit_reason {
+						ExitReason::Succeed(_) => Ok(PostDispatchInfo {
 							actual_weight: Some(read_weight),
 							pays_fee: Pays::Yes,
-						},
-						error: map_evm_error(e),
-					}),
-					ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
-						post_info: PostDispatchInfo {
-							actual_weight: Some(read_weight),
-							pays_fee: Pays::Yes,
-						},
-						error: DispatchError::Other("EVM encountered an explicit revert"),
-					}),
-					ExitReason::Fatal(e) => Err(DispatchErrorWithPostInfo {
-						post_info: PostDispatchInfo {
-							actual_weight: Some(read_weight),
-							pays_fee: Pays::Yes,
-						},
-						error: map_evm_fatal_error(e),
-					}),
-				},
+						}),
+						ExitReason::Error(e) => Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(read_weight),
+								pays_fee: Pays::Yes,
+							},
+							error: map_evm_error(e),
+						}),
+						ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(read_weight),
+								pays_fee: Pays::Yes,
+							},
+							error: DispatchError::Other("EVM encountered an explicit revert"),
+						}),
+						ExitReason::Fatal(e) => Err(DispatchErrorWithPostInfo {
+							post_info: PostDispatchInfo {
+								actual_weight: Some(read_weight),
+								pays_fee: Pays::Yes,
+							},
+							error: map_evm_fatal_error(e),
+						}),
+					}
+				}
 				CallOrCreateInfo::Create(_) => Err(DispatchErrorWithPostInfo {
 					post_info: PostDispatchInfo {
 						actual_weight: Some(read_weight),

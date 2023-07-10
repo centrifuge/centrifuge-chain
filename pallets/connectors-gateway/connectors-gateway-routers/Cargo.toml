@@ -57,6 +57,7 @@ orml-traits = { git = "https://github.com/purestake/open-runtime-module-library"
 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 cfg-mocks = { path = "../../../libs/mocks" }
+cfg-primitives = { path = "../../../libs/primitives" }
 
 [features]
 default = ["std"]
