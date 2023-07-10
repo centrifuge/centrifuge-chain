@@ -15,6 +15,7 @@
 #![allow(unused)]
 
 mod connectors_gateway;
+mod ethereum_transaction;
 mod pools;
 mod rewards;
 mod runtime_apis;

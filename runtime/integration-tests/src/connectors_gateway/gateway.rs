@@ -15,25 +15,33 @@ use cfg_traits::connectors::Codec;
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::Rate,
+	tokens::{CurrencyId, CustomMetadata},
 };
 use connectors_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, DomainRouter, EVMChain, EVMDomain, FeeValues,
+	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMChain,
+	EVMDomain, FeeValues, XcmDomain, XcmTransactInfo,
 };
+use development_runtime::xcm::CurrencyIdConvert;
 use frame_support::{
 	assert_ok,
 	dispatch::{GetDispatchInfo, Pays},
 	weights::Weight,
 };
 use fudge::primitives::Chain;
+use orml_traits::asset_registry::AssetMetadata;
 use pallet_connectors::Message;
 use pallet_connectors_gateway::GatewayOrigin;
 use pallet_democracy::{AccountVote, Conviction, ReferendumIndex, Vote, VoteThreshold};
-use sp_core::{bounded::BoundedVec, H160, H256};
+use sp_core::{bounded::BoundedVec, bounded_vec, H160, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
+	traits::{BlakeTwo256, Convert, Hash},
 	Storage,
 };
 use tokio::runtime::Handle;
+use xcm::{
+	latest::{Junction, Junctions, MultiLocation},
+	VersionedMultiLocation,
+};
 
 use crate::{
 	chain::centrifuge::{
@@ -66,21 +74,47 @@ async fn set_router() {
 
 	let test_domain = Domain::EVM(1);
 
-	let axelar_evm_router = AxelarEVMRouter::<Runtime> {
-		domain: EVMDomain {
-			chain: EVMChain::Ethereum,
-			axelar_contract_address: Default::default(),
-			connectors_contract_address: Default::default(),
-			fee_values: FeeValues {
-				value: Default::default(),
-				gas_price: Default::default(),
-				gas_limit: Default::default(),
-			},
+	let xcm_domain_location = MultiLocation {
+		parents: 0,
+		interior: Junctions::X1(Junction::Parachain(456)),
+	};
+
+	let currency_id = CurrencyId::ForeignAsset(1);
+	let currency_location = MultiLocation {
+		parents: 0,
+		interior: Junctions::X1(Junction::Parachain(123)),
+	};
+
+	let currency_meta = AssetMetadata::<Balance, CustomMetadata> {
+		decimals: 18,
+		name: "Test".into(),
+		symbol: "TST".into(),
+		existential_deposit: 1_000_000,
+		location: Some(VersionedMultiLocation::V3(currency_location)),
+		additional: Default::default(),
+	};
+
+	let xcm_domain = XcmDomain {
+		location: Box::new(xcm_domain_location.clone().into_versioned()),
+		ethereum_xcm_transact_call_index: bounded_vec![0],
+		contract_address: H160::from_slice(rand::random::<[u8; 20]>().as_slice()),
+		max_gas_limit: 10,
+		transact_info: XcmTransactInfo {
+			transact_extra_weight: 1.into(),
+			max_weight: 100_000_000_000.into(),
+			transact_extra_weight_signed: None,
 		},
+		fee_currency: currency_id,
+		fee_per_second: 1u128,
+		fee_asset_location: Box::new(currency_location.clone().into_versioned()),
+	};
+
+	let ethereum_xcm_router = EthereumXCMRouter::<Runtime> {
+		xcm_domain: xcm_domain,
 		_marker: Default::default(),
 	};
 
-	let test_router = DomainRouter::<Runtime>::AxelarEVM(axelar_evm_router);
+	let test_router = DomainRouter::<Runtime>::EthereumXCM(ethereum_xcm_router);
 
 	let set_domain_router_call = set_domain_router(test_domain.clone(), test_router.clone());
 
