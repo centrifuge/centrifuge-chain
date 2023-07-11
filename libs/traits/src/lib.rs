@@ -44,9 +44,6 @@ pub mod data;
 /// Traits related to rewards.
 pub mod rewards;
 
-/// Traits related to connectors.
-pub mod connectors;
-
 /// Traits related to Ethereum.
 pub mod ethereum;
 

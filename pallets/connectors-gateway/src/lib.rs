@@ -82,7 +82,7 @@ pub mod pallet {
 			+ PartialEq;
 
 		/// The type that processes incoming messages.
-		type InboundQueue: InboundQueue<Sender = Domain, Message = Self::Message>;
+		type InboundQueue: InboundQueue<Sender = DomainAddress, Message = Self::Message>;
 
 		type WeightInfo: WeightInfo;
 
@@ -245,7 +245,7 @@ pub mod pallet {
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 						.map_err(|_| Error::<T>::MessageDecode)?;
 
-					T::InboundQueue::submit(domain_address.domain(), incoming_msg)
+					T::InboundQueue::submit(domain_address, incoming_msg)
 				}
 				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
 			}

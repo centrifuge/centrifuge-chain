@@ -35,7 +35,7 @@ impl Codec for MessageMock {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::connectors::InboundQueue;
-	use cfg_types::domain_address::Domain;
+	use cfg_types::domain_address::DomainAddress;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -43,7 +43,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Domain;
+		type DomainAddress;
 		type Message;
 	}
 
@@ -60,14 +60,14 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_submit(f: impl Fn(Domain, MessageMock) -> DispatchResult + 'static) {
+		pub fn mock_submit(f: impl Fn(DomainAddress, MessageMock) -> DispatchResult + 'static) {
 			register_call!(move |(sender, msg)| f(sender, msg));
 		}
 	}
 
 	impl<T: Config> InboundQueue for Pallet<T> {
 		type Message = T::Message;
-		type Sender = T::Domain;
+		type Sender = T::DomainAddress;
 
 		fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
 			execute_call!((sender, msg))
