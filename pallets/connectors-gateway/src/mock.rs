@@ -1,5 +1,5 @@
 use cfg_mocks::{pallet_mock_connectors, DomainRouterMock, MessageMock};
-use cfg_types::domain_address::Domain;
+use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256};
 use sp_runtime::{
@@ -72,7 +72,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl pallet_mock_connectors::Config for Runtime {
-	type Domain = Domain;
+	type DomainAddress = DomainAddress;
 	type Message = MessageMock;
 }
 

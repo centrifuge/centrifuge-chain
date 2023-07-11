@@ -372,7 +372,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			T::OutboundQueue::submit(who, domain, Message::AddPool { pool_id })?;
+			T::OutboundQueue::submit(domain, who, Message::AddPool { pool_id })?;
 			Ok(())
 		}
 
@@ -404,8 +404,8 @@ pub mod pallet {
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
-				who,
 				domain,
+				who,
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
@@ -435,8 +435,8 @@ pub mod pallet {
 				.price;
 
 			T::OutboundQueue::submit(
-				who,
 				domain,
+				who,
 				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
@@ -484,8 +484,8 @@ pub mod pallet {
 			);
 
 			T::OutboundQueue::submit(
-				who,
 				domain_address.domain(),
+				who,
 				Message::UpdateMember {
 					pool_id,
 					tranche_id,
@@ -538,8 +538,8 @@ pub mod pallet {
 			)?;
 
 			T::OutboundQueue::submit(
-				who.clone(),
 				domain_address.domain(),
+				who.clone(),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -600,8 +600,8 @@ pub mod pallet {
 			)?;
 
 			T::OutboundQueue::submit(
-				who.clone(),
 				receiver.domain(),
+				who.clone(),
 				Message::Transfer {
 					amount,
 					currency,
@@ -631,8 +631,8 @@ pub mod pallet {
 			} = Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
-				who,
 				Domain::EVM(chain_id),
+				who,
 				Message::AddCurrency {
 					currency,
 					evm_address,
@@ -679,8 +679,8 @@ pub mod pallet {
 				Self::try_get_wrapped_token(&currency_id)?;
 
 			T::OutboundQueue::submit(
-				who,
 				Domain::EVM(chain_id),
+				who,
 				Message::AllowPoolCurrency { pool_id, currency },
 			)?;
 

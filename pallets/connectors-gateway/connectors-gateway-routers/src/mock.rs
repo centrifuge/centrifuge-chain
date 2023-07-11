@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_connectors, DomainRouterMock, MessageMock};
-use cfg_types::domain_address::Domain;
+use cfg_types::domain_address::DomainAddress;
 use codec::{Decode, Encode};
 use cumulus_primitives_core::{
 	Instruction, MultiAsset, MultiLocation, PalletInstance, Parachain, SendError, Xcm, XcmHash,
@@ -66,6 +66,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxConnectorsPerDomain: u32 = 3;
+	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
 impl frame_system::Config for Runtime {
@@ -108,17 +109,20 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl pallet_mock_connectors::Config for Runtime {
-	type Domain = Domain;
+	type DomainAddress = DomainAddress;
 	type Message = MessageMock;
 }
 
-impl pallet_ethereum_transaction::Config for Runtime {}
+impl pallet_ethereum_transaction::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+}
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type Router = DomainRouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

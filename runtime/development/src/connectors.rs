@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
-use cfg_traits::connectors::InboundQueue;
 use cfg_types::{domain_address::Domain, fixed_point::Rate};
-use frame_support::{dispatch::DispatchResult, parameter_types};
+use frame_support::parameter_types;
 use frame_system::EnsureRoot;
 
 use super::{Runtime, RuntimeEvent, RuntimeOrigin};
+use crate::Connectors;
 
 type ConnectorsMessage = pallet_connectors::Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
@@ -28,7 +28,7 @@ parameter_types! {
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type InboundQueue = DummyInboundQueue;
+	type InboundQueue = Connectors;
 	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
 	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
@@ -37,16 +37,4 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();
-}
-
-// TODO(cdamian): Implement this for the connectors pallet.
-pub struct DummyInboundQueue {}
-
-impl InboundQueue for DummyInboundQueue {
-	type Message = ConnectorsMessage;
-	type Sender = Domain;
-
-	fn submit(_sender: Self::Sender, _msg: Self::Message) -> DispatchResult {
-		Ok(())
-	}
 }

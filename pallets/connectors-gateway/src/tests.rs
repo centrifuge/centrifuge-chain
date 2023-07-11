@@ -297,10 +297,10 @@ mod process_msg {
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
 
-			let expected_domain = domain_address.domain().clone();
+			let expected_domain_address = domain_address.clone();
 
 			MockConnectors::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain);
+				assert_eq!(domain, expected_domain_address);
 				assert_eq!(message, expected_msg);
 				Ok(())
 			});
@@ -411,12 +411,12 @@ mod process_msg {
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
 
-			let expected_domain = domain_address.domain().clone();
+			let expected_domain_address = domain_address.clone();
 
 			let err = sp_runtime::DispatchError::from("connectors error");
 
 			MockConnectors::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain);
+				assert_eq!(domain, expected_domain_address);
 				assert_eq!(message, expected_msg);
 				Err(err)
 			});

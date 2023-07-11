@@ -23,7 +23,7 @@ use connectors_gateway_routers::{
 };
 use development_runtime::xcm::CurrencyIdConvert;
 use frame_support::{
-	assert_ok,
+	assert_noop, assert_ok,
 	dispatch::{GetDispatchInfo, Pays},
 	weights::Weight,
 };
@@ -244,12 +244,7 @@ async fn process_msg() {
 		}) if [*connector == test_connector],
 	);
 
-	let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
-		currency: 0,
-		sender: Keyring::Alice.public().0,
-		receiver: Keyring::Bob.public().0,
-		amount: 1_000u128,
-	};
+	let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 123 };
 
 	let encoded_msg = msg.serialize();
 
@@ -259,13 +254,14 @@ async fn process_msg() {
 	>::try_from(encoded_msg)
 	.unwrap();
 
-	let res = env
-		.with_state(Chain::Para(PARA_ID), || {
+	env.with_state(Chain::Para(PARA_ID), || {
+		assert_noop!(
 			pallet_connectors_gateway::Pallet::<Runtime>::process_msg(
 				GatewayOrigin::Local(test_connector).into(),
 				gateway_msg,
-			)
-		})
-		.unwrap();
-	assert_ok!(res);
+			),
+			pallet_connectors::Error::<Runtime>::InvalidIncomingMessage,
+		);
+	})
+	.unwrap();
 }

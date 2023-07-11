@@ -33,7 +33,10 @@ impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> fo
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin() -> O {
-		O::from(GatewayOrigin::Local(Default::default()))
+	fn try_successful_origin() -> Result<O, ()> {
+		Ok(O::from(GatewayOrigin::Local(DomainAddress::EVM(
+			1,
+			H160::from_low_u64_be(1).into(),
+		))))
 	}
 }

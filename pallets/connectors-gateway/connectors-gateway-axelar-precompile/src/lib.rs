@@ -13,7 +13,6 @@
 
 use fp_evm::PrecompileHandle;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
-use pallet_connectors_gateway::GatewayOrigin;
 use precompile_utils::prelude::*;
 use sp_core::{ConstU32, Get, H160, U256};
 
@@ -73,11 +72,11 @@ where
 	//
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		handle: &mut impl PrecompileHandle,
-		command_id: U256,
-		source_chain: U256,
-		source_address: U256,
-		payload: BoundedVec<u8, ConstU32<32>>,
+		_handle: &mut impl PrecompileHandle,
+		_command_id: U256,
+		_source_chain: U256,
+		_source_address: U256,
+		_payload: BoundedVec<u8, ConstU32<32>>,
 	) -> EvmResult<bool> {
 		// CREATE HASH OF PAYLOAD
 		// - bytes32 payloadHash = keccak256(payload);
