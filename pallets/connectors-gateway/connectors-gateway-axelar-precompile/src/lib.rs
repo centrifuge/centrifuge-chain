@@ -54,40 +54,17 @@ where
 	>,
 {
 	// Mimics:
-	//
-	// function forecall(
-	//         string calldata sourceChain,
-	//         string calldata sourceAddress,
-	//         bytes calldata payload,
-	//         address forecaller
-	//     ) external {
-	//       ...
-	//     }
-	//
-	// Note: NOT SUPPORTED
-	//
-	#[precompile::public("forecall(string,string,bytes,address)")]
-	fn forecall(
-		_handle: &mut impl PrecompileHandle,
-		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
-		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-		_payload: Bytes<MAX_PAYLOAD_BYTES>,
-		_forecaller: Address,
-	) -> EvmResult {
-		// TODO: Check whether this is enough or if we should error out
-		Ok(())
-	}
 
-	// Mimics:
-	//
 	//   function execute(
 	//         bytes32 commandId,
 	//         string calldata sourceChain,
 	//         string calldata sourceAddress,
 	//         bytes calldata payload
 	//     ) external {
-	//       ...
-	//     }
+	//       bytes32 payloadHash = keccak256(payload);
+	// 		 if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress,
+	// payloadHash)) revert NotApprovedByGateway(); 	     _execute(sourceChain,
+	// sourceAddress, payload);     }
 	//
 	// Note: The _execute logic in this case will forward all calls to the
 	//       pallet-connectors-gateway with a special runtime local origin
@@ -131,34 +108,6 @@ where
 				payload.into(),
 			)
 		})
-	}
-
-	// Mimics:
-	//
-	//     function forecallWithToken(
-	//         string calldata sourceChain,
-	//         string calldata sourceAddress,
-	//         bytes calldata payload,
-	//         string calldata tokenSymbol,
-	//         uint256 amount,
-	//         address forecaller
-	//     ) external {
-	//       ...
-	//     }
-	// Note: NOT SUPPORTED
-	//
-	#[precompile::public("forecallWithToken(string,string,bytes,string,uint256,address)")]
-	fn forecall_with_token(
-		_handle: &mut impl PrecompileHandle,
-		_source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
-		_source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-		_payload: Bytes<MAX_PAYLOAD_BYTES>,
-		_token_symbol: String<MAX_TOKEN_SYMBOL_BYTES>,
-		_amount: U256,
-		_forecaller: Address,
-	) -> EvmResult {
-		// TODO: Check whether this is enough or if we should error out
-		Ok(())
 	}
 
 	// Mimics:
