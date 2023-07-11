@@ -352,33 +352,33 @@ pub trait InterestAccrual<Rate, Balance, Adjustment> {
 
 	/// Calculate the debt at an specific moment
 	fn calculate_debt(
-		interest_rate_per_year: InterestRate<Rate>,
+		interest_rate_per_year: &InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_year: InterestRate<Rate>,
+		interest_rate_per_year: &InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
 	/// Re-normalize a debt for a new interest rate
 	fn renormalize_debt(
-		old_interest_rate: InterestRate<Rate>,
-		new_interest_rate: InterestRate<Rate>,
+		old_interest_rate: &InterestRate<Rate>,
+		new_interest_rate: &InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
 	/// Validate and indicate that a yearly rate is in use
-	fn reference_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
+	fn reference_rate(interest_rate_per_year: &InterestRate<Rate>) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
+	fn unreference_rate(interest_rate_per_year: &InterestRate<Rate>) -> DispatchResult;
 
 	/// Ask if the rate is valid to use by the implementation
-	fn validate_rate(interest_rate_per_year: InterestRate<Rate>) -> DispatchResult;
+	fn validate_rate(interest_rate_per_year: &InterestRate<Rate>) -> DispatchResult;
 
 	/// Returns a collection of pre-computed rates to perform multiple
 	/// operations with

@@ -141,16 +141,13 @@ pub mod weights;
 pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(any(feature = "runtime-benchmarks", test))]
-mod test_utils;
 
 pub use pallet::*;
 
@@ -341,7 +338,7 @@ pub mod pallet {
 		/// (effectively "rewinding the clock" to before the value was
 		/// valid)
 		pub fn get_debt(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 			normalized_debt: T::Balance,
 			when: Moment,
 		) -> Result<T::Balance, DispatchError> {
@@ -368,7 +365,7 @@ pub mod pallet {
 		}
 
 		pub fn do_adjust_normalized_debt(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 			normalized_debt: T::Balance,
 			adjustment: Adjustment<T::Balance>,
 		) -> Result<T::Balance, DispatchError> {
@@ -393,8 +390,8 @@ pub mod pallet {
 		}
 
 		pub fn do_renormalize_debt(
-			old_interest_rate: InterestRate<T::Rate>,
-			new_interest_rate: InterestRate<T::Rate>,
+			old_interest_rate: &InterestRate<T::Rate>,
+			new_interest_rate: &InterestRate<T::Rate>,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
 			let old_rate = Self::get_rate(old_interest_rate)?;
@@ -437,11 +434,11 @@ pub mod pallet {
 		}
 
 		pub fn reference_interest_rate(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 		) -> DispatchResult {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(rate_per_year)?;
+					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
 					Rates::<T>::try_mutate(|rates| {
 						let rate = rates
 							.iter_mut()
@@ -471,11 +468,11 @@ pub mod pallet {
 		}
 
 		pub fn unreference_interest_rate(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 		) -> DispatchResult {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(rate_per_year)?;
+					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
 					Rates::<T>::try_mutate(|rates| {
 						let idx = rates
 							.iter()
@@ -494,11 +491,11 @@ pub mod pallet {
 		}
 
 		pub fn get_rate(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 		) -> Result<RateDetailsOf<T>, DispatchError> {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
-					let interest_rate_per_sec = unchecked_conversion(rate_per_year)?;
+					let interest_rate_per_sec = unchecked_conversion(*rate_per_year)?;
 					Rates::<T>::get()
 						.into_iter()
 						.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
@@ -508,15 +505,15 @@ pub mod pallet {
 		}
 
 		pub(crate) fn validate_interest_rate(
-			interest_rate_per_year: InterestRate<T::Rate>,
+			interest_rate_per_year: &InterestRate<T::Rate>,
 		) -> DispatchResult {
 			match interest_rate_per_year {
 				InterestRate::Fixed { rate_per_year, .. } => {
 					let four_decimals = T::Rate::saturating_from_integer(10000);
 					let maximum = T::Rate::saturating_from_integer(MAX_INTEREST_RATE);
 					ensure!(
-						rate_per_year <= maximum
-							&& rate_per_year >= Zero::zero()
+						*rate_per_year <= maximum
+							&& *rate_per_year >= Zero::zero()
 							&& (rate_per_year.saturating_mul(four_decimals)).frac() == Zero::zero(),
 						Error::<T>::InvalidRate
 					);
@@ -533,7 +530,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>> for
 	type Rates = RateVec<T>;
 
 	fn calculate_debt(
-		interest_rate_per_year: InterestRate<T::Rate>,
+		interest_rate_per_year: &InterestRate<T::Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<T::Balance, DispatchError> {
@@ -541,7 +538,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>> for
 	}
 
 	fn adjust_normalized_debt(
-		interest_rate_per_year: InterestRate<T::Rate>,
+		interest_rate_per_year: &InterestRate<T::Rate>,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment<T::Balance>,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
@@ -549,24 +546,26 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>> for
 	}
 
 	fn renormalize_debt(
-		old_interest_rate: InterestRate<T::Rate>,
-		new_interest_rate: InterestRate<T::Rate>,
+		old_interest_rate: &InterestRate<T::Rate>,
+		new_interest_rate: &InterestRate<T::Rate>,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
 		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
 	}
 
-	fn reference_rate(interest_rate_per_year: InterestRate<T::Rate>) -> sp_runtime::DispatchResult {
+	fn reference_rate(
+		interest_rate_per_year: &InterestRate<T::Rate>,
+	) -> sp_runtime::DispatchResult {
 		Pallet::<T>::reference_interest_rate(interest_rate_per_year)
 	}
 
 	fn unreference_rate(
-		interest_rate_per_year: InterestRate<T::Rate>,
+		interest_rate_per_year: &InterestRate<T::Rate>,
 	) -> sp_runtime::DispatchResult {
 		Pallet::<T>::unreference_interest_rate(interest_rate_per_year)
 	}
 
-	fn validate_rate(interest_rate_per_year: InterestRate<T::Rate>) -> sp_runtime::DispatchResult {
+	fn validate_rate(interest_rate_per_year: &InterestRate<T::Rate>) -> sp_runtime::DispatchResult {
 		Pallet::<T>::validate_interest_rate(interest_rate_per_year)
 	}
 

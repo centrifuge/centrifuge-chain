@@ -12,10 +12,16 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
+use cfg_primitives::SECONDS_PER_YEAR;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 
 use super::*;
-use crate::test_utils::*;
+
+pub fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
+	rate_per_annum
+		.checked_div(&Rate::saturating_from_integer(SECONDS_PER_YEAR))
+		.and_then(|res| res.checked_add(&Rate::one()))
+}
 
 benchmarks! {
 	// Our logarithmic-time pow implementation is effectively
@@ -32,8 +38,4 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::Runtime,
-);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
