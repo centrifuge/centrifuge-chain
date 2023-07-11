@@ -20,7 +20,6 @@ mod tests;
 
 pub mod account_conversion;
 pub mod apis;
-pub mod contract_creation;
 pub mod evm;
 
 #[macro_export]
