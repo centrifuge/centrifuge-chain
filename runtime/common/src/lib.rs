@@ -424,6 +424,7 @@ pub mod changes {
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
 				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
 					LoanMutation::Maturity(_) => vec![week, blocked],
+					LoanMutation::MaturityExtension(_) => vec![],
 					LoanMutation::InterestPayments(_) => vec![week, blocked],
 					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
 					LoanMutation::InterestRate(_) => vec![epoch],

@@ -74,7 +74,10 @@ pub fn base_internal_pricing() -> InternalPricing<Runtime> {
 pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+			maturity: Maturity::Fixed {
+				date: (now() + YEAR).as_secs(),
+				extension: (YEAR / 2).as_secs(),
+			},
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
@@ -99,7 +102,7 @@ pub fn base_external_pricing() -> ExternalPricing<Runtime> {
 pub fn base_external_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+			maturity: Maturity::fixed((now() + YEAR).as_secs()),
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},

@@ -137,7 +137,7 @@ where
 	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
 		LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed((T::Time::now() + OFFSET).as_secs()),
+				maturity: Maturity::fixed((T::Time::now() + OFFSET).as_secs()),
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},

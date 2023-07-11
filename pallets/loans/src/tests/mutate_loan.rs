@@ -91,48 +91,95 @@ fn with_wrong_permissions() {
 	});
 }
 
-#[test]
-fn with_wrong_dcf_mutation() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, 0);
+mod wrong_mutation {
+	use super::*;
 
-		let mutation =
-			LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
+	#[test]
+	fn with_dcf() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, 0);
 
-		config_mocks(loan_id, &mutation);
-		assert_noop!(
-			Loans::propose_loan_mutation(
-				RuntimeOrigin::signed(LOAN_ADMIN),
-				POOL_A,
-				loan_id,
-				mutation,
-			),
-			Error::<Runtime>::MutationError(MutationError::DiscountedCashFlowExpected)
-		);
-	});
-}
+			let mutation =
+				LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
 
-#[test]
-fn with_wrong_interest_rate() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, 0);
+			config_mocks(loan_id, &mutation);
+			assert_noop!(
+				Loans::propose_loan_mutation(
+					RuntimeOrigin::signed(LOAN_ADMIN),
+					POOL_A,
+					loan_id,
+					mutation,
+				),
+				Error::<Runtime>::MutationError(MutationError::DiscountedCashFlowExpected)
+			);
+		});
+	}
 
-		// Too high
-		let mutation = LoanMutation::InterestRate(Rate::from_float(3.0));
+	#[test]
+	fn with_internal() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, 0);
 
-		config_mocks(loan_id, &mutation);
-		assert_noop!(
-			Loans::propose_loan_mutation(
-				RuntimeOrigin::signed(LOAN_ADMIN),
-				POOL_A,
-				loan_id,
-				mutation,
-			),
-			pallet_interest_accrual::Error::<Runtime>::InvalidRate
-		);
-	});
+			let mutation =
+				LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
+
+			config_mocks(loan_id, &mutation);
+			assert_noop!(
+				Loans::propose_loan_mutation(
+					RuntimeOrigin::signed(LOAN_ADMIN),
+					POOL_A,
+					loan_id,
+					mutation,
+				),
+				Error::<Runtime>::MutationError(MutationError::InternalPricingExpected)
+			);
+		});
+	}
+
+	#[test]
+	fn with_maturity_extension() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, 0);
+
+			let mutation = LoanMutation::MaturityExtension(YEAR.as_secs());
+
+			config_mocks(loan_id, &mutation);
+			assert_noop!(
+				Loans::propose_loan_mutation(
+					RuntimeOrigin::signed(LOAN_ADMIN),
+					POOL_A,
+					loan_id,
+					mutation,
+				),
+				Error::<Runtime>::MutationError(MutationError::MaturityExtendedTooMuch)
+			);
+		});
+	}
+
+	#[test]
+	fn with_interest_rate() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, 0);
+
+			// Too high
+			let mutation = LoanMutation::InterestRate(Rate::from_float(3.0));
+
+			config_mocks(loan_id, &mutation);
+			assert_noop!(
+				Loans::propose_loan_mutation(
+					RuntimeOrigin::signed(LOAN_ADMIN),
+					POOL_A,
+					loan_id,
+					mutation,
+				),
+				pallet_interest_accrual::Error::<Runtime>::InvalidRate
+			);
+		});
+	}
 }
 
 #[test]
@@ -157,7 +204,10 @@ fn with_successful_mutation_application() {
 	new_test_ext().execute_with(|| {
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+				maturity: Maturity::Fixed {
+					date: (now() + YEAR).as_secs(),
+					extension: YEAR.as_secs(),
+				},
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
@@ -179,7 +229,11 @@ fn with_successful_mutation_application() {
 		let mutations = vec![
 			// LoanMutation::InterestPayments(..), No changes, only one variant
 			// LoanMutation::PayDownSchedule(..), No changes, only one variant
-			LoanMutation::Maturity(Maturity::Fixed((now() + YEAR * 2).as_secs())),
+			LoanMutation::Maturity(Maturity::Fixed {
+				date: (now() + YEAR * 2).as_secs(),
+				extension: (YEAR * 2).as_secs(),
+			}),
+			LoanMutation::MaturityExtension(YEAR.as_secs()),
 			LoanMutation::InterestRate(Rate::from_float(0.5)),
 			LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(Rate::from_float(
 				0.5,
