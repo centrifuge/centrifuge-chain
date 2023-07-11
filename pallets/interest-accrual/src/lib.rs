@@ -579,10 +579,10 @@ pub struct RateVec<T: Config>(BoundedVec<RateDetailsOf<T>, T::MaxRateCount>);
 impl<T: Config> RateCollection<T::Rate, T::Balance, T::Balance> for RateVec<T> {
 	fn current_debt(
 		&self,
-		interest_rate_per_year: T::Rate,
+		interest_rate: &InterestRate<T::Rate>,
 		normalized_debt: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+		let interest_rate_per_sec = unchecked_conversion(interest_rate.per_year())?;
 		self.0
 			.iter()
 			.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
