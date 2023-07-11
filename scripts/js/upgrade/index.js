@@ -11,7 +11,7 @@ const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
 // Needs to be >= 84
 // 39 from democracy.externalProposeMajority(Lookup(H256, 34)))
 // 42 from democracy.fastTrack(H256, ...)
-// 1 from utility.batchAll
+// 1 from remark.batchAll
 // 2 for pallet and extrinsic indices
 const COUNCIL_PROPOSAL_BYTES = 90;
 // arbitrary numbers

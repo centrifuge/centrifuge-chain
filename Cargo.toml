@@ -58,6 +58,7 @@ members = [
   "pallets/data-collector",
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
+  "pallets/remark",
   "pallets/rewards",
   "runtime/altair",
   "runtime/centrifuge",
