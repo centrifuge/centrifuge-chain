@@ -216,7 +216,7 @@ fn with_unregister_price_id() {
 
 		let loan_id = util::create_loan(loan);
 
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		config_mocks(amount);
 
 		assert_noop!(
@@ -231,7 +231,7 @@ fn with_wrong_big_amount_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY) + 1;
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE) + 1;
 		config_mocks(amount);
 
 		assert_noop!(
@@ -247,7 +247,7 @@ fn with_wrong_quantity_amount_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// It's not multiple of PRICE_VALUE
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY) - 1;
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE) - 1;
 		config_mocks(amount);
 
 		assert_noop!(
@@ -262,7 +262,7 @@ fn with_correct_amount_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		config_mocks(amount);
 
 		assert_ok!(Loans::borrow(
@@ -287,7 +287,7 @@ fn with_unlimited_amount_external_pricing() {
 
 		let loan_id = util::create_loan(loan);
 
-		let amount = PRICE_VALUE.saturating_mul_int(2 /* Could be any value */);
+		let amount = PRICE_VALUE * 2; // But could be any value
 		config_mocks(amount);
 
 		assert_ok!(Loans::borrow(

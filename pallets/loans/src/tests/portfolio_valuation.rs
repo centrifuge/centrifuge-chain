@@ -68,7 +68,7 @@ fn without_active_loans() {
 fn with_active_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_1, amount);
 
 		let loan_2 = util::create_loan(LoanInfo {
@@ -95,7 +95,7 @@ fn with_active_loans() {
 fn with_active_written_off_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_1, amount);
 
 		let loan_2 = util::create_loan(LoanInfo {
@@ -119,7 +119,7 @@ fn with_active_written_off_loans() {
 fn filled_and_cleaned() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_1, amount);
 
 		let loan_2 = util::create_loan(LoanInfo {

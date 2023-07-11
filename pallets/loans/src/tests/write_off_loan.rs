@@ -346,7 +346,7 @@ fn with_percentage_applied_external() {
 		util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		advance_time(YEAR + DAY);
