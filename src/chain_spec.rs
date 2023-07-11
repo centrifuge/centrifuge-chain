@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
@@ -35,7 +35,7 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
+use sp_core::{crypto::UncheckedInto, sr25519, Encode, Get, Pair, Public, H160};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use xcm::{
 	latest::MultiLocation,
@@ -46,8 +46,21 @@ use xcm::{
 pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig, Extensions>;
 pub type CentrifugeChainSpec =
 	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
-pub type DevelopmentChainSpec =
-	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
+pub type DevelopmentChainSpec = sc_service::GenericChainSpec<DevGenesisExt, Extensions>;
+
+cfg_utils::GenesisExt!(
+	DevGenesisExt,
+	gen: development_runtime::GenesisConfig,
+	code: cfg_utils::evm::CodeDeployer<GetRoot>
+);
+
+#[derive(Debug)]
+pub struct GetRoot;
+impl Get<development_runtime::RuntimeOrigin> for GetRoot {
+	fn get() -> development_runtime::RuntimeOrigin {
+		frame_system::RawOrigin::Root.into()
+	}
+}
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -397,20 +410,24 @@ pub fn demo(para_id: ParaId) -> DevelopmentChainSpec {
 		"demo_live",
 		ChainType::Live,
 		move || {
-			development_genesis(
-				// kANEUrMbi9xC16AfL5vSGwfvBVRoRdfWoQ8abPiXi5etFxpdP
-				hex!["e0c426785313bb7e712d66dce43ccb81a7eaef373784511fb508fff4b5df3305"].into(),
-				vec![(
-					// kAHJNhAragKRrAb9X8JxSNYoqPqv36TspSwdSuyMfxGKUmfdH
-					hex!["068f3bd4ed27bb83da8fdebbb4deba6b3b3b83ff47c8abad11e5c48c74c20b11"].into(),
-					// kAKXFWse8rghi8mbAFB4RaVyZu6XZXq5i9wv7uYakZ3vQcxMR
-					hex!["68d9baaa081802f8ec50d475b654810b158cdcb23e11c43815a6549f78f1b34f"]
-						.unchecked_into(),
-				)],
-				demo_endowed_accounts(),
-				vec![],
-				Some(100000000 * CFG),
-				para_id,
+			DevGenesisExt::new(
+				development_genesis(
+					// kANEUrMbi9xC16AfL5vSGwfvBVRoRdfWoQ8abPiXi5etFxpdP
+					hex!["e0c426785313bb7e712d66dce43ccb81a7eaef373784511fb508fff4b5df3305"].into(),
+					vec![(
+						// kAHJNhAragKRrAb9X8JxSNYoqPqv36TspSwdSuyMfxGKUmfdH
+						hex!["068f3bd4ed27bb83da8fdebbb4deba6b3b3b83ff47c8abad11e5c48c74c20b11"]
+							.into(),
+						// kAKXFWse8rghi8mbAFB4RaVyZu6XZXq5i9wv7uYakZ3vQcxMR
+						hex!["68d9baaa081802f8ec50d475b654810b158cdcb23e11c43815a6549f78f1b34f"]
+							.unchecked_into(),
+					)],
+					demo_endowed_accounts(),
+					vec![],
+					Some(100000000 * CFG),
+					para_id,
+				),
+				cfg_utils::evm::CodeDeployer::default(),
 			)
 		},
 		vec![],
@@ -432,16 +449,22 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		"devel_live",
 		ChainType::Live,
 		move || {
-			development_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(
+			DevGenesisExt::new(
+				development_genesis(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<development_runtime::AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * CFG),
-				para_id,
+					vec![(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<development_runtime::AuraId>("Alice"),
+					)],
+					endowed_accounts(),
+					endowed_evm_accounts(),
+					Some(10000000 * CFG),
+					para_id,
+				),
+				cfg_utils::evm::CodeDeployer::new(vec![
+					(H160::from([0u8; 20]), vec![0, 0]),
+					(H160::from([0u8; 20]), vec![0, 0]),
+				]),
 			)
 		},
 		vec![],
@@ -463,16 +486,22 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 		"devel_local",
 		ChainType::Local,
 		move || {
-			development_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(
+			DevGenesisExt::new(
+				development_genesis(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<development_runtime::AuraId>("Alice"),
-				)],
-				endowed_accounts(),
-				endowed_evm_accounts(),
-				Some(10000000 * CFG),
-				para_id,
+					vec![(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<development_runtime::AuraId>("Alice"),
+					)],
+					endowed_accounts(),
+					endowed_evm_accounts(),
+					Some(10000000 * CFG),
+					para_id,
+				),
+				cfg_utils::evm::CodeDeployer::new(vec![
+					(H160::from([0u8; 20]), vec![0, 0]),
+					(H160::from([0u8; 20]), vec![0, 0]),
+				]),
 			)
 		},
 		vec![],

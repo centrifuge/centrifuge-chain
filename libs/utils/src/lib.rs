@@ -78,19 +78,65 @@ where
 	pallet_timestamp::Pallet::<T>::set_timestamp(timestamp);
 }
 
-pub mod evm {
-	use std::marker::PhantomData;
+#[macro_export]
+macro_rules! GenesisExt{
+	($id:ident, $( $name:ident : $gen:ty),* ) => {
+		#[cfg(feature = "std")]
+		#[derive(Serialize, Deserialize)]
+		#[allow(non_snake_case)]
+		pub struct $id {
+			$(
+			  pub $name: $gen,
+			)*
+		}
 
+
+		impl $id {
+			fn new($($name: $gen),*) -> Self {
+				Self {
+					$(
+					  $name,
+					)*
+				}
+			}
+		}
+
+		#[cfg(feature = "std")]
+		impl sp_runtime::BuildStorage for $id {
+			fn assimilate_storage(&self, storage: &mut sp_core::storage::Storage) -> Result<(), String> {
+				$(
+					sp_runtime::BuildStorage::assimilate_storage(&self.$name, storage)?;
+				)*
+
+				Ok(())
+			}
+		}
+	};
+}
+
+pub mod evm {
+	#[cfg(feature = "std")]
 	use frame_support::traits::GenesisBuild;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::U256;
 	use sp_runtime::{app_crypto::sp_core::H160, traits::Get};
+	use sp_std::{default::Default, marker::PhantomData, vec::Vec};
 
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct CodeDeployer<Origin> {
 		codes: Vec<(H160, Vec<u8>)>,
 		_phantom: PhantomData<Origin>,
+	}
+
+	impl<Origin> CodeDeployer<Origin> {
+		#[cfg(feature = "std")]
+		pub fn new(codes: Vec<(H160, Vec<u8>)>) -> Self {
+			Self {
+				codes,
+				_phantom: Default::default(),
+			}
+		}
 	}
 
 	impl<Origin> Default for CodeDeployer<Origin> {
@@ -102,9 +148,39 @@ pub mod evm {
 		}
 	}
 
+	#[cfg(feature = "std")]
 	impl<T: frame_system::Config + pallet_evm::Config, Origin: Get<T::RuntimeOrigin>>
 		GenesisBuild<T> for CodeDeployer<Origin>
 	{
+		fn build(&self) {
+			for (who, code) in self.codes.clone() {
+				//          origin: OriginFor<T>,
+				// 			source: H160,
+				// 			init: Vec<u8>,
+				// 			value: U256,
+				// 			gas_limit: u64,
+				// 			max_fee_per_gas: U256,
+				// 			max_priority_fee_per_gas: Option<U256>,
+				// 			nonce: Option<U256>,
+				// 			access_list: Vec<(H160, Vec<H256>)>,
+				pallet_evm::Pallet::<T>::create(
+					Origin::get(),
+					who,
+					code,
+					U256::MAX,
+					u64::MAX,
+					U256::MAX,
+					None,
+					None,
+					Vec::new(),
+				)
+				.expect("Deploying code in genesis failed.");
+			}
+		}
+	}
+
+	#[cfg(feature = "std")]
+	impl<Origin> BuildStorage for CodeDeployer<Origin> {
 		fn build(&self) {
 			for (who, code) in self.codes.clone() {
 				//          origin: OriginFor<T>,
