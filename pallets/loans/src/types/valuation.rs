@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::InterestRate;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
@@ -57,7 +56,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		&self,
 		debt: Balance,
 		when: Moment,
-		interest_rate: InterestRate<Rate>,
+		interest_rate_per_year: Rate,
 		maturity_date: Moment,
 		origination_date: Moment,
 	) -> Result<Balance, ArithmeticError> {
@@ -80,10 +79,6 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 
 		// Calculate the risk-adjusted expected cash flows
 		let exp = maturity_date.ensure_sub(when)?.ensure_into()?;
-
-		let interest_rate_per_year = match interest_rate {
-			InterestRate::Fixed { rate_per_year, .. } => rate_per_year,
-		};
 
 		// TODO: Simplify this once #1231 is merged allowing to extract only the
 		// acc_rate from InterestAccrual

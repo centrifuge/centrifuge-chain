@@ -301,43 +301,38 @@ pub enum InterestRate<Rate> {
 	},
 }
 
-impl<Rate> InterestRate<Rate> {
-	pub fn rate_per_year(&self) -> &Rate {
+impl<Rate: Copy> InterestRate<Rate> {
+	pub fn per_year(&self) -> Rate {
 		match self {
-			InterestRate::Fixed { rate_per_year, .. } => rate_per_year,
+			InterestRate::Fixed { rate_per_year, .. } => *rate_per_year,
 		}
+	}
+}
+
+impl<Rate> InterestRate<Rate> {
+	pub fn try_map_rate<F, E>(self, f: F) -> Result<Self, E>
+	where
+		F: FnOnce(Rate) -> Result<Rate, E>,
+	{
+		Ok(match self {
+			Self::Fixed {
+				rate_per_year,
+				compounding,
+			} => Self::Fixed {
+				rate_per_year: f(rate_per_year)?,
+				compounding,
+			},
+		})
 	}
 }
 
 impl<Rate: EnsureAdd + EnsureSub> InterestRate<Rate> {
 	pub fn ensure_add(self, rate: Rate) -> Result<InterestRate<Rate>, ArithmeticError> {
-		match self {
-			InterestRate::Fixed {
-				rate_per_year,
-				compounding,
-			} => {
-				let new_rate = rate_per_year.ensure_add(rate)?;
-				Ok(InterestRate::Fixed {
-					rate_per_year: new_rate,
-					compounding,
-				})
-			}
-		}
+		self.try_map_rate(|r| r.ensure_add(rate))
 	}
 
 	pub fn ensure_sub(self, rate: Rate) -> Result<InterestRate<Rate>, ArithmeticError> {
-		match self {
-			InterestRate::Fixed {
-				rate_per_year,
-				compounding,
-			} => {
-				let new_rate = rate_per_year.ensure_sub(rate)?;
-				Ok(InterestRate::Fixed {
-					rate_per_year: new_rate,
-					compounding,
-				})
-			}
-		}
+		self.try_map_rate(|r| r.ensure_sub(rate))
 	}
 }
 

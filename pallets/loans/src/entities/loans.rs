@@ -60,7 +60,7 @@ impl<T: Config> LoanInfo<T> {
 			Pricing::External(pricing) => pricing.validate()?,
 		}
 
-		T::InterestAccrual::validate_rate(self.interest_rate)?;
+		T::InterestAccrual::validate_rate(&self.interest_rate)?;
 
 		ensure!(
 			self.schedule.is_valid(now),

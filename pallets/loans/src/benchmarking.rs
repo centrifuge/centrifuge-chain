@@ -276,9 +276,8 @@ where
 
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
-			let rate_per_year = T::Rate::saturating_from_rational(i + 1, 5000);
-			T::InterestAccrual::reference_rate(InterestRate::Fixed {
-				rate_per_year,
+			T::InterestAccrual::reference_rate(&InterestRate::Fixed {
+				rate_per_year: T::Rate::saturating_from_rational(i + 1, 5000),
 				compounding: CompoundingSchedule::Secondly,
 			})
 			.unwrap();

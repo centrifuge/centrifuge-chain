@@ -3,10 +3,7 @@ use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{EnsureAdd, EnsureSub, Zero},
-	DispatchError, DispatchResult,
-};
+use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
 
 use crate::pallet::Config;
 
@@ -20,7 +17,7 @@ pub struct ActiveInterestRate<T: Config> {
 	interest_rate: InterestRate<T::Rate>,
 
 	/// Normalized accumulation of the interest rate.
-	/// Used to get the current interest per second
+	/// Used to get the current interest
 	normalized_acc: T::Balance,
 
 	/// Penalty applied to this interest rate
@@ -29,7 +26,7 @@ pub struct ActiveInterestRate<T: Config> {
 
 impl<T: Config> ActiveInterestRate<T> {
 	pub fn activate(interest_rate: InterestRate<T::Rate>) -> Result<Self, DispatchError> {
-		T::InterestAccrual::reference_rate(interest_rate)?;
+		T::InterestAccrual::reference_rate(&interest_rate)?;
 		Ok(Self {
 			interest_rate,
 			normalized_acc: T::Balance::zero(),
@@ -38,7 +35,7 @@ impl<T: Config> ActiveInterestRate<T> {
 	}
 
 	pub fn deactivate(self) -> Result<InterestRate<T::Rate>, DispatchError> {
-		T::InterestAccrual::unreference_rate(self.interest_rate)?;
+		T::InterestAccrual::unreference_rate(&self.interest_rate)?;
 		Ok(self.interest_rate)
 	}
 
@@ -46,8 +43,8 @@ impl<T: Config> ActiveInterestRate<T> {
 		!self.normalized_acc.is_zero()
 	}
 
-	pub fn rate(&self) -> InterestRate<T::Rate> {
-		self.interest_rate
+	pub fn rate(&self) -> &InterestRate<T::Rate> {
+		&self.interest_rate
 	}
 
 	pub fn penalty(&self) -> T::Rate {
@@ -56,19 +53,19 @@ impl<T: Config> ActiveInterestRate<T> {
 
 	pub fn current_debt(&self) -> Result<T::Balance, DispatchError> {
 		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.interest_rate, self.normalized_acc, now)
+		T::InterestAccrual::calculate_debt(&self.interest_rate, self.normalized_acc, now)
 	}
 
 	pub fn current_debt_cached<Rates>(&self, cache: &Rates) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		cache.current_debt(*self.interest_rate.rate_per_year(), self.normalized_acc)
+		cache.current_debt(self.interest_rate.per_year(), self.normalized_acc)
 	}
 
 	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
 		self.normalized_acc = T::InterestAccrual::adjust_normalized_debt(
-			self.interest_rate,
+			&self.interest_rate,
 			self.normalized_acc,
 			adjustment,
 		)?;
@@ -77,7 +74,7 @@ impl<T: Config> ActiveInterestRate<T> {
 	}
 
 	pub fn set_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
-		let base_rate = self.interest_rate.ensure_sub(self.penalty)?;
+		let base_rate = self.interest_rate.clone().ensure_sub(self.penalty)?;
 		self.update_rate(base_rate, new_penalty)
 	}
 
@@ -91,15 +88,15 @@ impl<T: Config> ActiveInterestRate<T> {
 		new_penalty: T::Rate,
 	) -> DispatchResult {
 		let new_rate = new_base_rate.ensure_add(new_penalty)?;
-		let old_rate = self.interest_rate;
+		let old_rate = self.interest_rate.clone();
 
-		T::InterestAccrual::reference_rate(new_rate)?;
+		T::InterestAccrual::reference_rate(&new_rate)?;
 
 		self.normalized_acc =
-			T::InterestAccrual::renormalize_debt(old_rate, new_rate, self.normalized_acc)?;
+			T::InterestAccrual::renormalize_debt(&old_rate, &new_rate, self.normalized_acc)?;
 		self.interest_rate = new_rate;
 		self.penalty = new_penalty;
 
-		T::InterestAccrual::unreference_rate(old_rate)
+		T::InterestAccrual::unreference_rate(&old_rate)
 	}
 }
