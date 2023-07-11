@@ -36,17 +36,31 @@ pub mod pallet {
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		Twox64Concat,
 	};
-	use frame_system::pallet_prelude::*;
+	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::{
 		asset_registry::{self, Inspect as _},
 		MultiCurrency, MultiReservableCurrency,
 	};
 	use scale_info::TypeInfo;
-	use sp_runtime::traits::{AtLeast32BitUnsigned, Hash};
+	use sp_runtime::{
+		traits::{
+			fungibles::{self, Create, Destroy, Inspect, Mutate, Transfer},
+			tokens::{AssetId, Balance, BalanceConversion},
+			AtLeast32BitUnsigned, Hash,
+		},
+		DispatchResult,
+	};
 
 	use super::*;
 
-	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
+	pub type BalanceOf<T> =
+		<<T as pallet::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::Balance;
+
+	/// An exchange tradeable asset
+	pub type TradeableAsset<T> = <T as Config>::Fungibles;
+	/// Exchange tradeable asset id
+	pub type TradeableAssetId<T> =
+		<<T as Config>::Fungibles as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -61,8 +75,8 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type AssetRegistry: asset_registry::Inspect<
-			AssetId = CurrencyIdOf<Self>,
-			Balance = <Self as Config>::Balance,
+			AssetId = Self::CurrencyId,
+			Balance = BalanceOf<T>,
 			CustomMetadata = CustomMetadata,
 		>;
 
@@ -113,8 +127,38 @@ pub mod pallet {
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
 			Balance = <Self as pallet::Config>::Balance,
-			CurrencyId = CurrencyIdOf<Self>,
+			CurrencyId = Self::CurrencyId,
 		>;
+	}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
+		// dummy weight for now
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		pub fn create_order(
+			origin: OriginFor<T>,
+			asset_in: AssetId,
+			asset_out: AssetId,
+			ammount: Balance,
+			price: Balance,
+		) -> DispatchResult {
+			Ok(())
+		}
+
+		#[pallet::call_index(1)]
+		// dummy weight for now
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		pub fn cancel_order(origin: OriginFor<T>, order_id: OrderId) -> DispatchResult {
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		// dummy weight for now
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		pub fn fill_order(origin: OriginFor<T>, order_id: OrderId) -> DispatchResult {
+			Ok(())
+		}
 	}
 	//
 	// Storage and storage types
