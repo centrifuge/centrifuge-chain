@@ -111,8 +111,10 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-timestamp = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-state-machine = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 # Cli specific
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

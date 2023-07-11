@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, CFG, MILLI_CFG};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
@@ -35,8 +35,11 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Encode, Get, Pair, Public, H160};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_core::{crypto::UncheckedInto, sr25519, storage::Storage, Encode, Get, Pair, Public, H160};
+use sp_runtime::{
+	traits::{IdentifyAccount, Verify},
+	BuildStorage,
+};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
@@ -48,11 +51,36 @@ pub type CentrifugeChainSpec =
 	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
 pub type DevelopmentChainSpec = sc_service::GenericChainSpec<DevGenesisExt, Extensions>;
 
-cfg_utils::GenesisExt!(
-	DevGenesisExt,
-	gen: development_runtime::GenesisConfig,
-	code: cfg_utils::evm::CodeDeployer<GetRoot>
-);
+#[derive(Serialize, Deserialize)]
+pub struct DevGenesisExt {
+	runtime_gen: development_runtime::GenesisConfig,
+	evm_code_gen: cfg_utils::evm::CodeDeployer<GetRoot>,
+}
+
+impl DevGenesisExt {
+	fn new(
+		runtime_gen: development_runtime::GenesisConfig,
+		evm_code_gen: cfg_utils::evm::CodeDeployer<GetRoot>,
+	) -> Self {
+		Self {
+			runtime_gen,
+			evm_code_gen,
+		}
+	}
+}
+
+impl BuildStorage for DevGenesisExt {
+	fn assimilate_storage(&self, storage: &mut Storage) -> Result<(), String> {
+		self.runtime_gen.assimilate_storage(storage)?;
+
+		sp_state_machine::BasicExternalities::execute_with_storage(storage, || {
+			frame_support::traits::GenesisBuild::<development_runtime::Runtime>::build(
+				&self.evm_code_gen,
+			);
+			Ok(())
+		})
+	}
+}
 
 #[derive(Debug)]
 pub struct GetRoot;
