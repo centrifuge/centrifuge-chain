@@ -1,5 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_traits::{InterestAccrual, RateCollection};
+use cfg_traits::RateCollection;
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -8,11 +8,12 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
+	traits::{EnsureFixedPointNumber, EnsureSub},
 	DispatchError,
 };
 
 use crate::{
+	entities::interest::ActiveInterestRate,
 	pallet::{Config, Error},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
@@ -40,9 +41,6 @@ pub struct InternalPricing<T: Config> {
 	/// Valuation method of this loan
 	pub valuation_method: ValuationMethod<T::Rate>,
 
-	/// Interest rate per year with any penalty applied
-	pub interest_rate: T::Rate,
-
 	/// How much can be borrowed
 	pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
 }
@@ -54,7 +52,7 @@ impl<T: Config> InternalPricing<T> {
 			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
 		);
 
-		T::InterestAccrual::validate_rate(self.interest_rate)
+		Ok(())
 	}
 }
 
@@ -65,37 +63,26 @@ pub struct InternalActivePricing<T: Config> {
 	/// Basic internal pricing info
 	info: InternalPricing<T>,
 
-	/// Normalized debt used to calculate the outstanding debt.
-	normalized_debt: T::Balance,
-
-	/// Additional interest that accrues on the written down loan as penalty
-	write_off_penalty: T::Rate,
+	/// Current interest rate
+	pub interest: ActiveInterestRate<T>,
 }
 
 impl<T: Config> InternalActivePricing<T> {
-	pub fn new(info: InternalPricing<T>) -> Result<Self, DispatchError> {
-		T::InterestAccrual::reference_rate(info.interest_rate)?;
+	pub fn activate(
+		info: InternalPricing<T>,
+		interest_rate: T::Rate,
+	) -> Result<Self, DispatchError> {
 		Ok(Self {
 			info,
-			normalized_debt: T::Balance::zero(),
-			write_off_penalty: T::Rate::zero(),
+			interest: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
 
-	pub fn end(self) -> Result<InternalPricing<T>, DispatchError> {
-		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
-		Ok(self.info)
+	pub fn deactivate(self) -> Result<(InternalPricing<T>, T::Rate), DispatchError> {
+		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn write_off_penalty(&self) -> T::Rate {
-		self.write_off_penalty
-	}
-
-	pub fn has_debt(&self) -> bool {
-		!self.normalized_debt.is_zero()
-	}
-
-	pub fn compute_present_value(
+	fn compute_present_value(
 		&self,
 		debt: T::Balance,
 		origination_date: Moment,
@@ -107,7 +94,7 @@ impl<T: Config> InternalActivePricing<T> {
 				Ok(dcf.compute_present_value(
 					debt,
 					now,
-					self.info.interest_rate,
+					self.interest.rate(),
 					maturity_date,
 					origination_date,
 				)?)
@@ -116,16 +103,34 @@ impl<T: Config> InternalActivePricing<T> {
 		}
 	}
 
-	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
+	pub fn present_value(
+		&self,
+		origination_date: Moment,
+		maturity_date: Moment,
+	) -> Result<T::Balance, DispatchError> {
+		let debt = self.interest.current_debt()?;
+		self.compute_present_value(debt, origination_date, maturity_date)
 	}
 
-	pub fn calculate_debt_by<Rates>(&self, rates: &Rates) -> Result<T::Balance, DispatchError>
+	pub fn present_value_cached<Rates>(
+		&self,
+		cache: &Rates,
+		origination_date: Moment,
+		maturity_date: Moment,
+	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		rates.current_debt(self.info.interest_rate, self.normalized_debt)
+		let debt = self.interest.current_debt_cached(cache)?;
+		self.compute_present_value(debt, origination_date, maturity_date)
+	}
+
+	pub fn current_interest(
+		&self,
+		current_principal: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		let debt = self.interest.current_debt()?;
+		Ok(debt.ensure_sub(current_principal)?)
 	}
 
 	pub fn max_borrow_amount(
@@ -138,48 +143,12 @@ impl<T: Config> InternalActivePricing<T> {
 				.saturating_sub(total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.calculate_debt()?),
+				.saturating_sub(self.interest.current_debt()?),
 		})
 	}
 
-	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_debt,
-			adjustment,
-		)?;
-
-		Ok(())
-	}
-
-	pub fn set_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
-		let base_interest_rate = self.info.interest_rate.ensure_sub(self.write_off_penalty)?;
-		self.update_interest_rate(base_interest_rate, new_penalty)
-	}
-
-	pub fn set_interest_rate(&mut self, base_interest_rate: T::Rate) -> DispatchResult {
-		self.update_interest_rate(base_interest_rate, self.write_off_penalty)
-	}
-
-	fn update_interest_rate(
-		&mut self,
-		new_base_interest_rate: T::Rate,
-		new_penalty: T::Rate,
-	) -> DispatchResult {
-		let new_interest_rate = new_base_interest_rate.ensure_add(new_penalty)?;
-		let old_interest_rate = self.info.interest_rate;
-
-		T::InterestAccrual::reference_rate(new_interest_rate)?;
-
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			old_interest_rate,
-			new_interest_rate,
-			self.normalized_debt,
-		)?;
-		self.info.interest_rate = new_interest_rate;
-		self.write_off_penalty = new_penalty;
-
-		T::InterestAccrual::unreference_rate(old_interest_rate)
+	pub fn adjust(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
+		self.interest.adjust_debt(adjustment)
 	}
 
 	fn mut_dcf(&mut self) -> Result<&mut DiscountedCashFlow<T::Rate>, DispatchError> {
@@ -191,9 +160,6 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn mutate_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
 		match mutation {
-			InternalMutation::InterestRate(rate) => {
-				self.set_interest_rate(rate)?;
-			}
 			InternalMutation::ValuationMethod(method) => self.info.valuation_method = method,
 			InternalMutation::ProbabilityOfDefault(rate) => {
 				self.mut_dcf()?.probability_of_default = rate;

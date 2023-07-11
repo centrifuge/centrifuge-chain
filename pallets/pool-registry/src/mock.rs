@@ -26,8 +26,9 @@ use frame_support::{
 };
 use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+#[cfg(feature = "runtime-benchmarks")]
+use pallet_pool_system::benchmarking::create_pool;
 use pallet_pool_system::{
-	benchmarking::create_pool,
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
 	tranches::TrancheInput,
 };
@@ -222,6 +223,7 @@ impl<
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
 	) -> DispatchResult {
+		#[cfg(feature = "runtime-benchmarks")]
 		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
 		Ok(())
 	}

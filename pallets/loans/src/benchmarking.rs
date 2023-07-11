@@ -32,7 +32,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
-use sp_runtime::traits::{Get, One, Zero};
+use sp_runtime::traits::{Bounded, Get, One, Zero};
 use sp_std::{time::Duration, vec};
 
 use crate::{
@@ -48,7 +48,7 @@ use crate::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
-		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		PayDownSchedule, RepaidAmount, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -137,14 +137,14 @@ where
 	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
 		LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed((T::Time::now() + OFFSET).as_secs()),
+				maturity: Maturity::fixed((T::Time::now() + OFFSET).as_secs()),
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			collateral: (COLLECION_ID.into(), item_id),
+			interest_rate: T::Rate::saturating_from_rational(1, 5000),
 			pricing: Pricing::Internal(InternalPricing {
 				collateral_value: COLLATERAL_VALUE.into(),
-				interest_rate: T::Rate::saturating_from_rational(1, 5000),
 				max_borrow_amount: MaxBorrowAmount::UpToOutstandingDebt {
 					advance_rate: T::Rate::one(),
 				},
@@ -193,8 +193,11 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			COLLATERAL_VALUE.into(),
-			0.into(),
+			RepaidAmount {
+				principal: 10.into(),
+				interest: T::Balance::max_value(),
+				unscheduled: 0.into(),
+			},
 		)
 		.unwrap();
 	}
@@ -338,7 +341,9 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into(), 0.into())
+		let repaid = RepaidAmount { principal: 10.into(), interest: 0.into(), unscheduled: 0.into() };
+
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, repaid)
 
 	write_off {
 		let n in 1..Helper::<T>::max_active_loans() - 1;

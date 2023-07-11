@@ -28,7 +28,7 @@ use pallet_loans::{
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		RepaidAmount, RepayRestrictions, RepaymentSchedule,
 	},
 	Call as LoansCall,
 };
@@ -115,7 +115,7 @@ pub fn issue_default_loan(
 ) -> Vec<RuntimeCall> {
 	let loan_info = LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed(maturity),
+			maturity: Maturity::fixed(maturity),
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
@@ -123,9 +123,9 @@ pub fn issue_default_loan(
 			manager.collateral_class_id(pool_id),
 			manager.next_collateral_id(pool_id),
 		),
+		interest_rate: rate_from_percent(15),
 		pricing: Pricing::Internal(InternalPricing {
 			collateral_value: amount,
-			interest_rate: rate_from_percent(15),
 			max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
 				advance_rate: rate_from_percent(90),
 			},
@@ -183,17 +183,11 @@ pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Runtime
 	})
 }
 
-pub fn repay_call(
-	pool_id: PoolId,
-	loan_id: LoanId,
-	amount: Balance,
-	unchecked_amount: Balance,
-) -> RuntimeCall {
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: RepaidAmount<Balance>) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
 		amount,
-		unchecked_amount,
 	})
 }
 

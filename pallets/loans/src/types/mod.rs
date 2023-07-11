@@ -17,7 +17,10 @@ use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::traits::Get;
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, Get},
+	ArithmeticError,
+};
 
 pub mod policy;
 pub mod portfolio;
@@ -55,6 +58,8 @@ pub enum BorrowLoanError {
 pub enum RepayLoanError {
 	/// Emits when the loan can not be borrowed because of a restriction
 	Restriction,
+	/// Emits when the principal amount is more than the borrowed amount
+	MaxPrincipalAmountExceeded,
 }
 
 /// Error related to loan borrowing
@@ -80,25 +85,45 @@ pub enum MutationError {
 	DiscountedCashFlowExpected,
 	/// Emits when a modification expect the loan to have an iternal pricing.
 	InternalPricingExpected,
+	/// Maturity extensions exceed max extension allowed.
+	MaturityExtendedTooMuch,
 }
 
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum Maturity {
 	/// Fixed point in time, in secs
-	Fixed(Moment),
+	Fixed {
+		/// Secs when maturity ends
+		date: Moment,
+		/// Extension in secs, without special permissions
+		extension: Moment,
+	},
 }
 
 impl Maturity {
+	pub fn fixed(date: Moment) -> Self {
+		Self::Fixed { date, extension: 0 }
+	}
+
 	pub fn date(&self) -> Moment {
 		match self {
-			Maturity::Fixed(moment) => *moment,
+			Maturity::Fixed { date, .. } => *date,
 		}
 	}
 
 	pub fn is_valid(&self, now: Moment) -> bool {
 		match self {
-			Maturity::Fixed(moment) => *moment > now,
+			Maturity::Fixed { date, .. } => *date > now,
+		}
+	}
+
+	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
+		match self {
+			Maturity::Fixed { date, extension } => {
+				date.ensure_add_assign(value)?;
+				extension.ensure_sub_assign(value)
+			}
 		}
 	}
 }
@@ -154,8 +179,8 @@ pub enum RepayRestrictions {
 	/// No restrictions
 	None,
 
-	/// You only can repay the full loan value once.
-	FullOnce,
+	/// You only can repay the full loan value.
+	Full,
 }
 
 /// Define the loan restrictions
@@ -171,7 +196,6 @@ pub struct LoanRestrictions {
 /// Active loan mutation for internal pricing
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InternalMutation<Rate> {
-	InterestRate(Rate),
 	ValuationMethod(ValuationMethod<Rate>),
 	ProbabilityOfDefault(Rate),
 	LossGivenDefault(Rate),
@@ -182,6 +206,8 @@ pub enum InternalMutation<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
+	MaturityExtension(Moment),
+	InterestRate(Rate),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
 	Internal(InternalMutation<Rate>),
@@ -192,4 +218,29 @@ pub enum LoanMutation<Rate> {
 pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
 	Loan(LoanId, LoanMutation<Rate>),
 	Policy(BoundedVec<WriteOffRule<Rate>, MaxRules>),
+}
+
+#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct RepaidAmount<Balance> {
+	pub principal: Balance,
+	pub interest: Balance,
+	pub unscheduled: Balance,
+}
+
+impl<Balance: EnsureAdd + Copy> RepaidAmount<Balance> {
+	pub fn effective(&self) -> Result<Balance, ArithmeticError> {
+		self.principal.ensure_add(self.interest)
+	}
+
+	pub fn total(&self) -> Result<Balance, ArithmeticError> {
+		self.principal
+			.ensure_add(self.interest)?
+			.ensure_add(self.unscheduled)
+	}
+
+	pub fn ensure_add_assign(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+		self.principal.ensure_add_assign(other.principal)?;
+		self.interest.ensure_add_assign(other.interest)?;
+		self.unscheduled.ensure_add_assign(other.unscheduled)
+	}
 }
