@@ -1,21 +1,16 @@
-// This file is part of SubstFixedU128.
-
-// Copyright (C) 2019-2021 Parity Technologies (UK) Ltd.
-// SPDX-License-Identifier: Apache-2.0
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 //
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
-//! Decimal Fixed Point implementations for SubstFixedU128 runtime.
+//! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
 use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
@@ -110,7 +105,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Multiples by FixedPointOperand, with Rounding::SignedRounding rounding
-	/// preference. SatuFixedU128s if out of bounds.
+	/// preference. Saturates if out of bounds.
 	fn saturating_mul_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -150,30 +145,30 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Multiples by another val of type Self, with Rounding::SignedRounding
-	/// rounding preference. SatuFixedU128s if out of bounds.
+	/// rounding preference. Saturates if out of bounds.
 	fn saturating_mul_with_rounding(self, other: Self, r: SignedRounding) -> Self;
 
 	/// Multiples by another val of type Self; rounds precision to floor.
-	/// SatuFixedU128s if out of bounds.
+	/// Saturates if out of bounds.
 	fn saturating_mul_floor(self, other: Self) -> Self {
 		self.saturating_mul_with_rounding(other, SignedRounding::Minor)
 	}
 
 	/// Multiples by another val of type Self; rounds precision to ceil.
-	/// SatuFixedU128s if out of bounds.
+	/// Saturates if out of bounds.
 	fn saturating_mul_ceil(self, other: Self) -> Self {
 		self.saturating_mul_with_rounding(other, SignedRounding::Major)
 	}
 
 	/// Multiplies by FixedPointOperand with Rounding::SignedRounding rounding
-	/// preference. SatuFixedU128s if result out of bounds.
+	/// preference. Saturates if result out of bounds.
 	// this should be superfluous though
 	fn saturating_mul_int_floor<N: FixedPointOperand>(self, int: N) -> N {
 		self.saturating_mul_int_with_rounding(int, SignedRounding::Minor)
 	}
 
 	/// Multiplies by FixedPointOperand; precision rounded to ceil
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	fn saturating_mul_int_ceil<N: FixedPointOperand>(self, int: N) -> N {
 		self.saturating_mul_int_with_rounding(int, SignedRounding::Major)
 	}
@@ -224,7 +219,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Creates Self from rational of FixedPointOperands, with
 	/// Rounding::SignedRounding rounding preference. Panics if denominator 0
-	/// is. SatuFixedU128s if result out of bounds.
+	/// is. Saturates if result out of bounds.
 	fn saturating_from_rational_with_rounding<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -238,7 +233,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Creates Self from rational of FixedPointOperands; rounds precision to
 	/// floor. Panics if denominator 0 is.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	fn saturating_from_rational_floor<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -248,7 +243,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Creates Self from rational of FixedPointOperands; rounds precision to
 	/// ceil. Panics if denominator 0 is.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	fn saturating_from_rational_ceil<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -274,17 +269,17 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Divides by another val of type Self, with Rounding::SignedRounding
-	/// rounding preference. SatuFixedU128s if out of bounds.
+	/// rounding preference. Saturates if out of bounds.
 	fn saturating_div_with_rounding(&self, other: &Self, r: SignedRounding) -> Self;
 
 	/// Divides by another val of type Self; rounds precision to floor.
-	/// SatuFixedU128s if out of bounds.
+	/// Saturates if out of bounds.
 	fn saturating_div_floor(&self, other: &Self) -> Self {
 		self.saturating_div_with_rounding(other, SignedRounding::Minor)
 	}
 
 	/// Divides by another val of type Self; rounds precision to ceil.
-	/// SatuFixedU128s if out of bounds.
+	/// Saturates if out of bounds.
 	fn saturating_div_ceil(&self, other: &Self) -> Self {
 		self.saturating_div_with_rounding(other, SignedRounding::Major)
 	}
@@ -331,7 +326,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Divides by FixedPointOperand, with Rounding:SignedRounding rounding
 	/// preference. Panics if denominator 0 is.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
@@ -350,7 +345,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Divides by FixedPointOperand; rounds precision to floor.
 	/// Panics if denominator 0 is.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
@@ -361,7 +356,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 
 	/// Divides by FixedPointOperand; rounds precision to ceil.
 	/// Panics if denominator 0 is.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
@@ -388,10 +383,10 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Checked self raised to pow.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturate if result out of bounds.
 	fn saturating_pow_with_rounding(self, pow: usize, r: SignedRounding) -> Self {
 		// Note:  this is using binary exponentiation
-		// including explanatory comments here as the SubstFixedU128 implementation
+		// including explanatory comments here as the Substrate implementation
 		// was initially unclear
 		if pow == 0 {
 			return Self::one();
@@ -418,13 +413,13 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Checked self raised to pow; rounds precision to floor.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	fn saturating_pow_floor(self, pow: usize) -> Self {
 		self.saturating_pow_with_rounding(pow, SignedRounding::Minor)
 	}
 
 	/// Checked self raised to pow; rounds precision to ceil.
-	/// SatuFixedU128s if result out of bounds.
+	/// Saturates if result out of bounds.
 	fn saturating_pow_ceil(self, pow: usize) -> Self {
 		self.saturating_pow_with_rounding(pow, SignedRounding::Major)
 	}
@@ -548,14 +543,14 @@ impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 	}
 
 	/// multiplies self by param and rounds precision with SignedRounding
-	/// satuFixedU128s if result out of bounds
+	/// Saturates if result out of bounds
 	fn saturating_mul_with_rounding(self, other: Self, r: SignedRounding) -> Self {
 		self.checked_mul_with_rounding(&other, r)
 			.unwrap_or_else(|| to_bound(self.0, other.0))
 	}
 
 	/// divides by param and takes rounding preference for accuracy
-	/// satuFixedU128s result if out of bounds -- panics if 0 is denominator
+	/// Saturates result if out of bounds -- panics if 0 is denominator
 	fn saturating_div_with_rounding(&self, other: &Self, r: SignedRounding) -> Self {
 		if other.is_zero() {
 			panic!("attempt to divide by zero")
@@ -1042,7 +1037,7 @@ mod test_fixed_u128 {
 		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(inner_min / accuracy);
 		assert_eq!(a.into_inner(), (inner_min / accuracy) * accuracy);
 
-		// Cases where integer doesn't fit, so it satuFixedU128s.
+		// Cases where integer doesn't fit, so it saturates.
 		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(inner_max / accuracy + 1);
 		assert_eq!(a.into_inner(), inner_max);
 
@@ -1148,12 +1143,12 @@ mod test_fixed_u128 {
 			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, -2);
 			assert_eq!(a.into_inner(), 25 * accuracy / 10);
 
-			// Max + 1, satuFixedU128s.
+			// Max + 1, saturates.
 			let a =
 				FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max as u128 + 1, accuracy);
 			assert_eq!(a.into_inner(), inner_max);
 
-			// Min - 1, satuFixedU128s.
+			// Min - 1, saturates.
 			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
 				inner_max as u128 + 2,
 				0 - accuracy,
@@ -1874,14 +1869,14 @@ mod test_fixed_u128 {
 		assert_eq!(a.saturating_mul_int((i128::MAX - 1) / 2), i128::MAX - 1);
 		// Max.
 		assert_eq!(a.saturating_mul_int(i128::MAX / 2), i128::MAX - 1);
-		// Max + 1 => satuFixedU128s to max.
+		// Max + 1 => saturates to max.
 		assert_eq!(a.saturating_mul_int(i128::MAX / 2 + 1), i128::MAX);
 
 		// Min - 1.
 		assert_eq!(a.saturating_mul_int((i128::MIN + 1) / 2), i128::MIN + 2);
 		// Min.
 		assert_eq!(a.saturating_mul_int(i128::MIN / 2), i128::MIN);
-		// Min + 1 => satuFixedU128s to min.
+		// Min + 1 => saturates to min.
 		assert_eq!(a.saturating_mul_int(i128::MIN / 2 - 1), i128::MIN);
 
 		if FixedU128::<DECIMALS_27>::SIGNED {
@@ -2310,7 +2305,7 @@ mod test_fixed_u128 {
 			1
 		);
 
-		// Verify result satuFixedU128s when out of bounds
+		// Verify result saturates when out of bounds
 		assert_eq!(
 			FixedU128::<DECIMALS_27>::max_value().saturating_mul_with_rounding(
 				FixedU128::<DECIMALS_27>::saturating_from_integer(2),
@@ -2385,7 +2380,7 @@ mod test_fixed_u128 {
 
 	#[test]
 	fn saturating_mul_floor_works() {
-		// Verify result satuFixedU128s when out of bounds
+		// Verify result saturates when out of bounds
 		assert_eq!(
 			FixedU128::<DECIMALS_27>::max_value()
 				.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_integer(2)),
@@ -2428,7 +2423,7 @@ mod test_fixed_u128 {
 
 	#[test]
 	fn saturating_mul_ceil_works() {
-		// Verify result satuFixedU128s when out of bounds
+		// Verify result saturates when out of bounds
 		assert_eq!(
 			FixedU128::<DECIMALS_27>::max_value()
 				.saturating_mul_ceil(FixedU128::<DECIMALS_27>::saturating_from_integer(2)),
@@ -2807,7 +2802,7 @@ mod test_fixed_u128 {
 			(inner_min / accuracy) as i128
 		);
 
-		// verify it actually satuFixedU128s
+		// verify it actually saturates
 		assert_eq!(
 			max.saturating_div_int_with_rounding(2, SignedRounding::NearestPrefLow),
 			inner_max
@@ -2875,7 +2870,7 @@ mod test_fixed_u128 {
 		let a = FixedU128::<DECIMALS_27>::one();
 		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		// verify it actually satuFixedU128s
+		// verify it actually saturates
 		assert_eq!(
 			FixedU128::<DECIMALS_27>::max_value().saturating_div_int_floor(2),
 			FixedU128::<DECIMALS_27>::max_value().into_inner()
@@ -2914,7 +2909,7 @@ mod test_fixed_u128 {
 		let a = FixedU128::<DECIMALS_27>::one();
 		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		// verify it actually satuFixedU128s
+		// verify it actually saturates
 		assert_eq!(
 			FixedU128::<DECIMALS_27>::max_value().saturating_div_int_ceil(2),
 			FixedU128::<DECIMALS_27>::max_value().into_inner()
