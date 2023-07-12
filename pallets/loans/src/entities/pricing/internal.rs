@@ -94,7 +94,7 @@ impl<T: Config> InternalActivePricing<T> {
 				Ok(dcf.compute_present_value(
 					debt,
 					now,
-					self.interest.rate().per_year(),
+					self.interest.rate(),
 					maturity_date,
 					origination_date,
 				)?)

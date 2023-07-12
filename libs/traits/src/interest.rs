@@ -1,12 +1,12 @@
-use cfg_primitives::Moment;
+use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::DispatchResult, scale_info::TypeInfo, Parameter, RuntimeDebug};
 use sp_arithmetic::{
-	traits::{EnsureAdd, EnsureSub},
-	ArithmeticError,
+	traits::{EnsureAdd, EnsureDiv, EnsureSub},
+	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::{
-	traits::{Get, Member, Zero},
+	traits::{Get, Member, One, Zero},
 	DispatchError,
 };
 
@@ -26,11 +26,17 @@ pub enum InterestRate<Rate> {
 	},
 }
 
-impl<Rate: Copy> InterestRate<Rate> {
+impl<Rate: FixedPointNumber> InterestRate<Rate> {
 	pub fn per_year(&self) -> Rate {
 		match self {
 			InterestRate::Fixed { rate_per_year, .. } => *rate_per_year,
 		}
+	}
+
+	pub fn per_sec(&self) -> Result<Rate, ArithmeticError> {
+		self.per_year()
+			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
+			.ensure_add(One::one())
 	}
 }
 

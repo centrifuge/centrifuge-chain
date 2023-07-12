@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
+use cfg_traits::interest::InterestRate;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
@@ -56,7 +57,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		&self,
 		debt: Balance,
 		when: Moment,
-		interest_rate_per_year: Rate,
+		interest_rate: &InterestRate<Rate>,
 		maturity_date: Moment,
 		origination_date: Moment,
 	) -> Result<Balance, ArithmeticError> {
@@ -82,10 +83,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 
 		// TODO: Simplify this once #1231 is merged allowing to extract only the
 		// acc_rate from InterestAccrual
-		let interest_rate_per_sec = interest_rate_per_year
-			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
-			.ensure_add(One::one())?;
-
+		let interest_rate_per_sec = interest_rate.per_sec()?;
 		let acc_rate = checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let ecf = acc_rate.ensure_mul_int(debt)?;
 		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
