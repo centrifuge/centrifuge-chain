@@ -1,4 +1,4 @@
-use cfg_traits::{InterestAccrual, InterestRate, RateCollection};
+use cfg_traits::interest::{InterestAccrual, InterestRate, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, RuntimeDebugNoBound};

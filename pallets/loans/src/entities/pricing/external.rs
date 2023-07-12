@@ -2,7 +2,7 @@ use cfg_primitives::Moment;
 use cfg_traits::{
 	self,
 	data::{DataCollection, DataRegistry},
-	InterestRate,
+	interest::InterestRate,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};

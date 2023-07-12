@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{CompoundingSchedule, InterestRate};
+use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber,

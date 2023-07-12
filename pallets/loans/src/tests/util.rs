@@ -1,6 +1,3 @@
-use cfg_primitives::SECONDS_PER_DAY;
-use cfg_traits::{CompoundingSchedule, InterestRate};
-
 use super::*;
 
 pub fn total_borrowed_rate(value: f64) -> IntMaxBorrowAmount<Rate> {

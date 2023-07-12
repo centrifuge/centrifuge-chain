@@ -122,7 +122,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::{InterestAccrual, InterestRate, RateCollection};
+use cfg_traits::interest::{InterestAccrual, InterestRate, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};

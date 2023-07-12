@@ -1,5 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_traits::{InterestRate, RateCollection};
+use cfg_traits::interest::{InterestRate, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{

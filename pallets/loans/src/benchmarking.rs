@@ -15,7 +15,8 @@ use cfg_primitives::CFG;
 use cfg_traits::{
 	changes::ChangeGuard,
 	data::{DataCollection, DataRegistry},
-	CompoundingSchedule, InterestAccrual, InterestRate, Permissions, PoolBenchmarkHelper,
+	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
+	Permissions, PoolBenchmarkHelper,
 };
 use cfg_types::{
 	adjustments::Adjustment,

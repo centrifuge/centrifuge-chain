@@ -14,7 +14,7 @@
 //! Contains base types without Config references
 
 use cfg_primitives::Moment;
-use cfg_traits::InterestRate;
+use cfg_traits::interest::InterestRate;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;

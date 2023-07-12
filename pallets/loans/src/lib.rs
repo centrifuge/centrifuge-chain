@@ -75,7 +75,8 @@ pub mod pallet {
 		self,
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
-		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
+		interest::InterestAccrual,
+		Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,

@@ -1,5 +1,3 @@
-use cfg_traits::{CompoundingSchedule, InterestRate};
-
 use super::*;
 
 fn config_mocks(pool_id: PoolId) {
