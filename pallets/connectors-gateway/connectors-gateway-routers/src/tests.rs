@@ -5,8 +5,8 @@ use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
 use pallet_evm::AddressMapping;
 use pallet_xcm_transactor::RemoteTransactInfoWithMaxWeight;
-use sp_core::{bounded_vec, crypto::AccountId32, H160, U256};
-use sp_runtime::traits::Convert;
+use sp_core::{bounded_vec, crypto::AccountId32, H160, H256, U256};
+use sp_runtime::traits::{BlakeTwo256, Convert, Hash};
 use xcm::{
 	lts::WeightLimit,
 	v2::OriginKind,
@@ -23,76 +23,170 @@ use crate::{
 mod axelar_evm {
 	use super::*;
 
-	#[test]
-	fn success() {
-		new_test_ext().execute_with(|| {
-			let sender: AccountId32 = rand::random::<[u8; 32]>().into();
-			let sender_h160: H160 =
-				H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
-			let derived_sender = IdentityAddressMapping::into_account_id(sender_h160);
+	mod init {
+		use sp_runtime::DispatchError;
 
-			Balances::mint_into(&derived_sender.into(), 1_000_000 * CFG).unwrap();
+		use super::*;
 
-			let axelar_contract_address = H160::from_low_u64_be(1);
-			let connectors_contract_address = H160::from_low_u64_be(2);
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let axelar_contract_address = H160::from_low_u64_be(1);
+				let axelar_contract_code = rand::random::<[u8; 32]>().to_vec();
+				let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
+				let connectors_contract_address = H160::from_low_u64_be(2);
 
-			let transaction_call_cost =
-				<Runtime as pallet_evm::Config>::config().gas_transaction_call;
+				pallet_evm::AccountCodes::<Runtime>::insert(
+					axelar_contract_address,
+					axelar_contract_code,
+				);
 
-			let evm_domain = EVMDomain {
-				chain: EVMChain::Ethereum,
-				axelar_contract_address,
-				connectors_contract_address,
-				fee_values: FeeValues {
-					value: U256::from(10),
-					gas_limit: U256::from(transaction_call_cost + 10_000),
-					gas_price: U256::from(10),
-				},
-			};
+				let evm_domain = EVMDomain {
+					chain: EVMChain::Ethereum,
+					axelar_contract_address,
+					axelar_contract_hash,
+					connectors_contract_address,
+					fee_values: FeeValues {
+						value: U256::from(10),
+						gas_limit: U256::from(10),
+						gas_price: U256::from(10),
+					},
+				};
 
-			let domain_router = DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
-				domain: evm_domain,
-				_marker: Default::default(),
+				let domain_router =
+					DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
+						domain: evm_domain,
+						_marker: Default::default(),
+					});
+
+				assert_ok!(domain_router.init());
 			});
+		}
 
-			let msg = MessageMock::Second;
+		#[test]
+		fn failure() {
+			new_test_ext().execute_with(|| {
+				let axelar_contract_address = H160::from_low_u64_be(1);
+				let axelar_contract_code = rand::random::<[u8; 32]>().to_vec();
+				let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
+				let connectors_contract_address = H160::from_low_u64_be(2);
 
-			assert_ok!(domain_router.send(sender, msg));
-		});
+				let evm_domain = EVMDomain {
+					chain: EVMChain::Ethereum,
+					axelar_contract_address,
+					axelar_contract_hash,
+					connectors_contract_address,
+					fee_values: FeeValues {
+						value: U256::from(10),
+						gas_limit: U256::from(10),
+						gas_price: U256::from(10),
+					},
+				};
+
+				let domain_router =
+					DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
+						domain: evm_domain,
+						_marker: Default::default(),
+					});
+
+				assert_noop!(
+					domain_router.init(),
+					DispatchError::Other("Axelar contract code does not match")
+				);
+
+				pallet_evm::AccountCodes::<Runtime>::insert(
+					axelar_contract_address,
+					rand::random::<[u8; 32]>().to_vec(),
+				);
+
+				assert_noop!(
+					domain_router.init(),
+					DispatchError::Other("Axelar contract code does not match")
+				);
+			});
+		}
 	}
 
-	#[test]
-	fn insufficient_balance() {
-		new_test_ext().execute_with(|| {
-			let sender: AccountId32 = rand::random::<[u8; 32]>().into();
+	mod send {
+		use super::*;
 
-			let axelar_contract_address = H160::from_low_u64_be(1);
-			let connectors_contract_address = H160::from_low_u64_be(2);
+		#[test]
+		fn success() {
+			new_test_ext().execute_with(|| {
+				let sender: AccountId32 = rand::random::<[u8; 32]>().into();
+				let sender_h160: H160 =
+					H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
+				let derived_sender = IdentityAddressMapping::into_account_id(sender_h160);
 
-			let evm_domain = EVMDomain {
-				chain: EVMChain::Ethereum,
-				axelar_contract_address,
-				connectors_contract_address,
-				fee_values: FeeValues {
-					value: U256::from(1),
-					gas_limit: U256::from(10),
-					gas_price: U256::from(1),
-				},
-			};
+				Balances::mint_into(&derived_sender.into(), 1_000_000 * CFG).unwrap();
 
-			let domain_router = DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
-				domain: evm_domain,
-				_marker: Default::default(),
+				let axelar_contract_address = H160::from_low_u64_be(1);
+				let axelar_contract_hash = H256::random();
+				let connectors_contract_address = H160::from_low_u64_be(2);
+
+				let transaction_call_cost =
+					<Runtime as pallet_evm::Config>::config().gas_transaction_call;
+
+				let evm_domain = EVMDomain {
+					chain: EVMChain::Ethereum,
+					axelar_contract_address,
+					axelar_contract_hash,
+					connectors_contract_address,
+					fee_values: FeeValues {
+						value: U256::from(10),
+						gas_limit: U256::from(transaction_call_cost + 10_000),
+						gas_price: U256::from(10),
+					},
+				};
+
+				let domain_router =
+					DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
+						domain: evm_domain,
+						_marker: Default::default(),
+					});
+
+				let msg = MessageMock::Second;
+
+				assert_ok!(domain_router.send(sender, msg));
 			});
+		}
 
-			let msg = MessageMock::Second;
+		#[test]
+		fn insufficient_balance() {
+			new_test_ext().execute_with(|| {
+				let sender: AccountId32 = rand::random::<[u8; 32]>().into();
 
-			let res = domain_router.send(sender, msg);
-			assert_eq!(
-				res.err().unwrap(),
-				pallet_evm::Error::<Runtime>::BalanceLow.into()
-			);
-		});
+				let axelar_contract_address = H160::from_low_u64_be(1);
+				let axelar_contract_hash = H256::random();
+				let connectors_contract_address = H160::from_low_u64_be(2);
+
+				let evm_domain = EVMDomain {
+					chain: EVMChain::Ethereum,
+					axelar_contract_address,
+					axelar_contract_hash,
+					connectors_contract_address,
+					fee_values: FeeValues {
+						value: U256::from(1),
+						gas_limit: U256::from(10),
+						gas_price: U256::from(1),
+					},
+				};
+
+				let domain_router =
+					DomainRouter::<Runtime>::AxelarEVM(AxelarEVMRouter::<Runtime> {
+						domain: evm_domain,
+						_marker: Default::default(),
+					});
+
+				let msg = MessageMock::Second;
+
+				let res = domain_router.send(sender, msg);
+				assert_eq!(
+					res.err().unwrap(),
+					pallet_evm::Error::<Runtime>::BalanceLow.into()
+				);
+			});
+		}
 	}
 }
 

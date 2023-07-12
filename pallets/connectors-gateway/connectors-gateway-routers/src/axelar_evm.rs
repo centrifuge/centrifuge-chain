@@ -12,12 +12,16 @@
 use cfg_traits::{connectors::Codec, ethereum::EthereumTransactor};
 use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	ensure,
+};
 use scale_info::{
 	prelude::string::{String, ToString},
 	TypeInfo,
 };
-use sp_core::{H160, U256};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
 use crate::{AccountIdOf, MessageOf};
@@ -27,7 +31,8 @@ pub struct AxelarEVMRouter<T>
 where
 	T: frame_system::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_ethereum_transaction::Config,
+		+ pallet_ethereum_transaction::Config
+		+ pallet_evm::Config,
 {
 	pub domain: EVMDomain,
 	pub _marker: PhantomData<T>,
@@ -37,6 +42,7 @@ where
 pub struct EVMDomain {
 	pub chain: EVMChain,
 	pub axelar_contract_address: H160,
+	pub axelar_contract_hash: H256,
 	pub connectors_contract_address: H160,
 	pub fee_values: FeeValues,
 }
@@ -67,10 +73,18 @@ impl<T> AxelarEVMRouter<T>
 where
 	T: frame_system::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_ethereum_transaction::Config,
+		+ pallet_ethereum_transaction::Config
+		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
 	pub fn do_init(&self) -> DispatchResult {
+		let code = pallet_evm::AccountCodes::<T>::get(self.domain.axelar_contract_address);
+
+		ensure!(
+			BlakeTwo256::hash_of(&code) == self.domain.axelar_contract_hash,
+			DispatchError::Other("Axelar contract code does not match"),
+		);
+
 		Ok(())
 	}
 

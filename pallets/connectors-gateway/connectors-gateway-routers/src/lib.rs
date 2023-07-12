@@ -40,7 +40,8 @@ where
 	T: frame_system::Config
 		+ pallet_xcm_transactor::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_ethereum_transaction::Config,
+		+ pallet_ethereum_transaction::Config
+		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
 	EthereumXCM(EthereumXCMRouter<T>),
@@ -52,7 +53,8 @@ where
 	T: frame_system::Config
 		+ pallet_xcm_transactor::Config
 		+ pallet_connectors_gateway::Config
-		+ pallet_ethereum_transaction::Config,
+		+ pallet_ethereum_transaction::Config
+		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
 	type Message = MessageOf<T>;

@@ -22,6 +22,7 @@ use pallet_connectors::Message;
 use pallet_evm::FeeCalculator;
 use runtime_common::account_conversion::AccountConverter;
 use sp_core::{crypto::AccountId32, storage::Storage, Get, H160, U256};
+use sp_runtime::traits::{BlakeTwo256, Hash};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -56,7 +57,14 @@ async fn call() {
 	let test_domain = Domain::EVM(1);
 
 	let axelar_contract_address = H160::from_low_u64_be(1);
+	let axelar_contract_code: Vec<u8> = vec![0, 0, 0];
+	let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
 	let connectors_contract_address = H160::from_low_u64_be(2);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		pallet_evm::AccountCodes::<Runtime>::insert(axelar_contract_address, axelar_contract_code)
+	})
+	.unwrap();
 
 	let transaction_call_cost = env
 		.with_state(Chain::Para(PARA_ID), || {
@@ -67,6 +75,7 @@ async fn call() {
 	let evm_domain = EVMDomain {
 		chain: EVMChain::Ethereum,
 		axelar_contract_address,
+		axelar_contract_hash,
 		connectors_contract_address,
 		fee_values: FeeValues {
 			value: U256::from(10),
