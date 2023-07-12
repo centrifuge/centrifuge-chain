@@ -46,8 +46,8 @@ impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
 		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
 			ensure!(
-				quantity.frac().is_zero(),
-				Error::<T>::AmountNotMultipleOfPrice
+				quantity.frac().is_zero() && quantity > T::Rate::zero(),
+				Error::<T>::AmountNotNaturalNumber
 			)
 		}
 

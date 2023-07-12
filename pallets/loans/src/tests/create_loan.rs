@@ -146,7 +146,7 @@ fn with_wrong_interest_rate() {
 }
 
 #[test]
-fn with_no_integer_quantity() {
+fn with_no_natural_quantity() {
 	new_test_ext().execute_with(|| {
 		config_mocks(POOL_A);
 
@@ -160,7 +160,7 @@ fn with_no_integer_quantity() {
 
 		assert_noop!(
 			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-			Error::<Runtime>::AmountNotMultipleOfPrice
+			Error::<Runtime>::AmountNotNaturalNumber
 		);
 	});
 }
