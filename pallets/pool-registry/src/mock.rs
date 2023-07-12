@@ -253,6 +253,7 @@ impl Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
@@ -286,7 +287,6 @@ impl orml_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type InterestRate = Rate;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
