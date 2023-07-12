@@ -25,6 +25,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 cfg-types = { path = "../../libs/types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 

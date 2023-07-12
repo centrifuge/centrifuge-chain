@@ -43,6 +43,7 @@ frame_support::construct_runtime!(
 	  {
 			Balances: pallet_balances,
 			System: frame_system,
+		  OrmlTokens: orml_tokens
 		  OrderBook: order_book,
 	  }
 );
@@ -122,11 +123,26 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 		CustomMetadata
 }
 
+impl orml_tokens::Config for Test {
+	type Amount = i64;
+	type Balance = Balance;
+	type CurrencyHooks = ();
+	type CurrencyId = CurrencyId;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type ExistentialDeposits = ExistentialDeposits;
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 impl order_book::Config for Runtime {
-	// type AssetRegistry = RegistryMock;
-	// type Balance = Balance;
-	// type CurrencyId = CurrencyId;
-	// type RuntimeEvent = RuntimeEvent;
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = RegistryMock;
+	type Balance = Balance;
+	type RuntimeEvent = RuntimeEvent;
+	type TradeableAsset = OrmlTokens;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
