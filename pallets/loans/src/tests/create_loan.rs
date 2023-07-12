@@ -143,6 +143,26 @@ fn with_wrong_interest_rate() {
 }
 
 #[test]
+fn with_no_integer_quantity() {
+	new_test_ext().execute_with(|| {
+		config_mocks(POOL_A);
+
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY + Rate::from_float(0.1)),
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		assert_noop!(
+			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
+			Error::<Runtime>::AmountNotMultipleOfPrice
+		);
+	});
+}
+
+#[test]
 fn with_unregister_price_id() {
 	new_test_ext().execute_with(|| {
 		config_mocks(POOL_A);

@@ -29,9 +29,9 @@ impl<Amount> Adjustment<Amount> {
 		}
 	}
 
-	pub fn map<F>(self, f: F) -> Adjustment<Amount>
+	pub fn map<F, R>(self, f: F) -> Adjustment<R>
 	where
-		F: FnOnce(Amount) -> Amount,
+		F: FnOnce(Amount) -> R,
 	{
 		match self {
 			Adjustment::Increase(amount) => Adjustment::Increase(f(amount)),
@@ -39,9 +39,9 @@ impl<Amount> Adjustment<Amount> {
 		}
 	}
 
-	pub fn try_map<F, E>(self, f: F) -> Result<Adjustment<Amount>, E>
+	pub fn try_map<F, E, R>(self, f: F) -> Result<Adjustment<R>, E>
 	where
-		F: FnOnce(Amount) -> Result<Amount, E>,
+		F: FnOnce(Amount) -> Result<R, E>,
 	{
 		match self {
 			Adjustment::Increase(amount) => f(amount).map(Adjustment::Increase),

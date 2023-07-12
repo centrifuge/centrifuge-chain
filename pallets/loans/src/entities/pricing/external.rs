@@ -8,7 +8,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureSub, One, Zero},
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
 	DispatchError, DispatchResult, FixedPointNumber,
 };
 
@@ -19,12 +19,12 @@ use crate::{
 
 /// Define the max borrow amount of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum MaxBorrowAmount<Balance> {
+pub enum MaxBorrowAmount<Quantity> {
 	/// You can borrow until the pool reserve
 	NoLimit,
 
 	/// Maximum number of items associated with the loan of the pricing.
-	Quantity(Balance),
+	Quantity(Quantity),
 }
 
 /// External pricing method
@@ -35,14 +35,21 @@ pub struct ExternalPricing<T: Config> {
 	pub price_id: T::PriceId,
 
 	/// Maximum amount that can be borrowed.
-	pub max_borrow_amount: MaxBorrowAmount<T::Balance>,
+	pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
 
 	/// Reference price used to calculate the interest
-	pub notional: T::Rate,
+	pub notional: T::Balance,
 }
 
 impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
+		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
+			ensure!(
+				quantity.frac().is_zero(),
+				Error::<T>::AmountNotMultipleOfPrice
+			)
+		}
+
 		Ok(())
 	}
 }
@@ -55,7 +62,7 @@ pub struct ExternalActivePricing<T: Config> {
 	info: ExternalPricing<T>,
 
 	/// Outstanding quantity that should be repaid.
-	outstanding_quantity: T::Balance,
+	outstanding_quantity: T::Rate,
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
@@ -70,7 +77,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self {
 			info,
-			outstanding_quantity: T::Balance::zero(),
+			outstanding_quantity: T::Rate::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
@@ -83,7 +90,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn current_price(&self) -> Result<T::Rate, DispatchError> {
+	pub fn current_price(&self) -> Result<T::Balance, DispatchError> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
 	}
 
@@ -93,22 +100,20 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn outstanding_amount(&self) -> Result<T::Balance, DispatchError> {
 		let price = self.current_price()?;
-		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
+		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
 	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
 		let outstanding_notional = self
-			.info
-			.notional
-			.ensure_mul_int(self.outstanding_quantity)?;
+			.outstanding_quantity
+			.ensure_mul_int(self.info.notional)?;
 
 		let debt = self.interest.current_debt()?;
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.current_price()?;
-		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
+		self.outstanding_amount()
 	}
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
@@ -116,7 +121,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
 		let price = cache.get(&self.info.price_id)?.0;
-		Ok(price.ensure_mul_int(self.outstanding_quantity)?)
+		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
 	pub fn max_borrow_amount(
@@ -127,7 +132,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			MaxBorrowAmount::Quantity(quantity) => {
 				let price = self.current_price()?;
 				let available = quantity.ensure_sub(self.outstanding_quantity)?;
-				Ok(price.ensure_mul_int(available)?)
+				Ok(available.ensure_mul_int(price)?)
 			}
 			MaxBorrowAmount::NoLimit => Ok(desired_amount),
 		}
@@ -141,12 +146,10 @@ impl<T: Config> ExternalActivePricing<T> {
 		let quantity_adj = principal_adj.try_map(|principal| -> Result<_, DispatchError> {
 			let price = self.current_price()?;
 
-			let quantity = T::Rate::saturating_from_integer(principal)
-				.ensure_div(price)?
-				.ensure_mul_int(One::one())?;
+			let quantity = T::Rate::ensure_from_rational(principal, price)?;
 
 			ensure!(
-				price.ensure_mul_int(quantity)? == principal,
+				quantity.frac().is_zero(),
 				Error::<T>::AmountNotMultipleOfPrice
 			);
 
@@ -156,9 +159,8 @@ impl<T: Config> ExternalActivePricing<T> {
 		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
 
 		let interest_adj = quantity_adj.try_map(|quantity| {
-			self.info
-				.notional
-				.ensure_mul_int(quantity)?
+			quantity
+				.ensure_mul_int(self.info.notional)?
 				.ensure_add(interest)
 		})?;
 

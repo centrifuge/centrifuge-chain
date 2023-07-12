@@ -53,7 +53,7 @@ fn without_fully_repaid_internal() {
 fn without_fully_repaid_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 		util::repay_loan(loan_id, amount / 2);
 
@@ -104,7 +104,7 @@ fn with_fully_repaid_internal() {
 fn with_fully_repaid_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 		util::repay_loan(loan_id, amount);
 

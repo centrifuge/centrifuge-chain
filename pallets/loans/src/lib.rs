@@ -118,7 +118,7 @@ pub mod pallet {
 	>>::Collection;
 
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
+	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;

@@ -1588,7 +1588,7 @@ impl orml_oracle::Config for Runtime {
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
 	type OracleKey = OracleKey;
-	type OracleValue = Rate;
+	type OracleValue = Balance;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1597,7 +1597,7 @@ impl orml_oracle::Config for Runtime {
 
 impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
-	type Data = Rate;
+	type Data = Balance;
 	type DataId = OracleKey;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxCollectionSize;

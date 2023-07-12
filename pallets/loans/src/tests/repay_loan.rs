@@ -295,7 +295,7 @@ fn twice_internal() {
 fn twice_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		config_mocks(amount / 2);
@@ -311,11 +311,11 @@ fn twice_external() {
 		));
 
 		assert_eq!(
-			NOTIONAL.saturating_mul_int(QUANTITY / 2),
+			(QUANTITY / 2.into()).saturating_mul_int(NOTIONAL),
 			util::current_loan_debt(loan_id)
 		);
 
-		let remaining = PRICE_VALUE.saturating_mul_int(QUANTITY / 2);
+		let remaining = (QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE);
 		config_mocks(remaining);
 
 		assert_ok!(Loans::repay(
@@ -395,7 +395,7 @@ fn twice_internal_with_elapsed_time() {
 fn twice_external_with_elapsed_time() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		config_mocks(amount / 2);
@@ -415,12 +415,12 @@ fn twice_external_with_elapsed_time() {
 		assert_eq!(
 			util::current_debt_for(
 				util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
-				NOTIONAL.saturating_mul_int(QUANTITY / 2),
+				(QUANTITY / 2.into()).saturating_mul_int(NOTIONAL),
 			),
 			util::current_loan_debt(loan_id)
 		);
 
-		let remaining = PRICE_VALUE.saturating_mul_int(QUANTITY / 2);
+		let remaining = (QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE);
 		config_mocks(remaining);
 
 		assert_ok!(Loans::repay(
@@ -490,7 +490,7 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 fn external_pricing_same() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		config_mocks(amount);
@@ -513,11 +513,11 @@ fn external_pricing_same() {
 fn external_pricing_goes_up() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		config_mocks(amount * 2);
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2.into(), now().as_secs())));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2, now().as_secs())));
 
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
@@ -538,13 +538,13 @@ fn external_pricing_goes_up() {
 fn external_pricing_goes_down() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		config_mocks(amount / 2);
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2.into(), now().as_secs())));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2, now().as_secs())));
 
-		let amount = (PRICE_VALUE / 2.into()).saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
@@ -564,7 +564,7 @@ fn external_pricing_goes_down() {
 fn external_pricing_with_wrong_quantity() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
 		util::borrow_loan(loan_id, amount);
 
 		// It's not multiple of PRICE_VALUE
