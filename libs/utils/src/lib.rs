@@ -83,10 +83,23 @@ pub mod evm {
 	use frame_support::traits::GenesisBuild;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
-	use sp_core::U256;
+	use sp_core::{H256, U256};
 	use sp_runtime::{app_crypto::sp_core::H160, traits::Get};
 	use sp_std::{default::Default, marker::PhantomData, vec::Vec};
 
+	/// Allows to deploy codes at genesis
+	///
+	/// Contract address calculation will be:
+	/// ```ignore
+	///  let mut hasher = Keccak256::new();
+	///  hasher.update([0xff]);
+	///  hasher.update(&caller[..]);
+	///  hasher.update(&salt[..]);
+	///  hasher.update(&code_hash[..]);
+	///  H256::from_slice(hasher.finalize().as_slice()).into()
+	///
+	/// where: - salt = H256::zero()
+	/// ```
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct CodeDeployer<Origin> {
 		codes: Vec<(H160, Vec<u8>)>,
@@ -127,10 +140,11 @@ pub mod evm {
 				// 			max_priority_fee_per_gas: Option<U256>,
 				// 			nonce: Option<U256>,
 				// 			access_list: Vec<(H160, Vec<H256>)>,
-				pallet_evm::Pallet::<T>::create(
+				pallet_evm::Pallet::<T>::create2(
 					Origin::get(),
 					who,
 					code,
+					H256::zero(),
 					U256::from(0),
 					u64::MAX,
 					U256::MAX,

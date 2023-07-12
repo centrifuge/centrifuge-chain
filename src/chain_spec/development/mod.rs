@@ -30,6 +30,8 @@ use xcm::{
 
 use super::*;
 
+mod axelar_v4_3_2_contracts;
+
 pub type DevelopmentChainSpec = sc_service::GenericChainSpec<DevGenesisExt, Extensions>;
 
 #[derive(Serialize, Deserialize)]
@@ -126,6 +128,12 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
+	let deployer_account: H160 = endowed_evm_accounts()
+		.first()
+		.expect("Need one evm account.")
+		.0
+		.into();
+
 	DevelopmentChainSpec::from_genesis(
 		"Dev Live",
 		"devel_live",
@@ -144,8 +152,22 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 					para_id,
 				),
 				cfg_utils::evm::CodeDeployer::new(vec![
-					(H160::from([0u8; 20]), vec![0, 0]),
-					(H160::from([0u8; 20]), vec![0, 0]),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_AUTH_WEIGHTED.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::TOKEN_DEPLOYER.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_GATEWAY.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_GATEWAY_PROXY.to_vec(),
+					),
 				]),
 			)
 		},
@@ -162,6 +184,12 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
+
+	let deployer_account: H160 = endowed_evm_accounts()
+		.first()
+		.expect("Need one evm account.")
+		.0
+		.into();
 
 	DevelopmentChainSpec::from_genesis(
 		"Dev Local",
@@ -181,8 +209,22 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 					para_id,
 				),
 				cfg_utils::evm::CodeDeployer::new(vec![
-					(H160::from([0u8; 20]), vec![0, 0]),
-					(H160::from([0u8; 20]), vec![0, 0]),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_AUTH_WEIGHTED.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::TOKEN_DEPLOYER.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_GATEWAY.to_vec(),
+					),
+					(
+						deployer_account,
+						axelar_v4_3_2_contracts::AXELAR_GATEWAY_PROXY.to_vec(),
+					),
 				]),
 			)
 		},
