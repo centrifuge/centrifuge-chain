@@ -290,14 +290,29 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
 	/// case). For example:
-	/// FixedU128::saturating_from_rational(2).checked_div_with_rounding(2,
-	/// SignedRounding::..) would be equivalent to               (2 *
-	/// FixedU128::accuracy) * (FixedU128::accuracy / 2) instead of 2 * 1/2
-	/// Whereas FixedU128::saturating_from_rational(2).
-	/// checked_div_with_rounding(2 * FixedU128::accuracy)would be equivalent to
-	/// 2 * FixedU128::accuracy * (FixedU128::accuracy / 2 *
-	/// FixedU128::accuracy)               Which would be 1 *
-	/// FixedU128::accuracy
+	///
+	///    FixedU128::saturating_from_rational(2)
+	///        .checked_div_with_rounding(2, SignedRounding::..)
+	///
+	/// would be equivalent to    
+	///           
+	///      (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
+	///
+	/// instead of
+	///
+	///      2 * 1/2.
+	///
+	/// Whereas
+	///
+	///     FixedU128::saturating_from_rational(2)
+	///         .checked_div_with_rounding(2 * FixedU128::accuracy)
+	///
+	/// would be equivalent to
+	///
+	///     2 * FixedU128::accuracy *
+	///        (FixedU128::accuracy / 2 * FixedU128::accuracy)
+	///
+	/// Which would be 1 * FixedU128::accuracy
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -565,14 +580,29 @@ impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
 	/// case). For example:
-	/// FixedU128::saturating_from_rational(2).checked_div_with_rounding(2,
-	/// SignedRounding::..) would be equivalent to               (2 *
-	/// FixedU128::accuracy) * (FixedU128::accuracy / 2) instead of 2 * 1/2
-	/// Whereas FixedU128::saturating_from_rational(2).
-	/// checked_div_with_rounding(2 * FixedU128::accuracy)would be equivalent to
-	/// 2 * FixedU128::accuracy * (FixedU128::accuracy / 2 *
-	/// FixedU128::accuracy)               Which would be 1 *
-	/// FixedU128::accuracy
+	///
+	///    FixedU128::saturating_from_rational(2)
+	///        .checked_div_with_rounding(2, SignedRounding::..)
+	///
+	/// would be equivalent to    
+	///           
+	///      (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
+	///
+	/// instead of
+	///
+	///      2 * 1/2.
+	///
+	/// Whereas
+	///
+	///     FixedU128::saturating_from_rational(2)
+	///         .checked_div_with_rounding(2 * FixedU128::accuracy)
+	///
+	/// would be equivalent to
+	///
+	///     2 * FixedU128::accuracy *
+	///        (FixedU128::accuracy / 2 * FixedU128::accuracy)
+	///
+	/// Which would be 1 * FixedU128::accuracy
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -2605,8 +2635,8 @@ mod test_fixed_u128 {
 				2000000000000000000000000000u128,
 				SignedRounding::NearestPrefLow
 			),
-			Some(2500000000000000000000000000u128) /* Some(FixedU128::<DECIMALS_27>::saturating_from_rational(5,
-			                                        * 2).into_inner().into()) */
+			Some(2500000000000000000000000000u128) /*
+												   Some(FixedU128::<DECIMALS_27>::saturating_from_rational(5, * 2).into_inner().into()) */
 		);
 
 		assert_eq!(
