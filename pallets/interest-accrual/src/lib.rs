@@ -160,13 +160,6 @@ const MAX_INTEREST_RATE: u32 = 2; // Which corresponds to 200%.
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::Rate>;
 
-// Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct RateDetailsV1<Rate> {
-	pub accumulated_rate: Rate,
-	pub reference_count: u32,
-}
-
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct RateDetails<Rate> {
 	pub interest_rate_per_sec: Rate,
