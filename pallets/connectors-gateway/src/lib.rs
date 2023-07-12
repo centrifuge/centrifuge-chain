@@ -86,10 +86,6 @@ pub mod pallet {
 
 		type WeightInfo: WeightInfo;
 
-		/// Maximum number of connectors for a domain.
-		#[pallet::constant]
-		type MaxConnectorsPerDomain: Get<u32>;
-
 		/// Maximum size of an incoming message.
 		#[pallet::constant]
 		type MaxIncomingMessageSize: Get<u32>;
@@ -119,11 +115,13 @@ pub mod pallet {
 	///
 	/// This can only be modified by an admin.
 	#[pallet::storage]
-	pub(crate) type ConnectorsAllowlist<T: Config> = StorageMap<
+	pub(crate) type ConnectorsAllowlist<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		Domain,
-		BoundedVec<DomainAddress, T::MaxConnectorsPerDomain>,
+		Blake2_128Concat,
+		DomainAddress,
+		(),
 		ValueQuery,
 	>;
 
@@ -191,19 +189,16 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |connectors| {
-				if connectors.iter().find(|s| s.eq(&&connector)).is_some() {
-					return Err(Error::<T>::ConnectorAlreadyAdded.into());
-				}
+			ensure!(
+				!ConnectorsAllowlist::<T>::contains_key(connector.domain(), connector.clone()),
+				Error::<T>::ConnectorAlreadyAdded,
+			);
 
-				connectors
-					.try_push(connector.clone())
-					.map_err(|_| Error::<T>::MaxConnectorsReached)?;
+			ConnectorsAllowlist::<T>::insert(connector.domain(), connector.clone(), ());
 
-				Self::deposit_event(Event::ConnectorAdded { connector });
+			Self::deposit_event(Event::ConnectorAdded { connector });
 
-				Ok(())
-			})
+			Ok(())
 		}
 
 		/// Remove a connector from a specific domain.
@@ -212,18 +207,16 @@ pub mod pallet {
 		pub fn remove_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
-			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |connectors| {
-				let index = connectors
-					.iter()
-					.position(|s| s.eq(&connector))
-					.ok_or(Error::<T>::ConnectorNotFound)?;
+			ensure!(
+				ConnectorsAllowlist::<T>::contains_key(connector.domain(), connector.clone()),
+				Error::<T>::ConnectorNotFound,
+			);
 
-				connectors.remove(index);
+			ConnectorsAllowlist::<T>::remove(connector.domain(), connector.clone());
 
-				Self::deposit_event(Event::ConnectorRemoved { connector });
+			Self::deposit_event(Event::ConnectorRemoved { connector });
 
-				Ok(())
-			})
+			Ok(())
 		}
 
 		/// Process an incoming message.
@@ -237,10 +230,13 @@ pub mod pallet {
 
 			match domain_address {
 				DomainAddress::EVM(_, _) => {
-					ConnectorsAllowlist::<T>::get(domain_address.domain())
-						.iter()
-						.find(|s| s.eq(&&domain_address))
-						.ok_or(Error::<T>::UnknownConnector)?;
+					ensure!(
+						ConnectorsAllowlist::<T>::contains_key(
+							domain_address.domain(),
+							domain_address.clone()
+						),
+						Error::<T>::UnknownConnector,
+					);
 
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 						.map_err(|_| Error::<T>::MessageDecode)?;
