@@ -1048,6 +1048,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
