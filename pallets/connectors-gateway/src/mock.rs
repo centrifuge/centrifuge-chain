@@ -28,7 +28,6 @@ frame_support::construct_runtime!(
 );
 
 frame_support::parameter_types! {
-	pub const MaxConnectorsPerDomain: u32 = 3;
 	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
@@ -80,7 +79,6 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
-	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type Router = DomainRouterMock<Runtime>;

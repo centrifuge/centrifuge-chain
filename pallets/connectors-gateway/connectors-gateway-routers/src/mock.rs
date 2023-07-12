@@ -121,7 +121,6 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
-	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type Router = DomainRouterMock<Runtime>;

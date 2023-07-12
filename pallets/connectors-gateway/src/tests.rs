@@ -2,7 +2,7 @@ use cfg_mocks::*;
 use cfg_traits::connectors::{Codec, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{crypto::AccountId32, ByteArray, Get, H160};
+use sp_core::{crypto::AccountId32, ByteArray, H160};
 use sp_runtime::DispatchError::BadOrigin;
 
 use super::{
@@ -111,8 +111,10 @@ mod add_connector {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address,
@@ -134,8 +136,10 @@ mod add_connector {
 				BadOrigin
 			);
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert!(storage_entry.is_empty());
+			assert!(!ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 		});
 	}
 
@@ -149,8 +153,10 @@ mod add_connector {
 				Error::<Runtime>::DomainNotSupported
 			);
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert!(storage_entry.is_empty());
+			assert!(!ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 		});
 	}
 
@@ -165,42 +171,14 @@ mod add_connector {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			assert_noop!(
 				ConnectorsGateway::add_connector(RuntimeOrigin::root(), domain_address,),
 				Error::<Runtime>::ConnectorAlreadyAdded
-			);
-		});
-	}
-
-	#[test]
-	fn max_connectors_reached() {
-		new_test_ext().execute_with(|| {
-			let evm_chain_id = 0;
-
-			for _ in 0..<MaxConnectorsPerDomain as Get<u32>>::get() {
-				let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
-
-				let domain_address = DomainAddress::EVM(evm_chain_id, address.into());
-
-				assert_ok!(ConnectorsGateway::add_connector(
-					RuntimeOrigin::root(),
-					domain_address,
-				));
-			}
-
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(Domain::EVM(evm_chain_id));
-			assert!(storage_entry.is_full());
-
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
-
-			let domain_address = DomainAddress::EVM(evm_chain_id, address.into());
-
-			assert_noop!(
-				ConnectorsGateway::add_connector(RuntimeOrigin::root(), domain_address,),
-				Error::<Runtime>::MaxConnectorsReached
 			);
 		});
 	}
@@ -220,8 +198,10 @@ mod remove_connector {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address.clone(),
@@ -232,8 +212,10 @@ mod remove_connector {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert!(storage_entry.is_empty());
+			assert!(!ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address.clone(),
@@ -287,8 +269,10 @@ mod process_msg {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address.clone(),
@@ -371,8 +355,10 @@ mod process_msg {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address.clone(),
@@ -401,8 +387,10 @@ mod process_msg {
 				domain_address.clone(),
 			));
 
-			let storage_entry = ConnectorsAllowlist::<Runtime>::get(domain_address.domain());
-			assert_eq!(storage_entry[0], domain_address);
+			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
+				domain_address.domain(),
+				domain_address.clone()
+			));
 
 			event_exists(Event::<Runtime>::ConnectorAdded {
 				connector: domain_address.clone(),
