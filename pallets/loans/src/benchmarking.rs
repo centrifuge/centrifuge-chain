@@ -155,7 +155,10 @@ where
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: T::Rate::zero(),
 					loss_given_default: T::Rate::zero(),
-					discount_rate: T::Rate::one(),
+					discount_rate: InterestRate::Fixed {
+						rate_per_year: T::Rate::one(),
+						compounding: CompoundingSchedule::Secondly,
+					},
 				}),
 			}),
 			restrictions: LoanRestrictions {

@@ -200,7 +200,7 @@ pub enum InternalMutation<Rate> {
 	ValuationMethod(ValuationMethod<Rate>),
 	ProbabilityOfDefault(Rate),
 	LossGivenDefault(Rate),
-	DiscountRate(Rate),
+	DiscountRate(InterestRate<Rate>),
 }
 
 /// Active loan mutation

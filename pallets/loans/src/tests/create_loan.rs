@@ -111,7 +111,10 @@ fn with_wrong_valuation() {
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.0),
 					loss_given_default: Rate::from_float(0.0),
-					discount_rate: Rate::from_float(1.1), // Too high
+					discount_rate: InterestRate::Fixed {
+						rate_per_year: Rate::from_float(1.1), // Too high
+						compounding: CompoundingSchedule::Secondly,
+					},
 				}),
 				..util::base_internal_pricing()
 			}),

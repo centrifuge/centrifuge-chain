@@ -16,6 +16,7 @@ use std::{collections::HashMap, time::Duration};
 use cfg_primitives::{
 	AccountId, Address, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_YEAR,
 };
+use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
 	entities::{
@@ -123,7 +124,10 @@ pub fn issue_default_loan(
 			manager.collateral_class_id(pool_id),
 			manager.next_collateral_id(pool_id),
 		),
-		interest_rate: rate_from_percent(15),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: rate_from_percent(15),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		pricing: Pricing::Internal(InternalPricing {
 			collateral_value: amount,
 			max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
@@ -132,7 +136,10 @@ pub fn issue_default_loan(
 			valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 				probability_of_default: rate_from_percent(5),
 				loss_given_default: rate_from_percent(50),
-				discount_rate: rate_from_percent(4),
+				discount_rate: InterestRate::Fixed {
+					rate_per_year: rate_from_percent(4),
+					compounding: CompoundingSchedule::Secondly,
+				},
 			}),
 		}),
 		restrictions: LoanRestrictions {

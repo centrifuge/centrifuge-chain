@@ -100,8 +100,9 @@ mod wrong_mutation {
 			let loan_id = util::create_loan(util::base_internal_loan());
 			util::borrow_loan(loan_id, 0);
 
-			let mutation =
-				LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
+			let mutation = LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(
+				Rate::from_float(0.5),
+			));
 
 			config_mocks(loan_id, &mutation);
 			assert_noop!(
@@ -122,8 +123,9 @@ mod wrong_mutation {
 			let loan_id = util::create_loan(util::base_external_loan());
 			util::borrow_loan(loan_id, 0);
 
-			let mutation =
-				LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
+			let mutation = LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(
+				Rate::from_float(0.5),
+			));
 
 			config_mocks(loan_id, &mutation);
 			assert_noop!(
@@ -222,7 +224,10 @@ fn with_successful_mutation_application() {
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.1),
 					loss_given_default: Rate::from_float(0.1),
-					discount_rate: Rate::from_float(0.1), // Too high
+					discount_rate: InterestRate::Fixed {
+						rate_per_year: Rate::from_float(0.1),
+						compounding: CompoundingSchedule::Secondly,
+					},
 				}),
 				..util::base_internal_pricing()
 			}),
@@ -248,7 +253,10 @@ fn with_successful_mutation_application() {
 				0.5,
 			))),
 			LoanMutation::Internal(InternalMutation::LossGivenDefault(Rate::from_float(0.5))),
-			LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5))),
+			LoanMutation::Internal(InternalMutation::DiscountRate(InterestRate::Fixed {
+				rate_per_year: Rate::from_float(0.5),
+				compounding: CompoundingSchedule::Secondly,
+			})),
 			LoanMutation::Internal(InternalMutation::ValuationMethod(
 				ValuationMethod::OutstandingDebt,
 			)),

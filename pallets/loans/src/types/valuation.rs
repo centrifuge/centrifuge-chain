@@ -21,13 +21,12 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, One},
+	traits::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub, One},
 	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 
 /// Discounted cash flow values
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(test, derive(Default))]
 pub struct DiscountedCashFlow<Rate> {
 	/// The probability of a borrower defaulting a loan repayments.
 	pub probability_of_default: Rate,
@@ -35,16 +34,16 @@ pub struct DiscountedCashFlow<Rate> {
 	/// The share of an asset that is lost if a borrower defaults.
 	pub loss_given_default: Rate,
 
-	/// Rate per year of return used to discount future cash flows back to their
+	/// Rate of return used to discount future cash flows back to their
 	/// present value.
-	pub discount_rate: Rate,
+	pub discount_rate: InterestRate<Rate>,
 }
 
 impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 	pub fn new(
 		probability_of_default: Rate,
 		loss_given_default: Rate,
-		discount_rate: Rate,
+		discount_rate: InterestRate<Rate>,
 	) -> Result<Self, ArithmeticError> {
 		Ok(Self {
 			probability_of_default,
@@ -92,11 +91,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 
 		// TODO: use InterestAccrual for this once #1231 is merged
 		// This would immply that discount_rate should be register/unregister.
-		let discount_rate_per_sec = self
-			.discount_rate
-			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
-			.ensure_add(One::one())?;
-
+		let discount_rate_per_sec = self.discount_rate.per_sec()?;
 		let rate = checked_pow(discount_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let d = Rate::one().ensure_div(rate)?;
 
@@ -119,7 +114,7 @@ where
 {
 	pub fn is_valid(&self) -> bool {
 		match self {
-			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate <= One::one(),
+			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate.per_year() <= One::one(),
 			ValuationMethod::OutstandingDebt => true,
 		}
 	}
