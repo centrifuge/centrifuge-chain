@@ -25,7 +25,7 @@ enum InterestPayments {
     SemiAnnually: ReferenceDate
 }
 
-InterestPayments *--> ReferenceDate
+InterestPayments *-----> ReferenceDate
 
 enum PayDownSchedule {
     None
@@ -39,7 +39,7 @@ class RepaymentSchedule {
 
 RepaymentSchedule *--> Maturity
 RepaymentSchedule *--> PayDownSchedule
-RepaymentSchedule *-----> InterestPayments
+RepaymentSchedule *--> InterestPayments
 
 enum BorrowRestrictions {
     NoWrittenOff
@@ -63,7 +63,7 @@ enum CompoundingCadence {
     Secondly: ReferenceDate
 }
 
-CompoundingCadence *--> ReferenceDate
+CompoundingCadence *-r-> ReferenceDate
 
 enum InterestRate {
     Fixed: Rate, CompoundingCadence
@@ -89,15 +89,17 @@ package valuation {
     class DiscountedCashFlows {
         probability_of_default: Rate
         loss_given_default: Rate
-        discount_rate: Rate
+        discount_rate: InterestRate
     }
 
-    ValuationMethod *--> DiscountedCashFlows
+    DiscountedCashFlows *-r-> InterestRate
 
     enum ValuationMethod {
         DiscountedCashFlows: DiscountedCashFlows
         OutstandingDebt
     }
+
+    ValuationMethod *--> DiscountedCashFlows
 }
 
 package policy {
@@ -163,15 +165,15 @@ package pricing {
 
         class ExternalPricing {
             price_id: Price,
-            max_borrow_quantity: Balance,
-            notional: Rate,
+            max_borrow_quantity: MaxBorrowAmount,
+            notional: Balance,
         }
 
         ExternalPricing *-l-> MaxBorrowAmount
 
         class ExternalActivePricing {
             info: ExternalPricing
-            outstanding_quantity: Balance,
+            outstanding_quantity: Rate,
             interest: ActiveInterestRate
         }
 

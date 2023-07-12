@@ -2,6 +2,7 @@ use cfg_primitives::Moment;
 use cfg_traits::{
 	self,
 	data::{DataCollection, DataRegistry},
+	interest::InterestRate,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -45,8 +46,8 @@ impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
 		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
 			ensure!(
-				quantity.frac().is_zero(),
-				Error::<T>::AmountNotMultipleOfPrice
+				quantity.frac().is_zero() && quantity > T::Rate::zero(),
+				Error::<T>::AmountNotNaturalNumber
 			)
 		}
 
@@ -71,7 +72,7 @@ pub struct ExternalActivePricing<T: Config> {
 impl<T: Config> ExternalActivePricing<T> {
 	pub fn activate(
 		info: ExternalPricing<T>,
-		interest_rate: T::Rate,
+		interest_rate: InterestRate<T::Rate>,
 		pool_id: T::PoolId,
 	) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
@@ -85,7 +86,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn deactivate(
 		self,
 		pool_id: T::PoolId,
-	) -> Result<(ExternalPricing<T>, T::Rate), DispatchError> {
+	) -> Result<(ExternalPricing<T>, InterestRate<T::Rate>), DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
 		Ok((self.info, self.interest.deactivate()?))
 	}

@@ -75,7 +75,8 @@ pub mod pallet {
 		self,
 		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
-		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
+		interest::InterestAccrual,
+		Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -383,6 +384,8 @@ pub mod pallet {
 		MaxActiveLoansReached,
 		/// Emits when an amount used is not multiple of the current price
 		AmountNotMultipleOfPrice,
+		/// Emits when an amount used is not a natural number
+		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
