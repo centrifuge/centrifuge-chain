@@ -45,7 +45,10 @@ pub mod pallet {
 		MultiCurrency, MultiReservableCurrency,
 	};
 	use scale_info::TypeInfo;
-	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One};
+	use sp_runtime::{
+		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One},
+		FixedPointNumber, FixedPointOperand,
+	};
 
 	use super::*;
 
@@ -98,16 +101,17 @@ pub mod pallet {
 		/// Fee Key used to find amount for allowance reserve/unreserve
 		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
-		type Balance: Parameter
-			+ Member
+		type Balance: Member
+			+ Parameter
 			+ AtLeast32BitUnsigned
 			+ Default
 			+ Copy
-			+ EnsureAdd
-			+ EnsureSub
-			+ EnsureMul
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ FixedPointOperand
+			+ From<u64>
+			+ From<u128>
+			+ TypeInfo
+			+ TryInto<u64>;
 
 		type Nonce: Parameter
 			+ Member
@@ -226,7 +230,7 @@ pub mod pallet {
 			);
 			ensure!(
 				T::TradeableAsset::can_reserve(asset_in, &account_id, amount),
-				Error::<T>::InsufficientReserveFunds,
+				Error::<T>::InsufficientAssetFunds,
 			);
 
 			ensure!(
@@ -234,7 +238,7 @@ pub mod pallet {
 					&account_id,
 					T::Fees::fee_value(T::OrderFeeKey::get())
 				),
-				Error::<T>::InsufficientAssetFunds,
+				Error::<T>::InsufficientReserveFunds,
 			);
 			<NonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::Nonce::one())?;
@@ -288,6 +292,20 @@ pub mod pallet {
 		// dummy weight for now
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		pub fn fill_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			let order = <Orders<T>>::get(order_id)?;
+			T::TradeableAsset::ensure_can_withdraw(
+				order.asset_out_id,
+				&account_id,
+				order.sell_amount,
+			)?;
+
+			let asset_out = T::AssetRegistry::metadata(&order.asset_out_id)
+				.ok_or(Error::<T>::InvalidAssetId)?;
+
+			let asset_in =
+				T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
+
 			Ok(())
 		}
 	}
