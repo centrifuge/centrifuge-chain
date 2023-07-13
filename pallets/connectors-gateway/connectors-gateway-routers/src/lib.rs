@@ -34,6 +34,10 @@ type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_connectors_gateway::Config>::Message;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+const CONNECTORS_FUNCTION_NAME: &'static str = "handle";
+const CONNECTORS_MESSAGE_PARAM: &'static str = "message";
+
+/// The routers used for outgoing messages.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum DomainRouter<T>
 where

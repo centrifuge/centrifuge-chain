@@ -248,8 +248,8 @@ pub mod pallet {
 		}
 	}
 
-	// This gateway pallet will be the OutboundQueue used by other pallets to send
-	// outgoing connectors messages.
+	/// This pallet will be the `OutboundQueue` used by other pallets to send
+	/// outgoing Connectors messages.
 	impl<T: Config> OutboundQueue for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;

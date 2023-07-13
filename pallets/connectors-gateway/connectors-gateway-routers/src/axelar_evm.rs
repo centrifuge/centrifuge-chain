@@ -24,8 +24,9 @@ use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
-use crate::{AccountIdOf, MessageOf};
+use crate::{AccountIdOf, MessageOf, CONNECTORS_FUNCTION_NAME, CONNECTORS_MESSAGE_PARAM};
 
+/// The router used for executing the Connectors contract via Axelar.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct AxelarEVMRouter<T>
 where
@@ -38,22 +39,43 @@ where
 	pub _marker: PhantomData<T>,
 }
 
+/// The EVMDomain holds all relevant information for validating and executing
+/// the call to the Axelar contract.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EVMDomain {
+	/// The chain to which the router will send the message to.
 	pub chain: EVMChain,
+
+	/// The address of the Axelar contract deployed in our EVM.
 	pub axelar_contract_address: H160,
+
+	/// The `BlakeTwo256` hash of the Axelar contract code.
+	/// This is used during router initialization to ensure that the correct
+	/// contract code is used.
 	pub axelar_contract_hash: H256,
+
+	/// The address of the Connectors contract that we are going to call through
+	/// the Axelar contract.
 	pub connectors_contract_address: H160,
+
+	/// The values used when executing the EVM call to the Axelar contract.
 	pub fee_values: FeeValues,
 }
 
+/// The FeeValues holds all information related to the transaction costs.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct FeeValues {
+	/// The value used when executing the EVM call.
 	pub value: U256,
+
+	/// The gas price used when executing the EVM call.
 	pub gas_price: U256,
+
+	/// The gas limit used when executing the EVM call.
 	pub gas_limit: U256,
 }
 
+/// EVMChain holds all supported EVM chains.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum EVMChain {
 	Ethereum,
@@ -69,6 +91,11 @@ impl ToString for EVMChain {
 	}
 }
 
+const AXELAR_FUNCTION_NAME: &'static str = "callContract";
+const AXELAR_DESTINATION_CHAIN_PARAM: &'static str = "destinationChain";
+const AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM: &'static str = "destinationContractAddress";
+const AXELAR_PAYLOAD_PARAM: &'static str = "payload";
+
 impl<T> AxelarEVMRouter<T>
 where
 	T: frame_system::Config
@@ -77,6 +104,8 @@ where
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
 {
+	/// Performs an extra check to ensure that the actual contract is deployed
+	/// at the provided address and that the contract code hash matches.
 	pub fn do_init(&self) -> DispatchResult {
 		let code = pallet_evm::AccountCodes::<T>::get(self.domain.axelar_contract_address);
 
@@ -88,17 +117,22 @@ where
 		Ok(())
 	}
 
+	/// Encodes the Connectors message to the required format,
+	/// then executes the EVM call using the Ethereum transaction pallet.
+	///
+	/// NOTE - there sender account ID provided here will be converted to an EVM
+	/// address via truncating. When the call is processed by the underlying EVM
+	/// pallet, this EVM address will be converted back into a substrate account
+	/// which will be charged for the transaction. This converted substrate
+	/// account is not the same as the original account.
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let eth_msg = self.get_eth_msg(msg).map_err(DispatchError::Other)?;
 
-		// Use the same conversion as the one used in `EnsureAddressTruncated`.
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
 
 		// TODO(cdamian): This returns a `DispatchResultWithPostInfo`. Should we
 		// propagate that to another layer that will eventually charge for the
 		// weight in the PostDispatchInfo?
-		//
-		// NOTE - the derived sender account will be charged for the fees.
 		<pallet_ethereum_transaction::Pallet<T> as EthereumTransactor>::call(
 			sender_evm_address,
 			self.domain.axelar_contract_address,
@@ -112,6 +146,9 @@ where
 		Ok(())
 	}
 
+	/// Encodes the provided message into the format required for submitting it
+	/// to the Axelar contract which in turn submits it to the Connectors
+	/// contract.
 	fn get_eth_msg(&self, msg: MessageOf<T>) -> Result<Vec<u8>, &'static str> {
 		// `AxelarEVMRouter` -> `callContract` on the Axelar Gateway contract
 		// deployed in the Centrifuge EVM pallet.
@@ -127,11 +164,11 @@ where
 		let encoded_connectors_contract = Contract {
 			constructor: None,
 			functions: BTreeMap::<String, Vec<Function>>::from([(
-				"handle".to_string(),
+				CONNECTORS_FUNCTION_NAME.to_string(),
 				vec![Function {
-					name: "handle".into(),
+					name: CONNECTORS_FUNCTION_NAME.into(),
 					inputs: vec![Param {
-						name: "message".into(),
+						name: CONNECTORS_MESSAGE_PARAM.into(),
 						kind: ParamType::Bytes,
 						internal_type: None,
 					}],
@@ -145,10 +182,10 @@ where
 			receive: false,
 			fallback: false,
 		}
-		.function("handle")
-		.map_err(|_| "cannot retrieve handle function")?
+		.function(CONNECTORS_FUNCTION_NAME)
+		.map_err(|_| "cannot retrieve Connectors contract function")?
 		.encode_input(&[Token::Bytes(msg.serialize())])
-		.map_err(|_| "cannot encode input for handle function")?;
+		.map_err(|_| "cannot encode input for Connectors contract function")?;
 
 		// Axelar Call:
 		//
@@ -170,22 +207,22 @@ where
 		let encoded_axelar_contract = Contract {
 			constructor: None,
 			functions: BTreeMap::<String, Vec<Function>>::from([(
-				"callContract".into(),
+				AXELAR_FUNCTION_NAME.into(),
 				vec![Function {
-					name: "callContract".into(),
+					name: AXELAR_FUNCTION_NAME.into(),
 					inputs: vec![
 						Param {
-							name: "destinationChain".into(),
+							name: AXELAR_DESTINATION_CHAIN_PARAM.into(),
 							kind: ParamType::String,
 							internal_type: None,
 						},
 						Param {
-							name: "destinationContractAddress".into(),
+							name: AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM.into(),
 							kind: ParamType::String,
 							internal_type: None,
 						},
 						Param {
-							name: "payload".into(),
+							name: AXELAR_PAYLOAD_PARAM.into(),
 							kind: ParamType::Bytes,
 							internal_type: None,
 						},
@@ -200,14 +237,14 @@ where
 			receive: false,
 			fallback: false,
 		}
-		.function("callContract")
-		.map_err(|_| "cannot retrieve callContract function")?
+		.function(AXELAR_FUNCTION_NAME)
+		.map_err(|_| "cannot retrieve Axelar contract function")?
 		.encode_input(&[
 			Token::String(self.domain.chain.to_string()),
 			Token::String(self.domain.connectors_contract_address.to_string()),
 			Token::Bytes(encoded_connectors_contract),
 		])
-		.map_err(|_| "cannot encode input for callContract function")?;
+		.map_err(|_| "cannot encode input for Axelar contract function")?;
 
 		Ok(encoded_axelar_contract)
 	}

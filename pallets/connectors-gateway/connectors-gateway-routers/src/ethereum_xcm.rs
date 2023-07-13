@@ -27,8 +27,11 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::{AccountIdOf, CurrencyIdOf, MessageOf};
+use crate::{
+	AccountIdOf, CurrencyIdOf, MessageOf, CONNECTORS_FUNCTION_NAME, CONNECTORS_MESSAGE_PARAM,
+};
 
+/// The router used for submitting a Connectors message via Moonbeam XCM.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EthereumXCMRouter<T>
 where
@@ -42,6 +45,8 @@ impl<T> EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
+	/// Sets the weight information for the provided XCM domain location, and
+	/// the fee per second for the provided fee asset location.
 	pub fn do_init(&self) -> DispatchResult {
 		pallet_xcm_transactor::Pallet::<T>::set_transact_info(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
@@ -58,6 +63,8 @@ where
 		)
 	}
 
+	/// Encodes the Connectors message to the required format and executes the
+	/// call via the XCM transactor pallet.
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let contract_call = get_encoded_contract_call(msg.serialize())
 			.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
@@ -141,19 +148,13 @@ where
 pub(crate) fn get_encoded_contract_call(encoded_msg: Vec<u8>) -> Result<Bytes, ()> {
 	let contract = get_xcm_router_contract();
 	let encoded_contract_call = contract
-		.function(HANDLE_FUNCTION)
+		.function(CONNECTORS_FUNCTION_NAME)
 		.map_err(|_| ())?
 		.encode_input(&[ethabi::Token::Bytes(encoded_msg)])
 		.map_err(|_| ())?;
 
 	Ok(encoded_contract_call)
 }
-
-/// The ConnectorsXcmContract handle function name.
-const HANDLE_FUNCTION: &str = "handle";
-
-/// The ConnectorsXcmContract message param name.
-const MESSAGE_PARAM: &str = "message";
 
 /// The ConnectorsXcmRouter Abi as in ethabi::Contract
 /// Note: We only concern ourselves with the `handle` function of the
@@ -165,11 +166,11 @@ pub(crate) fn get_xcm_router_contract() -> Contract {
 	let mut functions = BTreeMap::new();
 	#[allow(deprecated)]
 	functions.insert(
-		HANDLE_FUNCTION.into(),
+		CONNECTORS_FUNCTION_NAME.into(),
 		vec![ethabi::Function {
-			name: HANDLE_FUNCTION.into(),
+			name: CONNECTORS_FUNCTION_NAME.into(),
 			inputs: vec![ethabi::Param {
-				name: MESSAGE_PARAM.into(),
+				name: CONNECTORS_MESSAGE_PARAM.into(),
 				kind: ethabi::ParamType::Bytes,
 				internal_type: None,
 			}],
@@ -195,24 +196,31 @@ pub(crate) fn get_xcm_router_contract() -> Contract {
 pub struct XcmDomain<CurrencyId> {
 	/// The XCM multilocation of the domain
 	pub location: Box<VersionedMultiLocation>,
+
 	/// The ethereum_xcm::Call::transact call index on a given domain.
 	/// It should contain the pallet index + the `transact` call index, to which
 	/// we will append the eth_tx param. You can obtain this value by building
 	/// an ethereum_xcm::transact call with Polkadot JS on the target chain.
 	pub ethereum_xcm_transact_call_index:
 		BoundedVec<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>,
+
 	/// The ConnectorsXcmRouter contract address on a given domain
 	pub contract_address: H160,
+
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
+
 	/// The XCM transact info that will be stored in the
 	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
 	pub transact_info: XcmTransactInfo,
+
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
+
 	/// The fee per second that will be stored in the
 	/// `DestinationAssetFeePerSecond` storage of the XCM transactor pallet.
 	pub fee_per_second: u128,
+
 	/// The location of the asset used for paying XCM fees.
 	pub fee_asset_location: Box<VersionedMultiLocation>,
 }

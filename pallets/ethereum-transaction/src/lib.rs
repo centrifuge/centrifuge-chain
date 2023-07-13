@@ -73,6 +73,12 @@ pub mod pallet {
 	}
 
 	impl<T: Config> EthereumTransactor for Pallet<T> {
+		/// This implementation serves as a wrapper around the Ethereum pallet
+		/// execute functionality. It keeps track of the nonce used for each
+		/// call and builds a fake signature for executing the provided call.
+		///
+		/// NOTE - The execution fees are charged by the Ethereum pallet,
+		/// we only have to charge for the nonce read operation.
 		fn call(
 			from: H160,
 			to: H160,
@@ -105,7 +111,6 @@ pub mod pallet {
 
 			Nonce::<T>::put(nonce.saturating_add(U256::one()));
 
-			// NOTE - the underlying EVM runner will charge the account derived from `from`.
 			let (_target, _value, info) = pallet_ethereum::Pallet::<T>::execute(
 				from,
 				&transaction,
@@ -122,9 +127,6 @@ pub mod pallet {
 					error: e.error,
 				}
 			})?;
-
-			// The other fees related to this transaction were charged by the EVM
-			// runner, we only have to charge for the nonce read operation.
 			match info {
 				CallOrCreateInfo::Call(call_info) => {
 					Self::deposit_event(Event::Executed {
