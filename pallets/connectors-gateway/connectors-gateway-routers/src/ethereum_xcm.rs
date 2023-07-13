@@ -46,12 +46,9 @@ where
 		pallet_xcm_transactor::Pallet::<T>::set_transact_info(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
 			self.xcm_domain.location.clone(),
-			self.xcm_domain.transact_info.transact_extra_weight.clone(),
-			self.xcm_domain.transact_info.max_weight.clone(),
-			self.xcm_domain
-				.transact_info
-				.transact_extra_weight_signed
-				.clone(),
+			self.xcm_domain.transact_info.transact_extra_weight,
+			self.xcm_domain.transact_info.max_weight,
+			self.xcm_domain.transact_info.transact_extra_weight_signed,
 		)?;
 
 		pallet_xcm_transactor::Pallet::<T>::set_fee_per_second(
@@ -120,7 +117,6 @@ where
 
 	encoded.append(
 		&mut xcm_domain
-			.clone()
 			.ethereum_xcm_transact_call_index
 			.clone()
 			.into_inner(),

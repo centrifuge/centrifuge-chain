@@ -89,7 +89,7 @@ where
 	}
 
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
-		let eth_msg = self.get_eth_msg(msg).map_err(|e| DispatchError::Other(e))?;
+		let eth_msg = self.get_eth_msg(msg).map_err(DispatchError::Other)?;
 
 		// Use the same conversion as the one used in `EnsureAddressTruncated`.
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
@@ -101,11 +101,11 @@ where
 		// NOTE - the derived sender account will be charged for the fees.
 		<pallet_ethereum_transaction::Pallet<T> as EthereumTransactor>::call(
 			sender_evm_address,
-			self.domain.axelar_contract_address.clone(),
+			self.domain.axelar_contract_address,
 			eth_msg.as_slice(),
-			self.domain.fee_values.value.clone(),
-			self.domain.fee_values.gas_price.clone(),
-			self.domain.fee_values.gas_limit.into(),
+			self.domain.fee_values.value,
+			self.domain.fee_values.gas_price,
+			self.domain.fee_values.gas_limit,
 		)
 		.map_err(|e| e.error)?;
 

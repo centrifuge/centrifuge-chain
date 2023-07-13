@@ -156,8 +156,7 @@ where
 			// Prevent re-entrance
 			Self::set_validate_call(Axelar::get(), key, false);
 
-			f().map(|_| ())
-				.map_err(|e| TryDispatchError::Substrate(e))?;
+			f().map(|_| ()).map_err(TryDispatchError::Substrate)?;
 
 			// Invalidate the storage entry of the call executed successfully
 			// TODO: Is the storage address actual the Gateway contract address ???
