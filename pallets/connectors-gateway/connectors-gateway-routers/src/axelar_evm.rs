@@ -60,7 +60,7 @@ pub enum EVMChain {
 }
 
 /// Required due to the naming convention defined by Axelar here:
-/// https://docs.axelar.dev/dev/reference/mainnet-chain-names
+/// <https://docs.axelar.dev/dev/reference/mainnet-chain-names>
 impl ToString for EVMChain {
 	fn to_string(&self) -> String {
 		match self {
