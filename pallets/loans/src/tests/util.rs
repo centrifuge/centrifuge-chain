@@ -1,5 +1,3 @@
-use cfg_primitives::SECONDS_PER_DAY;
-
 use super::*;
 
 pub fn total_borrowed_rate(value: f64) -> IntMaxBorrowAmount<Rate> {
@@ -81,7 +79,10 @@ pub fn base_internal_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		collateral: ASSET_AA,
 		pricing: Pricing::Internal(base_internal_pricing()),
 		restrictions: LoanRestrictions {
@@ -106,7 +107,10 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		collateral: ASSET_AA,
 		pricing: Pricing::External(base_external_pricing()),
 		restrictions: LoanRestrictions {

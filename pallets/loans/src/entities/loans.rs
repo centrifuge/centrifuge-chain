@@ -1,5 +1,9 @@
 use cfg_primitives::Moment;
-use cfg_traits::{self, data::DataCollection, InterestAccrual, RateCollection};
+use cfg_traits::{
+	self,
+	data::DataCollection,
+	interest::{InterestAccrual, InterestRate, RateCollection},
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -39,7 +43,7 @@ pub struct LoanInfo<T: Config> {
 	pub collateral: AssetOf<T>,
 
 	/// Interest rate per year
-	pub interest_rate: T::Rate,
+	pub interest_rate: InterestRate<T::Rate>,
 
 	/// Pricing properties for this loan
 	pub pricing: Pricing<T>,
@@ -60,7 +64,7 @@ impl<T: Config> LoanInfo<T> {
 			Pricing::External(pricing) => pricing.validate()?,
 		}
 
-		T::InterestAccrual::validate_rate(self.interest_rate)?;
+		T::InterestAccrual::validate_rate(&self.interest_rate)?;
 
 		ensure!(
 			self.schedule.is_valid(now),

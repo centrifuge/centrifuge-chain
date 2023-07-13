@@ -15,7 +15,8 @@ use cfg_primitives::CFG;
 use cfg_traits::{
 	changes::ChangeGuard,
 	data::{DataCollection, DataRegistry},
-	InterestAccrual, Permissions, PoolBenchmarkHelper,
+	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
+	Permissions, PoolBenchmarkHelper,
 };
 use cfg_types::{
 	adjustments::Adjustment,
@@ -142,7 +143,10 @@ where
 				pay_down_schedule: PayDownSchedule::None,
 			},
 			collateral: (COLLECION_ID.into(), item_id),
-			interest_rate: T::Rate::saturating_from_rational(1, 5000),
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: T::Rate::saturating_from_rational(1, 5000),
+				compounding: CompoundingSchedule::Secondly,
+			},
 			pricing: Pricing::Internal(InternalPricing {
 				collateral_value: COLLATERAL_VALUE.into(),
 				max_borrow_amount: MaxBorrowAmount::UpToOutstandingDebt {
@@ -151,7 +155,10 @@ where
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: T::Rate::zero(),
 					loss_given_default: T::Rate::zero(),
-					discount_rate: T::Rate::one(),
+					discount_rate: InterestRate::Fixed {
+						rate_per_year: T::Rate::one(),
+						compounding: CompoundingSchedule::Secondly,
+					},
 				}),
 			}),
 			restrictions: LoanRestrictions {
@@ -273,8 +280,11 @@ where
 
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
-			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
-			T::InterestAccrual::reference_rate(rate).unwrap();
+			T::InterestAccrual::reference_rate(&InterestRate::Fixed {
+				rate_per_year: T::Rate::saturating_from_rational(i + 1, 5000),
+				compounding: CompoundingSchedule::Secondly,
+			})
+			.unwrap();
 		}
 
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
