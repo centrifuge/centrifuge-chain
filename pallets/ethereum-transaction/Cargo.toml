@@ -26,11 +26,11 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 
 # Ethereum
 ethabi = { version = "16.0", default-features = false }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+ethereum = { version = "0.14.0", default-features = false }
 fp-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-ethereum = { version = "0.14.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Our custom traits
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -48,36 +48,36 @@ rand = "0.8.5"
 [features]
 default = ["std"]
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
-    "cfg-traits/runtime-benchmarks",
-    "pallet-ethereum/runtime-benchmarks",
-    "pallet-evm/runtime-benchmarks",
+  "frame-benchmarking",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
 ]
 std = [
-    "codec/std",
-    "ethabi/std",
-    "cfg-traits/std",
-    "frame-support/std",
-    "frame-system/std",
-    "frame-benchmarking/std",
-    "sp-core/std",
-    "sp-std/std",
-    "sp-runtime/std",
-    "scale-info/std",
-    "pallet-ethereum/std",
-    "pallet-evm/std",
-    "fp-ethereum/std",
-    "fp-evm/std",
-    "ethereum/std",
+  "codec/std",
+  "ethabi/std",
+  "cfg-traits/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking/std",
+  "sp-core/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "scale-info/std",
+  "pallet-ethereum/std",
+  "pallet-evm/std",
+  "fp-ethereum/std",
+  "fp-evm/std",
+  "ethereum/std",
 ]
 try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-    "cfg-traits/try-runtime",
-    "pallet-ethereum/try-runtime",
-    "pallet-evm/try-runtime",
-    "sp-runtime/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "cfg-traits/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "pallet-evm/try-runtime",
+  "sp-runtime/try-runtime",
 ]
