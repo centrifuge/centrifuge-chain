@@ -96,7 +96,7 @@ pub mod pallet {
 		>;
 
 		/// Fee Key used to find amount for allowance reserve/unreserve
-		type OrdeFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
+		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		type Balance: Parameter
 			+ Member
@@ -171,6 +171,16 @@ pub mod pallet {
 	/// order creation.
 	#[pallet::storage]
 	pub type NonceStore<T: Config> = StorageValue<_, T::Nonce, ValueQuery>;
+	#[pallet::storage]
+	pub type AssetPairOrders<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		T::AssetCurrencyId,
+		Twox64Concat,
+		T::AssetCurrencyId,
+		BoundedVec<T::Hash, ConstU32<1_000_000>>,
+		ValueQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -178,9 +188,11 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		AssetPairOrdersOverflow,
 		InvalidAssetId,
 		ConflictingAssetIds,
 		InsufficientAssetFunds,
+		InsufficientReserveFunds,
 	}
 
 	#[pallet::call]
@@ -209,13 +221,21 @@ pub mod pallet {
 				T::TradeableAsset::can_reserve(asset_in, &account_id, amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
+
+			ensure!(
+				T::ReserveCurrency::can_reserve(
+					&account_id,
+					T::Fees::fee_value(T::OrderFeeKey::get())
+				),
+				Error::<T>::InsufficientAssetFunds,
+			);
 			<NonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::Nonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
 			let new_nonce = <NonceStore<T>>::get();
 			let order_id = Self::gen_hash(&account_id, asset_in, asset_out, new_nonce);
-			let new_order: Order<T::Hash> = Order {
+			let new_order = Order {
 				order_id: order_id,
 				placing_account: account_id.clone(),
 				asset_in_id: asset_in,
@@ -223,8 +243,18 @@ pub mod pallet {
 				sell_amount: amount,
 				price: price,
 			};
+
+			<AssetPairOrders<T>>::try_mutate(asset_in, asset_out, |orders| {
+				orders
+					.try_push(order_id)
+					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
+			})?;
+
+			T::ReserveCurrency::reserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()))?;
+
 			T::TradeableAsset::reserve(asset_in, &account_id, amount)?;
-			<Orders<T>>::insert(order_id, new_order);
+
+			<Orders<T>>::insert(order_id, new_order.clone());
 			<UserOrders<T>>::insert(account_id, order_id, new_order);
 
 			Ok(())
