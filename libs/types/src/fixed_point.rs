@@ -284,15 +284,15 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_div_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// Checked division by FixedPointOperand, with Rounding::SignedRounding
 	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
 	/// case). For example:
-	///
+	/// ```text
 	///    FixedU128::saturating_from_rational(2)
-	///        .checked_div_with_rounding(2, SignedRounding::..)
+	///        .checked_div_with_rounding(2, SignedRounding::...)
 	///
 	/// would be equivalent to    
 	///           
@@ -313,6 +313,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	///        (FixedU128::accuracy / 2 * FixedU128::accuracy)
 	///
 	/// Which would be 1 * FixedU128::accuracy
+	/// ```
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -574,18 +575,18 @@ impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 			.unwrap_or_else(|| to_bound(self.0, other.0))
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// Checked division by FixedPointOperand, with Rounding::SignedRounding
 	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (FixedU128 in this
 	/// case). For example:
-	///
+	/// ```text
 	///    FixedU128::saturating_from_rational(2)
-	///        .checked_div_with_rounding(2, SignedRounding::..)
+	///        .checked_div_with_rounding(2, sp_arithmetic::per_things::SignedRounding::...)
 	///
 	/// would be equivalent to    
-	///           
+	///
 	///      (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
 	///
 	/// instead of
