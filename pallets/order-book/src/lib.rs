@@ -150,9 +150,12 @@ pub mod pallet {
 		Twox64Concat,
 		T::Hash,
 		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
-		OptionQuery,
+		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
+	/// Map of orders for a particular user
+	/// Used to query orders for a particular user using the
+	/// account id of the user as prefix
 	#[pallet::storage]
 	pub type UserOrders<T: Config> = StorageDoubleMap<
 		_,
@@ -161,7 +164,7 @@ pub mod pallet {
 		Twox64Concat,
 		T::Hash,
 		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
-		OptionQuery,
+		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
 	/// Stores Nonce for orders placed
@@ -189,14 +192,18 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		AssetPairOrdersOverflow,
-		InvalidAssetId,
 		ConflictingAssetIds,
 		InsufficientAssetFunds,
 		InsufficientReserveFunds,
+		InvalidAssetId,
+		OrderNotFound,
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
+	{
 		#[pallet::call_index(0)]
 		// dummy weight for now
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
@@ -219,7 +226,7 @@ pub mod pallet {
 			);
 			ensure!(
 				T::TradeableAsset::can_reserve(asset_in, &account_id, amount),
-				Error::<T>::InsufficientAssetFunds,
+				Error::<T>::InsufficientReserveFunds,
 			);
 
 			ensure!(
@@ -265,6 +272,15 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		pub fn cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+			// verify order matches account
+			// UserOrders using Resultquery, if signed account
+			// does not match user for order id, we will get an Err Result
+			let order = <UserOrders<T>>::get(&account_id, order_id)?;
+
+			<UserOrders<T>>::remove(account_id, order.order_id);
+			<Orders<T>>::remove(order.order_id);
+			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
+			orders.retain(|o| *o != order.order_id);
 			Ok(())
 		}
 
