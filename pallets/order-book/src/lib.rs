@@ -22,6 +22,9 @@
 #[cfg(test)]
 pub(crate) mod mock;
 
+#[cfg(test)]
+mod tests;
+
 pub use pallet::*;
 
 #[frame_support::pallet(dev_mode)]

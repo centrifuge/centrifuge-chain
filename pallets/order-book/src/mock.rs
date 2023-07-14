@@ -20,7 +20,7 @@ use frame_support::{
 	traits::{ConstU32, ConstU64, GenesisBuild},
 	Deserialize, Serialize,
 };
-use orml_traits::parameter_type_with_key;
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -233,7 +233,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			),
 		],
 	}
-	.assimilate_storage(&mut storage)
+	.assimilate_storage(&mut t)
 	.unwrap();
 
 	let mut e = sp_io::TestExternalities::new(t);
