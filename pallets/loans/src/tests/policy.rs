@@ -126,8 +126,8 @@ fn with_successful_overwriting() {
 fn with_price_outdated() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
 		let policy: BoundedVec<_, _> = vec![WriteOffRule::new(
 			[WriteOffTrigger::PriceOutdated(10)],
@@ -176,7 +176,7 @@ fn with_price_outdated() {
 fn with_success() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		let policy: BoundedVec<_, _> = vec![
 			WriteOffRule::new(

@@ -11,9 +11,9 @@ use super::{
 	entities::{
 		loans::{ActiveLoan, LoanInfo},
 		pricing::{
-			external::{ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
+			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
-			ActivePricing, Pricing,
+			ActivePricing, Pricing, PricingAmount, RepaidPricingAmount,
 		},
 	},
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
@@ -22,8 +22,8 @@ use super::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowLoanError, BorrowRestrictions, Change, CloseLoanError, CreateLoanError,
 		InterestPayments, InternalMutation, LoanMutation, LoanRestrictions, Maturity,
-		MutationError, PayDownSchedule, RepaidAmount, RepayLoanError, RepayRestrictions,
-		RepaymentSchedule, WrittenOffError,
+		MutationError, PayDownSchedule, RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		WrittenOffError,
 	},
 };
 

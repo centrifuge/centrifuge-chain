@@ -83,7 +83,10 @@ pub mod pallet {
 		permissions::{PermissionScope, PoolRole, Role},
 	};
 	use codec::HasCompact;
-	use entities::loans::{self, ActiveLoan, LoanInfo};
+	use entities::{
+		loans::{self, ActiveLoan, LoanInfo},
+		pricing::{PricingAmount, RepaidPricingAmount},
+	};
 	use frame_support::{
 		pallet_prelude::*,
 		storage::transactional,
@@ -108,7 +111,7 @@ pub mod pallet {
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepaidAmount, RepayLoanError, WrittenOffError,
+		RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -327,13 +330,13 @@ pub mod pallet {
 		Borrowed {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
+			amount: PricingAmount<T>,
 		},
 		/// An amount was repaid for a loan
 		Repaid {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidAmount<T::Balance>,
+			amount: RepaidPricingAmount<T>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -382,14 +385,14 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when an amount used is not multiple of the current price
-		AmountNotMultipleOfPrice,
 		/// Emits when an amount used is not a natural number
 		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
 		UnrelatedChangeId,
+		/// Emits when the pricing method is not compatible with the input
+		MismatchedPricingMethod,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -492,7 +495,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
+			amount: PricingAmount<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -501,20 +504,20 @@ pub mod pallet {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
 					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(amount)?;
+					active_loan.borrow(&amount)?;
 
 					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
 						Self::ensure_loan_borrower(&who, loan.borrower())?;
-						loan.borrow(amount)
+						loan.borrow(&amount)
 					})?
 					.1
 				}
 			};
 
-			T::Pool::withdraw(pool_id, who, amount)?;
+			T::Pool::withdraw(pool_id, who, amount.balance()?)?;
 
 			Self::deposit_event(Event::<T>::Borrowed {
 				pool_id,
@@ -541,7 +544,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidAmount<T::Balance>,
+			amount: RepaidPricingAmount<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -550,7 +553,7 @@ pub mod pallet {
 				loan.repay(amount.clone())
 			})?;
 
-			T::Pool::deposit(pool_id, who, amount.total()?)?;
+			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
