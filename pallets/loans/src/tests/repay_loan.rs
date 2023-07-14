@@ -1,15 +1,19 @@
 use super::*;
 
 pub fn config_mocks(deposit_amount: Balance) {
+	config_mocks_with_price(deposit_amount, PRICE_VALUE)
+}
+
+pub fn config_mocks_with_price(deposit_amount: Balance, price: Balance) {
 	MockPools::mock_deposit(move |pool_id, to, amount| {
 		assert_eq!(to, BORROWER);
 		assert_eq!(pool_id, POOL_A);
 		assert_eq!(deposit_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(|id| {
+	MockPrices::mock_get(move |id| {
 		assert_eq!(*id, REGISTER_PRICE_ID);
-		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		Ok((price, BLOCK_TIME.as_secs()))
 	});
 }
 
@@ -24,8 +28,8 @@ fn without_borrow_first() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: COLLATERAL_VALUE,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
 					interest: u128::MAX,
 					unscheduled: 0,
 				},
@@ -45,8 +49,8 @@ fn with_wrong_loan_id() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				0,
-				RepaidAmount {
-					principal: COLLATERAL_VALUE,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
 					interest: u128::MAX,
 					unscheduled: 0,
 				},
@@ -60,7 +64,7 @@ fn with_wrong_loan_id() {
 fn from_other_borrower() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE);
 		assert_noop!(
@@ -68,8 +72,8 @@ fn from_other_borrower() {
 				RuntimeOrigin::signed(OTHER_BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: COLLATERAL_VALUE,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
 					interest: u128::MAX,
 					unscheduled: 0,
 				},
@@ -83,7 +87,7 @@ fn from_other_borrower() {
 fn has_been_written_off() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 		util::write_off_loan(loan_id);
@@ -93,8 +97,8 @@ fn has_been_written_off() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE),
 				interest: u128::MAX,
 				unscheduled: 0,
 			},
@@ -106,15 +110,15 @@ fn has_been_written_off() {
 fn with_success_partial() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE / 2);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 
 		config_mocks(COLLATERAL_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -127,15 +131,15 @@ fn with_success_partial() {
 fn with_success_total() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -148,7 +152,7 @@ fn with_success_total() {
 fn with_more_than_required() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE);
 
@@ -157,8 +161,8 @@ fn with_more_than_required() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: COLLATERAL_VALUE * 2,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE * 2),
 					interest: 0,
 					unscheduled: 0,
 				},
@@ -170,8 +174,8 @@ fn with_more_than_required() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE),
 				interest: u128::MAX, // Here there is no limit
 				unscheduled: 0,
 			},
@@ -184,8 +188,8 @@ fn with_more_than_required() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: 1, // All was already repaid
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(1), // All was already repaid
 					interest: 0,
 					unscheduled: 0,
 				}
@@ -196,8 +200,8 @@ fn with_more_than_required() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: 0,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(0),
 				interest: u128::MAX, //Discarded
 				unscheduled: 0,
 			},
@@ -215,7 +219,7 @@ fn with_restriction_full_once() {
 			},
 			..util::base_internal_loan()
 		});
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE / 2);
 		assert_noop!(
@@ -223,8 +227,8 @@ fn with_restriction_full_once() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: COLLATERAL_VALUE / 2,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 					interest: 0,
 					unscheduled: 0,
 				},
@@ -237,8 +241,8 @@ fn with_restriction_full_once() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -249,8 +253,8 @@ fn with_restriction_full_once() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: 0,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(0),
 				interest: 0,
 				unscheduled: 0,
 			}
@@ -262,15 +266,15 @@ fn with_restriction_full_once() {
 fn twice_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -281,8 +285,8 @@ fn twice_internal() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -295,16 +299,17 @@ fn twice_internal() {
 fn twice_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		config_mocks(amount / 2);
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: amount / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -315,15 +320,15 @@ fn twice_external() {
 			util::current_loan_debt(loan_id)
 		);
 
-		let remaining = (QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE);
-		config_mocks(remaining);
+		let remaining = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+		config_mocks(remaining.balance().unwrap());
 
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: remaining,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(remaining),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -336,15 +341,15 @@ fn twice_external() {
 fn twice_internal_with_elapsed_time() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(COLLATERAL_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -364,8 +369,8 @@ fn twice_internal_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -380,8 +385,8 @@ fn twice_internal_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: 0,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(0),
 				interest: still_to_pay,
 				unscheduled: 0,
 			},
@@ -395,16 +400,17 @@ fn twice_internal_with_elapsed_time() {
 fn twice_external_with_elapsed_time() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		config_mocks(amount / 2);
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: amount / 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -420,15 +426,15 @@ fn twice_external_with_elapsed_time() {
 			util::current_loan_debt(loan_id)
 		);
 
-		let remaining = (QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE);
-		config_mocks(remaining);
+		let remaining = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+		config_mocks(remaining.balance().unwrap());
 
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: remaining,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(remaining),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -443,8 +449,8 @@ fn twice_external_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: 0,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(ExternalAmount::empty()),
 				interest: still_to_pay,
 				unscheduled: 0,
 			},
@@ -464,7 +470,7 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 			}),
 			..util::base_internal_loan()
 		});
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR / 2);
 
@@ -473,8 +479,8 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: COLLATERAL_VALUE,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(COLLATERAL_VALUE),
 				interest: u128::MAX,
 				unscheduled: 0,
 			},
@@ -487,19 +493,20 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 }
 
 #[test]
-fn external_pricing_same() {
+fn external_pricing_remains_the_same() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		config_mocks(amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: amount,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -513,18 +520,17 @@ fn external_pricing_same() {
 fn external_pricing_goes_up() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		config_mocks(amount * 2);
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2, now().as_secs())));
-
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE * 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: amount * 2,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -538,19 +544,17 @@ fn external_pricing_goes_up() {
 fn external_pricing_goes_down() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		config_mocks(amount / 2);
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2, now().as_secs())));
-
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE / 2);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: amount,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
 				interest: 0,
 				unscheduled: 0,
 			},
@@ -564,40 +568,40 @@ fn external_pricing_goes_down() {
 fn external_pricing_with_wrong_quantity() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		// It's not multiple of PRICE_VALUE
-		config_mocks(amount - 1);
+		let amount = ExternalAmount::new(Rate::from_float(0.5), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 		assert_noop!(
 			Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				RepaidAmount {
-					principal: amount - 1,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(amount),
 					interest: 0,
 					unscheduled: 0,
 				},
 			),
-			Error::<Runtime>::AmountNotMultipleOfPrice
+			Error::<Runtime>::AmountNotNaturalNumber
 		);
 	});
 }
 
 #[test]
-fn with_unscheduled_repayment() {
+fn with_unscheduled_repayment_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks(1234);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			RepaidAmount {
-				principal: 0,
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(0),
 				interest: 0,
 				unscheduled: 1234,
 			},
@@ -608,3 +612,34 @@ fn with_unscheduled_repayment() {
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 	});
 }
+
+#[test]
+fn with_unscheduled_repayment_external() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
+
+		config_mocks(1234);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(ExternalAmount::empty()),
+				interest: 0,
+				unscheduled: 1234,
+			},
+		));
+
+		// Nothing repaid with unscheduled amount,
+		// so I still have the whole amount as debt
+		assert_eq!(
+			(QUANTITY).saturating_mul_int(NOTIONAL),
+			util::current_loan_debt(loan_id)
+		);
+	});
+}
+
+// TODO: check error external when internal
+// TODO: check error internal when external

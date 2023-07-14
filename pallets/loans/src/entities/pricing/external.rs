@@ -26,6 +26,20 @@ pub struct ExternalAmount<T: Config> {
 }
 
 impl<T: Config> ExternalAmount<T> {
+	pub fn new(quantity: T::Rate, price: T::Balance) -> Self {
+		Self {
+			quantity,
+			settlement_price: price,
+		}
+	}
+
+	pub fn empty() -> Self {
+		Self {
+			quantity: T::Rate::zero(),
+			settlement_price: T::Balance::zero(),
+		}
+	}
+
 	pub fn balance(&self) -> Result<T::Balance, ArithmeticError> {
 		self.quantity.ensure_mul_int(self.settlement_price)
 	}
@@ -59,7 +73,7 @@ impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
 		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
 			ensure!(
-				quantity.frac().is_zero() && quantity > T::Rate::zero(),
+				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
 				Error::<T>::AmountNotNaturalNumber
 			)
 		}
@@ -165,7 +179,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 		let interest_adj = quantity_adj.try_map(|quantity| -> Result<_, DispatchError> {
 			ensure!(
-				quantity.frac().is_zero() && quantity > T::Rate::zero(),
+				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
 				Error::<T>::AmountNotNaturalNumber
 			);
 
