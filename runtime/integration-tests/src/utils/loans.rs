@@ -23,7 +23,7 @@ use pallet_loans::{
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing,
+			Pricing, PricingAmount, RepaidPricingAmount,
 		},
 	},
 	types::{
@@ -182,7 +182,11 @@ pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Runtime>) -> RuntimeCall
 	RuntimeCall::Loans(LoansCall::create { pool_id, info })
 }
 
-pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeCall {
+pub fn borrow_call(
+	pool_id: PoolId,
+	loan_id: LoanId,
+	amount: PricingAmount<Runtime>,
+) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::borrow {
 		pool_id,
 		loan_id,
@@ -190,7 +194,11 @@ pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Runtime
 	})
 }
 
-pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: RepaidAmount<Balance>) -> RuntimeCall {
+pub fn repay_call(
+	pool_id: PoolId,
+	loan_id: LoanId,
+	amount: RepaidPricingAmount<Runtime>,
+) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
