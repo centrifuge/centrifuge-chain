@@ -17,7 +17,7 @@ use cfg_types::tokens::CustomMetadata;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ConstU64},
+	traits::{ConstU32, ConstU64, GenesisBuild},
 	Deserialize, Serialize,
 };
 use orml_traits::parameter_type_with_key;
@@ -30,8 +30,16 @@ use sp_runtime::{
 
 use crate as order_book;
 
-pub(crate) const ORDER_PLACER_0: u64 = 0x1;
+pub(crate) const ACCOUNT_0: u64 = 0x1;
+pub(crate) const ACCOUNT_1: u64 = 0x2;
+pub(crate) const ACCOUNT_2: u64 = 0x3;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
+pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
+
+const CURRENCY_A: Balance = 1_000_000_000_000_000_000;
+// To ensure price/amount calculations with different
+// currency precision works
+const CURRENCY_B: Balance = 1_000_000_000_000_000;
 
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -173,9 +181,68 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	sp_io::TestExternalities::new(
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap(),
-	)
+	let mut t = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
+
+	// Add native balances for reserve/unreserve storage fees
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: vec![(ACCOUNT_0, 30), (ACCOUNT_1, 3)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	// Add foreign currency balances of differing precisions
+	orml_tokens::GenesisConfig::<Runtime> {
+		balances: (0..3)
+			.into_iter()
+			.flat_map(|idx| {
+				[
+					(idx, CurrencyId::A, 1000 * CURRENCY_A),
+					(idx, CurrencyId::B, 1000 * CURRENCY_B),
+				]
+			})
+			.collect(),
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	orml_asset_registry_mock::GenesisConfig {
+		metadata: vec![
+			(
+				CurrencyId::A,
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN_A".as_bytes().to_vec(),
+					symbol: "MOCK_A".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			),
+			(
+				CurrencyId::B,
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN_B".as_bytes().to_vec(),
+					symbol: "MOCK_B".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			),
+		],
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
+
+	let mut e = sp_io::TestExternalities::new(t);
+
+	e.execute_with(|| {
+		Fees::mock_fee_value(|key| match key {
+			ORDER_FEEKEY => ORDER_FEEKEY_AMOUNT,
+			_ => panic!("No valid fee key"),
+		});
+	});
+	e
 }
