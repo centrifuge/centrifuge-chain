@@ -107,7 +107,54 @@ fn has_been_written_off() {
 }
 
 #[test]
-fn with_success_partial() {
+fn with_wrong_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_internal_loan());
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(ExternalAmount::empty()),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::MismatchedPricingMethod
+		);
+	});
+}
+
+#[test]
+fn with_wrong_internal_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(0),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::MismatchedPricingMethod
+		);
+	});
+}
+
+#[test]
+fn with_success_half_amount() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE / 2));
@@ -128,7 +175,7 @@ fn with_success_partial() {
 }
 
 #[test]
-fn with_success_total() {
+fn with_success_total_amount() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
 		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
@@ -640,6 +687,3 @@ fn with_unscheduled_repayment_external() {
 		);
 	});
 }
-
-// TODO: check error external when internal
-// TODO: check error internal when external

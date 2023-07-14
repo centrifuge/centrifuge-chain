@@ -151,6 +151,42 @@ fn with_maturity_passed() {
 }
 
 #[test]
+fn with_wrong_internal_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::Internal(0)
+			),
+			Error::<Runtime>::MismatchedPricingMethod
+		);
+	});
+}
+
+#[test]
+fn with_wrong_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_internal_loan());
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(ExternalAmount::empty())
+			),
+			Error::<Runtime>::MismatchedPricingMethod
+		);
+	});
+}
+
+#[test]
 fn with_wrong_big_amount_internal_pricing() {
 	let borrow_inputs = [
 		(COLLATERAL_VALUE + 1, util::total_borrowed_rate(1.0)),
@@ -300,7 +336,24 @@ fn with_correct_amount_external_pricing() {
 			POOL_A,
 			loan_id,
 			PricingAmount::External(amount)
-		),);
+		));
+	});
+}
+
+#[test]
+fn with_correct_settlement_price_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2 /* Any value */);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
 	});
 }
 
@@ -411,7 +464,3 @@ fn twice_with_elapsed_time() {
 		);
 	});
 }
-
-// TODO: price_value != settlement_price
-// TODO: check error external when internal
-// TODO: check error internal when external
