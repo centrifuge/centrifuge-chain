@@ -85,6 +85,7 @@ cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-connectors = { path = "../../pallets/connectors" }
+pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
 pallet-investments = { path = "../../pallets/investments" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
@@ -98,6 +99,11 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = t
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.38" }
 
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.38" }
+
+ethereum = { version = "0.14.0", default-features = false }
+
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 [features]
 default = ["runtime-development"]
