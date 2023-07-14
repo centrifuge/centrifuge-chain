@@ -22,6 +22,21 @@ pub trait Codec: Sized {
 	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
 }
 
+/// The trait required for sending outbound messages.
+pub trait Router {
+	/// The sender type of the outbound message.
+	type Sender;
+
+	/// The outbound message type.
+	type Message;
+
+	/// Initialize the router.
+	fn init(&self) -> DispatchResult;
+
+	/// Send the message to the router's destination.
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult;
+}
+
 /// The trait required for processing outbound connectors messages.
 pub trait OutboundQueue {
 	/// The sender type of the outgoing message.

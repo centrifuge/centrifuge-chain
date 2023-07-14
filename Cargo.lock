@@ -2645,6 +2645,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-data-collector",
@@ -7033,6 +7034,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-connectors-gateway"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "rand 0.8.5",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-conviction-voting"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -10697,6 +10718,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-connectors",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
