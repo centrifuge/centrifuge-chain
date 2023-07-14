@@ -7780,6 +7780,8 @@ dependencies = [
 name = "pallet-order-book"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
+ "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -7787,12 +7789,15 @@ dependencies = [
  "frame-system",
  "orml-tokens",
  "orml-traits",
+ "pallet-balances",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]

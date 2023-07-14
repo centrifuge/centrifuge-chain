@@ -109,7 +109,6 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ From<u64>
-			+ From<u128>
 			+ TypeInfo
 			+ TryInto<u64>;
 

@@ -12,6 +12,7 @@
 
 use core::default;
 
+use cfg_mocks::pallet_mock_fees;
 use cfg_types::tokens::CustomMetadata;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -19,6 +20,7 @@ use frame_support::{
 	traits::{ConstU32, ConstU64},
 	Deserialize, Serialize,
 };
+use orml_traits::parameter_type_with_key;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -29,6 +31,7 @@ use sp_runtime::{
 use crate as order_book;
 
 pub(crate) const ORDER_PLACER_0: u64 = 0x1;
+pub(crate) const ORDER_FEEKEY: u8 = 0u8;
 
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -42,8 +45,9 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
 			Balances: pallet_balances,
+			Fees: pallet_mock_fees,
 			System: frame_system,
-		  OrmlTokens: orml_tokens
+		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
 	  }
 );
@@ -78,6 +82,15 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
+}
+
+impl pallet_mock_fees::Config for Runtime {
+	type Balance = Balance;
+	type FeeKey = u8;
+}
+
+parameter_types! {
+	  pub const DefaultFeeValue: Balance = 1;
 }
 
 #[derive(
@@ -123,7 +136,13 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 		CustomMetadata
 }
 
-impl orml_tokens::Config for Test {
+parameter_type_with_key! {
+		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+				Default::default()
+		};
+}
+
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyHooks = ();
@@ -137,10 +156,18 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+		pub const OrderFeeKey: u8 = ORDER_FEEKEY;
+}
+
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type Fees = Fees;
+	type Nonce = u64;
+	type OrderFeeKey = OrderFeeKey;
+	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type TradeableAsset = OrmlTokens;
 }
