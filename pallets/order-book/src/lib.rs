@@ -334,6 +334,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn get_account_orders(
+			account_id: T::AccountId,
+		) -> Result<
+			sp_std::vec::Vec<(
+				T::Hash,
+				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
+			)>,
+			Error<T>,
+		> {
+			Ok(<UserOrders<T>>::iter_prefix(account_id).collect())
+		}
+
 		pub fn gen_hash(
 			placer: &T::AccountId,
 			asset_out: T::AssetCurrencyId,
