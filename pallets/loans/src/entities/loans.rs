@@ -19,6 +19,7 @@ use sp_runtime::{
 
 use super::pricing::{
 	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
+	PricingAmount, RepaidPricingAmount,
 };
 use crate::{
 	pallet::{AssetOf, Config, Error, PriceOf},
@@ -279,14 +280,20 @@ impl<T: Config> ActiveLoan<T> {
 		self.write_down(value)
 	}
 
-	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
+	fn ensure_can_borrow(&self, amount: &PricingAmount<T>) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
-			ActivePricing::Internal(inner) => inner.max_borrow_amount(self.total_borrowed)?,
-			ActivePricing::External(inner) => inner.max_borrow_amount(amount)?,
+			ActivePricing::Internal(inner) => {
+				amount.internal()?;
+				inner.max_borrow_amount(self.total_borrowed)?
+			}
+			ActivePricing::External(inner) => {
+				let external_amount = amount.external()?;
+				inner.max_borrow_amount(external_amount)?
+			}
 		};
 
 		ensure!(
-			amount <= max_borrow_amount,
+			amount.balance()? <= max_borrow_amount,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
@@ -294,7 +301,7 @@ impl<T: Config> ActiveLoan<T> {
 			match self.restrictions.borrows {
 				BorrowRestrictions::NotWrittenOff => self.write_off_status().is_none(),
 				BorrowRestrictions::FullOnce => {
-					self.total_borrowed.is_zero() && amount == max_borrow_amount
+					self.total_borrowed.is_zero() && amount.balance()? == max_borrow_amount
 				}
 			},
 			Error::<T>::from(BorrowLoanError::Restriction)
@@ -309,15 +316,18 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
+	pub fn borrow(&mut self, amount: &PricingAmount<T>) -> DispatchResult {
 		self.ensure_can_borrow(amount)?;
 
-		self.total_borrowed.ensure_add_assign(amount)?;
+		self.total_borrowed.ensure_add_assign(amount.balance()?)?;
 
 		match &mut self.pricing {
-			ActivePricing::Internal(inner) => inner.adjust(Adjustment::Increase(amount))?,
+			ActivePricing::Internal(inner) => {
+				inner.adjust(Adjustment::Increase(amount.balance()?))?
+			}
 			ActivePricing::External(inner) => {
-				inner.adjust(Adjustment::Increase(amount), Zero::zero())?
+				let quantity = amount.external()?.quantity;
+				inner.adjust(Adjustment::Increase(quantity), Zero::zero())?
 			}
 		}
 
@@ -332,10 +342,12 @@ impl<T: Config> ActiveLoan<T> {
 	/// - Checking repay restrictions
 	fn prepare_repayment(
 		&self,
-		mut amount: RepaidAmount<T::Balance>,
-	) -> Result<RepaidAmount<T::Balance>, DispatchError> {
+		mut amount: RepaidPricingAmount<T>,
+	) -> Result<RepaidPricingAmount<T>, DispatchError> {
 		let (interest_accrued, max_repay_principal) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
+				amount.principal.internal()?;
+
 				let principal = self
 					.total_borrowed
 					.ensure_sub(self.total_repaid.principal)?;
@@ -343,14 +355,17 @@ impl<T: Config> ActiveLoan<T> {
 				(inner.current_interest(principal)?, principal)
 			}
 			ActivePricing::External(inner) => {
-				(inner.current_interest()?, inner.outstanding_amount()?)
+				let external_amount = amount.principal.external()?;
+				let max_repay_principal = inner.max_repay_principal(external_amount)?;
+
+				(inner.current_interest()?, max_repay_principal)
 			}
 		};
 
 		amount.interest = amount.interest.min(interest_accrued);
 
 		ensure!(
-			amount.principal <= max_repay_principal,
+			amount.principal.balance()? <= max_repay_principal,
 			Error::<T>::from(RepayLoanError::MaxPrincipalAmountExceeded)
 		);
 
@@ -358,7 +373,8 @@ impl<T: Config> ActiveLoan<T> {
 			match self.restrictions.repayments {
 				RepayRestrictions::None => true,
 				RepayRestrictions::Full => {
-					amount.principal == max_repay_principal && amount.interest == interest_accrued
+					amount.principal.balance()? == max_repay_principal
+						&& amount.interest == interest_accrued
 				}
 			},
 			Error::<T>::from(RepayLoanError::Restriction)
@@ -369,18 +385,21 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn repay(
 		&mut self,
-		amount: RepaidAmount<T::Balance>,
-	) -> Result<RepaidAmount<T::Balance>, DispatchError> {
+		amount: RepaidPricingAmount<T>,
+	) -> Result<RepaidPricingAmount<T>, DispatchError> {
 		let amount = self.prepare_repayment(amount)?;
 
-		self.total_repaid.ensure_add_assign(&amount)?;
+		self.total_repaid
+			.ensure_add_assign(amount.repaid_amount()?)?;
 
 		match &mut self.pricing {
 			ActivePricing::Internal(inner) => {
-				inner.adjust(Adjustment::Decrease(amount.effective()?))?
+				let amount = amount.repaid_amount()?.effective()?;
+				inner.adjust(Adjustment::Decrease(amount))?
 			}
 			ActivePricing::External(inner) => {
-				inner.adjust(Adjustment::Decrease(amount.principal), amount.interest)?
+				let quantity = amount.principal.external()?.quantity;
+				inner.adjust(Adjustment::Decrease(quantity), amount.interest)?
 			}
 		}
 

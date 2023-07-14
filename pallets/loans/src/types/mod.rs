@@ -239,7 +239,10 @@ impl<Balance: EnsureAdd + Copy> RepaidAmount<Balance> {
 			.ensure_add(self.unscheduled)
 	}
 
-	pub fn ensure_add_assign(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+	pub fn ensure_add_assign(
+		&mut self,
+		other: RepaidAmount<Balance>,
+	) -> Result<(), ArithmeticError> {
 		self.principal.ensure_add_assign(other.principal)?;
 		self.interest.ensure_add_assign(other.interest)?;
 		self.unscheduled.ensure_add_assign(other.unscheduled)
