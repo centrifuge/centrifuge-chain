@@ -281,6 +281,7 @@ pub mod pallet {
 			// does not match user for order id, we will get an Err Result
 			let order = <UserOrders<T>>::get(&account_id, order_id)?;
 
+			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
 			<UserOrders<T>>::remove(account_id, order.order_id);
 			<Orders<T>>::remove(order.order_id);
 			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
@@ -294,17 +295,39 @@ pub mod pallet {
 		pub fn fill_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
-			T::TradeableAsset::ensure_can_withdraw(
-				order.asset_out_id,
-				&account_id,
-				order.sell_amount,
-			)?;
-
+			// maybe move to ensure if we don't need these later
+			// might need decimals from currency, but should hopefully be able to use FP
+			// price/amounts from FP balance
 			let asset_out = T::AssetRegistry::metadata(&order.asset_out_id)
 				.ok_or(Error::<T>::InvalidAssetId)?;
 
 			let asset_in =
 				T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
+
+			let buy_amount = order.sell_amount.ensure_mul(order.price)?;
+
+			ensure!(
+				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, buy_amount),
+				Error::<T>::InsufficientAssetFunds,
+			);
+			T::TradeableAsset::unreserve(
+				order.asset_in_id,
+				&order.placing_account,
+				order.sell_amount,
+			);
+			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
+			T::TradeableAsset::transfer(
+				order.asset_in_id,
+				&order.placing_account,
+				&account_id,
+				order.sell_amount,
+			)?;
+			T::TradeableAsset::transfer(
+				order.asset_out_id,
+				&account_id,
+				&order.placing_account,
+				buy_amount,
+			)?;
 
 			Ok(())
 		}
