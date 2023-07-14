@@ -390,7 +390,7 @@ impl<T: Config> ActiveLoan<T> {
 		let amount = self.prepare_repayment(amount)?;
 
 		self.total_repaid
-			.ensure_add_assign(amount.repaid_amount()?)?;
+			.ensure_add_assign(&amount.repaid_amount()?)?;
 
 		match &mut self.pricing {
 			ActivePricing::Internal(inner) => {
