@@ -60,6 +60,7 @@ pub enum MaxBorrowAmount<Quantity> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct ExternalPricing<T: Config> {
 	/// Id of an external price
 	pub price_id: T::PriceId,
@@ -88,6 +89,7 @@ impl<T: Config> ExternalPricing<T> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct ExternalActivePricing<T: Config> {
 	/// Basic external pricing info
 	info: ExternalPricing<T>,

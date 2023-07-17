@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use pallet_loans::entities::loans::ActiveLoanInfo;
 use runtime_common::apis::LoansApi as LoansRuntimeApi;
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -11,13 +10,9 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait LoansApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
+pub trait LoansApi<PoolId, LoanId, Loan, BlockHash> {
 	#[method(name = "loans_portfolio")]
-	fn portfolio(
-		&self,
-		pool_id: PoolId,
-		at: Option<BlockHash>,
-	) -> RpcResult<Vec<(LoanId, ActiveLoanInfo<T>)>>;
+	fn portfolio(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Vec<(LoanId, Loan)>>;
 
 	#[method(name = "loans_portfolioLoan")]
 	fn portfolio_loan(
@@ -25,7 +20,7 @@ pub trait LoansApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
 		pool_id: PoolId,
 		loan_id: LoanId,
 		at: Option<BlockHash>,
-	) -> RpcResult<ActiveLoanInfo<T>>;
+	) -> RpcResult<Loan>;
 }
 
 pub struct Loans<C, Block> {
@@ -59,20 +54,21 @@ where
 	}
 }
 
-impl<C, Block, PoolId, LoanId, T: pallet_loans::Config>
-	LoansApiServer<PoolId, LoanId, T, Block::Hash> for Loans<C, Block>
+impl<C, Block, PoolId, LoanId, Loan> LoansApiServer<PoolId, LoanId, Loan, Block::Hash>
+	for Loans<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: LoansRuntimeApi<Block, PoolId, LoanId, T>,
+	C::Api: LoansRuntimeApi<Block, PoolId, LoanId, Loan>,
 	PoolId: Codec,
 	LoanId: Codec,
+	Loan: Codec,
 {
 	fn portfolio(
 		&self,
 		pool_id: PoolId,
 		at: Option<Block::Hash>,
-	) -> RpcResult<Vec<(LoanId, ActiveLoanInfo<T>)>> {
+	) -> RpcResult<Vec<(LoanId, Loan)>> {
 		let (api, at) = self.api(at);
 
 		api.portfolio(&at, pool_id)
@@ -84,11 +80,11 @@ where
 		pool_id: PoolId,
 		loan_id: LoanId,
 		at: Option<Block::Hash>,
-	) -> RpcResult<ActiveLoanInfo<T>> {
+	) -> RpcResult<Loan> {
 		let (api, at) = self.api(at);
 
 		api.portfolio_loan(&at, pool_id, loan_id)
-			.map_err(|e| runtime_error("Unable to query portfolio loan", e))?
+			.map_err(|e| runtime_error("Unable to query a loan from the portfolio", e))?
 			.ok_or_else(|| invalid_params_error("Loan not found"))
 	}
 }

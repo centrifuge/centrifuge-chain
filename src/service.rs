@@ -192,9 +192,9 @@ pub async fn start_altair_node(
 			module
 				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Loans::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			/*module
+			.merge(Loans::new(client.clone()).into_rpc())
+			.map_err(|e| sc_service::Error::Application(e.into()))?;*/
 
 			let eth_deps = rpc::evm::Deps {
 				client,
@@ -368,9 +368,9 @@ pub async fn start_centrifuge_node(
 			module
 				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			module
-				.merge(Loans::new(client.clone()).into_rpc())
-				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			/*module
+			.merge(Loans::new(client.clone()).into_rpc())
+			.map_err(|e| sc_service::Error::Application(e.into()))?;*/
 
 			let eth_deps = rpc::evm::Deps {
 				client,

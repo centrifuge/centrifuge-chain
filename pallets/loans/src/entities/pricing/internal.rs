@@ -36,6 +36,7 @@ pub enum MaxBorrowAmount<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InternalPricing<T: Config> {
 	/// Value of the collateral used for this loan
 	pub collateral_value: T::Balance,
@@ -62,6 +63,7 @@ impl<T: Config> InternalPricing<T> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InternalActivePricing<T: Config> {
 	/// Basic internal pricing info
 	info: InternalPricing<T>,

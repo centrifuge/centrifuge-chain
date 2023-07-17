@@ -12,19 +12,18 @@
 // GNU General Public License for more details.
 
 use codec::Codec;
-use pallet_loans::entities::loans::ActiveLoanInfo;
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	pub trait LoansApi<PoolId, LoanId, T>
+	pub trait LoansApi<PoolId, LoanId, Loan>
 	where
 		PoolId: Codec,
 		LoanId: Codec,
-		T: pallet_loans::Config,
+		Loan: Codec,
 	{
-		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, ActiveLoanInfo<T>)>;
-		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<ActiveLoanInfo<T>>;
+		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, Loan)>;
+		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<Loan>;
 	}
 }

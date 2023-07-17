@@ -2290,12 +2290,17 @@ impl_runtime_apis! {
 	}
 
 	// LoansApi
-	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, Runtime> for Runtime {
-		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
+	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+		fn portfolio(
+			pool_id: PoolId
+		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
 			Loans::get_active_loans_info(pool_id).unwrap_or_default()
 		}
 
-		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<ActiveLoanInfo<Runtime>> {
+		fn portfolio_loan(
+			pool_id: PoolId,
+			loan_id: LoanId
+		) -> Option<ActiveLoanInfo<Runtime>> {
 			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
 		}
 	}
