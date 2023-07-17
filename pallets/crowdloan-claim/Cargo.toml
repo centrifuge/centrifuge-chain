@@ -43,7 +43,7 @@ sp-trie = { git = "https://github.com/paritytech/substrate", default-features = 
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "frame-support/runtime-benchmarks",

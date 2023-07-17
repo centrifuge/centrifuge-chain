@@ -39,7 +39,7 @@ rand = "0.8.5"
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
