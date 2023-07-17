@@ -763,7 +763,7 @@ pub trait ForeignInvestment<AccountId> {
 	// ) -> Result<(), Self::Error>;
 }
 
-pub trait SwapNotificationHandler {
+pub trait SwapNotificationHook {
 	/// The identifying type
 	type Id;
 	/// The type for possible states

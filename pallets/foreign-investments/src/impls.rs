@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ForeignInvestment, Investment, SwapNotificationHandler};
+use cfg_traits::{ForeignInvestment, Investment, SwapNotificationHook};
 use cfg_types::investments::InvestmentInfo;
 use sp_runtime::DispatchError;
 
@@ -21,7 +21,11 @@ use crate::{
 	Config, Error, ForeignInvestmentInfo, InvestmentState, Pallet,
 };
 
-impl<T: Config> SwapNotificationHandler for Pallet<T> {
+// Handles the second stage of updating investments. Whichever (potentially
+// async) code path of the first stage concludes it (partially) should call
+// `Swap::Config::SwapNotificationHandler::notify_status_update(swap_order_id,
+// swapped_amount)`.
+impl<T: Config> SwapNotificationHook for Pallet<T> {
 	type Error = DispatchError;
 	type Id = T::TokenSwapOrderId;
 	type Status = T::Balance;
@@ -67,6 +71,10 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type InvestmentId = T::InvestmentId;
 	type SwapNotification = Pallet<T>;
 
+	// Consumers such as Connectors should call this function instead of
+	// `Investment::update_invest_order` as this implementation accounts for
+	// (potentially) splitting the update into two stages. The second stage is
+	// resolved by `SwapNotificationHook::notify_status_change`.
 	fn update_foreign_invest_order(
 		who: &T::AccountId,
 		payment_currency: T::CurrencyId,
@@ -114,7 +122,7 @@ where
 			InvestTransition::SwapIntoPool(swap) => {
 				Self::handle_fulfilled_swap_into_pool(&self, swap.currency, swap.amount)
 			}
-			// TODO: Should expose NotificationHandler implemented by consumers such as Connectors
+			// TODO: Should expose hook implemented by consumers such as Connectors
 			// for handling `ExecutedDecreaseInvestOrder`.
 			InvestTransition::SwapIntoReturn(swap) => {
 				Self::handle_fulfilled_swap_into_return(&self, swap.currency, swap.amount)
@@ -129,7 +137,8 @@ where
 	Balance: Clone,
 	Currency: Clone,
 {
-	/// Handle `increase` transitions.
+	/// Handle `increase` transitions depicted by `msg::increase` edges in the
+	/// state diagram.
 	fn handle_increase(
 		&self,
 		swap_currency: Currency,
@@ -138,7 +147,8 @@ where
 		todo!("Do state transition here")
 	}
 
-	/// Handle `decrease` transitions.
+	/// Handle `decrease` transitions depicted by `msg::decrease` edges in the
+	/// state diagram.
 	fn handle_decrease(
 		&self,
 		swap_currency: Currency,
@@ -147,8 +157,11 @@ where
 		todo!("Do state transition here")
 	}
 
-	/// Handle partial/full token swap order transitions into pool currency.
-	/// These should always increase the active ongoing investment.
+	/// Handle partial/full token swap order transitions into pool currency
+	/// depicted by `order_partial` edges in the state diagram where the swap
+	/// currency matches the pool one.
+	///
+	/// NOTE: These should always increase the active ongoing investment.
 	fn handle_fulfilled_swap_into_pool(
 		&self,
 		swap_currency: Currency,
@@ -157,8 +170,12 @@ where
 		todo!("Do state transition here")
 	}
 
-	/// Handle partial/full token swap order transitions into return currency.
-	/// Assumes the corresponding investment has been decreased beforehand.
+	/// Handle partial/full token swap order transitions into return currency
+	/// depicted by `order_partial` edges in the state diagram with the swap
+	/// currency matches the return one.
+	///
+	/// NOTE: Assumes the corresponding investment has been decreased
+	/// beforehand.
 	fn handle_fulfilled_swap_into_return(
 		&self,
 		swap_currency: Currency,
