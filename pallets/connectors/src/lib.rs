@@ -224,6 +224,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TryInto<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
 			+ TryFrom<GeneralCurrencyIndexOf<Self>, Error = DispatchError>
+			// Enables checking whether currency is tranche token
 			+ CurrencyInspect<CurrencyId = CurrencyIdOf<Self>>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.

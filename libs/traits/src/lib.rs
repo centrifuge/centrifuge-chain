@@ -685,3 +685,92 @@ pub trait CurrencyInspect {
 	/// Checks whether the provided currency is a tranche token.
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
+
+trait TokenSwaps<AccountId> {
+	type CurrencyId;
+	type Balance;
+	type OrderId;
+
+	/// Swap tokens buying a `buy_amount` of `currency_in` using the
+	/// `currency_out` tokens. The implementor of this method should know the
+	/// current market rate between those two currencies. `sell_price_limit`
+	/// defines the lowest price acceptable for `currency_in` currency when
+	/// buying with `currency_out`. This protects order placer if market changes
+	/// unfavorably for swap order. Returns the order id created with by this
+	/// buy order if it could not be immediately and completely fulfilled.
+	/// If there was already an active order with the same account currencies,
+	/// the order is increased/decreased and the same order id is returned.
+	fn place_order(
+		account: AccountId,
+		currency_out: Self::CurrencyId,
+		currency_in: Self::CurrencyId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fulfillment_amount: Self::Balance,
+	) -> Result<Self::OrderId, DispatchError>;
+
+	/// Can fail for various reasons
+	///
+	/// E.g. min_fulfillment_amount is lower and
+	///      the system has already fulfilled up to the previous
+	///      one.
+	fn update_order(
+		account: AccountId,
+		order_id: Self::OrderId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fulfillment_amount: Self::Balance,
+	) -> DispatchResult;
+
+	/// Cancel an already active order.
+	fn cancel_order(order: Self::OrderId);
+
+	/// Check if the order is still active.
+	fn is_active(order: Self::OrderId) -> bool;
+}
+
+pub trait ForeignInvestment<AccountId> {
+	type Amount;
+	type CurrencyId;
+	type Error: Debug;
+	type InvestmentId;
+
+	type SwapNotification;
+
+	// type Investment: Investment<
+	// 	AccountId,
+	// 	Amount = Self::Amount,
+	// 	CurrencyId = Self::CurrencyId,
+	// 	Error = Self::Error,
+	// 	InvestmentId = Self::InvestmentId,
+	// >;
+
+	/// * Apply state transition
+	/// * Kick off swap
+	fn update_foreign_invest_order(
+		who: &AccountId,
+		payment_currency: Self::CurrencyId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	// Do actual investment update after successful (partial) token swap
+	// * Triggered by SwapNotification
+	// fn finalize_update_investment(
+	// 	who: &AccountId,
+	// 	investment_id: Self::InvestmentId,
+	// 	amount: Self::Amount,
+	// ) -> Result<(), Self::Error>;
+}
+
+pub trait SwapNotificationHandler {
+	/// The identifying type
+	type Id;
+	/// The type for possible states
+	type Status;
+	/// The error type
+	type Error: Debug;
+
+	/// Notify that the status has changed for the given id
+	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
+}
