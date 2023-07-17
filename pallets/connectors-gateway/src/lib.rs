@@ -137,7 +137,7 @@ pub mod pallet {
 		DomainNotSupported,
 
 		/// Message decoding error.
-		MessageDecode,
+		MessageDecodingFailed,
 
 		/// Connector was already added to the domain.
 		ConnectorAlreadyAdded,
@@ -158,7 +158,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set a domain's router,
-		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
+		#[pallet::weight(T::WeightInfo::set_domain_router())]
 		#[pallet::call_index(0)]
 		pub fn set_domain_router(
 			origin: OriginFor<T>,
@@ -179,7 +179,7 @@ pub mod pallet {
 		}
 
 		/// Add a connector for a specific domain.
-		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		#[pallet::weight(T::WeightInfo::add_connector())]
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
@@ -202,7 +202,7 @@ pub mod pallet {
 		}
 
 		/// Remove a connector from a specific domain.
-		#[pallet::weight(< T as Config >::WeightInfo::remove_connector())]
+		#[pallet::weight(T::WeightInfo::remove_connector())]
 		#[pallet::call_index(2)]
 		pub fn remove_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
@@ -239,7 +239,7 @@ pub mod pallet {
 					);
 
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
-						.map_err(|_| Error::<T>::MessageDecode)?;
+						.map_err(|_| Error::<T>::MessageDecodingFailed)?;
 
 					T::InboundQueue::submit(domain_address, incoming_msg)
 				}
