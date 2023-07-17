@@ -1,17 +1,17 @@
-use std::{fmt::Debug, sync::Arc};
+use std::sync::Arc;
 
 use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_loans::entities::loans::ActiveLoanInfo;
-use runtime_common::apis::{RewardDomain, RewardsApi as RewardsRuntimeApi};
-use sp_api::ProvideRuntimeApi;
+use runtime_common::apis::LoansApi as LoansRuntimeApi;
+use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait RewardsApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
+pub trait LoansApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
 	#[method(name = "loans_portfolio")]
 	fn portfolio(
 		&self,
@@ -25,70 +25,70 @@ pub trait RewardsApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
 		pool_id: PoolId,
 		loan_id: LoanId,
 		at: Option<BlockHash>,
-	) -> RpcResult<Option<ActiveLoanInfo<T>>>;
+	) -> RpcResult<ActiveLoanInfo<T>>;
 }
 
-/*
-pub struct Rewards<C, P> {
+pub struct Loans<C, P> {
 	client: Arc<C>,
 	_marker: std::marker::PhantomData<P>,
 }
 
-impl<C, P> Rewards<C, P> {
+impl<C, P> Loans<C, P> {
 	pub fn new(client: Arc<C>) -> Self {
-		Rewards {
+		Self {
 			client,
 			_marker: Default::default(),
 		}
 	}
 }
 
-impl<C, Block, AccountId, Balance, CurrencyId>
-	RewardsApiServer<AccountId, Balance, CurrencyId, Block::Hash> for Rewards<C, Block>
+impl<C, Block> Loans<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: RewardsRuntimeApi<Block, AccountId, Balance, CurrencyId>,
-	AccountId: Codec,
-	Balance: Codec + Copy,
-	CurrencyId: Codec + Copy + Debug,
 {
-	fn list_currencies(
-		&self,
-		domain: RewardDomain,
-		account_id: AccountId,
-		at: Option<Block::Hash>,
-	) -> RpcResult<Vec<CurrencyId>> {
+	pub fn api(&self, at: Option<Block::Hash>) -> (ApiRef<C::Api>, BlockId<Block>) {
 		let api = self.client.runtime_api();
-
 		let at = if let Some(hash) = at {
 			BlockId::hash(hash)
 		} else {
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.list_currencies(&at, domain, account_id)
-			.map_err(|e| runtime_error("Unable to list currencies", e))
-	}
-
-	fn compute_reward(
-		&self,
-		domain: RewardDomain,
-		currency_id: CurrencyId,
-		account_id: AccountId,
-		at: Option<Block::Hash>,
-	) -> RpcResult<Balance> {
-		let api = self.client.runtime_api();
-
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
-		};
-
-		api.compute_reward(&at, domain, currency_id, account_id)
-			.map_err(|e| runtime_error("Unable to compute reward", e))?
-			.ok_or_else(|| invalid_params_error("Reward not found"))
+		(api, at)
 	}
 }
-*/
+
+impl<C, Block, PoolId, LoanId, T: pallet_loans::Config>
+	LoansApiServer<PoolId, LoanId, T, Block::Hash> for Loans<C, Block>
+where
+	Block: BlockT,
+	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+	C::Api: LoansRuntimeApi<Block, PoolId, LoanId, T>,
+	PoolId: Codec,
+	LoanId: Codec,
+{
+	fn portfolio(
+		&self,
+		pool_id: PoolId,
+		at: Option<Block::Hash>,
+	) -> RpcResult<Vec<(LoanId, ActiveLoanInfo<T>)>> {
+		let (api, at) = self.api(at);
+
+		api.portfolio(&at, pool_id)
+			.map_err(|e| runtime_error("Unable to query portfolio", e))
+	}
+
+	fn portfolio_loan(
+		&self,
+		pool_id: PoolId,
+		loan_id: LoanId,
+		at: Option<Block::Hash>,
+	) -> RpcResult<ActiveLoanInfo<T>> {
+		let (api, at) = self.api(at);
+
+		api.portfolio_loan(&at, pool_id, loan_id)
+			.map_err(|e| runtime_error("Unable to query portfolio loan", e))?
+			.ok_or_else(|| invalid_params_error("Loan not found"))
+	}
+}
