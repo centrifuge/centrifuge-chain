@@ -5,27 +5,13 @@ set namespaceSeparator ::
 hide methods
 
 enum Maturity {
-    Fixed: Moment
+    Fixed::date: Moment
+    Fixed::extension: Moment
 }
-
-enum CalendarEvent {
-    End
-}
-
-enum ReferenceDate{
-    CalendarDate: CalendarEvent,
-    OriginationDate
-}
-
-ReferenceDate *--> CalendarEvent
 
 enum InterestPayments {
     None
-    Monthly: ReferenceDate
-    SemiAnnually: ReferenceDate
 }
-
-InterestPayments *-----> ReferenceDate
 
 enum PayDownSchedule {
     None
@@ -38,8 +24,8 @@ class RepaymentSchedule {
 }
 
 RepaymentSchedule *--> Maturity
-RepaymentSchedule *--> PayDownSchedule
-RepaymentSchedule *--> InterestPayments
+RepaymentSchedule *---> PayDownSchedule
+RepaymentSchedule *----> InterestPayments
 
 enum BorrowRestrictions {
     NoWrittenOff
@@ -59,22 +45,25 @@ class LoanRestrictions {
 LoanRestrictions *--> BorrowRestrictions
 LoanRestrictions *--> RepayRestrictions
 
-enum CompoundingCadence {
-    Secondly: ReferenceDate
-}
-
-CompoundingCadence *-r-> ReferenceDate
-
-enum InterestRate {
-    Fixed: Rate, CompoundingCadence
-}
-
-InterestRate *--> CompoundingCadence
-
 class RepaidAmount {
     principal: Balance
     interest: Balance
     unscheduled: Balance
+}
+
+node traits {
+    package interest {
+        enum CompoundingSchedule {
+            Secondly
+        }
+
+        enum InterestRate {
+            Fixed::rate_per_year: Rate
+            Fixed::compounding: CompoundingSchedule
+        }
+
+        InterestRate *--> CompoundingSchedule
+    }
 }
 
 package portfolio {
