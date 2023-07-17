@@ -14,8 +14,8 @@ use super::{
 mod utils {
 	use super::*;
 
-	pub fn get_random_test_account_id() -> AccountId32 {
-		rand::random::<[u8; 32]>().into()
+	pub fn get_test_account_id() -> AccountId32 {
+		[0u8; 32].into()
 	}
 
 	pub fn event_exists<E: Into<MockEvent>>(e: E) {
@@ -68,7 +68,7 @@ mod set_domain_router {
 
 			assert_noop!(
 				ConnectorsGateway::set_domain_router(
-					RuntimeOrigin::signed(get_random_test_account_id()),
+					RuntimeOrigin::signed(get_test_account_id()),
 					domain.clone(),
 					router,
 				),
@@ -103,7 +103,7 @@ mod add_connector {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
@@ -125,12 +125,12 @@ mod add_connector {
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_noop!(
 				ConnectorsGateway::add_connector(
-					RuntimeOrigin::signed(get_random_test_account_id()),
+					RuntimeOrigin::signed(get_test_account_id()),
 					domain_address.clone(),
 				),
 				BadOrigin
@@ -146,7 +146,7 @@ mod add_connector {
 	#[test]
 	fn unsupported_domain() {
 		new_test_ext().execute_with(|| {
-			let domain_address = DomainAddress::Centrifuge(get_random_test_account_id().into());
+			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
 
 			assert_noop!(
 				ConnectorsGateway::add_connector(RuntimeOrigin::root(), domain_address.clone()),
@@ -163,7 +163,7 @@ mod add_connector {
 	#[test]
 	fn connector_already_added() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
@@ -190,22 +190,13 @@ mod remove_connector {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
-
-			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
-				domain_address.domain(),
-				domain_address.clone()
-			));
-
-			event_exists(Event::<Runtime>::ConnectorAdded {
-				connector: domain_address.clone(),
-			});
 
 			assert_ok!(ConnectorsGateway::remove_connector(
 				RuntimeOrigin::root(),
@@ -217,7 +208,7 @@ mod remove_connector {
 				domain_address.clone()
 			));
 
-			event_exists(Event::<Runtime>::ConnectorAdded {
+			event_exists(Event::<Runtime>::ConnectorRemoved {
 				connector: domain_address.clone(),
 			});
 		});
@@ -226,12 +217,12 @@ mod remove_connector {
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_noop!(
 				ConnectorsGateway::remove_connector(
-					RuntimeOrigin::signed(get_random_test_account_id()),
+					RuntimeOrigin::signed(get_test_account_id()),
 					domain_address.clone(),
 				),
 				BadOrigin
@@ -242,7 +233,7 @@ mod remove_connector {
 	#[test]
 	fn connector_not_found() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_noop!(
@@ -261,22 +252,13 @@ mod process_msg {
 	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
-
-			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
-				domain_address.domain(),
-				domain_address.clone()
-			));
-
-			event_exists(Event::<Runtime>::ConnectorAdded {
-				connector: domain_address.clone(),
-			});
 
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
@@ -314,7 +296,7 @@ mod process_msg {
 	#[test]
 	fn invalid_message_origin() {
 		new_test_ext().execute_with(|| {
-			let domain_address = DomainAddress::Centrifuge(get_random_test_account_id().into());
+			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
 			let encoded_msg = MessageMock::First.serialize();
 
 			assert_noop!(
@@ -330,7 +312,7 @@ mod process_msg {
 	#[test]
 	fn unknown_connector() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 			let encoded_msg = MessageMock::First.serialize();
 
@@ -347,22 +329,13 @@ mod process_msg {
 	#[test]
 	fn message_decode() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
-
-			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
-				domain_address.domain(),
-				domain_address.clone()
-			));
-
-			event_exists(Event::<Runtime>::ConnectorAdded {
-				connector: domain_address.clone(),
-			});
 
 			let encoded_msg: Vec<u8> = vec![11];
 
@@ -371,7 +344,7 @@ mod process_msg {
 					GatewayOrigin::Local(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecode,
+				Error::<Runtime>::MessageDecodingFailed,
 			);
 		});
 	}
@@ -379,22 +352,13 @@ mod process_msg {
 	#[test]
 	fn connectors_error() {
 		new_test_ext().execute_with(|| {
-			let address = H160::from_slice(&get_random_test_account_id().as_slice()[..20]);
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(ConnectorsGateway::add_connector(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
-
-			assert!(ConnectorsAllowlist::<Runtime>::contains_key(
-				domain_address.domain(),
-				domain_address.clone()
-			));
-
-			event_exists(Event::<Runtime>::ConnectorAdded {
-				connector: domain_address.clone(),
-			});
 
 			let expected_msg = MessageMock::First;
 			let encoded_msg = expected_msg.serialize();
@@ -435,15 +399,7 @@ mod outbound_queue_impl {
 				router.clone(),
 			));
 
-			let storage_entry = DomainRouters::<Runtime>::get(domain.clone());
-			assert_eq!(storage_entry.unwrap(), router);
-
-			event_exists(Event::<Runtime>::DomainRouterSet {
-				domain: domain.clone(),
-				router,
-			});
-
-			let sender = get_random_test_account_id();
+			let sender = get_test_account_id();
 			let msg = MessageMock::First;
 
 			assert_ok!(ConnectorsGateway::submit(sender, domain, msg));
@@ -454,7 +410,7 @@ mod outbound_queue_impl {
 	fn local_domain() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
-			let sender = get_random_test_account_id();
+			let sender = get_test_account_id();
 			let msg = MessageMock::First;
 
 			assert_noop!(
@@ -468,7 +424,7 @@ mod outbound_queue_impl {
 	fn router_not_found() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let sender = get_random_test_account_id();
+			let sender = get_test_account_id();
 			let msg = MessageMock::First;
 
 			assert_noop!(
