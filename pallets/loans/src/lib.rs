@@ -84,7 +84,7 @@ pub mod pallet {
 	};
 	use codec::HasCompact;
 	use entities::{
-		loans::{self, ActiveLoan, LoanInfo},
+		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{PricingAmount, RepaidPricingAmount},
 	};
 	use frame_support::{
@@ -990,6 +990,26 @@ pub mod pallet {
 				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 			Ok((loan, count))
+		}
+
+		pub fn get_active_loans_info(
+			pool_id: T::PoolId,
+		) -> Result<Vec<(T::LoanId, ActiveLoanInfo<T>)>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
+				.collect()
+		}
+
+		pub fn get_active_loan_info(
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> Result<Option<ActiveLoanInfo<T>>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.map(|(_, loan)| loan.try_into())
+				.transpose()
 		}
 
 		/// Set the maturity date of the loan to this instant.

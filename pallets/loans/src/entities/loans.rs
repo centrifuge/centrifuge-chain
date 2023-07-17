@@ -489,3 +489,45 @@ impl<T: Config> ActiveLoan<T> {
 		self.schedule.maturity = crate::types::Maturity::fixed(duration);
 	}
 }
+
+/// Data containing an active loan with extra computed.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct ActiveLoanInfo<T: Config> {
+	/// Related active loan
+	active_loan: ActiveLoan<T>,
+
+	/// Interest accrued for this loan
+	interest_accrued: T::Balance,
+
+	/// Present value of the loan
+	present_value: T::Balance,
+}
+
+impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
+	type Error = DispatchError;
+
+	fn try_from(active_loan: ActiveLoan<T>) -> Result<Self, Self::Error> {
+		let (interest_accrued, present_value) = match &active_loan.pricing {
+			ActivePricing::Internal(inner) => {
+				let principal = active_loan
+					.total_borrowed
+					.ensure_sub(active_loan.total_repaid.principal)?;
+
+				let maturity_date = active_loan.schedule.maturity.date();
+
+				(
+					inner.current_interest(principal)?,
+					inner.present_value(active_loan.origination_date, maturity_date)?,
+				)
+			}
+			ActivePricing::External(inner) => (inner.current_interest()?, inner.present_value()?),
+		};
+
+		Ok(Self {
+			active_loan,
+			interest_accrued,
+			present_value,
+		})
+	}
+}
