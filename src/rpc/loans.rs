@@ -28,12 +28,12 @@ pub trait LoansApi<PoolId, LoanId, T: pallet_loans::Config, BlockHash> {
 	) -> RpcResult<ActiveLoanInfo<T>>;
 }
 
-pub struct Loans<C, P> {
+pub struct Loans<C, Block> {
 	client: Arc<C>,
-	_marker: std::marker::PhantomData<P>,
+	_marker: std::marker::PhantomData<Block>,
 }
 
-impl<C, P> Loans<C, P> {
+impl<C, Block> Loans<C, Block> {
 	pub fn new(client: Arc<C>) -> Self {
 		Self {
 			client,
