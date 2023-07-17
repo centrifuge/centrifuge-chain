@@ -21,18 +21,18 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
 	fn set_domain_router() -> Weight {
-		Weight::zero()
+		Weight::from_ref_time(10_000_000)
 	}
 
 	fn add_connector() -> Weight {
-		Weight::zero()
+		Weight::from_ref_time(10_000_000)
 	}
 
 	fn remove_connector() -> Weight {
-		Weight::zero()
+		Weight::from_ref_time(10_000_000)
 	}
 
 	fn process_msg() -> Weight {
-		Weight::zero()
+		Weight::from_ref_time(10_000_000)
 	}
 }
