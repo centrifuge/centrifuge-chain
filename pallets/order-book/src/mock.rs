@@ -36,12 +36,13 @@ pub(crate) const ACCOUNT_2: u64 = 0x3;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
 pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
 
-const CURRENCY_A: Balance = 1_000_000_000_000_000_000;
+const CURRENCY_A: ForeignCurrencyBalance = 1_000_000_000_000_000_000;
 // To ensure price/amount calculations with different
 // currency precision works
-const CURRENCY_B: Balance = 1_000_000_000_000_000;
+const CURRENCY_B: ForeignCurrencyBalance = 1_000_000_000_000_000;
 
 type Balance = u64;
+type ForeignCurrencyBalance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type MockAccountId = u64;
@@ -140,19 +141,19 @@ impl pallet_balances::Config for Runtime {
 cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 		RegistryMock,
 		CurrencyId,
-		Balance,
+		ForeignCurrencyBalance,
 		CustomMetadata
 }
 
 parameter_type_with_key! {
-		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		pub ExistentialDeposits: |_currency_id: CurrencyId| -> ForeignCurrencyBalance {
 				Default::default()
 		};
 }
 
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
-	type Balance = Balance;
+	type Balance = u128;
 	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
@@ -171,8 +172,9 @@ parameter_types! {
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
-	type Balance = Balance;
+	// type Balance = Balance;
 	type Fees = Fees;
+	type ForeignCurrencyBalance = u128;
 	type Nonce = u64;
 	type OrderFeeKey = OrderFeeKey;
 	type ReserveCurrency = Balances;
@@ -240,7 +242,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	e.execute_with(|| {
 		Fees::mock_fee_value(|key| match key {
-			ORDER_FEEKEY => ORDER_FEEKEY_AMOUNT,
+			ORDER_FEEKEY => ORDER_FEEKEY_AMOUNT.into(),
 			_ => panic!("No valid fee key"),
 		});
 	});

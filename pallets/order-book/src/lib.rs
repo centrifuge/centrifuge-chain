@@ -73,7 +73,7 @@ pub mod pallet {
 
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = Self::AssetCurrencyId,
-			Balance = Self::Balance,
+			Balance = Self::ForeignCurrencyBalance,
 			CustomMetadata = CustomMetadata,
 		>;
 
@@ -104,16 +104,16 @@ pub mod pallet {
 		/// Fee Key used to find amount for allowance reserve/unreserve
 		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
-		type Balance: Member
+		type ForeignCurrencyBalance: Member
 			+ Parameter
 			+ AtLeast32BitUnsigned
 			+ Default
 			+ Copy
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ From<u64>
+			+ From<u128>
 			+ TypeInfo
-			+ TryInto<u64>;
+			+ TryInto<u128>;
 
 		type Nonce: Parameter
 			+ Member
@@ -127,7 +127,7 @@ pub mod pallet {
 		/// Type for trade-able currency
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
-			Balance = <Self as pallet::Config>::Balance,
+			Balance = <Self as pallet::Config>::ForeignCurrencyBalance,
 			CurrencyId = Self::AssetCurrencyId,
 		>;
 	}
@@ -135,13 +135,15 @@ pub mod pallet {
 	// Storage and storage types
 	//
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, AssetId, Balance> {
-		order_id: OrderId,
-		placing_account: AccountId,
-		asset_in_id: AssetId,
-		asset_out_id: AssetId,
-		sell_amount: Balance,
-		price: Balance,
+	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance> {
+		pub order_id: OrderId,
+		pub placing_account: AccountId,
+		pub asset_in_id: AssetId,
+		pub asset_out_id: AssetId,
+		pub buy_amount: ForeignCurrencyBalance,
+		pub price: ForeignCurrencyBalance,
+		pub min_fullfillment_amount: ForeignCurrencyBalance,
+		pub max_sell_amount: ForeignCurrencyBalance,
 	}
 
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
@@ -155,7 +157,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		T::Hash,
-		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
+		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -169,7 +171,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::Hash,
-		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
+		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -196,6 +198,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {}
 
 	#[pallet::error]
+	#[derive(PartialEq)]
 	pub enum Error<T> {
 		AssetPairOrdersOverflow,
 		ConflictingAssetIds,
@@ -217,59 +220,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,
-			amount: T::Balance,
-			price: T::Balance,
+			amount: T::ForeignCurrencyBalance,
+			price: T::ForeignCurrencyBalance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			ensure!(asset_in != asset_out, Error::<T>::ConflictingAssetIds);
-			ensure!(
-				T::AssetRegistry::metadata(&asset_in).is_some(),
-				Error::<T>::InvalidAssetId
-			);
-			ensure!(
-				T::AssetRegistry::metadata(&asset_out).is_some(),
-				Error::<T>::InvalidAssetId
-			);
-			ensure!(
-				T::TradeableAsset::can_reserve(asset_in, &account_id, amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
-
-			ensure!(
-				T::ReserveCurrency::can_reserve(
-					&account_id,
-					T::Fees::fee_value(T::OrderFeeKey::get())
-				),
-				Error::<T>::InsufficientReserveFunds,
-			);
-			<NonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::Nonce::one())?;
-				Ok::<_, DispatchError>(())
-			})?;
-			let new_nonce = <NonceStore<T>>::get();
-			let order_id = Self::gen_hash(&account_id, asset_in, asset_out, new_nonce);
-			let new_order = Order {
-				order_id: order_id,
-				placing_account: account_id.clone(),
-				asset_in_id: asset_in,
-				asset_out_id: asset_out,
-				sell_amount: amount,
-				price: price,
-			};
-
-			<AssetPairOrders<T>>::try_mutate(asset_in, asset_out, |orders| {
-				orders
-					.try_push(order_id)
-					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
-			})?;
-
-			T::ReserveCurrency::reserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()))?;
-
-			T::TradeableAsset::reserve(asset_in, &account_id, amount)?;
-
-			<Orders<T>>::insert(order_id, new_order.clone());
-			<UserOrders<T>>::insert(account_id, order_id, new_order);
-
+			Self::place_order(account_id, asset_in, asset_out, amount, price, amount)?;
 			Ok(())
 		}
 
@@ -284,6 +240,7 @@ pub mod pallet {
 			let order = <UserOrders<T>>::get(&account_id, order_id)?;
 
 			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
+			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
 			<UserOrders<T>>::remove(account_id, order.order_id);
 			<Orders<T>>::remove(order.order_id);
 			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
@@ -306,7 +263,7 @@ pub mod pallet {
 			let asset_in =
 				T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
 
-			let buy_amount = order.sell_amount.ensure_mul(order.price)?;
+			let buy_amount = order.buy_amount.ensure_mul(order.price)?;
 
 			ensure!(
 				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, buy_amount),
@@ -315,14 +272,14 @@ pub mod pallet {
 			T::TradeableAsset::unreserve(
 				order.asset_in_id,
 				&order.placing_account,
-				order.sell_amount,
+				order.buy_amount,
 			);
 			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
 			T::TradeableAsset::transfer(
 				order.asset_in_id,
 				&order.placing_account,
 				&account_id,
-				order.sell_amount,
+				order.buy_amount,
 			)?;
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
@@ -341,7 +298,7 @@ pub mod pallet {
 		) -> Result<
 			sp_std::vec::Vec<(
 				T::Hash,
-				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::Balance>,
+				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
 			)>,
 			Error<T>,
 		> {
@@ -356,5 +313,147 @@ pub mod pallet {
 		) -> T::Hash {
 			(&placer, asset_in, asset_out, nonce).using_encoded(T::Hashing::hash)
 		}
+	}
+
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
+		type Balance = T::ForeignCurrencyBalance;
+		type CurrencyId = T::AssetCurrencyId;
+		type OrderId = T::Hash;
+
+		fn place_order(
+			account: T::AccountId,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::ForeignCurrencyBalance,
+			sell_price_limit: T::ForeignCurrencyBalance,
+			min_fullfillment_amount: T::ForeignCurrencyBalance,
+		) -> Result<Self::OrderId, DispatchError> {
+			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
+			ensure!(
+				T::AssetRegistry::metadata(&currency_in).is_some(),
+				Error::<T>::InvalidAssetId
+			);
+			ensure!(
+				T::AssetRegistry::metadata(&currency_out).is_some(),
+				Error::<T>::InvalidAssetId
+			);
+			ensure!(
+				T::TradeableAsset::can_reserve(currency_out, &account, buy_amount),
+				Error::<T>::InsufficientAssetFunds,
+			);
+
+			ensure!(
+				T::ReserveCurrency::can_reserve(
+					&account,
+					T::Fees::fee_value(T::OrderFeeKey::get())
+				),
+				Error::<T>::InsufficientReserveFunds,
+			);
+			<NonceStore<T>>::try_mutate(|n| {
+				*n = n.ensure_add(T::Nonce::one())?;
+				Ok::<_, DispatchError>(())
+			})?;
+			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+			let new_nonce = <NonceStore<T>>::get();
+			let order_id = Self::gen_hash(&account, currency_in, currency_out, new_nonce);
+			let new_order = Order {
+				order_id: order_id,
+				placing_account: account.clone(),
+				asset_in_id: currency_in,
+				asset_out_id: currency_out,
+				buy_amount: buy_amount,
+				price: sell_price_limit,
+				min_fullfillment_amount: buy_amount,
+				max_sell_amount: max_sell_amount,
+			};
+
+			<AssetPairOrders<T>>::try_mutate(currency_in, currency_out, |orders| {
+				orders
+					.try_push(order_id)
+					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
+			})?;
+
+			T::ReserveCurrency::reserve(&account, T::Fees::fee_value(T::OrderFeeKey::get()))?;
+
+			T::TradeableAsset::reserve(currency_in, &account, max_sell_amount)?;
+
+			<Orders<T>>::insert(order_id, new_order.clone());
+			<UserOrders<T>>::insert(account, order_id, new_order);
+			Ok(order_id)
+		}
+
+		fn cancel_order(order: Self::OrderId) -> DispatchResult {
+			let order = <Orders<T>>::get(order)?;
+			let account_id = order.placing_account;
+
+			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
+			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
+			<UserOrders<T>>::remove(account_id, order.order_id);
+			<Orders<T>>::remove(order.order_id);
+			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
+			orders.retain(|o| *o != order.order_id);
+			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
+
+			Ok(())
+		}
+
+		/// Todo: impl
+		fn update_order(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			buy_amount: T::ForeignCurrencyBalance,
+			sell_price_limit: T::ForeignCurrencyBalance,
+			min_fullfillment_amount: T::ForeignCurrencyBalance,
+		) -> DispatchResult {
+			Ok(())
+		}
+
+		/// TODO Impl
+		fn is_active(order: Self::OrderId) -> bool {
+			true
+		}
+	}
+
+	trait TokenSwaps<Account> {
+		type CurrencyId;
+		type Balance;
+		type OrderId;
+		/// Swap tokens buying a `buy_amount` of `currency_in` using the
+		/// `currency_out` tokens. The implementator of this method should know
+		/// the current market rate between those two currencies.
+		/// `sell_price_limit` defines the lowest price acceptable for
+		/// `currency_in` currency when buying with `currency_out`. This
+		/// protects order placer if market changes unfavourably for swap order.
+		/// Returns the order id created with by this buy order if it could not
+		/// be inmediately and completelly fullfilled. If there was already an
+		/// active order with the same account currencies, the order is
+		/// increased/decreased and the same order id is returned.
+		fn place_order(
+			account: Account,
+			currency_out: Self::CurrencyId,
+			currency_in: Self::CurrencyId,
+			buy_amount: Self::Balance,
+			sell_price_limit: Self::Balance,
+			min_fullfillment_amount: Self::Balance,
+		) -> Result<Self::OrderId, DispatchError>;
+
+		/// Can fail for various reasons
+		///
+		/// E.g. min_fullfillment_amount is lower and
+		///      the system has already fulfilled up to the previous
+		///      one.
+		fn update_order(
+			account: Account,
+			order_id: Self::OrderId,
+			buy_amount: Self::Balance,
+			sell_price_limit: Self::Balance,
+			min_fullfillment_amount: Self::Balance,
+		) -> DispatchResult;
+
+		/// Cancel an already active order.
+		fn cancel_order(order: Self::OrderId) -> DispatchResult;
+
+		/// Check if the order is still active.
+		fn is_active(order: Self::OrderId) -> bool;
 	}
 }
