@@ -2289,7 +2289,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	// LoansApi
 	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
 		fn portfolio(
 			pool_id: PoolId
