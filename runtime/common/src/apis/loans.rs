@@ -24,7 +24,7 @@ decl_runtime_apis! {
 		LoanId: Codec,
 		T: pallet_loans::Config,
 	{
-		fn portfolio(pool_id: PoolId) -> Vec<ActiveLoanInfo<T>>;
+		fn portfolio(pool_id: PoolId) -> Vec<(LoanId, ActiveLoanInfo<T>)>;
 		fn portfolio_loan(pool_id: PoolId, loan_id: LoanId) -> Option<ActiveLoanInfo<T>>;
 	}
 }
