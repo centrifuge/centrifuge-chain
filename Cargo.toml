@@ -44,6 +44,7 @@ members = [
   "pallets/crowdloan-claim",
   "pallets/crowdloan-reward",
   "pallets/fees",
+  "pallets/foreign-investments",
   "pallets/interest-accrual",
   "pallets/investments",
   "pallets/keystore",
