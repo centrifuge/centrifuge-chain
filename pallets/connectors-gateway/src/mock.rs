@@ -1,4 +1,4 @@
-use cfg_mocks::{pallet_mock_connectors, DomainRouterMock, MessageMock};
+use cfg_mocks::{pallet_mock_connectors, pallet_mock_routers, MessageMock, RouterMock};
 use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256};
@@ -23,6 +23,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		MockConnectors: pallet_mock_connectors,
+		MockRouters: pallet_mock_routers,
 		ConnectorsGateway: pallet_connectors_gateway,
 	}
 );
@@ -75,13 +76,15 @@ impl pallet_mock_connectors::Config for Runtime {
 	type Message = MessageMock;
 }
 
+impl pallet_mock_routers::Config for Runtime {}
+
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockConnectors;
 	type LocalOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
-	type Router = DomainRouterMock<Runtime>;
+	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();

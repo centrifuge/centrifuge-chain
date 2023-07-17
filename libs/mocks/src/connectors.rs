@@ -1,7 +1,7 @@
 use cfg_traits::connectors::Codec;
 use codec::{Error, Input};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum MessageMock {
 	First,
 	Second,

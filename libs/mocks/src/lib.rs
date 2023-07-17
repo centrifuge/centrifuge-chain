@@ -10,7 +10,7 @@ mod time;
 
 pub use change_guard::pallet_mock_change_guard;
 pub use connectors::{pallet as pallet_mock_connectors, MessageMock};
-pub use connectors_gateway_routers::*;
+pub use connectors_gateway_routers::{pallet as pallet_mock_routers, RouterMock};
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use permissions::pallet as pallet_mock_permissions;

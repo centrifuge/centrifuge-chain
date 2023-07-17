@@ -3,7 +3,7 @@ use cfg_traits::connectors::{Codec, OutboundQueue};
 use cfg_types::domain_address::*;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{crypto::AccountId32, ByteArray, H160};
-use sp_runtime::DispatchError::BadOrigin;
+use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 
 use super::{
 	mock::{RuntimeEvent as MockEvent, *},
@@ -19,20 +19,10 @@ mod utils {
 	}
 
 	pub fn event_exists<E: Into<MockEvent>>(e: E) {
-		let actual: Vec<MockEvent> = frame_system::Pallet::<Runtime>::events()
-			.iter()
-			.map(|e| e.event.clone())
-			.collect();
-
 		let e: MockEvent = e.into();
-		let mut exists = false;
-		for evt in actual {
-			if evt == e {
-				exists = true;
-				break;
-			}
-		}
-		assert!(exists);
+		assert!(frame_system::Pallet::<Runtime>::events()
+			.iter()
+			.any(|ev| ev.event == e));
 	}
 }
 
@@ -45,7 +35,8 @@ mod set_domain_router {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router = DomainRouterMock::new();
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
 
 			assert_ok!(ConnectorsGateway::set_domain_router(
 				RuntimeOrigin::root(),
@@ -59,12 +50,25 @@ mod set_domain_router {
 			event_exists(Event::<Runtime>::DomainRouterSet { domain, router });
 		});
 	}
+	#[test]
+	fn router_init_error() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Err(DispatchError::Other("error")));
+
+			assert_noop!(
+				ConnectorsGateway::set_domain_router(RuntimeOrigin::root(), domain.clone(), router,),
+				Error::<Runtime>::RouterInitFailed,
+			);
+		});
+	}
 
 	#[test]
 	fn bad_origin() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router = DomainRouterMock::new();
+			let router = RouterMock::<Runtime>::default();
 
 			assert_noop!(
 				ConnectorsGateway::set_domain_router(
@@ -84,7 +88,7 @@ mod set_domain_router {
 	fn unsupported_domain() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::Centrifuge;
-			let router = DomainRouterMock::new();
+			let router = RouterMock::<Runtime>::default();
 
 			assert_noop!(
 				ConnectorsGateway::set_domain_router(RuntimeOrigin::root(), domain.clone(), router),
@@ -391,7 +395,8 @@ mod outbound_queue_impl {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router = DomainRouterMock::new();
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
 
 			assert_ok!(ConnectorsGateway::set_domain_router(
 				RuntimeOrigin::root(),
@@ -402,7 +407,55 @@ mod outbound_queue_impl {
 			let sender = get_test_account_id();
 			let msg = MessageMock::First;
 
+			router.mock_send({
+				let sender = sender.clone();
+				let msg = msg.clone();
+
+				move |mock_sender, mock_msg| {
+					assert_eq!(sender, mock_sender);
+					assert_eq!(msg, mock_msg);
+
+					Ok(())
+				}
+			});
+
 			assert_ok!(ConnectorsGateway::submit(sender, domain, msg));
+		});
+	}
+
+	#[test]
+	fn router_error() {
+		new_test_ext().execute_with(|| {
+			let domain = Domain::EVM(0);
+			let router = RouterMock::<Runtime>::default();
+			router.mock_init(move || Ok(()));
+
+			assert_ok!(ConnectorsGateway::set_domain_router(
+				RuntimeOrigin::root(),
+				domain.clone(),
+				router.clone(),
+			));
+
+			let sender = get_test_account_id();
+			let msg = MessageMock::First;
+			let expected_error = DispatchError::Other("router error");
+
+			router.mock_send({
+				let sender = sender.clone();
+				let msg = msg.clone();
+
+				move |mock_sender, mock_msg| {
+					assert_eq!(sender, mock_sender);
+					assert_eq!(msg, mock_msg);
+
+					Err(expected_error)
+				}
+			});
+
+			assert_noop!(
+				ConnectorsGateway::submit(sender, domain, msg),
+				expected_error,
+			);
 		});
 	}
 
