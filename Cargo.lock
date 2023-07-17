@@ -1029,7 +1029,6 @@ dependencies = [
  "jsonrpsee",
  "log",
  "pallet-anchors",
- "pallet-loans",
  "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
