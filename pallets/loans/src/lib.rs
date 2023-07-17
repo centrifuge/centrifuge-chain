@@ -190,7 +190,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// Defines the balance type used for math computations
-		type Balance: tokens::Balance + FixedPointOperand;
+		type Balance: tokens::Balance + FixedPointOperand + MaybeSerializeDeserialize;
 
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;

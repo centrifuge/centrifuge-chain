@@ -11,6 +11,7 @@ use sp_runtime::{
 };
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum CompoundingSchedule {
 	/// Interest compounds every second
 	Secondly,
@@ -18,6 +19,7 @@ pub enum CompoundingSchedule {
 
 /// Interest rate method with compounding schedule information
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum InterestRate<Rate> {
 	/// Interest accrues at a fixed rate
 	Fixed {

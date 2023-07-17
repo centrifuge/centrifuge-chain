@@ -14,6 +14,7 @@ pub mod internal;
 /// Loan pricing method
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum Pricing<T: Config> {
 	/// Calculated internally
 	Internal(internal::InternalPricing<T>),
@@ -25,6 +26,7 @@ pub enum Pricing<T: Config> {
 /// Pricing attributes for active loans
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum ActivePricing<T: Config> {
 	/// External attributes
 	Internal(internal::InternalActivePricing<T>),

@@ -117,6 +117,7 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = 
 cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-pool-system = { path = "./pallets/pool-system" }
+pallet-loans = { path = "./pallets/loans" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
@@ -199,6 +200,7 @@ std = [
   "log/std",
   "pallet-anchors/std",
   "pallet-pool-system/std",
+  "pallet-loans/std",
   "codec/std",
   "polkadot-primitives/std",
   "runtime-common/std",
@@ -240,6 +242,7 @@ runtime-benchmarks = [
   "frame-benchmarking-cli/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
+  "pallet-loans/runtime-benchmarks",
   "polkadot-primitives/runtime-benchmarks",
   "polkadot-service/runtime-benchmarks",
   "runtime-integration-tests/runtime-benchmarks",
@@ -259,6 +262,7 @@ try-runtime = [
   "cfg-utils/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-loans/try-runtime",
   "polkadot-cli/try-runtime",
   "polkadot-service/try-runtime",
   "runtime-common/try-runtime",

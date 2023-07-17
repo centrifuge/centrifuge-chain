@@ -9,6 +9,7 @@ use crate::pallet::Config;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct ActiveInterestRate<T: Config> {
 	/// The current interest rate value (per year).
 	/// It the rate it has been penalized,

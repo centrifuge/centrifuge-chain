@@ -138,6 +138,7 @@ impl<T: Config> ClosedLoan<T> {
 /// Data containing an active loan.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct ActiveLoan<T: Config> {
 	/// Specify the repayments schedule of the loan
 	schedule: RepaymentSchedule,
@@ -493,6 +494,7 @@ impl<T: Config> ActiveLoan<T> {
 /// Data containing an active loan with extra computed.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct ActiveLoanInfo<T: Config> {
 	/// Related active loan
 	active_loan: ActiveLoan<T>,
