@@ -23,7 +23,6 @@ use crate::{
 
 /// Diferents methods of how to compute the amount can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum MaxBorrowAmount<Rate> {
 	/// Max borrow amount computation using the total borrowed
 	UpToTotalBorrowed { advance_rate: Rate },
@@ -35,8 +34,6 @@ pub enum MaxBorrowAmount<Rate> {
 /// Internal pricing method
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InternalPricing<T: Config> {
 	/// Value of the collateral used for this loan
 	pub collateral_value: T::Balance,
@@ -62,8 +59,6 @@ impl<T: Config> InternalPricing<T> {
 /// Internal pricing method with extra attributes for active loans
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InternalActivePricing<T: Config> {
 	/// Basic internal pricing info
 	info: InternalPricing<T>,

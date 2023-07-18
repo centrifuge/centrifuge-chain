@@ -92,7 +92,6 @@ pub enum MutationError {
 
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum Maturity {
 	/// Fixed point in time, in secs
 	Fixed {
@@ -132,7 +131,6 @@ impl Maturity {
 
 /// Interest payment periods
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
@@ -140,7 +138,6 @@ pub enum InterestPayments {
 
 /// Specify the paydown schedules of the loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum PayDownSchedule {
 	/// The entire borrowed amount is expected to be paid back at the maturity
 	/// date
@@ -149,7 +146,6 @@ pub enum PayDownSchedule {
 
 /// Specify the repayment schedule of the loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct RepaymentSchedule {
 	/// Expected repayments date for remaining debt
 	pub maturity: Maturity,
@@ -170,7 +166,6 @@ impl RepaymentSchedule {
 
 /// Specify how offer a loan can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum BorrowRestrictions {
 	/// The loan can not be borrowed if it has been written off.
 	NotWrittenOff,
@@ -181,7 +176,6 @@ pub enum BorrowRestrictions {
 
 /// Specify how offer a loan can be repaid
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum RepayRestrictions {
 	/// No restrictions
 	None,
@@ -192,7 +186,6 @@ pub enum RepayRestrictions {
 
 /// Define the loan restrictions
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct LoanRestrictions {
 	/// How offen can be borrowed
 	pub borrows: BorrowRestrictions,
@@ -229,7 +222,6 @@ pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
 }
 
 #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct RepaidAmount<Balance> {
 	pub principal: Balance,
 	pub interest: Balance,

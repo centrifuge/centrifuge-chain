@@ -16,7 +16,6 @@ codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 impl-trait-for-tuples = "0.2.1"
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0", optional = true }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -44,7 +43,6 @@ std = [
   "sp-std/std",
   "cfg-primitives/std",
   "scale-info/std",
-  "serde/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",

@@ -145,27 +145,14 @@ pub mod pallet {
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
-		type CollectionId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type CollectionId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible item
-		type ItemId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type ItemId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a loan in the pallet
 		type LoanId: Parameter
 			+ Member
-			+ MaybeSerializeDeserialize
 			+ Default
 			+ TypeInfo
 			+ MaxEncodedLen
@@ -174,23 +161,13 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type PriceId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Defines the rate type used for math computations
-		type Rate: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type Rate: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
 
 		/// Defines the balance type used for math computations
-		type Balance: tokens::Balance + FixedPointOperand + MaybeSerializeDeserialize;
+		type Balance: tokens::Balance + FixedPointOperand;
 
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;

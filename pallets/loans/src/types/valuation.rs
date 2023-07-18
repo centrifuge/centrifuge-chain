@@ -27,7 +27,6 @@ use sp_runtime::{
 
 /// Discounted cash flow values
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct DiscountedCashFlow<Rate> {
 	/// The probability of a borrower defaulting a loan repayments.
 	pub probability_of_default: Rate,
@@ -102,7 +101,6 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 
 /// Defines the valuation method of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum ValuationMethod<Rate> {
 	/// Dicounted cash flow valuation
 	DiscountedCashFlow(DiscountedCashFlow<Rate>),

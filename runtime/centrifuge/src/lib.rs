@@ -2091,6 +2091,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
 		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
 			match domain {
@@ -2107,7 +2108,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	// LoansApi
 	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
 		fn portfolio(
 			pool_id: PoolId

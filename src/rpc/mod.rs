@@ -29,7 +29,6 @@ use substrate_frame_rpc_system::{System, SystemApiServer};
 
 pub mod anchors;
 pub mod evm;
-pub mod loans;
 pub mod pools;
 pub mod rewards;
 
