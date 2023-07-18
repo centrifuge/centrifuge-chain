@@ -52,6 +52,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		})
 	}
 
+	// TODO: this should account for cashflows from interest payments
 	pub fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
