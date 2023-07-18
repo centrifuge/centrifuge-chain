@@ -131,13 +131,15 @@ impl<T: Config> Pallet<T> {
 
 		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
-		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder` message to
+		// TODO: Handle response `ExecutedDecreaseInvestOrder` message to
 		// source destination which should refund the decreased amount. This includes
 		// burning it from the investor account.
 		//
 		// NOTES:
 		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
 		// 	* Should be handled by `pallet-foreign-investments`
+		//  * Requires notification of `currency_payout` and `remaining_invest_order`
+		//    balances
 
 		Ok(())
 	}
@@ -203,7 +205,7 @@ impl<T: Config> Pallet<T> {
 
 		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
 
-		// TODO(subsequent PR): Handle response `ExecutedDecreaseRedemption` message to
+		// TODO: Handle response `ExecutedDecreaseRedemption` message to
 		// source destination which should refund the decreased amount. This includes
 		// transferring the amount from the investor to the domain locator account of
 		// the origination domain.
@@ -211,6 +213,8 @@ impl<T: Config> Pallet<T> {
 		// NOTES:
 		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
 		// 	* Should be handled by `pallet-foreign-investments`
+		//  * Requires notification of `tranche_tokens_payout` and
+		//    `remaining_redeem_order` balances
 
 		Ok(())
 	}
@@ -227,8 +231,12 @@ impl<T: Config> Pallet<T> {
 
 		T::ForeignInvestment::collect_investment(investor, invest_id)?;
 
-		// TODO(subsequent PR): Handle response `ExecutedCollectInvest` message to
+		// TODO: Handle response `ExecutedCollectInvest` message to
 		// source destination.
+		//
+		// Requires notification of `currency_payout`, `tranche_tokens_payout` and
+		// `remaining_invest_order` balances as well as the payout currency id, which
+		// needs to be mapped to its general index.
 
 		Ok(())
 	}
@@ -245,8 +253,12 @@ impl<T: Config> Pallet<T> {
 
 		T::ForeignInvestment::collect_redemption(investor, invest_id)?;
 
-		// TODO(subsequent PR): Handle response `ExecutedCollectRedeem` message to
+		// TODO: Handle response `ExecutedCollectRedeem` message to
 		// source destination.
+		//
+		// Requires notification of `currency_payout`, `tranche_tokens_payout` and
+		// `remaining_redeem_order` balances as well as the payout currency id, which
+		// needs to be mapped to its general index.
 
 		Ok(())
 	}

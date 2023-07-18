@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::InvestmentProperties;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_std::cmp::PartialEq;
@@ -51,4 +51,32 @@ where
 	fn payment_currency(&self) -> Self::Currency {
 		self.payment_currency.clone()
 	}
+}
+
+/// A representation of an investment identifier and the corresponding owner.
+///
+/// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
+
+pub struct ForeignInvestmentInfo<AccountId, InvestmentId> {
+	pub owner: AccountId,
+	pub id: InvestmentId,
+}
+
+/// A representation of an executed decreased investment or redemption.
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
+
+pub struct ExecutedDecrease<Balance> {
+	pub amount_payout: Balance,
+	pub amount_remaining: Balance,
+}
+
+/// A representation of an executed collected investment or redemption.
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
+
+pub struct ExecutedCollect<Balance, Currency> {
+	pub currency: Currency,
+	pub amount_currency_payout: Balance,
+	pub amount_tranche_tokens_payout: Balance,
+	pub amount_remaining: Balance,
 }

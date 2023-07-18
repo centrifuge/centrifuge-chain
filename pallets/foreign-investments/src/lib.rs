@@ -28,15 +28,22 @@ pub use pallet::*;
 // mod benchmarking;
 // pub mod weights;
 // pub use weights::*;
+use crate::types::Swap;
 
 pub mod impls;
 pub mod types;
 
+pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
+pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::InvestmentId,
+>;
+
 // TODO: Remove dev_mode before merging
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::{InvestmentCollector, TrancheCurrency};
-	use cfg_types::investments::InvestmentInfo;
+	use cfg_traits::{InvestmentCollector, StatusNotificationHook, TokenSwaps, TrancheCurrency};
+	use cfg_types::investments::{ExecutedCollect, ExecutedDecrease};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
@@ -118,6 +125,27 @@ pub mod pallet {
 				Result = (),
 			>;
 
+		/// The default sell price limit for token swaps which defines the
+		/// lowest acceptable buy price.
+		///
+		/// TODO(@review): Since we will only support stable coins from the
+		/// beginning, a global default value could be feasible or do we want to
+		/// have better granularity?
+		///
+		/// NOTE: Can be removed once we implement a
+		/// more sophisticated swap price discovery.
+		type DefaultTokenSwapSellPriceLimit: Get<Self::Balance>;
+
+		/// The default minimum fulfillment amount for token swaps.
+		///
+		/// TODO(@review): Since we will only support stable coins from the
+		/// beginning, a global default value could be feasible or do we want to
+		/// have better granularity?
+		///
+		/// NOTE: Can be removed once we implement a more sophisticated swap
+		/// price discovery.
+		type DefaultTokenMinFulfillmentAmount: Get<Self::Balance>;
+
 		/// The token swap order identifying type
 		type TokenSwapOrderId: Parameter
 			+ Member
@@ -126,6 +154,29 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen;
+
+		/// The type which exposes token swap order functionality such as
+		/// placing and cancelling orders
+		type TokenSwaps: TokenSwaps<
+			Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Balance = Self::Balance,
+			OrderId = Self::TokenSwapOrderId,
+		>;
+
+		type ExecutedDecreaseHook: StatusNotificationHook<
+			Id = ForeignInvestmentInfoOf<Self>,
+			// TODO: Move to type
+			Status = ExecutedDecrease<Self::Balance>,
+			Error = DispatchError,
+		>;
+
+		type ExecutedCollectHook: StatusNotificationHook<
+			Id = ForeignInvestmentInfoOf<Self>,
+			// TODO: Convert to type
+			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
+			Error = DispatchError,
+		>;
 	}
 
 	/// Maps an investor and their `InvestmentId` to the corresponding
@@ -148,15 +199,29 @@ pub mod pallet {
 	/// Maps `TokenSwapOrders` to `InvestmentInfo` to implicitly enable mapping
 	/// to `InvestmentState`.
 	///
+	/// NOTE: Here, the `payment_currency` refers to the `pool_currency`.
+	///
 	/// NOTE: The storage is immediately killed when the swap order is
 	/// completely fulfilled even if the investment might not be fully
 	/// processed.
 	#[pallet::storage]
-	pub(super) type ForeignInvestmentInfo<T: Config> = StorageMap<
+	pub(super) type ForeignInvestmentInfo<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, ForeignInvestmentInfoOf<T>>;
+
+	/// Maps an investor and their `InvestmentId` to the corresponding
+	/// `TokenSwapOrderId`.
+	///
+	/// NOTE: The storage is immediately killed when the swap order is
+	/// completely fulfilled even if the investment might not be fully
+	/// processed.
+	#[pallet::storage]
+	pub(super) type TokenSwapOrderIds<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
 		T::TokenSwapOrderId,
-		InvestmentInfo<T::AccountId, T::CurrencyId, T::InvestmentId>,
 	>;
 
 	#[pallet::event]

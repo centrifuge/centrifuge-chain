@@ -13,6 +13,7 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_runtime::traits::EnsureAdd;
 
 // TODO: Might want to use this trimmed down version of InvestmentInfo for the
 // ForeignInvestmentInfo storage in case we don't need to store the payment
@@ -28,8 +29,9 @@ use scale_info::TypeInfo;
 #[derive(
 	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-pub struct Swap<Balance: Clone, Currency: Clone> {
-	pub currency: Currency,
+pub struct Swap<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
+	pub currency_in: Currency,
+	pub currency_out: Currency,
 	pub amount: Balance,
 }
 
@@ -39,7 +41,7 @@ pub struct Swap<Balance: Clone, Currency: Clone> {
 #[derive(
 	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-pub enum InvestState<Balance: Clone, Currency: Clone> {
+pub enum InvestState<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
 	#[default]
 	NoState,
 	/// The investment is waiting to be processed.
@@ -132,9 +134,13 @@ pub enum InvestState<Balance: Clone, Currency: Clone> {
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 // TODO: Complete
-pub enum InvestTransition<Balance: Clone, Currency: Clone> {
+pub enum InvestTransition<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
+	/// NOTE: Assumes `swap.currency_in` is pool currency
 	IncreaseInvestOrder(Swap<Balance, Currency>),
+	/// NOTE: Assumes `swap.currency_in` is return currency
 	DecreaseInvestOrder(Swap<Balance, Currency>),
+	/// NOTE: Assumes `swap.currency_in` is pool currency
 	SwapIntoPool(Swap<Balance, Currency>),
+	/// NOTE: Assumes `swap.currency_in` is return currency
 	SwapIntoReturn(Swap<Balance, Currency>),
 }

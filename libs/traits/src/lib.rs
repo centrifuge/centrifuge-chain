@@ -686,7 +686,7 @@ pub trait CurrencyInspect {
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
 
-trait TokenSwaps<AccountId> {
+pub trait TokenSwaps<AccountId> {
 	type CurrencyId;
 	type Balance;
 	type OrderId;
@@ -749,7 +749,8 @@ pub trait ForeignInvestment<AccountId> {
 	/// * Kick off swap
 	fn update_foreign_invest_order(
 		who: &AccountId,
-		payment_currency: Self::CurrencyId,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
@@ -763,7 +764,7 @@ pub trait ForeignInvestment<AccountId> {
 	// ) -> Result<(), Self::Error>;
 }
 
-pub trait SwapNotificationHook {
+pub trait StatusNotificationHook {
 	/// The identifying type
 	type Id;
 	/// The type for possible states
