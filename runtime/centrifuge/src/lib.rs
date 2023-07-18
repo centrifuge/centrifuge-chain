@@ -1913,6 +1913,14 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
+mod __runtime_api_use {
+	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+}
+
+#[cfg(not(feature = "disable-runtime-api"))]
+use __runtime_api_use::*;
+
+#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -2097,6 +2105,21 @@ impl_runtime_apis! {
 				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 				_ => None,
 			}
+		}
+	}
+
+	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+		fn portfolio(
+			pool_id: PoolId
+		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
+			Loans::get_active_loans_info(pool_id).unwrap_or_default()
+		}
+
+		fn portfolio_loan(
+			pool_id: PoolId,
+			loan_id: LoanId
+		) -> Option<ActiveLoanInfo<Runtime>> {
+			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
 		}
 	}
 

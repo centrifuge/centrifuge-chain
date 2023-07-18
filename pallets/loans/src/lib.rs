@@ -84,7 +84,7 @@ pub mod pallet {
 	};
 	use codec::HasCompact;
 	use entities::{
-		loans::{self, ActiveLoan, LoanInfo},
+		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{PricingAmount, RepaidPricingAmount},
 	};
 	use frame_support::{
@@ -120,7 +120,7 @@ pub mod pallet {
 		<T as Config>::PriceId,
 		<T as Config>::PoolId,
 	>>::Collection;
-
+	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
@@ -145,27 +145,14 @@ pub mod pallet {
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
-		type CollectionId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type CollectionId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible item
-		type ItemId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type ItemId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a loan in the pallet
 		type LoanId: Parameter
 			+ Member
-			+ MaybeSerializeDeserialize
 			+ Default
 			+ TypeInfo
 			+ MaxEncodedLen
@@ -174,20 +161,10 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type PriceId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Defines the rate type used for math computations
-		type Rate: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type Rate: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
 
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
@@ -990,6 +967,26 @@ pub mod pallet {
 				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 			Ok((loan, count))
+		}
+
+		pub fn get_active_loans_info(
+			pool_id: T::PoolId,
+		) -> Result<PortfolioInfoOf<T>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
+				.collect()
+		}
+
+		pub fn get_active_loan_info(
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> Result<Option<ActiveLoanInfo<T>>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.map(|(_, loan)| loan.try_into())
+				.transpose()
 		}
 
 		/// Set the maturity date of the loan to this instant.
