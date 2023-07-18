@@ -120,7 +120,7 @@ pub mod pallet {
 		<T as Config>::PriceId,
 		<T as Config>::PoolId,
 	>>::Collection;
-
+	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
@@ -994,7 +994,7 @@ pub mod pallet {
 
 		pub fn get_active_loans_info(
 			pool_id: T::PoolId,
-		) -> Result<Vec<(T::LoanId, ActiveLoanInfo<T>)>, DispatchError> {
+		) -> Result<PortfolioInfoOf<T>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
