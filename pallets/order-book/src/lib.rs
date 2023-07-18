@@ -141,6 +141,7 @@ pub mod pallet {
 		pub asset_in_id: AssetId,
 		pub asset_out_id: AssetId,
 		pub buy_amount: ForeignCurrencyBalance,
+		pub initial_buy_amount: ForeignCurrencyBalance,
 		pub price: ForeignCurrencyBalance,
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
 		pub max_sell_amount: ForeignCurrencyBalance,
@@ -213,19 +214,22 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
 	{
+		/// Create an order, with the minimum fulfillment amount set to the buy
+		/// amount, as the first iteration will not have partial fulfillment
 		#[pallet::call_index(0)]
 		// dummy weight for now
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
-		pub fn create_order(
+		pub fn create_order_v1(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,
-			amount: T::ForeignCurrencyBalance,
+			buy_amount: T::ForeignCurrencyBalance,
 			price: T::ForeignCurrencyBalance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			ensure!(asset_in != asset_out, Error::<T>::ConflictingAssetIds);
-			Self::place_order(account_id, asset_in, asset_out, amount, price, amount)?;
+			Self::place_order(
+				account_id, asset_in, asset_out, buy_amount, price, buy_amount,
+			)?;
 			Ok(())
 		}
 
@@ -251,7 +255,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		// dummy weight for now
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
-		pub fn fill_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
+		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 			// maybe move to ensure if we don't need these later
@@ -315,7 +319,10 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
+	where
+		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
+	{
 		type Balance = T::ForeignCurrencyBalance;
 		type CurrencyId = T::AssetCurrencyId;
 		type OrderId = T::Hash;
@@ -363,7 +370,8 @@ pub mod pallet {
 				asset_out_id: currency_out,
 				buy_amount: buy_amount,
 				price: sell_price_limit,
-				min_fullfillment_amount: buy_amount,
+				initial_buy_amount: buy_amount,
+				min_fullfillment_amount: min_fullfillment_amount,
 				max_sell_amount: max_sell_amount,
 			};
 
@@ -413,47 +421,48 @@ pub mod pallet {
 			true
 		}
 	}
+}
 
-	trait TokenSwaps<Account> {
-		type CurrencyId;
-		type Balance;
-		type OrderId;
-		/// Swap tokens buying a `buy_amount` of `currency_in` using the
-		/// `currency_out` tokens. The implementator of this method should know
-		/// the current market rate between those two currencies.
-		/// `sell_price_limit` defines the lowest price acceptable for
-		/// `currency_in` currency when buying with `currency_out`. This
-		/// protects order placer if market changes unfavourably for swap order.
-		/// Returns the order id created with by this buy order if it could not
-		/// be inmediately and completelly fullfilled. If there was already an
-		/// active order with the same account currencies, the order is
-		/// increased/decreased and the same order id is returned.
-		fn place_order(
-			account: Account,
-			currency_out: Self::CurrencyId,
-			currency_in: Self::CurrencyId,
-			buy_amount: Self::Balance,
-			sell_price_limit: Self::Balance,
-			min_fullfillment_amount: Self::Balance,
-		) -> Result<Self::OrderId, DispatchError>;
+use frame_support::dispatch::{DispatchError, DispatchResult};
+trait TokenSwaps<Account> {
+	type CurrencyId;
+	type Balance;
+	type OrderId;
+	/// Swap tokens buying a `buy_amount` of `currency_in` using the
+	/// `currency_out` tokens. The implementator of this method should know
+	/// the current market rate between those two currencies.
+	/// `sell_price_limit` defines the lowest price acceptable for
+	/// `currency_in` currency when buying with `currency_out`. This
+	/// protects order placer if market changes unfavourably for swap order.
+	/// Returns the order id created with by this buy order if it could not
+	/// be inmediately and completelly fullfilled. If there was already an
+	/// active order with the same account currencies, the order is
+	/// increased/decreased and the same order id is returned.
+	fn place_order(
+		account: Account,
+		currency_out: Self::CurrencyId,
+		currency_in: Self::CurrencyId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> Result<Self::OrderId, DispatchError>;
 
-		/// Can fail for various reasons
-		///
-		/// E.g. min_fullfillment_amount is lower and
-		///      the system has already fulfilled up to the previous
-		///      one.
-		fn update_order(
-			account: Account,
-			order_id: Self::OrderId,
-			buy_amount: Self::Balance,
-			sell_price_limit: Self::Balance,
-			min_fullfillment_amount: Self::Balance,
-		) -> DispatchResult;
+	/// Can fail for various reasons
+	///
+	/// E.g. min_fullfillment_amount is lower and
+	///      the system has already fulfilled up to the previous
+	///      one.
+	fn update_order(
+		account: Account,
+		order_id: Self::OrderId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> DispatchResult;
 
-		/// Cancel an already active order.
-		fn cancel_order(order: Self::OrderId) -> DispatchResult;
+	/// Cancel an already active order.
+	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
-		/// Check if the order is still active.
-		fn is_active(order: Self::OrderId) -> bool;
-	}
+	/// Check if the order is still active.
+	fn is_active(order: Self::OrderId) -> bool;
 }
