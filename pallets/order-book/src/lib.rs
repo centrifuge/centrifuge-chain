@@ -236,19 +236,12 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		// dummy weight for now
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
-		pub fn cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
+		pub fn user_cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			// verify order matches account
 			// UserOrders using Resultquery, if signed account
 			// does not match user for order id, we will get an Err Result
-			let order = <UserOrders<T>>::get(&account_id, order_id)?;
-
-			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
-			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
-			<UserOrders<T>>::remove(account_id, order.order_id);
-			<Orders<T>>::remove(order.order_id);
-			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
-			orders.retain(|o| *o != order.order_id);
+			Self::cancel_order(order_id)?;
 			Ok(())
 		}
 

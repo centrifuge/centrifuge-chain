@@ -32,6 +32,24 @@ fn create_order_v1_works() {
 	})
 }
 
+#[test]
+fn user_cancel_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order_v1(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CurrencyId::A,
+			CurrencyId::B,
+			100,
+			10
+		));
+		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::user_cancel_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			order_id
+		));
+	})
+}
+
 // TokenSwaps trait impl tests
 #[test]
 fn place_order_works() {
