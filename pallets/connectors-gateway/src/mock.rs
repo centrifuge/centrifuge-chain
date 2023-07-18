@@ -81,7 +81,7 @@ impl pallet_mock_routers::Config for Runtime {}
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockConnectors;
-	type LocalOrigin = EnsureLocal;
+	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type Router = RouterMock<Runtime>;

@@ -22,14 +22,13 @@ use crate::Connectors;
 type ConnectorsMessage = pallet_connectors::Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 parameter_types! {
-	// TODO(cdamian): Double-check these.
 	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type InboundQueue = Connectors;
-	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
+	type LocalEVMOrigin = pallet_connectors_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = ConnectorsMessage;
 	type Router = DummyRouter;

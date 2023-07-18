@@ -56,7 +56,7 @@ pub mod pallet {
 
 		/// The LocalOrigin ensures that some calls can only be performed from a
 		/// local context i.e. a different pallet.
-		type LocalOrigin: EnsureOrigin<
+		type LocalEVMOrigin: EnsureOrigin<
 			<Self as frame_system::Config>::RuntimeOrigin,
 			Success = DomainAddress,
 		>;
@@ -226,7 +226,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let domain_address = T::LocalOrigin::ensure_origin(origin)?;
+			let domain_address = T::LocalEVMOrigin::ensure_origin(origin)?;
 
 			match domain_address {
 				DomainAddress::EVM(_, _) => {
