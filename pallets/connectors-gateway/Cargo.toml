@@ -1,72 +1,66 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Interest Accrual pallet"
+description = "Centrifuge Connectors Gateway Pallet"
 edition = "2021"
 license = "LGPL-3.0"
-name = "pallet-interest-accrual"
+name = "pallet-connectors-gateway"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = "0.1.0"
+version = "0.0.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
-log = { version = "0.4.0", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
+# Benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+
+# Substrate crates
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+# Our custom pallets
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
 [dev-dependencies]
-bitflags = "1.3"
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+
+cfg-mocks = { path = "../../libs/mocks" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+rand = "0.8.5"
 
 [features]
 default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
   "codec/std",
-  "scale-info/std",
+  "cfg-types/std",
+  "cfg-traits/std",
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking/std",
-  "sp-core/std",
-  "sp-io/std",
-  "sp-runtime/std",
-  "sp-arithmetic/std",
   "sp-std/std",
-  "pallet-timestamp/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "cfg-primitives/std",
-  "log/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "scale-info/std",
 ]
 try-runtime = [
-  "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
-  "frame-support/try-runtime",
   "cfg-types/try-runtime",
+  "frame-support/try-runtime",
   "frame-system/try-runtime",
-  "pallet-timestamp/try-runtime",
-  "sp-runtime/try-runtime",
 ]
