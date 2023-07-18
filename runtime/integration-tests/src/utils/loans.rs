@@ -27,9 +27,9 @@ use pallet_loans::{
 		},
 	},
 	types::{
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepaidAmount, RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, LoanRestrictions, RepaidAmount, RepayRestrictions,
 	},
 	Call as LoansCall,
 };

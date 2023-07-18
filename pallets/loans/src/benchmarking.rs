@@ -46,10 +46,10 @@ use crate::{
 	},
 	pallet::*,
 	types::{
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
-		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, LoanMutation, LoanRestrictions, RepayRestrictions,
 	},
 };
 

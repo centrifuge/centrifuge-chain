@@ -24,10 +24,10 @@ use super::pricing::{
 use crate::{
 	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
+		cashflow::RepaymentSchedule,
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
 		LoanRestrictions, MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
-		RepaymentSchedule,
 	},
 };
 
@@ -531,7 +531,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Moment) {
-		self.schedule.maturity = crate::types::Maturity::fixed(duration);
+		self.schedule.maturity = crate::types::cashflow::Maturity::fixed(duration);
 	}
 }
 
