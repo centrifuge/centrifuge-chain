@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::TRANSACTION_RECOVERY_ID;
 use cfg_traits::ethereum::EthereumTransactor;
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
 use fp_evm::CallOrCreateInfo;
@@ -28,8 +29,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-const TRANSACTION_RECOVERY_ID: u64 = 42;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -59,6 +58,66 @@ pub mod pallet {
 			exit_reason: ExitReason,
 			value: Vec<u8>,
 		},
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
+		/// Trying to pop from an empty stack.
+		StackUnderflow,
+
+		/// Trying to push into a stack over stack limit.
+		StackOverflow,
+
+		/// Jump destination is invalid.
+		InvalidJump,
+
+		/// An opcode accesses memory region, but the region is invalid.
+		InvalidRange,
+
+		/// Encountered the designated invalid opcode.
+		DesignatedInvalid,
+
+		/// Call stack is too deep (runtime).
+		CallTooDeep,
+
+		/// Create opcode encountered collision (runtime).
+		CreateCollision,
+
+		/// Create init code exceeds limit (runtime).
+		CreateContractLimit,
+
+		/// Invalid opcode during execution or starting byte is 0xef. See [EIP-3541](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-3541.md).
+		InvalidCode(u8),
+
+		/// An opcode accesses external information, but the request is off
+		/// offset limit (runtime).
+		OutOfOffset,
+
+		/// Execution runs out of gas (runtime).
+		OutOfGas,
+
+		/// Not enough fund to start the execution (runtime).
+		OutOfFund,
+
+		/// PC underflowed (unused).
+		PCUnderflow,
+
+		/// Attempt to create an empty account (runtime, unused).
+		CreateEmpty,
+
+		/// The operation is not supported.
+		NotSupported,
+		/// The trap (interrupt) is unhandled.
+		UnhandledInterrupt,
+
+		/// Machine encountered an explicit revert.
+		Reverted,
+
+		/// Unexpected result when executing a transaction.
+		UnexpectedExecuteResult,
+
+		/// Other normal errors.
+		Other,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -127,6 +186,12 @@ pub mod pallet {
 					error: e.error,
 				}
 			})?;
+
+			let dispatch_info = PostDispatchInfo {
+				actual_weight: Some(read_weight),
+				pays_fee: Pays::Yes,
+			};
+
 			match info {
 				CallOrCreateInfo::Call(call_info) => {
 					Self::deposit_event(Event::Executed {
@@ -137,70 +202,55 @@ pub mod pallet {
 					});
 
 					match call_info.exit_reason {
-						ExitReason::Succeed(_) => Ok(PostDispatchInfo {
-							actual_weight: Some(read_weight),
-							pays_fee: Pays::Yes,
-						}),
+						ExitReason::Succeed(_) => Ok(dispatch_info),
 						ExitReason::Error(e) => Err(DispatchErrorWithPostInfo {
-							post_info: PostDispatchInfo {
-								actual_weight: Some(read_weight),
-								pays_fee: Pays::Yes,
-							},
-							error: map_evm_error(e),
+							post_info: dispatch_info,
+							error: map_evm_error::<T>(e).into(),
 						}),
 						ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
-							post_info: PostDispatchInfo {
-								actual_weight: Some(read_weight),
-								pays_fee: Pays::Yes,
-							},
-							error: DispatchError::Other("EVM encountered an explicit revert"),
+							post_info: dispatch_info,
+							error: Error::<T>::Reverted.into(),
 						}),
 						ExitReason::Fatal(e) => Err(DispatchErrorWithPostInfo {
-							post_info: PostDispatchInfo {
-								actual_weight: Some(read_weight),
-								pays_fee: Pays::Yes,
-							},
-							error: map_evm_fatal_error(e),
+							post_info: dispatch_info,
+							error: map_evm_fatal_error::<T>(e).into(),
 						}),
 					}
 				}
 				CallOrCreateInfo::Create(_) => Err(DispatchErrorWithPostInfo {
-					post_info: PostDispatchInfo {
-						actual_weight: Some(read_weight),
-						pays_fee: Pays::Yes,
-					},
-					error: DispatchError::Other("unexpected execute result"),
+					post_info: dispatch_info,
+					error: Error::<T>::UnexpectedExecuteResult.into(),
 				}),
 			}
 		}
 	}
 
-	fn map_evm_error(e: ExitError) -> DispatchError {
+	fn map_evm_error<T: Config>(e: ExitError) -> Error<T> {
 		match e {
-			ExitError::StackUnderflow => DispatchError::Other("stack underflow"),
-			ExitError::StackOverflow => DispatchError::Other("stack overflow"),
-			ExitError::InvalidJump => DispatchError::Other("invalid jump"),
-			ExitError::InvalidRange => DispatchError::Other("invalid range"),
-			ExitError::DesignatedInvalid => DispatchError::Other("designated invalid"),
-			ExitError::CallTooDeep => DispatchError::Other("call too deep"),
-			ExitError::CreateCollision => DispatchError::Other("create collision"),
-			ExitError::CreateContractLimit => DispatchError::Other("create contract limit"),
-			ExitError::InvalidCode(_) => DispatchError::Other("invalid op code"),
-			ExitError::OutOfOffset => DispatchError::Other("out of offset"),
-			ExitError::OutOfGas => DispatchError::Other("out of gas"),
-			ExitError::OutOfFund => DispatchError::Other("out of fund"),
-			ExitError::PCUnderflow => DispatchError::Other("PC underflow"),
-			ExitError::CreateEmpty => DispatchError::Other("create empty"),
-			ExitError::Other(_) => DispatchError::Other("evm error"),
+			ExitError::StackUnderflow => Error::StackUnderflow,
+			ExitError::StackOverflow => Error::StackOverflow,
+			ExitError::InvalidJump => Error::InvalidJump,
+			ExitError::InvalidRange => Error::InvalidRange,
+			ExitError::DesignatedInvalid => Error::DesignatedInvalid,
+			ExitError::CallTooDeep => Error::CallTooDeep,
+			ExitError::CreateCollision => Error::CreateCollision,
+			ExitError::CreateContractLimit => Error::CreateContractLimit,
+			ExitError::InvalidCode(opcode) => Error::InvalidCode(opcode.0),
+			ExitError::OutOfOffset => Error::OutOfOffset,
+			ExitError::OutOfGas => Error::OutOfGas,
+			ExitError::OutOfFund => Error::OutOfFund,
+			ExitError::PCUnderflow => Error::PCUnderflow,
+			ExitError::CreateEmpty => Error::CreateEmpty,
+			ExitError::Other(_) => Error::Other,
 		}
 	}
 
-	fn map_evm_fatal_error(e: ExitFatal) -> DispatchError {
+	fn map_evm_fatal_error<T: Config>(e: ExitFatal) -> Error<T> {
 		match e {
-			ExitFatal::NotSupported => DispatchError::Other("not supported"),
-			ExitFatal::UnhandledInterrupt => DispatchError::Other("unhandled interrupt"),
+			ExitFatal::NotSupported => Error::NotSupported,
+			ExitFatal::UnhandledInterrupt => Error::UnhandledInterrupt,
 			ExitFatal::CallErrorAsFatal(e) => map_evm_error(e),
-			ExitFatal::Other(_) => DispatchError::Other("evm fatal error"),
+			ExitFatal::Other(_) => Error::Other,
 		}
 	}
 }
