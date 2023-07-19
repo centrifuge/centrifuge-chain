@@ -15,17 +15,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub};
 
-// TODO: Might want to use this trimmed down version of InvestmentInfo for the
-// ForeignInvestmentInfo storage in case we don't need to store the payment
-// currency
-// #[derive(
-// 	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode,
-// TypeInfo, MaxEncodedLen, )]
-// pub struct ForeignInvestment<AccountId, InvestmentId> {
-// 	pub investor: Balance,
-// 	pub investment_id: InvestmentId,
-// }
-
 #[derive(
 	Clone,
 	Default,
@@ -126,13 +115,11 @@ pub enum InvestState<
 		done_amount: Balance,
 		invest_amount: Balance,
 	},
-	// TODO: Maybe remove
 	/// The unprocessed investment was swapped back into return currency.
 	///
 	/// NOTE: This state can be killed by applying the corresponding trigger to
 	/// handle the return amount.
 	SwapIntoReturnDone { swap: Swap<Balance, Currency> },
-	// TODO: Maybe remove
 	/// The investment is split into two:
 	///     * One part is waiting to be processed as an investment
 	///     * The swapped back into the return currency as a result of
@@ -147,17 +134,19 @@ pub enum InvestState<
 }
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-// TODO: Complete
 pub enum InvestTransition<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
 	Currency: Clone + Copy + PartialEq,
 > {
-	/// NOTE: Assumes `swap.currency_in` is pool currency
+	/// Assumes `swap.currency_in` is pool currency as we increase here.
 	IncreaseInvestOrder(Swap<Balance, Currency>),
-	/// NOTE: Assumes `swap.currency_in` is return currency
+	/// Assumes `swap.currency_in` is return currency as we decrease here.
 	DecreaseInvestOrder(Swap<Balance, Currency>),
-	/// NOTE: Assumes `swap.currency_in` is pool currency
-	SwapIntoPool(Swap<Balance, Currency>),
-	/// NOTE: Assumes `swap.currency_in` is return currency
-	SwapIntoReturn(Swap<Balance, Currency>),
+	/// Implicitly derives `swap.currency_in` and `swap.currency_out` from
+	/// previous state:
+	///  	* If the previous state includes `ActiveSwapIntoPoolCurrency`,
+	///     `currency_in` is the pool currency.
+	/// 	* If the previous state includes `ActiveSwapIntoReturnCurrency`,
+	///    `currency_in` is the return currency.
+	FulfillSwapOrder(Swap<Balance, Currency>),
 }
