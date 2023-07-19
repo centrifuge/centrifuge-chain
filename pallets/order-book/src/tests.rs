@@ -161,6 +161,33 @@ fn place_order_works() {
 }
 
 #[test]
+fn ensure_nonce_updates_order_correctly() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::A,
+			CurrencyId::B,
+			100,
+			10,
+			100
+		));
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::A,
+			CurrencyId::B,
+			100,
+			10,
+			100
+		));
+		let [(order_id_0, _), (order_id_1, _)] = OrderBook::get_account_orders(ACCOUNT_0)
+			.unwrap()
+			.into_iter()
+			.collect::<Vec<_>>()[..] else {panic!("Unexpected order count")};
+		assert_ne!(order_id_0, order_id_1)
+	})
+}
+
+#[test]
 fn place_order_requires_non_zero_buy() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
