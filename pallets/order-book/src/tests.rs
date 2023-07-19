@@ -128,7 +128,35 @@ fn place_order_works() {
 		assert_eq!(
 			AssetPairOrders::<Runtime>::get(CurrencyId::A, CurrencyId::B),
 			vec![order_id,]
-		)
+		);
+
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
+				who: ACCOUNT_0,
+				amount: 10
+			})
+		);
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::A,
+				who: ACCOUNT_0,
+				amount: 1000
+			})
+		);
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::OrderBook(Event::OrderCreated {
+				order_id: order_id,
+				creator_account: ACCOUNT_0,
+				currency_in: CurrencyId::A,
+				currency_out: CurrencyId::B,
+				buy_amount: 100,
+				min_fullfillment_amount: 100,
+				sell_price_limit: 10
+			})
+		);
 	})
 }
 

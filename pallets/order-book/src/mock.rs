@@ -30,6 +30,7 @@ use sp_runtime::{
 
 use crate as order_book;
 
+pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const ACCOUNT_0: u64 = 0x1;
 pub(crate) const ACCOUNT_1: u64 = 0x2;
 pub(crate) const ACCOUNT_2: u64 = 0x3;
@@ -241,6 +242,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut e = sp_io::TestExternalities::new(t);
 
 	e.execute_with(|| {
+		System::set_block_number(STARTING_BLOCK);
 		Fees::mock_fee_value(|key| match key {
 			ORDER_FEEKEY => ORDER_FEEKEY_AMOUNT.into(),
 			_ => panic!("No valid fee key"),
