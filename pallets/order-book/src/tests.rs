@@ -131,3 +131,33 @@ fn place_order_works() {
 		)
 	})
 }
+
+#[test]
+fn cancel_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::A,
+			CurrencyId::B,
+			100,
+			10,
+			100
+		));
+		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::cancel_order(order_id));
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert_err!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert_eq!(
+			AssetPairOrders::<Runtime>::get(CurrencyId::A, CurrencyId::B),
+			vec![]
+		)
+	})
+}

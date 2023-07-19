@@ -49,7 +49,7 @@ pub mod pallet {
 	};
 	use scale_info::TypeInfo;
 	use sp_runtime::{
-		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One},
+		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One, Zero},
 		FixedPointNumber, FixedPointOperand,
 	};
 
@@ -205,6 +205,7 @@ pub mod pallet {
 		ConflictingAssetIds,
 		InsufficientAssetFunds,
 		InsufficientReserveFunds,
+		InvalidBuyAmount,
 		InvalidAssetId,
 		OrderNotFound,
 	}
@@ -329,6 +330,15 @@ pub mod pallet {
 			min_fullfillment_amount: T::ForeignCurrencyBalance,
 		) -> Result<Self::OrderId, DispatchError> {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
+
+			ensure!(
+				buy_amount != T::ForeignCurrencyBalance::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
+			ensure!(
+				sell_price_limit != T::ForeignCurrencyBalance::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
 			ensure!(
 				T::AssetRegistry::metadata(&currency_in).is_some(),
 				Error::<T>::InvalidAssetId
@@ -406,12 +416,38 @@ pub mod pallet {
 			sell_price_limit: T::ForeignCurrencyBalance,
 			min_fullfillment_amount: T::ForeignCurrencyBalance,
 		) -> DispatchResult {
+			ensure!(
+				buy_amount != T::ForeignCurrencyBalance::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
+			ensure!(
+				sell_price_limit != T::ForeignCurrencyBalance::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
+			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
+				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+				order.buy_amount = buy_amount;
+				order.price = sell_price_limit;
+				order.min_fullfillment_amount = min_fullfillment_amount;
+				Ok(())
+			})?;
+			<UserOrders<T>>::try_mutate_exists(
+				account,
+				order_id,
+				|maybe_order| -> DispatchResult {
+					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					order.buy_amount = buy_amount;
+					order.price = sell_price_limit;
+					order.min_fullfillment_amount = min_fullfillment_amount;
+					Ok(())
+				},
+			)?;
+
 			Ok(())
 		}
 
-		/// TODO Impl
 		fn is_active(order: Self::OrderId) -> bool {
-			true
+			<Orders<T>>::contains_key(order)
 		}
 	}
 }
