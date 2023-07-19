@@ -196,7 +196,38 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		OrderCreated {
+			order_id: T::Hash,
+			creator_account: T::AccountId,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::ForeignCurrencyBalance,
+			min_fullfillment_amount: T::ForeignCurrencyBalance,
+			sell_price_limit: T::ForeignCurrencyBalance,
+		},
+		OrderCancelled {
+			account: T::AccountId,
+			order_id: T::Hash,
+		},
+		OrderUpdated {
+			order_id: T::Hash,
+			account: T::AccountId,
+			buy_amount: T::ForeignCurrencyBalance,
+			sell_price_limit: T::ForeignCurrencyBalance,
+			min_fullfillment_amount: T::ForeignCurrencyBalance,
+		},
+		OrderFulfillment {
+			order_id: T::Hash,
+			placing_account: T::AccountId,
+			fulfilling_account: T::AccountId,
+			partial_fulfillment: bool,
+			fulfillment_amount: T::ForeignCurrencyBalance,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			sell_price_limit: T::ForeignCurrencyBalance,
+		},
+	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
@@ -261,10 +292,10 @@ pub mod pallet {
 			let asset_in =
 				T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
 
-			let buy_amount = order.buy_amount.ensure_mul(order.price)?;
+			let sell_amount = order.buy_amount.ensure_mul(order.price)?;
 
 			ensure!(
-				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, buy_amount),
+				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, sell_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
 			T::TradeableAsset::unreserve(
@@ -275,22 +306,34 @@ pub mod pallet {
 			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
 			T::TradeableAsset::transfer(
 				order.asset_in_id,
-				&order.placing_account,
 				&account_id,
+				&order.placing_account,
 				order.buy_amount,
 			)?;
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
-				&account_id,
 				&order.placing_account,
-				buy_amount,
+				&account_id,
+				sell_amount,
 			)?;
+			Self::deposit_event(Event::OrderFulfillment {
+				order_id,
+				placing_account: order.placing_account,
+				fulfilling_account: account_id,
+				partial_fulfillment: true,
+				currency_in: order.asset_in_id,
+				currency_out: order.asset_out_id,
+				fulfillment_amount: order.buy_amount,
+				sell_price_limit: order.price,
+			});
 
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Get all orders for an account
+		/// Provided for frontend to grab orders for an individual account
 		pub fn get_account_orders(
 			account_id: T::AccountId,
 		) -> Result<
@@ -301,6 +344,18 @@ pub mod pallet {
 			Error<T>,
 		> {
 			Ok(<UserOrders<T>>::iter_prefix(account_id).collect())
+		}
+
+		/// Get all orders
+		/// Provided for frontend to grab all open orders
+		pub fn get_all_orders() -> Result<
+			sp_std::vec::Vec<(
+				T::Hash,
+				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
+			)>,
+			Error<T>,
+		> {
+			Ok(<Orders<T>>::iter().collect())
 		}
 
 		pub fn gen_hash(
@@ -367,15 +422,15 @@ pub mod pallet {
 			let new_nonce = <NonceStore<T>>::get();
 			let order_id = Self::gen_hash(&account, currency_in, currency_out, new_nonce);
 			let new_order = Order {
-				order_id: order_id,
+				order_id,
 				placing_account: account.clone(),
 				asset_in_id: currency_in,
 				asset_out_id: currency_out,
-				buy_amount: buy_amount,
+				buy_amount,
 				price: sell_price_limit,
 				initial_buy_amount: buy_amount,
-				min_fullfillment_amount: min_fullfillment_amount,
-				max_sell_amount: max_sell_amount,
+				min_fullfillment_amount,
+				max_sell_amount,
 			};
 
 			<AssetPairOrders<T>>::try_mutate(currency_in, currency_out, |orders| {
@@ -389,7 +444,16 @@ pub mod pallet {
 			T::TradeableAsset::reserve(currency_in, &account, max_sell_amount)?;
 
 			<Orders<T>>::insert(order_id, new_order.clone());
-			<UserOrders<T>>::insert(account, order_id, new_order);
+			<UserOrders<T>>::insert(&account, order_id, new_order);
+			Self::deposit_event(Event::OrderCreated {
+				creator_account: account,
+				sell_price_limit,
+				order_id,
+				buy_amount,
+				currency_in,
+				currency_out,
+				min_fullfillment_amount,
+			});
 			Ok(order_id)
 		}
 
@@ -399,16 +463,19 @@ pub mod pallet {
 
 			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
 			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
-			<UserOrders<T>>::remove(account_id, order.order_id);
+			<UserOrders<T>>::remove(&account_id, order.order_id);
 			<Orders<T>>::remove(order.order_id);
 			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
 			orders.retain(|o| *o != order.order_id);
 			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
+			Self::deposit_event(Event::OrderCancelled {
+				account: account_id,
+				order_id: order.order_id,
+			});
 
 			Ok(())
 		}
 
-		/// Todo: impl
 		fn update_order(
 			account: T::AccountId,
 			order_id: Self::OrderId,
@@ -432,7 +499,7 @@ pub mod pallet {
 				Ok(())
 			})?;
 			<UserOrders<T>>::try_mutate_exists(
-				account,
+				&account,
 				order_id,
 				|maybe_order| -> DispatchResult {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
@@ -442,6 +509,13 @@ pub mod pallet {
 					Ok(())
 				},
 			)?;
+			Self::deposit_event(Event::OrderUpdated {
+				account,
+				order_id,
+				buy_amount,
+				sell_price_limit,
+				min_fullfillment_amount,
+			});
 
 			Ok(())
 		}
