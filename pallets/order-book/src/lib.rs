@@ -140,10 +140,17 @@ pub mod pallet {
 		pub placing_account: AccountId,
 		pub asset_in_id: AssetId,
 		pub asset_out_id: AssetId,
+		/// How many tokens of asset in to buy
 		pub buy_amount: ForeignCurrencyBalance,
+		/// Original buy amount, used for tracking amount fulfilled
 		pub initial_buy_amount: ForeignCurrencyBalance,
+		/// How much currency being purchased (asset in) costs with asset sold
+		/// (asset out)
 		pub price: ForeignCurrencyBalance,
+		/// Minimum amount of an order that can be fulfilled
+		/// for partial fulfillment
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
+		/// Maximum amount of outgoing currency that can be sold
 		pub max_sell_amount: ForeignCurrencyBalance,
 	}
 
@@ -404,11 +411,6 @@ pub mod pallet {
 				Error::<T>::InvalidAssetId
 			);
 			ensure!(
-				T::TradeableAsset::can_reserve(currency_out, &account, buy_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
-
-			ensure!(
 				T::ReserveCurrency::can_reserve(
 					&account,
 					T::Fees::fee_value(T::OrderFeeKey::get())
@@ -420,6 +422,12 @@ pub mod pallet {
 				Ok::<_, DispatchError>(())
 			})?;
 			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+
+			ensure!(
+				T::TradeableAsset::can_reserve(currency_out, &account, max_sell_amount),
+				Error::<T>::InsufficientAssetFunds,
+			);
+
 			let new_nonce = <NonceStore<T>>::get();
 			let order_id = Self::gen_hash(&account, currency_in, currency_out, new_nonce);
 			let new_order = Order {
@@ -492,11 +500,16 @@ pub mod pallet {
 				sell_price_limit != T::ForeignCurrencyBalance::zero(),
 				Error::<T>::InvalidMinPrice
 			);
+
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+
+				T::TradeableAsset::unreserve(order.asset_out_id, &account, order.max_sell_amount);
 				order.buy_amount = buy_amount;
 				order.price = sell_price_limit;
 				order.min_fullfillment_amount = min_fullfillment_amount;
+
+				T::TradeableAsset::reserve(order.asset_out_id, &account, order.max_sell_amount);
 				Ok(())
 			})?;
 			<UserOrders<T>>::try_mutate_exists(
