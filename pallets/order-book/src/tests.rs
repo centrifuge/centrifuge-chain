@@ -161,6 +161,26 @@ fn place_order_works() {
 }
 
 #[test]
+fn place_order_requires_non_zero_buy() {
+	new_test_ext().execute_with(|| {
+		assert_err!(
+			OrderBook::place_order(ACCOUNT_0, CurrencyId::A, CurrencyId::B, 0, 10, 100),
+			Error::<Runtime>::InvalidBuyAmount
+		);
+	})
+}
+
+#[test]
+fn place_order_requires_non_zero_price() {
+	new_test_ext().execute_with(|| {
+		assert_err!(
+			OrderBook::place_order(ACCOUNT_0, CurrencyId::A, CurrencyId::B, 100, 0, 100),
+			Error::<Runtime>::InvalidMinPrice
+		);
+	})
+}
+
+#[test]
 fn cancel_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(

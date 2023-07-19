@@ -237,6 +237,7 @@ pub mod pallet {
 		InsufficientAssetFunds,
 		InsufficientReserveFunds,
 		InvalidBuyAmount,
+		InvalidMinPrice,
 		InvalidAssetId,
 		OrderNotFound,
 	}
@@ -392,7 +393,7 @@ pub mod pallet {
 			);
 			ensure!(
 				sell_price_limit != T::ForeignCurrencyBalance::zero(),
-				Error::<T>::InvalidBuyAmount
+				Error::<T>::InvalidMinPrice
 			);
 			ensure!(
 				T::AssetRegistry::metadata(&currency_in).is_some(),
@@ -489,7 +490,7 @@ pub mod pallet {
 			);
 			ensure!(
 				sell_price_limit != T::ForeignCurrencyBalance::zero(),
-				Error::<T>::InvalidBuyAmount
+				Error::<T>::InvalidMinPrice
 			);
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
