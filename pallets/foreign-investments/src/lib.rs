@@ -166,14 +166,12 @@ pub mod pallet {
 
 		type ExecutedDecreaseHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			// TODO: Move to type
 			Status = ExecutedDecrease<Self::Balance>,
 			Error = DispatchError,
 		>;
 
 		type ExecutedCollectHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			// TODO: Convert to type
 			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;

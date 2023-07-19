@@ -13,7 +13,7 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::traits::EnsureAdd;
+use sp_runtime::traits::{EnsureAdd, EnsureSub};
 
 // TODO: Might want to use this trimmed down version of InvestmentInfo for the
 // ForeignInvestmentInfo storage in case we don't need to store the payment
@@ -29,7 +29,7 @@ use sp_runtime::traits::EnsureAdd;
 #[derive(
 	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-pub struct Swap<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
+pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq> {
 	pub currency_in: Currency,
 	pub currency_out: Currency,
 	pub amount: Balance,
@@ -41,16 +41,19 @@ pub struct Swap<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> 
 #[derive(
 	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-pub enum InvestState<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
+pub enum InvestState<
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+	Currency: Clone + Copy + PartialEq,
+> {
 	#[default]
 	NoState,
 	/// The investment is waiting to be processed.
 	InvestmentOngoing { invest_amount: Balance },
 	/// The investment is currently swapped into the required pool currency.
-	ActiveSwapIntoPoolCurrency(Swap<Balance, Currency>),
+	ActiveSwapIntoPoolCurrency { swap: Swap<Balance, Currency> },
 	/// The unprocessed investment was fully decreased and is currently swapped
 	/// back into the corresponding return currency.
-	ActiveSwapIntoReturnCurrency(Swap<Balance, Currency>),
+	ActiveSwapIntoReturnCurrency { swap: Swap<Balance, Currency> },
 	/// The investment is not fully swapped into pool currency and thus split
 	/// into two:
 	///     * One part is still being swapped.
@@ -117,7 +120,7 @@ pub enum InvestState<Balance: Clone + Copy + EnsureAdd, Currency: Clone + Partia
 	///
 	/// NOTE: This state can be killed by applying the corresponding trigger to
 	/// handle the return amount.
-	SwapIntoReturnDone(Swap<Balance, Currency>),
+	SwapIntoReturnDone { swap: Swap<Balance, Currency> },
 	// TODO: Maybe remove
 	/// The investment is split into two:
 	///     * One part is waiting to be processed as an investment
@@ -134,7 +137,10 @@ pub enum InvestState<Balance: Clone + Copy + EnsureAdd, Currency: Clone + Partia
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 // TODO: Complete
-pub enum InvestTransition<Balance: Clone + Copy + EnsureAdd, Currency: Clone + PartialEq> {
+pub enum InvestTransition<
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+	Currency: Clone + Copy + PartialEq,
+> {
 	/// NOTE: Assumes `swap.currency_in` is pool currency
 	IncreaseInvestOrder(Swap<Balance, Currency>),
 	/// NOTE: Assumes `swap.currency_in` is return currency

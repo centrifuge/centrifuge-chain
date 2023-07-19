@@ -15,7 +15,7 @@ use cfg_traits::{ForeignInvestment, Investment, StatusNotificationHook, TokenSwa
 use cfg_types::investments::{ExecutedDecrease, InvestmentInfo};
 use frame_support::{traits::Get, transactional};
 use sp_runtime::{
-	traits::{EnsureAdd, Zero},
+	traits::{EnsureAdd, EnsureSub, Zero},
 	DispatchError, DispatchResult,
 };
 
@@ -81,6 +81,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		let pre_amount = T::Investment::investment(who, investment_id.clone())?;
 		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
 
+		// TODO: Add check for same currencies, i.e. no swap required
 		if amount > pre_amount {
 			let post_state = pre_state.transition(InvestTransition::IncreaseInvestOrder(Swap {
 				currency_in: pool_currency,
@@ -111,11 +112,11 @@ impl<T: Config> Pallet<T> {
 		state: InvestState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		match state.clone() {
-			InvestState::NoState => {
+			InvestState::NoState=> {
 				Self::kill_swap_order(who, investment_id)?;
 				T::Investment::update_investment(who, investment_id, Zero::zero())?;
 
-				// Exit early to prevent setting InvestmentState to `NoState`
+				// Exit early to prevent setting InvestmentState
 				InvestmentState::<T>::remove(who, investment_id);
 				return Ok(());
 			},
@@ -123,8 +124,8 @@ impl<T: Config> Pallet<T> {
 				Self::kill_swap_order(who, investment_id)?;
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
 			},
-			InvestState::ActiveSwapIntoPoolCurrency(swap) |
-			InvestState::ActiveSwapIntoReturnCurrency(swap) |
+			InvestState::ActiveSwapIntoPoolCurrency { swap } |
+			InvestState::ActiveSwapIntoReturnCurrency { swap } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
 				Self::place_swap_order(who, investment_id, swap)?;
@@ -138,26 +139,47 @@ impl<T: Config> Pallet<T> {
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				Self::place_swap_order(who, investment_id, swap)?;
+				Self::place_swap_order(who, investment_id, swap.clone())?;
 				T::Investment::update_investment(who, investment_id, Zero::zero())?;
 
-				//
 				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
+
+				// Exit early to prevent setting InvestmentState
+				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
+				InvestmentState::<T>::insert(who, investment_id, new_state);
+				return Ok(());
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
-				Self::place_swap_order(who, investment_id, swap)?;
+				Self::place_swap_order(who, investment_id, swap.clone())?;
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
 
 				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
-
+				
+				// Exit early to prevent setting InvestmentState
+				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
+				InvestmentState::<T>::insert(who, investment_id, new_state);
+				return Ok(());
 			},
-			InvestState::SwapIntoReturnDone(_swap) => {
+			InvestState::SwapIntoReturnDone { swap } => {
 				Self::kill_swap_order(who, investment_id)?;
 				T::Investment::update_investment(who, investment_id, Zero::zero())?;
+				
+				Self::send_executed_decrease_hook(who, investment_id, swap.amount)?;
+
+				// Exit early to prevent setting InvestmentState
+				InvestmentState::<T>::remove(who, investment_id);
+				return Ok(());
 			},
 			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { swap, invest_amount } => {
 				Self::kill_swap_order(who, investment_id)?;
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
+
+				Self::send_executed_decrease_hook(who, investment_id, swap.amount)?;
+
+				// Exit early to prevent setting InvestmentState
+				let new_state = InvestState::InvestmentOngoing { invest_amount };
+				InvestmentState::<T>::insert(who, investment_id, new_state);
+				return Ok(());
 			},
 		};
 
@@ -245,8 +267,8 @@ impl<T: Config> Pallet<T> {
 
 impl<Balance, Currency> InvestState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd,
-	Currency: Clone + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+	Currency: Clone + Copy + PartialEq,
 {
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram.
@@ -272,73 +294,271 @@ where
 // Actual impl of transition
 impl<Balance, Currency> InvestState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd,
-	Currency: Clone + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+	Currency: Clone + Copy + PartialEq,
 {
-	// fn swap_required(&self,
-	// 	return_currency: Currency,
-	// 	pool_currency: Currency,
-	// 	amount: Balance
-	// ) -> Result<Self, DispatchError> {
-	// 	if return_currency == pool_currency {
-
-	// 	}
-	// }
-
+	// TODO: Add to spec
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
-	/// state diagram.
+	/// state diagram. Behaves similar to a ledger when considering
+	/// `SwapIntoReturnDone` and `InvestmentOngoing` as the
+	///
+	/// When we increase an investment, we normally have to swap it into pool
+	/// currency (`ActiveSwapIntoPoolCurrency`) before it can be invested
+	/// (`ActiveInvestmentOngoing`). However, if the current state includes
+	/// swapping back into pool currency (`ActiveSwapIntoReturnCurrency`) as the
+	/// result of a previous decrement, then we can minimize the amount which
+	/// needs to be swapped such that we always have **at most a single active
+	/// swap** which is the maximum of `pool_swap.amount` and
+	/// `return_swap.amount`. When we do this, we always need to bump the
+	/// investment amount as well as the `SwapIntoReturnDone` amount as a result
+	/// of immediately fulfilling the pool swap order up to the possible amount.
+	///
+	/// Example:
+	/// * Say before my pre state has `return_done = 1000` and
+	/// `return_swap.amount = 500`. Now we look at three scenarios in which we
+	/// increase below, exactly at and above the `return_swap.amount`:
+	/// * a) If we increase by 500, we can reduce the `return_swap.amount`
+	///   fully, which we denote by adding the 500 to the `return_done` amount.
+	///   Moreover, we can immediately invest the 500. The resulting state is
+	///   `(done_amount = 1500, investing = 500)`.
+	/// * b) If we increase by 400, we can reduce the `return_swap.amount` only
+	///   by 400 and increase both the `investing` as well as `return_done`
+	///   amount by that. The resulting state is
+	/// `(done_amount = 1400, return_swap.amount = 100, investing = 400)`.
+	/// * c) If we increase by 600, we can reduce the `return_swap.amount` fully
+	///   and need to add a swap into pool currency for 100. Moreover both the
+	///   `investing` as well as `return_done` amount can only be increased by
+	///   500. The resulting state is
+	/// `(done_amount = 1500, pool_swap.amount = 100, investing = 500)`.
+	///
+	/// NOTE: We can ignore handling all states which include
+	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
+	/// consume the done amount and transition in the post transition phase.
 	fn handle_increase(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
 		match &self {
-			Self::NoState => {
-				if swap.currency_in == swap.currency_out {
-					Ok(Self::InvestmentOngoing {
-						invest_amount: swap.amount,
-					})
-				} else {
-					Ok(Self::ActiveSwapIntoPoolCurrency(swap))
-				}
-			}
+			Self::NoState => Ok(Self::ActiveSwapIntoPoolCurrency { swap }),
+			// Add pool swap
 			Self::InvestmentOngoing { invest_amount } => {
-				if swap.currency_in == swap.currency_out {
-					Ok(Self::InvestmentOngoing {
-						invest_amount: invest_amount.ensure_add(swap.amount)?,
-					})
-				} else {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-						swap,
-						invest_amount: *invest_amount,
+				Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+					swap,
+					invest_amount: *invest_amount,
+				})
+			}
+			// Bump pool swap
+			Self::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
+				Ok(Self::ActiveSwapIntoPoolCurrency {
+					swap: Swap {
+						amount: swap.amount.ensure_add(pool_swap.amount)?,
+						..swap
+					},
+				})
+			}
+			// Reduce return swap amount by the increasing amount and increase investing amount as
+			// well adding return_done amount by the minimum of active swap amounts
+			Self::ActiveSwapIntoReturnCurrency { swap: return_swap } => {
+				let invest_amount = swap.amount.min(return_swap.amount);
+				let done_amount = swap
+					.amount
+					.min(return_swap.amount)
+					.ensure_add(*done_amount)?;
+
+				// pool swap amount is immediately invested and done amount increased equally
+				if swap.amount < return_swap.amount {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+			swap: Swap {
+				// safe since swap.amount < return_swap.amount
+				amount: return_swap.amount - swap.amount,
+				..*return_swap
+			},
+			done_amount,
+			invest_amount,
+		})
+				}
+				// swap amount is immediately invested and done amount increased equally
+				else if swap.amount == return_swap.amount {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						swap: *return_swap,
+						invest_amount,
 					})
 				}
+				// return swap amount is immediately invested and done amount increased equally
+				else {
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount > return_swap.amount
+								amount: swap.amount - return_swap.amount,
+								..swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
+				}
 			}
-			Self::ActiveSwapIntoPoolCurrency(_) => todo!(),
-			Self::ActiveSwapIntoReturnCurrency(_) => todo!(),
+			// Bump pool swap
 			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-				swap,
+				swap: pool_swap,
 				invest_amount,
-			} => todo!(),
+			} => Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: Swap {
+					amount: swap.amount.ensure_add(pool_swap.amount)?,
+					..swap
+				},
+				invest_amount: *invest_amount,
+			}),
+			// Reduce return swap amount by the increasing amount and increase investing amount as
+			// well adding return_done amount by the minimum of active swap amounts
 			Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
-				swap,
+				swap: return_swap,
 				invest_amount,
-			} => todo!(),
-			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => todo!(),
-			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				todo!()
+			} => {
+				let invest_amount =
+					invest_amount.ensure_add(swap.amount.min(return_swap.amount))?;
+				let done_amount = swap
+					.amount
+					.min(return_swap.amount)
+					.ensure_add(*done_amount)?;
+
+				// pool swap amount is immediately invested and done amount increased equally
+				if swap.amount < return_swap.amount {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+			swap: Swap {
+				// safe since swap.amount < return_swap.amount
+				amount: return_swap.amount - swap.amount,
+				..*return_swap
+			},
+			done_amount,
+			invest_amount,
+		})
+				}
+				// swap amount is immediately invested and done amount increased equally
+				else if swap.amount == return_swap.amount {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						swap: *return_swap,
+						invest_amount,
+					})
+				}
+				// return swap amount is immediately invested and done amount increased equally
+				else {
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount > return_swap.amount
+								amount: swap.amount - return_swap.amount,
+								..swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
+				}
 			}
-			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-				swap,
+			// Reduce amount of return by the increasing amount and increase investing as well as
+			// return_done amount by the minimum of active swap amounts
+			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+				swap: return_swap,
 				done_amount,
-				invest_amount,
-			} => todo!(),
+			} => {
+				let invest_amount = swap.amount.min(return_swap.amount);
+				let done_amount = invest_amount.ensure_add(*done_amount)?;
+
+				// pool swap amount is immediately invested and done amount increased equally
+				if swap.amount == return_swap.amount {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						swap: Swap {
+							amount: done_amount,
+							..*return_swap
+						},
+						invest_amount,
+					})
+				}
+				// swap amount is immediately invested and done amount increased equally
+				else if swap.amount < return_swap.amount {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
+			// safe since swap.amount < return_swap.amount
+			amount: return_swap.amount - swap.amount,
+			..*return_swap
+		}, done_amount, invest_amount })
+				}
+				// return swap amount is immediately invested and done amount increased equally
+				else {
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount > return_swap.amount
+								amount: swap.amount - return_swap.amount,
+								..swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
+				}
+			}
+			// Reduce amount of return swap by increasing amount and increase investing as well as
+			// return_done amount by minimum of swap amounts
 			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-				swap,
+				swap: return_swap,
 				done_amount,
 				invest_amount,
-			} => todo!(),
-			Self::SwapIntoReturnDone(_) => todo!(),
-			Self::SwapIntoReturnDoneAndInvestmentOngoing {
-				swap,
-				invest_amount,
-			} => todo!(),
+			} => {
+				let invest_amount =
+					invest_amount.ensure_add(swap.amount.min(return_swap.amount))?;
+				let done_amount = swap
+					.amount
+					.min(return_swap.amount)
+					.ensure_add(*done_amount)?;
+
+				// pool swap amount is immediately invested and done amount increased equally
+				if swap.amount == return_swap.amount {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						swap: Swap {
+							amount: done_amount,
+							..*return_swap
+						},
+						invest_amount,
+					})
+				}
+				// swap amount is immediately invested and done amount increased equally
+				else if swap.amount < return_swap.amount {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
+			// safe since swap.amount < return_swap.amount
+			amount: return_swap.amount - swap.amount,
+			..*return_swap
+		}, done_amount, invest_amount })
+				}
+				// return swap amount is immediately invested and done amount increased equally
+				else {
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount > return_swap.amount
+								amount: swap.amount - return_swap.amount,
+								..swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
+				}
+			}
+			// Should be updated to `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in post
+			// transition trigger and thus never exist as pre transition state
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { .. } => {
+				Err(DispatchError::Corruption)
+			}
+			// Should be updated to `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in post
+			// transition trigger and thus never exist as pre transition state
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				..
+			} => Err(DispatchError::Corruption),
+			// Should be cleared entirely in post transition trigger and thus never exist as pre
+			// transition state
+			Self::SwapIntoReturnDone { .. } => Err(DispatchError::Corruption),
+			// Should be updated to `InvestmentOngoing` in post transition trigger and thus never
+			// exist as pre transition state
+			Self::SwapIntoReturnDoneAndInvestmentOngoing { .. } => Err(DispatchError::Corruption),
 		}
 	}
 
@@ -372,6 +592,78 @@ where
 	) -> Result<Self, DispatchError> {
 		todo!("Do state transition here")
 	}
+
+	// TODO(@review): Do we need to handle this case at all or assume to always have
+	// required swaps through foreign investments?
+	// fn handle_increase_non_foreign(&self, swap: Swap<Balance, Currency>) ->
+	// Result<Self, DispatchError> { 	match &self {
+	// 		Self::NoState => {
+	// 				Ok(Self::InvestmentOngoing {
+	// 					invest_amount: swap.amount,
+	// 				})
+	// 		}
+	// 		Self::InvestmentOngoing { invest_amount } => {
+	// 				Ok(Self::InvestmentOngoing {
+	// 					invest_amount: invest_amount.ensure_add(swap.amount)?,
+	// 				})
+	// 		}
+	// 		Self::ActiveSwapIntoPoolCurrency { ..} => todo!(),
+	// 		Self::ActiveSwapIntoReturnCurrency { ..} => todo!(),
+	// 		Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+	// 			swap,
+	// 			invest_amount,
+	// 		} => todo!(),
+	// 		Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+	// 			swap,
+	// 			invest_amount,
+	// 		} => todo!(),
+	// 		Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount }
+	// => todo!(), 		Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap,
+	// done_amount } => { 			todo!()
+	// 		}
+	// 		Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+	// 			swap,
+	// 			done_amount,
+	// 			invest_amount,
+	// 		} => todo!(),
+	// 		Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+	// 			swap,
+	// 			done_amount,
+	// 			invest_amount,
+	// 		} => todo!(),
+	// 		Self::SwapIntoReturnDone(done_swap) => {
+	// 			if swap.currency_in == swap.currency_out {
+	// 				if swap.amount < done_swap.amount {
+	// 					Ok(InvestState::SwapIntoReturnDoneAndInvestmentOngoing {
+	// 						swap: Swap {
+	// 							currency_in: swap.currency_out,
+	// 							currency_out: swap.currency_in,
+	// 							amount: done_swap.amount.ensure_sub(swap.amount)?,
+	// 						},
+	// 						invest_amount: swap.amount,
+	// 					})
+	// 				} else {
+	// 					Ok(Self::InvestmentOngoing {
+	// 						invest_amount: swap.amount,
+	// 					})
+	// 				}
+	// 			} else {
+	// 				if swap.amount < done_swap.amount {
+	// 					let done_amount = done_swap.amount.ensure_sub(swap.amount)?;
+	// 					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone {
+	// 						swap,
+	// 						done_amount,
+	// 					})
+	// 				} else {
+	// 					Ok(Self::ActiveSwapIntoPoolCurrency { swap })
+	// 				}
+	// 			}
+	// 		}
+	// 		Self::SwapIntoReturnDoneAndInvestmentOngoing {
+	// 			swap,
+	// 			invest_amount,
+	// 		} => todo!(),
+	// }
 }
 
 // TODO: How to merge token swaps and investment trait? Create new trait
