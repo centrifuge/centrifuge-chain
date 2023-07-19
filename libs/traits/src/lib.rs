@@ -687,3 +687,46 @@ pub trait CurrencyInspect {
 	/// Checks whether the provided currency is a tranche token.
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
+
+pub trait TokenSwaps<Account> {
+	type CurrencyId;
+	type Balance;
+	type OrderId;
+	/// Swap tokens buying a `buy_amount` of `currency_in` using the
+	/// `currency_out` tokens. The implementator of this method should know
+	/// the current market rate between those two currencies.
+	/// `sell_price_limit` defines the lowest price acceptable for
+	/// `currency_in` currency when buying with `currency_out`. This
+	/// protects order placer if market changes unfavourably for swap order.
+	/// Returns the order id created with by this buy order if it could not
+	/// be inmediately and completelly fullfilled. If there was already an
+	/// active order with the same account currencies, the order is
+	/// increased/decreased and the same order id is returned.
+	fn place_order(
+		account: Account,
+		currency_out: Self::CurrencyId,
+		currency_in: Self::CurrencyId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> Result<Self::OrderId, DispatchError>;
+
+	/// Can fail for various reasons
+	///
+	/// E.g. min_fullfillment_amount is lower and
+	///      the system has already fulfilled up to the previous
+	///      one.
+	fn update_order(
+		account: Account,
+		order_id: Self::OrderId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> DispatchResult;
+
+	/// Cancel an already active order.
+	fn cancel_order(order: Self::OrderId) -> DispatchResult;
+
+	/// Check if the order is still active.
+	fn is_active(order: Self::OrderId) -> bool;
+}
