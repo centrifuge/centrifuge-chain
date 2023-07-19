@@ -27,7 +27,18 @@ use sp_runtime::traits::{EnsureAdd, EnsureSub};
 // }
 
 #[derive(
-	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Default,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq> {
 	pub currency_in: Currency,
