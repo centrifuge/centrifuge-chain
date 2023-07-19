@@ -67,21 +67,16 @@ async fn call() {
 
 	// From:
 	// https://github.com/moonbeam-foundation/frontier/blob/moonbeam-polkadot-v0.9.38/frame/ethereum/src/tests/legacy.rs#L297
-	// let contract_address =
 	let foo = hex::decode("c2985578").unwrap();
 	let bar = hex::decode("febb0f7e").unwrap();
 
 	let contract_address = env
 		.with_state(Chain::Para(PARA_ID), || {
-			for (address, code) in pallet_evm::AccountCodes::<Runtime>::iter() {
-				if code.len() > 0 {
-					return Ok(address);
-				}
-			}
-
-			return Err(());
+			pallet_evm::AccountCodes::<Runtime>::iter()
+				.find(|(address, code)| code.len() > 0)
+				.unwrap()
+				.0
 		})
-		.unwrap()
 		.unwrap();
 
 	// Executing Foo should be OK and emit an event with the value returned by the
