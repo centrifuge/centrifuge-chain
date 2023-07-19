@@ -100,10 +100,10 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.38" }
 
-ethereum = { version = "0.14.0", default-features = false }
+ethereum = { version = "0.14.0" }
 
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
 
 [features]
 default = ["runtime-development"]
