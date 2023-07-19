@@ -29,7 +29,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-		EVM: pallet_evm::{Pallet, Call, Storage, Config, Event<T>},
+		EVM: pallet_evm,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage},
 		Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin},
 		EthereumTransaction: pallet_ethereum_transaction,
@@ -117,13 +117,15 @@ impl AddressMapping<AccountId32> for IdentityAddressMapping {
 	}
 }
 
+const AUTHOR: &'static str = "1234500000000000000000000000000000000000";
+
 pub struct FindAuthorTruncated;
 impl FindAuthor<H160> for FindAuthorTruncated {
 	fn find_author<'a, I>(_digests: I) -> Option<H160>
 	where
 		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
 	{
-		Some(H160::from_str("1234500000000000000000000000000000000000").unwrap())
+		Some(H160::from_str(AUTHOR).unwrap())
 	}
 }
 

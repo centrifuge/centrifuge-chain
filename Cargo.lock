@@ -7238,10 +7238,9 @@ dependencies = [
 name = "pallet-ethereum-transaction"
 version = "0.0.1"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
- "ethabi",
  "ethereum",
- "fp-ethereum",
  "fp-evm",
  "frame-benchmarking",
  "frame-support",
