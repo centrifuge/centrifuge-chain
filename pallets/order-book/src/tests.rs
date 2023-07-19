@@ -140,7 +140,7 @@ fn place_order_works() {
 		assert_eq!(
 			System::events()[1].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: CurrencyId::A,
+				currency_id: CurrencyId::B,
 				who: ACCOUNT_0,
 				amount: 1000
 			})
@@ -233,6 +233,28 @@ fn cancel_order_works() {
 		assert_eq!(
 			AssetPairOrders::<Runtime>::get(CurrencyId::A, CurrencyId::B),
 			vec![]
-		)
-	})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 10
+			})
+		);
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
+				currency_id: CurrencyId::B,
+				who: ACCOUNT_0,
+				amount: 1000
+			})
+		);
+		assert_eq!(
+			System::events()[5].event,
+			RuntimeEvent::OrderBook(Event::OrderCancelled {
+				order_id,
+				account: ACCOUNT_0,
+			})
+		);
+	});
 }

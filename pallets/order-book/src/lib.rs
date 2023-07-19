@@ -442,7 +442,7 @@ pub mod pallet {
 
 			T::ReserveCurrency::reserve(&account, T::Fees::fee_value(T::OrderFeeKey::get()))?;
 
-			T::TradeableAsset::reserve(currency_in, &account, max_sell_amount)?;
+			T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
 
 			<Orders<T>>::insert(order_id, new_order.clone());
 			<UserOrders<T>>::insert(&account, order_id, new_order);
