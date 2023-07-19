@@ -31,8 +31,8 @@ pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-featu
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Our custom traits
-cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
