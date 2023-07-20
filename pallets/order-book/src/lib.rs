@@ -501,17 +501,44 @@ pub mod pallet {
 				Error::<T>::InvalidMinPrice
 			);
 
-			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
-				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+			let order =
+				<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
+					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
-				T::TradeableAsset::unreserve(order.asset_out_id, &account, order.max_sell_amount);
-				order.buy_amount = buy_amount;
-				order.price = sell_price_limit;
-				order.min_fullfillment_amount = min_fullfillment_amount;
+					let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+					// ensure proper amount can be, and is reserved of outgoing currency for updated
+					// order
+					if buy_amount != order.buy_amount || sell_price_limit != order.price {
+						if max_sell_amount > order.max_sell_amount {
+							let sell_reserve_diff =
+								max_sell_amount.ensure_sub(order.max_sell_amount)?;
+							ensure!(
+								T::TradeableAsset::can_reserve(
+									order.asset_out_id,
+									&account,
+									sell_reserve_diff
+								),
+								Error::<T>::InsufficientAssetFunds,
+							);
+							T::TradeableAsset::reserve(
+								order.asset_out_id,
+								&account,
+								sell_reserve_diff,
+							)?;
+						} else {
+							T::TradeableAsset::unreserve(
+								order.asset_out_id,
+								&account,
+								order.max_sell_amount.ensure_sub(max_sell_amount)?,
+							);
+						}
+					};
+					order.buy_amount = buy_amount;
+					order.price = sell_price_limit;
+					order.min_fullfillment_amount = min_fullfillment_amount;
 
-				T::TradeableAsset::reserve(order.asset_out_id, &account, order.max_sell_amount);
-				Ok(())
-			})?;
+					Ok(())
+				})?;
 			<UserOrders<T>>::try_mutate_exists(
 				&account,
 				order_id,
