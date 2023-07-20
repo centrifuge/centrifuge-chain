@@ -307,11 +307,14 @@ pub mod pallet {
 				Error::<T>::InsufficientAssetFunds,
 			);
 			T::TradeableAsset::unreserve(
-				order.asset_in_id,
+				order.asset_out_id,
 				&order.placing_account,
-				order.buy_amount,
+				order.max_sell_amount,
 			);
-			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
+			T::ReserveCurrency::unreserve(
+				&order.placing_account,
+				T::Fees::fee_value(T::OrderFeeKey::get()),
+			);
 			T::TradeableAsset::transfer(
 				order.asset_in_id,
 				&account_id,
@@ -324,6 +327,7 @@ pub mod pallet {
 				&account_id,
 				sell_amount,
 			)?;
+			Self::remove_order(order.order_id)?;
 			Self::deposit_event(Event::OrderFulfillment {
 				order_id,
 				placing_account: order.placing_account,
@@ -364,6 +368,16 @@ pub mod pallet {
 			Error<T>,
 		> {
 			Ok(<Orders<T>>::iter().collect())
+		}
+
+		pub fn remove_order(order_id: T::Hash) -> DispatchResult {
+			let order = <Orders<T>>::get(order_id)?;
+			<UserOrders<T>>::remove(&order.placing_account, order.order_id);
+			<Orders<T>>::remove(order.order_id);
+			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
+			orders.retain(|o| *o != order.order_id);
+			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
+			Ok(())
 		}
 
 		pub fn gen_hash(
@@ -472,11 +486,7 @@ pub mod pallet {
 
 			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
 			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
-			<UserOrders<T>>::remove(&account_id, order.order_id);
-			<Orders<T>>::remove(order.order_id);
-			let mut orders = <AssetPairOrders<T>>::get(order.asset_in_id, order.asset_out_id);
-			orders.retain(|o| *o != order.order_id);
-			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
+			Self::remove_order(order.order_id)?;
 			Self::deposit_event(Event::OrderCancelled {
 				account: account_id,
 				order_id: order.order_id,
@@ -507,7 +517,8 @@ pub mod pallet {
 
 					let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
 					// ensure proper amount can be, and is reserved of outgoing currency for updated
-					// order
+					// order.
+					// Also minimise reserve/unreserve operations.
 					if buy_amount != order.buy_amount || sell_price_limit != order.price {
 						if max_sell_amount > order.max_sell_amount {
 							let sell_reserve_diff =

@@ -82,6 +82,75 @@ fn user_cancel_order_works() {
 	})
 }
 
+#[test]
+fn fill_order_full_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order_v1(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CurrencyId::A,
+			CurrencyId::B,
+			10000,
+			2
+		));
+		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		// verify fulfill runs
+		assert_ok!(OrderBook::fill_order_full(
+			RuntimeOrigin::signed(ACCOUNT_1),
+			order_id
+		));
+		// verify filled order removed
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert_err!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert_eq!(
+			AssetPairOrders::<Runtime>::get(CurrencyId::A, CurrencyId::B),
+			vec![]
+		);
+
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
+				currency_id: CurrencyId::B,
+				who: ACCOUNT_0,
+				amount: 20000
+			})
+		);
+
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 10
+			})
+		);
+		assert_eq!(
+			System::events()[5].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
+				currency_id: CurrencyId::A,
+				to: ACCOUNT_0,
+				from: ACCOUNT_1,
+				amount: 10000
+			})
+		);
+		assert_eq!(
+			System::events()[6].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
+				currency_id: CurrencyId::B,
+				to: ACCOUNT_1,
+				from: ACCOUNT_0,
+				amount: 20000
+			})
+		);
+	});
+}
+
 // TokenSwaps trait impl tests
 #[test]
 fn place_order_works() {
