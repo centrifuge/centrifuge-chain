@@ -735,16 +735,7 @@ pub trait ForeignInvestment<AccountId> {
 	type Error: Debug;
 	type InvestmentId;
 
-	type SwapNotification;
-
-	// type Investment: Investment<
-	// 	AccountId,
-	// 	Amount = Self::Amount,
-	// 	CurrencyId = Self::CurrencyId,
-	// 	Error = Self::Error,
-	// 	InvestmentId = Self::InvestmentId,
-	// >;
-
+	// TODO: Docs
 	/// * Apply state transition
 	/// * Kick off swap
 	fn update_foreign_invest_order(
@@ -755,13 +746,36 @@ pub trait ForeignInvestment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	// Do actual investment update after successful (partial) token swap
-	// * Triggered by SwapNotification
-	// fn finalize_update_investment(
-	// 	who: &AccountId,
-	// 	investment_id: Self::InvestmentId,
-	// 	amount: Self::Amount,
-	// ) -> Result<(), Self::Error>;
+	// TODO: Docs
+	fn update_foreign_redemption(
+		who: &AccountId,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		todo!()
+	}
+
+	// TODO: Docs
+	fn collect_foreign_investment(
+		who: &AccountId,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+		investment_id: Self::InvestmentId,
+	) -> Result<(), Self::Error> {
+		todo!()
+	}
+
+	// TODO: Docs
+	fn collect_foreign_redemption(
+		who: &AccountId,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+		investment_id: Self::InvestmentId,
+	) -> Result<(), Self::Error> {
+		todo!()
+	}
 }
 
 pub trait StatusNotificationHook {
