@@ -547,6 +547,7 @@ pub mod pallet {
 					order.buy_amount = buy_amount;
 					order.price = sell_price_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
+					order.max_sell_amount = max_sell_amount;
 
 					Ok(())
 				})?;
@@ -555,9 +556,11 @@ pub mod pallet {
 				order_id,
 				|maybe_order| -> DispatchResult {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
 					order.buy_amount = buy_amount;
 					order.price = sell_price_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
+					order.max_sell_amount = max_sell_amount;
 					Ok(())
 				},
 			)?;

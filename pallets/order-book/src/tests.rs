@@ -327,3 +327,77 @@ fn cancel_order_works() {
 		);
 	});
 }
+
+#[test]
+fn update_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::A,
+			CurrencyId::B,
+			100,
+			10,
+			100
+		));
+		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(ACCOUNT_0, order_id, 110, 20, 110));
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::A,
+				asset_out_id: CurrencyId::B,
+				buy_amount: 110,
+				initial_buy_amount: 100,
+				price: 20,
+				min_fullfillment_amount: 110,
+				max_sell_amount: 2200
+			})
+		);
+
+		assert_eq!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::A,
+				asset_out_id: CurrencyId::B,
+				buy_amount: 110,
+				initial_buy_amount: 100,
+				price: 20,
+				min_fullfillment_amount: 110,
+				max_sell_amount: 2200
+			})
+		);
+
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::B,
+				who: ACCOUNT_0,
+				// order create reserve
+				amount: 1000
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::B,
+				who: ACCOUNT_0,
+				// update reserve additional 1200 needed to cover new price and amount
+				amount: 1200
+			})
+		);
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::OrderBook(Event::OrderUpdated {
+				order_id,
+				account: ACCOUNT_0,
+				buy_amount: 110,
+				min_fullfillment_amount: 110,
+				sell_price_limit: 20
+			})
+		);
+	})
+}
