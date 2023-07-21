@@ -247,6 +247,7 @@ pub mod pallet {
 		InvalidMinPrice,
 		InvalidAssetId,
 		OrderNotFound,
+		Unauthorised,
 	}
 
 	#[pallet::call]
@@ -281,8 +282,13 @@ pub mod pallet {
 			// verify order matches account
 			// UserOrders using Resultquery, if signed account
 			// does not match user for order id, we will get an Err Result
-			Self::cancel_order(order_id)?;
-			Ok(())
+			let order = <Orders<T>>::get(order_id)?;
+			if account_id == order.placing_account {
+				Self::cancel_order(order_id)?;
+				Ok(())
+			} else {
+				Err(DispatchError::from(Error::<T>::Unauthorised))
+			}
 		}
 
 		#[pallet::call_index(2)]
