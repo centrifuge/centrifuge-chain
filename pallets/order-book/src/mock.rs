@@ -10,8 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use core::default;
-
 use cfg_mocks::pallet_mock_fees;
 use cfg_types::tokens::CustomMetadata;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -33,7 +31,6 @@ use crate as order_book;
 pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const ACCOUNT_0: u64 = 0x1;
 pub(crate) const ACCOUNT_1: u64 = 0x2;
-pub(crate) const ACCOUNT_2: u64 = 0x3;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
 pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
 

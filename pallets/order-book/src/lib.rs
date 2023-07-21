@@ -33,12 +33,10 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use cfg_traits::fees::Fees;
-	use cfg_types::tokens::{CustomMetadata, GeneralCurrencyIndex};
+	use cfg_types::tokens::CustomMetadata;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
-		pallet_prelude::{
-			DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, StorageValue, *,
-		},
+		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		Twox64Concat,
 	};
@@ -50,7 +48,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_runtime::{
 		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One, Zero},
-		FixedPointNumber, FixedPointOperand,
+		FixedPointOperand,
 	};
 
 	use super::*;
@@ -300,11 +298,9 @@ pub mod pallet {
 			// maybe move to ensure if we don't need these later
 			// might need decimals from currency, but should hopefully be able to use FP
 			// price/amounts from FP balance
-			let asset_out = T::AssetRegistry::metadata(&order.asset_out_id)
-				.ok_or(Error::<T>::InvalidAssetId)?;
+			T::AssetRegistry::metadata(&order.asset_out_id).ok_or(Error::<T>::InvalidAssetId)?;
 
-			let asset_in =
-				T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
+			T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
 
 			let sell_amount = order.buy_amount.ensure_mul(order.price)?;
 
@@ -517,46 +513,45 @@ pub mod pallet {
 				Error::<T>::InvalidMinPrice
 			);
 
-			let order =
-				<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
-					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
+				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
-					let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
-					// ensure proper amount can be, and is reserved of outgoing currency for updated
-					// order.
-					// Also minimise reserve/unreserve operations.
-					if buy_amount != order.buy_amount || sell_price_limit != order.price {
-						if max_sell_amount > order.max_sell_amount {
-							let sell_reserve_diff =
-								max_sell_amount.ensure_sub(order.max_sell_amount)?;
-							ensure!(
-								T::TradeableAsset::can_reserve(
-									order.asset_out_id,
-									&account,
-									sell_reserve_diff
-								),
-								Error::<T>::InsufficientAssetFunds,
-							);
-							T::TradeableAsset::reserve(
+				let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+				// ensure proper amount can be, and is reserved of outgoing currency for updated
+				// order.
+				// Also minimise reserve/unreserve operations.
+				if buy_amount != order.buy_amount || sell_price_limit != order.price {
+					if max_sell_amount > order.max_sell_amount {
+						let sell_reserve_diff =
+							max_sell_amount.ensure_sub(order.max_sell_amount)?;
+						ensure!(
+							T::TradeableAsset::can_reserve(
 								order.asset_out_id,
 								&account,
-								sell_reserve_diff,
-							)?;
-						} else {
-							T::TradeableAsset::unreserve(
-								order.asset_out_id,
-								&account,
-								order.max_sell_amount.ensure_sub(max_sell_amount)?,
-							);
-						}
-					};
-					order.buy_amount = buy_amount;
-					order.price = sell_price_limit;
-					order.min_fullfillment_amount = min_fullfillment_amount;
-					order.max_sell_amount = max_sell_amount;
+								sell_reserve_diff
+							),
+							Error::<T>::InsufficientAssetFunds,
+						);
+						T::TradeableAsset::reserve(
+							order.asset_out_id,
+							&account,
+							sell_reserve_diff,
+						)?;
+					} else {
+						T::TradeableAsset::unreserve(
+							order.asset_out_id,
+							&account,
+							order.max_sell_amount.ensure_sub(max_sell_amount)?,
+						);
+					}
+				};
+				order.buy_amount = buy_amount;
+				order.price = sell_price_limit;
+				order.min_fullfillment_amount = min_fullfillment_amount;
+				order.max_sell_amount = max_sell_amount;
 
-					Ok(())
-				})?;
+				Ok(())
+			})?;
 			<UserOrders<T>>::try_mutate_exists(
 				&account,
 				order_id,
