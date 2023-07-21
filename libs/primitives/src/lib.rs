@@ -266,7 +266,7 @@ pub mod constants {
 
 	/// Transaction recovery ID used for generating a signature in the Ethereum
 	/// Transaction pallet. As per:
-	/// https://github.com/PureStake/moonbeam/blob/fb63014a5e487f17e31283776e4f6b0befd009a2/primitives/xcm/src/ethereum_xcm.rs#L167
+	/// <https://github.com/PureStake/moonbeam/blob/fb63014a5e487f17e31283776e4f6b0befd009a2/primitives/xcm/src/ethereum_xcm.rs#L167>
 	pub const TRANSACTION_RECOVERY_ID: u64 = 42;
 }
 
