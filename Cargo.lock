@@ -2668,6 +2668,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",

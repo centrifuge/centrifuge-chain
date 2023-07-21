@@ -1845,6 +1845,22 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type Weights = ();
 }
 
+parameter_types! {
+		pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Fees = Fees;
+	type ForeignCurrencyBalance = Balance;
+	type Nonce = u64;
+	type OrderFeeKey = OrderBookCreationFeeKey;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type TradeableAsset = OrmlTokens;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1914,6 +1930,7 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
