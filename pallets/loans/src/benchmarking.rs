@@ -272,7 +272,7 @@ where
 	}
 
 	fn expire_loan(pool_id: T::PoolId, loan_id: T::LoanId) {
-		Pallet::<T>::expire(pool_id, loan_id).unwrap();
+		Pallet::<T>::expire_action(pool_id, loan_id).unwrap();
 	}
 
 	fn initialize_active_state(n: u32) -> T::PoolId {

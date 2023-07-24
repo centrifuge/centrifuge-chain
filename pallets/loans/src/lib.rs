@@ -476,23 +476,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _count = match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(created_loan) => {
-					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
-
-					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(&amount)?;
-
-					Self::insert_active_loan(pool_id, loan_id, active_loan)?
-				}
-				None => {
-					Self::update_active_loan(pool_id, loan_id, |loan| {
-						Self::ensure_loan_borrower(&who, loan.borrower())?;
-						loan.borrow(&amount)
-					})?
-					.1
-				}
-			};
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount)?;
 
 			T::Pool::withdraw(pool_id, who, amount.balance()?)?;
 
@@ -525,10 +509,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount.clone())
-			})?;
+			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount)?;
 
 			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;
 
@@ -781,13 +762,44 @@ pub mod pallet {
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
+
+		/// Updates the porfolio valuation for the given pool
+		#[pallet::weight(10_000_000)] //TODO
+		#[pallet::call_index(11)]
+		pub fn transfer_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			repaid_amount: RepaidPricingAmount<T>,
+			borrow_amount: PricingAmount<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			ensure!(from_loan_id != to_loan_id, DispatchError::Other("TODO"));
+
+			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
+
+			match &borrow_amount {
+				PricingAmount::Internal(value) => {
+					ensure!(
+						*value == repaid_amount.repaid_amount()?.total()?,
+						DispatchError::Other("TODO")
+					)
+				}
+				PricingAmount::External(_external) => {
+					// TODO: handle it once slippage is added.
+				}
+			}
+
+			let _count = Self::borrow_action(&who, pool_id, from_loan_id, &borrow_amount)?;
+
+			Ok(())
+		}
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -858,30 +870,6 @@ pub mod pallet {
 			T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
-		}
-
-		fn update_portfolio_valuation_for_pool(
-			pool_id: T::PoolId,
-		) -> Result<(T::Balance, u32), DispatchError> {
-			let rates = T::InterestAccrual::rates();
-			let prices = T::PriceRegistry::collection(&pool_id);
-			let loans = ActiveLoans::<T>::get(pool_id);
-			let values = loans
-				.iter()
-				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
-				.collect::<Result<Vec<_>, DispatchError>>()?;
-
-			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
-			let valuation = portfolio.value();
-			PortfolioValuation::<T>::insert(pool_id, portfolio);
-
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				valuation,
-				update_type: PortfolioValuationUpdateType::Exact,
-			});
-
-			Ok((valuation, loans.len() as u32))
 		}
 
 		fn insert_active_loan(
@@ -988,15 +976,84 @@ pub mod pallet {
 				.map(|(_, loan)| loan.try_into())
 				.transpose()
 		}
+	}
+
+	// Loan actions
+	impl<T: Config> Pallet<T> {
+		fn borrow_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &PricingAmount<T>,
+		) -> Result<u32, DispatchError> {
+			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => {
+					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
+
+					let mut active_loan = created_loan.activate(pool_id)?;
+					active_loan.borrow(amount)?;
+
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
+				}
+				None => {
+					Self::update_active_loan(pool_id, loan_id, |loan| {
+						Self::ensure_loan_borrower(&who, loan.borrower())?;
+						loan.borrow(amount)
+					})?
+					.1
+				}
+			})
+		}
+
+		fn repay_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &RepaidPricingAmount<T>,
+		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
+			Self::update_active_loan(pool_id, loan_id, |loan| {
+				Self::ensure_loan_borrower(&who, loan.borrower())?;
+				loan.repay(amount.clone())
+			})
+		}
 
 		/// Set the maturity date of the loan to this instant.
 		#[cfg(feature = "runtime-benchmarks")]
-		pub fn expire(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
+		pub fn expire_action(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.set_maturity(T::Time::now().as_secs());
 				Ok(())
 			})?;
 			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T>
+	where
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	{
+		fn update_portfolio_valuation_for_pool(
+			pool_id: T::PoolId,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			let rates = T::InterestAccrual::rates();
+			let prices = T::PriceRegistry::collection(&pool_id);
+			let loans = ActiveLoans::<T>::get(pool_id);
+			let values = loans
+				.iter()
+				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
+				.collect::<Result<Vec<_>, DispatchError>>()?;
+
+			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				valuation,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok((valuation, loans.len() as u32))
 		}
 	}
 
