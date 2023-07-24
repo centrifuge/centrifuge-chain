@@ -17,6 +17,7 @@ use cfg_types::tokens::CurrencyId;
 use frame_benchmarking::*;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_system::RawOrigin;
+use orml_traits::MultiCurrency;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
 
@@ -29,14 +30,17 @@ fn config_mocks() {
 	Fees::mock_fee_to_author(|_, _| Ok(()));
 }
 
+const CURRENCY_0: u128 = 1_000_000_000_000_000_000u128;
+const CURRENCY_1: u128 = 1_000_000_000_000_000u128;
+
 benchmarks! {
 		where_clause {
 		where
-				T: Config<AssetCurrencyId = CurrencyId>,
+				T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
 }
 
 		create_order_v1 {
-				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>();
+				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100u32.into(), 10u32.into())
 		// user_cancel_order {
 		// }:user_cancel_order(RawOrigin::Signed(account_1.clone()).into(), )
@@ -44,12 +48,17 @@ benchmarks! {
 		// }:fill_order_full(RawOrigin::Signed(account_1.clone()).into(), )
 }
 
-fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId>>() -> (
-	T::AccountId,
-	T::AccountId,
-	T::AssetCurrencyId,
-	T::AssetCurrencyId,
-) {
+fn set_up_users_currencies<
+	T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
+>() -> Result<
+	(
+		T::AccountId,
+		T::AccountId,
+		T::AssetCurrencyId,
+		T::AssetCurrencyId,
+	),
+	&'static str,
+> {
 	#[cfg(test)]
 	config_mocks();
 	let account_0: T::AccountId = account::<T::AccountId>("Account0", 1, 0);
@@ -64,6 +73,10 @@ fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId>>() -> (
 	);
 	let asset_0 = CurrencyId::AUSD;
 	let asset_1 = CurrencyId::KSM;
-	(account_0, account_1, asset_0, asset_1)
+	T::TradeableAsset::deposit(asset_0, &account_0, 1_000 * CURRENCY_0)?;
+	T::TradeableAsset::deposit(asset_1, &account_0, 1_000 * CURRENCY_1)?;
+	T::TradeableAsset::deposit(asset_0, &account_1, 1_000 * CURRENCY_0)?;
+	T::TradeableAsset::deposit(asset_1, &account_1, 1_000 * CURRENCY_1)?;
+	Ok((account_0, account_1, asset_0, asset_1))
 }
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
