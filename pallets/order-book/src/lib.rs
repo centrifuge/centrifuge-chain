@@ -74,13 +74,14 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// Asset registry for foreign currencies we can take orders for.
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = Self::AssetCurrencyId,
 			Balance = Self::ForeignCurrencyBalance,
 			CustomMetadata = CustomMetadata,
 		>;
 
-		/// CurrencyId of Asset
+		/// CurrencyId of Assets that an order can be made for
 		type AssetCurrencyId: AssetId
 			+ Parameter
 			+ Debug
@@ -99,6 +100,7 @@ pub mod pallet {
 		/// Fee handler for the reserve/unreserve
 		/// Currently just stores the amounts, will be extended to handle
 		/// reserve/unreserve as well in future
+		/// Uses default balance type as opposed to ForeignCurrencyBalance
 		type Fees: Fees<
 			AccountId = <Self as frame_system::Config>::AccountId,
 			Balance = DepositBalanceOf<Self>,
@@ -107,6 +109,10 @@ pub mod pallet {
 		/// Fee Key used to find amount for allowance reserve/unreserve
 		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
+		/// Balance type for currencies we can place orders for
+		/// Seperate type from Balance in case different type used for other
+		/// currencies, i.e. when Balance is u64, but foreign currencies using
+		/// u128
 		type ForeignCurrencyBalance: Member
 			+ Parameter
 			+ AtLeast32BitUnsigned
@@ -116,6 +122,7 @@ pub mod pallet {
 			+ FixedPointOperand
 			+ TypeInfo;
 
+		/// Type used for nonce to ensure all orders have unique ID
 		type Nonce: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
@@ -125,7 +132,7 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
-		/// Type for trade-able currency
+		/// Type for currency orders can be made for
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
 			Balance = <Self as pallet::Config>::ForeignCurrencyBalance,
@@ -135,6 +142,8 @@ pub mod pallet {
 	//
 	// Storage and storage types
 	//
+	/// Order Storage item.
+	/// Contains fields relevant to order information
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance> {
 		pub order_id: OrderId,
