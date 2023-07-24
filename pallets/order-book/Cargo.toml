@@ -57,6 +57,8 @@ runtime-benchmarks = [
   'cfg-traits/runtime-benchmarks',
   'cfg-primitives/runtime-benchmarks',
   "orml-asset-registry/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks"
 
 ]
 std = [
