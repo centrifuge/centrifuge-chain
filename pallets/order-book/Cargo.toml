@@ -26,10 +26,12 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 
 ## Benchmark dependencies
 # Orml crates
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
@@ -38,7 +40,7 @@ cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 cfg-mocks = { path = "../../libs/mocks" }
 # Orml crates
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 # Parity crates
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
@@ -53,8 +55,9 @@ runtime-benchmarks = [
   'sp-runtime/runtime-benchmarks',
   'cfg-types/runtime-benchmarks',
   'cfg-traits/runtime-benchmarks',
-  'orml-tokens',
-  'orml-traits'
+  'cfg-primitives/runtime-benchmarks',
+  "orml-asset-registry/runtime-benchmarks",
+
 ]
 std = [
   'codec/std',
@@ -66,14 +69,15 @@ std = [
   'sp-core/std',
   'sp-runtime/std',
   'sp-std/std',
-  # "xcm/std",
   "orml-traits/std",
+  'cfg-primitives/std',
   'cfg-types/std',
   'cfg-traits/std',
 ]
 try-runtime = [
   'frame-support/try-runtime',
   'sp-runtime/try-runtime',
+  'cfg-primitives/try-runtime',
   'cfg-types/try-runtime',
   'cfg-traits/try-runtime',
 ]
