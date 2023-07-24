@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_types::tokens::CustomMetadata;
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -100,30 +100,6 @@ parameter_types! {
 	  pub const DefaultFeeValue: Balance = 1;
 }
 
-#[derive(
-	Clone,
-	Copy,
-	Debug,
-	Default,
-	PartialOrd,
-	Ord,
-	Encode,
-	Decode,
-	Eq,
-	PartialEq,
-	MaxEncodedLen,
-	TypeInfo,
-	Deserialize,
-	Serialize,
-)]
-pub enum CurrencyId {
-	#[default]
-	A,
-	B,
-	C,
-	D,
-}
-
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = u64;
@@ -172,7 +148,7 @@ impl order_book::Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	// type Balance = Balance;
 	type Fees = Fees;
-	type ForeignCurrencyBalance = u128;
+	type ForeignCurrencyBalance = ForeignCurrencyBalance;
 	type Nonce = u64;
 	type OrderFeeKey = OrderFeeKey;
 	type ReserveCurrency = Balances;
@@ -198,8 +174,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.into_iter()
 			.flat_map(|idx| {
 				[
-					(idx, CurrencyId::A, 1000 * CURRENCY_A),
-					(idx, CurrencyId::B, 1000 * CURRENCY_B),
+					(idx, CurrencyId::AUSD, 1000 * CURRENCY_A),
+					(idx, CurrencyId::KSM, 1000 * CURRENCY_B),
 				]
 			})
 			.collect(),
@@ -210,7 +186,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
 			(
-				CurrencyId::A,
+				CurrencyId::AUSD,
 				AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN_A".as_bytes().to_vec(),
@@ -221,7 +197,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				},
 			),
 			(
-				CurrencyId::B,
+				CurrencyId::KSM,
 				AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),

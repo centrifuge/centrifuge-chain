@@ -22,10 +22,14 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
+
+## Benchmark dependencies
+# Orml crates
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
@@ -49,6 +53,8 @@ runtime-benchmarks = [
   'sp-runtime/runtime-benchmarks',
   'cfg-types/runtime-benchmarks',
   'cfg-traits/runtime-benchmarks',
+  'orml-tokens',
+  'orml-traits'
 ]
 std = [
   'codec/std',
@@ -60,7 +66,7 @@ std = [
   'sp-core/std',
   'sp-runtime/std',
   'sp-std/std',
-  "xcm/std",
+  # "xcm/std",
   "orml-traits/std",
   'cfg-types/std',
   'cfg-traits/std',

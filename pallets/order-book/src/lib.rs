@@ -25,9 +25,14 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod weights;
+
 pub use cfg_traits::TokenSwaps;
 pub use pallet::*;
-#[frame_support::pallet(dev_mode)]
+#[frame_support::pallet]
 pub mod pallet {
 
 	use core::fmt::Debug;
@@ -109,9 +114,7 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u128>;
+			+ TypeInfo;
 
 		type Nonce: Parameter
 			+ Member
