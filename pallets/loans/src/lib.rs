@@ -382,6 +382,10 @@ pub mod pallet {
 		CloseLoanError(CloseLoanError),
 		/// Emits when the loan can not be mutated
 		MutationError(MutationError),
+		/// Emits when debt is transfered to the same loan
+		TransferDebtToSameLoan,
+		/// Emits when debt is transfered with different repaid/borrow amounts
+		TransferDebtAmountMismatched,
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {
@@ -763,7 +767,11 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
 
-		/// Updates the porfolio valuation for the given pool
+		/// Transfer debt from one loan to another loan,
+		/// repaying from the first loan and borrowing the same amount from the
+		/// second loan. `from_loan_id` is the loan used to repay.
+		/// `to_loan_id` is the loan used to borrow.
+		/// The repaid and borrow amount must match.
 		#[pallet::weight(10_000_000)] //TODO
 		#[pallet::call_index(11)]
 		pub fn transfer_debt(
@@ -776,7 +784,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(from_loan_id != to_loan_id, DispatchError::Other("TODO"));
+			ensure!(
+				from_loan_id != to_loan_id,
+				Error::<T>::TransferDebtToSameLoan
+			);
 
 			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
 
@@ -784,11 +795,13 @@ pub mod pallet {
 				PricingAmount::Internal(value) => {
 					ensure!(
 						*value == repaid_amount.repaid_amount()?.total()?,
-						DispatchError::Other("TODO")
+						Error::<T>::TransferDebtAmountMismatched
 					)
 				}
 				PricingAmount::External(_external) => {
 					// TODO: handle it once slippage is added.
+					// TODO: if quantity is measured as a rate, then slippage
+					// can be removed and used instead a decimal quantity.
 				}
 			}
 
