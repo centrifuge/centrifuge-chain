@@ -32,6 +32,8 @@ pub mod weights;
 
 pub use cfg_traits::TokenSwaps;
 pub use pallet::*;
+pub use weights::Weights;
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -138,6 +140,9 @@ pub mod pallet {
 			Balance = <Self as pallet::Config>::ForeignCurrencyBalance,
 			CurrencyId = Self::AssetCurrencyId,
 		>;
+
+		/// Type for pallet weights
+		type Weights: Weights;
 	}
 	//
 	// Storage and storage types
@@ -268,8 +273,7 @@ pub mod pallet {
 		/// Create an order, with the minimum fulfillment amount set to the buy
 		/// amount, as the first iteration will not have partial fulfillment
 		#[pallet::call_index(0)]
-		// dummy weight for now
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::create_order_v1())]
 		pub fn create_order_v1(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
@@ -285,8 +289,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		// dummy weight for now
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::user_cancel_order())]
 		pub fn user_cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			// verify order matches account
@@ -302,8 +305,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		// dummy weight for now
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::fill_order_full())]
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;

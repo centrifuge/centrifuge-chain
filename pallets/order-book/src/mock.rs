@@ -151,6 +151,7 @@ impl order_book::Config for Runtime {
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type TradeableAsset = OrmlTokens;
+	type Weights = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
