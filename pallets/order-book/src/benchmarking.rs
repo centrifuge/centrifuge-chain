@@ -13,12 +13,16 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use cfg_traits::fees::Fees;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
-use orml_traits::MultiCurrency;
+use orml_traits::{
+	asset_registry::{Inspect, Mutate},
+	MultiCurrency,
+};
 
+// use pallet_pool_system::benchmarking::prepare_asset_registry;
 use super::*;
 #[cfg(test)]
 fn config_mocks() {
@@ -35,6 +39,7 @@ benchmarks! {
 		where_clause {
 		where
 				T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
+		<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
 }
 
 		create_order_v1 {
@@ -56,9 +61,8 @@ benchmarks! {
 		}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 }
 
-fn set_up_users_currencies<
-	T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
->() -> Result<
+fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>>(
+) -> Result<
 	(
 		T::AccountId,
 		T::AccountId,
@@ -66,7 +70,10 @@ fn set_up_users_currencies<
 		T::AssetCurrencyId,
 	),
 	&'static str,
-> {
+>
+where
+	<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
+{
 	#[cfg(test)]
 	config_mocks();
 	let account_0: T::AccountId = account::<T::AccountId>("Account0", 1, 0);
@@ -81,6 +88,7 @@ fn set_up_users_currencies<
 	);
 	let asset_0 = CurrencyId::AUSD;
 	let asset_1 = CurrencyId::KSM;
+	prepare_asset_registry::<T>();
 	T::TradeableAsset::deposit(asset_0, &account_0, 1_000 * CURRENCY_0)?;
 	T::TradeableAsset::deposit(asset_1, &account_0, 1_000 * CURRENCY_1)?;
 	T::TradeableAsset::deposit(asset_0, &account_1, 1_000 * CURRENCY_0)?;
@@ -88,3 +96,44 @@ fn set_up_users_currencies<
 	Ok((account_0, account_1, asset_0, asset_1))
 }
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
+
+pub fn prepare_asset_registry<T: Config>()
+where
+	T::AssetRegistry: Mutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
+{
+	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+		Some(_) => (),
+		None => {
+			T::AssetRegistry::register_asset(
+				Some(CurrencyId::AUSD),
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)
+			.expect("Registering Pool asset must work");
+		}
+	}
+
+	match T::AssetRegistry::metadata(&CurrencyId::KSM) {
+		Some(_) => (),
+		None => {
+			T::AssetRegistry::register_asset(
+				Some(CurrencyId::KSM),
+				orml_asset_registry::AssetMetadata {
+					decimals: 15,
+					name: "MOCK TOKEN 1".as_bytes().to_vec(),
+					symbol: "MOCK1".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)
+			.expect("Registering Pool asset must work");
+		}
+	}
+}
