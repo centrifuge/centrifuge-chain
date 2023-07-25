@@ -441,6 +441,24 @@ benchmarks! {
 	verify {
 		assert!(Pallet::<T>::portfolio_valuation(pool_id).value() > Zero::zero());
 	}
+
+	transfer_debt {
+		let n in 2..Helper::<T>::max_active_loans() - 2;
+
+		let borrower = account("borrower", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_1 = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_1);
+		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
+
+		let repaid_amount = RepaidPricingAmount {
+			principal: PricingAmount::Internal(10.into()),
+			interest: 0.into(),
+			unscheduled: 0.into()
+		};
+		let borrow_amount = PricingAmount::Internal(10.into());
+
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
 }
 
 impl_benchmark_test_suite!(

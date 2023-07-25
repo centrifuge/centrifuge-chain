@@ -780,7 +780,7 @@ pub mod pallet {
 		/// second loan. `from_loan_id` is the loan used to repay.
 		/// `to_loan_id` is the loan used to borrow.
 		/// The repaid and borrow amount must match.
-		#[pallet::weight(10_000_000)] //TODO
+		#[pallet::weight(T::WeightInfo::transfer_debt(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(11)]
 		pub fn transfer_debt(
 			origin: OriginFor<T>,
