@@ -173,7 +173,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.flat_map(|idx| {
 				[
 					(idx, CurrencyId::AUSD, 1000 * CURRENCY_A),
-					(idx, CurrencyId::KSM, 1000 * CURRENCY_B),
+					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_B),
 				]
 			})
 			.collect(),
@@ -195,7 +195,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				},
 			),
 			(
-				CurrencyId::KSM,
+				CurrencyId::ForeignAsset(0),
 				AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),

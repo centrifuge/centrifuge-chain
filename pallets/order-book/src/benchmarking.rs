@@ -87,7 +87,7 @@ where
 		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u32.into(),
 	);
 	let asset_0 = CurrencyId::AUSD;
-	let asset_1 = CurrencyId::KSM;
+	let asset_1 = CurrencyId::ForeignAsset(0);
 	prepare_asset_registry::<T>();
 	T::TradeableAsset::deposit(asset_0, &account_0, 1_000 * CURRENCY_0)?;
 	T::TradeableAsset::deposit(asset_1, &account_0, 1_000 * CURRENCY_1)?;
@@ -119,11 +119,11 @@ where
 		}
 	}
 
-	match T::AssetRegistry::metadata(&CurrencyId::KSM) {
+	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(0)) {
 		Some(_) => (),
 		None => {
 			T::AssetRegistry::register_asset(
-				Some(CurrencyId::KSM),
+				Some(CurrencyId::ForeignAsset(0)),
 				orml_asset_registry::AssetMetadata {
 					decimals: 15,
 					name: "MOCK TOKEN 1".as_bytes().to_vec(),

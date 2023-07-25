@@ -11,7 +11,7 @@ fn create_order_v1_works() {
 		assert_ok!(OrderBook::create_order_v1(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10
 		));
@@ -22,7 +22,7 @@ fn create_order_v1_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
@@ -36,7 +36,7 @@ fn create_order_v1_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
@@ -45,7 +45,7 @@ fn create_order_v1_works() {
 			})
 		);
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::KSM),
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
 			vec![order_id,]
 		)
 	})
@@ -57,7 +57,7 @@ fn user_cancel_order_works() {
 		assert_ok!(OrderBook::create_order_v1(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10
 		));
@@ -77,7 +77,7 @@ fn user_cancel_order_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::KSM),
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
 			vec![]
 		)
 	})
@@ -89,7 +89,7 @@ fn fill_order_full_works() {
 		assert_ok!(OrderBook::create_order_v1(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			10000,
 			2
 		));
@@ -111,14 +111,14 @@ fn fill_order_full_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::KSM),
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
 			vec![]
 		);
 
 		assert_eq!(
 			System::events()[3].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				amount: 20000
 			})
@@ -143,7 +143,7 @@ fn fill_order_full_works() {
 		assert_eq!(
 			System::events()[6].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				to: ACCOUNT_1,
 				from: ACCOUNT_0,
 				amount: 20000
@@ -159,7 +159,7 @@ fn place_order_works() {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10,
 			100
@@ -171,7 +171,7 @@ fn place_order_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
@@ -186,7 +186,7 @@ fn place_order_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
@@ -196,7 +196,7 @@ fn place_order_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::KSM),
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
 			vec![order_id,]
 		);
 
@@ -210,7 +210,7 @@ fn place_order_works() {
 		assert_eq!(
 			System::events()[1].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				amount: 1000
 			})
@@ -221,7 +221,7 @@ fn place_order_works() {
 				order_id: order_id,
 				creator_account: ACCOUNT_0,
 				currency_in: CurrencyId::AUSD,
-				currency_out: CurrencyId::KSM,
+				currency_out: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				min_fullfillment_amount: 100,
 				sell_price_limit: 10
@@ -236,7 +236,7 @@ fn ensure_nonce_updates_order_correctly() {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10,
 			100
@@ -244,7 +244,7 @@ fn ensure_nonce_updates_order_correctly() {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10,
 			100
@@ -261,7 +261,14 @@ fn ensure_nonce_updates_order_correctly() {
 fn place_order_requires_non_zero_buy() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::place_order(ACCOUNT_0, CurrencyId::AUSD, CurrencyId::KSM, 0, 10, 100),
+			OrderBook::place_order(
+				ACCOUNT_0,
+				CurrencyId::AUSD,
+				CurrencyId::ForeignAsset(0),
+				0,
+				10,
+				100
+			),
 			Error::<Runtime>::InvalidBuyAmount
 		);
 	})
@@ -271,7 +278,14 @@ fn place_order_requires_non_zero_buy() {
 fn place_order_requires_non_zero_price() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::place_order(ACCOUNT_0, CurrencyId::AUSD, CurrencyId::KSM, 100, 0, 100),
+			OrderBook::place_order(
+				ACCOUNT_0,
+				CurrencyId::AUSD,
+				CurrencyId::ForeignAsset(0),
+				100,
+				0,
+				100
+			),
 			Error::<Runtime>::InvalidMinPrice
 		);
 	})
@@ -283,7 +297,7 @@ fn cancel_order_works() {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10,
 			100
@@ -301,7 +315,7 @@ fn cancel_order_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::KSM),
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
 			vec![]
 		);
 		assert_eq!(
@@ -314,7 +328,7 @@ fn cancel_order_works() {
 		assert_eq!(
 			System::events()[4].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				amount: 1000
 			})
@@ -335,7 +349,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 		assert_ok!(OrderBook::create_order_v1(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10
 		));
@@ -352,7 +366,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
@@ -369,7 +383,7 @@ fn update_order_works() {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
 			CurrencyId::AUSD,
-			CurrencyId::KSM,
+			CurrencyId::ForeignAsset(0),
 			100,
 			10,
 			100
@@ -382,7 +396,7 @@ fn update_order_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 110,
 				initial_buy_amount: 100,
 				price: 20,
@@ -397,7 +411,7 @@ fn update_order_works() {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
 				asset_in_id: CurrencyId::AUSD,
-				asset_out_id: CurrencyId::KSM,
+				asset_out_id: CurrencyId::ForeignAsset(0),
 				buy_amount: 110,
 				initial_buy_amount: 100,
 				price: 20,
@@ -409,7 +423,7 @@ fn update_order_works() {
 		assert_eq!(
 			System::events()[1].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				// order create reserve
 				amount: 1000
@@ -418,7 +432,7 @@ fn update_order_works() {
 		assert_eq!(
 			System::events()[3].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: CurrencyId::KSM,
+				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				// update reserve additional 1200 needed to cover new price and amount
 				amount: 1200
