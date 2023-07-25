@@ -1859,7 +1859,7 @@ impl pallet_order_book::Config for Runtime {
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type TradeableAsset = OrmlTokens;
-	type Weights = ();
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata

@@ -32,7 +32,7 @@ pub mod weights;
 
 pub use cfg_traits::TokenSwaps;
 pub use pallet::*;
-pub use weights::Weights;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -142,7 +142,7 @@ pub mod pallet {
 		>;
 
 		/// Type for pallet weights
-		type Weights: Weights;
+		type Weights: WeightInfo;
 	}
 	//
 	// Storage and storage types
