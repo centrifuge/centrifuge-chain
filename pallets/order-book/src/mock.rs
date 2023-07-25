@@ -12,14 +12,11 @@
 
 use cfg_mocks::pallet_mock_fees;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64, GenesisBuild},
-	Deserialize, Serialize,
 };
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,

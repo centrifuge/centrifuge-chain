@@ -15,11 +15,9 @@
 use cfg_traits::fees::Fees;
 use cfg_types::tokens::CurrencyId;
 use frame_benchmarking::*;
-use frame_support::traits::{Currency, Get, ReservableCurrency};
+use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use scale_info::TypeInfo;
-use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
 
 use super::*;
 #[cfg(test)]
@@ -42,10 +40,20 @@ benchmarks! {
 		create_order_v1 {
 				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100u32.into(), 10u32.into())
-		// user_cancel_order {
-		// }:user_cancel_order(RawOrigin::Signed(account_1.clone()).into(), )
-		// fill_order_full {
-		// }:fill_order_full(RawOrigin::Signed(account_1.clone()).into(), )
+
+		user_cancel_order {
+				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+
+				let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+
+		}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
+
+		fill_order_full {
+				let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+
+				let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+
+		}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 }
 
 fn set_up_users_currencies<
