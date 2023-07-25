@@ -1017,7 +1017,7 @@ pub mod pallet {
 		) -> Result<u32, DispatchError> {
 			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
-					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
+					Self::ensure_loan_borrower(who, created_loan.borrower())?;
 
 					let mut active_loan = created_loan.activate(pool_id)?;
 					active_loan.borrow(amount)?;
@@ -1026,7 +1026,7 @@ pub mod pallet {
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
-						Self::ensure_loan_borrower(&who, loan.borrower())?;
+						Self::ensure_loan_borrower(who, loan.borrower())?;
 						loan.borrow(amount)
 					})?
 					.1
@@ -1041,7 +1041,7 @@ pub mod pallet {
 			amount: &RepaidPricingAmount<T>,
 		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, loan.borrower())?;
+				Self::ensure_loan_borrower(who, loan.borrower())?;
 				loan.repay(amount.clone())
 			})
 		}
