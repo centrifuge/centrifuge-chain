@@ -175,6 +175,7 @@ pub mod pallet {
 		order_claiming: T::Hash,
 	}
 
+	/// Map of Orders to look up orders by their order id.
 	#[pallet::storage]
 	pub type Orders<T: Config> = StorageMap<
 		_,
@@ -219,6 +220,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Event emitted when an order is created.
 		OrderCreated {
 			order_id: T::Hash,
 			creator_account: T::AccountId,
@@ -228,10 +230,12 @@ pub mod pallet {
 			min_fullfillment_amount: T::ForeignCurrencyBalance,
 			sell_price_limit: T::ForeignCurrencyBalance,
 		},
+		/// Event emitted when an order is cancelled.
 		OrderCancelled {
 			account: T::AccountId,
 			order_id: T::Hash,
 		},
+		/// Event emitted when an order is updated.
 		OrderUpdated {
 			order_id: T::Hash,
 			account: T::AccountId,
@@ -239,6 +243,10 @@ pub mod pallet {
 			sell_price_limit: T::ForeignCurrencyBalance,
 			min_fullfillment_amount: T::ForeignCurrencyBalance,
 		},
+		/// Event emitted when an order is fulfilled.
+		/// Can be for either partial or total fulfillment.
+		/// Contains amount fulfilled, and whether fulfillment was partial or
+		/// full.
 		OrderFulfillment {
 			order_id: T::Hash,
 			placing_account: T::AccountId,
@@ -254,14 +262,33 @@ pub mod pallet {
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
+		/// Error when the number of orders for a trading pair has exceeded the
+		/// BoundedVec size for the order pair for the currency pair in
+		/// question.
 		AssetPairOrdersOverflow,
+		/// Error when order is placed attempting to exchange assets of the same
+		/// type.
 		ConflictingAssetIds,
+		/// Error when an account cannot reserve or transfer the amount
+		/// specified for trade, or amount to be fulfilled.
 		InsufficientAssetFunds,
+		/// Error when an account does not have enough funds in chains reserve
+		/// currency to place order.
 		InsufficientReserveFunds,
+		/// Error when account tries to buy an invalid amount of currency --
+		/// currently `0`.
 		InvalidBuyAmount,
+		/// Error when an account specifies an invalid buy price -- currently
+		/// `0`.
 		InvalidMinPrice,
+		/// Error when an order is placed with a currency that is not in the
+		/// asset registry.
 		InvalidAssetId,
+		/// Error when an operation is attempted on an order id that is not in
+		/// storage.
 		OrderNotFound,
+		/// Error when a user attempts an action on an order they are not
+		/// authorised to perform, such as cancelling another accounts order.
 		Unauthorised,
 	}
 
@@ -288,6 +315,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		///  Cancel an existing order that had been created by calling account.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::Weights::user_cancel_order())]
 		pub fn user_cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
@@ -304,6 +332,7 @@ pub mod pallet {
 			}
 		}
 
+		/// Fill an existing order, fulfilling the entire order.
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::Weights::fill_order_full())]
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
@@ -386,6 +415,7 @@ pub mod pallet {
 			Ok(<Orders<T>>::iter().collect())
 		}
 
+		/// Remove an order from storage
 		pub fn remove_order(order_id: T::Hash) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
 			<UserOrders<T>>::remove(&order.placing_account, order.order_id);
@@ -396,6 +426,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Generate a hash to be used for the order id using the placing
+		/// account, asset IDs, and pallet nonce.
 		pub fn gen_hash(
 			placer: &T::AccountId,
 			asset_out: T::AssetCurrencyId,
@@ -414,6 +446,10 @@ pub mod pallet {
 		type CurrencyId = T::AssetCurrencyId;
 		type OrderId = T::Hash;
 
+		/// Creates an order.
+		/// Verify funds available in, and reserve for  both chains fee currency
+		/// for storage fee, and amount of outgoing currency as determined by
+		/// the buy amount and price.
 		fn place_order(
 			account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
@@ -496,6 +532,8 @@ pub mod pallet {
 			Ok(order_id)
 		}
 
+		/// Cancel an existing order.
+		/// Unreserve currency reserved for trade as well storage fee.
 		fn cancel_order(order: Self::OrderId) -> DispatchResult {
 			let order = <Orders<T>>::get(order)?;
 			let account_id = order.placing_account;
@@ -511,6 +549,9 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update an existing order.
+		/// Update outgoing asset currency reserved to match new amount or price
+		/// if either have changed.
 		fn update_order(
 			account: T::AccountId,
 			order_id: Self::OrderId,
@@ -590,6 +631,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Check whether an order is active.
 		fn is_active(order: Self::OrderId) -> bool {
 			<Orders<T>>::contains_key(order)
 		}
