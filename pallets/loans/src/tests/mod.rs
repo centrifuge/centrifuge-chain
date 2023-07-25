@@ -37,5 +37,6 @@ mod mutate_loan;
 mod policy;
 mod portfolio_valuation;
 mod repay_loan;
+mod transfer_debt;
 mod util;
 mod write_off_loan;

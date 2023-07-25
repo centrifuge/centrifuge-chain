@@ -805,7 +805,7 @@ pub mod pallet {
 				}
 			}
 
-			let _count = Self::borrow_action(&who, pool_id, from_loan_id, &borrow_amount)?;
+			let _count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
 
 			Ok(())
 		}
