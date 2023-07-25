@@ -49,10 +49,10 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(274), added: 2749, mode: MaxEncodedLen)
 	fn create_order_v1() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1544`
-		//  Estimated: `32017272`
-		// Minimum execution time: 66_000 nanoseconds.
-		Weight::from_parts(68_000_000, 32017272)
+		//  Measured:  `1585`
+		//  Estimated: `32017313`
+		// Minimum execution time: 64_000 nanoseconds.
+		Weight::from_parts(65_000_000, 32017313)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(274), added: 2749, mode: MaxEncodedLen)
 	fn user_cancel_order() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1558`
+		//  Measured:  `1570`
 		//  Estimated: `32012984`
 		// Minimum execution time: 49_000 nanoseconds.
 		Weight::from_parts(50_000_000, 32012984)
@@ -93,10 +93,10 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(274), added: 2749, mode: MaxEncodedLen)
 	fn fill_order_full() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2396`
-		//  Estimated: `32030745`
-		// Minimum execution time: 93_000 nanoseconds.
-		Weight::from_parts(94_000_000, 32030745)
+		//  Measured:  `2449`
+		//  Estimated: `32030798`
+		// Minimum execution time: 92_000 nanoseconds.
+		Weight::from_parts(94_000_000, 32030798)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
