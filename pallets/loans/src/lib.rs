@@ -333,15 +333,23 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
 		},
-		/// The Portfolio Valuation for a pool was updated.
+		/// The portfolio valuation for a pool was updated.
 		PortfolioValuationUpdated {
 			pool_id: T::PoolId,
 			valuation: T::Balance,
 			update_type: PortfolioValuationUpdateType,
 		},
+		/// The write off policy for a pool was updated.
 		WriteOffPolicyUpdated {
 			pool_id: T::PoolId,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		},
+		/// Debt has been transfered between loans
+		TransferDebt {
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			amount: T::Balance,
 		},
 	}
 
@@ -799,13 +807,21 @@ pub mod pallet {
 					)
 				}
 				PricingAmount::External(_external) => {
-					// TODO: handle it once slippage is added.
-					// TODO: if quantity is measured as a rate, then slippage
-					// can be removed and used instead a decimal quantity.
+					// TODO (1): handle it once slippage is added.
+					// TODO (2): if quantity is measured as a rate,
+					// then instead of using slippage we can use quantity with
+					// decimals.
 				}
 			}
 
 			let _count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
+
+			Self::deposit_event(Event::<T>::TransferDebt {
+				pool_id,
+				from_loan_id,
+				to_loan_id,
+				amount: repaid_amount.repaid_amount()?.total()?,
+			});
 
 			Ok(())
 		}
