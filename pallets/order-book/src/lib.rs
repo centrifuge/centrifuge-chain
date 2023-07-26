@@ -64,6 +64,15 @@ pub mod pallet {
 	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
+
+	/// Order of pallet config type
+	pub type OrderOf<T> = Order<
+		<T as frame_system::Config>::Hash,
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::AssetCurrencyId,
+		<T as Config>::ForeignCurrencyBalance,
+	>;
+
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -195,7 +204,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::Hash,
-		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
+		OrderOf<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -389,32 +398,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Get all orders for an account
-		/// Provided for frontend to grab orders for an individual account
-		pub fn get_account_orders(
-			account_id: T::AccountId,
-		) -> Result<
-			sp_std::vec::Vec<(
-				T::Hash,
-				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
-			)>,
-			Error<T>,
-		> {
-			Ok(<UserOrders<T>>::iter_prefix(account_id).collect())
-		}
-
-		/// Get all orders
-		/// Provided for frontend to grab all open orders
-		pub fn get_all_orders() -> Result<
-			sp_std::vec::Vec<(
-				T::Hash,
-				Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
-			)>,
-			Error<T>,
-		> {
-			Ok(<Orders<T>>::iter().collect())
-		}
-
 		/// Remove an order from storage
 		pub fn remove_order(order_id: T::Hash) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;

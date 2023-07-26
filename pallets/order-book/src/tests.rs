@@ -15,7 +15,7 @@ fn create_order_v1_works() {
 			100,
 			10
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
 			Ok(Order {
@@ -61,7 +61,7 @@ fn user_cancel_order_works() {
 			100,
 			10
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::user_cancel_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			order_id
@@ -93,7 +93,7 @@ fn fill_order_full_works() {
 			10000,
 			2
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		// verify fulfill runs
 		assert_ok!(OrderBook::fill_order_full(
 			RuntimeOrigin::signed(ACCOUNT_1),
@@ -164,7 +164,7 @@ fn place_order_works() {
 			10,
 			100
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
 			Ok(Order {
@@ -249,7 +249,7 @@ fn ensure_nonce_updates_order_correctly() {
 			10,
 			100
 		));
-		let [(order_id_0, _), (order_id_1, _)] = OrderBook::get_account_orders(ACCOUNT_0)
+		let [(order_id_0, _), (order_id_1, _)] = get_account_orders(ACCOUNT_0)
 			.unwrap()
 			.into_iter()
 			.collect::<Vec<_>>()[..] else {panic!("Unexpected order count")};
@@ -302,7 +302,7 @@ fn cancel_order_works() {
 			10,
 			100
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::cancel_order(order_id));
 		assert_err!(
 			Orders::<Runtime>::get(order_id),
@@ -354,7 +354,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 			10
 		));
 
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_err!(
 			OrderBook::user_cancel_order(RuntimeOrigin::signed(ACCOUNT_1), order_id),
 			Error::<Runtime>::Unauthorised
@@ -388,7 +388,7 @@ fn update_order_works() {
 			10,
 			100
 		));
-		let (order_id, _) = OrderBook::get_account_orders(ACCOUNT_0).unwrap()[0];
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::update_order(ACCOUNT_0, order_id, 110, 20, 110));
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
@@ -449,4 +449,13 @@ fn update_order_works() {
 			})
 		);
 	})
+}
+
+pub fn get_account_orders(
+	account_id: <Runtime as frame_system::Config>::AccountId,
+) -> Result<
+	sp_std::vec::Vec<(<Runtime as frame_system::Config>::Hash, OrderOf<Runtime>)>,
+	Error<Runtime>,
+> {
+	Ok(<UserOrders<Runtime>>::iter_prefix(account_id).collect())
 }
