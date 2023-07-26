@@ -215,6 +215,9 @@ pub mod pallet {
 	/// order creation.
 	#[pallet::storage]
 	pub type NonceStore<T: Config> = StorageValue<_, T::Nonce, ValueQuery>;
+
+	/// Map of Vec containing OrderIds of same asset in/out pairs.
+	/// Allows looking up orders available corresponding pairs.
 	#[pallet::storage]
 	pub type AssetPairOrders<T: Config> = StorageDoubleMap<
 		_,
