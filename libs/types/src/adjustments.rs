@@ -10,6 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_runtime::{
+	traits::{EnsureAdd, EnsureSub},
+	ArithmeticError,
+};
+
 #[derive(Clone, Copy)]
 pub enum Adjustment<Amount> {
 	Increase(Amount),
@@ -21,6 +26,35 @@ impl<Amount> Adjustment<Amount> {
 		match self {
 			Adjustment::Increase(amount) => amount,
 			Adjustment::Decrease(amount) => amount,
+		}
+	}
+
+	pub fn map<F, R>(self, f: F) -> Adjustment<R>
+	where
+		F: FnOnce(Amount) -> R,
+	{
+		match self {
+			Adjustment::Increase(amount) => Adjustment::Increase(f(amount)),
+			Adjustment::Decrease(amount) => Adjustment::Decrease(f(amount)),
+		}
+	}
+
+	pub fn try_map<F, E, R>(self, f: F) -> Result<Adjustment<R>, E>
+	where
+		F: FnOnce(Amount) -> Result<R, E>,
+	{
+		match self {
+			Adjustment::Increase(amount) => f(amount).map(Adjustment::Increase),
+			Adjustment::Decrease(amount) => f(amount).map(Adjustment::Decrease),
+		}
+	}
+}
+
+impl<Amount: EnsureAdd + EnsureSub> Adjustment<Amount> {
+	pub fn ensure_add(self, amount: Amount) -> Result<Amount, ArithmeticError> {
+		match self {
+			Adjustment::Increase(inc) => amount.ensure_add(inc),
+			Adjustment::Decrease(dec) => amount.ensure_sub(dec),
 		}
 	}
 }

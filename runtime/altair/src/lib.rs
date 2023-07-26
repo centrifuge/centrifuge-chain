@@ -124,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1027,
+	spec_version: 1028,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1277,7 +1277,7 @@ impl orml_oracle::Config for Runtime {
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
 	type OracleKey = OracleKey;
-	type OracleValue = Rate;
+	type OracleValue = Balance;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1286,7 +1286,7 @@ impl orml_oracle::Config for Runtime {
 
 impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
-	type Data = Rate;
+	type Data = Balance;
 	type DataId = OracleKey;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxCollectionSize;
@@ -1296,10 +1296,10 @@ impl pallet_data_collector::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
 	// TODO: This is a stopgap value until we can calculate it correctly with
 	// updated benchmarks. See #1024
 	type MaxRateCount = MaxActiveLoansPerPool;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = weights::pallet_interest_accrual::WeightInfo<Self>;
@@ -1824,6 +1824,14 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
+mod __runtime_api_use {
+	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+}
+
+#[cfg(not(feature = "disable-runtime-api"))]
+use __runtime_api_use::*;
+
+#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -2007,6 +2015,21 @@ impl_runtime_apis! {
 				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
 				_ => None,
 			}
+		}
+	}
+
+	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+		fn portfolio(
+			pool_id: PoolId
+		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
+			Loans::get_active_loans_info(pool_id).unwrap_or_default()
+		}
+
+		fn portfolio_loan(
+			pool_id: PoolId,
+			loan_id: LoanId
+		) -> Option<ActiveLoanInfo<Runtime>> {
+			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
 		}
 	}
 

@@ -67,8 +67,9 @@ pub const POLICY_PERCENTAGE: f64 = 0.5;
 pub const POLICY_PENALTY: f64 = 0.5;
 pub const REGISTER_PRICE_ID: PriceId = 42;
 pub const UNREGISTER_PRICE_ID: PriceId = 88;
-pub const PRICE_VALUE: Rate = Rate::from_u32(1000);
-pub const QUANTITY: Balance = 20;
+pub const PRICE_VALUE: Balance = 998;
+pub const NOTIONAL: Balance = 1000;
+pub const QUANTITY: Rate = Rate::from_rational(20, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -181,8 +182,8 @@ impl pallet_uniques::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type Weights = ();
@@ -203,8 +204,8 @@ impl pallet_mock_permissions::Config for Runtime {
 impl pallet_mock_data::Config for Runtime {
 	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
 	type CollectionId = PoolId;
-	type Data = Result<(Rate, Moment), DispatchError>;
-	type DataElem = Rate;
+	type Data = Result<(Balance, Moment), DispatchError>;
+	type DataElem = Balance;
 	type DataId = PriceId;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxCollectionSize = MaxActiveLoansPerPool;

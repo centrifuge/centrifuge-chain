@@ -58,13 +58,10 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = tr
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 
-# Local crates
-runtime-common = { path = "../../runtime/common", default-features = true }
-
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "pallet-balances",
   "orml-tokens",
   "cfg-primitives/runtime-benchmarks",
@@ -89,7 +86,6 @@ std = [
   "orml-tokens/std",
   "orml-traits/std",
   "pallet-balances/std",
-  "runtime-common/std",
   "xcm/std",
   "pallet-ethereum/std",
   "xcm-primitives/std",

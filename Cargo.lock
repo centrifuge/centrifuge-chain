@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.27"
+version = "0.10.28"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -992,7 +992,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.27"
+version = "0.10.28"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -2645,6 +2645,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-data-collector",
@@ -6906,7 +6907,6 @@ dependencies = [
  "pallet-fees",
  "pallet-timestamp",
  "parity-scale-codec 3.4.0",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -7023,7 +7023,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-uniques",
  "parity-scale-codec 3.4.0",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-core",
@@ -7032,6 +7031,26 @@ dependencies = [
  "sp-std",
  "xcm",
  "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-connectors-gateway"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "rand 0.8.5",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7432,7 +7451,6 @@ dependencies = [
  "pallet-balances",
  "pallet-restricted-tokens",
  "parity-scale-codec 3.4.0",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -10690,6 +10708,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "fp-self-contained",
  "frame-support",
  "frame-system",
  "hex-literal 0.2.2",
@@ -10699,6 +10718,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-connectors",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",

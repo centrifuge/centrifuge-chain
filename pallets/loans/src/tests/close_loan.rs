@@ -25,8 +25,8 @@ fn with_wrong_borrower() {
 		);
 
 		// Make the loan active and ready to be closed
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
-		util::repay_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
 			Loans::close(RuntimeOrigin::signed(OTHER_BORROWER), POOL_A, loan_id),
@@ -39,8 +39,8 @@ fn with_wrong_borrower() {
 fn without_fully_repaid_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
-		util::repay_loan(loan_id, COLLATERAL_VALUE / 2);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 
 		assert_noop!(
 			Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
@@ -53,9 +53,10 @@ fn without_fully_repaid_internal() {
 fn without_fully_repaid_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
-		util::borrow_loan(loan_id, amount);
-		util::repay_loan(loan_id, amount / 2);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE);
+		util::repay_loan(loan_id, PricingAmount::External(amount));
 
 		assert_noop!(
 			Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
@@ -68,8 +69,8 @@ fn without_fully_repaid_external() {
 fn with_time_after_fully_repaid_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
-		util::repay_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR);
 
@@ -87,8 +88,8 @@ fn with_time_after_fully_repaid_internal() {
 fn with_fully_repaid_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
-		util::repay_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		assert_ok!(Loans::close(
 			RuntimeOrigin::signed(BORROWER),
@@ -104,9 +105,9 @@ fn with_fully_repaid_internal() {
 fn with_fully_repaid_external() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
-		util::borrow_loan(loan_id, amount);
-		util::repay_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount.clone()));
+		util::repay_loan(loan_id, PricingAmount::External(amount));
 
 		config_mocks();
 		assert_ok!(Loans::close(

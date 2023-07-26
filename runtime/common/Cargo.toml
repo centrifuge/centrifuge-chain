@@ -40,12 +40,18 @@ pallet-evm = { git = "https://github.com/PureStake/frontier", default-features =
 pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
+# There is a bug in the frontier repo that adds pallet-ethereum without a try-runtime dependency
+# for this crate which makes our compilation fail with the i_know_what_i_am_doing error.
+# It seem fixed in 0.9.39, and this dependency can be removed from this file safely.
+fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
+pallet-connectors = { path = "../../pallets/connectors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -62,6 +68,7 @@ std = [
   "frame-system/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-connectors/std",
   "pallet-base-fee/std",
   "pallet-ethereum/std",
   "pallet-evm/std",
@@ -89,6 +96,7 @@ std = [
   "serde/std",
   "scale-info/std",
   "xcm/std",
+  "fp-self-contained/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -99,6 +107,7 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-connectors/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
@@ -122,6 +131,7 @@ try-runtime = [
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
+  "pallet-connectors/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-data-collector/try-runtime",
@@ -132,4 +142,5 @@ try-runtime = [
   "sp-runtime/try-runtime",
   "pallet-ethereum/try-runtime",
   "pallet-evm-chain-id/try-runtime",
+  "fp-self-contained/try-runtime",
 ]

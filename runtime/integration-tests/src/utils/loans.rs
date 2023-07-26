@@ -16,19 +16,20 @@ use std::{collections::HashMap, time::Duration};
 use cfg_primitives::{
 	AccountId, Address, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_YEAR,
 };
+use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
 	entities::{
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing,
+			Pricing, PricingAmount, RepaidPricingAmount,
 		},
 	},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
-		RepayRestrictions, RepaymentSchedule,
+		RepaidAmount, RepayRestrictions, RepaymentSchedule,
 	},
 	Call as LoansCall,
 };
@@ -115,7 +116,7 @@ pub fn issue_default_loan(
 ) -> Vec<RuntimeCall> {
 	let loan_info = LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed(maturity),
+			maturity: Maturity::fixed(maturity),
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
@@ -123,16 +124,22 @@ pub fn issue_default_loan(
 			manager.collateral_class_id(pool_id),
 			manager.next_collateral_id(pool_id),
 		),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: rate_from_percent(15),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		pricing: Pricing::Internal(InternalPricing {
 			collateral_value: amount,
-			interest_rate: rate_from_percent(15),
 			max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
 				advance_rate: rate_from_percent(90),
 			},
 			valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 				probability_of_default: rate_from_percent(5),
 				loss_given_default: rate_from_percent(50),
-				discount_rate: rate_from_percent(4),
+				discount_rate: InterestRate::Fixed {
+					rate_per_year: rate_from_percent(4),
+					compounding: CompoundingSchedule::Secondly,
+				},
 			}),
 		}),
 		restrictions: LoanRestrictions {
@@ -175,7 +182,11 @@ pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Runtime>) -> RuntimeCall
 	RuntimeCall::Loans(LoansCall::create { pool_id, info })
 }
 
-pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeCall {
+pub fn borrow_call(
+	pool_id: PoolId,
+	loan_id: LoanId,
+	amount: PricingAmount<Runtime>,
+) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::borrow {
 		pool_id,
 		loan_id,
@@ -186,14 +197,12 @@ pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Runtime
 pub fn repay_call(
 	pool_id: PoolId,
 	loan_id: LoanId,
-	amount: Balance,
-	unchecked_amount: Balance,
+	amount: RepaidPricingAmount<Runtime>,
 ) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
 		amount,
-		unchecked_amount,
 	})
 }
 

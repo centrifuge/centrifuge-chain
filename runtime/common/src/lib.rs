@@ -21,6 +21,7 @@ mod tests;
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod routers;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -288,13 +289,13 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{AccountId, Moment};
-	use cfg_types::{fixed_point::Rate, oracles::OracleKey};
+	use cfg_primitives::types::{AccountId, Balance, Moment};
+	use cfg_types::oracles::OracleKey;
 	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
 	use sp_runtime::DispatchResult;
 	use sp_std::{marker::PhantomData, vec::Vec};
 
-	type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
+	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
 
 	/// Always choose the last updated value in case of several values.
 	pub struct LastOracleValue;
@@ -312,19 +313,19 @@ pub mod oracle {
 		}
 	}
 
-	/// A provider that maps an `OracleValue` into a tuple `(Rate, Moment)`.
+	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
 	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
 	/// and can be removed once they fix this.
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
 	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
-		DataProviderExtended<OracleKey, (Rate, Moment)> for DataProviderBridge<OrmlOracle>
+		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
 	{
-		fn get_no_op(key: &OracleKey) -> Option<(Rate, Moment)> {
+		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
 			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
 		}
 
-		fn get_all_values() -> Vec<(OracleKey, Option<(Rate, Moment)>)> {
+		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
 			OrmlOracle::get_all_values()
 				.into_iter()
 				.map(|elem| {
@@ -338,18 +339,18 @@ pub mod oracle {
 		}
 	}
 
-	impl<OrmlOracle: DataProvider<OracleKey, Rate>> DataProvider<OracleKey, Rate>
+	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
 		for DataProviderBridge<OrmlOracle>
 	{
-		fn get(key: &OracleKey) -> Option<Rate> {
+		fn get(key: &OracleKey) -> Option<Balance> {
 			OrmlOracle::get(key)
 		}
 	}
 
-	impl<OrmlOracle: DataFeeder<OracleKey, Rate, AccountId>> DataFeeder<OracleKey, Rate, AccountId>
-		for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
+		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
 	{
-		fn feed_value(who: AccountId, key: OracleKey, value: Rate) -> DispatchResult {
+		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
 			OrmlOracle::feed_value(who, key, value)
 		}
 	}
@@ -424,10 +425,11 @@ pub mod changes {
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
 				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
 					LoanMutation::Maturity(_) => vec![week, blocked],
+					LoanMutation::MaturityExtension(_) => vec![],
 					LoanMutation::InterestPayments(_) => vec![week, blocked],
 					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
+					LoanMutation::InterestRate(_) => vec![epoch],
 					LoanMutation::Internal(mutation) => match mutation {
-						InternalMutation::InterestRate(_) => vec![epoch],
 						InternalMutation::ValuationMethod(_) => vec![week, blocked],
 						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
 						InternalMutation::LossGivenDefault(_) => vec![epoch],
@@ -468,6 +470,46 @@ pub mod changes {
 		fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
 			let RuntimeChange::Loan(loan_change) = self;
 			Ok(loan_change)
+		}
+	}
+
+	pub mod fast {
+		use pallet_pool_system::pool_types::changes::Requirement;
+
+		use super::*;
+
+		const SECONDS_PER_WEEK: u32 = 60;
+
+		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
+
+		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+			fn from(runtime_change: RuntimeChange<T>) -> Self {
+				PoolChangeProposal::new(
+					PoolChangeProposal::from(runtime_change.0)
+						.requirements()
+						.map(|req| match req {
+							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
+							req => req,
+						}),
+				)
+			}
+		}
+
+		/// Used for building CfgChanges in pallet-loans
+		impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
+			fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+				Self(loan_change.into())
+			}
+		}
+
+		/// Used for recovering LoanChange in pallet-loans
+		impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+				self.0.try_into()
+			}
 		}
 	}
 }

@@ -27,16 +27,15 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
-cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
-cfg-types = { path = "../../libs/types", default-features = true }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true }
-runtime-common = { path = "../../runtime/common", default-features = true }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+cfg-test-utils = { path = "../../libs/test-utils" }
+cfg-types = { path = "../../libs/types" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -49,6 +48,7 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
 ]
 std = [
   "cfg-primitives/std",
@@ -64,6 +64,7 @@ std = [
   "serde/std",
 ]
 try-runtime = [
+  "cfg-test-utils/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",

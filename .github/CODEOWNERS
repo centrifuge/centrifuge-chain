@@ -1,85 +1,51 @@
 # Centrifudge Code Owners
 
-# Changes to .github
+## Changes to .github
 .github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
-# Changes to ci
+## Changes to ci
 ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
-# Changes to the service of our chain.
-src/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+## Changes to the service of our chain.
+node/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
-# Changes to chain-specs
-res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+## Changes to chain-specs
+node/res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @wischli
 
-# Changes to specific pallets
-## Connectors related logic
-pallets/connectors/* @NunoAlexandre @offerijns
+## Changes to toml files
+*.toml @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm @wischli @cdamian @thea-leake
 
-## Rewards related logic
+## Changes to specific pallets
+pallets/connectors/* @NunoAlexandre @cdamian @wischli @mustermeiszer
 pallets/rewards/* @lemunozm @mikiquantum
 pallets/liquidity-rewards/* @lemunozm @mikiquantum
 pallets/block-rewards/* @wischli @lemunozm
-
-## Nft-sales related logic
 pallets/nft-sales/* @NunoAlexandre
-
-## Pallet Keystore
 pallets/keystore/* @cdamian @mikiquantum
-
-## Pallet Registry
 pallets/pool-registry/* @mustermeiszer
-
-## Pallet Pool-System
 pallets/pool-system/* @mustermeiszer @branan @offerijns
-
-## Pallet Pool-System
-pallets/loans-ref/* @mustermeiszer @branan @offerijns @lemunozm
-
-## Pallet Interest-Accrual
+pallets/loans/* @mustermeiszer @branan @offerijns @lemunozm
 pallets/interest-accrual/* @branan @lemunozm
-
-## Pallet Investments
 pallets/investments/* @mustermeiszer
-
-## Pallet Permissions
 pallets/permissions/* @mustermeiszer
-
-## Pallet Restricted-Tokens
 pallets/restricted-tokens/* @mustermeiszer
+pallets/data-collector/* @lemunozm
+pallets/fees/* @lemunozm @mikiquantum
+pallets/transfer-allowlist/* @thea-leake @mustermeiszer
 
-## Pallet Collection-Data-Feed
-pallets/collection-data-feed/* @lemunozm
-
-# Changes to libs
 ## Changes to specific libraries
-
-### mock-builder crate
 libs/mock-builder/* @lemunozm
-
-### cfg-traits crate
-#### rewards module
+libs/mocks/* @lemunozm
 libs/traits/src/rewards.rs @lemunozm
-
-#### rewards module
+libs/traits/src/changes.rs @lemunozm
 libs/traits/src/data.rs @lemunozm
 
-#### ensure module
-libs/traits/src/ops.rs @lemunozm
+## Changes to runtime
+runtime/common/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns @lemunozm
+runtime/altair/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns @wischli
+runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns @wischli
 
-# Changes to runtime
-## Changes to centrifuge-runtime
-runtime/altair/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns
-
-## Changes to altair-runtime
-runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns
-
-## Changes to folders inside runtime
-### Changes to runtime/integration-tests
-runtime/integration-tests/* @mustermeiszer @NunoAlexandre
-
-### Changes to runtime/integration-tests/rewards
-runtime/integration-tests/rewards/* @wischli
-
-### Changes to runtime/integration-tests/xcm/
+## Changes to integration tests
+runtime/integration-tests/* @mustermeiszer @NunoAlexandre @wischli @cdamian
+runtime/integration-tests/rewards/* @wischli @lemunozm
 runtime/integration-tests/xcm/* @NunoAlexandre

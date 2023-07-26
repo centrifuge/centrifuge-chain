@@ -88,7 +88,7 @@ fn with_wrong_schedule() {
 
 		let loan = LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed(now().as_secs()),
+				maturity: Maturity::fixed(now().as_secs()),
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
@@ -111,7 +111,10 @@ fn with_wrong_valuation() {
 				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.0),
 					loss_given_default: Rate::from_float(0.0),
-					discount_rate: Rate::from_float(1.1), // Too high
+					discount_rate: InterestRate::Fixed {
+						rate_per_year: Rate::from_float(1.1), // Too high
+						compounding: CompoundingSchedule::Secondly,
+					},
 				}),
 				..util::base_internal_pricing()
 			}),
@@ -131,16 +134,36 @@ fn with_wrong_interest_rate() {
 		config_mocks(POOL_A);
 
 		let loan = LoanInfo {
-			pricing: Pricing::Internal(InternalPricing {
-				interest_rate: Rate::from_float(3.0), // Too high
-				..util::base_internal_pricing()
-			}),
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: Rate::from_float(3.0),
+				compounding: CompoundingSchedule::Secondly,
+			}, // Too high
 			..util::base_internal_loan()
 		};
 
 		assert_noop!(
 			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 			pallet_interest_accrual::Error::<Runtime>::InvalidRate
+		);
+	});
+}
+
+#[test]
+fn with_no_natural_quantity() {
+	new_test_ext().execute_with(|| {
+		config_mocks(POOL_A);
+
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY + Rate::from_float(0.1)),
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		assert_noop!(
+			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
+			Error::<Runtime>::AmountNotNaturalNumber
 		);
 	});
 }
@@ -153,7 +176,7 @@ fn with_unregister_price_id() {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
-				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
+				..util::base_external_pricing()
 			}),
 			..util::base_external_loan()
 		};
