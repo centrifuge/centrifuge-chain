@@ -414,7 +414,7 @@ pub mod changes {
 			#[cfg(not(feature = "fast-runtime"))]
 			use cfg_primitives::SECONDS_PER_WEEK;
 			#[cfg(feature = "fast-runtime")]
-			const SECONDS_PER_WEEK: u64 = 0;
+			const SECONDS_PER_WEEK: u64 = 120;
 
 			use pallet_loans::types::{InternalMutation, LoanMutation};
 			use pallet_pool_system::pool_types::changes::Requirement;
