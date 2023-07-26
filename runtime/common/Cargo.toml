@@ -144,3 +144,6 @@ try-runtime = [
   "pallet-evm-chain-id/try-runtime",
   "fp-self-contained/try-runtime",
 ]
+
+# Set timing constants (e.g. session period) to faster versions to speed up testing.
+fast-runtime = []

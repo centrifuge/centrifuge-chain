@@ -267,6 +267,7 @@ try-runtime = [
 ]
 
 fast-runtime = [
+  "runtime-common/fast-runtime",
   "altair-runtime/fast-runtime",
   "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
