@@ -36,29 +36,29 @@ const CURRENCY_0: u128 = 1_000_000_000_000_000_000u128;
 const CURRENCY_1: u128 = 1_000_000_000_000_000u128;
 
 benchmarks! {
-		where_clause {
+	where_clause {
 		where
-				T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
-		<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
-}
+			T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
+			<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
+	}
 
-		create_order_v1 {
-				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+	create_order_v1 {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100u32.into(), 10u32.into())
 
-		user_cancel_order {
-				let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+	user_cancel_order {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-				let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
 
-		}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
+	}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
 
-		fill_order_full {
-				let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+	fill_order_full {
+		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-				let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
 
-		}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
+	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 }
 
 fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>>(

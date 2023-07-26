@@ -133,7 +133,8 @@ pub mod pallet {
 			+ FixedPointOperand
 			+ TypeInfo;
 
-		/// Type used for nonce to ensure all orders have unique ID
+		/// Type used for Nonce used in OrderId generation.  Nonce ensures each
+		/// OrderId is unique. Nonce incremented
 		type Nonce: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
