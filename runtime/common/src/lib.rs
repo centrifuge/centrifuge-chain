@@ -472,4 +472,44 @@ pub mod changes {
 			Ok(loan_change)
 		}
 	}
+
+	pub mod fast {
+		use pallet_pool_system::pool_types::changes::Requirement;
+
+		use super::*;
+
+		const SECONDS_PER_WEEK: u32 = 60;
+
+		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
+
+		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+			fn from(runtime_change: RuntimeChange<T>) -> Self {
+				PoolChangeProposal::new(
+					PoolChangeProposal::from(runtime_change.0)
+						.requirements()
+						.map(|req| match req {
+							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
+							req => req,
+						}),
+				)
+			}
+		}
+
+		/// Used for building CfgChanges in pallet-loans
+		impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
+			fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+				Self(loan_change.into())
+			}
+		}
+
+		/// Used for recovering LoanChange in pallet-loans
+		impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+				self.0.try_into()
+			}
+		}
+	}
 }
