@@ -179,12 +179,6 @@ pub mod pallet {
 		pub max_sell_amount: ForeignCurrencyBalance,
 	}
 
-	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Claim<T: Config> {
-		claiming_account: T::AccountId,
-		order_claiming: T::Hash,
-	}
-
 	/// Map of Orders to look up orders by their order id.
 	#[pallet::storage]
 	pub type Orders<T: Config> = StorageMap<
