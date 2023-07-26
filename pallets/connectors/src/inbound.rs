@@ -103,6 +103,7 @@ impl<T: Config> Pallet<T> {
 		// Mint additional amount
 		T::Tokens::mint_into(currency, &investor, amount)?;
 
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
 		Ok(())
@@ -129,6 +130,7 @@ impl<T: Config> Pallet<T> {
 		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
 
 		// TODO: Handle response `ExecutedDecreaseInvestOrder` message to
@@ -164,6 +166,8 @@ impl<T: Config> Pallet<T> {
 
 		// Determine post adjustment amount
 		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
+
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		let post_amount = pre_amount.ensure_add(amount)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of origination domain
@@ -203,6 +207,7 @@ impl<T: Config> Pallet<T> {
 		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
 
 		// TODO: Handle response `ExecutedDecreaseRedemption` message to
@@ -229,6 +234,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		T::ForeignInvestment::collect_investment(investor, invest_id)?;
 
 		// TODO: Handle response `ExecutedCollectInvest` message to
@@ -251,6 +257,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
+		// TODO: Apply pallet_foreign_investment::ForeignInvestment
 		T::ForeignInvestment::collect_redemption(investor, invest_id)?;
 
 		// TODO: Handle response `ExecutedCollectRedeem` message to

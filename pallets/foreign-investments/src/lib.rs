@@ -47,7 +47,7 @@ pub mod pallet {
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::InvestState;
+	use types::{InvestState, RedeemState, TokenSwapReason};
 
 	use super::*;
 
@@ -194,10 +194,33 @@ pub mod pallet {
 		InvestState<T::Balance, T::CurrencyId>,
 	>;
 
+	/// Maps an investor and their `InvestmentId` to the corresponding
+	/// `RedeemState`.
+	///
+	/// NOTE: The lifetime of this storage starts with increasing a redemption
+	/// if there exists a processed investment. It ends with transferring back
+	/// the swapped return currency to the corresponding source domain from
+	/// which the investment originated. The lifecycle must go through the
+	/// following stages:
+	/// 	1. Increase redemption --> Initialize storage
+	/// 	2. Fully process pending redemption
+	/// 	3. Collect redemption
+	/// 	4. Trigger swap from pool to return currency
+	/// 	5. Completely fulfill swap order
+	/// 	6. Transfer back to source domain --> Kill storage entry
+	#[pallet::storage]
+	pub(super) type RedemptionState<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		RedeemState<T::Balance, T::CurrencyId>,
+	>;
+
+	// TODO: How to deal with `RedeemState` here?
 	/// Maps `TokenSwapOrders` to `InvestmentInfo` to implicitly enable mapping
 	/// to `InvestmentState`.
-	///
-	/// NOTE: Here, the `payment_currency` refers to the `pool_currency`.
 	///
 	/// NOTE: The storage is immediately killed when the swap order is
 	/// completely fulfilled even if the investment might not be fully
@@ -222,6 +245,23 @@ pub mod pallet {
 		T::TokenSwapOrderId,
 	>;
 
+	/// Maps a `TokenSwapOrderId` to the corresponding `TokenSwapReason` for
+	/// which it was last updated, i.e. `Investment` or `Redemption`.
+	///
+	/// As there can always be at most a single active token swap for any
+	/// `TokenSwapOrderId`, and thus also for any `(AccountId, InvestmentId)`
+	/// pair, we only need to keep track of the last reason when we act upon a
+	/// notified status update for any ongoing swap. Otherwise, it would be
+	/// impossible to know whether an invest or a redeem transition needs to be
+	/// applied.
+	///
+	/// NOTE: The storage is immediately killed when the swap order is
+	/// completely fulfilled even if the investment might not be fully
+	/// processed.
+	#[pallet::storage]
+	pub(super) type TokenSwapReasons<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, TokenSwapReason>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -235,6 +275,16 @@ pub mod pallet {
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		InvestmentInfoNotFound,
+		/// Failed to retrieve the `RedemptionInfo` from the given
+		/// `TokenSwapOrderId`.
+		///
+		/// NOTE: We must ensure, this can practically never happen!
+		RedemptionInfoNotFound,
+		/// Failed to retrieve the `TokenSwapReason` from the given
+		/// `TokenSwapOrderId`.
+		///
+		/// NOTE: We must ensure, this can practically never happen!
+		TokenSwapReasonNotFound,
 		/// Failed to determine whether the corresponding currency can be either
 		/// used for payment or payout of an investment.
 		///

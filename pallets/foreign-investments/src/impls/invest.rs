@@ -11,285 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ForeignInvestment, Investment, StatusNotificationHook, TokenSwaps};
-use cfg_types::investments::{ExecutedDecrease, InvestmentInfo};
-use frame_support::{traits::Get, transactional};
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureSub, Zero},
+	traits::{EnsureAdd, EnsureSub},
 	ArithmeticError, DispatchError, DispatchResult,
 };
 
-use crate::{
-	pallet,
-	types::{InvestState, InvestTransition, Swap},
-	Config, Error, ForeignInvestmentInfo, ForeignInvestmentInfoOf, InvestmentState, Pallet, SwapOf,
-	TokenSwapOrderIds,
-};
-
-// Handles the second stage of updating investments. Whichever (potentially
-// async) code path of the first stage concludes it (partially) should call
-// `Swap::Config::SwapNotificationHandler::notify_status_update(swap_order_id,
-// swapped_amount)`.
-impl<T: Config> StatusNotificationHook for Pallet<T> {
-	type Error = DispatchError;
-	type Id = T::TokenSwapOrderId;
-	type Status = SwapOf<T>;
-
-	fn notify_status_change(
-		id: T::TokenSwapOrderId,
-		status: SwapOf<T>,
-	) -> Result<(), DispatchError> {
-		let info = ForeignInvestmentInfo::<T>::get(id).ok_or(Error::<T>::InvestmentInfoNotFound)?;
-		let pre_state = InvestmentState::<T>::get(&info.owner, info.id).unwrap_or_default();
-
-		let post_state = pre_state.transition(InvestTransition::FulfillSwapOrder(status))
-			.map_err(|e| {
-				log::debug!("Encountered unexpected pre state {:?} when transitioning into {:?} after (partially) fulfilling a swap", pre_state, status);
-				e
-			})?;
-		Pallet::<T>::apply_state_transition(&info.owner, info.id, post_state.clone()).map(|e| {
-			log::debug!(
-				"Encountered unexpected error when applying state transition to state {:?}",
-				post_state
-			);
-			e
-		})
-	}
-}
-
-impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
-	type Amount = T::Balance;
-	type CurrencyId = T::CurrencyId;
-	type Error = DispatchError;
-	type InvestmentId = T::InvestmentId;
-
-	// Consumers such as Connectors should call this function instead of
-	// `Investment::update_invest_order` as this implementation accounts for
-	// (potentially) splitting the update into two stages. The second stage is
-	// resolved by `StatusNotificationHook::notify_status_change`.
-	fn update_foreign_invest_order(
-		who: &T::AccountId,
-		return_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-		investment_id: T::InvestmentId,
-		amount: T::Balance,
-	) -> Result<(), DispatchError> {
-		let pre_amount = T::Investment::investment(who, investment_id.clone())?;
-		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-
-		let post_state = if amount > pre_amount {
-			pre_state.transition(InvestTransition::IncreaseInvestOrder(Swap {
-				currency_in: pool_currency,
-				currency_out: return_currency,
-				amount,
-			}))
-		} else if amount < pre_amount {
-			pre_state.transition(InvestTransition::DecreaseInvestOrder(Swap {
-				currency_in: return_currency,
-				currency_out: pool_currency,
-				amount,
-			}))
-		} else {
-			Ok(pre_state)
-		}?;
-
-		Pallet::<T>::apply_state_transition(who, investment_id, post_state)?;
-
-		Ok(())
-	}
-
-	fn update_foreign_redemption(
-		who: &T::AccountId,
-		return_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-		investment_id: T::InvestmentId,
-		amount: T::Balance,
-	) -> Result<(), DispatchError> {
-		todo!()
-	}
-
-	fn collect_foreign_investment(
-		who: &T::AccountId,
-		return_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-		investment_id: T::InvestmentId,
-	) -> Result<(), DispatchError> {
-		todo!()
-	}
-
-	fn collect_foreign_redemption(
-		who: &T::AccountId,
-		return_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-		investment_id: T::InvestmentId,
-	) -> Result<(), DispatchError> {
-		todo!()
-	}
-}
-
-impl<T: Config> Pallet<T> {
-	/// Must be called after transitioning any `InvestState` via `transition` to
-	/// update the chain storage and execute various trait config hooks, e.g.
-	/// `ExecutedDecreaseHook`.
-	#[transactional]
-	fn apply_state_transition(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		state: InvestState<T::Balance, T::CurrencyId>,
-	) -> DispatchResult {
-		match state.clone() {
-			InvestState::NoState=> {
-				Self::kill_swap_order(who, investment_id)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
-				// Exit early to prevent setting InvestmentState
-				InvestmentState::<T>::remove(who, investment_id);
-				return Ok(());
-			},
-			InvestState::InvestmentOngoing { invest_amount } => {
-				Self::kill_swap_order(who, investment_id)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-			},
-			InvestState::ActiveSwapIntoPoolCurrency { swap } |
-			InvestState::ActiveSwapIntoReturnCurrency { swap } |
-			// We don't care about `done_amount` until swap into return is fulfilled
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
-				Self::place_swap_order(who, investment_id, swap)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-			},
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
-			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount } |
-			// We don't care about `done_amount` until swap into return is fulfilled
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
-				Self::place_swap_order(who, investment_id, swap)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-			},
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				Self::place_swap_order(who, investment_id, swap.clone())?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
-				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
-
-				// Exit early to prevent setting InvestmentState
-				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
-			},
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
-				Self::place_swap_order(who, investment_id, swap.clone())?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-
-				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
-
-				// Exit early to prevent setting InvestmentState
-				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
-			},
-			InvestState::SwapIntoReturnDone { done_swap } => {
-				Self::kill_swap_order(who, investment_id)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
-				Self::send_executed_decrease_hook(who, investment_id, done_swap.amount)?;
-
-				// Exit early to prevent setting InvestmentState
-				InvestmentState::<T>::remove(who, investment_id);
-				return Ok(());
-			},
-			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, invest_amount } => {
-				Self::kill_swap_order(who, investment_id)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-
-				Self::send_executed_decrease_hook(who, investment_id, done_swap.amount)?;
-
-				// Exit early to prevent setting InvestmentState
-				let new_state = InvestState::InvestmentOngoing { invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
-			},
-		};
-
-		InvestmentState::<T>::insert(who, investment_id, state);
-
-		// TODO: Emit event?
-
-		Ok(())
-	}
-
-	/// Kills all storage associated with token swaps and cancels the
-	/// potentially active swap order.
-	fn kill_swap_order(who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
-		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
-			T::TokenSwaps::cancel_order(swap_order_id);
-			ForeignInvestmentInfo::<T>::remove(swap_order_id);
-		}
-		Ok(())
-	}
-
-	/// Initializes or updates an existing swap order.
-	///
-	/// Sets up `TokenSwapOrderIds` and `ForeignInvestmentInfo` storages, if the
-	/// order does not exist yet.
-	fn place_swap_order(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		swap: SwapOf<T>,
-	) -> DispatchResult {
-		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::get(who, investment_id) {
-			T::TokenSwaps::update_order(
-				who.clone(),
-				swap_order_id,
-				swap.amount,
-				T::DefaultTokenSwapSellPriceLimit::get(),
-				T::DefaultTokenMinFulfillmentAmount::get(),
-			)
-		} else {
-			// TODO: How to handle potential failure?
-			let order_id = T::TokenSwaps::place_order(
-				who.clone(),
-				swap.currency_out,
-				swap.currency_in,
-				swap.amount,
-				T::DefaultTokenSwapSellPriceLimit::get(),
-				T::DefaultTokenMinFulfillmentAmount::get(),
-			)?;
-			TokenSwapOrderIds::<T>::insert(who, investment_id, order_id);
-			ForeignInvestmentInfo::<T>::insert(
-				order_id,
-				ForeignInvestmentInfoOf::<T> {
-					owner: who.clone(),
-					id: investment_id,
-				},
-			);
-			Ok(())
-		}
-	}
-
-	/// Sends `ExecutedDecreaseHook` notification such that any potential
-	/// consumer could act upon that, e.g. Connectors for
-	/// `ExecutedDecrease{Invest, Redeem}Order`.
-	fn send_executed_decrease_hook(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		amount_payout: T::Balance,
-	) -> DispatchResult {
-		// TODO(@mustermeiszer): Does this return the entire desired amount or do we
-		// need to tap into collecting?
-		let amount_remaining = T::Investment::investment(who, investment_id)?;
-
-		// TODO(@mustermeiszer): Do we add the active swap amount?
-		T::ExecutedDecreaseHook::notify_status_change(
-			ForeignInvestmentInfoOf::<T> {
-				owner: who.clone(),
-				id: investment_id,
-			},
-			ExecutedDecrease {
-				amount_payout,
-				amount_remaining,
-			},
-		)
-	}
-}
+use crate::types::{InvestState, InvestTransition, Swap};
 
 impl<Balance, Currency> InvestState<Balance, Currency>
 where
@@ -311,6 +38,33 @@ where
 			InvestTransition::FulfillSwapOrder(swap) => {
 				Self::handle_fulfilled_swap_order(&self, swap)
 			}
+		}
+	}
+
+	/// Returns the potentially existing active swap into either return or pool
+	/// currency:
+	///
+	/// * If the state includes `ActiveSwapInto{Pool, Return}Currency`, it
+	///   returns `Some(swap)`.
+	/// * Else, it returns `None`.
+	pub(crate) fn get_active_swap(&self) -> Option<Swap<Balance, Currency>> {
+		match *self {
+			InvestState::NoState => None,
+			InvestState::InvestmentOngoing { .. } => None,
+			InvestState::ActiveSwapIntoPoolCurrency { swap } => Some(swap),
+			InvestState::ActiveSwapIntoReturnCurrency { swap } => Some(swap),
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
+			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, .. } => Some(swap),
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => Some(swap),
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, .. } => {
+				Some(swap)
+			},
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, .. } => {
+				Some(swap)
+			},
+			InvestState::SwapIntoReturnDone { .. } => None,
+			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { .. } => None,
 		}
 	}
 }
@@ -395,15 +149,17 @@ where
 
 				// pool swap amount is immediately invested and done amount increased equally
 				if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-						swap: Swap {
-							// safe since swap.amount < return_swap.amount
-							amount: return_swap.amount - swap.amount,
-							..*return_swap
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount < return_swap.amount
+								amount: return_swap.amount - swap.amount,
+								..*return_swap
+							},
+							done_amount,
+							invest_amount,
 						},
-						done_amount,
-						invest_amount,
-					})
+					)
 				}
 				// swap amount is immediately invested and done amount increased equally
 				else if swap.amount == return_swap.amount {
@@ -435,14 +191,13 @@ where
 				Self::ensure_currencies_match(true, &swap, pool_swap)?;
 
 				Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-						swap: Swap {
-							amount: swap.amount.ensure_add(pool_swap.amount)?,
-							..swap
-						},
-						invest_amount: *invest_amount,
-					}
-				)
-			},
+					swap: Swap {
+						amount: swap.amount.ensure_add(pool_swap.amount)?,
+						..swap
+					},
+					invest_amount: *invest_amount,
+				})
+			}
 			// Reduce return swap amount by the increasing amount and increase investing amount as
 			// well adding return_done amount by the minimum of active swap amounts
 			Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
@@ -456,15 +211,17 @@ where
 
 				// pool swap amount is immediately invested and done amount increased equally
 				if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-						swap: Swap {
-							// safe since swap.amount < return_swap.amount
-							amount: return_swap.amount - swap.amount,
-							..*return_swap
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount < return_swap.amount
+								amount: return_swap.amount - swap.amount,
+								..*return_swap
+							},
+							done_amount,
+							invest_amount,
 						},
-						done_amount,
-						invest_amount,
-					})
+					)
 				}
 				// swap amount is immediately invested and done amount increased equally
 				else if swap.amount == return_swap.amount {
@@ -510,11 +267,17 @@ where
 				}
 				// swap amount is immediately invested and done amount increased equally
 				else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
-						// safe since swap.amount < return_swap.amount
-						amount: return_swap.amount - swap.amount,
-						..*return_swap
-					}, done_amount, invest_amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount < return_swap.amount
+								amount: return_swap.amount - swap.amount,
+								..*return_swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
 				}
 				// return swap amount is immediately invested and done amount increased equally
 				else {
@@ -558,11 +321,17 @@ where
 				}
 				// swap amount is immediately invested and done amount increased equally
 				else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
-						// safe since swap.amount < return_swap.amount
-						amount: return_swap.amount - swap.amount,
-						..*return_swap
-					}, done_amount, invest_amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe since swap.amount < return_swap.amount
+								amount: return_swap.amount - swap.amount,
+								..*return_swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
 				}
 				// return swap amount is immediately invested and done amount increased equally
 				else {
@@ -579,7 +348,10 @@ where
 					)
 				}
 			}
-			_ => Err(DispatchError::Other("Invalid pre state, should automatically be transitioned into ActiveSwapIntoPoolCurrencyAndInvestmentOngoing"))
+			_ => Err(DispatchError::Other(
+				"Invalid pre state, should automatically be transitioned into \
+				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
+			)),
 		}
 	}
 
@@ -611,11 +383,18 @@ where
 
 		match &self {
 			// Cannot reduce if there is neither an ongoing investment nor an active swap into pool currency
-			InvestState::NoState | InvestState::ActiveSwapIntoReturnCurrency { .. } | InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. } => Err(DispatchError::Other("Invalid pre state when transitioning a decrease")),
+			InvestState::NoState
+			| InvestState::ActiveSwapIntoReturnCurrency { .. }
+			| InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. } => {
+				Err(DispatchError::Other("Invalid pre state when transitioning a decrease"))
+			},
 			// Increment return swap amount up to ongoing investment
 			InvestState::InvestmentOngoing { invest_amount } => {
 				if swap.amount < *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount: *invest_amount - swap.amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+						swap,
+						invest_amount: *invest_amount - swap.amount,
+					})
 				} else if swap.amount == *invest_amount {
 					Ok(Self::ActiveSwapIntoReturnCurrency { swap })
 				}
@@ -631,11 +410,14 @@ where
 				if swap.amount == pool_swap.amount {
 					Ok(Self::SwapIntoReturnDone { done_swap: swap })
 				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap: Swap {
-						// safe because swap.amount < pool_swap.amount
-						amount: pool_swap.amount - swap.amount,
-						..*pool_swap
-					}, done_amount: swap.amount})
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone {
+						swap: Swap {
+							// safe because swap.amount < pool_swap.amount
+							amount: pool_swap.amount - swap.amount,
+							..*pool_swap
+						},
+						done_amount: swap.amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -643,32 +425,53 @@ where
 				}
 			},
 			// Increment `return_done` up to pool swap amount and increment return swap amount up to ongoing investment
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap: pool_swap, invest_amount } => {
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: pool_swap,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(false, &swap, pool_swap)?;
 				let done_amount = swap.amount.min(pool_swap.amount);
 				let invest_amount = invest_amount.ensure_sub(done_amount)?;
 				let max_decrease_amount = pool_swap.amount.ensure_add(invest_amount)?;
 
 				if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
-						// safe because done_amount is min
-						amount: pool_swap.amount - done_amount,
-						..*pool_swap
-					}, done_amount, invest_amount })
-				}  else if swap.amount == pool_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing { done_swap: swap, invest_amount })
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe because done_amount is min
+								amount: pool_swap.amount - done_amount,
+								..*pool_swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
+				} else if swap.amount == pool_swap.amount {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						done_swap: swap,
+						invest_amount,
+					})
 				} else if swap.amount < max_decrease_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
-						// safe because done_amount is min
-						amount: swap.amount - done_amount,
-						..swap
-					}, done_amount, invest_amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe because done_amount is min
+								amount: swap.amount - done_amount,
+								..swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					)
 				} else if swap.amount == max_decrease_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap {
-						// safe because done_amount is min
-						amount: swap.amount - done_amount,
-						..swap
-					}, done_amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						swap: Swap {
+							// safe because done_amount is min
+							amount: swap.amount - done_amount,
+							..swap
+						},
+						done_amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -676,47 +479,62 @@ where
 				}
 			},
 			// Increment return swap up to ongoing investment
-			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap: return_swap, invest_amount } => {
+			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+				swap: return_swap,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, return_swap)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
 				if swap.amount < *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap: Swap {
-						amount,
-						..swap
-					},
-					// safe because invest_amount > swap_amount
-					invest_amount: *invest_amount - swap.amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+						swap: Swap { amount, ..swap },
+						// safe because invest_amount > swap_amount
+						invest_amount: *invest_amount - swap.amount,
+					})
 				} else if swap.amount == *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrency { swap: Swap {
-						amount,
-						..swap
-					} })
+					Ok(Self::ActiveSwapIntoReturnCurrency {
+						swap: Swap { amount, ..swap },
+					})
 				}
 				// should never occur but let's be safe here
 				else {
 					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
 				}
 			},
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: return_swap, done_amount, invest_amount } => {
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				swap: return_swap,
+				done_amount,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, return_swap)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
 				if swap.amount < *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap { amount, ..swap}, done_amount: *done_amount,
-						// safe because swap.amount < invest_amount
-						invest_amount: *invest_amount - swap.amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap { amount, ..swap },
+							done_amount: *done_amount,
+							// safe because swap.amount < invest_amount
+							invest_amount: *invest_amount - swap.amount,
+						},
+					)
 				} else if swap.amount == *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount, ..swap}, done_amount: *done_amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						swap: Swap { amount, ..swap },
+						done_amount: *done_amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
 					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
 				}
 			},
-			_ => Err(DispatchError::Other("Invalid pre state, should automatically be transitioned into ActiveSwapIntoPoolCurrencyAndInvestmentOngoing"))
-
-	}
+			_ => Err(DispatchError::Other(
+				"Invalid pre state, should automatically be transitioned into \
+				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
+			)),
+		}
 	}
 
 	/// Handle partial/full token swap order transitions  depicted by
@@ -748,19 +566,26 @@ where
 		swap: Swap<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
 		match &self {
-			InvestState::NoState | InvestState::InvestmentOngoing { ..} => Err(DispatchError::Other("Invalid pre state when transitioning a fulfilled order")),
+			InvestState::NoState | InvestState::InvestmentOngoing { .. } => Err(DispatchError::Other(
+				"Invalid pre state when transitioning a fulfilled order",
+			)),
 			// Increment ongoing investment by swapped amount
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				Self::ensure_currencies_match(true, &swap, pool_swap)?;
 
 				if swap.amount == pool_swap.amount {
-					Ok(Self::InvestmentOngoing { invest_amount: swap.amount })
+					Ok(Self::InvestmentOngoing {
+						invest_amount: swap.amount,
+					})
 				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap: Swap {
-						// safe because pool_swap.amount > swap.amount
-						amount: pool_swap.amount - swap.amount,
-						..swap
-					}, invest_amount: swap.amount })
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+						swap: Swap {
+							// safe because pool_swap.amount > swap.amount
+							amount: pool_swap.amount - swap.amount,
+							..swap
+						},
+						invest_amount: swap.amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -774,11 +599,14 @@ where
 				if swap.amount == return_swap.amount {
 					Ok(Self::SwapIntoReturnDone { done_swap: swap })
 				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap {
-						// safe because return_swap.amount > swap.amount
-						amount: return_swap.amount - swap.amount,
-						..swap
-					}, done_amount: swap.amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						swap: Swap {
+							// safe because return_swap.amount > swap.amount
+							amount: return_swap.amount - swap.amount,
+							..swap
+						},
+						done_amount: swap.amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -786,18 +614,24 @@ where
 				}
 			},
 			// Increment ongoing investment by swapped amount
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap: pool_swap, invest_amount } => {
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: pool_swap,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, pool_swap)?;
 				let invest_amount = invest_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == pool_swap.amount {
 					Ok(Self::InvestmentOngoing { invest_amount })
 				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap: Swap {
-						// safe because pool_swap.amount > swap.amount
-						amount: pool_swap.amount - swap.amount,
-						..swap
-					}, invest_amount })
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+						swap: Swap {
+							// safe because pool_swap.amount > swap.amount
+							amount: pool_swap.amount - swap.amount,
+							..swap
+						},
+						invest_amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -805,17 +639,29 @@ where
 				}
 			},
 			// Increment done_return by swapped amount, leave invest amount untouched
-			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap: return_swap, invest_amount } => {
+			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+				swap: return_swap,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, return_swap)?;
 
 				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing { done_swap: swap, invest_amount: *invest_amount })
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						done_swap: swap,
+						invest_amount: *invest_amount,
+					})
 				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: Swap {
-						// safe because return_swap.amount > swap.amount
-						amount: return_swap.amount - swap.amount,
-						..swap
-					}, done_amount: swap.amount, invest_amount: *invest_amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe because return_swap.amount > swap.amount
+								amount: return_swap.amount - swap.amount,
+								..swap
+							},
+							done_amount: swap.amount,
+							invest_amount: *invest_amount,
+						},
+					)
 				}
 				// should never occur but let's be safe here
 				else {
@@ -823,18 +669,29 @@ where
 				}
 			},
 			// Increment done_return by swapped amount
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: return_swap, done_amount } => {
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+				swap: return_swap,
+				done_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, return_swap)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDone { done_swap: Swap { amount: done_amount, ..swap } })
+					Ok(Self::SwapIntoReturnDone {
+						done_swap: Swap {
+							amount: done_amount,
+							..swap
+						},
+					})
 				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap {
-						// safe because return_swap.amount > swap.amount
-						amount: return_swap.amount - swap.amount,
-						..swap
-					}, done_amount })
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						swap: Swap {
+							// safe because return_swap.amount > swap.amount
+							amount: return_swap.amount - swap.amount,
+							..swap
+						},
+						done_amount,
+					})
 				}
 				// should never occur but let's be safe here
 				else {
@@ -842,25 +699,43 @@ where
 				}
 			},
 			// Increment done_return by swapped amount, leave invest amount untouched
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap: return_swap, done_amount, invest_amount } => {
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				swap: return_swap,
+				done_amount,
+				invest_amount,
+			} => {
 				Self::ensure_currencies_match(true, &swap, return_swap)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing { done_swap: Swap { amount: done_amount, ..swap }, invest_amount: *invest_amount })
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						done_swap: Swap {
+							amount: done_amount,
+							..swap
+						},
+						invest_amount: *invest_amount,
+					})
 				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing{ swap: Swap {
-						// safe because return_swap.amount > swap.amount
-						amount: return_swap.amount - swap.amount,
-						..swap
-					}, done_amount, invest_amount: *invest_amount })
+					Ok(
+						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap: Swap {
+								// safe because return_swap.amount > swap.amount
+								amount: return_swap.amount - swap.amount,
+								..swap
+							},
+							done_amount,
+							invest_amount: *invest_amount,
+						},
+					)
 				}
 				// should never occur but let's be safe here
 				else {
 					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
 				}
 			},
-			_ => Err(DispatchError::Other("Invalid pre state, should automatically be transitioned into state without AndSwapIntoReturnDone"))
+			_ => Err(DispatchError::Other(
+				"Invalid pre state, should automatically be transitioned into state without AndSwapIntoReturnDone",
+			)),
 		}
 	}
 
@@ -884,13 +759,21 @@ where
 			Self::InvestmentOngoing { invest_amount } => Ok(Self::InvestmentOngoing {
 				invest_amount: invest_amount.ensure_add(swap.amount)?,
 			}),
-			Self::ActiveSwapIntoPoolCurrency { .. } |
-			Self::ActiveSwapIntoReturnCurrency { .. } |
-			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { .. } |
-			Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { .. } |
-			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. } |
-			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { .. } => Err(DispatchError::Other("Invalid pre state when transitioning an increased swap order with the same in- and outgoing currency")),
-			_ => Err(DispatchError::Other("Invalid pre state, should automatically be transitioned into state without AndSwapIntoReturnDone"))
+			Self::ActiveSwapIntoPoolCurrency { .. }
+			| Self::ActiveSwapIntoReturnCurrency { .. }
+			| Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { .. }
+			| Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { .. }
+			| Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. }
+			| Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				..
+			} => Err(DispatchError::Other(
+				"Invalid pre state when transitioning an increased swap order with the same in- \
+				 and outgoing currency",
+			)),
+			_ => Err(DispatchError::Other(
+				"Invalid pre state, should automatically be transitioned into state without \
+				 AndSwapIntoReturnDone",
+			)),
 		}
 	}
 
@@ -919,7 +802,10 @@ where
 		}
 		// should never occur but let's be safe here
 		else {
-			Err(DispatchError::Other("Invalid pre state when transitioning a decreased swap order with the same in- and outgoing currency"))
+			Err(DispatchError::Other(
+				"Invalid pre state when transitioning a decreased swap order with the same in- \
+				 and outgoing currency",
+			))
 		}
 	}
 
@@ -954,74 +840,3 @@ where
 		}
 	}
 }
-
-// TODO: How to merge token swaps and investment trait? Create new trait
-// ForeignInvestment? > Check diagrams
-
-// impl<T: Config> Investment<T::AccountId> for Pallet<T> {
-// 	type Amount = T::Balance;
-// 	type CurrencyId = T::CurrencyId;
-// 	type Error = DispatchError;
-// 	type InvestmentId = T::InvestmentId;
-
-// 	fn update_investment(
-// 		who: &T::AccountId,
-// 		investment_id: Self::InvestmentId,
-// 		amount: Self::Amount,
-// 	) -> Result<(), Self::Error> {
-// 		let pre_amount = Self::investment(who, investment_id.clone())?;
-// 		let pre_state = InvestmentState::<T>::get(who,
-// investment_id.clone()).unwrap_or_default();
-
-// 		if amount > pre_amount {
-// 			// TODO: Can payment currency be derived?
-// 			let swap_currency =
-// 				<Self as Accountant>::info(investment_id).map(|info|
-// info.payment_currency()); 			let post_state: Option<InvestState<<T as
-// Config>::Balance, <T as Config>::CurrencyId>> = 				pre_state.
-// transition(InvestTransition::IncreaseInvestOrder(amount))?; 			Ok(())
-// 		} else if amount < pre_amount {
-// 			let post_state: Option<InvestState<<T as Config>::Balance, <T as
-// Config>::CurrencyId>> = 				pre_state.
-// transition(InvestTransition::DecreaseInvestOrder(amount))?; 			Ok(())
-// 		} else {
-// 			Ok(())
-// 		}
-// 	}
-
-// 	fn accepted_payment_currency(
-// 		investment_id: Self::InvestmentId,
-// 		currency: Self::CurrencyId,
-// 	) -> bool {
-// 		T::Investment::accepted_payment_currency(investment_id, currency)
-// 	}
-
-// 	fn investment(
-// 		who: &T::AccountId,
-// 		investment_id: Self::InvestmentId,
-// 	) -> Result<Self::Amount, Self::Error> {
-// 		todo!()
-// 	}
-
-// 	fn update_redemption(
-// 		who: &T::AccountId,
-// 		investment_id: Self::InvestmentId,
-// 		amount: Self::Amount,
-// 	) -> Result<(), Self::Error> {
-// 		todo!()
-// 	}
-
-// 	fn accepted_payout_currency(
-// 		investment_id: Self::InvestmentId,
-// 		currency: Self::CurrencyId,
-// 	) -> bool {
-// 		T::Investment::accepted_payout_currency(investment_id, currency)
-// 	}
-
-// 	fn redemption(
-// 		who: &T::AccountId,
-// 		investment_id: Self::InvestmentId,
-// 	) -> Result<Self::Amount, Self::Error> {
-// 		todo!()
-// 	}
-// }

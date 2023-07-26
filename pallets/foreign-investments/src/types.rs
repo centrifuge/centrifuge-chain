@@ -35,6 +35,16 @@ pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: C
 	pub amount: Balance,
 }
 
+/// Reflects the reason for the last token swap update such that it can be
+/// updated accordingly if the last and current reason mismatch.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub enum TokenSwapReason {
+	Investment,
+	Redemption,
+}
+
 /// Reflects all states a foreign investment can have until it is processed as
 /// an investment via `<T as Config>::Investment`. This includes swapping it
 /// into a pool currency or back, if the investment is decreased before it is
@@ -135,6 +145,7 @@ pub enum InvestState<
 	},
 }
 
+// TODO: Docs
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum InvestTransition<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
@@ -159,7 +170,18 @@ pub enum InvestTransition<
 /// This includes swapping it into a pool currency or back, if the investment is
 /// decreased before it is fully processed.
 #[derive(
-	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 pub enum RedeemState<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
@@ -182,7 +204,9 @@ pub enum RedeemState<
 
 /// Reflects all possible redeem states independent of whether an investment is
 /// still active or not in the actual `RedeemState`.
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
 pub enum InnerRedeemState<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
 	Currency: Clone + Copy + PartialEq,
@@ -300,6 +324,30 @@ pub enum InnerRedeemState<
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,
 	},
+}
+
+// TODO:
+// #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode,
+// TypeInfo, MaxEncodedLen)] pub(crate) struct DeconstructedRedeemState<Balance,
+// Currency> where
+// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+// 	Currency: Clone + Copy + PartialEq, {
+// 		pub(crate) swap: Swap<Balance, Currency>,
+// 		pub(crate) done_amount: Some(Balance),
+// 		pub(crate) collectable_amount: Swap<Balance, Currency>,
+// 		pub(crate) redeem_amount: Swap<Balance, Currency>,
+// 		pub(crate) is_invested: bool,
+// 	}
+
+// TODO: Docs
+#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub enum RedeemTransition<
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
+	Currency: Clone + Copy + PartialEq,
+> {
+	IncreaseRedeemOrder(Balance),
+	DecreaseRedeemOrder(Balance),
+	FulfillSwapOrder(Swap<Balance, Currency>),
 }
 
 // // Should be updated to `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in
