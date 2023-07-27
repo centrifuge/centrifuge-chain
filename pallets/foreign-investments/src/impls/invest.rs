@@ -26,8 +26,8 @@ where
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram.
 	///
-	/// NOTE: MUST call `apply_state_transition` on the post state to actually
-	/// mutate storage.
+	/// NOTE: MUST call `apply_invest_state_transition` on the post state to
+	/// actually mutate storage.
 	pub fn transition(
 		&self,
 		transition: InvestTransition<Balance, Currency>,
@@ -41,9 +41,8 @@ where
 		}
 	}
 
-	/// Returns the potentially existing active swap into either return or pool
+	/// Returns the potentially existing active swap into either pool or return
 	/// currency:
-	///
 	/// * If the state includes `ActiveSwapInto{Pool, Return}Currency`, it
 	///   returns `Some(swap)`.
 	/// * Else, it returns `None`.
@@ -77,8 +76,11 @@ where
 {
 	// TODO: Add to spec
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
-	/// state diagram. Behaves similar to a ledger when considering
-	/// `SwapIntoReturnDone` and `InvestmentOngoing` as the
+	/// state diagram:
+	/// * If there is no swap into return currency, the pool currency swap
+	///   amount is increased.
+	/// * Else, resolves opposite swap directions by immediately fulfilling the
+	///   side with lower amounts; or both if the swap amounts are equal.
 	///
 	/// When we increase an investment, we normally have to swap it into pool
 	/// currency (`ActiveSwapIntoPoolCurrency`) before it can be invested
@@ -110,9 +112,9 @@ where
 	/// `(done_amount = 1500, pool_swap.amount = 100, investing = 500)`.
 	///
 	/// NOTE: We can ignore handling all states which include
-	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
+	/// `*SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency*` as we
 	/// consume the done amount and transition in the post transition phase.
-	/// To be safe and not make any unhandled assumptions, we throw
+	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
 	fn handle_increase(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
@@ -356,7 +358,12 @@ where
 	}
 
 	/// Handle `decrease` transitions depicted by `msg::decrease` edges in the
-	/// state diagram.
+	/// state diagram:
+	/// * If there is no swap into pool currency, the return currency swap
+	///   amount is increased up to the ongoing investment amount which is not
+	///   yet processed.
+	/// * Else, resolves opposite swap directions by immediately fulfilling the
+	///   side with lower amounts; or both if the swap amounts are equal.
 	///
 	/// Throws if the decreasing amount exceeds the amount which is
 	/// currently swapping into pool currency and/or investing as we cannot
@@ -366,15 +373,12 @@ where
 	/// NOTE: We can ignore handling all states which include
 	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
 	/// consume the done amount and transition in the post transition phase.
-	/// To be safe and not make any unhandled assumptions, we throw
-	/// `DispatchError::Other` for these states though we need to make sure
-	/// this can never occur!
-	///
 	/// Moreover, we can ignore handling all states which do not include
 	/// `ActiveSwapIntoPoolCurrency` or `InvestmentOngoing` as we cannot reduce
-	/// further then. To be safe and not make any unhandled assumptions, we
-	/// throw `DispatchError::Other` for these states though we need to
-	/// make sure this can never occur!
+	/// further then.
+	/// To be safe and to not make any unhandled assumptions, we throw
+	/// `DispatchError::Other` for these states though we need to make sure
+	/// this can never occur!
 	fn handle_decrease(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
 		// TODO(@review): Can we check this at an earlier stage?
 		if swap.currency_in == swap.currency_out {
@@ -553,14 +557,12 @@ where
 	/// NOTE: We can ignore handling all states which include
 	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
 	/// consume the done amount and transition in the post transition phase.
-	/// To be safe and not make any unhandled assumptions, we throw
+	/// Moreover, we can ignore handling all states which do not include
+	/// `ActiveSwapInto{Pool, Return}Currency` as else there cannot be an active
+	/// token swap for investments.
+	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
-	///
-	/// Moreover, we can ignore handling all states which do not include
-	/// `ActiveSwapInto{Pool, Return}Currency`. To be safe and not make any
-	/// unhandled assumptions, we throw `DispatchError::Other` for these
-	/// states though we need to make sure this can never occur!
 	fn handle_fulfilled_swap_order(
 		&self,
 		swap: Swap<Balance, Currency>,
@@ -745,9 +747,15 @@ where
 	/// Handle increase transitions for the same incoming and outgoing
 	/// currencies.
 	///
-	/// NOTE: We can ignore any state which involves an active swap, i.e.
+	/// NOTE: We can ignore handling all states which include
+	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
+	/// consume the done amount and transition in the post transition phase.
+	/// Moreover, we can ignore any state which involves an active swap, i.e.
 	/// `ActiveSwapInto{Pool, Return}Currency`, as these must not exist if the
 	/// in and out currency is the same.
+	/// To be safe and to not make any unhandled assumptions, we throw
+	/// `DispatchError::Other` for these states though we need to make sure
+	/// this can never occur!
 	fn handle_increase_non_foreign(
 		&self,
 		swap: Swap<Balance, Currency>,
@@ -783,9 +791,15 @@ where
 	/// Handle decrease transitions for the same incoming and outgoing
 	/// currencies.
 	///
-	/// NOTE: We can ignore any state which involves an active swap, i.e.
+	/// NOTE: We can ignore handling all states which include
+	/// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` as we
+	/// consume the done amount and transition in the post transition phase.
+	/// Moreover, we can ignore any state which involves an active swap, i.e.
 	/// `ActiveSwapInto{Pool, Return}Currency`, as these must not exist if the
 	/// in and out currency is the same.
+	/// To be safe and to not make any unhandled assumptions, we throw
+	/// `DispatchError::Other` for these states though we need to make sure
+	/// this can never occur!
 	fn handle_decrease_non_foreign(
 		&self,
 		swap: Swap<Balance, Currency>,
@@ -811,11 +825,12 @@ where
 
 	// TODO(@review): Can we ensure this check at an earlier stage?
 
-	/// Ensures that the ingoing and outgoing currencies of two swaps
-	/// 	* Either match fully (in is in, out is out) if the swap direction is
-	///    the same for both swaps, i.e. (pool, pool) or (return, return)
-	/// 	* Or the ingoing and outgoing currencies match if the swap direction is
-	///    opposite, i.e. (pool, return) or (return, pool)
+	/// Ensures that the ingoing and outgoing currencies of two swaps...
+	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
+	/// the same for both swaps, i.e. (pool, pool) or (return, return)
+	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
+	///   if the swap direction is opposite, i.e. (pool, return) or (return,
+	///   pool)
 	fn ensure_currencies_match(
 		is_same_swap_direction: bool,
 		swap_1: &Swap<Balance, Currency>,

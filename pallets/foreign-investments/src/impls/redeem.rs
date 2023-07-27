@@ -33,8 +33,8 @@ where
 	/// Solely apply state machine to transition one `RedeemState` into another
 	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Redemption-States
 	///
-	/// NOTE: MUST call `apply_state_transition` on the post state to actually
-	/// mutate storage.
+	/// NOTE: MUST call `apply_redeem_state_transition` on the post state to
+	/// actually mutate storage.
 	pub fn transition(
 		&self,
 		transition: RedeemTransition<Balance, Currency>,
@@ -48,7 +48,7 @@ where
 		}
 	}
 
-	/// Returns the potentially existing active swap into return currency in the
+	/// Returns the potentially existing active swap into return currency of the
 	/// inner state:
 	/// * If the inner state includes `ActiveSwapIntoReturnCurrency`, it returns
 	///   the corresponding `Some(swap)`.
@@ -62,6 +62,7 @@ where
 		}
 	}
 
+	// TODO: Mayb remove or add docs
 	pub(crate) fn swap_inner_state(&self, inner: InnerRedeemState<Balance, Currency>) -> Self {
 		match self {
 			Self::InvestedAnd(_) => Self::InvestedAnd(inner),
@@ -70,14 +71,19 @@ where
 		}
 	}
 
-	/// Reduce the amount of an active swap of the `InnerRedeemState` by the
-	/// provided value:
-	/// * Throws, if there is no active swap, i.e. the state does not include
-	///   `ActiveSwapIntoReturnCurrency`.
-	/// * Else If the provided value equals the swap amount, the state is
+	/// Reduce the amount of an active swap (into return currency) of the
+	/// `InnerRedeemState` by the provided value:
+	/// * If the provided value equals the swap amount, the state is
 	///   transitioned into `*AndSwapIntoReturnDone`.
-	/// * Else, it is transitioned int
+	/// * Else, it is transitioned into
 	///   `*ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone`.
+	///
+	/// NOTE: Throws if any of the following holds true:
+	/// * The outer `RedeemState` is not `InvestedAnd` or `NotInvested` as this
+	///   implies there is no active swap.
+	/// * The inner state is not an active swap, i.e. the state does not include
+	///   `ActiveSwapIntoReturnCurrency`.
+	/// * The reducible amount exceeds the active swap amount.
 	pub(crate) fn fulfill_active_swap_amount(
 		&self,
 		amount: Balance,
@@ -94,9 +100,6 @@ where
 			)),
 		}
 	}
-
-	// TODO:
-	// fn deconstruct_active_investment(&self) ->
 }
 
 impl<Balance, Currency> InnerRedeemState<Balance, Currency>
@@ -128,12 +131,14 @@ where
 		}
 	}
 
-	/// Reduce the amount of an active swap by the provided value:
-	/// * Throws, if there is no active swap, i.e. the state does not include
-	///   `ActiveSwapIntoReturnCurrency`.
-	/// * Else If the provided value equals the swap amount, the state is
+	/// Reduce the amount of an active swap (into return currency) by the
+	/// provided value:
+	/// * Throws if there is no active swap, i.e. the state does not include
+	///   `ActiveSwapIntoReturnCurrency` or if the reducible amount exceeds the
+	///   swap amount
+	/// * If the provided value equals the swap amount, the state is
 	///   transitioned into `*AndSwapIntoReturnDone`.
-	/// * Else, it is transitioned int
+	/// * Else, it is transitioned into
 	///   `*ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone`.
 	fn fulfill_active_swap_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
 		match self {

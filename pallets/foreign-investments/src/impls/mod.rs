@@ -61,16 +61,15 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 						);
 						e
 					})?;
-				Pallet::<T>::apply_state_transition(&info.owner, info.id, post_state.clone()).map(
-					|e| {
+				Pallet::<T>::apply_invest_state_transition(&info.owner, info.id, post_state.clone())
+					.map(|e| {
 						log::debug!(
 							"Encountered unexpected error when applying state transition to state \
 							 {:?}",
 							post_state
 						);
 						e
-					},
-				)
+					})
 			}
 			TokenSwapReason::Redemption => {
 				let pre_state = RedemptionState::<T>::get(&info.owner, info.id).unwrap_or_default();
@@ -129,7 +128,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Ok(pre_state)
 		}?;
 
-		Pallet::<T>::apply_state_transition(who, investment_id, post_state)?;
+		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
 	}
@@ -154,7 +153,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Ok(pre_state)
 		}?;
 
-		// Pallet::<T>::apply_state_transition(who, investment_id, post_state)?;
+		// Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
 	}
@@ -179,93 +178,154 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Must be called after transitioning any `InvestState` via `transition` to
-	/// update the chain storage and execute various trait config hooks, e.g.
-	/// `ExecutedDecreaseHook`.
+	// fn pre_state_transition_invest(
+	// 	who: &T::AccountId,
+	// 	investment_id: T::InvestmentId,
+	// 	state: InvestState<T::Balance, T::CurrencyId>,
+	// ) -> DispatchResult {
+
+	/// Applies in-memory transitions of `InvestState` to chain storage. Always
+	/// updates/removes `InvestmentState` and the current investment. Depending
+	/// on the state, also kills/updates the current token swap order as well as
+	/// notifies `ExecutedDecreasedHook`.
 	///
-	/// NOTE: When updating token swap orders, only `handle_swap_order` should
-	/// be called!
+	/// The following execution order must not be changed:
+	///
+	/// 1. If the `InvestState` includes `SwapIntoReturnDone` without
+	/// `ActiveSwapIntoReturnCurrency`: Send executed decrease hook & transition
+	/// state into its form without `SwapIntoReturnDone`. If the state is just
+	/// `SwapIntoReturnDone`, kill it.
+	///
+	/// 2. Update the `InvestmentState` storage. This step is required as the
+	/// next step reads this storage entry.
+	///
+	/// 3. Handle the token swap order by either creating, updating or killing
+	/// it. Depending on the current swap order and the previous and current
+	/// reason to update it, both the current `InvestmentState` as well as
+	/// `RedemptionState` might require an update.
+	///
+	/// 4. If the token swap handling resulted in a new `InvestState`, update
+	/// `InvestmentState` again.
+	///
+	/// 5. If the token swap handling resulted in a new `RedemptionState`,
+	/// update `RedemptionState`.
+	///
+	/// 6. Update the investment. This also includes setting it to zero. We
+	/// assume the   impl of `T::Investment` handles this case.
+	///
+	/// NOTES:
+	/// * Must be called after transitioning any `InvestState` via
+	/// `transition` to update the chain storage.
+	/// * When updating token swap orders, only `handle_swap_order` should
+	/// be called
 	#[transactional]
-	// TODO: Add/adjust apply_state_transition for redeem orders
-	fn apply_state_transition(
+	// TODO: Add/adjust apply_invest_state_transition for redeem orders
+	fn apply_invest_state_transition(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		state: InvestState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		match state.clone() {
-			InvestState::NoState=> {
-				Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
-				// Exit early to prevent setting InvestmentState
+		let invest_amount = match state.clone() {
+			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
-				return Ok(());
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, Zero::zero(), maybe_redeem_state))
 			},
 			InvestState::InvestmentOngoing { invest_amount } => {
-				Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
+				InvestmentState::<T>::insert(who, investment_id, state);
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, invest_amount, maybe_redeem_state))
 			},
 			InvestState::ActiveSwapIntoPoolCurrency { swap } |
 			InvestState::ActiveSwapIntoReturnCurrency { swap } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
-				Self::handle_swap_order(who, investment_id, Some(swap), TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
+				InvestmentState::<T>::insert(who, investment_id, state);
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, Some(swap), TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, Zero::zero(), maybe_redeem_state))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
-				Self::handle_swap_order(who, investment_id, Some(swap), TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
+				InvestmentState::<T>::insert(who, investment_id, state);
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, Some(swap), TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, invest_amount, maybe_redeem_state))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				Self::handle_swap_order(who, investment_id, Some(swap.clone()), TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
 				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
 
-				// Exit early to prevent setting InvestmentState
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(
+					who,
+					investment_id,
+					Some(swap.clone()),
+					TokenSwapReason::Investment,
+				)?;
+
+				Ok((maybe_invest_state, Zero::zero(), maybe_redeem_state))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
-				Self::handle_swap_order(who, investment_id, Some(swap.clone()), TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-
 				Self::send_executed_decrease_hook(who, investment_id, done_amount)?;
 
-				// Exit early to prevent setting InvestmentState
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, Some(swap.clone()), TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, invest_amount, maybe_redeem_state))
 			},
 			InvestState::SwapIntoReturnDone { done_swap } => {
-				Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, Zero::zero())?;
-
 				Self::send_executed_decrease_hook(who, investment_id, done_swap.amount)?;
 
-				// Exit early to prevent setting InvestmentState
 				InvestmentState::<T>::remove(who, investment_id);
-				return Ok(());
+
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, Zero::zero(), maybe_redeem_state))
 			},
 			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, invest_amount } => {
-				Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-
 				Self::send_executed_decrease_hook(who, investment_id, done_swap.amount)?;
 
-				// Exit early to prevent setting InvestmentState
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
-				return Ok(());
-			},
-		};
 
-		InvestmentState::<T>::insert(who, investment_id, state);
-		// TODO: Emit event?
+				let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(who, investment_id, None, TokenSwapReason::Investment)?;
+
+				Ok((maybe_invest_state, invest_amount, maybe_redeem_state))
+			},
+		}
+		// update invest and redeem states if necessary
+		.map(|(maybe_invest_state, invest_amount, maybe_redeem_state)| {
+			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
+				if maybe_invest_state != *current_invest_state {
+					*current_invest_state = maybe_invest_state;
+				}
+				// TODO: Maybe emit event of invest state transition from `state` to `current_invest_state`
+			});
+
+			RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
+				if maybe_redeem_state != *current_redeem_state {
+					*current_redeem_state = maybe_redeem_state;
+					// TODO: Maybe emit event of redeem state transition from `current_redeem_state` to `new_state`
+				}
+			});
+
+			invest_amount
+		}).map_err(|e: DispatchError| e)?;
+
+		// Finally, update investment after all states have been updated
+		T::Investment::update_investment(who, investment_id, invest_amount)?;
 
 		Ok(())
 	}

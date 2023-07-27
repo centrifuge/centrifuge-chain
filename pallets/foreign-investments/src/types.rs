@@ -237,8 +237,8 @@ pub enum InnerRedeemState<
 	/// return currency.
 	///
 	/// NOTE: This state does not require handling in `RedeemState::transition`
-	/// as it must be manually transitioned in `apply_state_transition`, similar
-	/// to the corresponding state in `InvestState`.
+	/// as it must be manually transitioned in `apply_redeem_state_transition`,
+	/// similar to the corresponding state in `InvestState`.
 	SwapIntoReturnDone { done_swap: Swap<Balance, Currency> },
 	/// The redemption is split into two parts:
 	///     * One part is waiting to be processed as redemption.
@@ -349,23 +349,3 @@ pub enum RedeemTransition<
 	DecreaseRedeemOrder(Balance),
 	FulfillSwapOrder(Swap<Balance, Currency>),
 }
-
-// // Should be updated to `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in
-// post // transition trigger and thus never exist as pre transition state
-// Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { .. } => {
-// 	Err(DispatchError::Other("Invalid pre state, should automatically be
-// transitioned into ActiveSwapIntoPoolCurrencyAndInvestmentOngoing")) }
-// // Should be updated to `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in
-// post // transition trigger and thus never exist as pre transition state
-// Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-// 	..
-// } => Err(DispatchError::Other("Invalid pre state, should automatically be
-// transitioned into ActiveSwapIntoPoolCurrencyAndInvestmentOngoing")), //
-// Should be cleared entirely in post transition trigger and thus never exist as
-// pre // transition state Self::SwapIntoReturnDone { .. } =>
-// Err(DispatchError::Other("Invalid pre state, should automatically be
-// transitioned into NoState")), // Should be updated to `InvestmentOngoing` in
-// post transition trigger and thus never // exist as pre transition state
-// Self::SwapIntoReturnDoneAndInvestmentOngoing { .. } =>
-// Err(DispatchError::Other("Invalid pre state, should automatically be
-// transitioned into InvestmentOngoing")),
