@@ -1852,6 +1852,7 @@ parameter_types! {
 impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
+	type FeeCurrencyId = NativeToken;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = Balance;
 	type Nonce = u64;

@@ -120,6 +120,14 @@ pub mod pallet {
 		/// Fee Key used to find amount for allowance reserve/unreserve
 		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
+		/// Token Id for token used for fee reserving
+		/// as represented by `AssetCurrencyId`.
+		/// Used for reserve-able fund checking to ensure
+		/// amount traded and storage fees can be reserved
+		/// when trading for fee currency.
+		/// This should typically be native chain currency.
+		type FeeCurrencyId: Get<Self::AssetCurrencyId>;
+
 		/// Balance type for currencies we can place orders for
 		/// Seperate type from Balance in case different type used for other
 		/// currencies, i.e. when Balance is u64, but foreign currencies using
@@ -131,7 +139,8 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ TypeInfo;
+			+ TypeInfo
+			+ TryFrom<<Self::ReserveCurrency as Currency<Self::AccountId>>::Balance>;
 
 		/// Type used for Nonce used in OrderId generation.  Nonce ensures each
 		/// OrderId is unique. Nonce incremented
@@ -297,6 +306,9 @@ pub mod pallet {
 		/// Error when a user attempts an action on an order they are not
 		/// authorised to perform, such as cancelling another accounts order.
 		Unauthorised,
+		/// Error when unable to convert fee balance to asset balance when asset
+		/// out matches fee currency
+		BalanceConversionErr,
 	}
 
 	#[pallet::call]
@@ -457,23 +469,25 @@ pub mod pallet {
 				T::AssetRegistry::metadata(&currency_out).is_some(),
 				Error::<T>::InvalidAssetId
 			);
-			ensure!(
-				T::ReserveCurrency::can_reserve(
-					&account,
-					T::Fees::fee_value(T::OrderFeeKey::get())
-				),
-				Error::<T>::InsufficientReserveFunds,
-			);
 			<NonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::Nonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
 			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
 
-			ensure!(
-				T::TradeableAsset::can_reserve(currency_out, &account, max_sell_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
+			if T::FeeCurrencyId::get() == currency_out {
+				let fee_reserve_balance: T::ForeignCurrencyBalance =
+					T::Fees::fee_value(T::OrderFeeKey::get())
+						.try_into()
+						.map_err(|_| Error::<T>::BalanceConversionErr)?;
+				let total_reserve_amount = max_sell_amount.ensure_add(fee_reserve_balance)?;
+
+				T::TradeableAsset::reserve(currency_out, &account, total_reserve_amount)?;
+			} else {
+				T::ReserveCurrency::reserve(&account, T::Fees::fee_value(T::OrderFeeKey::get()))?;
+
+				T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
+			}
 
 			let new_nonce = <NonceStore<T>>::get();
 			let order_id = Self::gen_hash(&account, currency_in, currency_out, new_nonce);
@@ -494,10 +508,6 @@ pub mod pallet {
 					.try_push(order_id)
 					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
 			})?;
-
-			T::ReserveCurrency::reserve(&account, T::Fees::fee_value(T::OrderFeeKey::get()))?;
-
-			T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
 
 			<Orders<T>>::insert(order_id, new_order.clone());
 			<UserOrders<T>>::insert(&account, order_id, new_order);

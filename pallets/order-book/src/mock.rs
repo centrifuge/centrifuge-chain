@@ -140,9 +140,14 @@ parameter_types! {
 		pub const OrderFeeKey: u8 = ORDER_FEEKEY;
 }
 
+parameter_types! {
+		pub const FeeCurrencyId: CurrencyId = CurrencyId::Native;
+}
+
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
+	type FeeCurrencyId = FeeCurrencyId;
 	// type Balance = Balance;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = ForeignCurrencyBalance;
