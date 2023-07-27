@@ -594,25 +594,33 @@ pub mod pallet {
 					if max_sell_amount > order.max_sell_amount {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
-						ensure!(
-							T::TradeableAsset::can_reserve(
+						if T::FeeCurrencyId::get() == order.asset_out_id {
+							let sell_reserve_diff_balance: FeeBalance<T> = sell_reserve_diff
+								.try_into()
+								.map_err(|_| Error::<T>::BalanceConversionErr)?;
+							T::ReserveCurrency::reserve(&account, sell_reserve_diff_balance)?
+						} else {
+							T::TradeableAsset::reserve(
 								order.asset_out_id,
 								&account,
-								sell_reserve_diff
-							),
-							Error::<T>::InsufficientAssetFunds,
-						);
-						T::TradeableAsset::reserve(
-							order.asset_out_id,
-							&account,
-							sell_reserve_diff,
-						)?;
+								sell_reserve_diff,
+							)?;
+						}
 					} else {
-						T::TradeableAsset::unreserve(
-							order.asset_out_id,
-							&account,
-							order.max_sell_amount.ensure_sub(max_sell_amount)?,
-						);
+						let sell_reserve_diff =
+							order.max_sell_amount.ensure_sub(max_sell_amount)?;
+						if T::FeeCurrencyId::get() == order.asset_out_id {
+							let sell_reserve_diff_balance: FeeBalance<T> = sell_reserve_diff
+								.try_into()
+								.map_err(|_| Error::<T>::BalanceConversionErr)?;
+							T::ReserveCurrency::unreserve(&account, sell_reserve_diff_balance);
+						} else {
+							T::TradeableAsset::unreserve(
+								order.asset_out_id,
+								&account,
+								sell_reserve_diff,
+							);
+						}
 					}
 				};
 				order.buy_amount = buy_amount;
