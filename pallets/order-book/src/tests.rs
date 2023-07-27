@@ -231,6 +231,44 @@ fn place_order_works() {
 }
 
 #[test]
+fn place_order_consolidates_reserve_when_fee_matches_out() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::ForeignAsset(0),
+			CurrencyId::Native,
+			10,
+			2,
+			10
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::ForeignAsset(0),
+				asset_out_id: CurrencyId::Native,
+				buy_amount: 10,
+				initial_buy_amount: 10,
+				price: 2,
+				min_fullfillment_amount: 10,
+				max_sell_amount: 20
+			})
+		);
+
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::Native,
+				who: ACCOUNT_0,
+				amount: 30
+			})
+		);
+	})
+}
+
+#[test]
 fn ensure_nonce_updates_order_correctly() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(

@@ -166,7 +166,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	// Add native balances for reserve/unreserve storage fees
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![(ACCOUNT_0, 30), (ACCOUNT_1, 3)],
+		balances: vec![(ACCOUNT_0, 300), (ACCOUNT_1, 300)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
@@ -179,6 +179,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				[
 					(idx, CurrencyId::AUSD, 1000 * CURRENCY_A),
 					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_B),
+					(idx, CurrencyId::Native, 1000 * CURRENCY_A),
 				]
 			})
 			.collect(),
@@ -202,9 +203,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(
 				CurrencyId::ForeignAsset(0),
 				AssetMetadata {
-					decimals: 18,
+					decimals: 15,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),
 					symbol: "MOCK_B".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			),
+			(
+				CurrencyId::Native,
+				AssetMetadata {
+					decimals: 18,
+					name: "NATIVE TOKEN".as_bytes().to_vec(),
+					symbol: "NATIVE".as_bytes().to_vec(),
 					existential_deposit: 0,
 					location: None,
 					additional: CustomMetadata::default(),
