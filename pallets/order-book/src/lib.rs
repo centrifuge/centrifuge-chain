@@ -73,6 +73,10 @@ pub mod pallet {
 		<T as Config>::ForeignCurrencyBalance,
 	>;
 
+	pub type FeeBalance<T> = <<T as Config>::ReserveCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
+
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -429,6 +433,18 @@ pub mod pallet {
 		) -> T::Hash {
 			(&placer, asset_in, asset_out, nonce).using_encoded(T::Hashing::hash)
 		}
+
+		/// Get reserve amount when fee and out currency are the same
+		pub fn get_combined_reserve(
+			sell_amount: T::ForeignCurrencyBalance,
+		) -> Result<FeeBalance<T>, DispatchError> {
+			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
+
+			let sell_reserve_balance: FeeBalance<T> = sell_amount
+				.try_into()
+				.map_err(|_| Error::<T>::BalanceConversionErr)?;
+			Ok(sell_reserve_balance.ensure_add(fee_amount)?)
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
@@ -477,12 +493,7 @@ pub mod pallet {
 
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
-				let sell_reserve_balance: <T::ReserveCurrency as Currency<T::AccountId>>::Balance =
-					max_sell_amount
-						.try_into()
-						.map_err(|_| Error::<T>::BalanceConversionErr)?;
-				let total_reserve_amount = sell_reserve_balance.ensure_add(fee_amount)?;
-
+				let total_reserve_amount = Self::get_combined_reserve(max_sell_amount)?;
 				T::ReserveCurrency::reserve(&account, total_reserve_amount)?;
 			} else {
 				T::ReserveCurrency::reserve(&account, fee_amount)?;
@@ -530,8 +541,20 @@ pub mod pallet {
 			let order = <Orders<T>>::get(order)?;
 			let account_id = order.placing_account;
 
-			T::ReserveCurrency::unreserve(&account_id, T::Fees::fee_value(T::OrderFeeKey::get()));
-			T::TradeableAsset::unreserve(order.asset_out_id, &account_id, order.max_sell_amount);
+			if T::FeeCurrencyId::get() == order.asset_out_id {
+				let total_reserve_amount = Self::get_combined_reserve(order.max_sell_amount)?;
+				T::ReserveCurrency::unreserve(&account_id, total_reserve_amount);
+			} else {
+				T::ReserveCurrency::unreserve(
+					&account_id,
+					T::Fees::fee_value(T::OrderFeeKey::get()),
+				);
+				T::TradeableAsset::unreserve(
+					order.asset_out_id,
+					&account_id,
+					order.max_sell_amount,
+				);
+			};
 			Self::remove_order(order.order_id)?;
 			Self::deposit_event(Event::OrderCancelled {
 				account: account_id,
