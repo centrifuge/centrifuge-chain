@@ -688,6 +688,19 @@ pub mod pallet {
 		}
 	}
 
+	puv fn schedule_rely(
+		origin: OriginFor<T>,
+		usr: T::AccountId,
+	) -> DispatchResult {
+		let who = ensure_signed(origin)?;
+
+		T::OutboundQueue::submit(
+			who,
+			Domain::EVM(chain_id),
+			Message::ScheduleRely { usr },
+		)
+	}
+
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
