@@ -140,7 +140,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ TypeInfo
-			+ TryFrom<<Self::ReserveCurrency as Currency<Self::AccountId>>::Balance>;
+			+ TryInto<<Self::ReserveCurrency as Currency<Self::AccountId>>::Balance>;
 
 		/// Type used for Nonce used in OrderId generation.  Nonce ensures each
 		/// OrderId is unique. Nonce incremented
@@ -475,16 +475,17 @@ pub mod pallet {
 			})?;
 			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
 
+			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
-				let fee_reserve_balance: T::ForeignCurrencyBalance =
-					T::Fees::fee_value(T::OrderFeeKey::get())
+				let sell_reserve_balance: <T::ReserveCurrency as Currency<T::AccountId>>::Balance =
+					max_sell_amount
 						.try_into()
 						.map_err(|_| Error::<T>::BalanceConversionErr)?;
-				let total_reserve_amount = max_sell_amount.ensure_add(fee_reserve_balance)?;
+				let total_reserve_amount = sell_reserve_balance.ensure_add(fee_amount)?;
 
-				T::TradeableAsset::reserve(currency_out, &account, total_reserve_amount)?;
+				T::ReserveCurrency::reserve(&account, total_reserve_amount)?;
 			} else {
-				T::ReserveCurrency::reserve(&account, T::Fees::fee_value(T::OrderFeeKey::get()))?;
+				T::ReserveCurrency::reserve(&account, fee_amount)?;
 
 				T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
 			}

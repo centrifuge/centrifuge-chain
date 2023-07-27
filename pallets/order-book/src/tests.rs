@@ -259,10 +259,22 @@ fn place_order_consolidates_reserve_when_fee_matches_out() {
 
 		assert_eq!(
 			System::events()[0].event,
-			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: CurrencyId::Native,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
 				who: ACCOUNT_0,
 				amount: 30
+			})
+		);
+
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::OrderBook(Event::OrderCreated {
+				order_id: order_id,
+				creator_account: ACCOUNT_0,
+				currency_in: CurrencyId::ForeignAsset(0),
+				currency_out: CurrencyId::Native,
+				buy_amount: 10,
+				min_fullfillment_amount: 10,
+				sell_price_limit: 2
 			})
 		);
 	})
