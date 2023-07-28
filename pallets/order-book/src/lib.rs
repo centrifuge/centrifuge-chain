@@ -372,9 +372,6 @@ pub mod pallet {
 			// maybe move to ensure if we don't need these later
 			// might need decimals from currency, but should hopefully be able to use FP
 			// price/amounts from FP balance
-			T::AssetRegistry::metadata(&order.asset_out_id).ok_or(Error::<T>::InvalidAssetId)?;
-
-			T::AssetRegistry::metadata(&order.asset_in_id).ok_or(Error::<T>::InvalidAssetId)?;
 
 			let sell_amount = order.buy_amount.ensure_mul(order.price)?;
 
