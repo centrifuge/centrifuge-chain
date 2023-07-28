@@ -54,7 +54,7 @@ pub mod pallet {
 	};
 	use scale_info::TypeInfo;
 	use sp_runtime::{
-		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, Hash, One, Zero},
+		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, One, Zero},
 		FixedPointOperand,
 	};
 
@@ -67,7 +67,7 @@ pub mod pallet {
 
 	/// Order of pallet config type
 	pub type OrderOf<T> = Order<
-		<T as frame_system::Config>::Hash,
+		<T as Config>::OrderIdNonce,
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::AssetCurrencyId,
 		<T as Config>::ForeignCurrencyBalance,
@@ -146,15 +146,16 @@ pub mod pallet {
 			+ TypeInfo
 			+ TryInto<<Self::ReserveCurrency as Currency<Self::AccountId>>::Balance>;
 
-		/// Type used for Nonce used in OrderId generation.  Nonce ensures each
-		/// OrderId is unique. Nonce incremented
-		type Nonce: Parameter
+		/// Type used for OrderId. OrderIdNonce ensures each
+		/// OrderId is unique. OrderIdNonce incremented with each new order.
+		type OrderIdNonce: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
 			+ Default
 			+ Copy
 			+ EnsureAdd
 			+ MaybeSerializeDeserialize
+			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// Type for currency orders can be made for
@@ -201,8 +202,8 @@ pub mod pallet {
 	pub type Orders<T: Config> = StorageMap<
 		_,
 		Twox64Concat,
-		T::Hash,
-		Order<T::Hash, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
+		T::OrderIdNonce,
+		Order<T::OrderIdNonce, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -215,18 +216,18 @@ pub mod pallet {
 		Twox64Concat,
 		T::AccountId,
 		Twox64Concat,
-		T::Hash,
+		T::OrderIdNonce,
 		OrderOf<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
-	/// Stores Nonce for orders placed
-	/// Given that Nonce is to ensure that all orders have a unique ID, we can
-	/// use just one Nonce, which means that we only have one val in storage,
-	/// and we don't have to insert new map values upon a new account/currency
-	/// order creation.
+	/// Stores OrderIdNonce for orders placed
+	/// Given that OrderIdNonce is to ensure that all orders have a unique ID,
+	/// we can use just one OrderIdNonce, which means that we only have one val
+	/// in storage, and we don't have to insert new map values upon a new
+	/// account/currency order creation.
 	#[pallet::storage]
-	pub type NonceStore<T: Config> = StorageValue<_, T::Nonce, ValueQuery>;
+	pub type OrderIdNonceStore<T: Config> = StorageValue<_, T::OrderIdNonce, ValueQuery>;
 
 	/// Map of Vec containing OrderIds of same asset in/out pairs.
 	/// Allows looking up orders available corresponding pairs.
@@ -237,7 +238,7 @@ pub mod pallet {
 		T::AssetCurrencyId,
 		Twox64Concat,
 		T::AssetCurrencyId,
-		BoundedVec<T::Hash, T::OrderPairVecSize>,
+		BoundedVec<T::OrderIdNonce, T::OrderPairVecSize>,
 		ValueQuery,
 	>;
 
@@ -246,7 +247,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event emitted when an order is created.
 		OrderCreated {
-			order_id: T::Hash,
+			order_id: T::OrderIdNonce,
 			creator_account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
@@ -257,11 +258,11 @@ pub mod pallet {
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
 			account: T::AccountId,
-			order_id: T::Hash,
+			order_id: T::OrderIdNonce,
 		},
 		/// Event emitted when an order is updated.
 		OrderUpdated {
-			order_id: T::Hash,
+			order_id: T::OrderIdNonce,
 			account: T::AccountId,
 			buy_amount: T::ForeignCurrencyBalance,
 			sell_price_limit: T::ForeignCurrencyBalance,
@@ -272,7 +273,7 @@ pub mod pallet {
 		/// Contains amount fulfilled, and whether fulfillment was partial or
 		/// full.
 		OrderFulfillment {
-			order_id: T::Hash,
+			order_id: T::OrderIdNonce,
 			placing_account: T::AccountId,
 			fulfilling_account: T::AccountId,
 			partial_fulfillment: bool,
@@ -345,7 +346,10 @@ pub mod pallet {
 		///  Cancel an existing order that had been created by calling account.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::Weights::user_cancel_order())]
-		pub fn user_cancel_order(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
+		pub fn user_cancel_order(
+			origin: OriginFor<T>,
+			order_id: T::OrderIdNonce,
+		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			// verify order matches account
 			// UserOrders using Resultquery, if signed account
@@ -362,7 +366,7 @@ pub mod pallet {
 		/// Fill an existing order, fulfilling the entire order.
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::Weights::fill_order_full())]
-		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::Hash) -> DispatchResult {
+		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 			// maybe move to ensure if we don't need these later
@@ -417,7 +421,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// Remove an order from storage
-		pub fn remove_order(order_id: T::Hash) -> DispatchResult {
+		pub fn remove_order(order_id: T::OrderIdNonce) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
 			<UserOrders<T>>::remove(&order.placing_account, order.order_id);
 			<Orders<T>>::remove(order.order_id);
@@ -425,17 +429,6 @@ pub mod pallet {
 			orders.retain(|o| *o != order.order_id);
 			<AssetPairOrders<T>>::insert(order.asset_in_id, order.asset_out_id, orders);
 			Ok(())
-		}
-
-		/// Generate a hash to be used for the order id using the placing
-		/// account, asset IDs, and pallet nonce.
-		pub fn gen_hash(
-			placer: &T::AccountId,
-			asset_out: T::AssetCurrencyId,
-			asset_in: T::AssetCurrencyId,
-			nonce: T::Nonce,
-		) -> T::Hash {
-			(&placer, asset_in, asset_out, nonce).using_encoded(T::Hashing::hash)
 		}
 
 		/// Get reserve amount when fee and out currency are the same
@@ -457,7 +450,7 @@ pub mod pallet {
 	{
 		type Balance = T::ForeignCurrencyBalance;
 		type CurrencyId = T::AssetCurrencyId;
-		type OrderId = T::Hash;
+		type OrderId = T::OrderIdNonce;
 
 		/// Creates an order.
 		/// Verify funds available in, and reserve for  both chains fee currency
@@ -489,8 +482,8 @@ pub mod pallet {
 				T::AssetRegistry::metadata(&currency_out).is_some(),
 				Error::<T>::InvalidAssetId
 			);
-			<NonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::Nonce::one())?;
+			<OrderIdNonceStore<T>>::try_mutate(|n| {
+				*n = n.ensure_add(T::OrderIdNonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
 			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
@@ -505,8 +498,7 @@ pub mod pallet {
 				T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
 			}
 
-			let new_nonce = <NonceStore<T>>::get();
-			let order_id = Self::gen_hash(&account, currency_in, currency_out, new_nonce);
+			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {
 				order_id,
 				placing_account: account.clone(),

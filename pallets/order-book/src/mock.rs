@@ -152,8 +152,8 @@ impl order_book::Config for Runtime {
 	// type Balance = Balance;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = ForeignCurrencyBalance;
-	type Nonce = u64;
 	type OrderFeeKey = OrderFeeKey;
+	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;

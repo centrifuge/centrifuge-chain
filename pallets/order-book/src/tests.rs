@@ -503,9 +503,7 @@ fn update_order_works() {
 
 pub fn get_account_orders(
 	account_id: <Runtime as frame_system::Config>::AccountId,
-) -> Result<
-	sp_std::vec::Vec<(<Runtime as frame_system::Config>::Hash, OrderOf<Runtime>)>,
-	Error<Runtime>,
-> {
+) -> Result<sp_std::vec::Vec<(<Runtime as Config>::OrderIdNonce, OrderOf<Runtime>)>, Error<Runtime>>
+{
 	Ok(<UserOrders<Runtime>>::iter_prefix(account_id).collect())
 }

@@ -1856,8 +1856,8 @@ impl pallet_order_book::Config for Runtime {
 	type FeeCurrencyId = NativeToken;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = Balance;
-	type Nonce = u64;
 	type OrderFeeKey = OrderBookCreationFeeKey;
+	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
