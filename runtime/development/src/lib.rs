@@ -1847,6 +1847,7 @@ impl pallet_transfer_allowlist::Config for Runtime {
 
 parameter_types! {
 		pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
+		pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1857,6 +1858,7 @@ impl pallet_order_book::Config for Runtime {
 	type ForeignCurrencyBalance = Balance;
 	type Nonce = u64;
 	type OrderFeeKey = OrderBookCreationFeeKey;
+	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type TradeableAsset = OrmlTokens;

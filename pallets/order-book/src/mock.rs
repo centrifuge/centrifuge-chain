@@ -142,6 +142,7 @@ parameter_types! {
 
 parameter_types! {
 		pub const FeeCurrencyId: CurrencyId = CurrencyId::Native;
+		pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
 impl order_book::Config for Runtime {
@@ -153,6 +154,7 @@ impl order_book::Config for Runtime {
 	type ForeignCurrencyBalance = ForeignCurrencyBalance;
 	type Nonce = u64;
 	type OrderFeeKey = OrderFeeKey;
+	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type TradeableAsset = OrmlTokens;

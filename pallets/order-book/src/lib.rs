@@ -164,6 +164,10 @@ pub mod pallet {
 			CurrencyId = Self::AssetCurrencyId,
 		>;
 
+		/// Size of order id bounded vec in storage
+		#[pallet::constant]
+		type OrderPairVecSize: Get<u32>;
+
 		/// Type for pallet weights
 		type Weights: WeightInfo;
 	}
@@ -233,7 +237,7 @@ pub mod pallet {
 		T::AssetCurrencyId,
 		Twox64Concat,
 		T::AssetCurrencyId,
-		BoundedVec<T::Hash, ConstU32<1_000_000>>,
+		BoundedVec<T::Hash, T::OrderPairVecSize>,
 		ValueQuery,
 	>;
 
