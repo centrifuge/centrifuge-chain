@@ -433,6 +433,8 @@ pub mod pallet {
 			Ok(sell_reserve_balance.ensure_add(fee_amount)?)
 		}
 
+		/// Unreserve funds for an order that is finished either
+		/// through fulfillment or cancellation.
 		pub fn unreserve_order(order: &OrderOf<T>) -> Result<(), DispatchError> {
 			if T::FeeCurrencyId::get() == order.asset_out_id {
 				let total_reserve_amount = Self::get_combined_reserve(order.max_sell_amount)?;
