@@ -459,17 +459,18 @@ fn cancel_order_works() {
 		);
 		assert_eq!(
 			System::events()[3].event,
-			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-				who: ACCOUNT_0,
-				amount: 10
-			})
-		);
-		assert_eq!(
-			System::events()[4].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
 				currency_id: CurrencyId::ForeignAsset(0),
 				who: ACCOUNT_0,
 				amount: 1000
+			})
+		);
+
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 10
 			})
 		);
 		assert_eq!(
