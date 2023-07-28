@@ -84,7 +84,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 						);
 						e
 					})?;
-				todo!()
+				todo!("apply_redeem_state_transition")
 			}
 		}
 	}

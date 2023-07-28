@@ -218,7 +218,6 @@ pub mod pallet {
 		RedeemState<T::Balance, T::CurrencyId>,
 	>;
 
-	// TODO: How to deal with `RedeemState` here?
 	/// Maps `TokenSwapOrders` to `InvestmentInfo` to implicitly enable mapping
 	/// to `InvestmentState`.
 	///
@@ -275,6 +274,7 @@ pub mod pallet {
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		InvestmentInfoNotFound,
+		// TODO: Not used at the moment
 		/// Failed to retrieve the `RedemptionInfo` from the given
 		/// `TokenSwapOrderId`.
 		///
@@ -285,6 +285,7 @@ pub mod pallet {
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		TokenSwapReasonNotFound,
+		// TODO: Not used at the moment
 		/// Failed to determine whether the corresponding currency can be either
 		/// used for payment or payout of an investment.
 		///

@@ -145,7 +145,9 @@ pub enum InvestState<
 	},
 }
 
-// TODO: Docs
+/// Reflects all state transitions of an `InvestmentState` which can be
+/// externally triggered, i.e. by (partially) fulfilling a token swap order or
+/// updating an unprocessed investment.
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum InvestTransition<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
@@ -196,10 +198,15 @@ pub enum RedeemState<
 	Invested { invest_amount: Balance },
 	/// There is no remaining investment such that the redemption cannot be
 	/// increased at this point.
-	NotInvestedAnd(InnerRedeemState<Balance, Currency>),
+	NotInvestedAnd {
+		inner: InnerRedeemState<Balance, Currency>,
+	},
 	/// There is a remaining invested amount such that the redemption can be
 	/// increased up to the remaining invested amount (after fulfillment).
-	InvestedAnd(InnerRedeemState<Balance, Currency>),
+	InvestedAnd {
+		invest_amount: Balance,
+		inner: InnerRedeemState<Balance, Currency>,
+	},
 }
 
 /// Reflects all possible redeem states independent of whether an investment is
@@ -326,20 +333,9 @@ pub enum InnerRedeemState<
 	},
 }
 
-// TODO:
-// #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode,
-// TypeInfo, MaxEncodedLen)] pub(crate) struct DeconstructedRedeemState<Balance,
-// Currency> where
-// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-// 	Currency: Clone + Copy + PartialEq, {
-// 		pub(crate) swap: Swap<Balance, Currency>,
-// 		pub(crate) done_amount: Some(Balance),
-// 		pub(crate) collectable_amount: Swap<Balance, Currency>,
-// 		pub(crate) redeem_amount: Swap<Balance, Currency>,
-// 		pub(crate) is_invested: bool,
-// 	}
-
-// TODO: Docs
+/// Reflects all state transitions of a `RedeemState` which can be
+/// externally triggered, i.e. by (partially) fulfilling a token swap order or
+/// updating an unprocessed redemption.
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum RedeemTransition<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,

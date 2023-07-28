@@ -735,9 +735,20 @@ pub trait ForeignInvestment<AccountId> {
 	type Error: Debug;
 	type InvestmentId;
 
-	// TODO: Docs
-	/// * Apply state transition
-	/// * Kick off swap
+	/// Initiates the update of a foreign investment amount in `return_currency`
+	/// of who into the investment class `pool_currency` to amount.
+	///
+	/// In general, we can assume that return and pool currency mismatch and
+	/// that swapping one into the other happens asynchronously. In that case,
+	/// the finalization of updating the investment needs to be handled
+	/// decoupled from the ForeignInvestment trait.
+	///
+	/// NOTE: In practice, Consumers such as Connectors should call
+	/// this function instead of `Investment::update_investment` as this
+	/// implementation accounts for (potentially) splitting the update into two
+	/// stages. The second stage is resolved by
+	/// acting upon `StatusNotificationHook::notify_status_change` which is sent
+	/// by `TokenSwaps` trait implementor.
 	fn update_foreign_invest_order(
 		who: &AccountId,
 		return_currency: Self::CurrencyId,
@@ -746,7 +757,20 @@ pub trait ForeignInvestment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	// TODO: Docs
+	/// Initiates the update of a foreign redemption amount from `pool_currency`
+	/// of who into `return_currency` to amount.
+	///
+	/// In general, we can assume that return and pool currency mismatch and
+	/// that swapping one into the other happens asynchronously. In that case,
+	/// the finalization of updating the redemption needs to be handled
+	/// decoupled from the ForeignInvestment trait.
+	///
+	/// NOTE: In practice, Consumers such as Connectors should call
+	/// this function instead of `Investment::update_redemption` as this
+	/// implementation accounts for (potentially) splitting the update into two
+	/// stages. The second stage is resolved by
+	/// acting upon `StatusNotificationHook::notify_status_change` which is sent
+	/// by `TokenSwaps` trait implementor.
 	fn update_foreign_redemption(
 		who: &AccountId,
 		// TODO: Check if we do not require them if can be derived in CollectRedeemOrder
@@ -754,9 +778,7 @@ pub trait ForeignInvestment<AccountId> {
 		// pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
-	) -> Result<(), Self::Error> {
-		todo!()
-	}
+	) -> Result<(), Self::Error>;
 
 	// TODO: Docs
 	fn collect_foreign_investment(
@@ -764,9 +786,7 @@ pub trait ForeignInvestment<AccountId> {
 		return_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
-	) -> Result<(), Self::Error> {
-		todo!()
-	}
+	) -> Result<(), Self::Error>;
 
 	// TODO: Docs
 	fn collect_foreign_redemption(
@@ -774,9 +794,7 @@ pub trait ForeignInvestment<AccountId> {
 		return_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
-	) -> Result<(), Self::Error> {
-		todo!()
-	}
+	) -> Result<(), Self::Error>;
 }
 
 pub trait StatusNotificationHook {

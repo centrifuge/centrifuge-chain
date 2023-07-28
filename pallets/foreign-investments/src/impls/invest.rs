@@ -74,9 +74,8 @@ where
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
 	Currency: Clone + Copy + PartialEq,
 {
-	// TODO: Add to spec
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
-	/// state diagram:
+	/// invest state diagram:
 	/// * If there is no swap into return currency, the pool currency swap
 	///   amount is increased.
 	/// * Else, resolves opposite swap directions by immediately fulfilling the
@@ -94,7 +93,7 @@ where
 	/// of immediately fulfilling the pool swap order up to the possible amount.
 	///
 	/// Example:
-	/// * Say before my pre state has `return_done = 1000` and
+	/// * Say before my pre invest state has `return_done = 1000` and
 	/// `return_swap.amount = 500`. Now we look at three scenarios in which we
 	/// increase below, exactly at and above the `return_swap.amount`:
 	/// * a) If we increase by 500, we can reduce the `return_swap.amount`
@@ -351,7 +350,7 @@ where
 				}
 			}
 			_ => Err(DispatchError::Other(
-				"Invalid pre state, should automatically be transitioned into \
+				"Invalid invest state, should automatically be transitioned into \
 				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
 			)),
 		}
@@ -390,7 +389,7 @@ where
 			InvestState::NoState
 			| InvestState::ActiveSwapIntoReturnCurrency { .. }
 			| InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. } => {
-				Err(DispatchError::Other("Invalid pre state when transitioning a decrease"))
+				Err(DispatchError::Other("Invalid invest state when transitioning a decrease"))
 			},
 			// Increment return swap amount up to ongoing investment
 			InvestState::InvestmentOngoing { invest_amount } => {
@@ -535,7 +534,7 @@ where
 				}
 			},
 			_ => Err(DispatchError::Other(
-				"Invalid pre state, should automatically be transitioned into \
+				"Invalid invest state, should automatically be transitioned into \
 				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
 			)),
 		}
@@ -569,7 +568,7 @@ where
 	) -> Result<Self, DispatchError> {
 		match &self {
 			InvestState::NoState | InvestState::InvestmentOngoing { .. } => Err(DispatchError::Other(
-				"Invalid pre state when transitioning a fulfilled order",
+				"Invalid invest state when transitioning a fulfilled order",
 			)),
 			// Increment ongoing investment by swapped amount
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
@@ -736,7 +735,7 @@ where
 				}
 			},
 			_ => Err(DispatchError::Other(
-				"Invalid pre state, should automatically be transitioned into state without AndSwapIntoReturnDone",
+				"Invalid invest state, should automatically be transitioned into state without AndSwapIntoReturnDone",
 			)),
 		}
 	}
@@ -775,11 +774,11 @@ where
 			| Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
 				..
 			} => Err(DispatchError::Other(
-				"Invalid pre state when transitioning an increased swap order with the same in- \
+				"Invalid invest state when transitioning an increased swap order with the same in- \
 				 and outgoing currency",
 			)),
 			_ => Err(DispatchError::Other(
-				"Invalid pre state, should automatically be transitioned into state without \
+				"Invalid invest state, should automatically be transitioned into state without \
 				 AndSwapIntoReturnDone",
 			)),
 		}
@@ -817,7 +816,7 @@ where
 		// should never occur but let's be safe here
 		else {
 			Err(DispatchError::Other(
-				"Invalid pre state when transitioning a decreased swap order with the same in- \
+				"Invalid invest state when transitioning a decreased swap order with the same in- \
 				 and outgoing currency",
 			))
 		}
