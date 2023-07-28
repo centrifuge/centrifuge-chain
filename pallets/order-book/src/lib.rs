@@ -382,15 +382,21 @@ pub mod pallet {
 				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, sell_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
-			T::TradeableAsset::unreserve(
-				order.asset_out_id,
-				&order.placing_account,
-				order.max_sell_amount,
-			);
-			T::ReserveCurrency::unreserve(
-				&order.placing_account,
-				T::Fees::fee_value(T::OrderFeeKey::get()),
-			);
+
+			if T::FeeCurrencyId::get() == order.asset_out_id {
+				let total_reserve_amount = Self::get_combined_reserve(order.max_sell_amount)?;
+				T::ReserveCurrency::unreserve(&order.placing_account, total_reserve_amount);
+			} else {
+				T::TradeableAsset::unreserve(
+					order.asset_out_id,
+					&order.placing_account,
+					order.max_sell_amount,
+				);
+				T::ReserveCurrency::unreserve(
+					&order.placing_account,
+					T::Fees::fee_value(T::OrderFeeKey::get()),
+				);
+			};
 			T::TradeableAsset::transfer(
 				order.asset_in_id,
 				&account_id,
