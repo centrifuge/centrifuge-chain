@@ -32,7 +32,7 @@ use cfg_types::{
 	consts::pools::*,
 	domain_address::Domain,
 	fee_keys::FeeKey,
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
 	oracles::OracleKey,
@@ -1381,6 +1381,7 @@ impl pallet_loans::Config for Runtime {
 	type PoolId = PoolId;
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
+	type Quantity = Quantity;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

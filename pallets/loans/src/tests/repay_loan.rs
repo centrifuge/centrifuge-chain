@@ -618,7 +618,7 @@ fn external_pricing_with_wrong_quantity() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		let amount = ExternalAmount::new(Rate::from_float(0.5), PRICE_VALUE);
+		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
 			Loans::repay(
