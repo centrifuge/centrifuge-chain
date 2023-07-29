@@ -688,7 +688,7 @@ pub mod pallet {
 		}
 	}
 
-	puv fn schedule_rely(
+	pub fn schedule_rely(
 		origin: OriginFor<T>,
 		usr: T::AccountId,
 	) -> DispatchResult {
