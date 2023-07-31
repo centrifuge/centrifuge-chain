@@ -40,6 +40,8 @@ pub mod changes;
 pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
+/// Traits related to Ethereum/EVM.
+pub mod ethereum;
 /// Traits related to interest rates.
 pub mod interest;
 /// Traits related to rewards.

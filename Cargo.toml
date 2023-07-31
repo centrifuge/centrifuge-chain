@@ -44,6 +44,7 @@ members = [
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
   "pallets/crowdloan-reward",
+  "pallets/ethereum-transaction",
   "pallets/fees",
   "pallets/interest-accrual",
   "pallets/investments",
