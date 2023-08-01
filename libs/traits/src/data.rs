@@ -26,8 +26,8 @@ pub trait DataRegistry<DataId, CollectionId> {
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxCollectionSize: sp_runtime::traits::Get<u32>;
 
-	/// Return the last data value for a data id
-	fn get(data_id: &DataId) -> Self::Data;
+	/// Return the last data value for a data id in a collection
+	fn get(data_id: &DataId, collection_id: &CollectionId) -> Self::Data;
 
 	/// Retrives a collection of data with all data associated to a collection
 	/// id

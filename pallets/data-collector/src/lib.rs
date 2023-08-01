@@ -58,7 +58,10 @@ pub mod pallet {
 		type Moment: Parameter + MaxEncodedLen;
 
 		/// Data provider for initializing data values
-		type DataProvider: DataProviderExtended<Self::DataId, (Self::Data, Self::Moment)>;
+		type DataProvider: DataProviderExtended<
+			(Self::DataId, Self::CollectionId),
+			(Self::Data, Self::Moment),
+		>;
 
 		/// Max size of a data collection
 		#[pallet::constant]
@@ -111,8 +114,8 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
-		fn get(data_id: &T::DataId) -> Self::Data {
-			T::DataProvider::get_no_op(data_id)
+		fn get(data_id: &T::DataId, collection_id: &T::CollectionId) -> Self::Data {
+			T::DataProvider::get_no_op(&(data_id.clone(), collection_id.clone()))
 				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
 		}
 
@@ -130,8 +133,11 @@ pub mod pallet {
 							.map_err(|_| Error::<T, I>::MaxCollectionNumber)?;
 
 						Collection::<T, I>::try_mutate(collection_id, |collection| {
-							let data =
-								<Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id)?;
+							let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(
+								data_id,
+								collection_id,
+							)?;
+
 							collection
 								.try_insert(data_id.clone(), data)
 								.map(|_| ())
@@ -168,7 +174,11 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T, I>::get(data_id).keys() {
 				Collection::<T, I>::mutate(collection_id, |collection| {
-					let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id);
+					let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(
+						data_id,
+						collection_id,
+					);
+
 					if let (Some(value), Ok(new_value)) = (collection.get_mut(data_id), data) {
 						*value = new_value;
 					}

@@ -19,6 +19,7 @@ serde = { version = "1.0.119" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 # substrate frame dependencies
@@ -45,6 +46,7 @@ std = [
   "sp-core/std",
   "frame-support/std",
   "sp-runtime/std",
+  "sp-arithmetic/std",
   "frame-system/std",
   "pallet-collective/std",
   "sp-consensus-aura/std",

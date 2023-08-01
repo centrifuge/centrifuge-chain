@@ -429,7 +429,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(self, pool_id: T::PoolId) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		let (pricing, interest_rate) = match self.pricing {
@@ -438,7 +438,7 @@ impl<T: Config> ActiveLoan<T> {
 				(Pricing::Internal(pricing), interest_rate)
 			}
 			ActivePricing::External(inner) => {
-				let (pricing, interest_rate) = inner.deactivate(pool_id)?;
+				let (pricing, interest_rate) = inner.deactivate()?;
 				(Pricing::External(pricing), interest_rate)
 			}
 		};

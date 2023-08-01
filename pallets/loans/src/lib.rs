@@ -702,7 +702,7 @@ pub mod pallet {
 				Some(created_loan) => (created_loan.close()?, Zero::zero()),
 				None => {
 					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
-					(active_loan.close(pool_id)?, count)
+					(active_loan.close()?, count)
 				}
 			};
 

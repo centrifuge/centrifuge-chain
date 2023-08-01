@@ -33,7 +33,7 @@ impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
 
-	fn get(_: &T::PriceId) -> Self::Data {
+	fn get(_: &T::PriceId, _: &T::PoolId) -> Self::Data {
 		Err(DEFAULT_PRICE_ERR)
 	}
 

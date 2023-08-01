@@ -1243,6 +1243,7 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
+ "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
  "sp-runtime",
