@@ -376,7 +376,7 @@ pub mod pallet {
 			let sell_amount = order.buy_amount.ensure_mul(order.price)?;
 
 			ensure!(
-				T::TradeableAsset::can_reserve(order.asset_out_id, &account_id, sell_amount),
+				T::TradeableAsset::can_reserve(order.asset_in_id, &account_id, order.buy_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
 

@@ -31,10 +31,10 @@ pub(crate) const ACCOUNT_1: u64 = 0x2;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
 pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
 
-const CURRENCY_A: ForeignCurrencyBalance = 1_000_000_000_000_000_000;
+pub(crate) const CURRENCY_A: ForeignCurrencyBalance = 1_000_000_000_000_000_000;
 // To ensure price/amount calculations with different
 // currency precision works
-const CURRENCY_B: ForeignCurrencyBalance = 1_000_000_000_000_000;
+pub(crate) const CURRENCY_B: ForeignCurrencyBalance = 1_000_000_000_000_000;
 
 type Balance = u64;
 type ForeignCurrencyBalance = u128;
@@ -181,7 +181,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				[
 					(idx, CurrencyId::AUSD, 1000 * CURRENCY_A),
 					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_B),
-					(idx, CurrencyId::Native, 1000 * CURRENCY_A),
+					(idx, CurrencyId::Native, 100 * CURRENCY_A),
 				]
 			})
 			.collect(),

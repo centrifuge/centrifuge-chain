@@ -241,6 +241,25 @@ fn fill_order_full_correctly_consolidates_reserves_with_same_out_and_fee_currenc
 	});
 }
 
+#[test]
+fn fill_order_full_checks_asset_in_for_fulfiller() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order_v1(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CurrencyId::Native,
+			CurrencyId::AUSD,
+			400 * CURRENCY_A,
+			2
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		// verify fulfill runs
+		assert_err!(
+			OrderBook::fill_order_full(RuntimeOrigin::signed(ACCOUNT_1), order_id),
+			Error::<Runtime>::InsufficientAssetFunds
+		);
+	});
+}
+
 // TokenSwaps trait impl tests
 #[test]
 fn place_order_works() {
