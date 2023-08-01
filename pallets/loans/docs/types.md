@@ -153,9 +153,10 @@ package pricing {
         }
 
         class ExternalPricing {
-            price_id: Price,
+            price_id: PriceId,
             max_borrow_quantity: MaxBorrowAmount,
             notional: Balance,
+            pool_id: PoolId
         }
 
         ExternalPricing *-l-> MaxBorrowAmount
