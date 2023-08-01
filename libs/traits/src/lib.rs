@@ -699,9 +699,7 @@ pub trait TokenSwaps<Account> {
 	/// `currency_in` currency when buying with `currency_out`. This
 	/// protects order placer if market changes unfavourably for swap order.
 	/// Returns the order id created with by this buy order if it could not
-	/// be inmediately and completelly fullfilled. If there was already an
-	/// active order with the same account currencies, the order is
-	/// increased/decreased and the same order id is returned.
+	/// be immediately and completely fulfilled.
 	fn place_order(
 		account: Account,
 		currency_out: Self::CurrencyId,
