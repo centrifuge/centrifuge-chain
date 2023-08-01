@@ -94,9 +94,6 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
-
-	/// Related pool id
-	pool_id: T::PoolId,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -110,17 +107,19 @@ impl<T: Config> ExternalActivePricing<T> {
 			info,
 			outstanding_quantity: T::Rate::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
-			pool_id,
 		})
 	}
 
-	pub fn deactivate(self) -> Result<(ExternalPricing<T>, InterestRate<T::Rate>), DispatchError> {
-		T::PriceRegistry::unregister_id(&self.info.price_id, &self.pool_id)?;
+	pub fn deactivate(
+		self,
+		pool_id: T::PoolId,
+	) -> Result<(ExternalPricing<T>, InterestRate<T::Rate>), DispatchError> {
+		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id, &self.pool_id)?.1)
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
 	}
 
 	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
@@ -132,8 +131,8 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id, &self.pool_id)?.0;
+	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 

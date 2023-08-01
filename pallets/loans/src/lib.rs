@@ -702,7 +702,7 @@ pub mod pallet {
 				Some(created_loan) => (created_loan.close()?, Zero::zero()),
 				None => {
 					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
-					(active_loan.close()?, count)
+					(active_loan.close(pool_id)?, count)
 				}
 			};
 
@@ -848,7 +848,9 @@ pub mod pallet {
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
-			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
+			policy::find_rule(rules, |trigger| {
+				loan.check_write_off_trigger(trigger, pool_id)
+			})
 		}
 
 		fn get_released_change(
@@ -890,7 +892,7 @@ pub mod pallet {
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan_id, loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value(pool_id)?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -925,7 +927,7 @@ pub mod pallet {
 
 					let result = f(loan)?;
 
-					portfolio.update_elem(loan_id, loan.present_value()?)?;
+					portfolio.update_elem(loan_id, loan.present_value(pool_id)?)?;
 
 					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 						pool_id,
@@ -974,7 +976,7 @@ pub mod pallet {
 		) -> Result<PortfolioInfoOf<T>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
-				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
+				.map(|(loan_id, loan)| Ok((loan_id, (pool_id, loan).try_into()?)))
 				.collect()
 		}
 
@@ -985,7 +987,7 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| loan.try_into())
+				.map(|(_, loan)| (pool_id, loan).try_into())
 				.transpose()
 		}
 
