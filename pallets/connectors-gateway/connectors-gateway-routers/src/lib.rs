@@ -25,17 +25,25 @@ mod mock;
 mod tests;
 
 pub mod axelar_evm;
+pub mod axelar_xcm;
 pub mod ethereum_xcm;
+pub mod router;
 
 pub use axelar_evm::*;
+pub use axelar_xcm::*;
 pub use ethereum_xcm::*;
 
 type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_connectors_gateway::Config>::Message;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-const CONNECTORS_FUNCTION_NAME: &'static str = "handle";
-const CONNECTORS_MESSAGE_PARAM: &'static str = "message";
+const CONNECTORS_FUNCTION_NAME: &str = "handle";
+const CONNECTORS_MESSAGE_PARAM: &str = "message";
+
+const AXELAR_FUNCTION_NAME: &str = "callContract";
+const AXELAR_DESTINATION_CHAIN_PARAM: &str = "destinationChain";
+const AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM: &str = "destinationContractAddress";
+const AXELAR_PAYLOAD_PARAM: &str = "payload";
 
 /// The routers used for outgoing messages.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -50,6 +58,7 @@ where
 {
 	EthereumXCM(EthereumXCMRouter<T>),
 	AxelarEVM(AxelarEVMRouter<T>),
+	AxelarXCM(AxelarXCMRouter<T>),
 }
 
 impl<T> Router for DomainRouter<T>
@@ -68,6 +77,7 @@ where
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_init(),
 			DomainRouter::AxelarEVM(r) => r.do_init(),
+			DomainRouter::AxelarXCM(r) => r.do_init(),
 		}
 	}
 
@@ -75,6 +85,7 @@ where
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
 			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
+			DomainRouter::AxelarXCM(r) => r.do_send(sender, message),
 		}
 	}
 }
