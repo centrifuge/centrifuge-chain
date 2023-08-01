@@ -14,9 +14,12 @@ fn config_mocks(pool_id: PoolId) {
 			POOL_OTHER_ACCOUNT
 		}
 	});
-	MockPrices::mock_get(|id| match *id {
-		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err("Should never be dispatched".into()),
+	MockPrices::mock_get(|id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err("Should never be dispatched".into()),
+		}
 	});
 }
 

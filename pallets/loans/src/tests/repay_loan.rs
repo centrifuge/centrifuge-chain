@@ -11,7 +11,8 @@ pub fn config_mocks_with_price(deposit_amount: Balance, price: Balance) {
 		assert_eq!(deposit_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(move |id| {
+	MockPrices::mock_get(move |id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
 		assert_eq!(*id, REGISTER_PRICE_ID);
 		Ok((price, BLOCK_TIME.as_secs()))
 	});

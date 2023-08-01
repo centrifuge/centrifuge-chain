@@ -29,8 +29,8 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_get(f: impl Fn(&T::DataId) -> T::Data + 'static) {
-			register_call!(f);
+		pub fn mock_get(f: impl Fn(&T::DataId, &T::CollectionId) -> T::Data + 'static) {
+			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_collection(f: impl Fn(&T::CollectionId) -> T::Collection + 'static) {
@@ -62,8 +62,8 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
-		fn get(a: &T::DataId) -> T::Data {
-			execute_call!(a)
+		fn get(a: &T::DataId, b: &T::CollectionId) -> T::Data {
+			execute_call!((a, b))
 		}
 
 		fn collection(a: &T::CollectionId) -> T::Collection {
