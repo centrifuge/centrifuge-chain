@@ -311,7 +311,7 @@ fn with_wrong_quantity_amount_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// It's not multiple of PRICE_VALUE
-		let amount = ExternalAmount::new(Rate::from_float(0.5), PRICE_VALUE);
+		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 
 		assert_noop!(

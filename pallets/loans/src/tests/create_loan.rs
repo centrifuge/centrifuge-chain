@@ -158,7 +158,9 @@ fn with_no_natural_quantity() {
 
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
-				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY + Rate::from_float(0.1)),
+				max_borrow_amount: ExtMaxBorrowAmount::Quantity(
+					QUANTITY + Quantity::from_float(0.1),
+				),
 				..util::base_external_pricing()
 			}),
 			..util::base_external_loan()
