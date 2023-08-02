@@ -121,9 +121,19 @@ fn add_pool() {
 		// Now create the pool
 		utils::create_ausd_pool(pool_id);
 
-		// Verify that we can now call Connectors::add_pool successfully
+		// Verify ALICE can't call `add_pool` given she is not the `PoolAdmin`
+		assert_noop!(
+			Connectors::add_pool(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id,
+				Domain::EVM(1284),
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::NotPoolAdmin
+		);
+
+		// Verify that it works if it's BOB calling it (the pool admin)
 		assert_ok!(Connectors::add_pool(
-			RuntimeOrigin::signed(ALICE.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
 			Domain::EVM(1284),
 		));
@@ -167,10 +177,21 @@ fn add_tranche() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
+		// Verify ALICE can't call `add_tranche` given she is not the `PoolAdmin`
+		assert_noop!(
+			Connectors::add_tranche(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id,
+				tranche_id,
+				Domain::EVM(1284),
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::NotPoolAdmin
+		);
+
 		// Finally, verify we can call Connectors::add_tranche successfully
-		// when given a valid pool + tranche id pair.
+		// when called by the PoolAdmin with the right pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
-			RuntimeOrigin::signed(ALICE.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
 			tranche_id,
 			Domain::EVM(1284),

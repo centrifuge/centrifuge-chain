@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.27"
+version = "0.10.28"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
@@ -44,6 +44,7 @@ members = [
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
   "pallets/crowdloan-reward",
+  "pallets/ethereum-transaction",
   "pallets/fees",
   "pallets/interest-accrual",
   "pallets/investments",

@@ -14,6 +14,7 @@
 #![cfg(test)]
 #![allow(unused)]
 
+mod ethereum_transaction;
 mod pools;
 mod rewards;
 mod runtime_apis;
