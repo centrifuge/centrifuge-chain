@@ -96,6 +96,7 @@ pub mod pallet {
 	pub mod util {
 		use super::*;
 
+		#[allow(clippy::type_complexity)]
 		pub struct MockDataCollection<DataId, Data>(
 			Box<dyn Fn(&DataId) -> Result<Data, DispatchError>>,
 		);
