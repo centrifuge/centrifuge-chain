@@ -7,7 +7,7 @@ use sp_arithmetic::{
 /// The resulting Balance will be represented with the `decimals` given.
 pub fn fixed_point_to_balance<
 	FixedPoint: FixedPointNumber<Inner = IntoBalance>,
-	IntoBalance: BaseArithmetic + Copy + std::fmt::Debug,
+	IntoBalance: BaseArithmetic + Copy,
 >(
 	fixed_point: FixedPoint,
 	decimals: usize,

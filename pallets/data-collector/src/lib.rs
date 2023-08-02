@@ -108,6 +108,16 @@ pub mod pallet {
 		MaxCollectionNumber,
 	}
 
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
+		fn get_from_source(
+			data_id: &T::DataId,
+			collection_id: &T::CollectionId,
+		) -> Result<DataValueOf<T, I>, DispatchError> {
+			T::DataProvider::get_no_op(&(data_id.clone(), collection_id.clone()))
+				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
+		}
+	}
+
 	impl<T: Config<I>, I: 'static> DataRegistry<T::DataId, T::CollectionId> for Pallet<T, I> {
 		type Collection = CachedCollection<T, I>;
 		type Data = Result<DataValueOf<T, I>, DispatchError>;
@@ -115,8 +125,10 @@ pub mod pallet {
 		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(data_id: &T::DataId, collection_id: &T::CollectionId) -> Self::Data {
-			T::DataProvider::get_no_op(&(data_id.clone(), collection_id.clone()))
-				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
+			Collection::<T, I>::get(collection_id)
+				.get(data_id)
+				.cloned()
+				.ok_or_else(|| Error::<T, I>::DataIdNotInCollection.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
@@ -133,10 +145,7 @@ pub mod pallet {
 							.map_err(|_| Error::<T, I>::MaxCollectionNumber)?;
 
 						Collection::<T, I>::try_mutate(collection_id, |collection| {
-							let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(
-								data_id,
-								collection_id,
-							)?;
+							let data = Self::get_from_source(data_id, collection_id)?;
 
 							collection
 								.try_insert(data_id.clone(), data)
@@ -174,10 +183,7 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T, I>::get(data_id).keys() {
 				Collection::<T, I>::mutate(collection_id, |collection| {
-					let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(
-						data_id,
-						collection_id,
-					);
+					let data = Self::get_from_source(data_id, collection_id);
 
 					if let (Some(value), Ok(new_value)) = (collection.get_mut(data_id), data) {
 						*value = new_value;
