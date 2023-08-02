@@ -29,7 +29,9 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_get(f: impl Fn(&T::DataId, &T::CollectionId) -> T::Data + 'static) {
+		pub fn mock_get(
+			f: impl Fn(&T::DataId, &T::CollectionId) -> Result<T::Data, DispatchError> + 'static,
+		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
@@ -62,7 +64,7 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
-		fn get(a: &T::DataId, b: &T::CollectionId) -> T::Data {
+		fn get(a: &T::DataId, b: &T::CollectionId) -> Result<T::Data, DispatchError> {
 			execute_call!((a, b))
 		}
 
@@ -91,14 +93,15 @@ pub mod pallet {
 		}
 	}
 
-	#[cfg(feature = "std")]
 	pub mod util {
 		use super::*;
 
-		pub struct MockDataCollection<DataId, Data>(Box<dyn Fn(&DataId) -> Data>);
+		pub struct MockDataCollection<DataId, Data>(
+			Box<dyn Fn(&DataId) -> Result<Data, DispatchError>>,
+		);
 
 		impl<DataId, Data> MockDataCollection<DataId, Data> {
-			pub fn new(f: impl Fn(&DataId) -> Data + 'static) -> Self {
+			pub fn new(f: impl Fn(&DataId) -> Result<Data, DispatchError> + 'static) -> Self {
 				Self(Box::new(f))
 			}
 		}
@@ -106,7 +109,7 @@ pub mod pallet {
 		impl<DataId, Data> DataCollection<DataId> for MockDataCollection<DataId, Data> {
 			type Data = Data;
 
-			fn get(&self, data_id: &DataId) -> Self::Data {
+			fn get(&self, data_id: &DataId) -> Result<Self::Data, DispatchError> {
 				(self.0)(data_id)
 			}
 		}

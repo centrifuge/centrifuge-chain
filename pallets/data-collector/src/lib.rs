@@ -120,11 +120,14 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> DataRegistry<T::DataId, T::CollectionId> for Pallet<T, I> {
 		type Collection = CachedCollection<T, I>;
-		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		type Data = DataValueOf<T, I>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
-		fn get(data_id: &T::DataId, collection_id: &T::CollectionId) -> Self::Data {
+		fn get(
+			data_id: &T::DataId,
+			collection_id: &T::CollectionId,
+		) -> Result<Self::Data, DispatchError> {
 			Collection::<T, I>::get(collection_id)
 				.get(data_id)
 				.cloned()
@@ -224,9 +227,9 @@ pub mod pallet {
 	);
 
 	impl<T: Config<I>, I: 'static> DataCollection<T::DataId> for CachedCollection<T, I> {
-		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		type Data = DataValueOf<T, I>;
 
-		fn get(&self, data_id: &T::DataId) -> Self::Data {
+		fn get(&self, data_id: &T::DataId) -> Result<DataValueOf<T, I>, DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()

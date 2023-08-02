@@ -102,7 +102,7 @@ where
 	T::PriceId: From<u32>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 {
 	fn prepare_benchmark() -> T::PoolId {
@@ -320,7 +320,7 @@ benchmarks! {
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
 		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 	}
 

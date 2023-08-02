@@ -123,7 +123,6 @@ pub mod pallet {
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
-	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
@@ -196,7 +195,7 @@ pub mod pallet {
 		>;
 
 		/// Used to fetch and update Oracle prices
-		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceResultOf<Self>>;
+		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -423,7 +422,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		/// Creates a new loan against the collateral provided
 		///
@@ -786,7 +785,7 @@ pub mod pallet {
 	/// Utility methods
 	impl<T: Config> Pallet<T>
 	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		fn now() -> Moment {
 			T::Time::now().as_secs()
@@ -1005,7 +1004,7 @@ pub mod pallet {
 	// TODO: This implementation can be cleaned once #908 be solved
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
 	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;

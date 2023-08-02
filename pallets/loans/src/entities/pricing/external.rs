@@ -138,7 +138,7 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
 	where
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let price = cache.get(&self.info.price_id)?.0;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)

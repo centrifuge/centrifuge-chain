@@ -268,7 +268,7 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {

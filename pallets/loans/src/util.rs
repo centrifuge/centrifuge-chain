@@ -19,7 +19,7 @@ use orml_traits::{DataFeeder, DataProvider};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{ChangeOf, Config, PriceResultOf};
+use crate::pallet::{ChangeOf, Config, PriceOf};
 
 const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
@@ -29,11 +29,11 @@ pub struct NoPriceRegistry<T>(PhantomData<T>);
 
 impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
 	type Collection = NoPriceCollection<T>;
-	type Data = PriceResultOf<T>;
+	type Data = PriceOf<T>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
 
-	fn get(_: &T::PriceId, _: &T::PoolId) -> Self::Data {
+	fn get(_: &T::PriceId, _: &T::PoolId) -> Result<Self::Data, DispatchError> {
 		Err(DEFAULT_PRICE_ERR)
 	}
 
@@ -65,9 +65,9 @@ impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistr
 pub struct NoPriceCollection<T>(PhantomData<T>);
 
 impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
-	type Data = PriceResultOf<T>;
+	type Data = PriceOf<T>;
 
-	fn get(&self, _: &T::PriceId) -> Self::Data {
+	fn get(&self, _: &T::PriceId) -> Result<Self::Data, DispatchError> {
 		Err(DEFAULT_PRICE_ERR)
 	}
 }
