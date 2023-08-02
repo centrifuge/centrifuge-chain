@@ -28,7 +28,7 @@ mod tests;
 pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataFeeder, DataProvider, DataProviderExtended, OnNewData};
+	use orml_traits::{DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError, DispatchResult,
@@ -196,31 +196,6 @@ pub mod pallet {
 		}
 	}
 
-	// This implementation can be removed once:
-	// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged,
-	// and consecuently, get() call methods simplified.
-	impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
-	where
-		T::DataProvider: DataProvider<T::DataId, T::Data>,
-	{
-		fn get(key: &T::DataId) -> Option<T::Data> {
-			T::DataProvider::get(key)
-		}
-	}
-
-	impl<T: Config<I>, I: 'static> DataFeeder<T::DataId, T::Data, T::AccountId> for Pallet<T, I>
-	where
-		T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
-	{
-		fn feed_value(
-			account_id: T::AccountId,
-			data_id: T::DataId,
-			data: T::Data,
-		) -> DispatchResult {
-			T::DataProvider::feed_value(account_id, data_id, data)
-		}
-	}
-
 	/// A collection cached in memory
 	pub struct CachedCollection<T: Config<I>, I: 'static = ()>(
 		BoundedBTreeMap<T::DataId, DataValueOf<T, I>, T::MaxCollectionSize>,
@@ -234,6 +209,36 @@ pub mod pallet {
 				.get(data_id)
 				.cloned()
 				.ok_or_else(|| Error::<T, I>::DataIdNotInCollection.into())
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	mod benchmark_impls {
+		use orml_traits::{DataFeeder, DataProvider};
+
+		use super::*;
+		// This implementation can be removed once:
+		// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged.
+		impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
+		where
+			T::DataProvider: DataProvider<T::DataId, T::Data>,
+		{
+			fn get(key: &T::DataId) -> Option<T::Data> {
+				T::DataProvider::get(key)
+			}
+		}
+
+		impl<T: Config<I>, I: 'static> DataFeeder<T::DataId, T::Data, T::AccountId> for Pallet<T, I>
+		where
+			T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
+		{
+			fn feed_value(
+				account_id: T::AccountId,
+				data_id: T::DataId,
+				data: T::Data,
+			) -> DispatchResult {
+				T::DataProvider::feed_value(account_id, data_id, data)
+			}
 		}
 	}
 }

@@ -8,10 +8,8 @@ use cfg_types::{
 	oracles::OracleKey,
 	tokens::{CurrencyId, CustomMetadata},
 };
-use orml_traits::{
-	asset_registry, CombineData, DataFeeder, DataProvider, DataProviderExtended, OnNewData,
-};
-use sp_runtime::{traits::Zero, DispatchResult};
+use orml_traits::{asset_registry, CombineData, DataProviderExtended, OnNewData};
+use sp_runtime::traits::Zero;
 use sp_std::{marker::PhantomData, vec::Vec};
 
 type TimestampedQuantity = orml_oracle::TimestampedValue<Quantity, Moment>;
@@ -45,26 +43,6 @@ where
 		// This method is not used by pallet-data-collector and there is no way to
 		// implementing it because `PoolId` is not known by the oracle.
 		sp_std::vec![]
-	}
-}
-
-impl<Oracle, AssetRegistry, Pools> DataProvider<OracleKey, Balance>
-	for DataProviderBridge<Oracle, AssetRegistry, Pools>
-where
-	Oracle: DataProvider<OracleKey, Balance>,
-{
-	fn get(key: &OracleKey) -> Option<Balance> {
-		Oracle::get(key)
-	}
-}
-
-impl<Oracle, AssetRegistry, Pools> DataFeeder<OracleKey, Balance, AccountId>
-	for DataProviderBridge<Oracle, AssetRegistry, Pools>
-where
-	Oracle: DataFeeder<OracleKey, Balance, AccountId>,
-{
-	fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
-		Oracle::feed_value(who, key, value)
 	}
 }
 
@@ -108,9 +86,33 @@ impl CombineData<OracleKey, TimestampedQuantity> for LastOracleValue {
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarks_util {
 	use frame_support::traits::SortedMembers;
+	use orml_traits::{DataFeeder, DataProvider};
+	use sp_runtime::DispatchResult;
 	use sp_std::vec::Vec;
 
 	use super::*;
+
+	// This implementation can be removed once:
+	// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged.
+	impl<Oracle, AssetRegistry, Pools> DataProvider<OracleKey, Balance>
+		for DataProviderBridge<Oracle, AssetRegistry, Pools>
+	where
+		Oracle: DataProvider<OracleKey, Quantity>,
+	{
+		fn get(_: &OracleKey) -> Option<Balance> {
+			None
+		}
+	}
+
+	impl<Oracle, AssetRegistry, Pools> DataFeeder<OracleKey, Balance, AccountId>
+		for DataProviderBridge<Oracle, AssetRegistry, Pools>
+	where
+		Oracle: DataFeeder<OracleKey, Quantity, AccountId>,
+	{
+		fn feed_value(who: AccountId, key: OracleKey, _: Balance) -> DispatchResult {
+			Oracle::feed_value(who, key, Default::default())
+		}
+	}
 
 	impl CombineData<OracleKey, TimestampedQuantity> for LastOracleValue {
 		fn combine_data(
