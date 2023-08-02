@@ -191,7 +191,6 @@ std = [
   "pallet-collective/std",
   "pallet-connectors/std",
   "pallet-connectors-gateway/std",
-  "pallet-connectors-gateway/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
@@ -319,7 +318,6 @@ runtime-benchmarks = [
   "pallet-bridge/runtime-benchmarks",
   "pallet-connectors/runtime-benchmarks",
   "pallet-connectors-gateway/runtime-benchmarks",
-  "pallet-connectors-gateway/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
@@ -342,7 +340,6 @@ runtime-benchmarks = [
 
 try-runtime = [
   "pallet-connectors/try-runtime",
-  "pallet-connectors-gateway/try-runtime",
   "pallet-connectors-gateway/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
