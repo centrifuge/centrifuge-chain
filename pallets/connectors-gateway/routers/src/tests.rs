@@ -17,13 +17,7 @@ use sp_runtime::{
 };
 
 use super::mock::*;
-use crate::{
-	axelar_evm::{get_axelar_encoded_msg, AxelarEVMRouter},
-	axelar_xcm::AxelarXCMRouter,
-	ethereum_xcm::{get_encoded_contract_call, EthereumXCMRouter},
-	routers::*,
-	DomainRouter, EVMChain,
-};
+use crate::*;
 
 mod evm_router {
 	use util::*;
