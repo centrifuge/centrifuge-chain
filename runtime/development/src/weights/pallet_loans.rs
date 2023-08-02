@@ -100,7 +100,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
-	fn transfer_debt(n: u32) -> Weight {
+	fn transfer_debt(_: u32) -> Weight {
         // Pending to regenerate
 		Weight::default()
 	}
