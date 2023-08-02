@@ -30,6 +30,7 @@ use crate::{
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum EVMChain {
 	Ethereum,
+	Goerli,
 }
 
 /// Required due to the naming convention defined by Axelar here:
@@ -38,6 +39,7 @@ impl ToString for EVMChain {
 	fn to_string(&self) -> String {
 		match self {
 			EVMChain::Ethereum => "Ethereum".to_string(),
+			EVMChain::Goerli => "ethereum-2".to_string(),
 		}
 	}
 }
