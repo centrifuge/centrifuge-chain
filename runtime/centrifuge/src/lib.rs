@@ -27,7 +27,7 @@ use cfg_traits::{
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::FeeKey,
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{
@@ -1586,9 +1586,9 @@ impl orml_oracle::Config for Runtime {
 	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
-	type OnNewData = PriceCollector;
+	type OnNewData = runtime_common::oracle::OnNewPrice<PriceCollector>;
 	type OracleKey = OracleKey;
-	type OracleValue = Balance;
+	type OracleValue = Quantity;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1599,7 +1599,8 @@ impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Balance;
 	type DataId = OracleKey;
-	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
+	type DataProvider =
+		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
 	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
 	type Moment = Moment;
