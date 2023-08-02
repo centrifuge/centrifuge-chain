@@ -482,11 +482,16 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
+					// Specifically omitting Loans `repay` & `borrow` for pallet_loans
 					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::admin_write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::propose_loan_mutation{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::propose_write_off_policy{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
-					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
@@ -526,19 +531,21 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-				// Borrowers should be able to close and execute an epoch
-				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+                // Borrowers should be able to close and execute an epoch
+                // in order to get liquidity from repayments in previous epochs.
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch { .. }) |
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution { .. }) |
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch { .. }) |
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { .. }) |
+                RuntimeCall::Utility(pallet_utility::Call::batch { .. })
 			),
 			ProxyType::Invest => matches!(
 				c,
