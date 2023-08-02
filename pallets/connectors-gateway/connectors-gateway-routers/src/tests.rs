@@ -766,8 +766,8 @@ mod axelar_xcm {
 
 				let contract_call = get_axelar_encoded_msg(
 					test_data.msg.serialize(),
-					test_data.axelar_target_chain.to_string(),
-					test_data.axelar_target_contract.to_string(),
+					test_data.axelar_target_chain.clone(),
+					test_data.axelar_target_contract,
 				)
 				.unwrap();
 

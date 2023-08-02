@@ -13,7 +13,7 @@
 use cfg_traits::connectors::Codec;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchResult;
-use scale_info::{prelude::string::ToString, TypeInfo};
+use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
@@ -53,8 +53,8 @@ where
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let contract_call = get_axelar_encoded_msg(
 			msg.serialize(),
-			self.axelar_target_chain.to_string(),
-			self.axelar_target_contract.to_string(),
+			self.axelar_target_chain.clone(),
+			self.axelar_target_contract,
 		)
 		.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
 
