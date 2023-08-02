@@ -132,6 +132,7 @@ pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-order-book = { path = "../../pallets/order-book", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -211,6 +212,7 @@ std = [
   "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-nft/std",
+  "pallet-order-book/std",
   "pallet-permissions/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
@@ -295,6 +297,7 @@ runtime-benchmarks = [
   "pallet-loans/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -348,6 +351,7 @@ try-runtime = [
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-nft-sales/try-runtime",
+  "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-registry/try-runtime",
   "pallet-pool-system/try-runtime",
