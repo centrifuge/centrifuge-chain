@@ -11,6 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+getrandom = { version = "0.2", features = ["js"] }
 hex = { version = "0.4.3", default_features = false }
 hex-literal = { version = "0.3.4", optional = true }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -112,7 +113,7 @@ runtime-common = { path = "../common", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
 
 # our custom pallets
-connectors-gateway-routers = { path = "../../pallets/connectors-gateway/connectors-gateway-routers", default-features = false }
+connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
@@ -158,6 +159,7 @@ std = [
   "chainbridge/std",
   "chainbridge/std",
   "codec/std",
+  "connectors-gateway-routers/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
@@ -267,11 +269,13 @@ std = [
   "fp-rpc/std",
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
+  "connectors-gateway-routers/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
@@ -339,6 +343,7 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
+  "connectors-gateway-routers/try-runtime",
   "pallet-connectors/try-runtime",
   "pallet-connectors-gateway/try-runtime",
   "cfg-primitives/try-runtime",
