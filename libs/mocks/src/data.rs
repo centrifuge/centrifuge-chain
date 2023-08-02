@@ -9,7 +9,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type DataId;
 		type CollectionId;
-		type Collection: DataCollection<Self::DataId>;
+		type Collection: DataCollection<Self::DataId, Data = Self::Data>;
 		type Data;
 		type DataElem;
 		#[cfg(feature = "runtime-benchmarks")]

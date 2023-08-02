@@ -17,7 +17,7 @@ use sp_runtime::{DispatchError, DispatchResult};
 /// you can subscribe to data updates and collect them
 pub trait DataRegistry<DataId, CollectionId> {
 	/// A collection of data
-	type Collection: DataCollection<DataId>;
+	type Collection: DataCollection<DataId, Data = Self::Data>;
 
 	/// Represents a data
 	type Data;

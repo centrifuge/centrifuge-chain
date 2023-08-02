@@ -72,11 +72,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		self,
-		changes::ChangeGuard,
-		data::{DataCollection, DataRegistry},
-		interest::InterestAccrual,
-		Permissions, PoolInspect, PoolNAV, PoolReserve,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
+		PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -116,10 +113,6 @@ pub mod pallet {
 
 	use super::*;
 
-	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-		<T as Config>::PriceId,
-		<T as Config>::PoolId,
-	>>::Collection;
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
@@ -420,10 +413,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -783,10 +773,7 @@ pub mod pallet {
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -1002,10 +989,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceOf<T>>,
-	{
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
