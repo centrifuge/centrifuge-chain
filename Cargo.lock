@@ -2652,6 +2652,7 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
@@ -2667,6 +2668,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
@@ -7234,6 +7236,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ethereum-transaction"
+version = "0.0.1"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "ethereum",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-ethereum",
+ "pallet-evm",
+ "pallet-evm-precompile-simple",
+ "pallet-timestamp",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
@@ -7298,6 +7324,16 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-evm-precompile-simple"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "ripemd",
+ "sp-io",
 ]
 
 [[package]]
@@ -7739,6 +7775,32 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-order-book"
+version = "0.1.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-test-utils",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -10508,6 +10570,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ripemd"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd124222d17ad93a644ed9d011a40f4fb64aa54275c08cc216524a9ea82fb09f"
+dependencies = [
+ "digest 0.10.6",
+]
+
+[[package]]
 name = "rlp"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10752,6 +10823,7 @@ dependencies = [
  "cfg-utils",
  "cumulus-primitives-core",
  "development-runtime",
+ "ethereum",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -10769,6 +10841,9 @@ dependencies = [
  "pallet-block-rewards",
  "pallet-collator-selection",
  "pallet-connectors",
+ "pallet-ethereum-transaction",
+ "pallet-evm",
+ "pallet-evm-chain-id",
  "pallet-investments",
  "pallet-loans",
  "pallet-permissions",

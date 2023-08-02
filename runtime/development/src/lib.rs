@@ -73,7 +73,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
-use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
+use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -1846,6 +1846,26 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type Weights = ();
 }
 
+parameter_types! {
+		pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
+		pub const OrderPairVecSize: u32 = 1_000_000u32;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type FeeCurrencyId = NativeToken;
+	type Fees = Fees;
+	type ForeignCurrencyBalance = Balance;
+	type OrderFeeKey = OrderBookCreationFeeKey;
+	type OrderIdNonce = u64;
+	type OrderPairVecSize = OrderPairVecSize;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type TradeableAsset = OrmlTokens;
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1915,6 +1935,7 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1937,6 +1958,7 @@ construct_runtime!(
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
+		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -2434,11 +2456,11 @@ impl_runtime_apis! {
 
 		fn extrinsic_filter(
 			xts: Vec<<Block as BlockT>::Extrinsic>,
-		) -> Vec<EthereumTransaction> {
+		) -> Vec<EthTransaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
 				RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
 				_ => None
-			}).collect::<Vec<EthereumTransaction>>()
+			}).collect::<Vec<EthTransaction>>()
 		}
 
 		fn elasticity() -> Option<Permill> {
@@ -2449,7 +2471,7 @@ impl_runtime_apis! {
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
-		fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
+		fn convert_transaction(transaction: EthTransaction) -> <Block as BlockT>::Extrinsic {
 			UncheckedExtrinsic::new_unsigned(
 				pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
 			)
@@ -2508,6 +2530,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
+			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2546,6 +2569,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
+			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
