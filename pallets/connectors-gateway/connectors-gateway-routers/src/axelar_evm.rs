@@ -75,8 +75,8 @@ where
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let eth_msg = get_axelar_encoded_msg(
 			msg.serialize(),
-			self.evm_chain.to_string(),
-			self.connectors_contract_address.to_string(),
+			self.evm_chain.clone(),
+			self.connectors_contract_address,
 		)
 		.map_err(DispatchError::Other)?;
 
@@ -89,8 +89,8 @@ where
 /// contract.
 pub(crate) fn get_axelar_encoded_msg(
 	serialized_msg: Vec<u8>,
-	target_chain: String,
-	target_contract: String,
+	target_chain: EVMChain,
+	target_contract: H160,
 ) -> Result<Vec<u8>, &'static str> {
 	// Centrifuge -> `callContract` on the Axelar Gateway contract.
 	//
@@ -181,8 +181,8 @@ pub(crate) fn get_axelar_encoded_msg(
 	.function(AXELAR_FUNCTION_NAME)
 	.map_err(|_| "cannot retrieve Axelar contract function")?
 	.encode_input(&[
-		Token::String(target_chain),
-		Token::String(target_contract),
+		Token::String(target_chain.to_string()),
+		Token::String(target_contract.to_string()),
 		Token::Bytes(encoded_connectors_contract),
 	])
 	.map_err(|_| "cannot encode input for Axelar contract function")?;
