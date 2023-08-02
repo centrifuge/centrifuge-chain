@@ -27,11 +27,12 @@ mod tests;
 pub mod axelar_evm;
 pub mod axelar_xcm;
 pub mod ethereum_xcm;
-pub mod router;
+pub mod routers;
 
 pub use axelar_evm::*;
 pub use axelar_xcm::*;
 pub use ethereum_xcm::*;
+pub use routers::*;
 
 type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_connectors_gateway::Config>::Message;

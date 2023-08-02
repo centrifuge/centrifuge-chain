@@ -17,7 +17,7 @@ use scale_info::TypeInfo;
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
 use crate::{
-	router::XCMRouter, AccountIdOf, MessageOf, CONNECTORS_FUNCTION_NAME, CONNECTORS_MESSAGE_PARAM,
+	AccountIdOf, MessageOf, XCMRouter, CONNECTORS_FUNCTION_NAME, CONNECTORS_MESSAGE_PARAM,
 };
 
 /// The router used for submitting a Connectors message via Moonbeam XCM.

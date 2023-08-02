@@ -21,7 +21,7 @@ use crate::{
 	axelar_evm::{get_axelar_encoded_msg, AxelarEVMRouter},
 	axelar_xcm::AxelarXCMRouter,
 	ethereum_xcm::{get_encoded_contract_call, EthereumXCMRouter},
-	router::*,
+	routers::*,
 	DomainRouter, EVMChain,
 };
 

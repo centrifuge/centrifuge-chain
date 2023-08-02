@@ -19,9 +19,8 @@ use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
 
 use crate::{
-	axelar_evm::get_axelar_encoded_msg,
-	router::{XCMRouter, XcmDomain},
-	AccountIdOf, CurrencyIdOf, EVMChain, MessageOf,
+	axelar_evm::get_axelar_encoded_msg, AccountIdOf, CurrencyIdOf, EVMChain, MessageOf, XCMRouter,
+	XcmDomain,
 };
 
 pub type AxelarXcmDomain<T> = XcmDomain<CurrencyIdOf<T>>;

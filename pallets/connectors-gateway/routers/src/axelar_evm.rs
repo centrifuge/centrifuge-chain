@@ -21,7 +21,7 @@ use sp_core::H160;
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
 use crate::{
-	router::evm::EVMRouter, AccountIdOf, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
+	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
 	AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM, AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM,
 	CONNECTORS_FUNCTION_NAME, CONNECTORS_MESSAGE_PARAM,
 };
@@ -87,20 +87,17 @@ where
 /// Encodes the provided message into the format required for submitting it
 /// to the Axelar contract which in turn submits it to the Connectors
 /// contract.
+///
+/// Axelar contract call:
+/// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
+///
+/// Connectors contract call:
+/// <https://github.com/centrifuge/connectors/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
 pub(crate) fn get_axelar_encoded_msg(
 	serialized_msg: Vec<u8>,
 	target_chain: EVMChain,
 	target_contract: H160,
 ) -> Result<Vec<u8>, &'static str> {
-	// Centrifuge -> `callContract` on the Axelar Gateway contract.
-	//
-	// Axelar Gateway contract -> `handle` on the Connectors gateway contract
-	// deployed on Ethereum.
-
-	// Connectors Call:
-	//
-	// function handle(bytes memory _message) external onlyRouter {}
-
 	#[allow(deprecated)]
 	let encoded_connectors_contract = Contract {
 		constructor: None,
@@ -127,22 +124,6 @@ pub(crate) fn get_axelar_encoded_msg(
 	.map_err(|_| "cannot retrieve Connectors contract function")?
 	.encode_input(&[Token::Bytes(serialized_msg)])
 	.map_err(|_| "cannot encode input for Connectors contract function")?;
-
-	// Axelar Call:
-	//
-	// function callContract(
-	//     string calldata destinationChain,
-	//     string calldata destinationContractAddress,
-	//     bytes calldata payload,
-	// ) external {
-	//     emit ContractCall(
-	// 			msg.sender,
-	// 			destinationChain,
-	// 			destinationContractAddress,
-	// 			keccak256(payload),
-	// 			payload,
-	// 	   );
-	// }
 
 	#[allow(deprecated)]
 	let encoded_axelar_contract = Contract {
