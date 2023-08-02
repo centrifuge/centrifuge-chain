@@ -27,7 +27,7 @@ use cfg_traits::{
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::FeeKey,
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{
@@ -1654,6 +1654,7 @@ impl pallet_loans::Config for Runtime {
 	type PoolId = PoolId;
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
+	type Quantity = Quantity;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

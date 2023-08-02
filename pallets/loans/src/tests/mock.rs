@@ -25,6 +25,7 @@ use frame_support::traits::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use scale_info::TypeInfo;
+use sp_arithmetic::fixed_point::FixedU64;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -69,7 +70,7 @@ pub const REGISTER_PRICE_ID: PriceId = 42;
 pub const UNREGISTER_PRICE_ID: PriceId = 88;
 pub const PRICE_VALUE: Balance = 998;
 pub const NOTIONAL: Balance = 1000;
-pub const QUANTITY: Rate = Rate::from_rational(20, 1);
+pub const QUANTITY: Quantity = Quantity::from_rational(20, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -80,6 +81,7 @@ pub type ItemId = u16;
 pub type Asset = (CollectionId, ItemId);
 pub type AccountId = u64;
 pub type Balance = u128;
+pub type Quantity = FixedU64;
 pub type Rate = FixedU128;
 pub type CurrencyId = u32;
 pub type PoolId = u32;
@@ -233,6 +235,7 @@ impl pallet_loans::Config for Runtime {
 	type PoolId = PoolId;
 	type PriceId = PriceId;
 	type PriceRegistry = MockPrices;
+	type Quantity = Quantity;
 	type Rate = Rate;
 	type RuntimeChange = ChangeOf<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
