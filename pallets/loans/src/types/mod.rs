@@ -14,11 +14,12 @@
 //! Contains base types without Config references
 
 use cfg_primitives::Moment;
+use cfg_traits::interest::InterestRate;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, Get},
+	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, Get},
 	ArithmeticError,
 };
 
@@ -85,25 +86,45 @@ pub enum MutationError {
 	DiscountedCashFlowExpected,
 	/// Emits when a modification expect the loan to have an iternal pricing.
 	InternalPricingExpected,
+	/// Maturity extensions exceed max extension allowed.
+	MaturityExtendedTooMuch,
 }
 
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum Maturity {
 	/// Fixed point in time, in secs
-	Fixed(Moment),
+	Fixed {
+		/// Secs when maturity ends
+		date: Moment,
+		/// Extension in secs, without special permissions
+		extension: Moment,
+	},
 }
 
 impl Maturity {
+	pub fn fixed(date: Moment) -> Self {
+		Self::Fixed { date, extension: 0 }
+	}
+
 	pub fn date(&self) -> Moment {
 		match self {
-			Maturity::Fixed(moment) => *moment,
+			Maturity::Fixed { date, .. } => *date,
 		}
 	}
 
 	pub fn is_valid(&self, now: Moment) -> bool {
 		match self {
-			Maturity::Fixed(moment) => *moment > now,
+			Maturity::Fixed { date, .. } => *date > now,
+		}
+	}
+
+	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
+		match self {
+			Maturity::Fixed { date, extension } => {
+				date.ensure_add_assign(value)?;
+				extension.ensure_sub_assign(value)
+			}
 		}
 	}
 }
@@ -179,14 +200,15 @@ pub enum InternalMutation<Rate> {
 	ValuationMethod(ValuationMethod<Rate>),
 	ProbabilityOfDefault(Rate),
 	LossGivenDefault(Rate),
-	DiscountRate(Rate),
+	DiscountRate(InterestRate<Rate>),
 }
 
 /// Active loan mutation
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
-	InterestRate(Rate),
+	MaturityExtension(Moment),
+	InterestRate(InterestRate<Rate>),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
 	Internal(InternalMutation<Rate>),

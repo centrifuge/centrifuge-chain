@@ -61,7 +61,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "pallet-balances",
   "orml-tokens",
   "cfg-primitives/runtime-benchmarks",

@@ -18,7 +18,6 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
@@ -41,6 +40,10 @@ pub mod changes;
 pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
+/// Traits related to Ethereum/EVM.
+pub mod ethereum;
+/// Traits related to interest rates.
+pub mod interest;
 /// Traits related to rewards.
 pub mod rewards;
 
@@ -280,60 +283,6 @@ pub trait CurrencyPrice<CurrencyId> {
 		base: CurrencyId,
 		quote: Option<CurrencyId>,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
-}
-
-/// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
-	/// The maximum number of rates this `InterestAccrual` can
-	/// contain. It is necessary for rate calculations in consumers of
-	/// this pallet, but is otherwise unused in this interface.
-	type MaxRateCount: Get<u32>;
-	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
-	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
-
-	/// Calculate the debt at an specific moment
-	fn calculate_debt(
-		interest_rate_per_year: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		when: Moment,
-	) -> Result<Balance, DispatchError>;
-
-	/// Increase or decrease the normalized debt
-	fn adjust_normalized_debt(
-		interest_rate_per_year: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		adjustment: Adjustment,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Re-normalize a debt for a new interest rate
-	fn renormalize_debt(
-		old_interest_rate: InterestRate,
-		new_interest_rate: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Validate and indicate that a yearly rate is in use
-	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Ask if the rate is valid to use by the implementation
-	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Returns a collection of pre-computed rates to perform multiple
-	/// operations with
-	fn rates() -> Self::Rates;
-}
-
-/// A collection of pre-computed interest rates for performing interest accrual
-pub trait RateCollection<InterestRate, Balance, NormalizedDebt> {
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		&self,
-		interest_rate_per_sec: InterestRate,
-		normalized_debt: NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {
@@ -737,4 +686,45 @@ pub trait CurrencyInspect {
 
 	/// Checks whether the provided currency is a tranche token.
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
+}
+
+pub trait TokenSwaps<Account> {
+	type CurrencyId;
+	type Balance;
+	type OrderId;
+	/// Swap tokens buying a `buy_amount` of `currency_in` using the
+	/// `currency_out` tokens. The implementator of this method should know
+	/// the current market rate between those two currencies.
+	/// `sell_price_limit` defines the lowest price acceptable for
+	/// `currency_in` currency when buying with `currency_out`. This
+	/// protects order placer if market changes unfavourably for swap order.
+	/// Returns the order id created with by this buy order if it could not
+	/// be immediately and completely fulfilled.
+	fn place_order(
+		account: Account,
+		currency_out: Self::CurrencyId,
+		currency_in: Self::CurrencyId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> Result<Self::OrderId, DispatchError>;
+
+	/// Can fail for various reasons
+	///
+	/// E.g. min_fullfillment_amount is lower and
+	///      the system has already fulfilled up to the previous
+	///      one.
+	fn update_order(
+		account: Account,
+		order_id: Self::OrderId,
+		buy_amount: Self::Balance,
+		sell_price_limit: Self::Balance,
+		min_fullfillment_amount: Self::Balance,
+	) -> DispatchResult;
+
+	/// Cancel an already active order.
+	fn cancel_order(order: Self::OrderId) -> DispatchResult;
+
+	/// Check if the order is still active.
+	fn is_active(order: Self::OrderId) -> bool;
 }

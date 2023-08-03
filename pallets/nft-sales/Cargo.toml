@@ -45,7 +45,7 @@ cfg-types = { path = "../../libs/types" }
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",

@@ -32,7 +32,7 @@ use cfg_types::{
 	consts::pools::*,
 	domain_address::Domain,
 	fee_keys::FeeKey,
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
 	oracles::OracleKey,
@@ -73,7 +73,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
-use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
+use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -121,6 +121,8 @@ pub mod evm;
 mod weights;
 pub mod xcm;
 pub use crate::xcm::*;
+
+pub mod connectors;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -480,11 +482,16 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
+					// Specifically omitting Loans `repay` & `borrow` for pallet_loans
 					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::admin_write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::propose_loan_mutation{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::propose_write_off_policy{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
-					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
@@ -524,19 +531,21 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-				// Borrowers should be able to close and execute an epoch
-				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
-				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
-				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Loans(pallet_loans::Call::create { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::borrow { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::repay { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::write_off { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::apply_loan_mutation { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+                // Borrowers should be able to close and execute an epoch
+                // in order to get liquidity from repayments in previous epochs.
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch { .. }) |
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution { .. }) |
+                RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch { .. }) |
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { .. }) |
+                RuntimeCall::Utility(pallet_utility::Call::batch { .. })
 			),
 			ProxyType::Invest => matches!(
 				c,
@@ -1033,7 +1042,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1335,7 +1344,7 @@ impl orml_oracle::Config for Runtime {
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
 	type OracleKey = OracleKey;
-	type OracleValue = Rate;
+	type OracleValue = Balance;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1344,7 +1353,7 @@ impl orml_oracle::Config for Runtime {
 
 impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
-	type Data = Rate;
+	type Data = Balance;
 	type DataId = OracleKey;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxCollectionSize;
@@ -1354,10 +1363,10 @@ impl pallet_data_collector::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
 	// TODO: This is a stopgap value until we can calculate it correctly with
 	// updated benchmarks. See #1024
 	type MaxRateCount = MaxRateCount;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
@@ -1379,8 +1388,9 @@ impl pallet_loans::Config for Runtime {
 	type PoolId = PoolId;
 	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
+	type Quantity = Quantity;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
@@ -1843,6 +1853,26 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type Weights = ();
 }
 
+parameter_types! {
+		pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
+		pub const OrderPairVecSize: u32 = 1_000_000u32;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type FeeCurrencyId = NativeToken;
+	type Fees = Fees;
+	type ForeignCurrencyBalance = Balance;
+	type OrderFeeKey = OrderBookCreationFeeKey;
+	type OrderIdNonce = u64;
+	type OrderPairVecSize = OrderPairVecSize;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type TradeableAsset = OrmlTokens;
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1911,6 +1941,8 @@ construct_runtime!(
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
+		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1933,6 +1965,7 @@ construct_runtime!(
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
+		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -2089,6 +2122,14 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 			.expect("Encoded extrinsic is always valid")
 	}
 }
+
+#[cfg(not(feature = "disable-runtime-api"))]
+mod __runtime_api_use {
+	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+}
+
+#[cfg(not(feature = "disable-runtime-api"))]
+use __runtime_api_use::*;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2281,6 +2322,21 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::LoansApi<Block, PoolId, LoanId, ActiveLoanInfo<Runtime>> for Runtime {
+		fn portfolio(
+			pool_id: PoolId
+		) -> Vec<(LoanId, ActiveLoanInfo<Runtime>)> {
+			Loans::get_active_loans_info(pool_id).unwrap_or_default()
+		}
+
+		fn portfolio_loan(
+			pool_id: PoolId,
+			loan_id: LoanId
+		) -> Option<ActiveLoanInfo<Runtime>> {
+			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
@@ -2407,11 +2463,11 @@ impl_runtime_apis! {
 
 		fn extrinsic_filter(
 			xts: Vec<<Block as BlockT>::Extrinsic>,
-		) -> Vec<EthereumTransaction> {
+		) -> Vec<EthTransaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
 				RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
 				_ => None
-			}).collect::<Vec<EthereumTransaction>>()
+			}).collect::<Vec<EthTransaction>>()
 		}
 
 		fn elasticity() -> Option<Permill> {
@@ -2422,7 +2478,7 @@ impl_runtime_apis! {
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
-		fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
+		fn convert_transaction(transaction: EthTransaction) -> <Block as BlockT>::Extrinsic {
 			UncheckedExtrinsic::new_unsigned(
 				pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
 			)
@@ -2481,6 +2537,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
+			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2519,6 +2576,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
+			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

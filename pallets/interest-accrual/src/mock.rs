@@ -60,8 +60,8 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Balance = Balance;
-	type InterestRate = Rate;
 	type MaxRateCount = MaxRateCount;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
@@ -80,29 +80,19 @@ frame_support::construct_runtime!(
 	}
 );
 
-// Runtime externalities builder
-//
-// This type is mainly used for mocking storage in tests. It is the type alias
-// for an in-memory, hashmap-based externalities implementation.
-#[derive(Default)]
-pub struct TestExternalitiesBuilder {}
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	const SECONDS: u64 = 1000;
+	const START_DATE: u64 = 1640995200;
 
-pub const SECONDS: u64 = 1000;
-pub const START_DATE: u64 = 1640995200;
-
-impl TestExternalitiesBuilder {
-	// Build a genesis storage key/value store
-	pub fn build(self) -> TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| {
-			System::set_block_number(1);
-			System::on_initialize(System::block_number());
-			Timestamp::on_initialize(System::block_number());
-			Timestamp::set(RuntimeOrigin::none(), START_DATE * SECONDS).unwrap();
-		});
-		externalities
-	}
+	let storage = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
+	let mut externalities = TestExternalities::new(storage);
+	externalities.execute_with(|| {
+		System::set_block_number(1);
+		System::on_initialize(System::block_number());
+		Timestamp::on_initialize(System::block_number());
+		Timestamp::set(RuntimeOrigin::none(), START_DATE * SECONDS).unwrap();
+	});
+	externalities
 }

@@ -1,5 +1,3 @@
-use cfg_primitives::SECONDS_PER_DAY;
-
 use super::*;
 
 pub fn total_borrowed_rate(value: f64) -> IntMaxBorrowAmount<Rate> {
@@ -74,11 +72,17 @@ pub fn base_internal_pricing() -> InternalPricing<Runtime> {
 pub fn base_internal_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+			maturity: Maturity::Fixed {
+				date: (now() + YEAR).as_secs(),
+				extension: (YEAR / 2).as_secs(),
+			},
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		collateral: ASSET_AA,
 		pricing: Pricing::Internal(base_internal_pricing()),
 		restrictions: LoanRestrictions {
@@ -99,11 +103,14 @@ pub fn base_external_pricing() -> ExternalPricing<Runtime> {
 pub fn base_external_loan() -> LoanInfo<Runtime> {
 	LoanInfo {
 		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed((now() + YEAR).as_secs()),
+			maturity: Maturity::fixed((now() + YEAR).as_secs()),
 			interest_payments: InterestPayments::None,
 			pay_down_schedule: PayDownSchedule::None,
 		},
-		interest_rate: Rate::from_float(DEFAULT_INTEREST_RATE),
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: Rate::from_float(DEFAULT_INTEREST_RATE),
+			compounding: CompoundingSchedule::Secondly,
+		},
 		collateral: ASSET_AA,
 		pricing: Pricing::External(base_external_pricing()),
 		restrictions: LoanRestrictions {
@@ -129,7 +136,7 @@ pub fn create_loan(loan: LoanInfo<Runtime>) -> LoanId {
 	LastLoanId::<Runtime>::get(POOL_A)
 }
 
-pub fn borrow_loan(loan_id: LoanId, borrow_amount: Balance) {
+pub fn borrow_loan(loan_id: LoanId, borrow_amount: PricingAmount<Runtime>) {
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 	MockPrices::mock_register_id(|_, _| Ok(()));
@@ -147,7 +154,7 @@ pub fn borrow_loan(loan_id: LoanId, borrow_amount: Balance) {
 	MockPrices::mock_register_id(|_, _| panic!("no register_id() mock"));
 }
 
-pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
+pub fn repay_loan(loan_id: LoanId, repay_amount: PricingAmount<Runtime>) {
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
@@ -155,7 +162,7 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
 		RuntimeOrigin::signed(BORROWER),
 		POOL_A,
 		loan_id,
-		RepaidAmount {
+		RepaidPricingAmount {
 			principal: repay_amount,
 			interest: u128::MAX,
 			unscheduled: 0,

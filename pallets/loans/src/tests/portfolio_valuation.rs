@@ -68,17 +68,17 @@ fn without_active_loans() {
 fn with_active_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
-		util::borrow_loan(loan_1, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_1, PricingAmount::External(amount.clone()));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_internal_loan()
 		});
-		util::borrow_loan(loan_2, COLLATERAL_VALUE);
-		util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
+		util::borrow_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE / 4));
 
-		let valuation = amount + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
+		let valuation = amount.balance().unwrap() + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
 
 		expected_portfolio(valuation);
 		update_portfolio();
@@ -95,15 +95,15 @@ fn with_active_loans() {
 fn with_active_written_off_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
-		util::borrow_loan(loan_1, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_1, PricingAmount::External(amount));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_internal_loan()
 		});
-		util::borrow_loan(loan_2, COLLATERAL_VALUE);
-		util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
+		util::borrow_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE / 4));
 
 		advance_time(YEAR + DAY);
 
@@ -119,15 +119,15 @@ fn with_active_written_off_loans() {
 fn filled_and_cleaned() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
-		let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
-		util::borrow_loan(loan_1, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_1, PricingAmount::External(amount.clone()));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_internal_loan()
 		});
-		util::borrow_loan(loan_2, COLLATERAL_VALUE);
-		util::repay_loan(loan_2, COLLATERAL_VALUE / 2);
+		util::borrow_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::repay_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 
 		advance_time(YEAR + DAY);
 
@@ -135,8 +135,8 @@ fn filled_and_cleaned() {
 
 		advance_time(YEAR / 2);
 
-		util::repay_loan(loan_1, amount);
-		util::repay_loan(loan_2, COLLATERAL_VALUE / 2);
+		util::repay_loan(loan_1, PricingAmount::External(amount));
+		util::repay_loan(loan_2, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 
 		advance_time(YEAR / 2);
 
@@ -154,14 +154,14 @@ fn filled_and_cleaned() {
 fn exact_and_inexact_matches() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, COLLATERAL_VALUE);
+		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR / 2);
 		update_portfolio();
 
 		// repay_loan() should affect to the portfolio valuation with the same value as
 		// the absolute valuation of the loan
-		util::repay_loan(loan_1, COLLATERAL_VALUE / 2);
+		util::repay_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 		expected_portfolio(util::current_loan_pv(loan_1));
 	});
 }

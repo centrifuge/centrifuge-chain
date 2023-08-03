@@ -14,6 +14,7 @@ use cfg_types::tokens::CurrencyId;
 
 pub mod accounts;
 pub mod env;
+pub mod evm;
 pub mod extrinsics;
 pub mod genesis;
 pub mod loans;

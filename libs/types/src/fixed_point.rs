@@ -1,19 +1,14 @@
-// This file is part of Substrate.
-
-// Copyright (C) 2019-2021 Parity Technologies (UK) Ltd.
-// SPDX-License-Identifier: Apache-2.0
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 //
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
@@ -289,19 +284,36 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_div_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// Checked division by FixedPointOperand, with Rounding::SignedRounding
 	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
-	/// For example:
-	/// Rate::saturating_from_rational(2).checked_div_with_rounding(2,
-	/// SignedRounding::..) would be equivalent to               (2 *
-	/// Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
-	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 *
-	/// Rate::accuracy)would be equivalent to               2 * Rate::accuracy *
-	/// (Rate::accuracy / 2 * Rate::accuracy)               Which would be 1 *
-	/// Rate::accuracy
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case). For example:
+	/// ```text
+	///    FixedU128::saturating_from_rational(2)
+	///        .checked_div_with_rounding(2, SignedRounding::...)
+	///
+	/// would be equivalent to    
+	///           
+	///      (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
+	///
+	/// instead of
+	///
+	///      2 * 1/2.
+	///
+	/// Whereas
+	///
+	///     FixedU128::saturating_from_rational(2)
+	///         .checked_div_with_rounding(2 * FixedU128::accuracy)
+	///
+	/// would be equivalent to
+	///
+	///     2 * FixedU128::accuracy *
+	///        (FixedU128::accuracy / 2 * FixedU128::accuracy)
+	///
+	/// Which would be 1 * FixedU128::accuracy
+	/// ```
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -312,7 +324,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case).
 	fn checked_div_int_floor<N: FixedPointOperand>(self, int: N) -> Option<N> {
 		self.checked_div_int_with_rounding(int, SignedRounding::Minor)
 	}
@@ -321,7 +334,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case).
 	fn checked_div_int_ceil<N: FixedPointOperand>(self, int: N) -> Option<N> {
 		self.checked_div_int_with_rounding(int, SignedRounding::Major)
 	}
@@ -331,7 +345,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case).
 	fn saturating_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -349,7 +364,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case).
 	fn saturating_div_int_floor<N: FixedPointOperand>(self, int: N) -> N {
 		self.saturating_div_int_with_rounding(int, SignedRounding::Minor)
 	}
@@ -359,7 +375,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case).
 	fn saturating_div_int_ceil<N: FixedPointOperand>(self, int: N) -> N {
 		self.saturating_div_int_with_rounding(int, SignedRounding::Major)
 	}
@@ -382,7 +399,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 
 	/// Checked self raised to pow.
-	/// Saturates if result out of bounds.
+	/// Saturate if result out of bounds.
 	fn saturating_pow_with_rounding(self, pow: usize, r: SignedRounding) -> Self {
 		// Note:  this is using binary exponentiation
 		// including explanatory comments here as the Substrate implementation
@@ -424,8 +441,26 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	}
 }
 
+const DECIMALS_18: u128 = 1_000_000_000_000_000_000u128;
+const DECIMALS_27: u128 = 1_000_000_000_000_000_000_000_000_000u128;
+
+/// A fixed point number representation with 27 decimals. Used for
+/// representing a rate, mostly interest rate.
+#[doc = "_Fixed Point 128 bits unsigned with 27 decimals precision"]
+pub type Rate = FixedU128<DECIMALS_27>;
+
+/// A fixed point number representation with 18 decimals. Used for
+/// representing a ratio between two things.
+#[doc = "_Fixed Point 128 bits unsigned with 18 decimals precision"]
+pub type Ratio = FixedU128<DECIMALS_18>;
+
+/// A fixed point number representation with 18 decimals. Used for
+/// representing a quantity of something.
+#[doc = "_Fixed Point 128 bits unsigned with 18 decimals precision"]
+pub type Quantity = FixedU128<DECIMALS_18>;
+
 /// A fixed point number representation in the range.
-#[doc = "_Fixed Point 128 bits unsigned with 27 precision for Rate"]
+#[doc = "_Fixed Point 128 bits unsigned with variable precision."]
 #[derive(
 	Encode,
 	Decode,
@@ -440,24 +475,24 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	scale_info::TypeInfo,
 	MaxEncodedLen,
 )]
-pub struct Rate(u128);
+pub struct FixedU128<const DIV: u128>(u128);
 
-impl From<u128> for Rate {
+impl<const DIV: u128> From<u128> for FixedU128<DIV> {
 	fn from(int: u128) -> Self {
-		Rate::saturating_from_integer(int)
+		FixedU128::saturating_from_integer(int)
 	}
 }
 
-impl<N: FixedPointOperand, D: FixedPointOperand> From<(N, D)> for Rate {
+impl<N: FixedPointOperand, D: FixedPointOperand, const DIV: u128> From<(N, D)> for FixedU128<DIV> {
 	fn from(r: (N, D)) -> Self {
-		Rate::saturating_from_rational(r.0, r.1)
+		FixedU128::saturating_from_rational(r.0, r.1)
 	}
 }
 
-impl FixedPointNumber for Rate {
+impl<const DIV: u128> FixedPointNumber for FixedU128<DIV> {
 	type Inner = u128;
 
-	const DIV: Self::Inner = 1_000_000_000_000_000_000_000_000_000;
+	const DIV: Self::Inner = DIV;
 	const SIGNED: bool = false;
 
 	fn from_inner(inner: Self::Inner) -> Self {
@@ -486,7 +521,7 @@ impl FixedPointNumber for Rate {
 	}
 }
 
-impl FixedPointNumberExtension for Rate {
+impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 	/// Checks multiplication of val with FixedPoint
 	/// Returns None if out of bounds
 	fn checked_mul_with_rounding(&self, other: &Self, r: SignedRounding) -> Option<Self> {
@@ -524,14 +559,14 @@ impl FixedPointNumberExtension for Rate {
 	}
 
 	/// multiplies self by param and rounds precision with SignedRounding
-	/// saturates if result out of bounds
+	/// Saturates if result out of bounds
 	fn saturating_mul_with_rounding(self, other: Self, r: SignedRounding) -> Self {
 		self.checked_mul_with_rounding(&other, r)
 			.unwrap_or_else(|| to_bound(self.0, other.0))
 	}
 
 	/// divides by param and takes rounding preference for accuracy
-	/// saturates result if out of bounds -- panics if 0 is denominator
+	/// Saturates result if out of bounds -- panics if 0 is denominator
 	fn saturating_div_with_rounding(&self, other: &Self, r: SignedRounding) -> Self {
 		if other.is_zero() {
 			panic!("attempt to divide by zero")
@@ -540,19 +575,35 @@ impl FixedPointNumberExtension for Rate {
 			.unwrap_or_else(|| to_bound(self.0, other.0))
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// Checked division by FixedPointOperand, with Rounding::SignedRounding
 	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
-	/// the accuracy of the FP extended type in question (Rate in this case).
-	/// For example:
-	/// Rate::saturating_from_rational(2).checked_div_with_rounding(2,
-	/// SignedRounding::..) would be equivalent to               (2 *
-	/// Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
-	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 *
-	/// Rate::accuracy)would be equivalent to               2 * Rate::accuracy *
-	/// (Rate::accuracy / 2 * Rate::accuracy)               Which would be 1 *
-	/// Rate::accuracy
+	/// the accuracy of the FP extended type in question (FixedU128 in this
+	/// case). For example:
+	/// ```text
+	///    FixedU128::saturating_from_rational(2)
+	///        .checked_div_with_rounding(2, sp_arithmetic::per_things::SignedRounding::...)
+	///
+	/// would be equivalent to    
+	///
+	///      (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
+	///
+	/// instead of
+	///
+	///      2 * 1/2.
+	///
+	/// Whereas
+	///
+	///     FixedU128::saturating_from_rational(2)
+	///         .checked_div_with_rounding(2 * FixedU128::accuracy)
+	///
+	/// would be equivalent to
+	///
+	///     2 * FixedU128::accuracy *
+	///        (FixedU128::accuracy / 2 * FixedU128::accuracy)
+	///
+	/// Which would be 1 * FixedU128::accuracy
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -566,14 +617,14 @@ impl FixedPointNumberExtension for Rate {
 	}
 }
 
-impl Rate {
+impl<const DIV: u128> FixedU128<DIV> {
 	/// const version of `FixedPointNumber::from_inner`.
 	pub const fn from_inner(inner: u128) -> Self {
 		Self(inner)
 	}
 }
 
-impl Saturating for Rate {
+impl<const DIV: u128> Saturating for FixedU128<DIV> {
 	fn saturating_add(self, rhs: Self) -> Self {
 		Self(self.0.saturating_add(rhs.0))
 	}
@@ -591,7 +642,7 @@ impl Saturating for Rate {
 	}
 }
 
-impl ops::Neg for Rate {
+impl<const DIV: u128> ops::Neg for FixedU128<DIV> {
 	type Output = Self;
 
 	fn neg(self) -> Self::Output {
@@ -599,7 +650,7 @@ impl ops::Neg for Rate {
 	}
 }
 
-impl ops::Add for Rate {
+impl<const DIV: u128> ops::Add for FixedU128<DIV> {
 	type Output = Self;
 
 	fn add(self, rhs: Self) -> Self::Output {
@@ -607,7 +658,7 @@ impl ops::Add for Rate {
 	}
 }
 
-impl ops::Sub for Rate {
+impl<const DIV: u128> ops::Sub for FixedU128<DIV> {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self::Output {
@@ -615,7 +666,7 @@ impl ops::Sub for Rate {
 	}
 }
 
-impl ops::Mul for Rate {
+impl<const DIV: u128> ops::Mul for FixedU128<DIV> {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -624,7 +675,7 @@ impl ops::Mul for Rate {
 	}
 }
 
-impl ops::Div for Rate {
+impl<const DIV: u128> ops::Div for FixedU128<DIV> {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self::Output {
@@ -636,31 +687,31 @@ impl ops::Div for Rate {
 	}
 }
 
-impl CheckedSub for Rate {
+impl<const DIV: u128> CheckedSub for FixedU128<DIV> {
 	fn checked_sub(&self, rhs: &Self) -> Option<Self> {
 		self.0.checked_sub(rhs.0).map(Self)
 	}
 }
 
-impl CheckedAdd for Rate {
+impl<const DIV: u128> CheckedAdd for FixedU128<DIV> {
 	fn checked_add(&self, rhs: &Self) -> Option<Self> {
 		self.0.checked_add(rhs.0).map(Self)
 	}
 }
 
-impl CheckedDiv for Rate {
+impl<const DIV: u128> CheckedDiv for FixedU128<DIV> {
 	fn checked_div(&self, other: &Self) -> Option<Self> {
 		self.checked_div_with_rounding(other, SignedRounding::NearestPrefLow)
 	}
 }
 
-impl CheckedMul for Rate {
+impl<const DIV: u128> CheckedMul for FixedU128<DIV> {
 	fn checked_mul(&self, other: &Self) -> Option<Self> {
 		self.checked_mul_with_rounding(other, SignedRounding::NearestPrefLow)
 	}
 }
 
-impl Bounded for Rate {
+impl<const DIV: u128> Bounded for FixedU128<DIV> {
 	fn min_value() -> Self {
 		Self(<Self as FixedPointNumber>::Inner::min_value())
 	}
@@ -670,7 +721,7 @@ impl Bounded for Rate {
 	}
 }
 
-impl Zero for Rate {
+impl<const DIV: u128> Zero for FixedU128<DIV> {
 	fn zero() -> Self {
 		Self::from_inner(<Self as FixedPointNumber>::Inner::zero())
 	}
@@ -680,13 +731,13 @@ impl Zero for Rate {
 	}
 }
 
-impl One for Rate {
+impl<const DIV: u128> One for FixedU128<DIV> {
 	fn one() -> Self {
 		Self::from_inner(Self::DIV)
 	}
 }
 
-impl sp_std::fmt::Debug for Rate {
+impl<const DIV: u128> sp_std::fmt::Debug for FixedU128<DIV> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		let integral = {
@@ -704,7 +755,7 @@ impl sp_std::fmt::Debug for Rate {
 			((self.0 % Self::accuracy()) as i128).abs(),
 			weight = precision
 		);
-		write!(f, "{}({}.{})", stringify!(Rate), integral, fractional)
+		write!(f, "{}({}.{})", stringify!(FixedU128), integral, fractional)
 	}
 
 	#[cfg(not(feature = "std"))]
@@ -714,14 +765,14 @@ impl sp_std::fmt::Debug for Rate {
 }
 
 #[cfg(feature = "std")]
-impl sp_std::fmt::Display for Rate {
+impl<const DIV: u128> sp_std::fmt::Display for FixedU128<DIV> {
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(f, "{}", self.0)
 	}
 }
 
 #[cfg(feature = "std")]
-impl sp_std::str::FromStr for Rate {
+impl<const DIV: u128> sp_std::str::FromStr for FixedU128<DIV> {
 	type Err = &'static str;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -735,7 +786,7 @@ impl sp_std::str::FromStr for Rate {
 // Manual impl `Serialize` as serde_json does not support i128.
 // TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
 #[cfg(feature = "std")]
-impl Serialize for Rate {
+impl<const DIV: u128> Serialize for FixedU128<DIV> {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -747,36 +798,36 @@ impl Serialize for Rate {
 // Manual impl `Deserialize` as serde_json does not support i128.
 // TODO: remove impl if issue https://github.com/serde-rs/json/issues/548 fixed.
 #[cfg(feature = "std")]
-impl<'de> Deserialize<'de> for Rate {
+impl<'de, const DIV: u128> Deserialize<'de> for FixedU128<DIV> {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
 		D: Deserializer<'de>,
 	{
 		use sp_std::str::FromStr;
 		let s = String::deserialize(deserializer)?;
-		Rate::from_str(&s).map_err(de::Error::custom)
+		FixedU128::from_str(&s).map_err(de::Error::custom)
 	}
 }
 
 #[cfg(test)]
-mod test_rate {
+mod test_fixed_u128 {
 	use super::*;
 
-	fn max() -> Rate {
-		Rate::max_value()
+	fn max() -> FixedU128<DECIMALS_27> {
+		FixedU128::<DECIMALS_27>::max_value()
 	}
 
-	fn min() -> Rate {
-		Rate::min_value()
+	fn min() -> FixedU128<DECIMALS_27> {
+		FixedU128::<DECIMALS_27>::min_value()
 	}
 
 	fn precision() -> usize {
-		(Rate::accuracy() as f64).log10() as usize
+		(FixedU128::<DECIMALS_27>::accuracy() as f64).log10() as usize
 	}
 
 	#[test]
 	fn macro_preconditions() {
-		assert!(Rate::DIV > 0);
+		assert!(FixedU128::<DECIMALS_27>::DIV > 0);
 	}
 
 	#[test]
@@ -865,331 +916,351 @@ mod test_rate {
 
 	#[test]
 	fn op_neg_works() {
-		let a = Rate::zero();
+		let a = FixedU128::<DECIMALS_27>::zero();
 		let b = -a;
 
 		// Zero.
 		assert_eq!(a, b);
 
-		if Rate::SIGNED {
-			let a = Rate::saturating_from_integer(5);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let a = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 			let b = -a;
 
 			// Positive.
-			assert_eq!(Rate::saturating_from_integer(-5), b);
+			assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(-5), b);
 
-			let a = Rate::saturating_from_integer(-5);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_integer(-5);
 			let b = -a;
 
 			// Negative
-			assert_eq!(Rate::saturating_from_integer(5), b);
+			assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(5), b);
 
-			let a = Rate::max_value();
+			let a = FixedU128::<DECIMALS_27>::max_value();
 			let b = -a;
 
 			// Max.
-			assert_eq!(Rate::min_value() + Rate::from_inner(1), b);
+			assert_eq!(
+				FixedU128::<DECIMALS_27>::min_value() + FixedU128::<DECIMALS_27>::from_inner(1),
+				b
+			);
 
-			let a = Rate::min_value() + Rate::from_inner(1);
+			let a = FixedU128::<DECIMALS_27>::min_value() + FixedU128::<DECIMALS_27>::from_inner(1);
 			let b = -a;
 
 			// Min.
-			assert_eq!(Rate::max_value(), b);
+			assert_eq!(FixedU128::<DECIMALS_27>::max_value(), b);
 		}
 	}
 
 	#[test]
 	fn op_checked_add_overflow_works() {
-		let a = Rate::max_value();
+		let a = FixedU128::<DECIMALS_27>::max_value();
 		let b = 1.into();
 		assert!(a.checked_add(&b).is_none());
 	}
 
 	#[test]
 	fn op_add_works() {
-		let a = Rate::saturating_from_rational(5, 2);
-		let b = Rate::saturating_from_rational(1, 2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
 
 		// Positive case: 6/2 = 3.
-		assert_eq!(Rate::saturating_from_integer(3), a + b);
+		assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(3), a + b);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Negative case: 4/2 = 2.
-			let b = Rate::saturating_from_rational(1, -2);
-			assert_eq!(Rate::saturating_from_integer(2), a + b);
+			let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, -2);
+			assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(2), a + b);
 		}
 	}
 
 	#[test]
 	fn op_checked_sub_underflow_works() {
-		let a = Rate::min_value();
+		let a = FixedU128::<DECIMALS_27>::min_value();
 		let b = 1.into();
 		assert!(a.checked_sub(&b).is_none());
 	}
 
 	#[test]
 	fn op_sub_works() {
-		let a = Rate::saturating_from_rational(5, 2);
-		let b = Rate::saturating_from_rational(1, 2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
 
-		assert_eq!(Rate::saturating_from_integer(2), a - b);
-		assert_eq!(Rate::saturating_from_integer(-2), b.saturating_sub(a));
+		assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(2), a - b);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_integer(-2),
+			b.saturating_sub(a)
+		);
 	}
 
 	#[test]
 	fn op_checked_mul_overflow_works() {
-		let a = Rate::max_value();
+		let a = FixedU128::<DECIMALS_27>::max_value();
 		let b = 2.into();
 		assert!(a.checked_mul(&b).is_none());
 	}
 
 	#[test]
 	fn op_mul_works() {
-		let a = Rate::saturating_from_integer(42);
-		let b = Rate::saturating_from_integer(2);
-		assert_eq!(Rate::saturating_from_integer(84), a * b);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(42);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(2);
+		assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(84), a * b);
 
-		let a = Rate::saturating_from_integer(42);
-		let b = Rate::saturating_from_integer(-2);
-		assert_eq!(Rate::saturating_from_integer(-84), a * b);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(42);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(-2);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_integer(-84),
+			a * b
+		);
 	}
 
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn op_div_panics_on_zero_divisor() {
-		let a = Rate::saturating_from_integer(1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(1);
 		let b = 0.into();
 		let _c = a / b;
 	}
 
 	#[test]
 	fn op_checked_div_overflow_works() {
-		if Rate::SIGNED {
-			let a = Rate::min_value();
-			let b = Rate::zero().saturating_sub(Rate::one());
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let a = FixedU128::<DECIMALS_27>::min_value();
+			let b =
+				FixedU128::<DECIMALS_27>::zero().saturating_sub(FixedU128::<DECIMALS_27>::one());
 			assert!(a.checked_div(&b).is_none());
 		}
 	}
 
 	#[test]
 	fn op_div_works() {
-		let a = Rate::saturating_from_integer(42);
-		let b = Rate::saturating_from_integer(2);
-		assert_eq!(Rate::saturating_from_integer(21), a / b);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(42);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(2);
+		assert_eq!(FixedU128::<DECIMALS_27>::saturating_from_integer(21), a / b);
 
-		if Rate::SIGNED {
-			let a = Rate::saturating_from_integer(42);
-			let b = Rate::saturating_from_integer(-2);
-			assert_eq!(Rate::saturating_from_integer(-21), a / b);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let a = FixedU128::<DECIMALS_27>::saturating_from_integer(42);
+			let b = FixedU128::<DECIMALS_27>::saturating_from_integer(-2);
+			assert_eq!(
+				FixedU128::<DECIMALS_27>::saturating_from_integer(-21),
+				a / b
+			);
 		}
 	}
 
 	#[test]
 	fn saturating_from_integer_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
 		// Cases where integer fits.
-		let a = Rate::saturating_from_integer(42);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(42);
 		assert_eq!(a.into_inner(), 42 * accuracy);
 
-		let a = Rate::saturating_from_integer(-42);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(-42);
 		assert_eq!(a.into_inner(), 0.saturating_sub(42 * accuracy));
 
 		// Max/min integers that fit.
-		let a = Rate::saturating_from_integer(inner_max / accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(inner_max / accuracy);
 		assert_eq!(a.into_inner(), (inner_max / accuracy) * accuracy);
 
-		let a = Rate::saturating_from_integer(inner_min / accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(inner_min / accuracy);
 		assert_eq!(a.into_inner(), (inner_min / accuracy) * accuracy);
 
 		// Cases where integer doesn't fit, so it saturates.
-		let a = Rate::saturating_from_integer(inner_max / accuracy + 1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(inner_max / accuracy + 1);
 		assert_eq!(a.into_inner(), inner_max);
 
-		let a = Rate::saturating_from_integer((inner_min / accuracy).saturating_sub(1));
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(
+			(inner_min / accuracy).saturating_sub(1),
+		);
 		assert_eq!(a.into_inner(), inner_min);
 	}
 
 	#[test]
 	fn checked_from_integer_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
 		// Case where integer fits.
-		let a = Rate::checked_from_integer(42u128).expect("42 * accuracy <= inner_max; qed");
+		let a = FixedU128::<DECIMALS_27>::checked_from_integer(42u128)
+			.expect("42 * accuracy <= inner_max; qed");
 		assert_eq!(a.into_inner(), 42 * accuracy);
 
 		// Max integer that fit.
-		let a = Rate::checked_from_integer(inner_max / accuracy)
+		let a = FixedU128::<DECIMALS_27>::checked_from_integer(inner_max / accuracy)
 			.expect("(inner_max / accuracy) * accuracy <= inner_max; qed");
 		assert_eq!(a.into_inner(), (inner_max / accuracy) * accuracy);
 
 		// Case where integer doesn't fit, so it returns `None`.
-		let a = Rate::checked_from_integer(inner_max / accuracy + 1);
+		let a = FixedU128::<DECIMALS_27>::checked_from_integer(inner_max / accuracy + 1);
 		assert_eq!(a, None);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Case where integer fits.
-			let a = Rate::checked_from_integer(0.saturating_sub(4u128))
+			let a = FixedU128::<DECIMALS_27>::checked_from_integer(0.saturating_sub(4u128))
 				.expect("-42 * accuracy >= inner_min; qed");
 			assert_eq!(a.into_inner(), 0 - 42 * accuracy);
 
 			// Min integer that fit.
-			let a = Rate::checked_from_integer(inner_min / accuracy)
+			let a = FixedU128::<DECIMALS_27>::checked_from_integer(inner_min / accuracy)
 				.expect("(inner_min / accuracy) * accuracy <= inner_min; qed");
 			assert_eq!(a.into_inner(), (inner_min / accuracy) * accuracy);
 
 			// Case where integer doesn't fit, so it returns `None`.
-			let a = Rate::checked_from_integer(inner_min / accuracy - 1);
+			let a = FixedU128::<DECIMALS_27>::checked_from_integer(inner_min / accuracy - 1);
 			assert_eq!(a, None);
 		}
 	}
 
 	#[test]
 	fn from_inner_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
 
-		assert_eq!(max(), Rate::from_inner(inner_max));
-		assert_eq!(min(), Rate::from_inner(inner_min));
+		assert_eq!(max(), FixedU128::<DECIMALS_27>::from_inner(inner_max));
+		assert_eq!(min(), FixedU128::<DECIMALS_27>::from_inner(inner_min));
 	}
 
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_from_rational_panics_on_zero_divisor() {
-		let _ = Rate::saturating_from_rational(1, 0);
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 0);
 	}
 
 	#[test]
 	fn saturating_from_rational_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::saturating_from_rational(5, 2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 
 		// Positive case: 2.5
 		assert_eq!(a.into_inner(), 25 * accuracy / 10);
 
 		// Max - 1.
-		let a = Rate::saturating_from_rational(inner_max - 1, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max - 1, accuracy);
 		assert_eq!(a.into_inner(), inner_max - 1);
 
 		// Min + 1.
-		let a = Rate::saturating_from_rational(inner_min + 1, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min + 1, accuracy);
 		assert_eq!(a.into_inner(), inner_min + 1);
 
 		// Max.
-		let a = Rate::saturating_from_rational(inner_max, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, accuracy);
 		assert_eq!(a.into_inner(), inner_max);
 
 		// Min.
-		let a = Rate::saturating_from_rational(inner_min, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, accuracy);
 		assert_eq!(a.into_inner(), inner_min);
 
 		// Zero.
-		let a = Rate::saturating_from_rational(0, 1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(0, 1);
 		assert_eq!(a.into_inner(), 0);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Negative case: -2.5
-			let a = Rate::saturating_from_rational(-5, 2);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2);
 			assert_eq!(a.into_inner(), 0 - 25 * accuracy / 10);
 
 			// Other negative case: -2.5
-			let a = Rate::saturating_from_rational(5, -2);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(5, -2);
 			assert_eq!(a.into_inner(), 0 - 25 * accuracy / 10);
 
 			// Other positive case: 2.5
-			let a = Rate::saturating_from_rational(-5, -2);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, -2);
 			assert_eq!(a.into_inner(), 25 * accuracy / 10);
 
 			// Max + 1, saturates.
-			let a = Rate::saturating_from_rational(inner_max as u128 + 1, accuracy);
+			let a =
+				FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max as u128 + 1, accuracy);
 			assert_eq!(a.into_inner(), inner_max);
 
 			// Min - 1, saturates.
-			let a = Rate::saturating_from_rational(inner_max as u128 + 2, 0 - accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+				inner_max as u128 + 2,
+				0 - accuracy,
+			);
 			assert_eq!(a.into_inner(), inner_min);
 
-			let a = Rate::saturating_from_rational(inner_max, 0 - accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 0 - accuracy);
 			assert_eq!(a.into_inner(), 0 - inner_max);
 
-			let a = Rate::saturating_from_rational(inner_min, 0 - accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, 0 - accuracy);
 			assert_eq!(a.into_inner(), inner_max);
 
-			let a = Rate::saturating_from_rational(inner_min + 1, 0 - accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min + 1, 0 - accuracy);
 			assert_eq!(a.into_inner(), inner_max);
 
-			let a = Rate::saturating_from_rational(inner_min, 0 - 1);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, 0 - 1);
 			assert_eq!(a.into_inner(), inner_max);
 
-			let a = Rate::saturating_from_rational(inner_max, 0 - 1);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 0 - 1);
 			assert_eq!(a.into_inner(), inner_min);
 
-			let a = Rate::saturating_from_rational(inner_max, 0 - inner_max);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 0 - inner_max);
 			assert_eq!(a.into_inner(), 0 - accuracy);
 
-			let a = Rate::saturating_from_rational(0 - inner_max, inner_max);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(0 - inner_max, inner_max);
 			assert_eq!(a.into_inner(), 0 - accuracy);
 
-			let a = Rate::saturating_from_rational(inner_max, 0 - 3 * accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 0 - 3 * accuracy);
 			assert_eq!(a.into_inner(), 0 - inner_max / 3);
 
-			let a = Rate::saturating_from_rational(inner_min, 0 - accuracy / 3);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, 0 - accuracy / 3);
 			assert_eq!(a.into_inner(), inner_max);
 
-			let a = Rate::saturating_from_rational(1, 0 - accuracy);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 0 - accuracy);
 			assert_eq!(a.into_inner(), 0.saturating_sub(1));
 
-			let a = Rate::saturating_from_rational(inner_min, inner_min);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, inner_min);
 			assert_eq!(a.into_inner(), accuracy);
 
 			// Out of accuracy.
-			let a = Rate::saturating_from_rational(1, 0 - accuracy - 1);
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 0 - accuracy - 1);
 			assert_eq!(a.into_inner(), 0);
 		}
 
-		let a = Rate::saturating_from_rational(inner_max - 1, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max - 1, accuracy);
 		assert_eq!(a.into_inner(), inner_max - 1);
 
-		let a = Rate::saturating_from_rational(inner_min + 1, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min + 1, accuracy);
 		assert_eq!(a.into_inner(), inner_min + 1);
 
-		let a = Rate::saturating_from_rational(inner_max, 1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 1);
 		assert_eq!(a.into_inner(), inner_max);
 
-		let a = Rate::saturating_from_rational(inner_min, 1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, 1);
 		assert_eq!(a.into_inner(), inner_min);
 
-		let a = Rate::saturating_from_rational(inner_max, inner_max);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, inner_max);
 		assert_eq!(a.into_inner(), accuracy);
 
-		let a = Rate::saturating_from_rational(inner_max, 3 * accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_max, 3 * accuracy);
 		assert_eq!(a.into_inner(), inner_max / 3);
 
-		let a = Rate::saturating_from_rational(inner_min, 2 * accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, 2 * accuracy);
 		assert_eq!(a.into_inner(), inner_min / 2);
 
-		let a = Rate::saturating_from_rational(inner_min, accuracy / 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(inner_min, accuracy / 3);
 		assert_eq!(a.into_inner(), inner_min);
 
-		let a = Rate::saturating_from_rational(1, accuracy);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, accuracy);
 		assert_eq!(a.into_inner(), 1);
 
 		// Round to zero if equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy).unwrap();
 		assert_eq!(a.into_inner(), 0);
 
 		// Round to nearest if slightly of equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy - 1).unwrap();
 		assert_eq!(a.into_inner(), 1);
 
 		// Round to nearest if slightly of equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy + 1).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 		assert_eq!(a.into_inner(), 0);
 	}
 
@@ -1198,20 +1269,28 @@ mod test_rate {
 		expected = "attempted to create fixed point from rational with zero denominator"
 	)]
 	fn saturating_from_rational_with_rounding_panics_on_zero_divisor() {
-		let _ = Rate::saturating_from_rational_with_rounding(1, 0, SignedRounding::NearestPrefLow);
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+			1,
+			0,
+			SignedRounding::NearestPrefLow,
+		);
 	}
 
 	#[test]
 	fn saturating_from_rational_with_rounding_works() {
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(0, 1, SignedRounding::NearestPrefLow),
-			Rate::zero()
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				0,
+				1,
+				SignedRounding::NearestPrefLow
+			),
+			FixedU128::<DECIMALS_27>::zero()
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
 				5,
-				Rate::accuracy() * 10,
+				FixedU128::<DECIMALS_27>::accuracy() * 10,
 				SignedRounding::NearestPrefLow
 			)
 			.into_inner(),
@@ -1219,9 +1298,9 @@ mod test_rate {
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
 				6,
-				Rate::accuracy() * 10,
+				FixedU128::<DECIMALS_27>::accuracy() * 10,
 				SignedRounding::NearestPrefLow
 			)
 			.into_inner(),
@@ -1229,52 +1308,92 @@ mod test_rate {
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 3, SignedRounding::Minor).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::Minor
+			)
+			.into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 3, SignedRounding::Major).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::Major
+			)
+			.into_inner(),
 			333333333333333333333333334
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 3, SignedRounding::NearestPrefLow)
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::NearestPrefLow
+			)
+			.into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 6, SignedRounding::Minor).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::Minor
+			)
+			.into_inner(),
 			166666666666666666666666666
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 6, SignedRounding::Major).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::Major
+			)
+			.into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 6, SignedRounding::NearestPrefLow)
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::NearestPrefLow
+			)
+			.into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 222220, SignedRounding::Minor)
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::Minor
+			)
+			.into_inner(),
 			4500045000450004500045
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 222220, SignedRounding::Major)
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::Major
+			)
+			.into_inner(),
 			4500045000450004500046
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_with_rounding(1, 222220, SignedRounding::NearestPrefLow)
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::NearestPrefLow
+			)
+			.into_inner(),
 			4500045000450004500045
 		);
 	}
@@ -1284,35 +1403,46 @@ mod test_rate {
 		expected = "attempted to create fixed point from rational with zero denominator"
 	)]
 	fn saturating_from_rational_floor_panics_on_zero_divisor() {
-		let _ = Rate::saturating_from_rational_floor(1, 0);
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_rational_floor(1, 0);
 	}
 
 	#[test]
 	fn saturating_from_rational_floor_works() {
-		assert_eq!(Rate::saturating_from_rational_floor(0, 1), Rate::zero());
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(0, 1),
+			FixedU128::<DECIMALS_27>::zero()
+		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_floor(5, Rate::accuracy() * 10,).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(
+				5,
+				FixedU128::<DECIMALS_27>::accuracy() * 10,
+			)
+			.into_inner(),
 			0
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_floor(1, Rate::accuracy()).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(
+				1,
+				FixedU128::<DECIMALS_27>::accuracy()
+			)
+			.into_inner(),
 			1
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_floor(1, 3).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(1, 3).into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_floor(1, 6).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(1, 6).into_inner(),
 			166666666666666666666666666
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_floor(1, 222220).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_floor(1, 222220).into_inner(),
 			4500045000450004500045
 		);
 	}
@@ -1322,210 +1452,276 @@ mod test_rate {
 		expected = "attempted to create fixed point from rational with zero denominator"
 	)]
 	fn saturating_from_rational_ceil_panics_on_zero_divisor() {
-		let _ = Rate::saturating_from_rational_ceil(1, 0);
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(1, 0);
 	}
 
 	#[test]
 	fn saturating_from_rational_ceil_works() {
-		assert_eq!(Rate::saturating_from_rational_ceil(0, 1), Rate::zero());
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(0, 1),
+			FixedU128::<DECIMALS_27>::zero()
+		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_ceil(1, Rate::accuracy()).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(
+				1,
+				FixedU128::<DECIMALS_27>::accuracy()
+			)
+			.into_inner(),
 			1
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_ceil(5, Rate::accuracy() * 10,).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(
+				5,
+				FixedU128::<DECIMALS_27>::accuracy() * 10,
+			)
+			.into_inner(),
 			1
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_ceil(1, 3).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(1, 3).into_inner(),
 			333333333333333333333333334
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_ceil(1, 6).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(1, 6).into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational_ceil(1, 222220).into_inner(),
+			FixedU128::<DECIMALS_27>::saturating_from_rational_ceil(1, 222220).into_inner(),
 			4500045000450004500046
 		);
 	}
 
 	#[test]
 	fn checked_from_rational_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
 		// Divide by zero => None.
-		let a = Rate::checked_from_rational(1, 0);
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 0);
 		assert_eq!(a, None);
 
 		// Max - 1.
-		let a = Rate::checked_from_rational(inner_max - 1, accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_max - 1, accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_max - 1);
 
 		// Min + 1.
-		let a = Rate::checked_from_rational(inner_min + 1, accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_min + 1, accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_min + 1);
 
 		// Max.
-		let a = Rate::checked_from_rational(inner_max, accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_max, accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_max);
 
 		// Min.
-		let a = Rate::checked_from_rational(inner_min, accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_min, accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_min);
 
 		// Max + 1 => Overflow => None.
-		let a = Rate::checked_from_rational(inner_min, 0.saturating_sub(accuracy));
+		let a =
+			FixedU128::<DECIMALS_27>::checked_from_rational(inner_min, 0.saturating_sub(accuracy));
 		assert_eq!(a, None);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Min - 1 => Underflow => None.
-			let a = Rate::checked_from_rational(inner_max as u128 + 2, 0.saturating_sub(accuracy));
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(
+				inner_max as u128 + 2,
+				0.saturating_sub(accuracy),
+			);
 			assert_eq!(a, None);
 
-			let a = Rate::checked_from_rational(inner_max, 0 - 3 * accuracy).unwrap();
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_max, 0 - 3 * accuracy)
+				.unwrap();
 			assert_eq!(a.into_inner(), 0 - inner_max / 3);
 
-			let a = Rate::checked_from_rational(inner_min, 0 - accuracy / 3);
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_min, 0 - accuracy / 3);
 			assert_eq!(a, None);
 
-			let a = Rate::checked_from_rational(1, 0 - accuracy).unwrap();
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 0 - accuracy).unwrap();
 			assert_eq!(a.into_inner(), 0.saturating_sub(1));
 
-			let a = Rate::checked_from_rational(1, 0 - accuracy - 1).unwrap();
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 0 - accuracy - 1).unwrap();
 			assert_eq!(a.into_inner(), 0);
 
-			let a = Rate::checked_from_rational(inner_min, accuracy / 3);
+			let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_min, accuracy / 3);
 			assert_eq!(a, None);
 		}
 
-		let a = Rate::checked_from_rational(inner_max, 3 * accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_max, 3 * accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_max / 3);
 
-		let a = Rate::checked_from_rational(inner_min, 2 * accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(inner_min, 2 * accuracy).unwrap();
 		assert_eq!(a.into_inner(), inner_min / 2);
 
-		let a = Rate::checked_from_rational(1, accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, accuracy).unwrap();
 		assert_eq!(a.into_inner(), 1);
 
 		// Round to zero if equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy).unwrap();
 		assert_eq!(a.into_inner(), 0);
 
 		// Round to nearest if slightly of equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy - 1).unwrap();
 		assert_eq!(a.into_inner(), 1);
 
 		// Round to nearest if slightly of equidistant
-		let a = Rate::checked_from_rational(1, 2 * accuracy + 1).unwrap();
+		let a = FixedU128::<DECIMALS_27>::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 		assert_eq!(a.into_inner(), 0);
 	}
 
 	#[test]
 	fn checked_from_rational_with_rounding_works() {
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 0, SignedRounding::NearestPrefLow),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				0,
+				SignedRounding::NearestPrefLow
+			),
 			None
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(0, 1, SignedRounding::NearestPrefLow),
-			Some(Rate::zero())
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				0,
+				1,
+				SignedRounding::NearestPrefLow
+			),
+			Some(FixedU128::<DECIMALS_27>::zero())
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 3, SignedRounding::Minor)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::Minor
+			)
+			.unwrap()
+			.into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 3, SignedRounding::Major)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::Major
+			)
+			.unwrap()
+			.into_inner(),
 			333333333333333333333333334
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 3, SignedRounding::NearestPrefLow)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				3,
+				SignedRounding::NearestPrefLow
+			)
+			.unwrap()
+			.into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 6, SignedRounding::Minor)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::Minor
+			)
+			.unwrap()
+			.into_inner(),
 			166666666666666666666666666
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 6, SignedRounding::Major)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::Major
+			)
+			.unwrap()
+			.into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 6, SignedRounding::NearestPrefLow)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				6,
+				SignedRounding::NearestPrefLow
+			)
+			.unwrap()
+			.into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 222220, SignedRounding::Minor)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::Minor
+			)
+			.unwrap()
+			.into_inner(),
 			4500045000450004500045
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 222220, SignedRounding::Major)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::Major
+			)
+			.unwrap()
+			.into_inner(),
 			4500045000450004500046
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_with_rounding(1, 222220, SignedRounding::NearestPrefLow)
-				.unwrap()
-				.into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_with_rounding(
+				1,
+				222220,
+				SignedRounding::NearestPrefLow
+			)
+			.unwrap()
+			.into_inner(),
 			4500045000450004500045
 		);
 	}
 
 	#[test]
 	fn checked_from_rational_floor_works() {
-		assert_eq!(Rate::checked_from_rational_floor(1, 0), None);
-
-		assert_eq!(Rate::checked_from_rational_floor(0, 1), Some(Rate::zero()));
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 0),
+			None
+		);
 
 		assert_eq!(
-			Rate::checked_from_rational_floor(1, 3)
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(0, 1),
+			Some(FixedU128::<DECIMALS_27>::zero())
+		);
+
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 3)
 				.unwrap()
 				.into_inner(),
 			333333333333333333333333333
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_floor(1, 6)
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 6)
 				.unwrap()
 				.into_inner(),
 			166666666666666666666666666
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_floor(1, 222220)
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 222220)
 				.unwrap()
 				.into_inner(),
 			4500045000450004500045
@@ -1534,22 +1730,32 @@ mod test_rate {
 
 	#[test]
 	fn checked_from_rational_ceil_works() {
-		assert_eq!(Rate::checked_from_rational_ceil(1, 0), None);
-
-		assert_eq!(Rate::checked_from_rational_ceil(0, 1), Some(Rate::zero()));
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(1, 0),
+			None
+		);
 
 		assert_eq!(
-			Rate::checked_from_rational_ceil(1, 3).unwrap().into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(0, 1),
+			Some(FixedU128::<DECIMALS_27>::zero())
+		);
+
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(1, 3)
+				.unwrap()
+				.into_inner(),
 			333333333333333333333333334
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_ceil(1, 6).unwrap().into_inner(),
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(1, 6)
+				.unwrap()
+				.into_inner(),
 			166666666666666666666666667
 		);
 
 		assert_eq!(
-			Rate::checked_from_rational_ceil(1, 222220)
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(1, 222220)
 				.unwrap()
 				.into_inner(),
 			4500045000450004500046
@@ -1558,7 +1764,7 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_int_works() {
-		let a = Rate::saturating_from_integer(2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(2);
 		// Max - 1.
 		assert_eq!(a.checked_mul_int((i128::MAX - 1) / 2), Some(i128::MAX - 1));
 		// Max.
@@ -1566,7 +1772,7 @@ mod test_rate {
 		// Max + 1 => None.
 		assert_eq!(a.checked_mul_int(i128::MAX / 2 + 1), None);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Min - 1.
 			assert_eq!(a.checked_mul_int((i128::MIN + 1) / 2), Some(i128::MIN + 2));
 			// Min.
@@ -1574,19 +1780,19 @@ mod test_rate {
 			// Min + 1 => None.
 			assert_eq!(a.checked_mul_int(i128::MIN / 2 - 1), None);
 
-			let b = Rate::saturating_from_rational(1, -2);
+			let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, -2);
 			assert_eq!(b.checked_mul_int(42i128), Some(-21));
 			assert_eq!(b.checked_mul_int(u128::MAX), None);
 			assert_eq!(b.checked_mul_int(i128::MAX), Some(i128::MAX / -2));
 			assert_eq!(b.checked_mul_int(i128::MIN), Some(i128::MIN / -2));
 		}
 
-		let a = Rate::saturating_from_rational(1, 2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
 		assert_eq!(a.checked_mul_int(42i128), Some(21));
 		assert_eq!(a.checked_mul_int(i128::MAX), Some(i128::MAX / 2));
 		assert_eq!(a.checked_mul_int(i128::MIN), Some(i128::MIN / 2));
 
-		let c = Rate::saturating_from_integer(255);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(255);
 		assert_eq!(c.checked_mul_int(2i8), None);
 		assert_eq!(c.checked_mul_int(2i128), Some(510));
 		assert_eq!(c.checked_mul_int(i128::MAX), None);
@@ -1595,12 +1801,12 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_int_with_rounding_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().checked_mul_int_with_rounding(
-				Rate::max_value().into_inner(),
+			FixedU128::<DECIMALS_27>::max_value().checked_mul_int_with_rounding(
+				FixedU128::<DECIMALS_27>::max_value().into_inner(),
 				SignedRounding::NearestPrefLow
 			),
 			None
@@ -1653,11 +1859,12 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_int_floor_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().checked_mul_int_floor(Rate::max_value().into_inner()),
+			FixedU128::<DECIMALS_27>::max_value()
+				.checked_mul_int_floor(FixedU128::<DECIMALS_27>::max_value().into_inner()),
 			None
 		);
 
@@ -1670,11 +1877,12 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_int_ceil_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().checked_mul_int_ceil(Rate::max_value().into_inner()),
+			FixedU128::<DECIMALS_27>::max_value()
+				.checked_mul_int_ceil(FixedU128::<DECIMALS_27>::max_value().into_inner()),
 			None
 		);
 
@@ -1687,7 +1895,7 @@ mod test_rate {
 
 	#[test]
 	fn saturating_mul_int_works() {
-		let a = Rate::saturating_from_integer(2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(2);
 		// Max - 1.
 		assert_eq!(a.saturating_mul_int((i128::MAX - 1) / 2), i128::MAX - 1);
 		// Max.
@@ -1702,20 +1910,20 @@ mod test_rate {
 		// Min + 1 => saturates to min.
 		assert_eq!(a.saturating_mul_int(i128::MIN / 2 - 1), i128::MIN);
 
-		if Rate::SIGNED {
-			let b = Rate::saturating_from_rational(1, -2);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, -2);
 			assert_eq!(b.saturating_mul_int(42i32), -21);
 			assert_eq!(b.saturating_mul_int(i128::MAX), i128::MAX / -2);
 			assert_eq!(b.saturating_mul_int(i128::MIN), i128::MIN / -2);
 			assert_eq!(b.saturating_mul_int(u128::MAX), u128::MIN);
 		}
 
-		let a = Rate::saturating_from_rational(1, 2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
 		assert_eq!(a.saturating_mul_int(42i32), 21);
 		assert_eq!(a.saturating_mul_int(i128::MAX), i128::MAX / 2);
 		assert_eq!(a.saturating_mul_int(i128::MIN), i128::MIN / 2);
 
-		let c = Rate::saturating_from_integer(255);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(255);
 		assert_eq!(c.saturating_mul_int(2i8), i8::MAX);
 		assert_eq!(c.saturating_mul_int(-2i8), i8::MIN);
 		assert_eq!(c.saturating_mul_int(i128::MAX), i128::MAX);
@@ -1724,15 +1932,15 @@ mod test_rate {
 
 	#[test]
 	fn saturating_mul_int_with_rounding_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().saturating_mul_int_with_rounding(
-				Rate::max_value().into_inner(),
+			FixedU128::<DECIMALS_27>::max_value().saturating_mul_int_with_rounding(
+				FixedU128::<DECIMALS_27>::max_value().into_inner(),
 				SignedRounding::NearestPrefLow
 			),
-			Rate::max_value().into_inner()
+			FixedU128::<DECIMALS_27>::max_value().into_inner()
 		);
 
 		assert_eq!(
@@ -1782,12 +1990,13 @@ mod test_rate {
 
 	#[test]
 	fn saturating_mul_int_floor_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().saturating_mul_int_floor(Rate::max_value().into_inner()),
-			Rate::max_value().into_inner()
+			FixedU128::<DECIMALS_27>::max_value()
+				.saturating_mul_int_floor(FixedU128::<DECIMALS_27>::max_value().into_inner()),
+			FixedU128::<DECIMALS_27>::max_value().into_inner()
 		);
 
 		assert_eq!(a.saturating_mul_int_floor(5), 2);
@@ -1799,12 +2008,13 @@ mod test_rate {
 
 	#[test]
 	fn saturating_mul_int_ceil_works() {
-		let a = Rate::saturating_from_rational(1, 2);
-		let b = Rate::saturating_from_rational(1, 3);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3);
 
 		assert_eq!(
-			Rate::max_value().saturating_mul_int_ceil(Rate::max_value().into_inner()),
-			Rate::max_value().into_inner()
+			FixedU128::<DECIMALS_27>::max_value()
+				.saturating_mul_int_ceil(FixedU128::<DECIMALS_27>::max_value().into_inner()),
+			FixedU128::<DECIMALS_27>::max_value().into_inner()
 		);
 
 		assert_eq!(a.saturating_mul_int_ceil(5), 3);
@@ -1816,81 +2026,86 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
 
-		let a = Rate::saturating_from_integer(2);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(2);
 
 		// Max - 1.
-		let b = Rate::from_inner(inner_max - 1);
+		let b = FixedU128::<DECIMALS_27>::from_inner(inner_max - 1);
 		assert_eq!(a.checked_mul(&(b / 2.into())), Some(b));
 
 		// Max.
-		let c = Rate::from_inner(inner_max);
+		let c = FixedU128::<DECIMALS_27>::from_inner(inner_max);
 		assert_eq!(a.checked_mul(&(c / 2.into())), Some(b));
 
 		// Max + 1 => None.
-		let e = Rate::from_inner(1);
+		let e = FixedU128::<DECIMALS_27>::from_inner(1);
 		assert_eq!(a.checked_mul(&(c / 2.into() + e)), None);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Min + 1.
-			let b = Rate::from_inner(inner_min + 1) / 2.into();
-			let c = Rate::from_inner(inner_min + 2);
+			let b = FixedU128::<DECIMALS_27>::from_inner(inner_min + 1) / 2.into();
+			let c = FixedU128::<DECIMALS_27>::from_inner(inner_min + 2);
 			assert_eq!(a.checked_mul(&b), Some(c));
 
 			// Min.
-			let b = Rate::from_inner(inner_min) / 2.into();
-			let c = Rate::from_inner(inner_min);
+			let b = FixedU128::<DECIMALS_27>::from_inner(inner_min) / 2.into();
+			let c = FixedU128::<DECIMALS_27>::from_inner(inner_min);
 			assert_eq!(a.checked_mul(&b), Some(c));
 
 			// Min - 1 => None.
-			let b = Rate::from_inner(inner_min) / 2.into() - Rate::from_inner(1);
+			let b = FixedU128::<DECIMALS_27>::from_inner(inner_min) / 2.into()
+				- FixedU128::<DECIMALS_27>::from_inner(1);
 			assert_eq!(a.checked_mul(&b), None);
 
-			let c = Rate::saturating_from_integer(255);
-			let b = Rate::saturating_from_rational(1, -2);
+			let c = FixedU128::<DECIMALS_27>::saturating_from_integer(255);
+			let b = FixedU128::<DECIMALS_27>::saturating_from_rational(1, -2);
 
 			assert_eq!(b.checked_mul(&42.into()), Some(0.saturating_sub(21).into()));
 			assert_eq!(
-				b.checked_mul(&Rate::max_value()),
-				Rate::max_value().checked_div(&0.saturating_sub(2).into())
+				b.checked_mul(&FixedU128::<DECIMALS_27>::max_value()),
+				FixedU128::<DECIMALS_27>::max_value().checked_div(&0.saturating_sub(2).into())
 			);
 			assert_eq!(
-				b.checked_mul(&Rate::min_value()),
-				Rate::min_value().checked_div(&0.saturating_sub(2).into())
+				b.checked_mul(&FixedU128::<DECIMALS_27>::min_value()),
+				FixedU128::<DECIMALS_27>::min_value().checked_div(&0.saturating_sub(2).into())
 			);
-			assert_eq!(c.checked_mul(&Rate::min_value()), None);
+			assert_eq!(c.checked_mul(&FixedU128::<DECIMALS_27>::min_value()), None);
 		}
 
-		let a = Rate::saturating_from_rational(1, 2);
-		let c = Rate::saturating_from_integer(255);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(255);
 
 		assert_eq!(a.checked_mul(&42.into()), Some(21.into()));
 		assert_eq!(c.checked_mul(&2.into()), Some(510.into()));
-		assert_eq!(c.checked_mul(&Rate::max_value()), None);
+		assert_eq!(c.checked_mul(&FixedU128::<DECIMALS_27>::max_value()), None);
 		assert_eq!(
-			a.checked_mul(&Rate::max_value()),
-			Rate::max_value().checked_div(&2.into())
+			a.checked_mul(&FixedU128::<DECIMALS_27>::max_value()),
+			FixedU128::<DECIMALS_27>::max_value().checked_div(&2.into())
 		);
 		assert_eq!(
-			a.checked_mul(&Rate::min_value()),
-			Rate::min_value().checked_div(&2.into())
+			a.checked_mul(&FixedU128::<DECIMALS_27>::min_value()),
+			FixedU128::<DECIMALS_27>::min_value().checked_div(&2.into())
 		);
 	}
 
 	#[test]
 	fn checked_mul_floor_works() {
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(
-			Rate::max_value().checked_mul_floor(&Rate::max_value()),
+			FixedU128::<DECIMALS_27>::max_value()
+				.checked_mul_floor(&FixedU128::<DECIMALS_27>::max_value()),
 			None
 		);
 
 		// Round down if equidistant
 		assert_eq!(
-			a.checked_mul_floor(&Rate::saturating_from_rational(1, 2))
+			a.checked_mul_floor(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2))
 				.unwrap()
 				.into_inner(),
 			0
@@ -1898,7 +2113,7 @@ mod test_rate {
 
 		// Round to floor when closer to floor
 		assert_eq!(
-			a.checked_mul_floor(&Rate::saturating_from_rational(1, 3))
+			a.checked_mul_floor(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3))
 				.unwrap()
 				.into_inner(),
 			0
@@ -1906,7 +2121,7 @@ mod test_rate {
 
 		// Round up even if closer to ceil
 		assert_eq!(
-			a.checked_mul_floor(&Rate::saturating_from_rational(1, 6))
+			a.checked_mul_floor(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 6))
 				.unwrap()
 				.into_inner(),
 			0
@@ -1915,16 +2130,20 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_ceil_works() {
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(
-			Rate::max_value().checked_mul_floor(&Rate::max_value()),
+			FixedU128::<DECIMALS_27>::max_value()
+				.checked_mul_floor(&FixedU128::<DECIMALS_27>::max_value()),
 			None
 		);
 
 		// Round up if equidistant
 		assert_eq!(
-			a.checked_mul_ceil(&Rate::saturating_from_rational(1, 2))
+			a.checked_mul_ceil(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2))
 				.unwrap()
 				.into_inner(),
 			1
@@ -1932,7 +2151,7 @@ mod test_rate {
 
 		// Round to ceil even when closer to floor
 		assert_eq!(
-			a.checked_mul_ceil(&Rate::saturating_from_rational(1, 3))
+			a.checked_mul_ceil(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3))
 				.unwrap()
 				.into_inner(),
 			1
@@ -1940,7 +2159,7 @@ mod test_rate {
 
 		// Round up if closer to ceil
 		assert_eq!(
-			a.checked_mul_ceil(&Rate::saturating_from_rational(1, 6))
+			a.checked_mul_ceil(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 6))
 				.unwrap()
 				.into_inner(),
 			1
@@ -1949,18 +2168,23 @@ mod test_rate {
 
 	#[test]
 	fn checked_mul_with_rounding_works() {
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(
-			Rate::max_value()
-				.checked_mul_with_rounding(&Rate::max_value(), SignedRounding::NearestPrefLow),
+			FixedU128::<DECIMALS_27>::max_value().checked_mul_with_rounding(
+				&FixedU128::<DECIMALS_27>::max_value(),
+				SignedRounding::NearestPrefLow
+			),
 			None
 		);
 
 		// Round down if equidistant and NearestPrefLow
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 2),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::NearestPrefLow
 			)
 			.unwrap()
@@ -1971,7 +2195,7 @@ mod test_rate {
 		// Round to floor when closer to floor and NearestPrefLow
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 3),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::NearestPrefLow
 			)
 			.unwrap()
@@ -1981,7 +2205,7 @@ mod test_rate {
 
 		// Round up  if closer to ceil and NearestPrefLow
 		assert_eq!(
-			a.checked_mul_floor(&Rate::saturating_from_rational(1, 6))
+			a.checked_mul_floor(&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 6))
 				.unwrap()
 				.into_inner(),
 			0
@@ -1994,7 +2218,7 @@ mod test_rate {
 		// Round down with Minor when closer to floor
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 2),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::Minor
 			)
 			.unwrap()
@@ -2005,7 +2229,7 @@ mod test_rate {
 		// Round to floor when closer to floor
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 3),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::Minor
 			)
 			.unwrap()
@@ -2016,7 +2240,7 @@ mod test_rate {
 		// Round down even if closer to ceil
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 6),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 6),
 				SignedRounding::Minor
 			)
 			.unwrap()
@@ -2025,10 +2249,13 @@ mod test_rate {
 		);
 
 		// Round up if equidistant with Major
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 2),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::Major
 			)
 			.unwrap()
@@ -2039,7 +2266,7 @@ mod test_rate {
 		// Round to ceil even when closer to floor with Major
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 3),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::Major
 			)
 			.unwrap()
@@ -2050,7 +2277,7 @@ mod test_rate {
 		// Round up if closer to ceil with Major
 		assert_eq!(
 			a.checked_mul_with_rounding(
-				&Rate::saturating_from_rational(1, 6),
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(1, 6),
 				SignedRounding::Major
 			)
 			.unwrap()
@@ -2062,10 +2289,13 @@ mod test_rate {
 	#[test]
 	fn saturating_mul_with_rounding_works() {
 		// Round down if equidistant and NearestPrefLow
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 2),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::NearestPrefLow
 			)
 			.into_inner(),
@@ -2073,10 +2303,13 @@ mod test_rate {
 		);
 
 		// Round up if equidistant and NearestPrefLow
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 2),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::NearestPrefHigh
 			)
 			.into_inner(),
@@ -2086,7 +2319,7 @@ mod test_rate {
 		// Round to floor when closer to floor and NearestPrefLow
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::NearestPrefLow
 			)
 			.into_inner(),
@@ -2096,7 +2329,7 @@ mod test_rate {
 		// Round up  if closer to ceil and NearestPrefLow
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(2, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(2, 3),
 				SignedRounding::NearestPrefLow
 			)
 			.into_inner(),
@@ -2105,16 +2338,16 @@ mod test_rate {
 
 		// Verify result saturates when out of bounds
 		assert_eq!(
-			Rate::max_value().saturating_mul_with_rounding(
-				Rate::saturating_from_integer(2),
+			FixedU128::<DECIMALS_27>::max_value().saturating_mul_with_rounding(
+				FixedU128::<DECIMALS_27>::saturating_from_integer(2),
 				SignedRounding::Major
 			),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 2),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::Minor
 			)
 			.into_inner(),
@@ -2124,7 +2357,7 @@ mod test_rate {
 		// Round to floor when closer to floor
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::Minor
 			)
 			.into_inner(),
@@ -2134,7 +2367,7 @@ mod test_rate {
 		// Round down even if closer to ceil
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(2, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(2, 3),
 				SignedRounding::Minor
 			)
 			.into_inner(),
@@ -2142,10 +2375,13 @@ mod test_rate {
 		);
 
 		// Round up if equidistant with Major
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 2),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2),
 				SignedRounding::Major
 			)
 			.into_inner(),
@@ -2155,7 +2391,7 @@ mod test_rate {
 		// Round to ceil even when closer to floor with Major
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(1, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3),
 				SignedRounding::Major
 			)
 			.into_inner(),
@@ -2165,7 +2401,7 @@ mod test_rate {
 		// Round up if closer to ceil with Major
 		assert_eq!(
 			a.saturating_mul_with_rounding(
-				Rate::saturating_from_rational(2, 3),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(2, 3),
 				SignedRounding::Major
 			)
 			.into_inner(),
@@ -2177,36 +2413,40 @@ mod test_rate {
 	fn saturating_mul_floor_works() {
 		// Verify result saturates when out of bounds
 		assert_eq!(
-			Rate::max_value().saturating_mul_floor(Rate::saturating_from_integer(2)),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::max_value()
+				.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_integer(2)),
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
-		let b = Rate::saturating_from_integer(1);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(1);
 
 		// Round down when equidistant
 		assert_eq!(
-			a.saturating_mul_floor(Rate::saturating_from_rational(1, 2))
+			a.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2))
 				.into_inner(),
 			0
 		);
 
 		// Round to floor when closer to floor
 		assert_eq!(
-			a.saturating_mul_floor(Rate::saturating_from_rational(1, 3))
+			a.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3))
 				.into_inner(),
 			0
 		);
 
 		assert_eq!(
-			b.saturating_mul_floor(Rate::saturating_from_rational(1, 3))
+			b.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3))
 				.into_inner(),
 			333333333333333333333333333
 		);
 
 		// Round down even if closer to ceil
 		assert_eq!(
-			a.saturating_mul_floor(Rate::saturating_from_rational(2, 3))
+			a.saturating_mul_floor(FixedU128::<DECIMALS_27>::saturating_from_rational(2, 3))
 				.into_inner(),
 			0
 		);
@@ -2216,29 +2456,33 @@ mod test_rate {
 	fn saturating_mul_ceil_works() {
 		// Verify result saturates when out of bounds
 		assert_eq!(
-			Rate::max_value().saturating_mul_ceil(Rate::saturating_from_integer(2)),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::max_value()
+				.saturating_mul_ceil(FixedU128::<DECIMALS_27>::saturating_from_integer(2)),
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 
-		let a = Rate::saturating_from_rational(1, Rate::accuracy());
+		let a = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		// Round up when equidistant
 		assert_eq!(
-			a.saturating_mul_ceil(Rate::saturating_from_rational(1, 2))
+			a.saturating_mul_ceil(FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2))
 				.into_inner(),
 			1
 		);
 
 		// Round to ceil when closer to floor
 		assert_eq!(
-			a.saturating_mul_ceil(Rate::saturating_from_rational(1, 3))
+			a.saturating_mul_ceil(FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3))
 				.into_inner(),
 			1
 		);
 
 		// Round to ceil if closer to ceil
 		assert_eq!(
-			a.saturating_mul_ceil(Rate::saturating_from_rational(2, 3))
+			a.saturating_mul_ceil(FixedU128::<DECIMALS_27>::saturating_from_rational(2, 3))
 				.into_inner(),
 			1
 		);
@@ -2246,16 +2490,16 @@ mod test_rate {
 
 	#[test]
 	fn checked_div_int_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::from_inner(inner_max);
-		let b = Rate::from_inner(inner_min);
-		let c = Rate::zero();
-		let d = Rate::one();
-		let e = Rate::saturating_from_integer(6);
-		let f = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::from_inner(inner_max);
+		let b = FixedU128::<DECIMALS_27>::from_inner(inner_min);
+		let c = FixedU128::<DECIMALS_27>::zero();
+		let d = FixedU128::<DECIMALS_27>::one();
+		let e = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let f = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		assert_eq!(e.checked_div_int(2.into()), Some(3));
 		assert_eq!(f.checked_div_int(2.into()), Some(2));
@@ -2309,19 +2553,20 @@ mod test_rate {
 	#[test]
 	fn checked_div_int_with_rounding_works() {
 		// Note:  This assumes that the FP accuracy has been adjusted to match
-		// the accuracy of the FP extended type in question (Rate in this case)
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		// the accuracy of the FP extended type in question (FixedU128::<DECIMALS_27> in
+		// this case)
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::from_inner(inner_max);
-		let b = Rate::from_inner(inner_min);
-		let c = Rate::zero();
-		let d = Rate::one();
-		let e = Rate::saturating_from_integer(6);
-		let f = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::from_inner(inner_max);
+		let b = FixedU128::<DECIMALS_27>::from_inner(inner_min);
+		let c = FixedU128::<DECIMALS_27>::zero();
+		let d = FixedU128::<DECIMALS_27>::one();
+		let e = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let f = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let max = Rate::max_value();
+		let max = FixedU128::<DECIMALS_27>::max_value();
 
 		// verify it actually returns None when result too large
 		// note 2 would be equivalent to 2/accuracy
@@ -2391,8 +2636,8 @@ mod test_rate {
 				2000000000000000000000000000u128,
 				SignedRounding::NearestPrefLow
 			),
-			Some(2500000000000000000000000000u128) /* Some(Rate::saturating_from_rational(5,
-			                                        * 2).into_inner().into()) */
+			Some(2500000000000000000000000000u128) /*
+												   Some(FixedU128::<DECIMALS_27>::saturating_from_rational(5, * 2).into_inner().into()) */
 		);
 
 		assert_eq!(
@@ -2464,13 +2709,14 @@ mod test_rate {
 	#[test]
 	fn checked_div_int_floor() {
 		// Note:  This assumes that the FP accuracy has been adjusted to match
-		// the accuracy of the FP extended type in question (Rate in this case)
-		let accuracy = Rate::accuracy();
+		// the accuracy of the FP extended type in question (FixedU128::<DECIMALS_27> in
+		// this case)
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::one();
-		let b = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::one();
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let max = Rate::max_value();
+		let max = FixedU128::<DECIMALS_27>::max_value();
 
 		// verify it actually returns None when result too large
 		// note 2 would be equivalent to 2/accuracy
@@ -2499,13 +2745,14 @@ mod test_rate {
 	#[test]
 	fn checked_div_int_ceil() {
 		// Note:  This assumes that the FP accuracy has been adjusted to match
-		// the accuracy of the FP extended type in question (Rate in this case)
-		let accuracy = Rate::accuracy();
+		// the accuracy of the FP extended type in question (FixedU128::<DECIMALS_27> in
+		// this case)
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::one();
-		let b = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::one();
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let max = Rate::max_value();
+		let max = FixedU128::<DECIMALS_27>::max_value();
 
 		// verify it actually returns None when result too large
 		// note 2 would be equivalent to 2/accuracy
@@ -2533,26 +2780,26 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_int_panics_when_divisor_is_zero() {
-		let _ = Rate::one().saturating_div_int(0);
+		let _ = FixedU128::<DECIMALS_27>::one().saturating_div_int(0);
 	}
 
 	#[test]
 	fn saturating_div_int_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let accuracy = Rate::accuracy();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 		assert_eq!(a.saturating_div_int(2), 2);
 
-		let a = Rate::min_value();
+		let a = FixedU128::<DECIMALS_27>::min_value();
 		assert_eq!(a.saturating_div_int(1i128), (inner_min / accuracy) as i128);
 
-		if Rate::SIGNED {
-			let a = Rate::saturating_from_integer(5);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let a = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 			assert_eq!(a.saturating_div_int(-2), -2);
 
-			let a = Rate::min_value();
+			let a = FixedU128::<DECIMALS_27>::min_value();
 			assert_eq!(a.saturating_div_int(-1i128), (inner_max / accuracy) as i128);
 		}
 	}
@@ -2560,20 +2807,21 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_int_with_rounding_panics_when_divisor_is_zero() {
-		let _ = Rate::one().saturating_div_int_with_rounding(0, SignedRounding::NearestPrefLow);
+		let _ = FixedU128::<DECIMALS_27>::one()
+			.saturating_div_int_with_rounding(0, SignedRounding::NearestPrefLow);
 	}
 
 	#[test]
 	fn saturating_div_int_with_rounding_works() {
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let accuracy = Rate::accuracy();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::saturating_from_integer(5);
-		let b = Rate::min_value();
-		let d = Rate::one();
-		let e = Rate::saturating_from_integer(5);
-		let max = Rate::max_value();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
+		let b = FixedU128::<DECIMALS_27>::min_value();
+		let d = FixedU128::<DECIMALS_27>::one();
+		let e = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
+		let max = FixedU128::<DECIMALS_27>::max_value();
 
 		assert_eq!(
 			a.saturating_div_int_with_rounding(2 * accuracy, SignedRounding::NearestPrefLow),
@@ -2644,19 +2892,19 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_int_floor_panics_when_divisor_is_zero() {
-		let _ = Rate::one().saturating_div_int_floor(0);
+		let _ = FixedU128::<DECIMALS_27>::one().saturating_div_int_floor(0);
 	}
 	#[test]
 	fn saturating_div_int_floor() {
-		let accuracy = Rate::accuracy();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::one();
-		let b = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::one();
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		// verify it actually saturates
 		assert_eq!(
-			Rate::max_value().saturating_div_int_floor(2),
-			Rate::max_value().into_inner()
+			FixedU128::<DECIMALS_27>::max_value().saturating_div_int_floor(2),
+			FixedU128::<DECIMALS_27>::max_value().into_inner()
 		);
 
 		// Note: adjusted for Fixed Point accuracy would be .3333....
@@ -2682,20 +2930,20 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_int_ceil_panics_when_divisor_is_zero() {
-		let _ = Rate::one().saturating_div_int_ceil(0);
+		let _ = FixedU128::<DECIMALS_27>::one().saturating_div_int_ceil(0);
 	}
 
 	#[test]
 	fn saturating_div_int_ceil() {
-		let accuracy = Rate::accuracy();
+		let accuracy = FixedU128::<DECIMALS_27>::accuracy();
 
-		let a = Rate::one();
-		let b = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::one();
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		// verify it actually saturates
 		assert_eq!(
-			Rate::max_value().saturating_div_int_ceil(2),
-			Rate::max_value().into_inner()
+			FixedU128::<DECIMALS_27>::max_value().saturating_div_int_ceil(2),
+			FixedU128::<DECIMALS_27>::max_value().into_inner()
 		);
 
 		// Note: adjusted for Fixed Point accuracy would be .3333....
@@ -2720,22 +2968,22 @@ mod test_rate {
 
 	#[test]
 	fn saturating_abs_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
 
 		assert_eq!(
-			Rate::from_inner(inner_max).saturating_abs(),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::from_inner(inner_max).saturating_abs(),
+			FixedU128::<DECIMALS_27>::max_value()
 		);
-		assert_eq!(Rate::zero().saturating_abs(), 0.into());
+		assert_eq!(FixedU128::<DECIMALS_27>::zero().saturating_abs(), 0.into());
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			assert_eq!(
-				Rate::from_inner(inner_min).saturating_abs(),
-				Rate::max_value()
+				FixedU128::<DECIMALS_27>::from_inner(inner_min).saturating_abs(),
+				FixedU128::<DECIMALS_27>::max_value()
 			);
 			assert_eq!(
-				Rate::saturating_from_rational(-1, 2).saturating_abs(),
+				FixedU128::<DECIMALS_27>::saturating_from_rational(-1, 2).saturating_abs(),
 				(1, 2).into()
 			);
 		}
@@ -2743,20 +2991,35 @@ mod test_rate {
 
 	#[test]
 	fn saturating_mul_acc_int_works() {
-		assert_eq!(Rate::zero().saturating_mul_acc_int(42i8), 42i8);
-		assert_eq!(Rate::one().saturating_mul_acc_int(42i8), 2 * 42i8);
-
-		assert_eq!(Rate::one().saturating_mul_acc_int(i128::MAX), i128::MAX);
-		assert_eq!(Rate::one().saturating_mul_acc_int(i128::MIN), i128::MIN);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::zero().saturating_mul_acc_int(42i8),
+			42i8
+		);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::one().saturating_mul_acc_int(42i8),
+			2 * 42i8
+		);
 
 		assert_eq!(
-			Rate::one().saturating_mul_acc_int(u128::MAX / 2),
+			FixedU128::<DECIMALS_27>::one().saturating_mul_acc_int(i128::MAX),
+			i128::MAX
+		);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::one().saturating_mul_acc_int(i128::MIN),
+			i128::MIN
+		);
+
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::one().saturating_mul_acc_int(u128::MAX / 2),
 			u128::MAX - 1
 		);
-		assert_eq!(Rate::one().saturating_mul_acc_int(u128::MIN), u128::MIN);
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::one().saturating_mul_acc_int(u128::MIN),
+			u128::MIN
+		);
 
-		if Rate::SIGNED {
-			let a = Rate::saturating_from_rational(-1, 2);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let a = FixedU128::<DECIMALS_27>::saturating_from_rational(-1, 2);
 			assert_eq!(a.saturating_mul_acc_int(42i8), 21i8);
 			assert_eq!(a.saturating_mul_acc_int(42u8), 21u8);
 			assert_eq!(a.saturating_mul_acc_int(u128::MAX - 1), u128::MAX / 2);
@@ -2766,164 +3029,165 @@ mod test_rate {
 	#[test]
 	fn saturating_pow_should_work() {
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow(0),
-			Rate::saturating_from_integer(1)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(0),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow(1),
-			Rate::saturating_from_integer(2)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(1),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow(2),
-			Rate::saturating_from_integer(4)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(2),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(4)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow(50),
-			Rate::saturating_from_integer(1125899906842624i64)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(50),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1125899906842624i64)
 		);
 
 		assert_eq!(
-			Rate::saturating_from_integer(1).saturating_pow(1000),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1).saturating_pow(1000),
 			(1).into()
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(1).saturating_pow(usize::MAX),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1).saturating_pow(usize::MAX),
 			(1).into()
 		);
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// Saturating.
 			assert_eq!(
-				Rate::saturating_from_integer(2).saturating_pow(68),
-				Rate::max_value()
+				FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(68),
+				FixedU128::<DECIMALS_27>::max_value()
 			);
 
 			assert_eq!(
-				Rate::saturating_from_integer(-1).saturating_pow(1000),
+				FixedU128::<DECIMALS_27>::saturating_from_integer(-1).saturating_pow(1000),
 				(1).into()
 			);
 			assert_eq!(
-				Rate::saturating_from_integer(-1).saturating_pow(1001),
+				FixedU128::<DECIMALS_27>::saturating_from_integer(-1).saturating_pow(1001),
 				0.saturating_sub(1).into()
 			);
 			assert_eq!(
-				Rate::saturating_from_integer(-1).saturating_pow(usize::MAX),
+				FixedU128::<DECIMALS_27>::saturating_from_integer(-1).saturating_pow(usize::MAX),
 				0.saturating_sub(1).into()
 			);
 			assert_eq!(
-				Rate::saturating_from_integer(-1).saturating_pow(usize::MAX - 1),
+				FixedU128::<DECIMALS_27>::saturating_from_integer(-1)
+					.saturating_pow(usize::MAX - 1),
 				(1).into()
 			);
 		}
 
 		assert_eq!(
-			Rate::saturating_from_integer(114209).saturating_pow(5),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::saturating_from_integer(114209).saturating_pow(5),
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 
 		assert_eq!(
-			Rate::saturating_from_integer(1).saturating_pow(usize::MAX),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1).saturating_pow(usize::MAX),
 			(1).into()
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(0).saturating_pow(usize::MAX),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(0).saturating_pow(usize::MAX),
 			(0).into()
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow(usize::MAX),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow(usize::MAX),
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 	}
 
 	#[test]
 	fn saturating_pow_with_rounding_works() {
 		assert_eq!(
-			Rate::saturating_from_integer(2)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 				.saturating_pow_with_rounding(0, SignedRounding::NearestPrefLow),
-			Rate::saturating_from_integer(1)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 				.saturating_pow_with_rounding(1, SignedRounding::NearestPrefLow),
-			Rate::saturating_from_integer(2)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 		);
 
 		assert_eq!(
-			Rate::saturating_from_integer(2)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 				.saturating_pow_with_rounding(2, SignedRounding::NearestPrefLow),
-			Rate::saturating_from_integer(4)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(4)
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 3)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3)
 				.saturating_pow_with_rounding(2, SignedRounding::Minor)
 				.into_inner(),
-			// equiv to Rate(0.1111....)
+			// equiv to FixedU128::<DECIMALS_27>(0.1111....)
 			111111111111111111111111110
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 3)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3)
 				.saturating_pow_with_rounding(2, SignedRounding::NearestPrefLow)
 				.into_inner(),
 			111111111111111111111111111
 		);
 		assert_eq!(
-			Rate::saturating_from_rational(1, 3)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3)
 				.saturating_pow_with_rounding(2, SignedRounding::Major)
 				.into_inner(),
 			111111111111111111111111111
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 15)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 15)
 				.saturating_pow_with_rounding(2, SignedRounding::Minor)
 				.into_inner(),
-			// equiv to Rate(0.004....)
+			// equiv to FixedU128::<DECIMALS_27>(0.004....)
 			4444444444444444444444444
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 15)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 15)
 				.saturating_pow_with_rounding(2, SignedRounding::NearestPrefLow)
 				.into_inner(),
 			4444444444444444444444444
 		);
 		assert_eq!(
-			Rate::saturating_from_rational(1, 15)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 15)
 				.saturating_pow_with_rounding(2, SignedRounding::Major)
 				.into_inner(),
 			4444444444444444444444445
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_with_rounding(2, SignedRounding::Minor)
 				.into_inner(),
-			// equiv to Rate(0.000000000000000000000000002)
+			// equiv to FixedU128::<DECIMALS_27>(0.000000000000000000000000002)
 			0000000000000000000000000002
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_with_rounding(2, SignedRounding::NearestPrefLow)
 				.into_inner(),
 			0000000000000000000000000002
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_with_rounding(2, SignedRounding::NearestPrefHigh)
 				.into_inner(),
-			// equiv to Rate(0.000000000000000000000000003)
+			// equiv to FixedU128::<DECIMALS_27>(0.000000000000000000000000003)
 			0000000000000000000000000003
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_with_rounding(2, SignedRounding::Major)
 				.into_inner(),
-			// equiv to Rate(0.000000000000000000000000003)
+			// equiv to FixedU128::<DECIMALS_27>(0.000000000000000000000000003)
 			0000000000000000000000000003
 		)
 	}
@@ -2931,40 +3195,40 @@ mod test_rate {
 	#[test]
 	fn saturating_pow_floor() {
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_floor(0),
-			Rate::saturating_from_integer(1)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_floor(0),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_floor(1),
-			Rate::saturating_from_integer(2)
-		);
-
-		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_floor(2),
-			Rate::saturating_from_integer(4)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_floor(1),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 3)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_floor(2),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(4)
+		);
+
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3)
 				.saturating_pow_floor(2)
 				.into_inner(),
-			// equiv to Rate(0.1111....)
+			// equiv to FixedU128::<DECIMALS_27>(0.1111....)
 			111111111111111111111111110
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 15)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 15)
 				.saturating_pow_floor(2)
 				.into_inner(),
-			// equiv to Rate(0.004....)
+			// equiv to FixedU128::<DECIMALS_27>(0.004....)
 			4444444444444444444444444
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_floor(2)
 				.into_inner(),
-			// equiv to Rate(0.000000000000000000000000002)
+			// equiv to FixedU128::<DECIMALS_27>(0.000000000000000000000000002)
 			0000000000000000000000000002
 		);
 	}
@@ -2972,55 +3236,55 @@ mod test_rate {
 	#[test]
 	fn saturating_pow_ceil() {
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_ceil(0),
-			Rate::saturating_from_integer(1)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_ceil(0),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(1)
 		);
 		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_ceil(1),
-			Rate::saturating_from_integer(2)
-		);
-
-		assert_eq!(
-			Rate::saturating_from_integer(2).saturating_pow_ceil(2),
-			Rate::saturating_from_integer(4)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_ceil(1),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2)
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 3)
+			FixedU128::<DECIMALS_27>::saturating_from_integer(2).saturating_pow_ceil(2),
+			FixedU128::<DECIMALS_27>::saturating_from_integer(4)
+		);
+
+		assert_eq!(
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 3)
 				.saturating_pow_ceil(2)
 				.into_inner(),
-			// equiv to Rate(0.1111....)
+			// equiv to FixedU128::<DECIMALS_27>(0.1111....)
 			111111111111111111111111111
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(1, 15)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(1, 15)
 				.saturating_pow_ceil(2)
 				.into_inner(),
-			// equiv to Rate(0.004....)
+			// equiv to FixedU128::<DECIMALS_27>(0.004....)
 			4444444444444444444444445
 		);
 
 		assert_eq!(
-			Rate::saturating_from_rational(5, 100000000000000i64)
+			FixedU128::<DECIMALS_27>::saturating_from_rational(5, 100000000000000i64)
 				.saturating_pow_ceil(2)
 				.into_inner(),
-			// equiv to Rate(0.000000000000000000000000003)
+			// equiv to FixedU128::<DECIMALS_27>(0.000000000000000000000000003)
 			0000000000000000000000000003
 		);
 	}
 
 	#[test]
 	fn checked_div_works() {
-		let inner_max = <Rate as FixedPointNumber>::Inner::max_value();
-		let inner_min = <Rate as FixedPointNumber>::Inner::min_value();
+		let inner_max = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::max_value();
+		let inner_min = <FixedU128<DECIMALS_27> as FixedPointNumber>::Inner::min_value();
 
-		let a = Rate::from_inner(inner_max);
-		let b = Rate::from_inner(inner_min);
-		let c = Rate::zero();
-		let d = Rate::one();
-		let e = Rate::saturating_from_integer(6);
-		let f = Rate::saturating_from_integer(5);
+		let a = FixedU128::<DECIMALS_27>::from_inner(inner_max);
+		let b = FixedU128::<DECIMALS_27>::from_inner(inner_min);
+		let c = FixedU128::<DECIMALS_27>::zero();
+		let d = FixedU128::<DECIMALS_27>::one();
+		let e = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let f = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		assert_eq!(e.checked_div(&2.into()), Some(3.into()));
 		assert_eq!(f.checked_div(&2.into()), Some((5, 2).into()));
@@ -3028,57 +3292,67 @@ mod test_rate {
 		assert_eq!(a.checked_div(&inner_max.into()), Some(1.into()));
 		assert_eq!(
 			a.checked_div(&2.into()),
-			Some(Rate::from_inner(inner_max / 2))
+			Some(FixedU128::<DECIMALS_27>::from_inner(inner_max / 2))
 		);
-		assert_eq!(a.checked_div(&Rate::max_value()), Some(1.into()));
+		assert_eq!(
+			a.checked_div(&FixedU128::<DECIMALS_27>::max_value()),
+			Some(1.into())
+		);
 		assert_eq!(a.checked_div(&d), Some(a));
 
 		if b < c {
 			// Not executed by unsigned inners.
 			assert_eq!(
 				a.checked_div(&0.saturating_sub(2).into()),
-				Some(Rate::from_inner(0.saturating_sub(inner_max / 2)))
+				Some(FixedU128::<DECIMALS_27>::from_inner(
+					0.saturating_sub(inner_max / 2)
+				))
 			);
 			assert_eq!(
-				a.checked_div(&-Rate::max_value()),
+				a.checked_div(&-FixedU128::<DECIMALS_27>::max_value()),
 				Some(0.saturating_sub(1).into())
 			);
 			assert_eq!(
 				b.checked_div(&0.saturating_sub(2).into()),
-				Some(Rate::from_inner(0.saturating_sub(inner_min / 2)))
+				Some(FixedU128::<DECIMALS_27>::from_inner(
+					0.saturating_sub(inner_min / 2)
+				))
 			);
-			assert_eq!(c.checked_div(&Rate::max_value()), Some(0.into()));
-			assert_eq!(b.checked_div(&b), Some(Rate::one()));
+			assert_eq!(
+				c.checked_div(&FixedU128::<DECIMALS_27>::max_value()),
+				Some(0.into())
+			);
+			assert_eq!(b.checked_div(&b), Some(FixedU128::<DECIMALS_27>::one()));
 		}
 
 		assert_eq!(
 			b.checked_div(&2.into()),
-			Some(Rate::from_inner(inner_min / 2))
+			Some(FixedU128::<DECIMALS_27>::from_inner(inner_min / 2))
 		);
 		assert_eq!(b.checked_div(&a), Some(0.saturating_sub(1).into()));
 		assert_eq!(c.checked_div(&1.into()), Some(0.into()));
 		assert_eq!(d.checked_div(&1.into()), Some(1.into()));
 
-		assert_eq!(a.checked_div(&Rate::one()), Some(a));
-		assert_eq!(b.checked_div(&Rate::one()), Some(b));
-		assert_eq!(c.checked_div(&Rate::one()), Some(c));
-		assert_eq!(d.checked_div(&Rate::one()), Some(d));
+		assert_eq!(a.checked_div(&FixedU128::<DECIMALS_27>::one()), Some(a));
+		assert_eq!(b.checked_div(&FixedU128::<DECIMALS_27>::one()), Some(b));
+		assert_eq!(c.checked_div(&FixedU128::<DECIMALS_27>::one()), Some(c));
+		assert_eq!(d.checked_div(&FixedU128::<DECIMALS_27>::one()), Some(d));
 
-		assert_eq!(a.checked_div(&Rate::zero()), None);
-		assert_eq!(b.checked_div(&Rate::zero()), None);
-		assert_eq!(c.checked_div(&Rate::zero()), None);
-		assert_eq!(d.checked_div(&Rate::zero()), None);
+		assert_eq!(a.checked_div(&FixedU128::<DECIMALS_27>::zero()), None);
+		assert_eq!(b.checked_div(&FixedU128::<DECIMALS_27>::zero()), None);
+		assert_eq!(c.checked_div(&FixedU128::<DECIMALS_27>::zero()), None);
+		assert_eq!(d.checked_div(&FixedU128::<DECIMALS_27>::zero()), None);
 	}
 
 	#[test]
 	fn checked_div_with_rounding_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		assert_eq!(
 			one.checked_div_with_rounding(&zero, SignedRounding::NearestPrefLow),
@@ -3086,8 +3360,11 @@ mod test_rate {
 		);
 
 		assert_eq!(
-			Rate::max_value().checked_div_with_rounding(
-				&Rate::saturating_from_rational(1, Rate::accuracy()),
+			FixedU128::<DECIMALS_27>::max_value().checked_div_with_rounding(
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(
+					1,
+					FixedU128::<DECIMALS_27>::accuracy()
+				),
 				SignedRounding::NearestPrefLow
 			),
 			None
@@ -3153,19 +3430,23 @@ mod test_rate {
 
 	#[test]
 	fn checked_div_floor_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		assert_eq!(one.checked_div_floor(&zero), None);
 
 		assert_eq!(
-			Rate::max_value()
-				.checked_div_floor(&Rate::saturating_from_rational(1, Rate::accuracy())),
+			FixedU128::<DECIMALS_27>::max_value().checked_div_floor(
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(
+					1,
+					FixedU128::<DECIMALS_27>::accuracy()
+				)
+			),
 			None
 		);
 
@@ -3187,19 +3468,23 @@ mod test_rate {
 
 	#[test]
 	fn checked_div_ceil_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
 		assert_eq!(one.checked_div_ceil(&zero), None);
 
 		assert_eq!(
-			Rate::max_value()
-				.checked_div_floor(&Rate::saturating_from_rational(1, Rate::accuracy())),
+			FixedU128::<DECIMALS_27>::max_value().checked_div_floor(
+				&FixedU128::<DECIMALS_27>::saturating_from_rational(
+					1,
+					FixedU128::<DECIMALS_27>::accuracy()
+				)
+			),
 			None
 		);
 
@@ -3222,21 +3507,26 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_with_rounding_panics_on_zero_divizor() {
-		let _ = Rate::saturating_from_integer(6)
-			.saturating_div_with_rounding(&Rate::zero(), SignedRounding::NearestPrefLow);
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_integer(6).saturating_div_with_rounding(
+			&FixedU128::<DECIMALS_27>::zero(),
+			SignedRounding::NearestPrefLow,
+		);
 	}
 
 	#[test]
 	fn saturating_div_with_rounding_works() {
-		let one = Rate::one();
-		let zero = Rate::zero();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let one = FixedU128::<DECIMALS_27>::one();
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let e = Rate::saturating_from_rational(1, Rate::accuracy());
+		let e = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(
 			zero.saturating_div_with_rounding(&a, SignedRounding::NearestPrefLow)
@@ -3246,7 +3536,7 @@ mod test_rate {
 
 		assert_eq!(
 			d.saturating_div_with_rounding(&e, SignedRounding::NearestPrefLow),
-			Rate::max_value()
+			FixedU128::<DECIMALS_27>::max_value()
 		);
 
 		assert_eq!(
@@ -3301,24 +3591,31 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_floor_panics_on_zero_divizor() {
-		let _ = Rate::saturating_from_integer(6).saturating_div_floor(&Rate::zero());
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_integer(6)
+			.saturating_div_floor(&FixedU128::<DECIMALS_27>::zero());
 	}
 
 	#[test]
 	fn saturating_div_floor_works() {
-		let one = Rate::one();
-		let zero = Rate::zero();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let one = FixedU128::<DECIMALS_27>::one();
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let e = Rate::saturating_from_rational(1, Rate::accuracy());
+		let e = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(zero.saturating_div_floor(&a).into_inner(), 0);
 
-		assert_eq!(d.saturating_div_floor(&e), Rate::max_value());
+		assert_eq!(
+			d.saturating_div_floor(&e),
+			FixedU128::<DECIMALS_27>::max_value()
+		);
 
 		assert_eq!(
 			one.saturating_div_floor(&a).into_inner(),
@@ -3338,24 +3635,31 @@ mod test_rate {
 	#[test]
 	#[should_panic(expected = "attempt to divide by zero")]
 	fn saturating_div_ceil_panics_on_zero_divizor() {
-		let _ = Rate::saturating_from_integer(6).saturating_div_ceil(&Rate::zero());
+		let _ = FixedU128::<DECIMALS_27>::saturating_from_integer(6)
+			.saturating_div_ceil(&FixedU128::<DECIMALS_27>::zero());
 	}
 
 	#[test]
 	fn saturating_div_ceil_works() {
-		let one = Rate::one();
-		let zero = Rate::zero();
-		let a = Rate::saturating_from_integer(3);
-		let b = Rate::saturating_from_integer(6);
+		let one = FixedU128::<DECIMALS_27>::one();
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let a = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let b = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
 
-		let c = Rate::saturating_from_integer(9);
-		let d = Rate::saturating_from_integer(5);
+		let c = FixedU128::<DECIMALS_27>::saturating_from_integer(9);
+		let d = FixedU128::<DECIMALS_27>::saturating_from_integer(5);
 
-		let e = Rate::saturating_from_rational(1, Rate::accuracy());
+		let e = FixedU128::<DECIMALS_27>::saturating_from_rational(
+			1,
+			FixedU128::<DECIMALS_27>::accuracy(),
+		);
 
 		assert_eq!(zero.saturating_div_ceil(&a).into_inner(), 0);
 
-		assert_eq!(d.saturating_div_ceil(&e), Rate::max_value());
+		assert_eq!(
+			d.saturating_div_ceil(&e),
+			FixedU128::<DECIMALS_27>::max_value()
+		);
 
 		assert_eq!(
 			one.saturating_div_ceil(&a).into_inner(),
@@ -3374,16 +3678,16 @@ mod test_rate {
 
 	#[test]
 	fn is_positive_negative_works() {
-		let one = Rate::one();
+		let one = FixedU128::<DECIMALS_27>::one();
 		assert!(one.is_positive());
 		assert!(!one.is_negative());
 
-		let zero = Rate::zero();
+		let zero = FixedU128::<DECIMALS_27>::zero();
 		assert!(!zero.is_positive());
 		assert!(!zero.is_negative());
 
 		if false {
-			let minus_one = Rate::saturating_from_integer(-1);
+			let minus_one = FixedU128::<DECIMALS_27>::saturating_from_integer(-1);
 			assert!(minus_one.is_negative());
 			assert!(!minus_one.is_positive());
 		}
@@ -3391,46 +3695,46 @@ mod test_rate {
 
 	#[test]
 	fn trunc_works() {
-		let n = Rate::saturating_from_rational(5, 2).trunc();
-		assert_eq!(n, Rate::saturating_from_integer(2));
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2).trunc();
+		assert_eq!(n, FixedU128::<DECIMALS_27>::saturating_from_integer(2));
 
-		if Rate::SIGNED {
-			let n = Rate::saturating_from_rational(-5, 2).trunc();
-			assert_eq!(n, Rate::saturating_from_integer(-2));
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2).trunc();
+			assert_eq!(n, FixedU128::<DECIMALS_27>::saturating_from_integer(-2));
 		}
 	}
 
 	#[test]
 	fn frac_works() {
-		let n = Rate::saturating_from_rational(5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 		let i = n.trunc();
 		let f = n.frac();
 
 		assert_eq!(n, i + f);
 
-		let n = Rate::saturating_from_rational(5, 2)
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2)
 			.frac()
 			.saturating_mul(10.into());
 		assert_eq!(n, 5.into());
 
-		let n = Rate::saturating_from_rational(1, 2)
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2)
 			.frac()
 			.saturating_mul(10.into());
 		assert_eq!(n, 5.into());
 
-		if Rate::SIGNED {
-			let n = Rate::saturating_from_rational(-5, 2);
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2);
 			let i = n.trunc();
 			let f = n.frac();
 			assert_eq!(n, i - f);
 
 			// The sign is attached to the integer part unless it is zero.
-			let n = Rate::saturating_from_rational(-5, 2)
+			let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2)
 				.frac()
 				.saturating_mul(10.into());
 			assert_eq!(n, 5.into());
 
-			let n = Rate::saturating_from_rational(-1, 2)
+			let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-1, 2)
 				.frac()
 				.saturating_mul(10.into());
 			assert_eq!(n, 0.saturating_sub(5).into());
@@ -3439,101 +3743,107 @@ mod test_rate {
 
 	#[test]
 	fn ceil_works() {
-		let n = Rate::saturating_from_rational(5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 		assert_eq!(n.ceil(), 3.into());
 
-		let n = Rate::saturating_from_rational(-5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2);
 		assert_eq!(n.ceil(), 0.saturating_sub(2).into());
 
 		// On the limits:
-		let n = Rate::max_value();
+		let n = FixedU128::<DECIMALS_27>::max_value();
 		assert_eq!(n.ceil(), n.trunc());
 
-		let n = Rate::min_value();
+		let n = FixedU128::<DECIMALS_27>::min_value();
 		assert_eq!(n.ceil(), n.trunc());
 	}
 
 	#[test]
 	fn floor_works() {
-		let n = Rate::saturating_from_rational(5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 		assert_eq!(n.floor(), 2.into());
 
-		let n = Rate::saturating_from_rational(-5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2);
 		assert_eq!(n.floor(), 0.saturating_sub(3).into());
 
 		// On the limits:
-		let n = Rate::max_value();
+		let n = FixedU128::<DECIMALS_27>::max_value();
 		assert_eq!(n.floor(), n.trunc());
 
-		let n = Rate::min_value();
+		let n = FixedU128::<DECIMALS_27>::min_value();
 		assert_eq!(n.floor(), n.trunc());
 	}
 
 	#[test]
 	fn round_works() {
-		let n = Rate::zero();
+		let n = FixedU128::<DECIMALS_27>::zero();
 		assert_eq!(n.round(), n);
 
-		let n = Rate::one();
+		let n = FixedU128::<DECIMALS_27>::one();
 		assert_eq!(n.round(), n);
 
-		let n = Rate::saturating_from_rational(5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 		assert_eq!(n.round(), 3.into());
 
-		let n = Rate::saturating_from_rational(-5, 2);
+		let n = FixedU128::<DECIMALS_27>::saturating_from_rational(-5, 2);
 		assert_eq!(n.round(), 0.saturating_sub(3).into());
 
 		// Saturating:
-		let n = Rate::max_value();
+		let n = FixedU128::<DECIMALS_27>::max_value();
 		assert_eq!(n.round(), n.trunc());
 
-		let n = Rate::min_value();
+		let n = FixedU128::<DECIMALS_27>::min_value();
 		assert_eq!(n.round(), n.trunc());
 
 		// On the limit:
 
 		// floor(max - 1) + 0.33..
-		let n = Rate::max_value()
+		let n = FixedU128::<DECIMALS_27>::max_value()
 			.saturating_sub(1.into())
 			.trunc()
 			.saturating_add((1, 3).into());
 
-		assert_eq!(n.round(), (Rate::max_value() - 1.into()).trunc());
+		assert_eq!(
+			n.round(),
+			(FixedU128::<DECIMALS_27>::max_value() - 1.into()).trunc()
+		);
 
 		// floor(max - 1) + 0.5
-		let n = Rate::max_value()
+		let n = FixedU128::<DECIMALS_27>::max_value()
 			.saturating_sub(1.into())
 			.trunc()
 			.saturating_add((1, 2).into());
 
-		assert_eq!(n.round(), Rate::max_value().trunc());
+		assert_eq!(n.round(), FixedU128::<DECIMALS_27>::max_value().trunc());
 
-		if Rate::SIGNED {
+		if FixedU128::<DECIMALS_27>::SIGNED {
 			// floor(min + 1) - 0.33..
-			let n = Rate::min_value()
+			let n = FixedU128::<DECIMALS_27>::min_value()
 				.saturating_add(1.into())
 				.trunc()
 				.saturating_sub((1, 3).into());
 
-			assert_eq!(n.round(), (Rate::min_value() + 1.into()).trunc());
+			assert_eq!(
+				n.round(),
+				(FixedU128::<DECIMALS_27>::min_value() + 1.into()).trunc()
+			);
 
 			// floor(min + 1) - 0.5
-			let n = Rate::min_value()
+			let n = FixedU128::<DECIMALS_27>::min_value()
 				.saturating_add(1.into())
 				.trunc()
 				.saturating_sub((1, 2).into());
 
-			assert_eq!(n.round(), Rate::min_value().trunc());
+			assert_eq!(n.round(), FixedU128::<DECIMALS_27>::min_value().trunc());
 		}
 	}
 
 	#[test]
 	fn reciprocal_with_rounding_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let three = Rate::saturating_from_integer(3);
-		let six = Rate::saturating_from_integer(6);
-		let pref_precision_check_val = Rate::saturating_from_integer(222220);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let three = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let six = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let pref_precision_check_val = FixedU128::<DECIMALS_27>::saturating_from_integer(222220);
 
 		assert_eq!(zero.reciprocal_with_rounding(SignedRounding::Minor), None);
 
@@ -3541,12 +3851,12 @@ mod test_rate {
 
 		assert_eq!(
 			one.reciprocal_with_rounding(SignedRounding::Major),
-			Some(Rate::one())
+			Some(FixedU128::<DECIMALS_27>::one())
 		);
 
 		assert_eq!(
 			one.reciprocal_with_rounding(SignedRounding::Minor),
-			Some(Rate::one())
+			Some(FixedU128::<DECIMALS_27>::one())
 		);
 
 		assert_eq!(
@@ -3575,7 +3885,7 @@ mod test_rate {
 
 		assert_eq!(
 			three.reciprocal_with_rounding(SignedRounding::Minor),
-			Rate::checked_from_rational_floor(1, 3),
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 3),
 		);
 
 		assert_eq!(
@@ -3626,15 +3936,18 @@ mod test_rate {
 
 	#[test]
 	fn reciprocal_floor_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let three = Rate::saturating_from_integer(3);
-		let six = Rate::saturating_from_integer(6);
-		let pref_precision_check_val = Rate::saturating_from_integer(222220);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let three = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let six = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let pref_precision_check_val = FixedU128::<DECIMALS_27>::saturating_from_integer(222220);
 
 		assert_eq!(zero.reciprocal_floor(), None);
 
-		assert_eq!(one.reciprocal_floor(), Some(Rate::one()));
+		assert_eq!(
+			one.reciprocal_floor(),
+			Some(FixedU128::<DECIMALS_27>::one())
+		);
 
 		assert_eq!(
 			three.reciprocal_floor().unwrap().into_inner(),
@@ -3643,7 +3956,7 @@ mod test_rate {
 
 		assert_eq!(
 			three.reciprocal_floor(),
-			Rate::checked_from_rational_floor(1, 3),
+			FixedU128::<DECIMALS_27>::checked_from_rational_floor(1, 3),
 		);
 
 		assert_eq!(
@@ -3661,15 +3974,15 @@ mod test_rate {
 
 	#[test]
 	fn reciprocal_ceil_works() {
-		let zero = Rate::zero();
-		let one = Rate::one();
-		let three = Rate::saturating_from_integer(3);
-		let six = Rate::saturating_from_integer(6);
-		let pref_precision_check_val = Rate::saturating_from_integer(222220);
+		let zero = FixedU128::<DECIMALS_27>::zero();
+		let one = FixedU128::<DECIMALS_27>::one();
+		let three = FixedU128::<DECIMALS_27>::saturating_from_integer(3);
+		let six = FixedU128::<DECIMALS_27>::saturating_from_integer(6);
+		let pref_precision_check_val = FixedU128::<DECIMALS_27>::saturating_from_integer(222220);
 
 		assert_eq!(zero.reciprocal_ceil(), None);
 
-		assert_eq!(one.reciprocal_ceil(), Some(Rate::one()));
+		assert_eq!(one.reciprocal_ceil(), Some(FixedU128::<DECIMALS_27>::one()));
 
 		assert_eq!(
 			three.reciprocal_ceil().unwrap().into_inner(),
@@ -3678,7 +3991,7 @@ mod test_rate {
 
 		assert_eq!(
 			three.reciprocal_ceil(),
-			Rate::checked_from_rational_ceil(1, 3),
+			FixedU128::<DECIMALS_27>::checked_from_rational_ceil(1, 3),
 		);
 
 		assert_eq!(
@@ -3696,79 +4009,79 @@ mod test_rate {
 
 	#[test]
 	fn fmt_should_work() {
-		let zero = Rate::zero();
+		let zero = FixedU128::<DECIMALS_27>::zero();
 		assert_eq!(
 			format!("{:?}", zero),
 			format!(
 				"{}(0.{:0>weight$})",
-				stringify!(Rate),
+				stringify!(FixedU128),
 				0,
 				weight = precision()
 			)
 		);
 
-		let one = Rate::one();
+		let one = FixedU128::<DECIMALS_27>::one();
 		assert_eq!(
 			format!("{:?}", one),
 			format!(
 				"{}(1.{:0>weight$})",
-				stringify!(Rate),
+				stringify!(FixedU128),
 				0,
 				weight = precision()
 			)
 		);
 
-		let frac = Rate::saturating_from_rational(1, 2);
+		let frac = FixedU128::<DECIMALS_27>::saturating_from_rational(1, 2);
 		assert_eq!(
 			format!("{:?}", frac),
 			format!(
 				"{}(0.{:0<weight$})",
-				stringify!(Rate),
+				stringify!(FixedU128),
 				5,
 				weight = precision()
 			)
 		);
 
-		let frac = Rate::saturating_from_rational(5, 2);
+		let frac = FixedU128::<DECIMALS_27>::saturating_from_rational(5, 2);
 		assert_eq!(
 			format!("{:?}", frac),
 			format!(
 				"{}(2.{:0<weight$})",
-				stringify!(Rate),
+				stringify!(FixedU128),
 				5,
 				weight = precision()
 			)
 		);
 
-		let frac = Rate::saturating_from_rational(314, 100);
+		let frac = FixedU128::<DECIMALS_27>::saturating_from_rational(314, 100);
 		assert_eq!(
 			format!("{:?}", frac),
 			format!(
 				"{}(3.{:0<weight$})",
-				stringify!(Rate),
+				stringify!(FixedU128),
 				14,
 				weight = precision()
 			)
 		);
 
-		if Rate::SIGNED {
-			let neg = -Rate::one();
+		if FixedU128::<DECIMALS_27>::SIGNED {
+			let neg = -FixedU128::<DECIMALS_27>::one();
 			assert_eq!(
 				format!("{:?}", neg),
 				format!(
 					"{}(-1.{:0>weight$})",
-					stringify!(Rate),
+					stringify!(FixedU128),
 					0,
 					weight = precision()
 				)
 			);
 
-			let frac = Rate::saturating_from_rational(-314, 100);
+			let frac = FixedU128::<DECIMALS_27>::saturating_from_rational(-314, 100);
 			assert_eq!(
 				format!("{:?}", frac),
 				format!(
 					"{}(-3.{:0<weight$})",
-					stringify!(Rate),
+					stringify!(FixedU128),
 					14,
 					weight = precision()
 				)
