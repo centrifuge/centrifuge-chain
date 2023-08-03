@@ -114,7 +114,7 @@ package policy {
 package interest {
     class ActiveInterestRate {
         rate: InterestRate,
-        normalized_debt: Balance,
+        normalized_acc: Balance,
         penalty: Rate
     }
 
