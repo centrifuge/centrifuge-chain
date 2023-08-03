@@ -169,6 +169,9 @@ pub mod pallet {
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
 
+		/// Type to represent different quantities in external pricing.
+		type Quantity: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
+
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;
 
