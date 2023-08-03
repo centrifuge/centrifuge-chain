@@ -5,6 +5,34 @@ use sp_arithmetic::{
 
 /// Transform a fixed point number to a Balance.
 /// The resulting Balance will be represented with the `decimals` given.
+/// i.e:
+/// ```
+/// # use frame_support::assert_ok;
+/// # use sp_arithmetic::fixed_point::FixedU64;
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 0), 23);
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 3), 23_123);
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 6), 23_123_456);
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 9), 23_123_456_789);
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 12), 23_123_456_789_000);
+/// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 15), 23_123_456_789_000_000);
+/// ```
+///
+/// ```
+/// # use frame_support::assert_err;
+/// # use sp_arithmetic::fixed_point::FixedU64;
+/// assert_err!(
+///     // The integer part does not fit in a `u64` (FixedU64::Inner type)
+///     fixed_point_to_balance(FixedU64::from_float(23.42), 18),
+///     ArithmeticError::Overflow
+/// );
+/// ```
+/// Maths:
+/// ```text
+/// int = (n / DIV)
+/// frac = n - int * DIV
+/// m = 10 ^ d
+/// result = int * m + frac * m / DIV
+/// ```
 pub fn fixed_point_to_balance<
 	FixedPoint: FixedPointNumber<Inner = IntoBalance>,
 	IntoBalance: BaseArithmetic + Copy,
@@ -15,11 +43,14 @@ pub fn fixed_point_to_balance<
 	let integer_part = fixed_point.into_inner().ensure_div(FixedPoint::DIV)?;
 	let frac_part = fixed_point
 		.into_inner()
-		.ensure_sub(integer_part * FixedPoint::DIV)?;
+		.ensure_sub(integer_part.ensure_mul(FixedPoint::DIV)?)?;
 
 	let magnitude = ensure_pow(IntoBalance::from(10), decimals)?;
 
 	let new_integer_part = integer_part.ensure_mul(magnitude)?;
+
+	// Both if/else branches are mathematically equivalent, but we need to
+	// distinguish each case to avoid intermediate overflow computations
 	let new_frac_part = if magnitude > FixedPoint::DIV {
 		frac_part.ensure_mul(magnitude.ensure_div(FixedPoint::DIV)?)?
 	} else {
@@ -29,60 +60,4 @@ pub fn fixed_point_to_balance<
 	};
 
 	new_integer_part.ensure_add(new_frac_part)
-}
-
-#[cfg(test)]
-mod tests {
-	use frame_support::{assert_err, assert_ok};
-	use sp_arithmetic::fixed_point::FixedU64;
-
-	use super::*;
-
-	#[test]
-	fn with_no_decimals() {
-		assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.42), 0), 23);
-	}
-
-	#[test]
-	fn with_less_decimals_than_div() {
-		assert_ok!(
-			fixed_point_to_balance(FixedU64::from_float(23.42), 6),
-			23_420_000
-		);
-
-		assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.42), 0), 23);
-	}
-
-	#[test]
-	fn with_same_decimals_as_div() {
-		assert_ok!(
-			fixed_point_to_balance(FixedU64::from_float(23.42), 9),
-			23_420_000_000
-		);
-	}
-
-	#[test]
-	fn with_more_decimals_than_div() {
-		assert_ok!(
-			fixed_point_to_balance(FixedU64::from_float(23.42), 12),
-			23_420_000_000_000
-		);
-	}
-
-	#[test]
-	fn with_max_decimals() {
-		assert_ok!(
-			fixed_point_to_balance(FixedU64::from_float(23.42), 17),
-			2_342_000_000_000_000_000
-		);
-	}
-
-	#[test]
-	fn with_overflows() {
-		assert_err!(
-			// The integer part does not fit in a `u64`
-			fixed_point_to_balance(FixedU64::from_float(23.42), 18),
-			ArithmeticError::Overflow
-		);
-	}
 }

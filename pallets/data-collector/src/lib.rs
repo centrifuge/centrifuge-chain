@@ -218,7 +218,7 @@ pub mod pallet {
 
 		use super::*;
 		// This implementation can be removed once:
-		// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged.
+		// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> is merged.
 		impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
 		where
 			T::DataProvider: DataProvider<T::DataId, T::Data>,
