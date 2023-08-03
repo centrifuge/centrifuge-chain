@@ -5,10 +5,13 @@ use sp_arithmetic::{
 
 /// Transform a fixed point number to a Balance.
 /// The resulting Balance will be represented with the `decimals` given.
+///
 /// i.e:
-/// ```
+/// ```rust
+/// use cfg_primitives::conversion::fixed_point_to_balance;
 /// # use frame_support::assert_ok;
-/// # use sp_arithmetic::fixed_point::FixedU64;
+/// # use sp_arithmetic::fixed_point::FixedU64;
+///
 /// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 0), 23);
 /// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 3), 23_123);
 /// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 6), 23_123_456);
@@ -17,15 +20,18 @@ use sp_arithmetic::{
 /// assert_ok!(fixed_point_to_balance(FixedU64::from_float(23.1234567890), 15), 23_123_456_789_000_000);
 /// ```
 ///
-/// ```
+/// ```rust
+/// use cfg_primitives::conversion::fixed_point_to_balance;
 /// # use frame_support::assert_err;
-/// # use sp_arithmetic::fixed_point::FixedU64;
+/// # use sp_arithmetic::{fixed_point::FixedU64, ArithmeticError};
+///
 /// assert_err!(
 ///     // The integer part does not fit in a `u64` (FixedU64::Inner type)
 ///     fixed_point_to_balance(FixedU64::from_float(23.42), 18),
 ///     ArithmeticError::Overflow
 /// );
 /// ```
+///
 /// Maths:
 /// ```text
 /// int = (n / DIV)
