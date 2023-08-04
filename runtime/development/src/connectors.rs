@@ -14,7 +14,6 @@ use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
 use cfg_types::{domain_address::Domain, fixed_point::Rate};
 use frame_support::parameter_types;
 use frame_system::EnsureRoot;
-use runtime_common::routers::DummyRouter;
 
 use super::{Runtime, RuntimeEvent, RuntimeOrigin};
 use crate::Connectors;
@@ -31,7 +30,7 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type LocalEVMOrigin = pallet_connectors_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = ConnectorsMessage;
-	type Router = DummyRouter;
+	type Router = connectors_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();

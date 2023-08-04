@@ -13,6 +13,7 @@ members = [
   "pallets/block-rewards",
   "pallets/connectors",
   "pallets/connectors-gateway",
+  "pallets/connectors-gateway/routers",
   "pallets/claims",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
