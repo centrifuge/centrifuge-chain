@@ -1546,6 +1546,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "connectors-gateway-routers"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "cumulus-primitives-core",
+ "ethabi",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-connectors-gateway",
+ "pallet-ethereum",
+ "pallet-ethereum-transaction",
+ "pallet-evm",
+ "pallet-evm-chain-id",
+ "pallet-evm-precompile-simple",
+ "pallet-timestamp",
+ "pallet-xcm-transactor",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+ "xcm-primitives",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2606,6 +2640,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "chainbridge",
+ "connectors-gateway-routers",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -2624,6 +2659,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
+ "getrandom 0.2.8",
  "hex",
  "hex-literal 0.3.4",
  "moonbeam-relay-encoder",

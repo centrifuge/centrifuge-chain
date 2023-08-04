@@ -22,7 +22,6 @@ pub mod account_conversion;
 pub mod apis;
 pub mod evm;
 pub mod oracle;
-pub mod routers;
 
 #[macro_export]
 macro_rules! production_or_benchmark {

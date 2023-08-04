@@ -15,7 +15,7 @@
     "tokenSymbol": "ALGL"
   },
   "relay_chain": "rococo-local",
-  "para_id": 2089,
+  "para_id": 2088,
   "codeSubstitutes": {},
   "genesis": {
     "runtime": {
@@ -24,7 +24,7 @@
       },
       "parachainSystem": null,
       "parachainInfo": {
-        "parachainId": 2089
+        "parachainId": 2088
       },
       "balances": {
         "balances": [
