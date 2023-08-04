@@ -38,6 +38,7 @@ members = [
   "pallets/anchors",
   "pallets/bridge",
   "pallets/block-rewards",
+  "pallets/call-remarked",
   "pallets/connectors",
   "pallets/connectors-gateway",
   "pallets/connectors-gateway/routers",
