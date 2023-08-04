@@ -254,7 +254,7 @@ impl<T: Config> ActiveLoan<T> {
 					let cashflows = self.schedule.generate_expected_cashflows(
 						self.origination_date,
 						self.principal()?,
-						&pricing.interest.rate(),
+						pricing.interest.rate(),
 					)?;
 
 					// TODO(Luis): If from this point, any field of ActiveLoan is needed, I would

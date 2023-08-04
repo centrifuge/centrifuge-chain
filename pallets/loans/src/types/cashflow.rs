@@ -255,7 +255,7 @@ impl RepaymentSchedule {
 					.ensure_div(Rate::saturating_from_integer(periods_per_year))?;
 				let amount_per_period = interest_rate_per_period.ensure_mul_int(principal)?;
 
-				return Ok((d, amount_per_period));
+				Ok((d, amount_per_period))
 			})
 			.collect()
 	}
