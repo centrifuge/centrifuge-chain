@@ -1082,6 +1082,13 @@ where
 
 		order.as_mut().expect("Order is Some(). qed.")
 	}
+
+	pub fn get_investment_currency_id(
+		investment_id: T::InvestmentId,
+	) -> Result<CurrencyOf<T>, DispatchError> {
+		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		Ok(info.payment_currency())
+	}
 }
 
 impl<T: Config> Investment<T::AccountId> for Pallet<T>

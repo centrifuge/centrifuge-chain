@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -10,15 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Runtime apis useful in the Centrifuge ecosystem
-pub use anchors::*;
-pub use investments::*;
-pub use loans::*;
-pub use pools::*;
-pub use rewards::*;
+use codec::Codec;
+use sp_api::decl_runtime_apis;
 
-mod anchors;
-mod investments;
-mod loans;
-mod pools;
-mod rewards;
+decl_runtime_apis! {
+		/// Runtime API for investments
+		pub trait InvestmentsApi<InvestmentId, CurrencyId, PoolId>
+				where
+				InvestmentId: Codec,
+				PoolId: Codec,
+				CurrencyId: Codec,
+		{
+				fn investment_pool_currency_ids(investment_id: InvestmentId) -> Option<(CurrencyId, PoolId)>;
+		}
+}

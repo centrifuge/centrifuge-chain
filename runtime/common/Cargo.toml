@@ -55,6 +55,7 @@ pallet-connectors = { path = "../../pallets/connectors", default-features = fals
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+pallet-investments = { path = "../../pallets/investments", default-features = false}
 
 [dev-dependencies]
 hex-literal = "0.2.1"

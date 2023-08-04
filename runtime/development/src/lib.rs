@@ -2337,6 +2337,21 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::InvestmentsApi<Block, TrancheCurrency, CurrencyId, PoolId> for Runtime {
+			 fn investment_pool_currency_ids(investment_id: TrancheCurrency) -> Option<(CurrencyId, PoolId)> {
+					 if let Ok(investment_currency) = Investments::get_investment_currency_id(investment_id) {
+
+							 // pool getting defined in runtime as opposed to
+							 // pallet helper method
+							 // as getting pool id in investments pallet
+							 // would force tighter coupling of investments
+							 // and pool pallets.
+							 let pool_id = investment_id.of_pool();
+								 Some(( investment_currency, pool_id ))
+					 } else {None}
+			 }
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
