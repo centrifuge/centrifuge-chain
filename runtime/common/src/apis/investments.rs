@@ -12,15 +12,19 @@
 
 use codec::Codec;
 use sp_api::decl_runtime_apis;
+use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 		/// Runtime API for investments
-		pub trait InvestmentsApi<InvestmentId, CurrencyId, PoolId>
+		pub trait InvestmentsApi<AccountId, InvestmentId, CurrencyId, PoolId, Balance>
 				where
+				AccountId: Codec,
 				InvestmentId: Codec,
 				PoolId: Codec,
 				CurrencyId: Codec,
+				Balance: Codec,
 		{
 				fn investment_pool_currency_ids(investment_id: InvestmentId) -> Option<(CurrencyId, PoolId)>;
+				fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>;
 		}
 }

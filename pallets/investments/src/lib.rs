@@ -1093,7 +1093,7 @@ where
 	pub fn get_account_investments_currency(
 		who: &T::AccountId,
 	) -> Result<Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)>, DispatchError> {
-		let mut investmenst_currency: Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)> = vec![];
+		let mut investmenst_currency: Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)> = Vec::new();
 		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
 			let currency = Self::get_investment_currency_id(i)?;
 			let balance = T::Accountant::balance(i, &who);
