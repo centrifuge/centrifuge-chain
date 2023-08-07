@@ -1089,6 +1089,19 @@ where
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		Ok(info.payment_currency())
 	}
+
+	pub fn get_account_investments_currency(
+		who: &T::AccountId,
+	) -> Result<Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)>, DispatchError> {
+		let mut investmenst_currency: Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)> = vec![];
+		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
+			let currency = Self::get_investment_currency_id(i)?;
+			let balance = T::Accountant::balance(i, &who);
+			investmenst_currency.push((i, currency, balance));
+			Ok::<(), DispatchError>(())
+		})?;
+		Ok(investmenst_currency)
+	}
 }
 
 impl<T: Config> Investment<T::AccountId> for Pallet<T>
