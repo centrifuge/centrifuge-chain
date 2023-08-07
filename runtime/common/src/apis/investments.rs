@@ -24,7 +24,6 @@ decl_runtime_apis! {
 				CurrencyId: Codec,
 				Balance: Codec,
 		{
-				fn investment_pool_currency_ids(investment_id: InvestmentId) -> Option<(CurrencyId, PoolId)>;
 				fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>;
 		}
 }
