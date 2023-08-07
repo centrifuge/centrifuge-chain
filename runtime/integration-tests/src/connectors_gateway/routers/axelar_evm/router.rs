@@ -32,7 +32,7 @@ use crate::{
 	},
 	utils::{
 		accounts::Keyring,
-		connectors_gateway::set_domain_router,
+		connectors_gateway::set_domain_router_call,
 		democracy::execute_via_democracy,
 		env,
 		env::{ChainState, EventRange, TestEnv},
@@ -94,7 +94,7 @@ async fn submit() {
 
 	let test_router = DomainRouter::<Runtime>::AxelarEVM(axelar_evm_router);
 
-	let set_domain_router_call = set_domain_router(test_domain.clone(), test_router.clone());
+	let set_domain_router_call = set_domain_router_call(test_domain.clone(), test_router.clone());
 
 	let council_threshold = 2;
 	let voting_period = 3;

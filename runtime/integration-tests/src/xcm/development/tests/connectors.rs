@@ -180,6 +180,17 @@ fn add_tranche() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
+		// Verify ALICE can't call `add_tranche` given she is not the `PoolAdmin`
+		assert_noop!(
+			Connectors::add_tranche(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id,
+				tranche_id,
+				Domain::EVM(1284),
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::NotPoolAdmin
+		);
+
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when called by the PoolAdmin with the right pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
@@ -767,7 +778,6 @@ fn add_currency() {
 		utils::setup_pre_requirements();
 
 		let currency_id = AUSD_CURRENCY_ID;
-
 		let location = utils::connector_transferable_multilocation(
 			MOONBEAM_EVM_CHAIN_ID,
 			utils::DEFAULT_EVM_ADDRESS_MOONBEAM,

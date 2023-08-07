@@ -21,7 +21,6 @@ use connectors_gateway_routers::{
 	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMChain,
 	EVMDomain, FeeValues, XCMRouter, XcmDomain, XcmTransactInfo,
 };
-use development_runtime::xcm::CurrencyIdConvert;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{GetDispatchInfo, Pays},
@@ -51,7 +50,7 @@ use crate::{
 	utils::{
 		accounts::Keyring,
 		collective::{collective_close, collective_propose, collective_vote},
-		connectors_gateway::{add_connector, remove_connector, set_domain_router},
+		connectors_gateway::{add_connector_call, remove_connector_call, set_domain_router_call},
 		democracy::{democracy_vote, execute_via_democracy, external_propose_majority, fast_track},
 		env::{ChainState, EventRange},
 		preimage::note_preimage,
@@ -119,7 +118,7 @@ async fn set_router() {
 
 	let test_router = DomainRouter::<Runtime>::EthereumXCM(ethereum_xcm_router);
 
-	let set_domain_router_call = set_domain_router(test_domain.clone(), test_router.clone());
+	let set_domain_router_call = set_domain_router_call(test_domain.clone(), test_router.clone());
 
 	let council_threshold = 2;
 	let voting_period = 3;
@@ -155,12 +154,9 @@ async fn add_remove_connectors() {
 		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
 	};
 
-	let test_connector = DomainAddress::EVM {
-		0: 1,
-		1: H160::from_low_u64_be(2).0,
-	};
+	let test_connector = DomainAddress::EVM(1, [0; 20]);
 
-	let add_connector_call = add_connector(test_connector.clone());
+	let add_connector_call = add_connector_call(test_connector.clone());
 
 	let council_threshold = 2;
 	let voting_period = 3;
@@ -185,7 +181,7 @@ async fn add_remove_connectors() {
 		}) if [*connector == test_connector],
 	);
 
-	let remove_connector_call = remove_connector(test_connector.clone());
+	let remove_connector_call = remove_connector_call(test_connector.clone());
 
 	execute_via_democracy(
 		&mut env,
@@ -217,12 +213,9 @@ async fn process_msg() {
 		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
 	};
 
-	let test_connector = DomainAddress::EVM {
-		0: 1,
-		1: H160::from_low_u64_be(2).0,
-	};
+	let test_connector = DomainAddress::EVM(1, [0; 20]);
 
-	let add_connector_call = add_connector(test_connector.clone());
+	let add_connector_call = add_connector_call(test_connector.clone());
 
 	let council_threshold = 2;
 	let voting_period = 3;

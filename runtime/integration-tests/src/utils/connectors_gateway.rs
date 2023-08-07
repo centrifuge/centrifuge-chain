@@ -24,23 +24,14 @@ use sp_core::bounded::BoundedVec;
 
 use crate::chain::centrifuge::{Runtime, RuntimeCall};
 
-pub fn set_domain_router(domain: Domain, router: DomainRouter<Runtime>) -> RuntimeCall {
+pub fn set_domain_router_call(domain: Domain, router: DomainRouter<Runtime>) -> RuntimeCall {
 	RuntimeCall::ConnectorsGateway(ConnectorsGatewayCall::set_domain_router { domain, router })
 }
 
-pub fn add_connector(connector: DomainAddress) -> RuntimeCall {
+pub fn add_connector_call(connector: DomainAddress) -> RuntimeCall {
 	RuntimeCall::ConnectorsGateway(ConnectorsGatewayCall::add_connector { connector })
 }
 
-pub fn remove_connector(connector: DomainAddress) -> RuntimeCall {
+pub fn remove_connector_call(connector: DomainAddress) -> RuntimeCall {
 	RuntimeCall::ConnectorsGateway(ConnectorsGatewayCall::remove_connector { connector })
-}
-
-pub fn process_msg(raw_msg: Vec<u8>) -> RuntimeCall {
-	let msg = BoundedVec::<
-		u8,
-		<Runtime as pallet_connectors_gateway::Config>::MaxIncomingMessageSize,
-	>::try_from(raw_msg)
-	.unwrap();
-	RuntimeCall::ConnectorsGateway(ConnectorsGatewayCall::process_msg { msg })
 }
