@@ -1089,6 +1089,7 @@ where
 		order.as_mut().expect("Order is Some(). qed.")
 	}
 
+	/// Get the payment currency for an investment.
 	fn get_investment_currency_id(
 		investment_id: T::InvestmentId,
 	) -> Result<CurrencyOf<T>, DispatchError> {
@@ -1096,6 +1097,8 @@ where
 		Ok(info.payment_currency())
 	}
 
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
 	pub fn get_account_investments_currency(
 		who: &T::AccountId,
 	) -> Result<AccountInvestmentPortfolioOf<T>, DispatchError> {
