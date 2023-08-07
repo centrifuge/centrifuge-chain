@@ -50,6 +50,12 @@ mod tests;
 type CurrencyOf<T> =
 	<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 
+type AccountInvestmentPortfolioOf<T> = Vec<(
+	<T as Config>::InvestmentId,
+	CurrencyOf<T>,
+	<T as Config>::Amount,
+)>;
+
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct InvestCollection<Balance> {
@@ -1092,11 +1098,11 @@ where
 
 	pub fn get_account_investments_currency(
 		who: &T::AccountId,
-	) -> Result<Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)>, DispatchError> {
+	) -> Result<AccountInvestmentPortfolioOf<T>, DispatchError> {
 		let mut investmenst_currency: Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)> = Vec::new();
 		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
 			let currency = Self::get_investment_currency_id(i)?;
-			let balance = T::Accountant::balance(i, &who);
+			let balance = T::Accountant::balance(i, who);
 			investmenst_currency.push((i, currency, balance));
 			Ok::<(), DispatchError>(())
 		})?;
