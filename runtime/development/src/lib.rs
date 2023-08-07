@@ -2337,6 +2337,7 @@ impl_runtime_apis! {
 		}
 	}
 
+	// Investment Runtime APIs
 	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
 		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
 			let account_investments = Investments::get_account_investments_currency(&account_id).ok()?;
