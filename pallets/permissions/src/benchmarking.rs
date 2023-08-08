@@ -46,7 +46,7 @@ benchmarks! {
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
 		let pool_id: T::Scope = Default::default();
-	}:add(RawOrigin::Root, with_role.clone(), acc.clone(), pool_id.clone(), role.clone())
+	}:add(RawOrigin::Root, with_role, acc.clone(), pool_id.clone(), role.clone())
 	verify {
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id, acc, role));
 	}
@@ -59,12 +59,12 @@ benchmarks! {
 		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role));
 
 		// setup borrower through pool admin
 		let acc2 = admin::<T>(1);
 		let role = T::Role::user();
-	}:add(RawOrigin::Signed(acc.clone()), with_role.clone(), acc2.clone(), pool_id.clone(), role.clone())
+	}:add(RawOrigin::Signed(acc.clone()), with_role, acc2.clone(), pool_id.clone(), role.clone())
 	verify {
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id, acc2, role));
 	}
@@ -78,7 +78,7 @@ benchmarks! {
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
-	}:remove(RawOrigin::Root, with_role.clone(), acc.clone(), pool_id.clone(), role.clone())
+	}:remove(RawOrigin::Root, with_role, acc.clone(), pool_id.clone(), role.clone())
 	verify {
 		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id, acc, role));
 	}
@@ -91,7 +91,7 @@ benchmarks! {
 		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role));
 
 		// setup borrower through pool admin
 		let acc2 = admin::<T>(1);
@@ -99,7 +99,7 @@ benchmarks! {
 		let res = PermissionsPallet::<T>::add(RawOrigin::Signed(acc.clone()).into(), with_role.clone(), acc2.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc2.clone(), role.clone()));
-	}:remove(RawOrigin::Signed(acc), with_role.clone(), acc2.clone(), pool_id.clone(), role.clone())
+	}:remove(RawOrigin::Signed(acc), with_role, acc2.clone(), pool_id.clone(), role.clone())
 	verify {
 		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id, acc2, role));
 	}
@@ -110,7 +110,7 @@ benchmarks! {
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
 		let pool_id: T::Scope = Default::default();
-		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role, acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
 	}:_(RawOrigin::Signed(acc.clone()), pool_id.clone())
@@ -124,7 +124,7 @@ benchmarks! {
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
 		let pool_id: T::Scope = Default::default();
-		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role, acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
 	}:_(RawOrigin::Root, acc.clone(), pool_id.clone())
