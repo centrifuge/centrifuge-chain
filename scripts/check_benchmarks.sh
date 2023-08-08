@@ -12,7 +12,7 @@ else
 fi
 
 if [[ -z "$3" ]]; then
-    FEATURES="--features runtime-benchmarks"
+    FEATURES="--features=runtime-benchmarks"
 fi
 
 run_benchmark() {

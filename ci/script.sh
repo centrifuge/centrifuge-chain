@@ -8,7 +8,7 @@ PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtime
 RUNTIME="${RUNTIME:-centrifuge}"
 
 # Reusing the same features for different builds will safe storage in CI jobs
-FEATURES="--features runtime-benchmarks,try-runtime,fast-runtime"
+FEATURES="--features=runtime-benchmarks,try-runtime,fast-runtime"
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
