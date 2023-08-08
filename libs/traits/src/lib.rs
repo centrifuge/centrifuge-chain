@@ -735,6 +735,8 @@ pub trait InvestmentsPortfolio<Account> {
 	type CurrencyId;
 	type Balance;
 	type Error;
+	type AccountInvestmentPortfolio;
+
 	/// Get the payment currency for an investment.
 	fn get_investment_currency_id(
 		investment_id: Self::InvestmentId,
@@ -744,5 +746,5 @@ pub trait InvestmentsPortfolio<Account> {
 	/// an account.
 	fn get_account_investments_currency(
 		who: &Account,
-	) -> Result<Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)>, Self::Error>;
+	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
 }

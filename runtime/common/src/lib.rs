@@ -537,6 +537,7 @@ pub mod investment_portfolios {
 		Investments: InvestmentsPortfolio<AccountId>
 			+ InvestmentsPortfolio<
 				AccountId,
+				AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
 				InvestmentId = InvestmentId,
 				CurrencyId = CurrencyId,
 				Balance = Balance,

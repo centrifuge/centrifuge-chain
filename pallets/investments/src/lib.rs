@@ -1095,6 +1095,7 @@ where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
+	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
 	type Balance = T::Amount;
 	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
@@ -1112,7 +1113,7 @@ where
 	/// an account.
 	fn get_account_investments_currency(
 		who: &T::AccountId,
-	) -> Result<AccountInvestmentPortfolioOf<T>, DispatchError> {
+	) -> Result<Self::AccountInvestmentPortfolio, DispatchError> {
 		let mut investments_currency: Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)> =
 			Vec::new();
 		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
