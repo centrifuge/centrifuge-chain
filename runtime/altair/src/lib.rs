@@ -2045,16 +2045,7 @@ impl_runtime_apis! {
 	// Investment Runtime APIs
 	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
 		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
-			let account_investments = Investments::get_account_investments_currency(&account_id).ok()?;
-			// Pool getting defined in runtime
-			// as opposed to pallet helper method
-			// as getting pool id in investments pallet
-			// would force tighter coupling of investments
-			// and pool pallets.
-			let portfolio: Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)> = account_investments.into_iter().map(|a_i| {
-				(a_i.0.of_pool(), a_i.1, a_i.0, a_i.2)
-			}).collect();
-			Some(portfolio)
+			runtime_common::investment_portfolios::get_portfolios::<Runtime, AccountId, TrancheId, Investments, TrancheCurrency, CurrencyId, PoolId, Balance>(account_id)
 		}
 	}
 

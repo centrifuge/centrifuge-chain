@@ -15,8 +15,8 @@
 
 use cfg_primitives::OrderId;
 use cfg_traits::{
-	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, OrderManager,
-	PreConditions,
+	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
+	InvestmentsPortfolio, OrderManager, PreConditions,
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
@@ -1088,6 +1088,17 @@ where
 
 		order.as_mut().expect("Order is Some(). qed.")
 	}
+}
+
+impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type Balance = T::Amount;
+	type CurrencyId = CurrencyOf<T>;
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
 
 	/// Get the payment currency for an investment.
 	fn get_investment_currency_id(
@@ -1099,10 +1110,11 @@ where
 
 	/// Get the investments and associated payment currencies and balances for
 	/// an account.
-	pub fn get_account_investments_currency(
+	fn get_account_investments_currency(
 		who: &T::AccountId,
 	) -> Result<AccountInvestmentPortfolioOf<T>, DispatchError> {
-		let mut investments_currency: Vec<(T::InvestmentId, CurrencyOf<T>, T::Amount)> = Vec::new();
+		let mut investments_currency: Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)> =
+			Vec::new();
 		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
 			let currency = Self::get_investment_currency_id(i)?;
 			let balance = T::Accountant::balance(i, who);
@@ -1112,7 +1124,6 @@ where
 		Ok(investments_currency)
 	}
 }
-
 impl<T: Config> Investment<T::AccountId> for Pallet<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
