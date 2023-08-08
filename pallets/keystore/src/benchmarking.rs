@@ -31,8 +31,8 @@ benchmarks! {
 		let n in 1..T::MaxKeys::get();
 		let caller: T::AccountId = account("acc_0", 0, 0);
 		let test_keys: Vec<AddKey<T::Hash>> = build_test_keys::<T>(n);
-		T::Currency::deposit_creating(&caller.clone().into(), T::DefaultKeyDeposit::get() * n as u128);
-		let origin = RawOrigin::Signed(caller.clone());
+		T::Currency::deposit_creating(&caller, T::DefaultKeyDeposit::get() * n as u128);
+		let origin = RawOrigin::Signed(caller);
 	}: add_keys(origin, test_keys)
 	verify {
 		assert_eq!(Keys::<T>::iter().collect::<Vec<_>>().len() as u32, n);
@@ -50,7 +50,7 @@ benchmarks! {
 	}: revoke_keys(origin, key_hashes, KeyPurpose::P2PDiscovery)
 	verify {
 		assert_eq!(Keys::<T>::iter().collect::<Vec<_>>().len() as u32, n);
-		assert!(all_keys_are_revoked::<T>(caller.clone()));
+		assert!(all_keys_are_revoked::<T>(caller));
 	}
 
 	set_deposit {
@@ -63,7 +63,7 @@ benchmarks! {
 
 fn all_keys_are_revoked<T: Config>(account_id: T::AccountId) -> bool {
 	for (_, key) in Keys::<T>::iter_prefix(account_id) {
-		if let None = key.revoked_at {
+		if key.revoked_at.is_none() {
 			return false;
 		}
 	}
@@ -73,7 +73,7 @@ fn all_keys_are_revoked<T: Config>(account_id: T::AccountId) -> bool {
 
 fn add_keys_to_storage<T: Config>(account_id: T::AccountId, keys: Vec<AddKey<T::Hash>>) {
 	for key in keys.iter() {
-		let key_id: KeyId<T::Hash> = (key.key.clone(), key.purpose.clone());
+		let key_id: KeyId<T::Hash> = (key.key, key.purpose.clone());
 
 		Keys::<T>::insert(
 			account_id.clone(),
@@ -92,7 +92,7 @@ fn build_test_keys<T: Config>(n: u32) -> Vec<AddKey<T::Hash>> {
 	let mut keys: Vec<AddKey<T::Hash>> = Vec::new();
 
 	for i in 0..n {
-		let hash = format!("some_hash_{}", i);
+		let hash = format!("some_hash_{i}");
 
 		let key_hash = T::Hashing::hash(hash.as_bytes());
 
@@ -103,7 +103,7 @@ fn build_test_keys<T: Config>(n: u32) -> Vec<AddKey<T::Hash>> {
 		});
 	}
 
-	return keys;
+	keys
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

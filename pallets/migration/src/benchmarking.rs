@@ -32,8 +32,8 @@ benchmarks! {
 		let mut i = 0;
 		for account in &test_data::system_account::SYSTEM_ACCOUNT {
 			i += 1;
-			let key = account.key.iter().cloned().collect();
-			let value = account.value.iter().cloned().collect();
+			let key = account.key.to_vec();
+			let value = account.value.to_vec();
 
 			data.push((key, value));
 
@@ -57,13 +57,13 @@ benchmarks! {
 		let additional_issuance: <T as pallet_balances::Config>::Balance =
 			codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
 
-		let old_issuance: <T as pallet_balances::Config>::Balance = pallet_balances::Pallet::<T>::total_issuance().into();
+		let old_issuance: <T as pallet_balances::Config>::Balance = pallet_balances::Pallet::<T>::total_issuance();
 
-  }: _(RawOrigin::Root, additional_issuance.clone())
+  }: _(RawOrigin::Root, additional_issuance)
   verify {
 		assert_eq!(
 				additional_issuance + old_issuance,
-				pallet_balances::Pallet::<T>::total_issuance().into()
+				pallet_balances::Pallet::<T>::total_issuance()
 		);
   }
   migrate_vesting_vesting{
@@ -77,7 +77,7 @@ benchmarks! {
 		let mut i = 0;
 		for vesting in &test_data::vesting_vesting::VESTING_VESTING {
 			i += 1;
-			let key: Vec<u8> = vesting.key.iter().cloned().collect();
+			let key: Vec<u8> = vesting.key.to_vec();
 			let vesting: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
 			T::BlockNumber> =
 				codec::Decode::decode(&mut vesting.value[..].as_ref()).unwrap();
@@ -91,7 +91,7 @@ benchmarks! {
 				).as_slice()
 			).unwrap();
 
-			data.push((account_id.into(), vesting));
+			data.push((account_id, vesting));
 
 			if i == n {
 				break;
@@ -103,7 +103,7 @@ benchmarks! {
 		for ( id, vesting_info) in data {
 			let storage_vesting_info: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
 			T::BlockNumber> =
-				pallet_vesting::Vesting::<T>::get(id).unwrap().first().unwrap().clone();
+				*pallet_vesting::Vesting::<T>::get(id).unwrap().first().unwrap();
 
 			assert_eq!(vesting_info, storage_vesting_info);
 		}
@@ -136,7 +136,7 @@ benchmarks! {
 		let mut i = 0;
 		for proxy in proxies {
 			i += 1;
-			let key: Vec<u8> = proxy.key.iter().cloned().collect();
+			let key: Vec<u8> = proxy.key.to_vec();
 			let proxy_info: (
 					BoundedVec<
 						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,

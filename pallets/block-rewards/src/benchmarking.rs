@@ -11,6 +11,7 @@ use sp_runtime::traits::{One, Zero};
 use super::*;
 use crate::{pallet::Config, Pallet as BlockRewards};
 
+#[allow(clippy::identity_op)]
 const REWARD: u128 = 1 * CFG;
 const SEED: u32 = 0;
 

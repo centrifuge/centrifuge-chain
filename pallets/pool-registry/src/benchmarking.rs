@@ -93,7 +93,7 @@ benchmarks! {
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
-		let origin = if let Ok(_) = <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()) {
+		let origin = if <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()).is_ok() {
 			RawOrigin::Signed(caller.clone())
 		} else {
 			RawOrigin::Root
@@ -123,7 +123,7 @@ benchmarks! {
 		let amount = MAX_RESERVE / 2;
 		let investor = create_investor::<T>(0, TRANCHE, Some(amount))?;
 		let locator = get_tranche_id::<T>(TRANCHE);
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), amount)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor).into(), TrancheCurrency::generate(POOL, locator), amount)?;
 
 
 		let changes = PoolChanges {
@@ -189,10 +189,10 @@ benchmarks! {
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
 
-		update_pool::<T>(changes.clone())?;
+		update_pool::<T>(changes)?;
 
 		// Withdraw redeem order so the update can be executed after that
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor).into(), TrancheCurrency::generate(POOL, locator), 0)?;
 	}: execute_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();
@@ -215,7 +215,7 @@ benchmarks! {
 }
 
 fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::get_pool_metadata(POOL).unwrap()
 }
 
 fn build_update_tranche_token_metadata<T: Config>(

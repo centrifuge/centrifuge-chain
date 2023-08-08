@@ -56,11 +56,12 @@ benchmarks! {
 	fill_order_full {
 		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+		let order_id = Pallet::<T>::place_order(account_0, asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
 
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 }
 
+#[allow(clippy::type_complexity)]
 fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>>(
 ) -> Result<
 	(

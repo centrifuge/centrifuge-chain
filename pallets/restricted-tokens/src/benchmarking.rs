@@ -180,7 +180,7 @@ benchmarks! {
 	transfer_native {
 		let amount = as_balance::<T>(300);
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
+		let send = set_up_account::<T>("sender", currency, amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer(RawOrigin::Signed(send.clone()), recv_loopup, currency, amount)
@@ -194,10 +194,10 @@ benchmarks! {
 	transfer_other {
 		let amount = as_balance::<T>(300);
 		let currency = get_non_native_currency::<T>();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
-		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
+		let send = set_up_account::<T>("sender", currency, amount, None);
+		let recv = get_account_maybe_permission::<T>("receiver", currency);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), amount)
+	}:transfer(RawOrigin::Signed(send.clone()), recv_loopup, currency, amount)
 	verify {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
@@ -208,7 +208,7 @@ benchmarks! {
 		let min_deposit = <T as pallet_balances::Config>::ExistentialDeposit::get();
 		let send_amount = amount - min_deposit;
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
+		let send = set_up_account::<T>("sender", currency, amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_keep_alive(RawOrigin::Signed(send.clone()), recv_loopup, currency, send_amount)
@@ -224,8 +224,8 @@ benchmarks! {
 		let currency = get_non_native_currency::<T>();
 		let min_deposit = <T as orml_tokens::Config>::ExistentialDeposits::get(&currency);
 		let send_amount = amount - min_deposit;
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
-		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
+		let send = set_up_account::<T>("sender", currency, amount, None);
+		let recv = get_account_maybe_permission::<T>("receiver", currency);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_keep_alive(RawOrigin::Signed(send.clone()), recv_loopup, currency, send_amount)
 	verify {
@@ -239,7 +239,7 @@ benchmarks! {
 	transfer_all_native {
 		let amount = as_balance::<T>(300);
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
+		let send = set_up_account::<T>("sender", currency, amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency, false)
@@ -254,10 +254,10 @@ benchmarks! {
 	transfer_all_other {
 		let amount = as_balance::<T>(300);
 		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
-		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
+		let send = set_up_account::<T>("sender", currency, amount, None);
+		let recv = get_account_maybe_permission::<T>("receiver", currency);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), false)
+	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency, false)
 	verify {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
@@ -269,7 +269,7 @@ benchmarks! {
 	force_transfer_native {
 		let amount = as_balance::<T>(300);
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
+		let send = set_up_account::<T>("sender", currency, amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let send_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(send.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
@@ -285,11 +285,11 @@ benchmarks! {
 	force_transfer_other {
 		let amount = as_balance::<T>(300);
 		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
-		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
-		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
+		let send = set_up_account::<T>("sender", currency, amount, None);
+		let recv = get_account_maybe_permission::<T>("receiver", currency);
 		let send_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(send.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:force_transfer(RawOrigin::Root, send_loopup, recv_loopup, currency.clone(), amount)
+	}:force_transfer(RawOrigin::Root, send_loopup, recv_loopup, currency, amount)
 	verify {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
@@ -304,7 +304,7 @@ benchmarks! {
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
+	}:set_balance(RawOrigin::Root, recv_loopup, currency, free, reserved)
 	verify {
 		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, false) == free);
 		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::balance(&recv) == (free + reserved));
@@ -317,9 +317,9 @@ benchmarks! {
 		let free = as_balance::<T>(300);
 		let reserved = as_balance::<T>(200);
 		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
-		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
+		let recv = get_account_maybe_permission::<T>("receiver", currency);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
+	}:set_balance(RawOrigin::Root, recv_loopup, currency, free, reserved)
 	verify {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == free);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free + reserved));

@@ -73,7 +73,7 @@ benchmarks! {
 			get_contribution::<T>(CONTRIBUTION)
 		);
 		let locked_at: T::BlockNumber = 1u32.into();
-		let index: TrieIndex = 1u32.into();
+		let index: TrieIndex = 1u32;
 		let lease_start: T::BlockNumber = 1u32.into();
 		let lease_period: T::BlockNumber = 1u32.into();
   }: _(RawOrigin::Root, contributions, locked_at, index, lease_start, lease_period)
@@ -117,7 +117,7 @@ benchmarks! {
   }
 
   set_crowdloan_trie_index {
-	  let index: TrieIndex = 1u32.into();
+	  let index: TrieIndex = 1u32;
   }: _(RawOrigin::Root, index)
   verify {
 		assert!(Pallet::<T>::crowdloan_trie_index().is_some());
@@ -337,7 +337,7 @@ fn get_root<T: Config>(relay: T::RelayChainAccountId, contribution: T::Balance) 
 	let node_01 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_2, node_3);
 	let node_000 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_00, node_01);
 
-	proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_000, node_4).into()
+	proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_000, node_4)
 }
 
 fn init_pallets<T: Config>(relay_account: T::RelayChainAccountId) {
