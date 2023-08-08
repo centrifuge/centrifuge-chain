@@ -64,6 +64,6 @@ case $TARGET in
     ;;
 
   benchmark-check)
-    ./scripts/check_benchmarks.sh $RUNTIME
+    ./scripts/check_benchmarks.sh $RUNTIME debug $FEATURES
 
 esac

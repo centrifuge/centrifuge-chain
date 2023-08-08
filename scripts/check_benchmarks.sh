@@ -1,11 +1,24 @@
-set -eu
+RUNTIME=$1
+FEATURES=$3
 
-runtime=$1
+# usage: ./scripts/check_benchmarks.sh <environment> <debug/release> [--features==X,Y,Z]
+
+if [[ "$2" == "release" ]]; then
+    MODE="release"
+    CARGO_MODE="--release"
+else
+    MODE="debug"
+    CARGO_MODE=""
+fi
+
+if [[ -z "$3" ]]; then
+    FEATURES="--features runtime-benchmarks"
+fi
 
 run_benchmark() {
   pallet=$1
 
-  cmd="target/release/centrifuge-chain benchmark pallet \
+  cmd="target/${mode}/centrifuge-chain benchmark pallet \
     --chain="${chain}" \
     --steps=2 \
     --repeat=1 \
@@ -20,13 +33,13 @@ run_benchmark() {
     ${cmd}
 }
 
-if [[ $runtime == "development" ]];
+if [[ $RUNTIME == "development" ]];
 then
   chain="development-local"
-elif [[ $runtime == "centrifuge" ]];
+elif [[ $RUNTIME == "centrifuge" ]];
 then
   chain="centrifuge-dev"
-elif [[ $runtime == "altair" ]];
+elif [[ $RUNTIME == "altair" ]];
 then
   chain="altair-dev"
 else
@@ -34,10 +47,12 @@ else
   exit 1;
 fi
 
-cargo build --release --features runtime-benchmarks
+echo Running in ${MODE} with ${FEATURES}
+
+cargo build $CARGO_MODE $FEATURES
 
 all_pallets=$(
-  ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq
+  ./target/${MODE}/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq
 )
 
 for pallet in $all_pallets
