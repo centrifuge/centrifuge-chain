@@ -534,14 +534,13 @@ pub mod investment_portfolios {
 		account_id: AccountId,
 	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
 	where
-		Investments: InvestmentsPortfolio<AccountId>
-			+ InvestmentsPortfolio<
-				AccountId,
-				AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
-				InvestmentId = InvestmentId,
-				CurrencyId = CurrencyId,
-				Balance = Balance,
-			>,
+		Investments: InvestmentsPortfolio<
+			AccountId,
+			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
+			InvestmentId = InvestmentId,
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+		>,
 		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
 		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
 		Runtime: frame_system::Config,
