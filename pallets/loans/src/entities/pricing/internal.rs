@@ -125,7 +125,7 @@ impl<T: Config> InternalActivePricing<T> {
 		self.compute_present_value(debt, origination_date, maturity_date)
 	}
 
-	pub fn current_interest(
+	pub fn interest_accrued(
 		&self,
 		current_principal: T::Balance,
 	) -> Result<T::Balance, DispatchError> {

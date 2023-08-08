@@ -352,13 +352,13 @@ impl<T: Config> ActiveLoan<T> {
 					.total_borrowed
 					.ensure_sub(self.total_repaid.principal)?;
 
-				(inner.current_interest(principal)?, principal)
+				(inner.interest_accrued(principal)?, principal)
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.principal.external()?;
 				let max_repay_principal = inner.max_repay_principal(external_amount)?;
 
-				(inner.current_interest()?, max_repay_principal)
+				(inner.interest_accrued()?, max_repay_principal)
 			}
 		};
 
@@ -502,13 +502,16 @@ pub struct ActiveLoanInfo<T: Config> {
 
 	/// Present value of the loan
 	present_value: T::Balance,
+
+	/// Current outstanding debt of this loan
+	outstanding_debt: T::Balance,
 }
 
 impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from(active_loan: ActiveLoan<T>) -> Result<Self, Self::Error> {
-		let (interest_accrued, present_value) = match &active_loan.pricing {
+		let (interest_accrued, present_value, outstanding_debt) = match &active_loan.pricing {
 			ActivePricing::Internal(inner) => {
 				let principal = active_loan
 					.total_borrowed
@@ -517,17 +520,23 @@ impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
 				let maturity_date = active_loan.schedule.maturity.date();
 
 				(
-					inner.current_interest(principal)?,
+					inner.interest_accrued(principal)?,
 					inner.present_value(active_loan.origination_date, maturity_date)?,
+					inner.interest.current_debt()?,
 				)
 			}
-			ActivePricing::External(inner) => (inner.current_interest()?, inner.present_value()?),
+			ActivePricing::External(inner) => (
+				inner.interest_accrued()?,
+				inner.present_value()?,
+				inner.interest.current_debt()?,
+			),
 		};
 
 		Ok(Self {
 			active_loan,
 			interest_accrued,
 			present_value,
+			outstanding_debt,
 		})
 	}
 }

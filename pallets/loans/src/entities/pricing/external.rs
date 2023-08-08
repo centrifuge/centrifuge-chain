@@ -126,7 +126,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
 	}
 
-	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
+	pub fn interest_accrued(&self) -> Result<T::Balance, DispatchError> {
 		let outstanding_notional = self
 			.outstanding_quantity
 			.ensure_mul_int(self.info.notional)?;
