@@ -11,4 +11,4 @@
 // GNU General Public License for more details.
 
 mod gateway;
-mod routers;
+mod pallet;

@@ -80,14 +80,14 @@ use utils::investments::{
 use xcm_emulator::TestExt;
 
 use crate::{
-	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
-	xcm::development::{
+	connectors::pallet::development::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::connectors::utils::{
 			get_default_moonbeam_native_token_location, DEFAULT_MOONBEAM_LOCATION,
 		},
 	},
+	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	*,
 };
 
@@ -1644,8 +1644,8 @@ mod utils {
 
 	use super::*;
 	use crate::{
+		connectors::pallet::development::tests::register_ausd,
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
-		xcm::development::tests::register_ausd,
 	};
 
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;

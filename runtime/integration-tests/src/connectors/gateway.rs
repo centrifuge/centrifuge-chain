@@ -58,7 +58,7 @@ use crate::{
 	},
 };
 
-fn get_council_members() -> Vec<Keyring> {
+pub(crate) fn get_council_members() -> Vec<Keyring> {
 	vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
 }
 

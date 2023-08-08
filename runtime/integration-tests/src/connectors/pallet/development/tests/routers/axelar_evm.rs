@@ -30,6 +30,7 @@ use crate::{
 		Balances, ConnectorsGateway, CouncilCollective, Runtime, RuntimeEvent, RuntimeOrigin,
 		PARA_ID,
 	},
+	connectors::gateway::get_council_members,
 	utils::{
 		accounts::Keyring,
 		connectors_gateway::set_domain_router_call,
@@ -40,10 +41,6 @@ use crate::{
 		genesis,
 	},
 };
-
-fn get_council_members() -> Vec<Keyring> {
-	vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
-}
 
 #[tokio::test]
 async fn submit() {

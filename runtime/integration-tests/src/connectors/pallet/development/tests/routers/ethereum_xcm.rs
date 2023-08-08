@@ -38,7 +38,7 @@ use crate::{
 	chain::centrifuge::{
 		Balance, ConnectorsGateway, OrmlAssetRegistry, OrmlTokens, Runtime, RuntimeOrigin,
 	},
-	connectors_gateway::routers::ethereum_xcm::{
+	connectors::pallet::development::{
 		setup::{dollar, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM, TEST_DOMAIN},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 	},

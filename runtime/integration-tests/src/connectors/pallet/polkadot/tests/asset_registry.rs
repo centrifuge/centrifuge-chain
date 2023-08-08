@@ -40,7 +40,7 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 
-use crate::xcm::polkadot::{
+use crate::connectors::pallet::polkadot::{
 	setup::{
 		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
 		DOT_ASSET_ID, PARA_ID_SIBLING,
