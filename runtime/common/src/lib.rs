@@ -554,7 +554,9 @@ pub mod investment_portfolios {
 		// and pool pallets.
 		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
 			.into_iter()
-			.map(|a_i| (a_i.0.of_pool(), a_i.1, a_i.0, a_i.2))
+			.map(|(investment_id, currency_id, balance)| {
+				(investment_id.of_pool(), currency_id, investment_id, balance)
+			})
 			.collect();
 		Some(portfolio)
 	}
