@@ -512,3 +512,52 @@ pub mod changes {
 		}
 	}
 }
+
+/// Module for investment portfolio common to all runtimes
+pub mod investment_portfolios {
+
+	use cfg_traits::{InvestmentsPortfolio, TrancheCurrency};
+	use sp_std::vec::Vec;
+
+	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
+	/// investments for an account.
+	pub fn get_portfolios<
+		Runtime,
+		AccountId,
+		TrancheId,
+		Investments,
+		InvestmentId,
+		CurrencyId,
+		PoolId,
+		Balance,
+	>(
+		account_id: AccountId,
+	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
+	where
+		Investments: InvestmentsPortfolio<
+			AccountId,
+			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
+			InvestmentId = InvestmentId,
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+		>,
+		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
+		Runtime: frame_system::Config,
+	{
+		let account_investments: Vec<(InvestmentId, CurrencyId, Balance)> =
+			Investments::get_account_investments_currency(&account_id).ok()?;
+		// Pool getting defined in runtime
+		// as opposed to pallet helper method
+		// as getting pool id in investments pallet
+		// would force tighter coupling of investments
+		// and pool pallets.
+		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
+			.into_iter()
+			.map(|(investment_id, currency_id, balance)| {
+				(investment_id.of_pool(), currency_id, investment_id, balance)
+			})
+			.collect();
+		Some(portfolio)
+	}
+}
