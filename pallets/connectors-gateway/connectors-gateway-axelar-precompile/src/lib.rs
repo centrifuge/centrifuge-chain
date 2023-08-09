@@ -13,46 +13,101 @@
 
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
-use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
-use sp_core::{bounded::BoundedVec, ConstU32, Get, H160, H256, U256};
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
+use sp_runtime::{traits::Convert, DispatchResult};
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
 pub const MAX_PAYLOAD_BYTES: u32 = 32;
+pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
 
 pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
-pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
+pub use pallet::*;
 
-/// Precompile implementing IAxelarForecallable.
-/// MUST be used as the receiver of calls over the Axelar bridge.
-/// - `Axelar` defines the address of our local Axelar bridge contract
-///   (AxelarGatewayProxy.sol).
-/// - `ConvertSource` converts a Tuple `(String, String)` and tries to convert
-///   this into a `DomainAddress`.
-///    - First string: Defines `sourceChain`
-///    - Second string: Defines `sourceAddress`
-pub struct AxelarForecallable<Runtime, Axelar, ConvertSource>(
-	core::marker::PhantomData<(Runtime, Axelar, ConvertSource)>,
-);
+#[frame_support::pallet]
+pub mod pallet {
+	use core::marker::PhantomData;
+
+	// Import various types used to declare pallet in scope.
+	use frame_support::pallet_prelude::*;
+	use frame_system::pallet_prelude::*;
+	use sp_core::H160;
+
+	// Simple declaration of the `Pallet` type. It is placeholder we use to
+	// implement traits and method.
+	#[pallet::pallet]
+	#[pallet::generate_store(pub (super) trait Store)]
+	pub struct Pallet<T>(_);
+
+	#[pallet::config]
+	pub trait Config:
+		frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config
+	{
+		/// The origin that is allowed to set the Gatway address we accept
+		/// messageas from
+		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
+
+		/// `SourceConverter` converts a Tuple `(String, String)` and tries to
+		/// convert   this into a `DomainAddress`.
+		///    - First string: Defines `sourceChain`
+		///    - Second string: Defines `sourceAddress`
+		type SourceConverter: sp_runtime::traits::Convert<
+			(Vec<u8>, Vec<u8>),
+			Result<cfg_types::domain_address::DomainAddress, DispatchError>,
+		>;
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_pre_commit)]
+	pub(super) type Gateway<T: Config> = StorageValue<_, H160, ValueQuery>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T> {
+		pub gateway: H160,
+		_phantom: PhantomData<T>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				gateway: Default::default(),
+				_phantom: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			Gateway::<T>::set(self.gateway)
+		}
+	}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(0)]
+		#[pallet::call_index(0)]
+		pub fn set_gateway(origin: OriginFor<T>, gateway_address: H160) -> DispatchResult {
+			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+
+			Gateway::<T>::set(gateway_address);
+
+			Ok(())
+		}
+	}
+}
 
 #[precompile_utils::precompile]
-impl<Runtime, Axelar, ConvertSource> AxelarForecallable<Runtime, Axelar, ConvertSource>
+impl<T: Config> Pallet<T>
 where
-	Runtime: frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config,
-	Runtime::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo,
-	<Runtime::RuntimeCall as Dispatchable>::RuntimeOrigin:
-		From<pallet_connectors_gateway::GatewayOrigin>,
-	Axelar: Get<H160>,
-	ConvertSource: sp_runtime::traits::Convert<
-		(Vec<u8>, Vec<u8>),
-		Result<cfg_types::domain_address::DomainAddress, DispatchError>,
-	>,
+	T: frame_system::Config,
+	<T as frame_system::Config>::RuntimeOrigin: From<pallet_connectors_gateway::GatewayOrigin>,
 {
 	// Mimics:
 
@@ -94,22 +149,21 @@ where
 			Token::String(source_address.clone().try_into().map_err(|_| {
 				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
 			})?),
-			// TODO: Check if this is really the address of this precompile
 			Token::Address(handle.context().address),
 			Token::FixedBytes(payload_hash.as_bytes().into()),
 		])));
 
 		let msg = BoundedVec::<
 			u8,
-			<Runtime as pallet_connectors_gateway::Config>::MaxIncomingMessageSize,
+			<T as pallet_connectors_gateway::Config>::MaxIncomingMessageSize,
 		>::try_from(payload.as_bytes().to_vec())
 		.map_err(|_| PrecompileFailure::Error {
 			exit_status: ExitError::Other("payload conversion".into()),
 		})?;
 
 		Self::execute_call(key, || {
-			pallet_connectors_gateway::Pallet::<Runtime>::process_msg(
-				pallet_connectors_gateway::GatewayOrigin::Local(ConvertSource::convert((
+			pallet_connectors_gateway::Pallet::<T>::process_msg(
+				pallet_connectors_gateway::GatewayOrigin::Local(T::SourceConverter::convert((
 					source_chain.as_bytes().to_vec(),
 					source_address.as_bytes().to_vec(),
 				))?)
@@ -149,16 +203,17 @@ where
 	}
 
 	fn execute_call(key: H256, f: impl FnOnce() -> DispatchResult) -> EvmResult {
-		// TODO: Is the storage address actual the Gateway contract address ???
-		let valid = Self::get_validate_call(Axelar::get(), key);
+		let gateway = Gateway::<T>::get();
+
+		let valid = Self::get_validate_call(gateway, key);
 
 		if valid {
 			// Prevent re-entrance
-			Self::set_validate_call(Axelar::get(), key, false);
+			Self::set_validate_call(gateway, key, false);
 
 			match f().map(|_| ()).map_err(|e| TryDispatchError::Substrate(e)) {
 				Err(e) => {
-					Self::set_validate_call(Axelar::get(), key, true);
+					Self::set_validate_call(gateway, key, true);
 					Err(e.into())
 				}
 				Ok(()) => Ok(()),
@@ -169,14 +224,14 @@ where
 	}
 
 	fn get_validate_call(from: H160, key: H256) -> bool {
-		Self::h256_to_bool(pallet_evm::AccountStorages::<Runtime>::get(
+		Self::h256_to_bool(pallet_evm::AccountStorages::<T>::get(
 			from,
 			Self::get_index_validate_call(key),
 		))
 	}
 
 	fn set_validate_call(from: H160, key: H256, valid: bool) {
-		pallet_evm::AccountStorages::<Runtime>::set(
+		pallet_evm::AccountStorages::<T>::set(
 			from,
 			Self::get_index_validate_call(key),
 			Self::bool_to_h256(valid),

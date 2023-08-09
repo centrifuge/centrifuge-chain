@@ -26,12 +26,21 @@ impl<R> CentrifugePrecompiles<R> {
 	}
 }
 
-// This value is chosen to be identical to what Moonbeam, for best
-// interoperability. See
-// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
-// for details on how Moonbeam organizes precompile addresses. We will
-// follow the same namespacing.
+/// The address of the dispatch precompile. Allows to call into Substrate native
+/// logic from the EVM.
+///
+/// This value is chosen to be identical to what Moonbeam, for best
+/// interoperability. See
+/// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
+/// for details on how Moonbeam organizes precompile addresses. We will
+/// follow the same namespacing.
 const DISPATCH_ADDR: H160 = addr(1025);
+
+/// The address of our local Axelar gateway. This is the address that Connctor
+/// contracts on other domains must use in order to hit the Connectors logic.
+///
+/// The precompile implements
+const CONNECTORS_AXELAR_GATEWAY: H160 = addr(1026);
 
 impl<R> PrecompileSet for CentrifugePrecompiles<R>
 where
@@ -42,6 +51,10 @@ where
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		if handle.code_address() == DISPATCH_ADDR {
 			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
+				handle,
+			))
+		} else if handle.code_address() == CONNECTORS_AXELAR_GATEWAY {
+			Some(connectors_gateway_axelar_precompile::Pallet::<R>::execute(
 				handle,
 			))
 		} else {
