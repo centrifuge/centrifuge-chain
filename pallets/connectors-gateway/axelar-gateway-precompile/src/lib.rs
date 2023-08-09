@@ -198,7 +198,7 @@ where
 	<T as frame_system::Config>::RuntimeOrigin: From<pallet_connectors_gateway::GatewayOrigin>,
 {
 	// Mimics:
-
+	//
 	//   function execute(
 	//         bytes32 commandId,
 	//         string calldata sourceChain,
@@ -206,13 +206,19 @@ where
 	//         bytes calldata payload
 	//     ) external {
 	//       bytes32 payloadHash = keccak256(payload);
-	// 		 if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress,
-	// payloadHash)) revert NotApprovedByGateway(); 	     _execute(sourceChain,
-	// sourceAddress, payload);     }
+	// 		 if (
+	//           !gateway.validateContractCall(
+	//              commandId,
+	//              sourceChain,
+	//              sourceAddress,
+	//              payloadHash)
+	//           ) revert NotApprovedByGateway();
+	//
+	//        _execute(sourceChain, sourceAddress, payload);
+	// }
 	//
 	// Note: The _execute logic in this case will forward all calls to the
 	//       pallet-connectors-gateway with a special runtime local origin
-	//
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
 		handle: &mut impl PrecompileHandle,
