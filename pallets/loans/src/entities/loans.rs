@@ -344,7 +344,7 @@ impl<T: Config> ActiveLoan<T> {
 		&self,
 		mut amount: RepaidPricingAmount<T>,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
-		let (interest_accrued, max_repay_principal) = match &self.pricing {
+		let (outstanding_interest, max_repay_principal) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.principal.internal()?;
 
@@ -352,17 +352,17 @@ impl<T: Config> ActiveLoan<T> {
 					.total_borrowed
 					.ensure_sub(self.total_repaid.principal)?;
 
-				(inner.interest_accrued(principal)?, principal)
+				(inner.outstanding_interest(principal)?, principal)
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.principal.external()?;
 				let max_repay_principal = inner.max_repay_principal(external_amount)?;
 
-				(inner.interest_accrued()?, max_repay_principal)
+				(inner.outstanding_interest()?, max_repay_principal)
 			}
 		};
 
-		amount.interest = amount.interest.min(interest_accrued);
+		amount.interest = amount.interest.min(outstanding_interest);
 
 		ensure!(
 			amount.principal.balance()? <= max_repay_principal,
@@ -374,7 +374,7 @@ impl<T: Config> ActiveLoan<T> {
 				RepayRestrictions::None => true,
 				RepayRestrictions::Full => {
 					amount.principal.balance()? == max_repay_principal
-						&& amount.interest == interest_accrued
+						&& amount.interest == outstanding_interest
 				}
 			},
 			Error::<T>::from(RepayLoanError::Restriction)
@@ -497,46 +497,46 @@ pub struct ActiveLoanInfo<T: Config> {
 	/// Related active loan
 	active_loan: ActiveLoan<T>,
 
-	/// Interest accrued for this loan
-	interest_accrued: T::Balance,
-
 	/// Present value of the loan
 	present_value: T::Balance,
 
-	/// Current outstanding debt of this loan
-	outstanding_debt: T::Balance,
+	/// Current outstanding principal of this loan
+	outstanding_principal: T::Balance,
+
+	/// Current outstanding interest of this loan
+	outstanding_interest: T::Balance,
 }
 
 impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from(active_loan: ActiveLoan<T>) -> Result<Self, Self::Error> {
-		let (interest_accrued, present_value, outstanding_debt) = match &active_loan.pricing {
-			ActivePricing::Internal(inner) => {
-				let principal = active_loan
-					.total_borrowed
-					.ensure_sub(active_loan.total_repaid.principal)?;
+		let (present_value, outstanding_principal, outstanding_interest) =
+			match &active_loan.pricing {
+				ActivePricing::Internal(inner) => {
+					let principal = active_loan
+						.total_borrowed
+						.ensure_sub(active_loan.total_repaid.principal)?;
+					let maturity_date = active_loan.schedule.maturity.date();
 
-				let maturity_date = active_loan.schedule.maturity.date();
-
-				(
-					inner.interest_accrued(principal)?,
-					inner.present_value(active_loan.origination_date, maturity_date)?,
-					inner.interest.current_debt()?,
-				)
-			}
-			ActivePricing::External(inner) => (
-				inner.interest_accrued()?,
-				inner.present_value()?,
-				inner.interest.current_debt()?,
-			),
-		};
+					(
+						inner.present_value(active_loan.origination_date, maturity_date)?,
+						principal,
+						inner.outstanding_interest(principal)?,
+					)
+				}
+				ActivePricing::External(inner) => (
+					inner.present_value()?,
+					inner.outstanding_principal()?,
+					inner.outstanding_interest()?,
+				),
+			};
 
 		Ok(Self {
 			active_loan,
-			interest_accrued,
 			present_value,
-			outstanding_debt,
+			outstanding_principal,
+			outstanding_interest,
 		})
 	}
 }

@@ -126,7 +126,12 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
 	}
 
-	pub fn interest_accrued(&self) -> Result<T::Balance, DispatchError> {
+	pub fn outstanding_principal(&self) -> Result<T::Balance, DispatchError> {
+		let price = self.current_price()?;
+		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
+	}
+
+	pub fn outstanding_interest(&self) -> Result<T::Balance, DispatchError> {
 		let outstanding_notional = self
 			.outstanding_quantity
 			.ensure_mul_int(self.info.notional)?;
@@ -136,8 +141,7 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.current_price()?;
-		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
+		self.outstanding_principal()
 	}
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
