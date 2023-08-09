@@ -10832,6 +10832,7 @@ dependencies = [
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
+ "pallet-investments",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",

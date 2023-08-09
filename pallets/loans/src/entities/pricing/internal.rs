@@ -125,12 +125,12 @@ impl<T: Config> InternalActivePricing<T> {
 		self.compute_present_value(debt, origination_date, maturity_date)
 	}
 
-	pub fn current_interest(
+	pub fn outstanding_interest(
 		&self,
-		current_principal: T::Balance,
+		outstanding_principal: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
 		let debt = self.interest.current_debt()?;
-		Ok(debt.ensure_sub(current_principal)?)
+		Ok(debt.ensure_sub(outstanding_principal)?)
 	}
 
 	pub fn max_borrow_amount(

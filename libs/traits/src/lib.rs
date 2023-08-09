@@ -728,3 +728,23 @@ pub trait TokenSwaps<Account> {
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
 }
+
+/// Trait to handle Investment Portfolios for accounts
+pub trait InvestmentsPortfolio<Account> {
+	type InvestmentId;
+	type CurrencyId;
+	type Balance;
+	type Error;
+	type AccountInvestmentPortfolio;
+
+	/// Get the payment currency for an investment.
+	fn get_investment_currency_id(
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::CurrencyId, Self::Error>;
+
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
+	fn get_account_investments_currency(
+		who: &Account,
+	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
+}

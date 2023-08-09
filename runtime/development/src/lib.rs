@@ -2338,6 +2338,13 @@ impl_runtime_apis! {
 		}
 	}
 
+	// Investment Runtime APIs
+	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
+		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
+			runtime_common::investment_portfolios::get_portfolios::<Runtime, AccountId, TrancheId, Investments, TrancheCurrency, CurrencyId, PoolId, Balance>(account_id)
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
