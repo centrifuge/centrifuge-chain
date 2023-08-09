@@ -576,6 +576,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "axelar-gateway-precompile"
+version = "0.1.0"
+dependencies = [
+ "cfg-types",
+ "ethabi 18.0.0",
+ "fp-evm",
+ "frame-support",
+ "frame-system",
+ "pallet-connectors-gateway",
+ "pallet-evm",
+ "parity-scale-codec 3.4.0",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1542,26 +1562,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c278839b831783b70278b14df4d45e1beb1aad306c07bb796637de9a0e323e8e"
 dependencies = [
  "crossbeam-utils",
-]
-
-[[package]]
-name = "connectors-gateway-axelar-precompile"
-version = "0.1.0"
-dependencies = [
- "cfg-types",
- "ethabi 18.0.0",
- "fp-evm",
- "frame-support",
- "frame-system",
- "pallet-connectors-gateway",
- "pallet-evm",
- "parity-scale-codec 3.4.0",
- "precompile-utils",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2655,11 +2655,11 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.20"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "chainbridge",
- "connectors-gateway-axelar-precompile",
  "connectors-gateway-routers",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -10846,11 +10846,11 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "connectors-gateway-axelar-precompile",
  "fp-self-contained",
  "frame-support",
  "frame-system",

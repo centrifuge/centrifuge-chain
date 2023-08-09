@@ -1,5 +1,5 @@
 [package]
-name = "connectors-gateway-axelar-precompile"
+name = "axelar-gateway-precompile"
 version = "0.1.0"
 edition = "2021"
 

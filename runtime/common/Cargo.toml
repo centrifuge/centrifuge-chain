@@ -56,7 +56,7 @@ pallet-data-collector = { path = "../../pallets/data-collector", default-feature
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
-connectors-gateway-axelar-precompile = { path = "../../pallets/connectors-gateway/connectors-gateway-axelar-precompile", default-features = false }
+axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.2.1"
@@ -99,7 +99,7 @@ std = [
   "scale-info/std",
   "xcm/std",
   "fp-self-contained/std",
- "connectors-gateway-axelar-precompile/std",
+ "axelar-gateway-precompile/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -146,5 +146,5 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "fp-self-contained/try-runtime",
-  "connectors-gateway-axelar-precompile/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
 ]

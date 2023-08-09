@@ -74,10 +74,10 @@ impl<R> DevelopmentPrecompiles<R> {
 
 impl<R> PrecompileSet for DevelopmentPrecompiles<R>
 where
-	R: pallet_evm::Config + connectors_gateway_axelar_precompile::Config + frame_system::Config,
+	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
 	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
 	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
-	connectors_gateway_axelar_precompile::Pallet<R>: Precompile,
+	axelar_gateway_precompile::Pallet<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		if handle.code_address() == DISPATCH_ADDR {
@@ -85,7 +85,7 @@ where
 				handle,
 			))
 		} else if handle.code_address() == CONNECTORS_AXELAR_GATEWAY {
-			Some(<connectors_gateway_axelar_precompile::Pallet<R> as Precompile>::execute(handle))
+			Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
 		} else {
 			None
 		}

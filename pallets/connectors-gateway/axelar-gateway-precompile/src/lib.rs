@@ -102,7 +102,7 @@ pub mod pallet {
 	{
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// The origin that is allowed to set the Gatway address we accept
+		/// The origin that is allowed to set the gateway address we accept
 		/// messageas from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 	}

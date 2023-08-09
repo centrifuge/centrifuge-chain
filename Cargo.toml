@@ -41,7 +41,7 @@ members = [
   "pallets/connectors",
   "pallets/connectors-gateway",
   "pallets/connectors-gateway/routers",
-  "pallets/connectors-gateway/connectors-gateway-axelar-precompile",
+  "pallets/connectors-gateway/axelar-gateway-precompile",
   "pallets/claims",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
