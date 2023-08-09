@@ -113,8 +113,8 @@ runtime-common = { path = "../common", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
 
 # our custom pallets
-connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
 axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
+connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
@@ -271,7 +271,7 @@ std = [
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
   "getrandom/std",
-  "axelar-gateway-precompile/std"
+  "axelar-gateway-precompile/std",
 ]
 
 runtime-benchmarks = [
@@ -427,7 +427,7 @@ try-runtime = [
   "fp-self-contained/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
-  "axelar-gateway-precompile/try-runtime"
+  "axelar-gateway-precompile/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
