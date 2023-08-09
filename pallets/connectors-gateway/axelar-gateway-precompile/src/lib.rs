@@ -141,10 +141,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		SetGateway {
+		GatewaySet {
 			address: H160,
 		},
-		SetConverter {
+		ConverterSet {
 			id_hash: H256,
 			converter: SourceConverter,
 		},
@@ -168,7 +168,7 @@ pub mod pallet {
 
 			AxelarGatewayContract::<T>::set(gateway_address);
 
-			Self::deposit_event(Event::<T>::SetGateway {
+			Self::deposit_event(Event::<T>::GatewaySet {
 				address: gateway_address,
 			});
 
@@ -186,7 +186,7 @@ pub mod pallet {
 
 			SourceConversion::<T>::insert(id_hash, converter.clone());
 
-			Self::deposit_event(Event::<T>::SetConverter { id_hash, converter });
+			Self::deposit_event(Event::<T>::ConverterSet { id_hash, converter });
 
 			Ok(())
 		}
@@ -336,7 +336,7 @@ where
 	fn get_index_validate_call(key: H256) -> H256 {
 		// Generate right index:
 		//
-		// From the solidty contract of Axelar (EnternalStorage.sol)
+		// From the solidty contract of Axelar (EternalStorage.sol)
 		//     mapping(bytes32 => uint256) private _uintStorage; -> Slot 0
 		//     mapping(bytes32 => string) private _stringStorage; -> Slot 1
 		//     mapping(bytes32 => address) private _addressStorage; -> Slot 2

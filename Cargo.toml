@@ -704,6 +704,3 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
-
-# Cargo patch rules for all the PureStake/frontier crates
-[patch."https://github.com/PureStake/frontier"]
