@@ -92,7 +92,7 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		address == DISPATCH_ADDR
+		address == DISPATCH_ADDR || address == CONNECTORS_AXELAR_GATEWAY
 	}
 }
 
