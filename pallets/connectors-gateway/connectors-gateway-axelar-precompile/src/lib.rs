@@ -11,13 +11,14 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_types::domain_address::{Domain, DomainAddress};
 use codec::alloc::string::ToString;
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::{traits::Convert, DispatchResult};
+use sp_runtime::DispatchResult;
 use sp_std::vec::Vec;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
@@ -31,13 +32,63 @@ pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
 pub use pallet::*;
 
+#[derive(
+	PartialEq,
+	Clone,
+	codec::Encode,
+	codec::Decode,
+	scale_info::TypeInfo,
+	codec::MaxEncodedLen,
+	frame_support::RuntimeDebugNoBound,
+)]
+pub struct SourceConverter {
+	domain: Domain,
+}
+
+impl SourceConverter {
+	pub fn try_convert(&self, maybe_address: &[u8]) -> Option<DomainAddress> {
+		match self.domain {
+			Domain::Centrifuge => Some(DomainAddress::Centrifuge(Self::try_into_32bytes(
+				&maybe_address,
+			)?)),
+			Domain::EVM(id) => Some(DomainAddress::EVM(
+				id,
+				Self::try_into_20bytes(&maybe_address)?,
+			)),
+		}
+	}
+
+	fn try_into_32bytes(maybe_address: &[u8]) -> Option<[u8; 32]> {
+		if maybe_address.len() == 32 {
+			let mut address: [u8; 32] = [0u8; 32];
+			address.copy_from_slice(maybe_address);
+
+			Some(address)
+		} else {
+			None
+		}
+	}
+
+	fn try_into_20bytes(maybe_address: &[u8]) -> Option<[u8; 20]> {
+		if maybe_address.len() == 20 {
+			let mut address: [u8; 20] = [0u8; 20];
+			address.copy_from_slice(maybe_address);
+
+			Some(address)
+		} else {
+			None
+		}
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_core::H160;
-	use sp_std::vec::Vec;
+	use sp_core::{H160, H256};
+
+	use super::SourceConverter;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
@@ -54,20 +105,15 @@ pub mod pallet {
 		/// The origin that is allowed to set the Gatway address we accept
 		/// messageas from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
-
-		/// `SourceConverter` converts a Tuple `(String, String)` and tries to
-		/// convert   this into a `DomainAddress`.
-		///    - First string: Defines `sourceChain`
-		///    - Second string: Defines `sourceAddress`
-		type SourceConverter: sp_runtime::traits::Convert<
-			(Vec<u8>, Vec<u8>),
-			Result<cfg_types::domain_address::DomainAddress, DispatchError>,
-		>;
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_pre_commit)]
-	pub(super) type Gateway<T: Config> = StorageValue<_, H160, ValueQuery>;
+	pub type Gateway<T: Config> = StorageValue<_, H160, ValueQuery>;
+
+	/// `SourceConversion` is a hash_of(Vec<u8>) where the Vec<u8> is the
+	/// blake128-hash of the source identifier used by Axelar.
+	#[pallet::storage]
+	pub type SourceConversion<T: Config> = StorageMap<_, Twox64Concat, H256, SourceConverter>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T> {
@@ -95,7 +141,22 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		SetGateway { address: H160 },
+		SetGateway {
+			address: H160,
+		},
+		SetConverter {
+			id_hash: H256,
+			converter: SourceConverter,
+		},
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
+		/// The given domain is not yet allowlisted, as we have no converter yet
+		NoConverterForSource,
+		/// A given domain expects a given structure for account bytes and it
+		/// was not given here.
+		AccountBytesMismatchForDomain,
 	}
 
 	#[pallet::call]
@@ -110,6 +171,22 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::SetGateway {
 				address: gateway_address,
 			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		#[pallet::call_index(1)]
+		pub fn set_converter(
+			origin: OriginFor<T>,
+			id_hash: H256,
+			converter: SourceConverter,
+		) -> DispatchResult {
+			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+
+			SourceConversion::<T>::insert(id_hash, converter.clone());
+
+			Self::deposit_event(Event::<T>::SetConverter { id_hash, converter });
 
 			Ok(())
 		}
@@ -175,12 +252,17 @@ where
 		})?;
 
 		Self::execute_call(key, || {
+			let domain_converter = SourceConversion::<T>::get(H256::from(
+				sp_io::hashing::blake2_256(source_chain.as_bytes()),
+			))
+			.ok_or(Error::<T>::NoConverterForSource)?;
+
+			let domain_address = domain_converter
+				.try_convert(source_address.as_bytes())
+				.ok_or(Error::<T>::AccountBytesMismatchForDomain)?;
+
 			pallet_connectors_gateway::Pallet::<T>::process_msg(
-				pallet_connectors_gateway::GatewayOrigin::Local(T::SourceConverter::convert((
-					source_chain.as_bytes().to_vec(),
-					source_address.as_bytes().to_vec(),
-				))?)
-				.into(),
+				pallet_connectors_gateway::GatewayOrigin::Local(domain_address).into(),
 				msg,
 			)
 		})

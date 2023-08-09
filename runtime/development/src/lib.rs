@@ -1873,7 +1873,6 @@ impl
 impl connectors_gateway_axelar_precompile::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
-	type SourceConverter = SourceConverter;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
