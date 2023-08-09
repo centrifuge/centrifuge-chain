@@ -229,6 +229,7 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn check_write_off_trigger(
 		&self,
 		trigger: &WriteOffTrigger,
+		pool_id: T::PoolId,
 	) -> Result<bool, DispatchError> {
 		let now = T::Time::now().as_secs();
 		match trigger {
@@ -237,20 +238,20 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
 				ActivePricing::External(pricing) => {
-					Ok(now >= pricing.last_updated()?.ensure_add(*secs)?)
+					Ok(now >= pricing.last_updated(pool_id)?.ensure_add(*secs)?)
 				}
 				ActivePricing::Internal(_) => Ok(false),
 			},
 		}
 	}
 
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
+	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				let maturity_date = self.schedule.maturity.date();
 				inner.present_value(self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(inner) => inner.present_value()?,
+			ActivePricing::External(inner) => inner.present_value(pool_id)?,
 		};
 
 		self.write_down(value)
@@ -267,7 +268,7 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let value = match &self.pricing {
 			ActivePricing::Internal(inner) => {
@@ -507,10 +508,10 @@ pub struct ActiveLoanInfo<T: Config> {
 	outstanding_interest: T::Balance,
 }
 
-impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
+impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
-	fn try_from(active_loan: ActiveLoan<T>) -> Result<Self, Self::Error> {
+	fn try_from((pool_id, active_loan): (T::PoolId, ActiveLoan<T>)) -> Result<Self, Self::Error> {
 		let (present_value, outstanding_principal, outstanding_interest) =
 			match &active_loan.pricing {
 				ActivePricing::Internal(inner) => {
@@ -526,8 +527,8 @@ impl<T: Config> TryFrom<ActiveLoan<T>> for ActiveLoanInfo<T> {
 					)
 				}
 				ActivePricing::External(inner) => (
-					inner.present_value()?,
-					inner.outstanding_principal()?,
+					inner.present_value(pool_id)?,
+					inner.outstanding_principal(pool_id)?,
 					inner.outstanding_interest()?,
 				),
 			};

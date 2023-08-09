@@ -15,6 +15,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+pub mod conversion;
 mod impls;
 
 pub use constants::*;
