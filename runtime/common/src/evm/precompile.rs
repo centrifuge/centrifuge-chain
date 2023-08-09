@@ -63,16 +63,20 @@ where
 	}
 }
 
-pub struct DevelopmentPrecompiles<R>(PhantomData<R>);
+/// A set of precompiles. This set might contain
+/// not yet mainnet ready precompiles in order to test
+/// those in development or staging environment without touching
+/// the mainnet set.
+pub struct Development<R>(PhantomData<R>);
 
-impl<R> DevelopmentPrecompiles<R> {
+impl<R> Development<R> {
 	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
 	pub fn new() -> Self {
 		Self(Default::default())
 	}
 }
 
-impl<R> PrecompileSet for DevelopmentPrecompiles<R>
+impl<R> PrecompileSet for Development<R>
 where
 	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
 	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
