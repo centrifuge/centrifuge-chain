@@ -53,6 +53,7 @@ cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-connectors = { path = "../../pallets/connectors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
