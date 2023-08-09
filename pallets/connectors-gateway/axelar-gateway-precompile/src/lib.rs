@@ -163,14 +163,12 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
 		#[pallet::call_index(0)]
-		pub fn set_gateway(origin: OriginFor<T>, gateway_address: H160) -> DispatchResult {
+		pub fn set_gateway(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
-			AxelarGatewayContract::<T>::set(gateway_address);
+			AxelarGatewayContract::<T>::set(address);
 
-			Self::deposit_event(Event::<T>::GatewaySet {
-				address: gateway_address,
-			});
+			Self::deposit_event(Event::<T>::GatewaySet { address });
 
 			Ok(())
 		}
