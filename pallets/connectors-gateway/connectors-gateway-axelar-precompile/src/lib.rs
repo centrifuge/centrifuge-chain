@@ -21,10 +21,10 @@ use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::DispatchResult;
 use sp_std::vec::Vec;
 
-pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
+pub const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
-pub const MAX_PAYLOAD_BYTES: u32 = 32;
+pub const MAX_PAYLOAD_BYTES: u32 = 1024;
 pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
 
 pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
