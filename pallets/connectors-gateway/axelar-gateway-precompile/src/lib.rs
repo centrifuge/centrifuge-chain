@@ -108,10 +108,10 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	pub type Gateway<T: Config> = StorageValue<_, H160, ValueQuery>;
+	pub type AxelarGatewayContract<T: Config> = StorageValue<_, H160, ValueQuery>;
 
 	/// `SourceConversion` is a hash_of(Vec<u8>) where the Vec<u8> is the
-	/// blake128-hash of the source identifier used by Axelar.
+	/// blake256-hash of the source-chain identifier used by the Axelar network.
 	#[pallet::storage]
 	pub type SourceConversion<T: Config> = StorageMap<_, Twox64Concat, H256, SourceConverter>;
 
@@ -134,7 +134,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			Gateway::<T>::set(self.gateway)
+			AxelarGatewayContract::<T>::set(self.gateway)
 		}
 	}
 
@@ -166,7 +166,7 @@ pub mod pallet {
 		pub fn set_gateway(origin: OriginFor<T>, gateway_address: H160) -> DispatchResult {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
-			Gateway::<T>::set(gateway_address);
+			AxelarGatewayContract::<T>::set(gateway_address);
 
 			Self::deposit_event(Event::<T>::SetGateway {
 				address: gateway_address,
@@ -298,7 +298,7 @@ where
 	}
 
 	fn execute_call(key: H256, f: impl FnOnce() -> DispatchResult) -> EvmResult {
-		let gateway = Gateway::<T>::get();
+		let gateway = AxelarGatewayContract::<T>::get();
 
 		let valid = Self::get_validate_call(gateway, key);
 
