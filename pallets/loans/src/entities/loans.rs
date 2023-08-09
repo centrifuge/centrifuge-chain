@@ -344,7 +344,7 @@ impl<T: Config> ActiveLoan<T> {
 		&self,
 		mut amount: RepaidPricingAmount<T>,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
-		let (outstanding_interest, max_repay_principal) = match &self.pricing {
+		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.principal.internal()?;
 
@@ -352,13 +352,13 @@ impl<T: Config> ActiveLoan<T> {
 					.total_borrowed
 					.ensure_sub(self.total_repaid.principal)?;
 
-				(inner.outstanding_interest(principal)?, principal)
+				(principal, inner.outstanding_interest(principal)?)
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.principal.external()?;
 				let max_repay_principal = inner.max_repay_principal(external_amount)?;
 
-				(inner.outstanding_interest()?, max_repay_principal)
+				(max_repay_principal, inner.outstanding_interest()?)
 			}
 		};
 
