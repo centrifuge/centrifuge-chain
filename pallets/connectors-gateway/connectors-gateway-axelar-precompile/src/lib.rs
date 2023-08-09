@@ -11,12 +11,14 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::alloc::string::ToString;
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::{traits::Convert, DispatchResult};
+use sp_std::vec::Vec;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 32;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
@@ -31,12 +33,11 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use core::marker::PhantomData;
-
 	// Import various types used to declare pallet in scope.
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_core::H160;
+	use sp_std::vec::Vec;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
@@ -48,6 +49,8 @@ pub mod pallet {
 	pub trait Config:
 		frame_system::Config + pallet_evm::Config + pallet_connectors_gateway::Config
 	{
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		/// The origin that is allowed to set the Gatway address we accept
 		/// messageas from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
@@ -69,7 +72,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T> {
 		pub gateway: H160,
-		_phantom: PhantomData<T>,
+		_phantom: core::marker::PhantomData<T>,
 	}
 
 	#[cfg(feature = "std")]
@@ -89,6 +92,12 @@ pub mod pallet {
 		}
 	}
 
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		SetGateway { address: H160 },
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
@@ -97,6 +106,10 @@ pub mod pallet {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
 			Gateway::<T>::set(gateway_address);
+
+			Self::deposit_event(Event::<T>::SetGateway {
+				address: gateway_address,
+			});
 
 			Ok(())
 		}

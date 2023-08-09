@@ -2659,6 +2659,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "chainbridge",
+ "connectors-gateway-axelar-precompile",
  "connectors-gateway-routers",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",

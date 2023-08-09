@@ -15,13 +15,13 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-precompile-utils  = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+precompile-utils  = { git = "https://github.com/PureStake/moonbeam", default-features = false,  rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 ethabi = {version = "18.0.0", default-features = false }
 
-pallet-connectors-gateway = {path = "../../connectors-gateway" }
-cfg-types = {path = "../../../libs/types"}
+pallet-connectors-gateway = {path = "../../connectors-gateway", default-features = false}
+cfg-types = {path = "../../../libs/types", default-features = false}
 
 [features]
 default = ["std"]
@@ -44,4 +44,7 @@ std = [
 try-runtime = [
     "frame-support/try-runtime",
     "frame-system/try-runtime",
+    "pallet-connectors-gateway/try-runtime",
+    "cfg-types/try-runtime",
+    "pallet-evm/try-runtime",
 ]

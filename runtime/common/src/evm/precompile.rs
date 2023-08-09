@@ -53,10 +53,39 @@ where
 			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
 				handle,
 			))
-		} else if handle.code_address() == CONNECTORS_AXELAR_GATEWAY {
-			Some(connectors_gateway_axelar_precompile::Pallet::<R>::execute(
+		} else {
+			None
+		}
+	}
+
+	fn is_precompile(&self, address: H160) -> bool {
+		address == DISPATCH_ADDR
+	}
+}
+
+pub struct DevelopmentPrecompiles<R>(PhantomData<R>);
+
+impl<R> DevelopmentPrecompiles<R> {
+	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
+	pub fn new() -> Self {
+		Self(Default::default())
+	}
+}
+
+impl<R> PrecompileSet for DevelopmentPrecompiles<R>
+where
+	R: pallet_evm::Config + connectors_gateway_axelar_precompile::Config + frame_system::Config,
+	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
+	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
+	connectors_gateway_axelar_precompile::Pallet<R>: Precompile,
+{
+	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+		if handle.code_address() == DISPATCH_ADDR {
+			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
 				handle,
 			))
+		} else if handle.code_address() == CONNECTORS_AXELAR_GATEWAY {
+			Some(<connectors_gateway_axelar_precompile::Pallet<R> as Precompile>::execute(handle))
 		} else {
 			None
 		}

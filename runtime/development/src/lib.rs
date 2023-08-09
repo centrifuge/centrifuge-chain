@@ -30,7 +30,6 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
-	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -1571,22 +1570,6 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct DummyOutboundQueue;
-
-impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
-	type Destination = Domain;
-	type Message = pallet_connectors::MessageOf<Runtime>;
-	type Sender = AccountId;
-
-	fn submit(
-		_sender: AccountId,
-		_destination: Domain,
-		_msg: pallet_connectors::MessageOf<Runtime>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1595,7 +1578,7 @@ impl pallet_connectors::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
-	type OutboundQueue = DummyOutboundQueue;
+	type OutboundQueue = ConnectorsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -1873,6 +1856,26 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+pub struct SourceConverter;
+impl
+	sp_runtime::traits::Convert<
+		(Vec<u8>, Vec<u8>),
+		Result<cfg_types::domain_address::DomainAddress, DispatchError>,
+	> for SourceConverter
+{
+	fn convert(
+		_source: (Vec<u8>, Vec<u8>),
+	) -> Result<cfg_types::domain_address::DomainAddress, DispatchError> {
+		Err(DispatchError::Other("No supported domains yet!"))
+	}
+}
+
+impl connectors_gateway_axelar_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SourceConverter = SourceConverter;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1966,6 +1969,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		ConnectorsAxelarGateway: connectors_gateway_axelar_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

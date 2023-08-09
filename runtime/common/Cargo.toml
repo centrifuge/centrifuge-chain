@@ -99,7 +99,7 @@ std = [
   "scale-info/std",
   "xcm/std",
   "fp-self-contained/std",
-  "connectors-gateway-axelar-precompile/std",
+ "connectors-gateway-axelar-precompile/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
