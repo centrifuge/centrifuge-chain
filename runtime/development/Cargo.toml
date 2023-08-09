@@ -342,6 +342,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 try-runtime = [

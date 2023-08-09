@@ -118,6 +118,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 on-chain-release-build = [

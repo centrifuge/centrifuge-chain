@@ -15,6 +15,8 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+
 ethabi = { version = "18.0.0", default-features = false }
 fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
@@ -40,6 +42,15 @@ std = [
   "pallet-connectors-gateway/std",
   "cfg-types/std",
   "ethabi/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
+  "pallet-connectors-gateway/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
