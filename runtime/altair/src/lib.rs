@@ -1303,7 +1303,6 @@ impl pallet_data_collector::Config for Runtime {
 	type Moment = Moment;
 }
 
-
 #[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
 pub struct NullTransactor {}
 
@@ -1386,7 +1385,6 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();
 }
-
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
@@ -1930,8 +1928,7 @@ mod __runtime_api_use {
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
 use cfg_types::domain_address::Domain;
-use runtime_common::account_conversion::AccountConverter;
-use runtime_common::xcm::AccountIdToMultiLocation;
+use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
