@@ -332,7 +332,10 @@ fn with_incorrect_settlement_price_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// Higher
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + (SLIPPAGE + 1));
+		let amount = ExternalAmount::new(
+			QUANTITY,
+			PRICE_VALUE + (MAX_VARIATION_PRICE.mul_floor(PRICE_VALUE) + 1),
+		);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
 			Loans::borrow(
@@ -345,7 +348,10 @@ fn with_incorrect_settlement_price_external_pricing() {
 		);
 
 		// Lower
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE - (SLIPPAGE + 1));
+		let amount = ExternalAmount::new(
+			QUANTITY,
+			PRICE_VALUE - (MAX_VARIATION_PRICE.mul_floor(PRICE_VALUE) + 1),
+		);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
 			Loans::borrow(
@@ -365,7 +371,10 @@ fn with_correct_settlement_price_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// Higher
-		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE + SLIPPAGE);
+		let amount = ExternalAmount::new(
+			QUANTITY / 3.into(),
+			PRICE_VALUE + MAX_VARIATION_PRICE.mul_floor(PRICE_VALUE),
+		);
 		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(
@@ -387,7 +396,10 @@ fn with_correct_settlement_price_external_pricing() {
 		));
 
 		// Lower
-		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE - SLIPPAGE);
+		let amount = ExternalAmount::new(
+			QUANTITY / 3.into(),
+			PRICE_VALUE - MAX_VARIATION_PRICE.mul_floor(PRICE_VALUE),
+		);
 		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(

@@ -9,8 +9,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
-	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub, Zero},
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, PerThing,
 };
 
 use crate::{
@@ -68,9 +68,10 @@ pub struct ExternalPricing<T: Config> {
 	/// Reference price used to calculate the interest
 	pub notional: T::Balance,
 
-	/// Maximum slippage between the settlement price chosen for
+	/// Maximum variation between the settlement price chosen for
 	/// borrow/repay and the current oracle price.
-	pub slippage: T::Balance,
+	/// Represented as: Oracle price +/- oracle price * max_variation_price
+	pub max_variation_price: T::PerThing,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -158,16 +159,17 @@ impl<T: Config> ExternalActivePricing<T> {
 		pool_id: T::PoolId,
 	) -> Result<(), DispatchError> {
 		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
-		let variation = if amount.settlement_price > price {
+		let delta = if amount.settlement_price > price {
 			amount.settlement_price.ensure_sub(price)?
 		} else {
 			price.ensure_sub(amount.settlement_price)?
 		};
+		let variation = T::PerThing::from_rational(delta.ensure_into()?, price.ensure_into()?);
 
 		// We bypass any price if quantity is zero,
 		// because it does not take effect in the computation.
 		ensure!(
-			variation <= self.info.slippage || amount.quantity.is_zero(),
+			variation <= self.info.max_variation_price || amount.quantity.is_zero(),
 			Error::<T>::SettlementPriceExceedsSlippage
 		);
 

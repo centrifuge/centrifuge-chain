@@ -97,7 +97,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
-	use sp_arithmetic::FixedPointNumber;
+	use sp_arithmetic::{FixedPointNumber, PerThing};
 	use sp_runtime::{
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
@@ -160,9 +160,13 @@ pub mod pallet {
 
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
+		//			+ TryInto<<Self::PerThing as PerThing>::Inner>;
 
-		/// Type to represent different quantities in external pricing.
+		/// Type to represent different quantities
 		type Quantity: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
+
+		/// Defines the perthing type used where values can not overpass 100%
+		type PerThing: Parameter + Member + PerThing + TypeInfo + MaxEncodedLen;
 
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;
