@@ -97,6 +97,7 @@ pub fn base_external_pricing() -> ExternalPricing<Runtime> {
 		price_id: REGISTER_PRICE_ID,
 		max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
 		notional: NOTIONAL,
+		slippage: SLIPPAGE,
 	}
 }
 

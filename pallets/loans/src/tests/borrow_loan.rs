@@ -327,19 +327,35 @@ fn with_wrong_quantity_amount_external_pricing() {
 }
 
 #[test]
-fn with_correct_amount_external_pricing() {
+fn with_incorrect_settlement_price_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		// Higher
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + (SLIPPAGE + 1));
 		config_mocks(amount.balance().unwrap());
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
+			Error::<Runtime>::SettlementPriceExceedsSlippage
+		);
 
-		assert_ok!(Loans::borrow(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_id,
-			PricingAmount::External(amount)
-		));
+		// Lower
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE - (SLIPPAGE + 1));
+		config_mocks(amount.balance().unwrap());
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
+			Error::<Runtime>::SettlementPriceExceedsSlippage
+		);
 	});
 }
 
@@ -348,7 +364,30 @@ fn with_correct_settlement_price_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2 /* Any value */);
+		// Higher
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE + SLIPPAGE);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		// Same
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		// Lower
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE - SLIPPAGE);
 		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(

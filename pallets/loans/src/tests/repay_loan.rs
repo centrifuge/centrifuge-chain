@@ -509,7 +509,7 @@ fn twice_external_with_elapsed_time() {
 }
 
 #[test]
-fn outstanding_debt_rate_no_increase_if_fully_repaid() {
+fn current_debt_rate_no_increase_if_fully_repaid() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(LoanInfo {
 			pricing: Pricing::Internal(InternalPricing {
@@ -541,37 +541,13 @@ fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 }
 
 #[test]
-fn external_pricing_remains_the_same() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_id, PricingAmount::External(amount));
-
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
-		assert_ok!(Loans::repay(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_id,
-			RepaidPricingAmount {
-				principal: PricingAmount::External(amount),
-				interest: 0,
-				unscheduled: 0,
-			},
-		));
-
-		assert_eq!(0, util::current_loan_debt(loan_id));
-	});
-}
-
-#[test]
 fn external_pricing_goes_up() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
 		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE * 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
@@ -595,7 +571,7 @@ fn external_pricing_goes_down() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE / 2);
 		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE / 2);
 		assert_ok!(Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
@@ -686,5 +662,101 @@ fn with_unscheduled_repayment_external() {
 			(QUANTITY).saturating_mul_int(NOTIONAL),
 			util::current_loan_debt(loan_id)
 		);
+	});
+}
+
+#[test]
+fn with_incorrect_settlement_price_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
+
+		// Higher
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + (SLIPPAGE + 1));
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::SettlementPriceExceedsSlippage
+		);
+
+		// Lower
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE - (SLIPPAGE + 1));
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::SettlementPriceExceedsSlippage
+		);
+	});
+}
+
+#[test]
+fn with_correct_settlement_price_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
+
+		// Higher
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE + SLIPPAGE);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		// Same
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		// Lower
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE - SLIPPAGE);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_ok!(Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			RepaidPricingAmount {
+				principal: PricingAmount::External(amount),
+				interest: 0,
+				unscheduled: 0,
+			},
+		));
+
+		assert_eq!(0, util::current_loan_debt(loan_id));
 	});
 }

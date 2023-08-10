@@ -70,8 +70,9 @@ pub const REGISTER_PRICE_ID: PriceId = 42;
 pub const UNREGISTER_PRICE_ID: PriceId = 88;
 pub const PRICE_VALUE: Balance = 998;
 pub const NOTIONAL: Balance = 1000;
-pub const QUANTITY: Quantity = Quantity::from_rational(20, 1);
+pub const QUANTITY: Quantity = Quantity::from_rational(12, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
+pub const SLIPPAGE: Balance = 10;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

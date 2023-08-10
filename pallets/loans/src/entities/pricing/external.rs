@@ -164,8 +164,10 @@ impl<T: Config> ExternalActivePricing<T> {
 			price.ensure_sub(amount.settlement_price)?
 		};
 
+		// We bypass any price if quantity is zero,
+		// because it does not take effect in the computation.
 		ensure!(
-			variation <= self.info.slippage,
+			variation <= self.info.slippage || amount.quantity.is_zero(),
 			Error::<T>::SettlementPriceExceedsSlippage
 		);
 
