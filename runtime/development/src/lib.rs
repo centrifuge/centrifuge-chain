@@ -1857,20 +1857,6 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
-pub struct SourceConverter;
-impl
-	sp_runtime::traits::Convert<
-		(Vec<u8>, Vec<u8>),
-		Result<cfg_types::domain_address::DomainAddress, DispatchError>,
-	> for SourceConverter
-{
-	fn convert(
-		_source: (Vec<u8>, Vec<u8>),
-	) -> Result<cfg_types::domain_address::DomainAddress, DispatchError> {
-		Err(DispatchError::Other("No supported domains yet!"))
-	}
-}
-
 impl axelar_gateway_precompile::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
