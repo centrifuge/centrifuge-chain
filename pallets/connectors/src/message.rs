@@ -720,7 +720,7 @@ impl<
 			}),
 			19 => Ok(Self::ScheduleRely {
 				usr: decode::<32, _, _>(input)?,
-			})
+			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
 			)),
@@ -1100,7 +1100,8 @@ mod tests {
 			ConnectorMessage::ScheduleRely {
 				usr: vec_to_fixed_array(default_address_20().to_vec()),
 			},
-			""
+			"131231231231231231231231231231231231231231000000000000000000000000"
+		)
 	}
 
 	/// Verify the identity property of decode . encode on a Message value and

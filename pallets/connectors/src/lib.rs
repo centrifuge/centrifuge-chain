@@ -686,19 +686,20 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
-
-	pub fn schedule_rely(
-		origin: OriginFor<T>,
-		usr: T::AccountId,
-	) -> DispatchResult {
-		let who = ensure_signed(origin)?;
-
-		T::OutboundQueue::submit(
-			who,
-			Domain::EVM(chain_id),
-			Message::ScheduleRely { usr },
-		)
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(10)]
+		pub fn schedule_rely(
+			origin: OriginFor<T>,
+			usr: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+	
+			T::OutboundQueue::submit(
+				who,
+				usr.domain(),
+				Message::ScheduleRely { usr: usr.address() },
+			)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
