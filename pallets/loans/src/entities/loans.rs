@@ -514,32 +514,25 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from((pool_id, active_loan): (T::PoolId, ActiveLoan<T>)) -> Result<Self, Self::Error> {
-		let (present_value, outstanding_principal, outstanding_interest) =
-			match &active_loan.pricing {
-				ActivePricing::Internal(inner) => {
-					let principal = active_loan
-						.total_borrowed
-						.ensure_sub(active_loan.total_repaid.principal)?;
-					let maturity_date = active_loan.schedule.maturity.date();
+		let (outstanding_principal, outstanding_interest) = match &active_loan.pricing {
+			ActivePricing::Internal(inner) => {
+				let principal = active_loan
+					.total_borrowed
+					.ensure_sub(active_loan.total_repaid.principal)?;
 
-					(
-						inner.present_value(active_loan.origination_date, maturity_date)?,
-						principal,
-						inner.outstanding_interest(principal)?,
-					)
-				}
-				ActivePricing::External(inner) => (
-					inner.present_value(pool_id)?,
-					inner.outstanding_principal(pool_id)?,
-					inner.outstanding_interest()?,
-				),
-			};
+				(principal, inner.outstanding_interest(principal)?)
+			}
+			ActivePricing::External(inner) => (
+				inner.outstanding_principal(pool_id)?,
+				inner.outstanding_interest()?,
+			),
+		};
 
 		Ok(Self {
-			active_loan,
-			present_value,
+			present_value: active_loan.present_value(pool_id)?,
 			outstanding_principal,
 			outstanding_interest,
+			active_loan,
 		})
 	}
 }
