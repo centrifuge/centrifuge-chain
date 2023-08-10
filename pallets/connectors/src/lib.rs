@@ -692,13 +692,18 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			user: DomainAddress,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			match user {
+				DomainAddress::EVM(_, _) => {
+					let who = ensure_signed(origin)?;
 	
-			T::OutboundQueue::submit(
-				who,
-				user.domain(),
-				Message::ScheduleUpgrade { user: user.address() },
-			)
+					T::OutboundQueue::submit(
+						who,
+						user.domain(),
+						Message::ScheduleUpgrade { user: user.address() },
+					)
+				},
+				_ => Err(DispatchError::Other("Not an EVM domain address"))
+			}
 		}
 	}
 
