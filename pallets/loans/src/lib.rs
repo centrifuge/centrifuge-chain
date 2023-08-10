@@ -365,6 +365,8 @@ pub mod pallet {
 		UnrelatedChangeId,
 		/// Emits when the pricing method is not compatible with the input
 		MismatchedPricingMethod,
+		/// Emits when settlement price is exceeds the configured slippage.
+		SettlementPriceExceedsSlippage,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -473,14 +475,14 @@ pub mod pallet {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
 					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(&amount)?;
+					active_loan.borrow(&amount, pool_id)?;
 
 					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
 						Self::ensure_loan_borrower(&who, loan.borrower())?;
-						loan.borrow(&amount)
+						loan.borrow(&amount, pool_id)
 					})?
 					.1
 				}
@@ -519,7 +521,7 @@ pub mod pallet {
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount.clone())
+				loan.repay(amount, pool_id)
 			})?;
 
 			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;

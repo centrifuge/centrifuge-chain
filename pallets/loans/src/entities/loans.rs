@@ -281,7 +281,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.write_down(value)
 	}
 
-	fn ensure_can_borrow(&self, amount: &PricingAmount<T>) -> DispatchResult {
+	fn ensure_can_borrow(&self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.internal()?;
@@ -289,7 +289,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.external()?;
-				inner.max_borrow_amount(external_amount)?
+				inner.max_borrow_amount(external_amount, pool_id)?
 			}
 		};
 
@@ -317,8 +317,8 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn borrow(&mut self, amount: &PricingAmount<T>) -> DispatchResult {
-		self.ensure_can_borrow(amount)?;
+	pub fn borrow(&mut self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+		self.ensure_can_borrow(amount, pool_id)?;
 
 		self.total_borrowed.ensure_add_assign(amount.balance()?)?;
 
@@ -344,6 +344,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn prepare_repayment(
 		&self,
 		mut amount: RepaidPricingAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
@@ -357,7 +358,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.principal.external()?;
-				let max_repay_principal = inner.max_repay_principal(external_amount)?;
+				let max_repay_principal = inner.max_repay_principal(external_amount, pool_id)?;
 
 				(max_repay_principal, inner.outstanding_interest()?)
 			}
@@ -387,8 +388,9 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn repay(
 		&mut self,
 		amount: RepaidPricingAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
-		let amount = self.prepare_repayment(amount)?;
+		let amount = self.prepare_repayment(amount, pool_id)?;
 
 		self.total_repaid
 			.ensure_add_assign(&amount.repaid_amount()?)?;

@@ -67,6 +67,10 @@ pub struct ExternalPricing<T: Config> {
 
 	/// Reference price used to calculate the interest
 	pub notional: T::Balance,
+
+	/// Maximum slippage between the settlement price chosen for
+	/// borrow/repay and the current oracle price.
+	pub slippage: T::Balance,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -148,10 +152,33 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
+	fn validate_amount(
+		&self,
+		amount: &ExternalAmount<T>,
+		pool_id: T::PoolId,
+	) -> Result<(), DispatchError> {
+		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
+		let variation = if amount.settlement_price > price {
+			amount.settlement_price.ensure_sub(price)?
+		} else {
+			price.ensure_sub(amount.settlement_price)?
+		};
+
+		ensure!(
+			variation <= self.info.slippage,
+			Error::<T>::SettlementPriceExceedsSlippage
+		);
+
+		Ok(())
+	}
+
 	pub fn max_borrow_amount(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		match self.info.max_borrow_amount {
 			MaxBorrowAmount::Quantity(quantity) => {
 				let available = quantity.ensure_sub(self.outstanding_quantity)?;
@@ -164,7 +191,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn max_repay_principal(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		Ok(self
 			.outstanding_quantity
 			.ensure_mul_int(amount.settlement_price)?)
