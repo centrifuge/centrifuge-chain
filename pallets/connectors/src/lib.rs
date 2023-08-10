@@ -706,23 +706,23 @@ pub mod pallet {
 
 			Ok(())
 		}
+
 		#[pallet::weight(10_000)]
 		#[pallet::call_index(10)]
-		pub fn schedule_upgrade(
-			origin: OriginFor<T>,
-			contract: DomainAddress,
-		) -> DispatchResult {
+		pub fn schedule_upgrade(origin: OriginFor<T>, contract: DomainAddress) -> DispatchResult {
 			match contract {
 				DomainAddress::EVM(_, _) => {
 					let who = ensure_signed(origin)?;
-	
+
 					T::OutboundQueue::submit(
 						who,
 						contract.domain(),
-						Message::ScheduleUpgrade { contract: contract.address() },
+						Message::ScheduleUpgrade {
+							contract: contract.address(),
+						},
 					)
-				},
-				_ => Err(DispatchError::Other("Not an EVM domain address"))
+				}
+				_ => Err(DispatchError::Other("Not an EVM domain address")),
 			}
 		}
 	}

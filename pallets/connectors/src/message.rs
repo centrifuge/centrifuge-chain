@@ -287,7 +287,8 @@ where
 		/// to redeem at a later epoch execution
 		remaining_redeem_order: Balance,
 	},
-	/// Schedules an EVM address to become rely-able by the gateway. Intended to be used via governance to execute EVM spells.
+	/// Schedules an EVM address to become rely-able by the gateway. Intended to
+	/// be used via governance to execute EVM spells.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	ScheduleUpgrade {
@@ -588,12 +589,9 @@ impl<
 					encode_be(remaining_redeem_order),
 				],
 			),
-			Message::ScheduleUpgrade {
-				contract,
-			} => encoded_message(
-				contract.call_type(),
-				vec![contract.to_vec()],
-			),
+			Message::ScheduleUpgrade { contract } => {
+				encoded_message(contract.call_type(), vec![contract.to_vec()])
+			}
 		}
 	}
 
@@ -1100,7 +1098,7 @@ mod tests {
 			ConnectorMessage::ScheduleUpgrade {
 				contract: vec_to_fixed_array(default_address_20().to_vec()),
 			},
-			"131231231231231231231231231231231231231231000000000000000000000000"
+			"131231231231231231231231231231231231231231000000000000000000000000",
 		)
 	}
 
