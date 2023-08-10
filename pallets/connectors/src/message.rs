@@ -291,7 +291,7 @@ where
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	ScheduleUpgrade {
-		user: Address,
+		contract: Address,
 	},
 }
 
@@ -589,10 +589,10 @@ impl<
 				],
 			),
 			Message::ScheduleUpgrade {
-				user,
+				contract,
 			} => encoded_message(
-				self.call_type(),
-				vec![user.to_vec()],
+				contract.call_type(),
+				vec![contract.to_vec()],
 			),
 		}
 	}
@@ -719,7 +719,7 @@ impl<
 				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			19 => Ok(Self::ScheduleUpgrade {
-				user: decode::<32, _, _>(input)?,
+				contract: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1098,7 +1098,7 @@ mod tests {
 	fn schedule_upgrade() {
 		test_encode_decode_identity(
 			ConnectorMessage::ScheduleUpgrade {
-				user: vec_to_fixed_array(default_address_20().to_vec()),
+				contract: vec_to_fixed_array(default_address_20().to_vec()),
 			},
 			"131231231231231231231231231231231231231231000000000000000000000000"
 		)
