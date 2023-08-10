@@ -290,8 +290,8 @@ where
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to be used via governance to execute EVM spells.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	ScheduleRely {
-		usr: Address,
+	ScheduleUpgrade {
+		user: Address,
 	},
 }
 
@@ -330,7 +330,7 @@ impl<
 			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
 			Self::ExecutedCollectInvest { .. } => 17,
 			Self::ExecutedCollectRedeem { .. } => 18,
-			Self::ScheduleRely { .. } => 19,
+			Self::ScheduleUpgrade { .. } => 19,
 		}
 	}
 }
@@ -588,11 +588,11 @@ impl<
 					encode_be(remaining_redeem_order),
 				],
 			),
-			Message::ScheduleRely {
-				usr,
+			Message::ScheduleUpgrade {
+				user,
 			} => encoded_message(
 				self.call_type(),
-				vec![usr.to_vec()],
+				vec![user.to_vec()],
 			),
 		}
 	}
@@ -718,8 +718,8 @@ impl<
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
 				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			19 => Ok(Self::ScheduleRely {
-				usr: decode::<32, _, _>(input)?,
+			19 => Ok(Self::ScheduleUpgrade {
+				user: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1095,10 +1095,10 @@ mod tests {
 	}
 
 	#[test]
-	fn schedule_rely() {
+	fn schedule_upgrade() {
 		test_encode_decode_identity(
-			ConnectorMessage::ScheduleRely {
-				usr: vec_to_fixed_array(default_address_20().to_vec()),
+			ConnectorMessage::ScheduleUpgrade {
+				user: vec_to_fixed_array(default_address_20().to_vec()),
 			},
 			"131231231231231231231231231231231231231231000000000000000000000000"
 		)

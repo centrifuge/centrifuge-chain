@@ -688,16 +688,16 @@ pub mod pallet {
 		}
 		#[pallet::weight(10_000)]
 		#[pallet::call_index(10)]
-		pub fn schedule_rely(
+		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
-			usr: DomainAddress,
+			user: DomainAddress,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 	
 			T::OutboundQueue::submit(
 				who,
-				usr.domain(),
-				Message::ScheduleRely { usr: usr.address() },
+				user.domain(),
+				Message::ScheduleUpgrade { user: user.address() },
 			)
 		}
 	}
