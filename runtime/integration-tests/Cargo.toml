@@ -22,6 +22,9 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
+pallet-preimage = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
@@ -78,13 +81,22 @@ development-runtime = { path = "../development" }
 runtime-common = { path = "../common" }
 
 [dev-dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 hex = { version = "0.4.3", default_features = false }
 
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
+
+ethereum = { version = "0.14.0", default-features = false }
+
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+
+connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-connectors = { path = "../../pallets/connectors" }
+pallet-connectors-gateway = { path = "../../pallets/connectors-gateway" }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
 pallet-investments = { path = "../../pallets/investments" }
 pallet-loans = { path = "../../pallets/loans" }
@@ -94,19 +106,18 @@ pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-rewards = { path = "../../pallets/rewards" }
 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.38" }
 
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.38" }
 
-ethereum = { version = "0.14.0" }
-
-pallet-evm = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
-
 [features]
-default = ["runtime-development"]
+default = [
+  "runtime-development",
+  "development-runtime/instant-voting",
+]
 fast-runtime = ["development-runtime/fast-runtime"]
 std = [
   "altair-runtime/std",
@@ -150,6 +161,7 @@ std = [
   "sp-runtime/std",
   "sp-tracing/std",
   "xcm/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [

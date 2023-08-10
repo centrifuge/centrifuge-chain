@@ -43,8 +43,7 @@ use xcm_emulator::TestExt;
 
 use super::register_dot;
 use crate::{
-	utils::AUSD_CURRENCY_ID,
-	xcm::{
+	connectors::pallet::{
 		polkadot::{
 			setup::{
 				acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
@@ -55,6 +54,7 @@ use crate::{
 		},
 		xcm_metadata,
 	},
+	utils::AUSD_CURRENCY_ID,
 };
 
 /*

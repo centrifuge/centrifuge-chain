@@ -13,7 +13,7 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::{utils::AUSD_CURRENCY_ID, xcm::kusama::setup::KSM_ASSET_ID};
+use crate::{connectors::pallet::kusama::setup::KSM_ASSET_ID, utils::AUSD_CURRENCY_ID};
 
 mod asset_registry;
 mod currency_id_convert;

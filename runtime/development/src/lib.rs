@@ -30,7 +30,6 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
-	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -713,11 +712,20 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
 }
 
+#[cfg(feature = "instant-voting")]
+parameter_types! {
+	pub const InstantAllowed: bool = true;
+}
+
+#[cfg(not(feature = "instant-voting"))]
+parameter_types! {
+	pub const InstantAllowed: bool = false;
+}
+
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
@@ -1573,22 +1581,6 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct DummyOutboundQueue;
-
-impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
-	type Destination = Domain;
-	type Message = pallet_connectors::MessageOf<Runtime>;
-	type Sender = AccountId;
-
-	fn submit(
-		_sender: AccountId,
-		_destination: Domain,
-		_msg: pallet_connectors::MessageOf<Runtime>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1597,7 +1589,7 @@ impl pallet_connectors::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
-	type OutboundQueue = DummyOutboundQueue;
+	type OutboundQueue = ConnectorsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
