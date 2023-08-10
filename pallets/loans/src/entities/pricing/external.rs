@@ -170,7 +170,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		// because it does not take effect in the computation.
 		ensure!(
 			variation <= self.info.max_variation_price || amount.quantity.is_zero(),
-			Error::<T>::SettlementPriceExceedsSlippage
+			Error::<T>::SettlementPriceExceedsVariation
 		);
 
 		Ok(())

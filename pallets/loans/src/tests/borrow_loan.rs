@@ -344,7 +344,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 				loan_id,
 				PricingAmount::External(amount)
 			),
-			Error::<Runtime>::SettlementPriceExceedsSlippage
+			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
 
 		// Lower
@@ -360,7 +360,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 				loan_id,
 				PricingAmount::External(amount)
 			),
-			Error::<Runtime>::SettlementPriceExceedsSlippage
+			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
 	});
 }

@@ -689,7 +689,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 					unscheduled: 0,
 				},
 			),
-			Error::<Runtime>::SettlementPriceExceedsSlippage
+			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
 
 		// Lower
@@ -709,7 +709,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 					unscheduled: 0,
 				},
 			),
-			Error::<Runtime>::SettlementPriceExceedsSlippage
+			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
 	});
 }

@@ -160,7 +160,6 @@ pub mod pallet {
 
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
-		//			+ TryInto<<Self::PerThing as PerThing>::Inner>;
 
 		/// Type to represent different quantities
 		type Quantity: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
@@ -369,8 +368,8 @@ pub mod pallet {
 		UnrelatedChangeId,
 		/// Emits when the pricing method is not compatible with the input
 		MismatchedPricingMethod,
-		/// Emits when settlement price is exceeds the configured slippage.
-		SettlementPriceExceedsSlippage,
+		/// Emits when settlement price is exceeds the configured variation.
+		SettlementPriceExceedsVariation,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
