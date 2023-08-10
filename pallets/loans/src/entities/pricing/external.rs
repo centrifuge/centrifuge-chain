@@ -21,7 +21,12 @@ use crate::{
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ExternalAmount<T: Config> {
+	/// Quantity of different assets identified by the price_id
 	pub quantity: T::Quantity,
+
+	/// Price used to borrow/repay. it must be in the interval
+	/// [price * (1 - max_price_variation), price * (1 + max_price_variation)],
+	/// being price the Oracle price.
 	pub settlement_price: T::Balance,
 }
 
@@ -70,8 +75,8 @@ pub struct ExternalPricing<T: Config> {
 
 	/// Maximum variation between the settlement price chosen for
 	/// borrow/repay and the current oracle price.
-	/// Represented as: Oracle price +/- oracle price * max_variation_price
-	pub max_variation_price: T::PerThing,
+	/// See [`ExternalAmount::settlement_price`].
+	pub max_price_variation: T::PerThing,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -169,7 +174,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		// We bypass any price if quantity is zero,
 		// because it does not take effect in the computation.
 		ensure!(
-			variation <= self.info.max_variation_price || amount.quantity.is_zero(),
+			variation <= self.info.max_price_variation || amount.quantity.is_zero(),
 			Error::<T>::SettlementPriceExceedsVariation
 		);
 
