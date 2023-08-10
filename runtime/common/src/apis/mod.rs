@@ -12,11 +12,13 @@
 
 //! Runtime apis useful in the Centrifuge ecosystem
 pub use anchors::*;
+pub use investments::*;
 pub use loans::*;
 pub use pools::*;
 pub use rewards::*;
 
 mod anchors;
+mod investments;
 mod loans;
 mod pools;
 mod rewards;

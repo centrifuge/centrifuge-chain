@@ -21,12 +21,12 @@ use crate::{
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ExternalAmount<T: Config> {
-	pub quantity: T::Rate,
+	pub quantity: T::Quantity,
 	pub settlement_price: T::Balance,
 }
 
 impl<T: Config> ExternalAmount<T> {
-	pub fn new(quantity: T::Rate, price: T::Balance) -> Self {
+	pub fn new(quantity: T::Quantity, price: T::Balance) -> Self {
 		Self {
 			quantity,
 			settlement_price: price,
@@ -35,7 +35,7 @@ impl<T: Config> ExternalAmount<T> {
 
 	pub fn empty() -> Self {
 		Self {
-			quantity: T::Rate::zero(),
+			quantity: T::Quantity::zero(),
 			settlement_price: T::Balance::zero(),
 		}
 	}
@@ -63,7 +63,7 @@ pub struct ExternalPricing<T: Config> {
 	pub price_id: T::PriceId,
 
 	/// Maximum amount that can be borrowed.
-	pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
+	pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
 
 	/// Reference price used to calculate the interest
 	pub notional: T::Balance,
@@ -73,7 +73,7 @@ impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
 		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
 			ensure!(
-				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
+				quantity.frac().is_zero() && quantity >= T::Quantity::zero(),
 				Error::<T>::AmountNotNaturalNumber
 			)
 		}
@@ -90,7 +90,7 @@ pub struct ExternalActivePricing<T: Config> {
 	info: ExternalPricing<T>,
 
 	/// Outstanding quantity that should be repaid.
-	outstanding_quantity: T::Rate,
+	outstanding_quantity: T::Quantity,
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
@@ -105,7 +105,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self {
 			info,
-			outstanding_quantity: T::Rate::zero(),
+			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
 		})
 	}
@@ -118,15 +118,16 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn current_price(&self) -> Result<T::Balance, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
 	}
 
-	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
+	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
+		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
-	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
+	pub fn outstanding_interest(&self) -> Result<T::Balance, DispatchError> {
 		let outstanding_notional = self
 			.outstanding_quantity
 			.ensure_mul_int(self.info.notional)?;
@@ -135,14 +136,13 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.current_price()?;
-		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
+	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		self.outstanding_principal(pool_id)
 	}
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
 	where
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let price = cache.get(&self.info.price_id)?.0;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
@@ -172,14 +172,14 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn adjust(
 		&mut self,
-		quantity_adj: Adjustment<T::Rate>,
+		quantity_adj: Adjustment<T::Quantity>,
 		interest: T::Balance,
 	) -> DispatchResult {
 		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
 
 		let interest_adj = quantity_adj.try_map(|quantity| -> Result<_, DispatchError> {
 			ensure!(
-				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
+				quantity.frac().is_zero() && quantity >= T::Quantity::zero(),
 				Error::<T>::AmountNotNaturalNumber
 			);
 

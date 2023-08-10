@@ -11,7 +11,8 @@ pub fn config_mocks_with_price(deposit_amount: Balance, price: Balance) {
 		assert_eq!(deposit_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(move |id| {
+	MockPrices::mock_get(move |id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
 		assert_eq!(*id, REGISTER_PRICE_ID);
 		Ok((price, BLOCK_TIME.as_secs()))
 	});
@@ -618,7 +619,7 @@ fn external_pricing_with_wrong_quantity() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
-		let amount = ExternalAmount::new(Rate::from_float(0.5), PRICE_VALUE);
+		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
 			Loans::repay(

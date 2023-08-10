@@ -10,9 +10,12 @@ fn config_mocks(withdraw_amount: Balance) {
 		assert_eq!(withdraw_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(|id| match *id {
-		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err(PRICE_ID_NO_FOUND),
+	MockPrices::mock_get(|id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err(PRICE_ID_NO_FOUND),
+		}
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
@@ -308,7 +311,7 @@ fn with_wrong_quantity_amount_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// It's not multiple of PRICE_VALUE
-		let amount = ExternalAmount::new(Rate::from_float(0.5), PRICE_VALUE);
+		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 
 		assert_noop!(
