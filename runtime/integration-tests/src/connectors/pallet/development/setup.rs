@@ -12,13 +12,16 @@
 
 pub use altair_runtime::{AccountId, CurrencyId, Runtime, RuntimeOrigin, System};
 use cfg_primitives::{currency_decimals, parachains, Balance};
-use cfg_types::tokens::CustomMetadata;
+use cfg_types::{domain_address::Domain, tokens::CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
+pub const CHARLIE: [u8; 32] = [6u8; 32];
+
+pub const TEST_DOMAIN: Domain = Domain::EVM(1284);
 
 /// A PARA ID used for a sibling parachain emulating Moonbeam.
 /// It must be one that doesn't collide with any other in use.

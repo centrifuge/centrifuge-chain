@@ -15,7 +15,37 @@ use core::marker::PhantomData;
 use codec::Decode;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use pallet_evm::{Precompile, PrecompileHandle, PrecompileResult, PrecompileSet};
+use pallet_evm_precompile_blake2::Blake2F;
+use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
+use pallet_evm_precompile_dispatch::Dispatch;
+use pallet_evm_precompile_modexp::Modexp;
+use pallet_evm_precompile_sha3fips::Sha3FIPS256;
+use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
 use sp_core::H160;
+
+// 0000->1023: Standard Ethereum precompiles
+const ECRECOVER_ADDR: Addr = addr(1);
+const SHA256_ADDR: Addr = addr(2);
+const RIPEMD160_ADDR: Addr = addr(3);
+const IDENTITY_ADDR: Addr = addr(4);
+const MODEXP_ADDR: Addr = addr(5);
+const BN128ADD_ADDR: Addr = addr(6);
+const BN128MUL_ADDR: Addr = addr(7);
+const BN128PAIRING_ADDR: Addr = addr(8);
+const BLAKE2F_ADDR: Addr = addr(9);
+// 1024->2047: Nonstandard precompiles shared with other chains (such
+// as Moonbeam). See
+// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
+const SHA3FIPS256_ADDR: Addr = addr(1024);
+const DISPATCH_ADDR: Addr = addr(1025);
+const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
+// 2048-XXXX: Nonstandard precompiles that are specific to our chain.
+
+/// The address of our local Axelar gateway. This is the address that Connctor
+/// contracts on other domains must use in order to hit the Connectors logic.
+///
+/// The precompile implements
+const CONNECTORS_AXELAR_GATEWAY: Addr = addr(2048);
 
 pub struct CentrifugePrecompiles<R>(PhantomData<R>);
 
@@ -26,22 +56,6 @@ impl<R> CentrifugePrecompiles<R> {
 	}
 }
 
-/// The address of the dispatch precompile. Allows to call into Substrate native
-/// logic from the EVM.
-///
-/// This value is chosen to be identical to what Moonbeam, for best
-/// interoperability. See
-/// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
-/// for details on how Moonbeam organizes precompile addresses. We will
-/// follow the same namespacing.
-const DISPATCH_ADDR: H160 = addr(1025);
-
-/// The address of our local Axelar gateway. This is the address that Connctor
-/// contracts on other domains must use in order to hit the Connectors logic.
-///
-/// The precompile implements
-const CONNECTORS_AXELAR_GATEWAY: H160 = addr(1026);
-
 impl<R> PrecompileSet for CentrifugePrecompiles<R>
 where
 	R: pallet_evm::Config,
@@ -49,20 +63,43 @@ where
 	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		if handle.code_address() == DISPATCH_ADDR {
-			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
-				handle,
-			))
-		} else {
-			None
+		match handle.code_address().0 {
+			ECRECOVER_ADDR => Some(ECRecover::execute(handle)),
+			SHA256_ADDR => Some(Sha256::execute(handle)),
+			RIPEMD160_ADDR => Some(Ripemd160::execute(handle)),
+			IDENTITY_ADDR => Some(Identity::execute(handle)),
+			MODEXP_ADDR => Some(Modexp::execute(handle)),
+			BN128ADD_ADDR => Some(Bn128Add::execute(handle)),
+			BN128MUL_ADDR => Some(Bn128Mul::execute(handle)),
+			BN128PAIRING_ADDR => Some(Bn128Pairing::execute(handle)),
+			BLAKE2F_ADDR => Some(Blake2F::execute(handle)),
+			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
+			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
+			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
+			_ => None,
 		}
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		address == DISPATCH_ADDR
+		[
+			ECRECOVER_ADDR,
+			SHA256_ADDR,
+			RIPEMD160_ADDR,
+			IDENTITY_ADDR,
+			MODEXP_ADDR,
+			BN128ADD_ADDR,
+			BN128MUL_ADDR,
+			BN128PAIRING_ADDR,
+			BLAKE2F_ADDR,
+			SHA3FIPS256_ADDR,
+			DISPATCH_ADDR,
+			ECRECOVERPUBLICKEY_ADDR,
+		]
+		.contains(&address.0)
 	}
 }
 
+<<<<<<< HEAD
 /// A set of precompiles. This set might contain
 /// not yet mainnet ready precompiles in order to test
 /// those in development or staging environment without touching
@@ -84,29 +121,56 @@ where
 	axelar_gateway_precompile::Pallet<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		if handle.code_address() == DISPATCH_ADDR {
-			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
-				handle,
-			))
-		} else if handle.code_address() == CONNECTORS_AXELAR_GATEWAY {
-			Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
-		} else {
-			None
+		match handle.code_address().0 {
+			ECRECOVER_ADDR => Some(ECRecover::execute(handle)),
+			SHA256_ADDR => Some(Sha256::execute(handle)),
+			RIPEMD160_ADDR => Some(Ripemd160::execute(handle)),
+			IDENTITY_ADDR => Some(Identity::execute(handle)),
+			MODEXP_ADDR => Some(Modexp::execute(handle)),
+			BN128ADD_ADDR => Some(Bn128Add::execute(handle)),
+			BN128MUL_ADDR => Some(Bn128Mul::execute(handle)),
+			BN128PAIRING_ADDR => Some(Bn128Pairing::execute(handle)),
+			BLAKE2F_ADDR => Some(Blake2F::execute(handle)),
+			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
+			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
+			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
+			CONNECTORS_AXELAR_GATEWAY => Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle)),
+			_ => None,
 		}
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		address == DISPATCH_ADDR || address == CONNECTORS_AXELAR_GATEWAY
+		[
+			ECRECOVER_ADDR,
+			SHA256_ADDR,
+			RIPEMD160_ADDR,
+			IDENTITY_ADDR,
+			MODEXP_ADDR,
+			BN128ADD_ADDR,
+			BN128MUL_ADDR,
+			BN128PAIRING_ADDR,
+			BLAKE2F_ADDR,
+			SHA3FIPS256_ADDR,
+			DISPATCH_ADDR,
+			ECRECOVERPUBLICKEY_ADDR,
+			CONNECTORS_AXELAR_GATEWAY
+		]
+			.contains(&address.0)
 	}
 }
+
+// H160 cannot be used in a match statement due to its hand-rolled
+// PartialEq implementation. This just gives a nice name to the
+// internal array of bytes that an H160 wraps.
+type Addr = [u8; 20];
 
 // This is a reimplementation of the upstream u64->H160 conversion
 // function, made `const` to make our precompile address `const`s a
 // bit cleaner. It can be removed when upstream has a const conversion
 // function.
-const fn addr(a: u64) -> H160 {
+const fn addr(a: u64) -> Addr {
 	let b = a.to_be_bytes();
-	H160([
+	[
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-	])
+	]
 }

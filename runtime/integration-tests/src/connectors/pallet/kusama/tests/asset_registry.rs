@@ -42,7 +42,7 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 
-use crate::xcm::kusama::{
+use crate::connectors::pallet::kusama::{
 	setup::{
 		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
 		PARA_ID_SIBLING,

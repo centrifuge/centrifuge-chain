@@ -13,6 +13,7 @@ use xcm::{
 use crate::utils::AUSD_CURRENCY_ID;
 
 mod connectors;
+mod routers;
 
 /// Register AUSD in the asset registry.
 /// It should be executed within an externalities environment.

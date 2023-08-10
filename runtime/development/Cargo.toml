@@ -153,6 +153,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
+instant-voting = []
 fast-runtime = []
 std = [
   "cfg-primitives/std",

@@ -6375,6 +6375,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
+name = "num"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b05180d69e3da0e530ba2a1dae5110317e49e3b7f3d41be227dc5f92e49ee7af"
+dependencies = [
+ "num-bigint",
+ "num-complex",
+ "num-integer",
+ "num-iter",
+ "num-rational",
+ "num-traits",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6411,6 +6425,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
 dependencies = [
  "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "num-iter"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
+dependencies = [
+ "autocfg",
+ "num-integer",
  "num-traits",
 ]
 
@@ -7368,6 +7393,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-evm-precompile-blake2"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+]
+
+[[package]]
+name = "pallet-evm-precompile-bn128"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "sp-core",
+ "substrate-bn",
+]
+
+[[package]]
 name = "pallet-evm-precompile-dispatch"
 version = "2.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
@@ -7375,6 +7418,15 @@ dependencies = [
  "fp-evm",
  "frame-support",
  "pallet-evm",
+]
+
+[[package]]
+name = "pallet-evm-precompile-modexp"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "num",
 ]
 
 [[package]]
@@ -7397,6 +7449,15 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-evm-precompile-sha3fips"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -10868,7 +10929,12 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-evm-precompile-blake2",
+ "pallet-evm-precompile-bn128",
  "pallet-evm-precompile-dispatch",
+ "pallet-evm-precompile-modexp",
+ "pallet-evm-precompile-sha3fips",
+ "pallet-evm-precompile-simple",
  "pallet-investments",
  "pallet-loans",
  "pallet-pool-system",
@@ -10896,6 +10962,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "connectors-gateway-routers",
  "cumulus-primitives-core",
  "development-runtime",
  "ethereum",
@@ -10903,6 +10970,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "fudge",
+ "getrandom 0.2.8",
  "hex",
  "kusama-runtime",
  "lazy_static",
@@ -10915,7 +10983,10 @@ dependencies = [
  "pallet-balances",
  "pallet-block-rewards",
  "pallet-collator-selection",
+ "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
+ "pallet-democracy",
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
@@ -10924,11 +10995,13 @@ dependencies = [
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
+ "pallet-preimage",
  "pallet-rewards",
  "pallet-session",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",
+ "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.4.0",
  "polkadot-core-primitives",
@@ -13554,6 +13627,19 @@ dependencies = [
  "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
+]
+
+[[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.5",
+ "rustc-hex",
 ]
 
 [[package]]

@@ -53,7 +53,8 @@ async fn call() {
 
 	env.evolve().unwrap();
 
-	let contract_address = H160::from_low_u64_be(1);
+	// Contract address must be high enough to not map to the precompile space.
+	let contract_address = H160::from_low_u64_be(1_000_001);
 
 	mint_balance_into_derived_account(&mut env, contract_address, 1_000_000 * CFG);
 	deploy_contract(
@@ -62,7 +63,7 @@ async fn call() {
 		hex::decode(TEST_CONTRACT_CODE).unwrap(),
 	);
 
-	let sender_address = H160::from_low_u64_be(2);
+	let sender_address = H160::from_low_u64_be(1_000_002);
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
 
 	// From:

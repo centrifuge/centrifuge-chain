@@ -712,11 +712,20 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
 }
 
+#[cfg(feature = "instant-voting")]
+parameter_types! {
+	pub const InstantAllowed: bool = true;
+}
+
+#[cfg(not(feature = "instant-voting"))]
+parameter_types! {
+	pub const InstantAllowed: bool = false;
+}
+
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;

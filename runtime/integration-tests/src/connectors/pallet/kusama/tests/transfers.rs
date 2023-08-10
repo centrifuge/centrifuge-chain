@@ -42,8 +42,7 @@ use xcm::{
 use xcm_emulator::TestExt;
 
 use crate::{
-	utils::AUSD_CURRENCY_ID,
-	xcm::{
+	connectors::pallet::{
 		kusama::{
 			setup::{
 				air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
@@ -54,6 +53,7 @@ use crate::{
 		},
 		xcm_metadata,
 	},
+	utils::AUSD_CURRENCY_ID,
 };
 
 /*
