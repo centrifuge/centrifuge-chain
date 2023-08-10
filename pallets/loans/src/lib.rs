@@ -72,11 +72,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		self,
-		changes::ChangeGuard,
-		data::{DataCollection, DataRegistry},
-		interest::InterestAccrual,
-		Permissions, PoolInspect, PoolNAV, PoolReserve,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
+		PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -116,14 +113,9 @@ pub mod pallet {
 
 	use super::*;
 
-	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-		<T as Config>::PriceId,
-		<T as Config>::PoolId,
-	>>::Collection;
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
-	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
@@ -199,7 +191,7 @@ pub mod pallet {
 		>;
 
 		/// Used to fetch and update Oracle prices
-		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceResultOf<Self>>;
+		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -424,10 +416,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -787,10 +776,7 @@ pub mod pallet {
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -851,7 +837,9 @@ pub mod pallet {
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
-			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
+			policy::find_rule(rules, |trigger| {
+				loan.check_write_off_trigger(trigger, pool_id)
+			})
 		}
 
 		fn get_released_change(
@@ -893,7 +881,7 @@ pub mod pallet {
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan_id, loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value(pool_id)?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -928,7 +916,7 @@ pub mod pallet {
 
 					let result = f(loan)?;
 
-					portfolio.update_elem(loan_id, loan.present_value()?)?;
+					portfolio.update_elem(loan_id, loan.present_value(pool_id)?)?;
 
 					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 						pool_id,
@@ -977,7 +965,7 @@ pub mod pallet {
 		) -> Result<PortfolioInfoOf<T>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
-				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
+				.map(|(loan_id, loan)| Ok((loan_id, (pool_id, loan).try_into()?)))
 				.collect()
 		}
 
@@ -988,7 +976,7 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| loan.try_into())
+				.map(|(_, loan)| (pool_id, loan).try_into())
 				.transpose()
 		}
 
@@ -1004,10 +992,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 

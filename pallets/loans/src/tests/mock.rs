@@ -30,7 +30,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, FixedU128,
+	FixedU128,
 };
 
 use crate::{pallet as pallet_loans, ChangeOf};
@@ -206,7 +206,7 @@ impl pallet_mock_permissions::Config for Runtime {
 impl pallet_mock_data::Config for Runtime {
 	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
 	type CollectionId = PoolId;
-	type Data = Result<(Balance, Moment), DispatchError>;
+	type Data = (Balance, Moment);
 	type DataElem = Balance;
 	type DataId = PriceId;
 	#[cfg(feature = "runtime-benchmarks")]
