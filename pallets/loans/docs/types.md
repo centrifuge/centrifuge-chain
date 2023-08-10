@@ -156,7 +156,7 @@ package pricing {
             price_id: PriceId,
             max_borrow_quantity: MaxBorrowAmount,
             notional: Balance,
-            pool_id: PoolId
+            slippage: Balance,
         }
 
         ExternalPricing *-l-> MaxBorrowAmount
