@@ -2689,6 +2689,7 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-allowlist",
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
@@ -7292,6 +7293,22 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "rlp",
  "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ethereum-allowlist"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",

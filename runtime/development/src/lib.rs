@@ -1657,6 +1657,12 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
+impl pallet_ethereum_allowlist::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const MaxKeys: u32 = 10;
 	pub const DefaultKeyDeposit: Balance = 100 * CFG;
@@ -1934,8 +1940,9 @@ construct_runtime!(
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
-		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin} = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
+		EthereumAllowlist: pallet_ethereum_allowlist::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

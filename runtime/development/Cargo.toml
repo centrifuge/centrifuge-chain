@@ -124,6 +124,7 @@ pallet-connectors-gateway = { path = "../../pallets/connectors-gateway", default
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-ethereum-allowlist = { path = "../../pallets/ethereum-allowlist", default-features = false }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
@@ -200,6 +201,7 @@ std = [
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
+  "pallet-ethereum-allowlist/std",
   "pallet-ethereum-transaction/std",
   "pallet-evm/std",
   "pallet-evm-precompile-dispatch/std",
@@ -293,6 +295,7 @@ runtime-benchmarks = [
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-allowlist/runtime-benchmarks",
   "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
@@ -422,6 +425,7 @@ try-runtime = [
   "pallet-evm-chain-id/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-ethereum/try-runtime",
+  "pallet-ethereum-allowlist/try-runtime",
   "pallet-ethereum-transaction/try-runtime",
   "fp-self-contained/try-runtime",
   "runtime-common/try-runtime",
