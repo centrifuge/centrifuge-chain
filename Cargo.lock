@@ -582,6 +582,7 @@ dependencies = [
  "cfg-types",
  "ethabi 18.0.0",
  "fp-evm",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-connectors-gateway",

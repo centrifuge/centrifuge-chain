@@ -49,11 +49,11 @@ impl SourceConverter {
 	pub fn try_convert(&self, maybe_address: &[u8]) -> Option<DomainAddress> {
 		match self.domain {
 			Domain::Centrifuge => Some(DomainAddress::Centrifuge(Self::try_into_32bytes(
-				&maybe_address,
+				maybe_address,
 			)?)),
 			Domain::EVM(id) => Some(DomainAddress::EVM(
 				id,
-				Self::try_into_20bytes(&maybe_address)?,
+				Self::try_into_20bytes(maybe_address)?,
 			)),
 		}
 	}
@@ -110,7 +110,7 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type AxelarGatewayContract<T: Config> = StorageValue<_, H160, ValueQuery>;
 
-	/// `SourceConversion` is a hash_of(Vec<u8>) where the Vec<u8> is the
+	/// `SourceConversion` is a `hash_of(Vec<u8>)` where the `Vec<u8>` is the
 	/// blake256-hash of the source-chain identifier used by the Axelar network.
 	#[pallet::storage]
 	pub type SourceConversion<T: Config> = StorageMap<_, Twox64Concat, H256, SourceConverter>;
@@ -310,7 +310,7 @@ where
 			// Prevent re-entrance
 			Self::set_validate_call(gateway, key, false);
 
-			match f().map(|_| ()).map_err(|e| TryDispatchError::Substrate(e)) {
+			match f().map(|_| ()).map_err(TryDispatchError::Substrate) {
 				Err(e) => {
 					Self::set_validate_call(gateway, key, true);
 					Err(e.into())
