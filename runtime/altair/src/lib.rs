@@ -88,7 +88,7 @@ use sp_runtime::{
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -1324,6 +1324,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
+	type PerThing = Perquintill;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PoolId = PoolId;
