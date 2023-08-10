@@ -27,11 +27,9 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{
-	currency_decimals, parachains, AccountId, Balance, Moment, PoolId, TrancheId,
-};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::{
-	connectors::{Codec as _, InboundQueue},
+	connectors::{Codec, InboundQueue},
 	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
 };
 use cfg_types::{
@@ -48,9 +46,11 @@ use cfg_types::{
 	xcm::XcmMetadata,
 };
 use codec::Encode;
+use connectors_gateway_routers::XcmDomain as GatewayXcmDomain;
 use development_runtime::{
-	Balances, Connectors, Investments, Loans, OrmlAssetRegistry, OrmlTokens, Permissions,
-	PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System, XTokens, XcmTransactor,
+	Balances, Connectors, ConnectorsGateway, Investments, Loans, OrmlAssetRegistry, OrmlTokens,
+	Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System, XTokens,
+	XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -80,11 +80,14 @@ use utils::investments::{
 use xcm_emulator::TestExt;
 
 use crate::{
-	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
-	xcm::development::{
+	connectors::pallet::development::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
+		tests::connectors::utils::{
+			get_default_moonbeam_native_token_location, DEFAULT_MOONBEAM_LOCATION,
+		},
 	},
+	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	*,
 };
 
@@ -1633,12 +1636,16 @@ fn verify_tranche_fields_sizes() {
 }
 
 mod utils {
+	use cfg_primitives::Moment;
 	use cfg_types::tokens::CrossChainTransferability;
+	use connectors_gateway_routers::{
+		ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmTransactInfo,
+	};
 
 	use super::*;
 	use crate::{
+		connectors::pallet::development::tests::register_ausd,
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
-		xcm::development::tests::register_ausd,
 	};
 
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
@@ -1650,7 +1657,18 @@ mod utils {
 	pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 		DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 
+	pub const DEFAULT_MOONBEAM_LOCATION: MultiLocation = MultiLocation {
+		parents: 1,
+		interior: X1(Parachain(PARA_ID_MOONBEAM)),
+	};
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+
+	pub fn get_default_moonbeam_native_token_location() -> MultiLocation {
+		MultiLocation {
+			parents: 1,
+			interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
+		}
+	}
 
 	/// Returns a `VersionedMultiLocation` that can be converted into
 	/// `ConnectorsWrappedToken` which is required for cross chain asset
@@ -1676,38 +1694,60 @@ mod utils {
 		})
 	}
 
+	pub fn set_test_domain_router(
+		evm_chain_id: u64,
+		xcm_domain_location: VersionedMultiLocation,
+		currency_id: CurrencyId,
+		fee_location: VersionedMultiLocation,
+	) {
+		let ethereum_xcm_router = EthereumXCMRouter::<DevelopmentRuntime> {
+			router: XCMRouter {
+				xcm_domain: GatewayXcmDomain {
+					location: Box::new(xcm_domain_location),
+					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
+					contract_address: H160::from(utils::DEFAULT_EVM_ADDRESS_MOONBEAM),
+					max_gas_limit: 700_000,
+					transact_info: XcmTransactInfo {
+						transact_extra_weight: 1.into(),
+						max_weight: 8_000_000_000_000_000.into(),
+						transact_extra_weight_signed: Some(3.into()),
+					},
+					fee_currency: currency_id,
+					fee_per_second: default_per_second(18),
+					fee_asset_location: Box::new(fee_location),
+				},
+				_marker: Default::default(),
+			},
+			_marker: Default::default(),
+		};
+
+		let domain_router = DomainRouter::EthereumXCM(ethereum_xcm_router);
+		let domain = Domain::EVM(evm_chain_id);
+
+		assert_ok!(ConnectorsGateway::set_domain_router(
+			RuntimeOrigin::root(),
+			domain,
+			domain_router,
+		));
+	}
+
 	/// Initializes universally required storage for connectors tests:
-	///  * Set transact info and domain router for Moonbeam `MultiLocation`,
-	///  * Set fee for GLMR (`GLIMMER_CURRENCY_ID`),
+	///  * Set the EthereumXCM router which in turn sets:
+	///  	* transact info and domain router for Moonbeam `MultiLocation`,
+	///  	* fee for GLMR (`GLIMMER_CURRENCY_ID`),
 	///  * Register GLMR and AUSD in `OrmlAssetRegistry`,
 	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice and Bob.
 	///
 	/// NOTE: AUSD is the default pool currency in `create_pool`.
 	/// Neither AUSD nor GLMR are registered as connector transferable currency!
 	pub fn setup_pre_requirements() {
-		let moonbeam_location = MultiLocation {
-			parents: 1,
-			interior: X1(Parachain(PARA_ID_MOONBEAM)),
-		};
-		let moonbeam_native_token = MultiLocation {
-			parents: 1,
-			interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
-		};
-
-		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
-		assert_ok!(XcmTransactor::set_transact_info(
-			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V3(moonbeam_location)),
-			1.into(),
-			8_000_000_000_000_000.into(),
-			Some(3.into())
-		));
-
-		assert_ok!(XcmTransactor::set_fee_per_second(
-			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V3(moonbeam_native_token)),
-			default_per_second(18), // default fee_per_second for this token which has 18 decimals
-		));
+		/// Set the EthereumXCM router necessary for Moonbeam.
+		set_test_domain_router(
+			MOONBEAM_EVM_CHAIN_ID,
+			DEFAULT_MOONBEAM_LOCATION.into(),
+			GLIMMER_CURRENCY_ID,
+			get_default_moonbeam_native_token_location().into(),
+		);
 
 		/// Register Moonbeam's native token
 		assert_ok!(OrmlAssetRegistry::register_asset(
@@ -1717,7 +1757,9 @@ mod utils {
 				"GLMR".into(),
 				18,
 				false,
-				Some(VersionedMultiLocation::V3(moonbeam_native_token)),
+				Some(VersionedMultiLocation::V3(
+					get_default_moonbeam_native_token_location()
+				)),
 				CrossChainTransferability::Xcm(Default::default()),
 			),
 			Some(GLIMMER_CURRENCY_ID)
@@ -1726,21 +1768,6 @@ mod utils {
 		// Give Alice and BOB enough glimmer to pay for fees
 		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
 		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
-
-		assert_ok!(Connectors::set_domain_router(
-			RuntimeOrigin::root(),
-			DOMAIN_MOONBEAM,
-			Router::Xcm(XcmDomain {
-				location: Box::new(moonbeam_location.try_into().expect("Bad xcm version")),
-				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
-				contract_address: H160::from(
-					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
-						.expect("Invalid address"),
-				),
-				fee_currency: GLIMMER_CURRENCY_ID,
-				max_gas_limit: 700_000,
-			}),
-		));
 
 		// Register AUSD in the asset registry which is the default pool currency in
 		// `create_pool`

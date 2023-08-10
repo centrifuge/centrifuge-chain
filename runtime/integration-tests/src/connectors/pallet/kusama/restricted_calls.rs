@@ -41,7 +41,7 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 
-use crate::xcm::kusama::{
+use crate::connectors::pallet::kusama::{
 	setup::{air, foreign, sibling_account, ALICE, BOB, PARA_ID_SIBLING},
 	test_net::{Altair, KusamaNet, Sibling, TestNet},
 };

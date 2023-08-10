@@ -221,3 +221,31 @@ where
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
+
+/// Sets the `default_accounts` as council members.
+pub fn default_council_members<Runtime, Instance>(storage: &mut Storage)
+where
+	Instance: 'static,
+	Runtime: pallet_collective::Config<Instance>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	council_members::<Runtime, Instance>(default_accounts(), storage)
+}
+
+/// Sets the provided account IDs as council members.
+pub fn council_members<Runtime, Instance>(members: Vec<Keyring>, storage: &mut Storage)
+where
+	Instance: 'static,
+	Runtime: pallet_collective::Config<Instance>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	pallet_collective::GenesisConfig::<Runtime, Instance> {
+		phantom: Default::default(),
+		members: members
+			.into_iter()
+			.map(|acc| acc.to_account_id().into())
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Pallet collective genesis build is not allowed to fail")
+}

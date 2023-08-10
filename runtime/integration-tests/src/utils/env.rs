@@ -305,6 +305,7 @@ pub mod macros {
 	/// );
 	/// ```
 	macro_rules! run {
+		// ($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
 		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr$(,)?)+);*) => {{
 				use codec::Encode as _;
 
