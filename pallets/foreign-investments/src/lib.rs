@@ -164,13 +164,25 @@ pub mod pallet {
 			OrderId = Self::TokenSwapOrderId,
 		>;
 
-		type ExecutedDecreaseHook: StatusNotificationHook<
+		type ExecutedDecreaseInvestHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
 			Status = ExecutedDecrease<Self::Balance>,
 			Error = DispatchError,
 		>;
 
-		type ExecutedCollectHook: StatusNotificationHook<
+		type ExecutedDecreaseRedeemHook: StatusNotificationHook<
+			Id = ForeignInvestmentInfoOf<Self>,
+			Status = ExecutedDecrease<Self::Balance>,
+			Error = DispatchError,
+		>;
+
+		type ExecutedCollectInvestHook: StatusNotificationHook<
+			Id = ForeignInvestmentInfoOf<Self>,
+			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
+			Error = DispatchError,
+		>;
+
+		type ExecutedCollectRedeemHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
 			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,

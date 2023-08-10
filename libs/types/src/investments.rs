@@ -67,7 +67,7 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
 pub struct ExecutedDecrease<Balance> {
-	pub amount_payout: Balance,
+	pub amount_decreased: Balance,
 	pub amount_remaining: Balance,
 }
 
