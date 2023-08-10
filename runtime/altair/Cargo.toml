@@ -106,9 +106,13 @@ cfg-types = { path = "../../libs/types", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
+pallet-connectors = { path = "../../pallets/connectors", default-features = false }
+pallet-connectors-gateway = { path = "../../pallets/connectors-gateway", default-features = false }
+connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
@@ -122,6 +126,11 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 runtime-common = { path = "../common", default-features = false }
+
+# Connectors 3rd-party dependencies
+moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -162,12 +171,15 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
+  "pallet-connectors/std",
+  "pallet-connectors-gateway/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
+  "pallet-ethereum-transaction/std",
   "pallet-evm/std",
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
@@ -182,6 +194,7 @@ std = [
   "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-permissions/std",
+  "moonbeam-relay-encoder/std",
   "pallet-pool-system/std",
   "pallet-pool-registry/std",
   "pallet-preimage/std",
@@ -224,6 +237,7 @@ std = [
   "orml-traits/std",
   "polkadot-parachain/std",
   "scale-info/std",
+  "xcm-primitives/std",
 ]
 runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
@@ -239,12 +253,15 @@ runtime-benchmarks = [
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
+  "pallet-connectors/runtime-benchmarks",
+  "pallet-connectors-gateway/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
@@ -283,6 +300,8 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -316,12 +335,15 @@ try-runtime = [
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
+  "pallet-connectors/try-runtime",
+  "pallet-connectors-gateway/try-runtime",
   "pallet-crowdloan-claim/try-runtime",
   "pallet-crowdloan-reward/try-runtime",
   "pallet-data-collector/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
   "pallet-evm/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
@@ -355,6 +377,7 @@ try-runtime = [
   "parachain-info/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
