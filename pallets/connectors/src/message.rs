@@ -590,7 +590,7 @@ impl<
 				],
 			),
 			Message::ScheduleUpgrade { contract } => {
-				encoded_message(contract.call_type(), vec![contract.to_vec()])
+				encoded_message(self.call_type(), vec![contract.to_vec()])
 			}
 		}
 	}
