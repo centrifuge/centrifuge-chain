@@ -114,7 +114,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
-use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
 pub mod evm;
 mod weights;
@@ -1268,21 +1267,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Self>;
 }
 
-#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
-pub struct NullTransactor {}
-
-impl UtilityEncodeCall for NullTransactor {
-	fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
-		unimplemented!("XcmTransactor feature not used")
-	}
-}
-
-impl xcm_primitives::XcmTransact for NullTransactor {
-	fn destination(self) -> MultiLocation {
-		unimplemented!("XcmTransactor feature not used")
-	}
-}
-
 parameter_types! {
 	// 1 ROC should be enough to cover for fees opening/accepting hrmp channels
 	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
@@ -1303,7 +1287,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type Transactor = NullTransactor;
+	type Transactor = xcm_transactor::NullTransactor;
 	type UniversalLocation = UniversalLocation;
 	type Weigher = XcmWeigher;
 	type WeightInfo = ();

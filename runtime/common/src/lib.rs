@@ -455,3 +455,28 @@ pub mod investment_portfolios {
 		Some(portfolio)
 	}
 }
+
+pub mod xcm_transactor {
+	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
+	use sp_std::{vec, vec::Vec};
+	use codec::{Decode, Encode};
+	use scale_info::TypeInfo;
+
+	/// NOTE: our usage of XcmTransactor does NOT use config Type
+	/// so we have it implement the required traits by return safe
+	/// dummy values.
+	#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+	pub struct NullTransactor {}
+
+	impl UtilityEncodeCall for NullTransactor {
+		fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
+			vec![]
+		}
+	}
+
+	impl XcmTransact for NullTransactor {
+		fn destination(self) -> xcm::latest::MultiLocation {
+			Default::default()
+		}
+	}
+}

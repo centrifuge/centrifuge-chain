@@ -50,6 +50,10 @@ pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", 
 # It seem fixed in 0.9.39, and this dependency can be removed from this file safely.
 fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
+# Moonbeam dependencies
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+
+
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -103,6 +107,7 @@ std = [
   "scale-info/std",
   "xcm/std",
   "fp-self-contained/std",
+  "xcm-primitives/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -121,6 +126,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
