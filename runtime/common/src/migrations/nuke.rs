@@ -71,8 +71,7 @@ where
 		if Pallet::on_chain_storage_version() < Pallet::current_storage_version() {
 			log::info!("Nuke-{}: nuking pallet...", Pallet::name());
 
-			// TODO: How we can set the maximum for this? Currently hardcode
-			let result = unhashed::clear_prefix(&pallet_prefix::<Pallet>(), Some(1000), None);
+			let result = unhashed::clear_prefix(&pallet_prefix::<Pallet>(), None, None);
 			match result.maybe_cursor {
 				None => log::info!("Nuke-{}: storage cleared successful", Pallet::name()),
 				Some(_) => {
