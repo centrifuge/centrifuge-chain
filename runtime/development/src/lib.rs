@@ -257,8 +257,8 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 			},
 			RuntimeCall::XcmTransactor(method) => match method {
 				// We block this call since it includes Moonbeam trait implementations such
-				// as UtilityEncodeCall and XcmTransact that we don't implement and don't have
-				// have being used by arbitrary users.
+				// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
+				// arbitrary users calling it.
 				pallet_xcm_transactor::Call::transact_through_derivative { .. } => false,
 				_ => true,
 			},
