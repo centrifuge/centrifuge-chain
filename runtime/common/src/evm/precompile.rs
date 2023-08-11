@@ -99,7 +99,6 @@ where
 	}
 }
 
-<<<<<<< HEAD
 /// A set of precompiles. This set might contain
 /// not yet mainnet ready precompiles in order to test
 /// those in development or staging environment without touching
@@ -134,7 +133,9 @@ where
 			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
 			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
 			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
-			CONNECTORS_AXELAR_GATEWAY => Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle)),
+			CONNECTORS_AXELAR_GATEWAY => {
+				Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
+			}
 			_ => None,
 		}
 	}
@@ -153,9 +154,9 @@ where
 			SHA3FIPS256_ADDR,
 			DISPATCH_ADDR,
 			ECRECOVERPUBLICKEY_ADDR,
-			CONNECTORS_AXELAR_GATEWAY
+			CONNECTORS_AXELAR_GATEWAY,
 		]
-			.contains(&address.0)
+		.contains(&address.0)
 	}
 }
 
