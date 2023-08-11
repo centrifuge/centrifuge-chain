@@ -27,8 +27,8 @@ use xcm::{
 };
 
 use crate::{
+	connectors::pallet::polkadot::setup::{DOT_ASSET_ID, NO_XCM_ASSET_ID},
 	utils::AUSD_CURRENCY_ID,
-	xcm::polkadot::setup::{DOT_ASSET_ID, NO_XCM_ASSET_ID},
 };
 
 mod asset_registry;

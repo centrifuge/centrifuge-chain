@@ -25,6 +25,7 @@ pub mod migrations {
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod oracle;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -287,113 +288,6 @@ pub mod xcm {
 				id: account.into(),
 			})
 			.into()
-		}
-	}
-}
-
-pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment};
-	use cfg_types::oracles::OracleKey;
-	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
-	use sp_runtime::DispatchResult;
-	use sp_std::{marker::PhantomData, vec::Vec};
-
-	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
-
-	/// Always choose the last updated value in case of several values.
-	pub struct LastOracleValue;
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-		fn combine_data(
-			_: &OracleKey,
-			values: Vec<OracleValue>,
-			_: Option<OracleValue>,
-		) -> Option<OracleValue> {
-			values
-				.into_iter()
-				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
-		}
-	}
-
-	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
-	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
-	/// and can be removed once they fix this.
-	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
-
-	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
-		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
-	{
-		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
-			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
-		}
-
-		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
-			OrmlOracle::get_all_values()
-				.into_iter()
-				.map(|elem| {
-					(
-						elem.0,
-						elem.1
-							.map(|OracleValue { value, timestamp }| (value, timestamp)),
-					)
-				})
-				.collect()
-		}
-	}
-
-	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
-		for DataProviderBridge<OrmlOracle>
-	{
-		fn get(key: &OracleKey) -> Option<Balance> {
-			OrmlOracle::get(key)
-		}
-	}
-
-	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
-		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
-	{
-		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
-			OrmlOracle::feed_value(who, key, value)
-		}
-	}
-
-	/// This is used for feeding the oracle from the data-collector in
-	/// benchmarks.
-	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-	#[cfg(feature = "runtime-benchmarks")]
-	pub mod benchmarks_util {
-		use frame_support::traits::SortedMembers;
-		use sp_std::vec::Vec;
-
-		use super::*;
-
-		impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-			fn combine_data(
-				_: &OracleKey,
-				_: Vec<OracleValue>,
-				_: Option<OracleValue>,
-			) -> Option<OracleValue> {
-				Some(OracleValue {
-					value: Default::default(),
-					timestamp: 0,
-				})
-			}
-		}
-
-		pub struct Members;
-
-		impl SortedMembers<AccountId> for Members {
-			fn sorted_members() -> Vec<AccountId> {
-				// We do not want members for benchmarking
-				Vec::default()
-			}
-
-			fn contains(_: &AccountId) -> bool {
-				// We want to mock the member permission for benchmark
-				// Allowing any member
-				true
-			}
 		}
 	}
 }

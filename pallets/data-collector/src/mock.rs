@@ -105,12 +105,12 @@ impl CombineData<DataId, OracleValue> for LastData {
 
 // This part is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
 pub struct DataProviderBridge;
-impl DataProviderExtended<DataId, (Data, Moment)> for DataProviderBridge {
-	fn get_no_op(key: &DataId) -> Option<(Data, Moment)> {
-		Oracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
+impl DataProviderExtended<(DataId, CollectionId), (Data, Moment)> for DataProviderBridge {
+	fn get_no_op(key: &(DataId, CollectionId)) -> Option<(Data, Moment)> {
+		Oracle::get_no_op(&key.0).map(|OracleValue { value, timestamp }| (value, timestamp))
 	}
 
-	fn get_all_values() -> Vec<(DataId, Option<(Data, Moment)>)> {
+	fn get_all_values() -> Vec<((DataId, CollectionId), Option<(Data, Moment)>)> {
 		unimplemented!("unused by this pallet")
 	}
 }

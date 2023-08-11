@@ -118,16 +118,12 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn current_price(&self) -> Result<T::Balance, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
 	}
 
-	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
-	}
-
-	pub fn outstanding_principal(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.current_price()?;
+	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -140,13 +136,13 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		self.outstanding_principal()
+	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		self.outstanding_principal(pool_id)
 	}
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
 	where
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
 		let price = cache.get(&self.info.price_id)?.0;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)

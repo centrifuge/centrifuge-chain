@@ -30,7 +30,6 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
-	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -713,11 +712,20 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
 }
 
+#[cfg(feature = "instant-voting")]
+parameter_types! {
+	pub const InstantAllowed: bool = true;
+}
+
+#[cfg(not(feature = "instant-voting"))]
+parameter_types! {
+	pub const InstantAllowed: bool = false;
+}
+
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
@@ -1342,9 +1350,9 @@ impl orml_oracle::Config for Runtime {
 	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
-	type OnNewData = PriceCollector;
+	type OnNewData = runtime_common::oracle::OnNewPrice<PriceCollector>;
 	type OracleKey = OracleKey;
-	type OracleValue = Balance;
+	type OracleValue = Quantity;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1355,7 +1363,8 @@ impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Balance;
 	type DataId = OracleKey;
-	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
+	type DataProvider =
+		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
 	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
 	type Moment = Moment;
@@ -1571,22 +1580,6 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct DummyOutboundQueue;
-
-impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
-	type Destination = Domain;
-	type Message = pallet_connectors::MessageOf<Runtime>;
-	type Sender = AccountId;
-
-	fn submit(
-		_sender: AccountId,
-		_destination: Domain,
-		_msg: pallet_connectors::MessageOf<Runtime>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
 impl pallet_connectors::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1595,7 +1588,7 @@ impl pallet_connectors::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
-	type OutboundQueue = DummyOutboundQueue;
+	type OutboundQueue = ConnectorsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
