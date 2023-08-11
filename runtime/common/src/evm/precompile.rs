@@ -41,11 +41,12 @@ const DISPATCH_ADDR: Addr = addr(1025);
 const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
 // 2048-XXXX: Nonstandard precompiles that are specific to our chain.
 
-/// The address of our local Axelar gateway. This is the address that Connctor
-/// contracts on other domains must use in order to hit the Connectors logic.
+/// The address of our local Axelar gateway. This is the address that
+/// Liquidity-Pool contracts on other domains must use in order to hit the
+/// Liquidity-Pool logic on centrifuge.
 ///
 /// The precompile implements
-const CONNECTORS_AXELAR_GATEWAY: Addr = addr(2048);
+const LP_AXELAR_GATEWAY: Addr = addr(2048);
 
 pub struct CentrifugePrecompiles<R>(PhantomData<R>);
 
@@ -81,21 +82,16 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		[
-			ECRECOVER_ADDR,
-			SHA256_ADDR,
-			RIPEMD160_ADDR,
-			IDENTITY_ADDR,
-			MODEXP_ADDR,
-			BN128ADD_ADDR,
-			BN128MUL_ADDR,
-			BN128PAIRING_ADDR,
-			BLAKE2F_ADDR,
-			SHA3FIPS256_ADDR,
-			DISPATCH_ADDR,
-			ECRECOVERPUBLICKEY_ADDR,
-		]
-		.contains(&address.0)
+		matches!(
+			address.0,
+			ECRECOVER_ADDR
+				| SHA256_ADDR | RIPEMD160_ADDR
+				| IDENTITY_ADDR | MODEXP_ADDR
+				| BN128ADD_ADDR | BN128MUL_ADDR
+				| BN128PAIRING_ADDR
+				| BLAKE2F_ADDR | SHA3FIPS256_ADDR
+				| DISPATCH_ADDR | ECRECOVERPUBLICKEY_ADDR
+		)
 	}
 }
 
@@ -103,7 +99,7 @@ where
 /// not yet mainnet ready precompiles in order to test
 /// those in development or staging environment without touching
 /// the mainnet set.
-pub struct Development<R>(PhantomData<R>);
+pub struct Development<R>(CentrifugePrecompiles<R>);
 
 impl<R> Development<R> {
 	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
