@@ -30,10 +30,6 @@ strum = { version = "0.24", default-features = false, features = ["derive"] }
 # Optionals for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
-# Used for migrations (no longer needed once migratios is done)
-log = "0.4"
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -49,7 +45,6 @@ cfg-mocks = { path = "../../libs/mocks" }
 default = ["std"]
 std = [
   "codec/std",
-  "log/std",
   "scale-info/std",
   "frame-support/std",
   "frame-system/std",
@@ -60,7 +55,6 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "frame-benchmarking/std",
-  "sp-io/std",
   "strum/std",
   "orml-traits/std",
 ]

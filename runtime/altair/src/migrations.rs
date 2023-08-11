@@ -9,18 +9,9 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
-use codec::{Decode, Encode};
-#[cfg(feature = "try-runtime")]
-use frame_support::ensure;
-use frame_support::{
-	traits::OnRuntimeUpgrade,
-	weights::{constants::RocksDbWeight, Weight},
-};
-use sp_std::vec::Vec;
 
-use crate::Runtime;
+use frame_support::weights::constants::RocksDbWeight;
 
-pub type UpgradeAltair1029 =
-	pallet_loans::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 2>;
+use crate::Loans;
+
+pub type UpgradeAltair1029 = runtime_common::migrations::nuke::Migration<Loans, RocksDbWeight, 1>;

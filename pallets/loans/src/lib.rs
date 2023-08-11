@@ -40,10 +40,6 @@
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
 //! loans.
 
-pub mod migrations {
-	pub mod nuke;
-}
-
 /// High level types that uses `pallet::Config`
 pub mod entities {
 	pub mod interest;
@@ -127,7 +123,7 @@ pub mod pallet {
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
-	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
