@@ -23,8 +23,8 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
-          df -h
           sudo apt-get install protobuf-compiler
+          df -h
       - name: Check out code
         uses: actions/checkout@v3
       - name: Install latest nightly
@@ -32,7 +32,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
       - name: Run fast benchmarks
         run: ./ci/script.sh
         env:

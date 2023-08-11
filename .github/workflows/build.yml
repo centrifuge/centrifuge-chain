@@ -35,8 +35,8 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
-          df -h
           sudo apt-get install protobuf-compiler
+          df -h
       - name: Check out code
         uses: actions/checkout@v3
       - name: Install latest nightly
@@ -45,12 +45,10 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
       - if: startsWith(matrix.target, 'build-runtime')
-        uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
         with: # cache the runtime target instead of root target for build-runtime
           working-directory: './runtime'
           target-dir: './target/srtool'
       - if: matrix.target == 'build-node'
-        uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
       - name: ${{ matrix.target }}
         run: ./ci/script.sh
         env:
