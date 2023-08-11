@@ -255,6 +255,13 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
+			RuntimeCall::XcmTransactor(method) => match method {
+				// We block this call since it includes Moonbeam trait implementations such
+				// as UtilityEncodeCall and XcmTransact that we don't implement and don't have
+				// have being used by arbitrary users.
+				pallet_xcm_transactor::Call::transact_through_derivative { .. } => false,
+				_ => true,
+			},
 			_ => true,
 		}
 	}
