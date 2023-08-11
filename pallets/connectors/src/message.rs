@@ -199,6 +199,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
+		currency: u128,
 	},
 	/// The message sent back to the domain from which a `DecreaseInvestOrder`
 	/// message was received, ensuring the correct state update on said domain
@@ -263,6 +264,7 @@ where
 		tranche_tokens_payout: Balance,
 		/// The remaining amount of `currency` the investor still has locked to
 		/// invest at a later epoch execution
+		// TODO: Should be MORE than Investment::investment(who, investment_id)
 		remaining_invest_order: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectRedeem` message
@@ -501,9 +503,15 @@ impl<
 				pool_id,
 				tranche_id,
 				investor,
+				currency,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
 			),
 			Message::ExecutedDecreaseInvestOrder {
 				pool_id,
@@ -670,6 +678,7 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			15 => Ok(Self::ExecutedDecreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -1011,8 +1020,9 @@ mod tests {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
+				currency: TOKEN_ID
 			},
-			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
