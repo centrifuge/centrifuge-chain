@@ -53,7 +53,6 @@ fp-self-contained = { git = "https://github.com/PureStake/frontier", default-fea
 # Moonbeam dependencies
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
-
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }

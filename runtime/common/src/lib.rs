@@ -457,10 +457,10 @@ pub mod investment_portfolios {
 }
 
 pub mod xcm_transactor {
-	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
-	use sp_std::{vec, vec::Vec};
 	use codec::{Decode, Encode};
 	use scale_info::TypeInfo;
+	use sp_std::{vec, vec::Vec};
+	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
 
 	/// NOTE: our usage of XcmTransactor does NOT use config Type
 	/// so we have it implement the required traits by return safe
