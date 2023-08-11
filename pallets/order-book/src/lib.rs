@@ -54,9 +54,13 @@ pub mod pallet {
 		MultiCurrency, MultiReservableCurrency,
 	};
 	use scale_info::TypeInfo;
+	use sp_core::MaxEncodedLen;
 	use sp_runtime::{
-		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureMul, EnsureSub, One, Zero},
-		FixedPointOperand,
+		traits::{
+			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureMul, EnsureSub,
+			MaybeSerializeDeserialize, One, Zero,
+		},
+		FixedPointNumber, FixedPointOperand, TypeId,
 	};
 
 	use super::*;
@@ -72,6 +76,7 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::AssetCurrencyId,
 		BalanceOf<T>,
+		<T as Config>::SellPrice,
 	>;
 
 	pub type FeeBalance<T> = <<T as Config>::ReserveCurrency as Currency<
@@ -152,6 +157,17 @@ pub mod pallet {
 			CurrencyId = Self::AssetCurrencyId,
 		>;
 
+		/// Type for price ratio for cost of incoming currency relative to
+		/// outgoing
+		type SellPrice: Parameter
+			+ Member
+			+ FixedPointNumber
+			+ EnsureMul
+			+ EnsureDiv
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
+
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
 		type OrderPairVecSize: Get<u32>;
@@ -165,7 +181,7 @@ pub mod pallet {
 	/// Order Storage item.
 	/// Contains fields relevant to order information
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance> {
+	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, SellPrice> {
 		pub order_id: OrderId,
 		pub placing_account: AccountId,
 		pub asset_in_id: AssetId,
@@ -176,7 +192,7 @@ pub mod pallet {
 		pub initial_buy_amount: ForeignCurrencyBalance,
 		/// How much currency being purchased (asset in) costs with asset sold
 		/// (asset out)
-		pub price: ForeignCurrencyBalance,
+		pub price: SellPrice,
 		/// Minimum amount of an order that can be fulfilled
 		/// for partial fulfillment
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
@@ -190,7 +206,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		T::OrderIdNonce,
-		Order<T::OrderIdNonce, T::AccountId, T::AssetCurrencyId, BalanceOf<T>>,
+		OrderOf<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
