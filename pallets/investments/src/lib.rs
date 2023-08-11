@@ -24,6 +24,7 @@ use cfg_types::{
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
@@ -509,7 +510,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect_invest(who, investment_id)
+			Self::do_collect_invest(who, investment_id).map(|(_, info)| info)
 		}
 
 		/// Collect the results of a user's redeem orders for the given
@@ -523,7 +524,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect_redeem(who, investment_id)
+			Self::do_collect_redeem(who, investment_id).map(|(_, info)| info)
 		}
 
 		/// Collect the results of another users invest orders for the given
@@ -538,7 +539,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_invest(who, investment_id)
+			Self::do_collect_invest(who, investment_id).map(|(_, info)| info)
 		}
 
 		/// Collect the results of another users redeem orders for the given
@@ -553,7 +554,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_redeem(who, investment_id)
+			Self::do_collect_redeem(who, investment_id).map(|(_, info)| info)
 		}
 	}
 }
@@ -686,7 +687,7 @@ where
 	}
 
 	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {
-		if amount > T::Amount::zero() {
+		if !amount.is_zero() {
 			Self::deposit_event(on_not_empty);
 		} else {
 			// In this case the user has no active position.
@@ -698,16 +699,18 @@ where
 		}
 	}
 
+	// TODO: Add amount and if possible currency to return
 	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_invest(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> DispatchResultWithPostInfo {
+	) -> Result<(T::Amount, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		InvestOrders::<T>::try_mutate(
 			&who,
 			investment_id,
-			|maybe_order| -> DispatchResultWithPostInfo {
+			|maybe_order| -> Result<(T::Amount, PostDispatchInfo), DispatchErrorWithPostInfo> {
+				// Exit early if order does not exist
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
 				} else {
@@ -717,8 +720,9 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Zero::zero(), ().into()));
 				};
+
 				let mut collection = InvestCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
 				let cur_order_id = InvestOrderId::<T>::get(investment_id);
@@ -729,7 +733,7 @@ where
 					cur_order_id,
 				);
 
-				// The current order is not in processing
+				// Exit early if the current order is not in processing
 				if order.submitted_at() == cur_order_id {
 					Self::deposit_event(Event::<T>::InvestCollectedForNonClearedOrderId {
 						who: who.clone(),
@@ -737,7 +741,7 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((order.amount(), ().into()));
 				}
 
 				for order_id in order.submitted_at()..last_processed_order_id {
@@ -772,6 +776,7 @@ where
 						amount,
 					},
 				);
+				let amount_payout = collection.payout_investment_invest;
 
 				Self::deposit_event(Event::InvestOrdersCollected {
 					investment_id,
@@ -786,21 +791,23 @@ where
 				});
 
 				// TODO: Actually weight with amount of collects here
-				Ok(().into())
+				Ok((amount_payout, ().into()))
 			},
 		)
 	}
 
+	// TODO: Add amount and if possible currency to return
 	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_redeem(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> DispatchResultWithPostInfo {
+	) -> Result<(T::Amount, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		RedeemOrders::<T>::try_mutate(
 			&who,
 			investment_id,
-			|maybe_order| -> DispatchResultWithPostInfo {
+			|maybe_order| -> Result<(T::Amount, PostDispatchInfo), DispatchErrorWithPostInfo> {
+				// Exit early if order does not exist
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
 				} else {
@@ -811,8 +818,9 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Zero::zero(), ().into()));
 				};
+
 				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
 				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
@@ -823,7 +831,7 @@ where
 					cur_order_id,
 				);
 
-				// The current order is not in processing
+				// Exit early if the current order is not in processing
 				if order.submitted_at() == cur_order_id {
 					Self::deposit_event(Event::<T>::RedeemCollectedForNonClearedOrderId {
 						who: who.clone(),
@@ -831,7 +839,7 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((order.amount(), ().into()));
 				}
 
 				for order_id in order.submitted_at()..last_processed_order_id {
@@ -854,6 +862,7 @@ where
 					info.payment_currency(),
 					&investment_account,
 					&who,
+					// TODO: return collected amount
 					collection.payout_investment_redeem,
 					false,
 				)?;
@@ -869,6 +878,7 @@ where
 						amount,
 					},
 				);
+				let amount_payout = collection.payout_investment_redeem;
 
 				Self::deposit_event(Event::RedeemOrdersCollected {
 					investment_id,
@@ -883,7 +893,7 @@ where
 				});
 
 				// TODO: Actually weight this with collected_ids
-				Ok(().into())
+				Ok((amount_payout, ().into()))
 			},
 		)
 	}
@@ -971,16 +981,16 @@ where
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_invest;
 		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a
-		// given price       the system side (i.e. the pallet-investments) will always
-		// have       enough balance to satisfy all claims on payouts.
+		// 		given price the system side (i.e. the pallet-investments) will always
+		//		have enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an
-		// issuer)       will still drain its reserve by the amount without rounding. So
-		// we neither favor       issuer or investor but always the system.
+		// Importantly, the Accountant side (i.e. the pool and therefore an issuer) will
+		// still drain its reserve by the amount without rounding. So we neither favor
+		// issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens
-		// left, that are             rounding leftovers. This will be of importance,
-		// once we remove tranches at some             point.
+		// TODO: Rounding always means, we might have issuance on tranche-tokens
+		// left, that are rounding leftovers. This will be of importance, once we remove
+		// tranches at some             point.
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
 			.checked_add(
@@ -1005,13 +1015,13 @@ where
 		//       the system side (i.e. the pallet-investments) will always have
 		//       enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an
-		// issuer)       will still drain its reserve by the amount without rounding. So
-		// we neither favor       issuer or investor but always the system.
+		// Importantly, the Accountant side (i.e. the pool and therefore an issuer) will
+		// still drain its reserve by the amount without rounding. So we neither favor
+		// issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens
-		// left, that are             rounding leftovers. This will be of importance,
-		// once we remove tranches at some             point.
+		// TODO: Rounding always means, we might have issuance on tranche-tokens left,
+		// that are rounding leftovers. This will be of importance, once we remove
+		// tranches at some point.
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
 			.checked_add(
@@ -1432,7 +1442,7 @@ where
 {
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
-	type Result = ();
+	type Result = T::Amount;
 
 	fn collect_investment(
 		who: T::AccountId,
@@ -1440,7 +1450,7 @@ where
 	) -> Result<Self::Result, Self::Error> {
 		Pallet::<T>::do_collect_invest(who, investment_id)
 			.map_err(|e| e.error)
-			.map(|_| ())
+			.map(|(amount, _)| amount)
 	}
 
 	fn collect_redemption(
@@ -1449,6 +1459,6 @@ where
 	) -> Result<Self::Result, Self::Error> {
 		Pallet::<T>::do_collect_redeem(who, investment_id)
 			.map_err(|e| e.error)
-			.map(|_| ())
+			.map(|(amount, _)| amount)
 	}
 }
