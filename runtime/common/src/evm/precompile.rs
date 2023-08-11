@@ -104,7 +104,7 @@ pub struct Development<R>(CentrifugePrecompiles<R>);
 impl<R> Development<R> {
 	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
 	pub fn new() -> Self {
-		Self(Default::default())
+		Self(CentrifugePrecompiles::new())
 	}
 }
 
@@ -116,43 +116,18 @@ where
 	axelar_gateway_precompile::Pallet<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		match handle.code_address().0 {
-			ECRECOVER_ADDR => Some(ECRecover::execute(handle)),
-			SHA256_ADDR => Some(Sha256::execute(handle)),
-			RIPEMD160_ADDR => Some(Ripemd160::execute(handle)),
-			IDENTITY_ADDR => Some(Identity::execute(handle)),
-			MODEXP_ADDR => Some(Modexp::execute(handle)),
-			BN128ADD_ADDR => Some(Bn128Add::execute(handle)),
-			BN128MUL_ADDR => Some(Bn128Mul::execute(handle)),
-			BN128PAIRING_ADDR => Some(Bn128Pairing::execute(handle)),
-			BLAKE2F_ADDR => Some(Blake2F::execute(handle)),
-			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
-			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
-			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
-			CONNECTORS_AXELAR_GATEWAY => {
-				Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
-			}
-			_ => None,
-		}
+		self.0
+			.execute(handle)
+			.or_else(|| match handle.code_address().0 {
+				LP_AXELAR_GATEWAY => {
+					Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
+				}
+				_ => None,
+			})
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		[
-			ECRECOVER_ADDR,
-			SHA256_ADDR,
-			RIPEMD160_ADDR,
-			IDENTITY_ADDR,
-			MODEXP_ADDR,
-			BN128ADD_ADDR,
-			BN128MUL_ADDR,
-			BN128PAIRING_ADDR,
-			BLAKE2F_ADDR,
-			SHA3FIPS256_ADDR,
-			DISPATCH_ADDR,
-			ECRECOVERPUBLICKEY_ADDR,
-			CONNECTORS_AXELAR_GATEWAY,
-		]
-		.contains(&address.0)
+		self.0.is_precompile(address) | matches!(address.0, LP_AXELAR_GATEWAY)
 	}
 }
 
