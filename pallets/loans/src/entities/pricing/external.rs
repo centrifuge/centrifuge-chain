@@ -9,8 +9,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub, Zero},
-	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, PerThing, Rounding,
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 
 use crate::{
@@ -76,7 +76,7 @@ pub struct ExternalPricing<T: Config> {
 	/// Maximum variation between the settlement price chosen for
 	/// borrow/repay and the current oracle price.
 	/// See [`ExternalAmount::settlement_price`].
-	pub max_price_variation: T::PerThing,
+	pub max_price_variation: T::Rate,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -169,12 +169,8 @@ impl<T: Config> ExternalActivePricing<T> {
 		} else {
 			price.ensure_sub(amount.settlement_price)?
 		};
-		let variation = T::PerThing::from_rational_with_rounding(
-			delta.ensure_into()?,
-			price.ensure_into()?,
-			Rounding::Down,
-		)
-		.map_err(|_| Error::<T>::SettlementPriceExceedsVariation)?;
+		let variation =
+			T::Rate::checked_from_rational(delta, price).ok_or(ArithmeticError::Overflow)?;
 
 		// We bypass any price if quantity is zero,
 		// because it does not take effect in the computation.

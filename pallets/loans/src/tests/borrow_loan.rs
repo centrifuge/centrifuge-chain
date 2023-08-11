@@ -347,7 +347,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 		// Higher
 		let amount = ExternalAmount::new(
 			QUANTITY,
-			PRICE_VALUE + (MAX_PRICE_VARIATION.mul_floor(PRICE_VALUE) + 1),
+			PRICE_VALUE + (MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE) + 1),
 		);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
@@ -363,7 +363,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 		// Lower
 		let amount = ExternalAmount::new(
 			QUANTITY,
-			PRICE_VALUE - (MAX_PRICE_VARIATION.mul_floor(PRICE_VALUE) + 1),
+			PRICE_VALUE - (MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE) + 1),
 		);
 		config_mocks(amount.balance().unwrap());
 		assert_noop!(
@@ -386,7 +386,7 @@ fn with_correct_settlement_price_external_pricing() {
 		// Higher
 		let amount = ExternalAmount::new(
 			QUANTITY / 3.into(),
-			PRICE_VALUE + MAX_PRICE_VARIATION.mul_floor(PRICE_VALUE),
+			PRICE_VALUE + MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE),
 		);
 		config_mocks(amount.balance().unwrap());
 
@@ -411,7 +411,7 @@ fn with_correct_settlement_price_external_pricing() {
 		// Lower
 		let amount = ExternalAmount::new(
 			QUANTITY / 3.into(),
-			PRICE_VALUE - MAX_PRICE_VARIATION.mul_floor(PRICE_VALUE),
+			PRICE_VALUE - MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE),
 		);
 		config_mocks(amount.balance().unwrap());
 
