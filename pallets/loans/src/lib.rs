@@ -127,7 +127,7 @@ pub mod pallet {
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]

@@ -1,91 +1,111 @@
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
-	pallet_prelude::ValueQuery,
-	storage, storage_alias,
-	traits::{Get, OnRuntimeUpgrade},
-	weights::Weight,
-	Blake2_128Concat,
+	dispatch::GetStorageVersion,
+	storage,
+	traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
+	weights::{RuntimeDbWeight, Weight},
 };
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;
 
 use crate::*;
 
-mod old {
-	use super::*;
+/// This upgrade nukes all storages from the pallet individually.
+/// This upgrade is only executed if pallet version has changed.
+///
+/// To handle possible issues forgeting removing the upgrade,
+/// you must specify the PREV_VERSION,
+/// which represent the expected on-chain version when the upgrade is done
+/// If these numbers mistmatch, the upgrade will not take effect.
+pub struct Migration<Pallet, DbWeight, const PREV_VERSION: u16>(
+	sp_std::marker::PhantomData<(Pallet, DbWeight)>,
+);
 
-	/// This storage comes from the previous pallet loans.
-	/// It is used as an indicator that the previous pallet loans still exists.
-	/// If this storage is not found, the nuking process is aborted.
-	#[storage_alias]
-	pub(crate) type NextLoanId<T: Config> =
-		StorageMap<Pallet<T>, Blake2_128Concat, <T as Config>::PoolId, u128, ValueQuery>;
-}
-
-/// This migration nukes all storages from the pallet individually.
-pub struct Migration<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> OnRuntimeUpgrade for Migration<T> {
+impl<Pallet, DbWeight, const PREV_VERSION: u16> OnRuntimeUpgrade
+	for Migration<Pallet, DbWeight, PREV_VERSION>
+where
+	Pallet: GetStorageVersion + PalletInfoAccess,
+	DbWeight: Get<RuntimeDbWeight>,
+{
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 		ensure!(
-			contains_prefixed_key(&loan_prefix()),
-			"Pallet loans prefix doesn't exists"
+			Pallet::on_chain_storage_version() == StorageVersion::new(PREV_VERSION),
+			"Pallet on-chain version must match with PREV_VERSION"
 		);
 
 		ensure!(
-			old::NextLoanId::<T>::iter_values().count() == 1,
-			"Pallet loans contains doesn't contain old data"
+			Pallet::on_chain_storage_version() < STORAGE_VERSION,
+			"Pallet is already updated"
+		);
+
+		ensure!(
+			storage::unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()),
+			"Pallet prefix doesn't exists"
 		);
 
 		Ok(Vec::new())
 	}
 
 	fn on_runtime_upgrade() -> Weight {
-		let old_values = old::NextLoanId::<T>::iter_values().count();
-		if old_values > 0 {
-			let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
+		if Pallet::on_chain_storage_version() == StorageVersion::new(PREV_VERSION) {
+			log::error!(
+				"Nuke-{}: Nuke aborted. This upgrade must be removed!",
+				Pallet::name()
+			);
+			return Weight::zero();
+		}
 
+		if Pallet::on_chain_storage_version() < STORAGE_VERSION {
+			log::info!("Nuke-{}: Nuking pallet...", Pallet::name());
+
+			// TODO: Future improvements of this upgrade should loop over `clear_prefix`
+			// calls removing the entire storage.
+			let result = storage::unhashed::clear_prefix(&pallet_prefix::<Pallet>(), None, None);
+			log::info!(
+				"Nuke-{}: iteration result. backend: {} unique: {} loops: {}",
+				Pallet::name(),
+				result.backend,
+				result.unique,
+				result.loops,
+			);
 			match result.maybe_cursor {
-				None => log::info!("Loans: storage cleared successful"),
-				Some(_) => log::error!("Loans: storage not totally cleared"),
+				None => log::info!("Nuke-{}: storage cleared successful", Pallet::name()),
+				Some(_) => log::error!("Nuke-{}: storage not totally cleared", Pallet::name()),
 			}
 
-			T::DbWeight::get().writes(result.unique.into())
-				+ T::DbWeight::get().reads(result.loops.into())
-		} else {
-			log::warn!("Loans: storage was already clear. This migration can be removed.");
+			Pallet::current_storage_version().put::<Pallet>();
 
-			T::DbWeight::get().reads(old_values as u64)
+			DbWeight::get().writes(result.unique.into())
+				+ DbWeight::get().reads(result.loops.into())
+				+ DbWeight::get().reads_writes(1, 1) // Version read & writen
+		} else {
+			log::warn!(
+                "Nuke-{}: pallet on-chain version is not {STORAGE_VERSION:?}. This upgrade can be removed.",
+                Pallet::name()
+            );
+			DbWeight::get().reads(1)
 		}
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
-		ensure!(
-			!contains_prefixed_key(&loan_prefix()),
-			"Pallet loans prefix still exists!"
+		assert_eq!(
+			Pallet::on_chain_storage_version(),
+			STORAGE_VERSION,
+			"on-chain storage version should have been updated"
 		);
 
 		ensure!(
-			old::NextLoanId::<T>::iter_values().count() == 0,
-			"Pallet loans still contains old data"
+			!storage::unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()),
+			"Pallet prefix still exists!"
 		);
 
 		Ok(())
 	}
 }
 
-fn loan_prefix() -> [u8; 16] {
-	sp_io::hashing::twox_128(b"Loans")
-}
-
-#[cfg(feature = "try-runtime")]
-fn contains_prefixed_key(prefix: &[u8]) -> bool {
-	// Implementation extracted from a newer version of `frame_support`.
-	match sp_io::storage::next_key(prefix) {
-		Some(key) => key.starts_with(prefix),
-		None => false,
-	}
+fn pallet_prefix<Pallet: PalletInfoAccess>() -> [u8; 16] {
+	sp_io::hashing::twox_128(Pallet::name().as_bytes())
 }
