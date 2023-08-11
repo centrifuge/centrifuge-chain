@@ -1,19 +1,16 @@
 # Centrifudge Code Owners
 
 ## Changes to .github
-.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm
 
 ## Changes to ci
-ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm
 
 ## Changes to the service of our chain.
 node/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 ## Changes to chain-specs
 node/res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @wischli
-
-## Changes to toml files
-*.toml @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm @wischli @cdamian @thea-leake
 
 ## Changes to specific pallets
 pallets/liquidity-pools/* @NunoAlexandre @cdamian @wischli @mustermeiszer
