@@ -462,9 +462,8 @@ pub mod xcm_transactor {
 	use sp_std::{vec, vec::Vec};
 	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
 
-	/// NOTE: our usage of XcmTransactor does NOT use config Type
-	/// so we have it implement the required traits by return safe
-	/// dummy values.
+	/// NOTE: our usage of XcmTransactor does NOT use this type so we have it implement
+	/// the required traits by returning safe dummy values.
 	#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
 	pub struct NullTransactor {}
 
