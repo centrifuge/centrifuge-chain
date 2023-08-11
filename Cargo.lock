@@ -2655,6 +2655,7 @@ dependencies = [
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
  "pallet-fees",
+ "pallet-foreign-investment",
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
@@ -7317,7 +7318,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-foreign-investments"
+name = "pallet-foreign-investment"
 version = "1.0.0"
 dependencies = [
  "cfg-primitives",

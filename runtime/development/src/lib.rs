@@ -104,7 +104,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
@@ -1561,6 +1561,43 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	// TODO: Discuss, refine
+	pub const DefaultTokenMinFulfillmentAmount: Balance = Balance::one();
+	pub const DefaultTokenSwapSellPriceLimit: Balance = Balance::one();
+}
+
+// TODO: Remove me
+struct DummyHook;
+impl cfg_traits::StatusNotificationHook for DummyHook {
+	type Error = DispatchError;
+	type Id = u128;
+	type Status = ();
+
+	fn notify_status_change(id: u128, status: ()) -> Result<(), DispatchError> {
+		unimplemented!("Remove the entire impl before merging")
+	}
+}
+
+impl pallet_foreign_investment::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type DefaultTokenMinFulfillmentAmount = DefaultTokenMinFulfillmentAmount;
+	type DefaultTokenSwapSellPriceLimit = DefaultTokenSwapSellPriceLimit;
+	type ExecutedCollectInvestHook = DummyHook;
+	type ExecutedCollectRedeemHook = DummyHook;
+	type ExecutedDecreaseInvestHook = DummyHook;
+	type ExecutedDecreaseRedeemHook = DummyHook;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type RuntimeEvent = RuntimeEvent;
+	type TokenSwapOrderId = u128;
+	type TokenSwaps = ();
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
+}
+
 pub struct DummyOutboundQueue;
 
 impl cfg_traits::connectors::OutboundQueue for DummyOutboundQueue {
@@ -1583,7 +1620,7 @@ impl pallet_connectors::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ForeignInvestment = Investments;
+	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
 	type OutboundQueue = DummyOutboundQueue;
 	type Permission = Permissions;
@@ -1911,6 +1948,7 @@ construct_runtime!(
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
+		ForeignInvestments: pallet_foreign_investment::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
