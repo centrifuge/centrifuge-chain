@@ -156,7 +156,7 @@ package pricing {
             price_id: PriceId,
             max_borrow_quantity: MaxBorrowAmount,
             notional: Balance,
-            max_price_variation: Perthing,
+            max_price_variation: Rate,
         }
 
         ExternalPricing *-l-> MaxBorrowAmount
