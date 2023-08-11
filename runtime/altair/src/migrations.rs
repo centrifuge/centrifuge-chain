@@ -66,7 +66,7 @@ mod asset_registry {
 						CurrencyId::Staking(_) => None,
 						CurrencyId::Tranche(_, _) => Some(to_metadata_v1(
 							old_metadata,
-							v1::CrossChainTransferability::Connectors,
+							v1::CrossChainTransferability::LiquidityPools,
 						)),
 						_ => Some(to_metadata_v1(
 							old_metadata.clone(),
@@ -105,8 +105,8 @@ mod asset_registry {
 				match asset_id {
                     CurrencyId::Tranche(_, _) => ensure!(new_metadata == to_metadata_v1(
 						old_metadata,
-						v1::CrossChainTransferability::Connectors,
-					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `Connectors `"),
+						v1::CrossChainTransferability::LiquidityPools,
+					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `LiquidityPools `"),
                     _ => ensure!(new_metadata == to_metadata_v1(
 						old_metadata.clone(),
 						v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),

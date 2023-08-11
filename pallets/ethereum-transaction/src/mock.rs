@@ -37,7 +37,7 @@ frame_support::construct_runtime!(
 );
 
 frame_support::parameter_types! {
-	pub const MaxConnectorsPerDomain: u32 = 3;
+	pub const MaxInstancesPerDomain: u32 = 3;
 }
 
 impl frame_system::Config for Runtime {

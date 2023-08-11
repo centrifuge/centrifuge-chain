@@ -56,9 +56,9 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-connectors = { path = "../../pallets/connectors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
+pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
@@ -74,7 +74,7 @@ std = [
   "frame-system/std",
   "pallet-authorship/std",
   "pallet-balances/std",
-  "pallet-connectors/std",
+  "pallet-liquidity-pools/std",
   "pallet-base-fee/std",
   "pallet-ethereum/std",
   "pallet-evm/std",
@@ -113,7 +113,7 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
-  "pallet-connectors/runtime-benchmarks",
+  "pallet-liquidity-pools/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
@@ -137,7 +137,7 @@ try-runtime = [
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
-  "pallet-connectors/try-runtime",
+  "pallet-liquidity-pools/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-data-collector/try-runtime",

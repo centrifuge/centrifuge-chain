@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::connectors::Codec;
+use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -19,7 +19,7 @@ use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
 
-/// A Domain is a chain or network we can send a Connectors message to.
+/// A Domain is a chain or network we can send a message to.
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
@@ -27,7 +27,7 @@ use crate::EVMChainId;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling
-	/// incoming messages. NOTE: Connectors messages CAN NOT be sent directly
+	/// incoming messages. NOTE: messages CAN NOT be sent directly
 	/// from the Centrifuge chain to the Centrifuge chain itself.
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
