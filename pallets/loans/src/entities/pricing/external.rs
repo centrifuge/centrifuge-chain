@@ -10,7 +10,7 @@ use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub, Zero},
-	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, PerThing,
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, PerThing, Rounding,
 };
 
 use crate::{
@@ -169,7 +169,12 @@ impl<T: Config> ExternalActivePricing<T> {
 		} else {
 			price.ensure_sub(amount.settlement_price)?
 		};
-		let variation = T::PerThing::from_rational(delta.ensure_into()?, price.ensure_into()?);
+		let variation = T::PerThing::from_rational_with_rounding(
+			delta.ensure_into()?,
+			price.ensure_into()?,
+			Rounding::Down,
+		)
+		.map_err(|_| Error::<T>::SettlementPriceExceedsVariation)?;
 
 		// We bypass any price if quantity is zero,
 		// because it does not take effect in the computation.

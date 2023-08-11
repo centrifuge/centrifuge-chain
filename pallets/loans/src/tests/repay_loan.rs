@@ -672,6 +672,23 @@ fn with_incorrect_settlement_price_external_pricing() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
+		// Much higher
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + PRICE_VALUE + 1);
+		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
+		assert_noop!(
+			Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+			),
+			Error::<Runtime>::SettlementPriceExceedsVariation
+		);
+
 		// Higher
 		let amount = ExternalAmount::new(
 			QUANTITY,
