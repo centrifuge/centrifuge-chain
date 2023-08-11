@@ -316,6 +316,8 @@ pub mod pallet {
 		/// The account derived from the [Domain] and [DomainAddress] has not
 		/// been whitelisted as a TrancheInvestor.
 		InvestorDomainAddressNotAMember,
+		/// Only the PoolAdmin can execute a given operation.
+		NotPoolAdmin,
 	}
 
 	#[pallet::call]
@@ -365,6 +367,15 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
 			T::OutboundQueue::submit(who, domain, Message::AddPool { pool_id })?;
 			Ok(())
 		}
@@ -383,6 +394,15 @@ pub mod pallet {
 			ensure!(
 				T::PoolInspect::tranche_exists(pool_id, tranche_id),
 				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
 			);
 
 			// Look up the metadata of the tranche token

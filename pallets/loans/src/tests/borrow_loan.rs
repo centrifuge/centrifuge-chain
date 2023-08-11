@@ -10,9 +10,12 @@ fn config_mocks(withdraw_amount: Balance) {
 		assert_eq!(withdraw_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(|id| match *id {
-		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err(PRICE_ID_NO_FOUND),
+	MockPrices::mock_get(|id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err(PRICE_ID_NO_FOUND),
+		}
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
@@ -29,7 +32,12 @@ fn with_wrong_loan_id() {
 		config_mocks(COLLATERAL_VALUE);
 
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				0,
+				PricingAmount::Internal(COLLATERAL_VALUE)
+			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
 		);
 	});
@@ -47,7 +55,7 @@ fn from_other_borrower() {
 				RuntimeOrigin::signed(OTHER_BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				PricingAmount::Internal(COLLATERAL_VALUE)
 			),
 			Error::<Runtime>::NotLoanBorrower
 		);
@@ -64,7 +72,7 @@ fn with_restriction_no_written_off() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE / 2
+			PricingAmount::Internal(COLLATERAL_VALUE / 2)
 		));
 
 		advance_time(YEAR + DAY);
@@ -75,7 +83,7 @@ fn with_restriction_no_written_off() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				PricingAmount::Internal(COLLATERAL_VALUE / 2)
 			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
@@ -99,7 +107,7 @@ fn with_restriction_full_once() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2 // Must be full value
+				PricingAmount::Internal(COLLATERAL_VALUE / 2) // Must be full value
 			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
@@ -109,12 +117,17 @@ fn with_restriction_full_once() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE
+			PricingAmount::Internal(COLLATERAL_VALUE)
 		));
 
 		// Borrow was already done
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, 0),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::Internal(0)
+			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
 	});
@@ -133,9 +146,45 @@ fn with_maturity_passed() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				PricingAmount::Internal(COLLATERAL_VALUE)
 			),
 			Error::<Runtime>::from(BorrowLoanError::MaturityDatePassed)
+		);
+	});
+}
+
+#[test]
+fn with_wrong_internal_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::Internal(0)
+			),
+			Error::<Runtime>::MismatchedPricingMethod
+		);
+	});
+}
+
+#[test]
+fn with_wrong_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_internal_loan());
+
+		config_mocks(0);
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(ExternalAmount::empty())
+			),
+			Error::<Runtime>::MismatchedPricingMethod
 		);
 	});
 }
@@ -163,7 +212,12 @@ fn with_wrong_big_amount_internal_pricing() {
 
 			config_mocks(amount);
 			assert_noop!(
-				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+				Loans::borrow(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					PricingAmount::Internal(amount)
+				),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 			);
 		});
@@ -196,7 +250,7 @@ fn with_correct_amount_internal_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				amount
+				PricingAmount::Internal(amount)
 			));
 			assert_eq!(amount, util::current_loan_debt(loan_id));
 		});
@@ -216,11 +270,16 @@ fn with_unregister_price_id() {
 
 		let loan_id = util::create_loan(loan);
 
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		config_mocks(amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
 			PRICE_ID_NO_FOUND
 		);
 	});
@@ -231,11 +290,16 @@ fn with_wrong_big_amount_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE) + 1;
-		config_mocks(amount);
+		let amount = ExternalAmount::new(QUANTITY + 1.into(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 	});
@@ -247,12 +311,17 @@ fn with_wrong_quantity_amount_external_pricing() {
 		let loan_id = util::create_loan(util::base_external_loan());
 
 		// It's not multiple of PRICE_VALUE
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE) - 1;
-		config_mocks(amount);
+		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
-			Error::<Runtime>::AmountNotMultipleOfPrice
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
+			Error::<Runtime>::AmountNotNaturalNumber
 		);
 	});
 }
@@ -262,15 +331,32 @@ fn with_correct_amount_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		config_mocks(amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			amount
-		),);
+			PricingAmount::External(amount)
+		));
+	});
+}
+
+#[test]
+fn with_correct_settlement_price_external_pricing() {
+	new_test_ext().execute_with(|| {
+		let loan_id = util::create_loan(util::base_external_loan());
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2 /* Any value */);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
 	});
 }
 
@@ -287,14 +373,14 @@ fn with_unlimited_amount_external_pricing() {
 
 		let loan_id = util::create_loan(loan);
 
-		let amount = PRICE_VALUE * 2; // But could be any value
-		config_mocks(amount);
+		let amount = ExternalAmount::new(QUANTITY /* Could be any value */, PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			amount
+			PricingAmount::External(amount)
 		));
 	});
 }
@@ -310,7 +396,7 @@ fn twice() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE / 2
+			PricingAmount::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
@@ -318,14 +404,19 @@ fn twice() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE / 2
+			PricingAmount::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 
 		// At this point the loan has been fully borrowed.
 		let extra = 1;
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::Internal(extra)
+			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 	});
@@ -342,7 +433,7 @@ fn twice_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE / 2
+			PricingAmount::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
@@ -360,13 +451,18 @@ fn twice_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			COLLATERAL_VALUE / 2
+			PricingAmount::Internal(COLLATERAL_VALUE / 2)
 		));
 
 		// At this point the loan has been fully borrowed.
 		let extra = 1;
 		assert_noop!(
-			Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::Internal(extra)
+			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 	});

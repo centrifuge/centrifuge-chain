@@ -14,7 +14,7 @@
 use cfg_primitives::CFG;
 use cfg_traits::{
 	changes::ChangeGuard,
-	data::{DataCollection, DataRegistry},
+	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
 	Permissions, PoolBenchmarkHelper,
 };
@@ -41,7 +41,7 @@ use crate::{
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing,
+			Pricing, PricingAmount, RepaidPricingAmount,
 		},
 	},
 	pallet::*,
@@ -49,7 +49,7 @@ use crate::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
-		PayDownSchedule, RepaidAmount, RepayRestrictions, RepaymentSchedule,
+		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -102,7 +102,6 @@ where
 	T::PriceId: From<u32>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 {
 	fn prepare_benchmark() -> T::PoolId {
@@ -189,7 +188,7 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			10.into(),
+			PricingAmount::Internal(10.into()),
 		)
 		.unwrap();
 	}
@@ -200,8 +199,8 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			RepaidAmount {
-				principal: 10.into(),
+			RepaidPricingAmount {
+				principal: PricingAmount::Internal(10.into()),
 				interest: T::Balance::max_value(),
 				unscheduled: 0.into(),
 			},
@@ -320,7 +319,6 @@ benchmarks! {
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 	}
 
@@ -341,7 +339,7 @@ benchmarks! {
 		let pool_id = Helper::<T>::initialize_active_state(n);
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into())
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PricingAmount::Internal(10.into()))
 
 	repay {
 		let n in 1..Helper::<T>::max_active_loans() - 1;
@@ -351,7 +349,11 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-		let repaid = RepaidAmount { principal: 10.into(), interest: 0.into(), unscheduled: 0.into() };
+		let repaid = RepaidPricingAmount {
+			principal: PricingAmount::Internal(10.into()),
+			interest: 0.into(),
+			unscheduled: 0.into()
+		};
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, repaid)
 

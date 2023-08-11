@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.27"
+version = "0.10.28"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -992,7 +992,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.27"
+version = "0.10.28"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1243,6 +1243,7 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
+ "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
  "sp-runtime",
@@ -1542,6 +1543,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c278839b831783b70278b14df4d45e1beb1aad306c07bb796637de9a0e323e8e"
 dependencies = [
  "crossbeam-utils",
+]
+
+[[package]]
+name = "connectors-gateway-routers"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "cumulus-primitives-core",
+ "ethabi",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-connectors-gateway",
+ "pallet-ethereum",
+ "pallet-ethereum-transaction",
+ "pallet-evm",
+ "pallet-evm-chain-id",
+ "pallet-evm-precompile-simple",
+ "pallet-timestamp",
+ "pallet-xcm-transactor",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -2605,6 +2640,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "chainbridge",
+ "connectors-gateway-routers",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -2623,6 +2659,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
+ "getrandom 0.2.8",
  "hex",
  "hex-literal 0.3.4",
  "moonbeam-relay-encoder",
@@ -2645,12 +2682,14 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
@@ -2667,6 +2706,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
@@ -6300,6 +6340,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
+name = "num"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b05180d69e3da0e530ba2a1dae5110317e49e3b7f3d41be227dc5f92e49ee7af"
+dependencies = [
+ "num-bigint",
+ "num-complex",
+ "num-integer",
+ "num-iter",
+ "num-rational",
+ "num-traits",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6336,6 +6390,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
 dependencies = [
  "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "num-iter"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
+dependencies = [
+ "autocfg",
+ "num-integer",
  "num-traits",
 ]
 
@@ -7034,6 +7099,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-connectors-gateway"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "rand 0.8.5",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-conviction-voting"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -7214,6 +7299,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ethereum-transaction"
+version = "0.0.1"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "ethereum",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-ethereum",
+ "pallet-evm",
+ "pallet-evm-precompile-simple",
+ "pallet-timestamp",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
@@ -7249,6 +7358,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-evm-precompile-blake2"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+]
+
+[[package]]
+name = "pallet-evm-precompile-bn128"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "sp-core",
+ "substrate-bn",
+]
+
+[[package]]
 name = "pallet-evm-precompile-dispatch"
 version = "2.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
@@ -7256,6 +7383,15 @@ dependencies = [
  "fp-evm",
  "frame-support",
  "pallet-evm",
+]
+
+[[package]]
+name = "pallet-evm-precompile-modexp"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "num",
 ]
 
 [[package]]
@@ -7278,6 +7414,25 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-evm-precompile-sha3fips"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "tiny-keccak",
+]
+
+[[package]]
+name = "pallet-evm-precompile-simple"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+dependencies = [
+ "fp-evm",
+ "ripemd",
+ "sp-io",
 ]
 
 [[package]]
@@ -7737,6 +7892,32 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-order-book"
+version = "0.1.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-test-utils",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -10506,6 +10687,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ripemd"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd124222d17ad93a644ed9d011a40f4fb64aa54275c08cc216524a9ea82fb09f"
+dependencies = [
+ "digest 0.10.6",
+]
+
+[[package]]
 name = "rlp"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10716,11 +10906,18 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-connectors",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-evm-precompile-blake2",
+ "pallet-evm-precompile-bn128",
  "pallet-evm-precompile-dispatch",
+ "pallet-evm-precompile-modexp",
+ "pallet-evm-precompile-sha3fips",
+ "pallet-evm-precompile-simple",
+ "pallet-investments",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
@@ -10747,12 +10944,15 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "connectors-gateway-routers",
  "cumulus-primitives-core",
  "development-runtime",
+ "ethereum",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "fudge",
+ "getrandom 0.2.8",
  "hex",
  "kusama-runtime",
  "lazy_static",
@@ -10765,17 +10965,25 @@ dependencies = [
  "pallet-balances",
  "pallet-block-rewards",
  "pallet-collator-selection",
+ "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
+ "pallet-democracy",
+ "pallet-ethereum-transaction",
+ "pallet-evm",
+ "pallet-evm-chain-id",
  "pallet-investments",
  "pallet-loans",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
+ "pallet-preimage",
  "pallet-rewards",
  "pallet-session",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",
+ "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.4.0",
  "polkadot-core-primitives",
@@ -13401,6 +13609,19 @@ dependencies = [
  "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
+]
+
+[[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.5",
+ "rustc-hex",
 ]
 
 [[package]]

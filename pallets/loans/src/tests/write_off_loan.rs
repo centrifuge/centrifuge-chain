@@ -12,7 +12,7 @@ fn config_mocks() {
 fn without_policy() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
 			Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
@@ -36,7 +36,7 @@ fn with_policy_but_not_overdue() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + BLOCK_TIME);
 
@@ -54,7 +54,7 @@ fn with_valid_maturity() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR / 2);
 
@@ -121,7 +121,7 @@ fn with_wrong_permission() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -145,7 +145,7 @@ fn with_success() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -163,7 +163,7 @@ fn with_admin_success() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -213,7 +213,7 @@ fn with_admin_less_than_policy() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -251,7 +251,7 @@ fn with_policy_change_after() {
 		util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -283,7 +283,7 @@ fn with_policy_change_after() {
 fn with_policy_change_after_admin() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		config_mocks();
 		assert_ok!(Loans::admin_write_off(
@@ -320,7 +320,7 @@ fn with_percentage_applied_internal() {
 		util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -346,12 +346,13 @@ fn with_percentage_applied_external() {
 		util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
 		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = QUANTITY.saturating_mul_int(PRICE_VALUE);
-		util::borrow_loan(loan_id, amount);
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::External(amount));
 
 		advance_time(YEAR + DAY);
 
-		MockPrices::mock_get(|id| {
+		MockPrices::mock_get(|id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
 			assert_eq!(*id, REGISTER_PRICE_ID);
 			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});
@@ -377,7 +378,7 @@ fn with_penalty_applied() {
 		util::set_up_policy(0.0, POLICY_PENALTY);
 
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 
@@ -417,7 +418,7 @@ fn with_penalty_applied() {
 fn fully() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, COLLATERAL_VALUE);
+		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR + DAY);
 

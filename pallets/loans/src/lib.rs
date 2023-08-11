@@ -72,18 +72,18 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		self,
-		changes::ChangeGuard,
-		data::{DataCollection, DataRegistry},
-		interest::InterestAccrual,
-		Permissions, PoolInspect, PoolNAV, PoolReserve,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
+		PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
 	use codec::HasCompact;
-	use entities::loans::{self, ActiveLoan, LoanInfo};
+	use entities::{
+		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
+		pricing::{PricingAmount, RepaidPricingAmount},
+	};
 	use frame_support::{
 		pallet_prelude::*,
 		storage::transactional,
@@ -108,19 +108,14 @@ pub mod pallet {
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepaidAmount, RepayLoanError, WrittenOffError,
+		RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
 
-	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-		<T as Config>::PriceId,
-		<T as Config>::PoolId,
-	>>::Collection;
-
+	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
-	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
@@ -142,27 +137,14 @@ pub mod pallet {
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
-		type CollectionId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type CollectionId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible item
-		type ItemId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type ItemId: Parameter + Member + Default + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Identify a loan in the pallet
 		type LoanId: Parameter
 			+ Member
-			+ MaybeSerializeDeserialize
 			+ Default
 			+ TypeInfo
 			+ MaxEncodedLen
@@ -171,23 +153,16 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type PriceId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ TypeInfo
-			+ Copy
-			+ MaxEncodedLen;
+		type PriceId: Parameter + Member + TypeInfo + Copy + MaxEncodedLen;
 
 		/// Defines the rate type used for math computations
-		type Rate: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type Rate: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
 
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
+
+		/// Type to represent different quantities in external pricing.
+		type Quantity: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
 
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;
@@ -216,7 +191,7 @@ pub mod pallet {
 		>;
 
 		/// Used to fetch and update Oracle prices
-		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceResultOf<Self>>;
+		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -327,13 +302,13 @@ pub mod pallet {
 		Borrowed {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
+			amount: PricingAmount<T>,
 		},
 		/// An amount was repaid for a loan
 		Repaid {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidAmount<T::Balance>,
+			amount: RepaidPricingAmount<T>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -382,14 +357,14 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when an amount used is not multiple of the current price
-		AmountNotMultipleOfPrice,
 		/// Emits when an amount used is not a natural number
 		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
 		UnrelatedChangeId,
+		/// Emits when the pricing method is not compatible with the input
+		MismatchedPricingMethod,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -441,10 +416,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -492,7 +464,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: T::Balance,
+			amount: PricingAmount<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -501,20 +473,20 @@ pub mod pallet {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
 					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(amount)?;
+					active_loan.borrow(&amount)?;
 
 					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
 						Self::ensure_loan_borrower(&who, loan.borrower())?;
-						loan.borrow(amount)
+						loan.borrow(&amount)
 					})?
 					.1
 				}
 			};
 
-			T::Pool::withdraw(pool_id, who, amount)?;
+			T::Pool::withdraw(pool_id, who, amount.balance()?)?;
 
 			Self::deposit_event(Event::<T>::Borrowed {
 				pool_id,
@@ -541,7 +513,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidAmount<T::Balance>,
+			amount: RepaidPricingAmount<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -550,7 +522,7 @@ pub mod pallet {
 				loan.repay(amount.clone())
 			})?;
 
-			T::Pool::deposit(pool_id, who, amount.total()?)?;
+			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
@@ -804,10 +776,7 @@ pub mod pallet {
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -868,7 +837,9 @@ pub mod pallet {
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
-			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
+			policy::find_rule(rules, |trigger| {
+				loan.check_write_off_trigger(trigger, pool_id)
+			})
 		}
 
 		fn get_released_change(
@@ -910,7 +881,7 @@ pub mod pallet {
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan_id, loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value(pool_id)?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -945,7 +916,7 @@ pub mod pallet {
 
 					let result = f(loan)?;
 
-					portfolio.update_elem(loan_id, loan.present_value()?)?;
+					portfolio.update_elem(loan_id, loan.present_value(pool_id)?)?;
 
 					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 						pool_id,
@@ -989,6 +960,26 @@ pub mod pallet {
 			Ok((loan, count))
 		}
 
+		pub fn get_active_loans_info(
+			pool_id: T::PoolId,
+		) -> Result<PortfolioInfoOf<T>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.map(|(loan_id, loan)| Ok((loan_id, (pool_id, loan).try_into()?)))
+				.collect()
+		}
+
+		pub fn get_active_loan_info(
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> Result<Option<ActiveLoanInfo<T>>, DispatchError> {
+			ActiveLoans::<T>::get(pool_id)
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.map(|(_, loan)| (pool_id, loan).try_into())
+				.transpose()
+		}
+
 		/// Set the maturity date of the loan to this instant.
 		#[cfg(feature = "runtime-benchmarks")]
 		pub fn expire(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
@@ -1001,10 +992,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 

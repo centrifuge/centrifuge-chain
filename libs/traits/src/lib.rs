@@ -40,6 +40,8 @@ pub mod changes;
 pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
+/// Traits related to Ethereum/EVM.
+pub mod ethereum;
 /// Traits related to interest rates.
 pub mod interest;
 /// Traits related to rewards.
@@ -695,22 +697,20 @@ pub trait CurrencyInspect {
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
 
-pub trait TokenSwaps<AccountId> {
+pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
 	type OrderId;
-
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
-	/// `currency_out` tokens. The implementor of this method should know the
-	/// current market rate between those two currencies. `sell_price_limit`
-	/// defines the lowest price acceptable for `currency_in` currency when
-	/// buying with `currency_out`. This protects order placer if market changes
-	/// unfavorably for swap order. Returns the order id created with by this
-	/// buy order if it could not be immediately and completely fulfilled.
-	/// If there was already an active order with the same account currencies,
-	/// the order is increased/decreased and the same order id is returned.
+	/// `currency_out` tokens. The implementator of this method should know
+	/// the current market rate between those two currencies.
+	/// `sell_price_limit` defines the lowest price acceptable for
+	/// `currency_in` currency when buying with `currency_out`. This
+	/// protects order placer if market changes unfavourably for swap order.
+	/// Returns the order id created with by this buy order if it could not
+	/// be immediately and completely fulfilled.
 	fn place_order(
-		account: AccountId,
+		account: Account,
 		currency_out: Self::CurrencyId,
 		currency_in: Self::CurrencyId,
 		buy_amount: Self::Balance,
@@ -724,7 +724,7 @@ pub trait TokenSwaps<AccountId> {
 	///      the system has already fulfilled up to the previous
 	///      one.
 	fn update_order(
-		account: AccountId,
+		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
 		sell_price_limit: Self::Balance,
@@ -732,10 +732,30 @@ pub trait TokenSwaps<AccountId> {
 	) -> DispatchResult;
 
 	/// Cancel an already active order.
-	fn cancel_order(order: Self::OrderId);
+	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
+}
+
+/// Trait to handle Investment Portfolios for accounts
+pub trait InvestmentsPortfolio<Account> {
+	type InvestmentId;
+	type CurrencyId;
+	type Balance;
+	type Error;
+	type AccountInvestmentPortfolio;
+
+	/// Get the payment currency for an investment.
+	fn get_investment_currency_id(
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::CurrencyId, Self::Error>;
+
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
+	fn get_account_investments_currency(
+		who: &Account,
+	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
 }
 
 /// Trait to handle investments in (presumably) foreign currencies, i.e., other

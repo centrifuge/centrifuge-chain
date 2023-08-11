@@ -52,7 +52,7 @@ try-runtime = [
   "sp-runtime/try-runtime",
 ]
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "frame-support/runtime-benchmarks",

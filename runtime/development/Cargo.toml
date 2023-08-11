@@ -11,6 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+getrandom = { version = "0.2", features = ["js"] }
 hex = { version = "0.4.3", default_features = false }
 hex-literal = { version = "0.3.4", optional = true }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -112,15 +113,18 @@ runtime-common = { path = "../common", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
 
 # our custom pallets
+connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-connectors = { path = "../../pallets/connectors", default-features = false }
+pallet-connectors-gateway = { path = "../../pallets/connectors-gateway", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-foreign-investment = { path = "../../pallets/foreign-investments", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
@@ -131,6 +135,7 @@ pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-order-book = { path = "../../pallets/order-book", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -148,6 +153,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
+instant-voting = []
 fast-runtime = []
 std = [
   "cfg-primitives/std",
@@ -155,6 +161,7 @@ std = [
   "chainbridge/std",
   "chainbridge/std",
   "codec/std",
+  "connectors-gateway-routers/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
@@ -187,12 +194,14 @@ std = [
   "pallet-collator-selection/std",
   "pallet-collective/std",
   "pallet-connectors/std",
+  "pallet-connectors-gateway/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
+  "pallet-ethereum-transaction/std",
   "pallet-evm/std",
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
@@ -209,6 +218,7 @@ std = [
   "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-nft/std",
+  "pallet-order-book/std",
   "pallet-permissions/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
@@ -262,11 +272,13 @@ std = [
   "fp-rpc/std",
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
+  "connectors-gateway-routers/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
@@ -283,6 +295,7 @@ runtime-benchmarks = [
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   # "pallet-foreign-investment/runtime-benchmarks",
@@ -293,6 +306,7 @@ runtime-benchmarks = [
   "pallet-loans/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -311,6 +325,7 @@ runtime-benchmarks = [
   "orml-xtokens/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
   "pallet-connectors/runtime-benchmarks",
+  "pallet-connectors-gateway/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
@@ -332,7 +347,9 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
+  "connectors-gateway-routers/try-runtime",
   "pallet-connectors/try-runtime",
+  "pallet-connectors-gateway/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-primitives/try-runtime",
@@ -344,6 +361,7 @@ try-runtime = [
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-nft-sales/try-runtime",
+  "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-registry/try-runtime",
   "pallet-pool-system/try-runtime",
@@ -408,6 +426,7 @@ try-runtime = [
   "pallet-evm-chain-id/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-ethereum/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
   "fp-self-contained/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
