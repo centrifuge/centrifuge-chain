@@ -31,13 +31,12 @@ pub(crate) const ACCOUNT_1: u64 = 0x2;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
 pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
 
-pub(crate) const CURRENCY_A: ForeignCurrencyBalance = 1_000_000_000_000_000_000;
+pub(crate) const CURRENCY_A: Balance = 1_000_000_000_000;
 // To ensure price/amount calculations with different
 // currency precision works
-pub(crate) const CURRENCY_B: ForeignCurrencyBalance = 1_000_000_000_000_000;
+pub(crate) const CURRENCY_B: Balance = 1_000_000_000;
 
 type Balance = u64;
-type ForeignCurrencyBalance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type MockAccountId = u64;
@@ -112,19 +111,19 @@ impl pallet_balances::Config for Runtime {
 cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 		RegistryMock,
 		CurrencyId,
-		ForeignCurrencyBalance,
+		Balance,
 		CustomMetadata
 }
 
 parameter_type_with_key! {
-		pub ExistentialDeposits: |_currency_id: CurrencyId| -> ForeignCurrencyBalance {
+		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 				Default::default()
 		};
 }
 
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
-	type Balance = u128;
+	type Balance = Balance;
 	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
@@ -151,7 +150,6 @@ impl order_book::Config for Runtime {
 	type FeeCurrencyId = FeeCurrencyId;
 	// type Balance = Balance;
 	type Fees = Fees;
-	type ForeignCurrencyBalance = ForeignCurrencyBalance;
 	type OrderFeeKey = OrderFeeKey;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;

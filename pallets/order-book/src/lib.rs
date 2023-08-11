@@ -39,6 +39,7 @@ pub mod pallet {
 
 	use core::fmt::Debug;
 
+	use cfg_primitives::conversion::fixed_point_to_balance;
 	use cfg_traits::fees::Fees;
 	use cfg_types::tokens::CustomMetadata;
 	use codec::{Decode, Encode, MaxEncodedLen};
@@ -61,7 +62,7 @@ pub mod pallet {
 	use super::*;
 
 	/// Balance type for the reserve/deposit made when creating an Allowance
-	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+	pub type BalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
@@ -70,7 +71,7 @@ pub mod pallet {
 		<T as Config>::OrderIdNonce,
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::AssetCurrencyId,
-		<T as Config>::ForeignCurrencyBalance,
+		BalanceOf<T>,
 	>;
 
 	pub type FeeBalance<T> = <<T as Config>::ReserveCurrency as Currency<
@@ -92,7 +93,7 @@ pub mod pallet {
 		/// Asset registry for foreign currencies we can take orders for.
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = Self::AssetCurrencyId,
-			Balance = Self::ForeignCurrencyBalance,
+			Balance = BalanceOf<Self>,
 			CustomMetadata = CustomMetadata,
 		>;
 
@@ -118,7 +119,7 @@ pub mod pallet {
 		/// Uses default balance type as opposed to ForeignCurrencyBalance
 		type Fees: Fees<
 			AccountId = <Self as frame_system::Config>::AccountId,
-			Balance = DepositBalanceOf<Self>,
+			Balance = BalanceOf<Self>,
 		>;
 
 		/// Fee Key used to find amount for allowance reserve/unreserve
@@ -131,20 +132,6 @@ pub mod pallet {
 		/// when trading for fee currency.
 		/// This should typically be native chain currency.
 		type FeeCurrencyId: Get<Self::AssetCurrencyId>;
-
-		/// Balance type for currencies we can place orders for
-		/// Seperate type from Balance in case different type used for other
-		/// currencies, i.e. when Balance is u64, but foreign currencies using
-		/// u128
-		type ForeignCurrencyBalance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ TypeInfo
-			+ TryInto<<Self::ReserveCurrency as Currency<Self::AccountId>>::Balance>;
 
 		/// Type used for OrderId. OrderIdNonce ensures each
 		/// OrderId is unique. OrderIdNonce incremented with each new order.
@@ -161,7 +148,7 @@ pub mod pallet {
 		/// Type for currency orders can be made for
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
-			Balance = <Self as pallet::Config>::ForeignCurrencyBalance,
+			Balance = BalanceOf<Self>,
 			CurrencyId = Self::AssetCurrencyId,
 		>;
 
@@ -203,7 +190,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		T::OrderIdNonce,
-		Order<T::OrderIdNonce, T::AccountId, T::AssetCurrencyId, T::ForeignCurrencyBalance>,
+		Order<T::OrderIdNonce, T::AccountId, T::AssetCurrencyId, BalanceOf<T>>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -251,9 +238,9 @@ pub mod pallet {
 			creator_account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			buy_amount: T::ForeignCurrencyBalance,
-			min_fullfillment_amount: T::ForeignCurrencyBalance,
-			sell_price_limit: T::ForeignCurrencyBalance,
+			buy_amount: BalanceOf<T>,
+			min_fullfillment_amount: BalanceOf<T>,
+			sell_price_limit: BalanceOf<T>,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -264,9 +251,9 @@ pub mod pallet {
 		OrderUpdated {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
-			buy_amount: T::ForeignCurrencyBalance,
-			sell_price_limit: T::ForeignCurrencyBalance,
-			min_fullfillment_amount: T::ForeignCurrencyBalance,
+			buy_amount: BalanceOf<T>,
+			sell_price_limit: BalanceOf<T>,
+			min_fullfillment_amount: BalanceOf<T>,
 		},
 		/// Event emitted when an order is fulfilled.
 		/// Can be for either partial or total fulfillment.
@@ -277,10 +264,10 @@ pub mod pallet {
 			placing_account: T::AccountId,
 			fulfilling_account: T::AccountId,
 			partial_fulfillment: bool,
-			fulfillment_amount: T::ForeignCurrencyBalance,
+			fulfillment_amount: BalanceOf<T>,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			sell_price_limit: T::ForeignCurrencyBalance,
+			sell_price_limit: BalanceOf<T>,
 		},
 	}
 
@@ -333,8 +320,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,
-			buy_amount: T::ForeignCurrencyBalance,
-			price: T::ForeignCurrencyBalance,
+			buy_amount: BalanceOf<T>,
+			price: BalanceOf<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			Self::place_order(
@@ -423,7 +410,7 @@ pub mod pallet {
 
 		/// Get reserve amount when fee and out currency are the same
 		pub fn get_combined_reserve(
-			sell_amount: T::ForeignCurrencyBalance,
+			sell_amount: BalanceOf<T>,
 		) -> Result<FeeBalance<T>, DispatchError> {
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 
@@ -458,7 +445,7 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
 	{
-		type Balance = T::ForeignCurrencyBalance;
+		type Balance = BalanceOf<T>;
 		type CurrencyId = T::AssetCurrencyId;
 		type OrderId = T::OrderIdNonce;
 
@@ -470,18 +457,18 @@ pub mod pallet {
 			account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			buy_amount: T::ForeignCurrencyBalance,
-			sell_price_limit: T::ForeignCurrencyBalance,
-			min_fullfillment_amount: T::ForeignCurrencyBalance,
+			buy_amount: BalanceOf<T>,
+			sell_price_limit: BalanceOf<T>,
+			min_fullfillment_amount: BalanceOf<T>,
 		) -> Result<Self::OrderId, DispatchError> {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
-				buy_amount != T::ForeignCurrencyBalance::zero(),
+				buy_amount != <BalanceOf<T>>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != T::ForeignCurrencyBalance::zero(),
+				sell_price_limit != <BalanceOf<T>>::zero(),
 				Error::<T>::InvalidMinPrice
 			);
 			ensure!(
@@ -563,16 +550,16 @@ pub mod pallet {
 		fn update_order(
 			account: T::AccountId,
 			order_id: Self::OrderId,
-			buy_amount: T::ForeignCurrencyBalance,
-			sell_price_limit: T::ForeignCurrencyBalance,
-			min_fullfillment_amount: T::ForeignCurrencyBalance,
+			buy_amount: BalanceOf<T>,
+			sell_price_limit: BalanceOf<T>,
+			min_fullfillment_amount: BalanceOf<T>,
 		) -> DispatchResult {
 			ensure!(
-				buy_amount != T::ForeignCurrencyBalance::zero(),
+				buy_amount != BalanceOf::<T>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != T::ForeignCurrencyBalance::zero(),
+				sell_price_limit != BalanceOf::<T>::zero(),
 				Error::<T>::InvalidMinPrice
 			);
 
