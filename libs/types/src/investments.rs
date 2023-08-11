@@ -75,7 +75,8 @@ pub struct ExecutedDecrease<Balance> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
 pub struct ExecutedCollect<Balance, Currency> {
-	pub currency: Currency,
+	// TODO: Check if necessary or can be used better
+	pub currency: Option<Currency>,
 	pub amount_currency_payout: Balance,
 	pub amount_tranche_tokens_payout: Balance,
 	pub amount_remaining: Balance,

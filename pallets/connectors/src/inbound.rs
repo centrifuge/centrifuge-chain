@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{Investment, InvestmentCollector, Permissions};
+use cfg_traits::{ForeignInvestment, Permissions, PoolInspect};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	permissions::{PermissionScope, PoolRole, Role},
@@ -21,7 +21,7 @@ use frame_support::{
 	traits::fungibles::{Mutate, Transfer},
 };
 use sp_runtime::{
-	traits::{Convert, EnsureAdd, EnsureSub, Zero},
+	traits::{Convert, Zero},
 	DispatchResult,
 };
 
@@ -92,19 +92,21 @@ impl<T: Config> Pallet<T> {
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
-		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let pool_currency =
+			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
 
-		// Determine post adjustment amount
-		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
-		let post_amount = pre_amount.ensure_add(amount)?;
+		// Mint additional amount of payment currency
+		T::Tokens::mint_into(payment_currency, &investor, amount)?;
 
-		// Mint additional amount
-		T::Tokens::mint_into(currency, &investor, amount)?;
-
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
+		T::ForeignInvestment::increase_foreign_investment(
+			&investor,
+			invest_id,
+			amount,
+			payment_currency,
+			pool_currency,
+		)?;
 
 		Ok(())
 	}
@@ -122,16 +124,18 @@ impl<T: Config> Pallet<T> {
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
-		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let _currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let pool_currency =
+			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
 
-		// Determine post adjustment amount
-		let pre_amount = T::ForeignInvestment::investment(&investor, invest_id.clone())?;
-		let post_amount = pre_amount.ensure_sub(amount)?;
-
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		T::ForeignInvestment::update_investment(&investor, invest_id, post_amount)?;
+		T::ForeignInvestment::decrease_foreign_investment(
+			&investor,
+			invest_id,
+			amount,
+			payment_currency,
+			pool_currency,
+		)?;
 
 		// TODO: Handle response `ExecutedDecreaseInvestOrder` message to
 		// source destination which should refund the decreased amount. This includes
@@ -139,7 +143,7 @@ impl<T: Config> Pallet<T> {
 		//
 		// NOTES:
 		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// 	* Should be handled by `pallet-foreign-investments`
+		// 	* Should be handled by `pallet-foreign-investment`
 		//  * Requires notification of `currency_payout` and `remaining_invest_order`
 		//    balances
 
@@ -147,7 +151,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Increases an existing redemption order of the investor.
-	///
+	// FIXME: This does not make sense? Once the redemption is processed and collected, the foreign
+	// investment swaps it into return currency into the investor, not the domainlocator.
 	/// Transfers the decreased redemption amount from the holdings of the
 	/// `DomainLocator` account of origination domain of this message into the
 	/// investor account.
@@ -161,27 +166,20 @@ impl<T: Config> Pallet<T> {
 		amount: <T as Config>::Balance,
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
-		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-
-		// Determine post adjustment amount
-		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
-
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		let post_amount = pre_amount.ensure_add(amount)?;
-
-		// Transfer tranche tokens from `DomainLocator` account of origination domain
-		T::Tokens::transfer(
-			invest_id.clone().into(),
-			&Domain::convert(sending_domain.domain()),
-			&investor,
-			amount,
-			false,
-		)?;
-
-		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
+		T::ForeignInvestment::increase_foreign_redemption(&investor, invest_id, amount)?;
 
 		Ok(())
+
+		// TODO: Handle transfer in hook or drop entirely
+		// // Transfer tranche tokens from `DomainLocator` account of
+		// origination domain T::Tokens::transfer(
+		// 	invest_id.clone().into(),
+		// 	&Domain::convert(sending_domain.domain()),
+		// 	&investor,
+		// 	amount,
+		// 	false,
+		// )?;
 	}
 
 	/// Decreases an existing redemption order of the investor.
@@ -198,30 +196,21 @@ impl<T: Config> Pallet<T> {
 		amount: <T as Config>::Balance,
 		_sending_domain: DomainAddress,
 	) -> DispatchResult {
-		// Retrieve investment details
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		// NOTE: Required for relaying `ExecutedDecreaseRedemption` message
-		let _currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		T::ForeignInvestment::decrease_foreign_redemption(&investor, invest_id, amount)?;
 
-		// Determine post adjustment amount
-		let pre_amount = T::ForeignInvestment::redemption(&investor, invest_id.clone())?;
-		let post_amount = pre_amount.ensure_sub(amount)?;
-
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		T::ForeignInvestment::update_redemption(&investor, invest_id, post_amount)?;
+		Ok(())
 
 		// TODO: Handle response `ExecutedDecreaseRedemption` message to
-		// source destination which should refund the decreased amount. This includes
-		// transferring the amount from the investor to the domain locator account of
-		// the origination domain.
+		// source destination which should refund the decreased amount. This
+		// includes transferring the amount from the investor to the domain
+		// locator account of the origination domain.
 		//
 		// NOTES:
 		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// 	* Should be handled by `pallet-foreign-investments`
+		// 	* Should be handled by `pallet-foreign-investment`
 		//  * Requires notification of `tranche_tokens_payout` and
 		//    `remaining_redeem_order` balances
-
-		Ok(())
 	}
 
 	/// Collect the results of a user's invest orders for the given investment
@@ -234,8 +223,9 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		T::ForeignInvestment::collect_investment(investor, invest_id)?;
+		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id)?;
+
+		// T::ForeignInvestment::collect_foreign_investment(investor, invest_id, )
 
 		// TODO: Handle response `ExecutedCollectInvest` message to
 		// source destination.
@@ -254,11 +244,19 @@ impl<T: Config> Pallet<T> {
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
+		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let pool_currency =
+			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
 
-		// TODO: Apply pallet_foreign_investment::ForeignInvestment
-		T::ForeignInvestment::collect_redemption(investor, invest_id)?;
+		T::ForeignInvestment::collect_foreign_redemption(
+			&investor,
+			invest_id,
+			payment_currency,
+			pool_currency,
+		)?;
 
 		// TODO: Handle response `ExecutedCollectRedeem` message to
 		// source destination.
@@ -269,4 +267,7 @@ impl<T: Config> Pallet<T> {
 
 		Ok(())
 	}
+
+	// TODO: At some point, some token transfer needs to happen for redemptions and
+	// decrease investment
 }

@@ -83,8 +83,8 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect,
-		TrancheCurrency, TrancheTokenPrice,
+		CurrencyInspect, ForeignInvestment, Permissions, PoolInspect, TrancheCurrency,
+		TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -188,23 +188,15 @@ pub mod pallet {
 			+ Into<CurrencyIdOf<Self>>
 			+ Clone;
 
-		/// Enables investing and redeeming into investment classes.
-		///
-		/// NOTE: For the time being, `pallet_investments` serves as the
-		/// implementor. However, eventually this should be provided by
-		/// `pallet_foreign_investments`.
-		type ForeignInvestment: Investment<
-				Self::AccountId,
-				Amount = <Self as Config>::Balance,
-				CurrencyId = CurrencyIdOf<Self>,
-				Error = DispatchError,
-				InvestmentId = <Self as Config>::TrancheCurrency,
-			> + InvestmentCollector<
-				Self::AccountId,
-				Error = DispatchError,
-				InvestmentId = <Self as Config>::TrancheCurrency,
-				Result = (),
-			>;
+		/// Enables investing and redeeming into investment classes with foreign
+		/// currencies.
+		type ForeignInvestment: ForeignInvestment<
+			Self::AccountId,
+			Amount = <Self as Config>::Balance,
+			CurrencyId = CurrencyIdOf<Self>,
+			Error = DispatchError,
+			InvestmentId = <Self as Config>::TrancheCurrency,
+		>;
 
 		/// The source of truth for the transferability of assets via
 		/// Connectors.
@@ -891,7 +883,13 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::handle_collect_redemption(pool_id, tranche_id, investor.into()),
+					currency,
+				} => Self::handle_collect_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+				),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
 

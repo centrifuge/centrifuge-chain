@@ -61,6 +61,9 @@ where
 			RedeemTransition::FulfillSwapOrder(swap) => {
 				Self::handle_fulfilled_swap_order(&self, swap)
 			}
+			RedeemTransition::Collect(return_currency, pool_currency) => {
+				Self::handle_collect(&self, return_currency, pool_currency)
+			}
 		}
 	}
 
@@ -93,7 +96,8 @@ where
 		}
 	}
 
-	/// Returns the potentially existing invest amount.
+	/// Returns the potentially existing invest, i.e. the upper redemption
+	/// bound.
 	pub(crate) fn get_invest_amount(&self) -> Option<Balance> {
 		match self {
 			Self::Invested { invest_amount } | Self::InvestedAnd { invest_amount, .. } => {
@@ -568,18 +572,19 @@ where
 	/// swap it with `ActiveSwapIntoReturnCurrency` if the state did not include
 	/// an active swap or simply drop it.
 	///
-	/// Throws iff the state includes an active or done swap and either
+	/// Throws if the state includes an active or done swap and either
 	/// * The in and out currencies do not match the provided ones, or
 	/// * The collectable amount cannot be incremented by the swap amount
 	///   (should never happen).
 	fn transition_collect(
 		&self,
-		currency_in: Currency,
-		currency_out: Currency,
+		return_currency: Currency,
+		pool_currency: Currency,
 	) -> Result<Self, DispatchError> {
 		ensure!(
 			self.get_active_swap()
-				.map(|swap| (swap.currency_in, swap.currency_out) == (currency_in, currency_out))
+				.map(|swap| (swap.currency_in, swap.currency_out)
+					== (return_currency, pool_currency))
 				.unwrap_or(true),
 			DispatchError::Other("Invalid swap currencies when transitioning collect redemption")
 		);
@@ -595,16 +600,16 @@ where
 			CollectableRedemption { collect_amount } => Ok(Self::ActiveSwapIntoReturnCurrency {
 				swap: Swap {
 					amount: collect_amount,
-					currency_in,
-					currency_out
+					currency_in: return_currency,
+					currency_out: pool_currency,
 				}
 			}),
 			RedeemingAndCollectableRedemption { redeem_amount, collect_amount } => Ok(Self::RedeemingAndActiveSwapIntoReturnCurrency {
 				redeem_amount,
 				swap: Swap {
 					amount: collect_amount,
-					currency_in,
-					currency_out
+					currency_in: return_currency,
+					currency_out: pool_currency,
 				}
 			}),
 			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, collect_amount, swap } => Ok(Self::RedeemingAndActiveSwapIntoReturnCurrency {
@@ -789,7 +794,7 @@ where
 	) -> Result<Self, DispatchError> {
 		match self {
 			Self::NoState | Self::Invested { .. } => Err(DispatchError::Other(
-				"Invalid invest state when transitioning a fulfilled order",
+				"Invalid redeem state when transitioning a fulfilled order",
 			)),
 			Self::NotInvestedAnd { inner } => Ok(Self::NotInvestedAnd {
 				inner: inner.transition_fulfilled_swap_order(swap)?,
@@ -801,6 +806,31 @@ where
 				invest_amount: *invest_amount,
 				inner: inner.transition_fulfilled_swap_order(swap)?,
 			}),
+		}
+	}
+
+	/// Remove `CollectableRedemption` from all inner states which include it.
+	/// Either swap it with `ActiveSwapIntoReturnCurrency` if the inner state
+	/// did not include an active swap or simply drop it.
+	///
+	/// Throws if the state does not allow for collection or the the inner state
+	/// includes an active/done swap with mismatching currencies to the provided
+	/// ones.
+	fn handle_collect(
+		&self,
+		return_currency: Currency,
+		pool_currency: Currency,
+	) -> Result<Self, DispatchError> {
+		match self {
+			RedeemState::NoState | RedeemState::Invested { .. } => Err(DispatchError::Other(
+				"Invalid redeem state when transitioning collect",
+			)),
+			RedeemState::NotInvestedAnd { inner } | RedeemState::InvestedAnd { inner, .. } => {
+				Ok(Self::swap_inner_state(
+					&self,
+					inner.transition_collect(return_currency, pool_currency)?,
+				))
+			}
 		}
 	}
 }

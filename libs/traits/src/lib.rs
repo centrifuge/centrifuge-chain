@@ -394,37 +394,46 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Checks whether a currency can be used for buying `InvestmentId`
+	/// Checks whether a currency can be used for buying the given investment.
 	fn accepted_payment_currency(
 		investment_id: Self::InvestmentId,
 		currency: Self::CurrencyId,
 	) -> bool;
 
-	/// Returns, if possible, the current investment amount of who into the
-	/// given investment class
+	/// Returns, if possible, the current investment amount (in pool currency)
+	/// of who into the given investment class.
+	///
+	/// NOTE: Does NOT include any (partially) processed investment from pool
+	/// currency into tranche tokens.
 	fn investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
 
-	/// Updates the current redemption amount of who into the
-	/// investment class to amount.
-	/// Meaning: if amount < previous redemption, then redemption
-	/// will be reduced, and increases in the opposite case.
+	/// Updates the current redemption amount (in tranche tokens) of who into
+	/// the investment class to amount.
+	/// Meaning: if amount < previous redemption, then the redemption
+	/// will be reduced, and increased in the opposite case.
+	///
+	/// NOTE: Redemptions are bound by the processed investment amount.
 	fn update_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Checks whether a currency is accepted as a payout for an `InvestmentId`
+	/// Checks whether a currency is accepted as a payout for the given
+	/// investment.
 	fn accepted_payout_currency(
 		investment_id: Self::InvestmentId,
 		currency: Self::CurrencyId,
 	) -> bool;
 
-	/// Returns, if possible, the current redemption amount of who into the
-	/// given investment class
+	/// Returns, if possible, the current redemption amount (in tranche tokens)
+	/// of who into the given investment class.
+	///
+	/// NOTE: Does NOT include any (partially) processed redemption from tranche
+	/// tokens into pool currency.
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
@@ -729,49 +738,54 @@ pub trait TokenSwaps<AccountId> {
 	fn is_active(order: Self::OrderId) -> bool;
 }
 
+/// Trait to handle investments in (presumably) foreign currencies, i.e., other
+/// currencies than the pool currency.
+///
+/// NOTE: Has many similarities with the [Investment] trait.
 pub trait ForeignInvestment<AccountId> {
 	type Amount;
 	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
 
-	/// Initiates the update of a foreign investment amount in `return_currency`
-	/// of who into the investment class `pool_currency` to amount.
+	/// Initiates the increment of a foreign investment amount in
+	/// `return_currency` of who into the investment class `pool_currency` to
+	/// amount.
 	///
-	/// In general, we can assume that return and pool currency mismatch and
-	/// that swapping one into the other happens asynchronously. In that case,
-	/// the finalization of updating the investment needs to be handled
-	/// decoupled from the ForeignInvestment trait.
-	///
-	/// NOTE: In practice, Consumers such as Connectors should call
-	/// this function instead of `Investment::update_investment` as this
-	/// implementation accounts for (potentially) splitting the update into two
-	/// stages. The second stage is resolved by
-	/// acting upon `StatusNotificationHook::notify_status_change` which is sent
-	/// by `TokenSwaps` trait implementor.
-	fn update_foreign_invest_order(
+	/// NOTE: In general, we can assume that the return and pool currencies
+	/// mismatch and that swapping one into the other happens asynchronously. In
+	/// that case, the finalization of updating the investment needs to be
+	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
+	fn increase_foreign_investment(
 		who: &AccountId,
-		return_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
-	/// Initiates the update of a foreign redemption amount from `pool_currency`
-	/// of who into `return_currency` to amount.
+	/// Initiates the decrement of a foreign investment amount in
+	/// `return_currency` of who into the investment class `pool_currency` to
+	/// amount.
 	///
-	/// In general, we can assume that return and pool currency mismatch and
-	/// that swapping one into the other happens asynchronously. In that case,
-	/// the finalization of updating the redemption needs to be handled
-	/// decoupled from the ForeignInvestment trait.
+	/// NOTE: In general, we can assume that the return and pool currencies
+	/// mismatch and that swapping one into the other happens asynchronously. In
+	/// that case, the finalization of updating the investment needs to be
+	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
+	fn decrease_foreign_investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+	) -> Result<(), Self::Error>;
+
+	/// Initiates the increment of a foreign redemption amount from
+	/// `pool_currency` of who into `return_currency` to amount.
 	///
-	/// NOTE: In practice, Consumers such as Connectors should call
-	/// this function instead of `Investment::update_redemption` as this
-	/// implementation accounts for (potentially) splitting the update into two
-	/// stages. The second stage is resolved by
-	/// acting upon `StatusNotificationHook::notify_status_change` which is sent
-	/// by `TokenSwaps` trait implementor.
-	fn update_foreign_redemption(
+	/// NOTE: The incrementing redemption amount is bound by the processed
+	/// investment amount.
+	fn increase_foreign_redemption(
 		who: &AccountId,
 		// TODO: Check if we do not require them if can be derived in CollectRedeemOrder
 		// return_currency: Self::CurrencyId,
@@ -780,21 +794,73 @@ pub trait ForeignInvestment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	// TODO: Docs
+	/// Initiates the decrement of a foreign redemption amount from
+	/// `pool_currency` of who into `return_currency` to amount.
+	///
+	/// NOTE: The decrementing redemption amount is bound by the previously
+	/// incremented redemption amount.
+	fn decrease_foreign_redemption(
+		who: &AccountId,
+		// TODO: Check if we do not require them if can be derived in CollectRedeemOrder
+		// return_currency: Self::CurrencyId,
+		// pool_currency: Self::CurrencyId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Collect the results of a user's foreign invest orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
 	fn collect_foreign_investment(
 		who: &AccountId,
-		return_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
 	) -> Result<(), Self::Error>;
 
-	// TODO: Docs
+	/// Collect the results of a user's foreign redeem orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	///
+	/// NOTE: The currency of the collected amount will be `pool_currency`
+	/// whereas the user eventually wants to receive it in `return_currency`.
 	fn collect_foreign_redemption(
 		who: &AccountId,
+		investment_id: Self::InvestmentId,
 		return_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
-		investment_id: Self::InvestmentId,
 	) -> Result<(), Self::Error>;
+
+	/// Returns, if possible, the current investment amount (in pool currency)
+	/// of who into the given investment class.
+	///
+	/// NOTE: Does NOT include any (partially) processed investment from pool
+	/// currency into tranche tokens.
+	fn investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+
+	/// Returns, if possible, the current redemption amount (in tranche tokens)
+	/// of who into the given investment class.
+	///
+	/// NOTE: Does NOT include any (partially) processed redemption from tranche
+	/// tokens into pool currency.
+	fn redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+
+	/// Checks whether a currency can be used for buying the given investment.
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
+
+	/// Checks whether a currency is accepted as a payout for the given
+	/// investment.
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool;
 }
 
 pub trait StatusNotificationHook {

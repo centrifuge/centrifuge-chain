@@ -122,7 +122,7 @@ pub mod pallet {
 				Self::AccountId,
 				Error = DispatchError,
 				InvestmentId = Self::InvestmentId,
-				Result = (),
+				Result = Self::Balance,
 			>;
 
 		/// The default sell price limit for token swaps which defines the
