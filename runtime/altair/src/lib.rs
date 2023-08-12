@@ -240,14 +240,14 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
-			RuntimeCall::EVM(_) => false, // Disable all non-root EVM access
-			RuntimeCall::XcmTransactor(method) => match method {
-				// We block this call since it includes Moonbeam trait implementations such
-				// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
-				// arbitrary users calling it.
-				pallet_xcm_transactor::Call::transact_through_derivative { .. } => false,
-				_ => true,
-			},
+			// Disable all non-root EVM access
+			RuntimeCall::EVM(_) => false,
+			// We block this call since it includes Moonbeam trait implementations such
+			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
+			// arbitrary users calling it.
+			RuntimeCall::XcmTransactor(
+				pallet_xcm_transactor::Call::transact_through_derivative { .. },
+			) => false,
 			_ => true,
 		}
 	}
