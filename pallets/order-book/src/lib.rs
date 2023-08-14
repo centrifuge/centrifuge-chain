@@ -488,21 +488,19 @@ pub mod pallet {
 				sell_price_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMinPrice
 			);
-			let currency_in_meta =
-				T::AssetRegistry::metadata(&currency_in).ok_or(Error::<T>::InvalidAssetId)?;
-			let currency_out_meta =
-				T::AssetRegistry::metadata(&currency_out).ok_or(Error::<T>::InvalidAssetId)?;
 
-			let in_decimals = currency_in_meta.decimals;
+			let in_decimals = T::AssetRegistry::metadata(&currency_in)
+				.ok_or(Error::<T>::InvalidAssetId)?
+				.decimals;
 
-			let out_decimals = currency_out_meta.decimals;
+			let out_decimals = T::AssetRegistry::metadata(&currency_out)
+				.ok_or(Error::<T>::InvalidAssetId)?
+				.decimals;
 
 			<OrderIdNonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::OrderIdNonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
-			let max_sell_amount_0 = sell_price_limit.ensure_mul_int(buy_amount)?;
-			// let max_sell_amount_1 = buy_amount.ensure_mul_int(sell_price_limit)?;
 			let max_sell_amount = convert_balance_decimals(
 				in_decimals,
 				out_decimals,
