@@ -91,6 +91,6 @@ impl pallet_ethereum_transaction::Config for crate::Runtime {
 }
 
 impl axelar_gateway_precompile::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
 }
