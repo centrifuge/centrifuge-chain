@@ -455,6 +455,22 @@ pub mod pallet {
 			};
 			Ok(())
 		}
+
+		pub fn convert_with_ratio(
+			currency_from: T::AssetCurrencyId,
+			currency_to: T::AssetCurrencyId,
+			ratio: T::SellRatio,
+			amount: T::Balance,
+		) -> Result<T::Balance, DispatchError> {
+			let from_decimals = T::AssetRegistry::metadata(&currency_from)
+				.ok_or(Error::<T>::InvalidAssetId)?
+				.decimals;
+
+			let to_decimals = T::AssetRegistry::metadata(&currency_to)
+				.ok_or(Error::<T>::InvalidAssetId)?
+				.decimals;
+			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
@@ -489,23 +505,13 @@ pub mod pallet {
 				Error::<T>::InvalidMinPrice
 			);
 
-			let in_decimals = T::AssetRegistry::metadata(&currency_in)
-				.ok_or(Error::<T>::InvalidAssetId)?
-				.decimals;
-
-			let out_decimals = T::AssetRegistry::metadata(&currency_out)
-				.ok_or(Error::<T>::InvalidAssetId)?
-				.decimals;
-
 			<OrderIdNonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::OrderIdNonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
-			let max_sell_amount = convert_balance_decimals(
-				in_decimals,
-				out_decimals,
-				sell_price_limit.ensure_mul_int(buy_amount)?,
-			)?;
+
+			let max_sell_amount =
+				Self::convert_with_ratio(currency_in, currency_out, sell_price_limit, buy_amount)?;
 
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
@@ -581,14 +587,22 @@ pub mod pallet {
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != T::Balance::zero(),
+				sell_price_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMinPrice
 			);
 
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
-				let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+				// let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+
+				let max_sell_amount = Self::convert_with_ratio(
+					order.asset_in_id,
+					order.asset_out_id,
+					sell_price_limit,
+					buy_amount,
+				)?;
+
 				// ensure proper amount can be, and is reserved of outgoing currency for updated
 				// order.
 				// Also minimise reserve/unreserve operations.
@@ -637,7 +651,12 @@ pub mod pallet {
 				order_id,
 				|maybe_order| -> DispatchResult {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
-					let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+					let max_sell_amount = Self::convert_with_ratio(
+						order.asset_in_id,
+						order.asset_out_id,
+						sell_price_limit,
+						buy_amount,
+					)?;
 					order.buy_amount = buy_amount;
 					order.price = sell_price_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
