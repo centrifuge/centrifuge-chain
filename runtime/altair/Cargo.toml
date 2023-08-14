@@ -100,6 +100,7 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # our custom pallets
+axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -138,6 +139,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [features]
 default = ["std"]
 std = [
+  "axelar-gateway-precompile/std",
   "log/std",
   "serde/std",
   "cfg-primitives/std",
@@ -145,7 +147,7 @@ std = [
   "codec/std",
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-parachain-system/std",
-  "cumulus-pallet-session-benchmarking?/std",
+  "cumulus-pallet-session-benchmarking/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
   "cumulus-primitives-timestamp/std",
@@ -240,6 +242,7 @@ std = [
   "xcm-primitives/std",
 ]
 runtime-benchmarks = [
+  "axelar-gateway-precompile/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
@@ -305,6 +308,7 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
+  "axelar-gateway-precompile/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-primitives/try-runtime",

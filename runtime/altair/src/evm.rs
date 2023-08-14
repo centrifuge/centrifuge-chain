@@ -10,12 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{AccountId, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
+use frame_system::EnsureRoot;
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
-	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
+	evm::{precompile::Altair, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
@@ -42,7 +43,7 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
+	pub PrecompilesValue: Altair<crate::Runtime> = Altair::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
 }
 
@@ -58,7 +59,7 @@ impl pallet_evm::Config for crate::Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = CentrifugePrecompiles<Self>;
+	type PrecompilesType = Altair<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;
@@ -87,4 +88,9 @@ impl pallet_ethereum::Config for crate::Runtime {
 
 impl pallet_ethereum_transaction::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
+}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AdminOrigin = EnsureRoot<AccountId>;
 }

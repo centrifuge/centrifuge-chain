@@ -192,6 +192,7 @@ dependencies = [
 name = "altair-runtime"
 version = "0.10.28"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
