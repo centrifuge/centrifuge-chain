@@ -39,7 +39,7 @@ pub mod pallet {
 
 	use core::fmt::Debug;
 
-	use cfg_primitives::conversion::fixed_point_to_balance;
+	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::fees::Fees;
 	use cfg_types::tokens::CustomMetadata;
 	use codec::{Decode, Encode, MaxEncodedLen};
@@ -54,34 +54,25 @@ pub mod pallet {
 		MultiCurrency, MultiReservableCurrency,
 	};
 	use scale_info::TypeInfo;
-	use sp_core::MaxEncodedLen;
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureMul, EnsureSub,
-			MaybeSerializeDeserialize, One, Zero,
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
+			EnsureInto, EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One,
+			Saturating, Zero,
 		},
-		FixedPointNumber, FixedPointOperand, TypeId,
+		ArithmeticError, FixedPointNumber, FixedPointOperand, TypeId,
 	};
 
 	use super::*;
-
-	/// Balance type for the reserve/deposit made when creating an Allowance
-	pub type BalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
 
 	/// Order of pallet config type
 	pub type OrderOf<T> = Order<
 		<T as Config>::OrderIdNonce,
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::AssetCurrencyId,
-		BalanceOf<T>,
-		<T as Config>::SellPrice,
+		<T as Config>::Balance,
+		<T as Config>::SellRatio,
 	>;
-
-	pub type FeeBalance<T> = <<T as Config>::ReserveCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -98,7 +89,7 @@ pub mod pallet {
 		/// Asset registry for foreign currencies we can take orders for.
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = Self::AssetCurrencyId,
-			Balance = BalanceOf<Self>,
+			Balance = Self::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
 
@@ -124,7 +115,7 @@ pub mod pallet {
 		/// Uses default balance type as opposed to ForeignCurrencyBalance
 		type Fees: Fees<
 			AccountId = <Self as frame_system::Config>::AccountId,
-			Balance = BalanceOf<Self>,
+			Balance = Self::Balance,
 		>;
 
 		/// Fee Key used to find amount for allowance reserve/unreserve
@@ -150,16 +141,25 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
+		/// Balance type
+		type Balance: Member
+			+ Parameter
+			+ FixedPointOperand
+			+ EnsureMul
+			+ EnsureDiv
+			+ TypeInfo
+			+ MaxEncodedLen;
+
 		/// Type for currency orders can be made for
 		type TradeableAsset: MultiReservableCurrency<
 			Self::AccountId,
-			Balance = BalanceOf<Self>,
+			Balance = Self::Balance,
 			CurrencyId = Self::AssetCurrencyId,
 		>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
-		type SellPrice: Parameter
+		type SellRatio: Parameter
 			+ Member
 			+ FixedPointNumber
 			+ EnsureMul
@@ -181,7 +181,7 @@ pub mod pallet {
 	/// Order Storage item.
 	/// Contains fields relevant to order information
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, SellPrice> {
+	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, SellRatio> {
 		pub order_id: OrderId,
 		pub placing_account: AccountId,
 		pub asset_in_id: AssetId,
@@ -192,7 +192,7 @@ pub mod pallet {
 		pub initial_buy_amount: ForeignCurrencyBalance,
 		/// How much currency being purchased (asset in) costs with asset sold
 		/// (asset out)
-		pub price: SellPrice,
+		pub price: SellRatio,
 		/// Minimum amount of an order that can be fulfilled
 		/// for partial fulfillment
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
@@ -254,9 +254,9 @@ pub mod pallet {
 			creator_account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			buy_amount: BalanceOf<T>,
-			min_fullfillment_amount: BalanceOf<T>,
-			sell_price_limit: BalanceOf<T>,
+			buy_amount: T::Balance,
+			min_fullfillment_amount: T::Balance,
+			sell_price_limit: T::SellRatio,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -267,9 +267,9 @@ pub mod pallet {
 		OrderUpdated {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
-			buy_amount: BalanceOf<T>,
-			sell_price_limit: BalanceOf<T>,
-			min_fullfillment_amount: BalanceOf<T>,
+			buy_amount: T::Balance,
+			sell_price_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
 		},
 		/// Event emitted when an order is fulfilled.
 		/// Can be for either partial or total fulfillment.
@@ -280,10 +280,10 @@ pub mod pallet {
 			placing_account: T::AccountId,
 			fulfilling_account: T::AccountId,
 			partial_fulfillment: bool,
-			fulfillment_amount: BalanceOf<T>,
+			fulfillment_amount: T::Balance,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			sell_price_limit: BalanceOf<T>,
+			sell_price_limit: T::SellRatio,
 		},
 	}
 
@@ -336,8 +336,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,
-			buy_amount: BalanceOf<T>,
-			price: BalanceOf<T>,
+			buy_amount: T::Balance,
+			price: T::SellRatio,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			Self::place_order(
@@ -375,8 +375,7 @@ pub mod pallet {
 			// maybe move to ensure if we don't need these later
 			// might need decimals from currency, but should hopefully be able to use FP
 			// price/amounts from FP balance
-
-			let sell_amount = order.buy_amount.ensure_mul(order.price)?;
+			let sell_amount = order.price.ensure_mul_int(order.buy_amount)?;
 
 			ensure!(
 				T::TradeableAsset::can_reserve(order.asset_in_id, &account_id, order.buy_amount),
@@ -425,12 +424,10 @@ pub mod pallet {
 		}
 
 		/// Get reserve amount when fee and out currency are the same
-		pub fn get_combined_reserve(
-			sell_amount: BalanceOf<T>,
-		) -> Result<FeeBalance<T>, DispatchError> {
+		pub fn get_combined_reserve(sell_amount: T::Balance) -> Result<T::Balance, DispatchError> {
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 
-			let sell_reserve_balance: FeeBalance<T> = sell_amount
+			let sell_reserve_balance: T::Balance = sell_amount
 				.try_into()
 				.map_err(|_| Error::<T>::BalanceConversionErr)?;
 			Ok(sell_reserve_balance.ensure_add(fee_amount)?)
@@ -461,9 +458,10 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
 	{
-		type Balance = BalanceOf<T>;
+		type Balance = T::Balance;
 		type CurrencyId = T::AssetCurrencyId;
 		type OrderId = T::OrderIdNonce;
+		type SellRatio = T::SellRatio;
 
 		/// Creates an order.
 		/// Verify funds available in, and reserve for  both chains fee currency
@@ -473,33 +471,36 @@ pub mod pallet {
 			account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			buy_amount: BalanceOf<T>,
-			sell_price_limit: BalanceOf<T>,
-			min_fullfillment_amount: BalanceOf<T>,
+			buy_amount: T::Balance,
+			sell_price_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
 		) -> Result<Self::OrderId, DispatchError> {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
-				buy_amount != <BalanceOf<T>>::zero(),
+				buy_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != <BalanceOf<T>>::zero(),
+				sell_price_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMinPrice
 			);
-			ensure!(
-				T::AssetRegistry::metadata(&currency_in).is_some(),
-				Error::<T>::InvalidAssetId
-			);
-			ensure!(
-				T::AssetRegistry::metadata(&currency_out).is_some(),
-				Error::<T>::InvalidAssetId
-			);
+			let currency_in_meta =
+				T::AssetRegistry::metadata(&currency_in).ok_or(Error::<T>::InvalidAssetId)?;
+			let currency_out_meta =
+				T::AssetRegistry::metadata(&currency_out).ok_or(Error::<T>::InvalidAssetId)?;
+
+			let in_decimals = currency_in_meta.decimals;
+
+			let out_decimals = currency_out_meta.decimals;
+
 			<OrderIdNonceStore<T>>::try_mutate(|n| {
 				*n = n.ensure_add(T::OrderIdNonce::one())?;
 				Ok::<_, DispatchError>(())
 			})?;
-			let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+			let max_sell_amount_0 = sell_price_limit.ensure_mul_int(buy_amount)?;
+			// let max_sell_amount_1 = buy_amount.ensure_mul_int(sell_price_limit)?;
+			let max_sell_amount = sell_price_limit.ensure_mul_int(buy_amount)?;
 
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
@@ -566,16 +567,16 @@ pub mod pallet {
 		fn update_order(
 			account: T::AccountId,
 			order_id: Self::OrderId,
-			buy_amount: BalanceOf<T>,
-			sell_price_limit: BalanceOf<T>,
-			min_fullfillment_amount: BalanceOf<T>,
+			buy_amount: T::Balance,
+			sell_price_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
 		) -> DispatchResult {
 			ensure!(
-				buy_amount != BalanceOf::<T>::zero(),
+				buy_amount != T::Balance::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != BalanceOf::<T>::zero(),
+				sell_price_limit != T::Balance::zero(),
 				Error::<T>::InvalidMinPrice
 			);
 
@@ -591,7 +592,7 @@ pub mod pallet {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
 						if T::FeeCurrencyId::get() == order.asset_out_id {
-							let sell_reserve_diff_balance: FeeBalance<T> = sell_reserve_diff
+							let sell_reserve_diff_balance: T::Balance = sell_reserve_diff
 								.try_into()
 								.map_err(|_| Error::<T>::BalanceConversionErr)?;
 							T::ReserveCurrency::reserve(&account, sell_reserve_diff_balance)?
@@ -606,7 +607,7 @@ pub mod pallet {
 						let sell_reserve_diff =
 							order.max_sell_amount.ensure_sub(max_sell_amount)?;
 						if T::FeeCurrencyId::get() == order.asset_out_id {
-							let sell_reserve_diff_balance: FeeBalance<T> = sell_reserve_diff
+							let sell_reserve_diff_balance: T::Balance = sell_reserve_diff
 								.try_into()
 								.map_err(|_| Error::<T>::BalanceConversionErr)?;
 							T::ReserveCurrency::unreserve(&account, sell_reserve_diff_balance);

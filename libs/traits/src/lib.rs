@@ -702,6 +702,7 @@ pub trait CurrencyInspect {
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
+	type SellRatio;
 	type OrderId;
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
 	/// `currency_out` tokens. The implementator of this method should know
@@ -716,7 +717,7 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		currency_in: Self::CurrencyId,
 		buy_amount: Self::Balance,
-		sell_price_limit: Self::Balance,
+		sell_price_limit: Self::SellRatio,
 		min_fullfillment_amount: Self::Balance,
 	) -> Result<Self::OrderId, DispatchError>;
 
@@ -729,7 +730,7 @@ pub trait TokenSwaps<Account> {
 		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
-		sell_price_limit: Self::Balance,
+		sell_price_limit: Self::SellRatio,
 		min_fullfillment_amount: Self::Balance,
 	) -> DispatchResult;
 
