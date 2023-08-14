@@ -27,8 +27,10 @@ use crate::EVMChainId;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling
-	/// incoming messages. NOTE: messages CAN NOT be sent directly
-	/// from the Centrifuge chain to the Centrifuge chain itself.
+	/// incoming messages.
+	///
+	/// NOTE: messages CAN NOT be sent directly from the Centrifuge chain to the
+	/// Centrifuge chain itself.
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),

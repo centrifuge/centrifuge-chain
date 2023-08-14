@@ -13,7 +13,7 @@
 use ethabi::{Bytes, Contract};
 use sp_std::{vec, vec::Vec};
 
-/// The solidity LiquidityPool's XCMRouter handle function name.
+/// The solidity LiquidityPools' XCMRouter handle function name.
 static HANDLE_FUNCTION: &str = "handle";
 
 /// Return the encoded contract call, i.e,

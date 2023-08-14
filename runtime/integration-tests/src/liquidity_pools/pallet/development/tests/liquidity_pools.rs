@@ -1802,7 +1802,7 @@ mod utils {
 					seniority: None,
 					metadata: TrancheMetadata {
 						// NOTE: For now, we have to set these metadata fields of the first tranche
-						// to be convertible to the 32-byte size expected by the liquidityPools
+						// to be convertible to the 32-byte size expected by the liquidity pools
 						// AddTranche message.
 						token_name: BoundedVec::<
 							u8,
