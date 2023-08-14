@@ -1856,11 +1856,6 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
-impl axelar_gateway_precompile::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
