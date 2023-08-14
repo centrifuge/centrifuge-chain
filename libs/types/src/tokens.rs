@@ -244,7 +244,7 @@ pub struct CustomMetadata {
 
 /// The Cross Chain Transferability property of an asset describes the way(s),
 /// if any, that said asset is cross-chain transferable. It may currently be
-/// transferable through Xcm, Centrifuge Connectors, or All .
+/// transferable through Xcm, Centrifuge Liquidity Pools, or All .
 ///
 /// NOTE: Once set to `All`, the asset is automatically transferable through any
 /// eventual new option added at a later stage. A migration might be required if
@@ -272,8 +272,8 @@ pub enum CrossChainTransferability {
 	/// The asset is only transferable through XCM
 	Xcm(XcmMetadata),
 
-	/// The asset is only transferable through Centrifuge Connectors
-	Connectors,
+	/// The asset is only transferable through Centrifuge Liquidity Pools
+	LiquidityPools,
 
 	/// The asset is transferable through all available options
 	All(XcmMetadata),
@@ -284,21 +284,21 @@ impl CrossChainTransferability {
 		matches!(self, Self::Xcm(..) | Self::All(..))
 	}
 
-	pub fn includes_connectors(self) -> bool {
-		matches!(self, Self::Connectors | Self::All(..))
+	pub fn includes_liquidity_pools(self) -> bool {
+		matches!(self, Self::LiquidityPools | Self::All(..))
 	}
 }
 
-/// Connectors-wrapped tokens
+/// Liquidity Pools-wrapped tokens
 ///
-/// Currently, Connectors are only deployed on EVM-based chains and therefore
-/// we only support EVM tokens. In the far future, we might support wrapped
-/// tokens from other chains such as Cosmos based ones.
+/// Currently, LiquidityPools are only deployed on EVM-based chains and
+/// therefore we only support EVM tokens. In the far future, we might support
+/// wrapped tokens from other chains such as Cosmos based ones.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ConnectorsWrappedToken {
+pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {
 		/// The EVM chain id where the token is deployed
