@@ -78,22 +78,30 @@ pub fn convert_balance_decimals<
 	to: Precision,
 	balance: Balance,
 ) -> Result<Balance, DispatchError> {
+	// Ok(..?) has more succinct error conversion to dispatch error
 	match from {
 		from if from == to => Ok(balance),
-		from if to > from => Ok(ensure_pow(
-			Balance::from(10),
-			to.ensure_sub(from)?
-				.try_into()
-				.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
-		)?
-		.ensure_mul(balance)?),
-		from => Ok(balance.ensure_div(ensure_pow(
-			Balance::from(10),
-			from.ensure_sub(to)?
-				.try_into()
-				.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
-		)?)?),
+		from if to > from => {
+			Ok(precision_diff::<Precision, Balance>(to, from)?.ensure_mul(balance)?)
+		}
+		from => Ok(balance.ensure_div(precision_diff::<Precision, Balance>(from, to)?)?),
 	}
+}
+
+fn precision_diff<
+	Precision: AtLeast32BitUnsigned + TryInto<usize>,
+	Balance: BaseArithmetic + Copy,
+>(
+	gt: Precision,
+	lt: Precision,
+) -> Result<Balance, DispatchError> {
+	// Ok(..?) has more succinct error conversion to dispatch error
+	Ok(ensure_pow(
+		Balance::from(10),
+		gt.ensure_sub(lt)?
+			.try_into()
+			.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
+	)?)
 }
 
 #[cfg(test)]
