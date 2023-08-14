@@ -40,7 +40,13 @@ const SHA3FIPS256_ADDR: Addr = addr(1024);
 const DISPATCH_ADDR: Addr = addr(1025);
 const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
 // 2048-XXXX: Nonstandard precompiles that are specific to our chain.
-// This section intentionally left blank
+
+/// The address of our local Axelar gateway. This is the address that
+/// Liquidity-Pool contracts on other domains must use in order to hit the
+/// Liquidity-Pool logic on centrifuge.
+///
+/// The precompile implements
+const LP_AXELAR_GATEWAY: Addr = addr(2048);
 
 pub struct CentrifugePrecompiles<R>(PhantomData<R>);
 
@@ -76,21 +82,52 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		[
-			ECRECOVER_ADDR,
-			SHA256_ADDR,
-			RIPEMD160_ADDR,
-			IDENTITY_ADDR,
-			MODEXP_ADDR,
-			BN128ADD_ADDR,
-			BN128MUL_ADDR,
-			BN128PAIRING_ADDR,
-			BLAKE2F_ADDR,
-			SHA3FIPS256_ADDR,
-			DISPATCH_ADDR,
-			ECRECOVERPUBLICKEY_ADDR,
-		]
-		.contains(&address.0)
+		matches!(
+			address.0,
+			ECRECOVER_ADDR
+				| SHA256_ADDR | RIPEMD160_ADDR
+				| IDENTITY_ADDR | MODEXP_ADDR
+				| BN128ADD_ADDR | BN128MUL_ADDR
+				| BN128PAIRING_ADDR
+				| BLAKE2F_ADDR | SHA3FIPS256_ADDR
+				| DISPATCH_ADDR | ECRECOVERPUBLICKEY_ADDR
+		)
+	}
+}
+
+/// A set of precompiles. This set might contain
+/// not yet mainnet ready precompiles in order to test
+/// those in development or staging environment without touching
+/// the mainnet set.
+pub struct Development<R>(CentrifugePrecompiles<R>);
+
+impl<R> Development<R> {
+	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
+	pub fn new() -> Self {
+		Self(CentrifugePrecompiles::new())
+	}
+}
+
+impl<R> PrecompileSet for Development<R>
+where
+	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
+	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
+	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
+	axelar_gateway_precompile::Pallet<R>: Precompile,
+{
+	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
+		self.0
+			.execute(handle)
+			.or_else(|| match handle.code_address().0 {
+				LP_AXELAR_GATEWAY => {
+					Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
+				}
+				_ => None,
+			})
+	}
+
+	fn is_precompile(&self, address: H160) -> bool {
+		self.0.is_precompile(address) | matches!(address.0, LP_AXELAR_GATEWAY)
 	}
 }
 
@@ -99,6 +136,10 @@ where
 // internal array of bytes that an H160 wraps.
 type Addr = [u8; 20];
 
+// This is a reimplementation of the upstream u64->H160 conversion
+// function, made `const` to make our precompile address `const`s a
+// bit cleaner. It can be removed when upstream has a const conversion
+// function.
 const fn addr(a: u64) -> Addr {
 	let b = a.to_be_bytes();
 	[

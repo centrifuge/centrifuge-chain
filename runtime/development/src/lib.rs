@@ -1856,6 +1856,11 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1949,6 +1954,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		ConnectorsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

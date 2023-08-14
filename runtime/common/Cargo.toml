@@ -54,6 +54,7 @@ fp-self-contained = { git = "https://github.com/PureStake/frontier", default-fea
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 # Local Dependencies
+axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -107,6 +108,7 @@ std = [
   "xcm/std",
   "fp-self-contained/std",
   "xcm-primitives/std",
+  "axelar-gateway-precompile/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -126,6 +128,7 @@ runtime-benchmarks = [
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -154,4 +157,5 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "fp-self-contained/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
 ]

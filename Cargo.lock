@@ -583,6 +583,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "axelar-gateway-precompile"
+version = "0.1.0"
+dependencies = [
+ "cfg-types",
+ "ethabi 18.0.0",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-connectors-gateway",
+ "pallet-evm",
+ "parity-scale-codec 3.4.0",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,7 +1582,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cumulus-primitives-core",
- "ethabi",
+ "ethabi 16.0.0",
  "frame-support",
  "frame-system",
  "orml-traits",
@@ -2643,6 +2664,7 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.20"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -3086,6 +3108,20 @@ dependencies = [
  "ethereum-types 0.12.1",
  "hex",
  "sha3 0.9.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "ethabi"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
+dependencies = [
+ "ethereum-types 0.14.1",
+ "hex",
+ "serde",
+ "sha3 0.10.6",
  "thiserror",
  "uint",
 ]
@@ -7081,7 +7117,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "ethabi",
+ "ethabi 16.0.0",
  "fp-self-contained",
  "frame-benchmarking",
  "frame-support",
@@ -10880,6 +10916,7 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -14614,7 +14651,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.2.3",
+ "rustc_version 0.4.0",
 ]
 
 [[package]]
