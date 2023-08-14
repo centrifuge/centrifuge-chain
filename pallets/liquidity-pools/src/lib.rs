@@ -647,7 +647,7 @@ pub mod pallet {
 
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
-		#[pallet::call_index(90)]
+		#[pallet::call_index(9)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		pub fn allow_pool_currency(
 			origin: OriginFor<T>,
