@@ -54,6 +54,7 @@ pub mod pallet {
 		MultiCurrency, MultiReservableCurrency,
 	};
 	use scale_info::TypeInfo;
+	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
@@ -107,7 +108,8 @@ pub mod pallet {
 
 		/// Currency for Reserve/Unreserve with allowlist adding/removal,
 		/// given that the allowlist will be in storage
-		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type ReserveCurrency: Currency<Self::AccountId, Balance = Self::Balance>
+			+ ReservableCurrency<Self::AccountId>;
 
 		/// Fee handler for the reserve/unreserve
 		/// Currently just stores the amounts, will be extended to handle
@@ -145,6 +147,7 @@ pub mod pallet {
 		type Balance: Member
 			+ Parameter
 			+ FixedPointOperand
+			+ BaseArithmetic
 			+ EnsureMul
 			+ EnsureDiv
 			+ TypeInfo
@@ -500,7 +503,11 @@ pub mod pallet {
 			})?;
 			let max_sell_amount_0 = sell_price_limit.ensure_mul_int(buy_amount)?;
 			// let max_sell_amount_1 = buy_amount.ensure_mul_int(sell_price_limit)?;
-			let max_sell_amount = sell_price_limit.ensure_mul_int(buy_amount)?;
+			let max_sell_amount = convert_balance_decimals(
+				in_decimals,
+				out_decimals,
+				sell_price_limit.ensure_mul_int(buy_amount)?,
+			)?;
 
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
