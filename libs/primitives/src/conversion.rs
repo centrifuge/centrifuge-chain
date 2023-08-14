@@ -1,7 +1,8 @@
 use sp_arithmetic::{
-	traits::{ensure_pow, BaseArithmetic},
+	traits::{ensure_pow, AtLeast32BitUnsigned, BaseArithmetic},
 	ArithmeticError, FixedPointNumber,
 };
+use sp_runtime::DispatchError;
 
 /// Transform a fixed point number to a Balance.
 /// The resulting Balance will be represented with the `decimals` given.
@@ -66,4 +67,49 @@ pub fn fixed_point_to_balance<
 	};
 
 	new_integer_part.ensure_add(new_frac_part)
+}
+
+// TODO: docstring, readability cleanup & more tests.
+pub fn convert_balance_decimals<
+	Precision: AtLeast32BitUnsigned + TryInto<usize>,
+	Balance: BaseArithmetic + Copy,
+>(
+	from: Precision,
+	to: Precision,
+	balance: Balance,
+) -> Result<Balance, DispatchError> {
+	match from {
+		from if from == to => Ok(balance),
+		from if to > from => Ok(ensure_pow(
+			Balance::from(10),
+			to.ensure_sub(from)?
+				.try_into()
+				.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
+		)?
+		.ensure_mul(balance)?),
+		from => Ok(balance.ensure_div(ensure_pow(
+			Balance::from(10),
+			from.ensure_sub(to)?
+				.try_into()
+				.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
+		)?)?),
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::convert_balance_decimals;
+
+	#[test]
+	fn convert_balance_decimals_works() {
+		assert_eq!(
+			Ok(1_000_000),
+			convert_balance_decimals(3u32, 6u32, 1_000u64)
+		);
+		assert_eq!(Ok(1_000), convert_balance_decimals(3u32, 3u32, 1_000u64));
+		assert_eq!(
+			Ok(1_000),
+			convert_balance_decimals(6u32, 3u32, 1_000_000u64)
+		)
+	}
 }
