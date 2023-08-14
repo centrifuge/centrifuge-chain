@@ -48,23 +48,23 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for Runtime {
-	type FeeCalculator = crate::BaseFee;
-	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
-	type WeightPerGas = WeightPerGas;
+	type AddressMapping = AccountConverter<Runtime>;
+	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressTruncated;
-	type WithdrawOrigin = EnsureAddressTruncated;
-	type AddressMapping = AccountConverter<Runtime>;
-	type Currency = crate::Balances;
-	type RuntimeEvent = RuntimeEvent;
-	type PrecompilesType = Development<Self>;
-	type PrecompilesValue = PrecompilesValue;
 	type ChainId = crate::EVMChainId;
-	type BlockGasLimit = BlockGasLimit;
-	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type Currency = crate::Balances;
+	type FeeCalculator = crate::BaseFee;
+	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type FindAuthor = FindAuthorTruncated<Aura>;
+	type PrecompilesType = Development<Self>;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -75,10 +75,10 @@ parameter_types! {
 }
 
 impl pallet_base_fee::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Threshold = BaseFeeThreshold;
 	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
 	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
 }
 
 impl pallet_ethereum::Config for Runtime {
@@ -91,6 +91,6 @@ impl pallet_ethereum_transaction::Config for Runtime {
 }
 
 impl axelar_gateway_precompile::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
 }
