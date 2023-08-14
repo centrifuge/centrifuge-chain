@@ -51,6 +51,7 @@ pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", 
 fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Local Dependencies
+axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -103,6 +104,7 @@ std = [
   "scale-info/std",
   "xcm/std",
   "fp-self-contained/std",
+  "axelar-gateway-precompile/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -121,6 +123,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -149,4 +152,5 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "fp-self-contained/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
 ]
