@@ -643,7 +643,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
 					// `collect_investments`, `collect_redemptions`
-					// Specifically omitting Connectors
+					// Specifically omitting LiquidityPools
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge

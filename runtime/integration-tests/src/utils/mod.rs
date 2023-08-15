@@ -14,12 +14,12 @@ use cfg_types::tokens::CurrencyId;
 
 pub mod accounts;
 pub mod collective;
-pub mod connectors_gateway;
 pub mod democracy;
 pub mod env;
 pub mod evm;
 pub mod extrinsics;
 pub mod genesis;
+pub mod liquidity_pools_gateway;
 pub mod loans;
 pub mod logs;
 pub mod pools;

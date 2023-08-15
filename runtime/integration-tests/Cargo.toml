@@ -93,12 +93,12 @@ ethereum = { version = "0.14.0", default-features = false }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
-connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers" }
+liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
-pallet-connectors = { path = "../../pallets/connectors" }
-pallet-connectors-gateway = { path = "../../pallets/connectors-gateway" }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
 pallet-investments = { path = "../../pallets/investments" }
+pallet-liquidity-pools = { path = "../../pallets/liquidity-pools" }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }

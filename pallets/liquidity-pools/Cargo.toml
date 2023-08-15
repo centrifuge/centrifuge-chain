@@ -1,0 +1,111 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Centrifuge Liquidity Pools Pallet"
+edition = "2018"
+license = "LGPL-3.0"
+name = "pallet-liquidity-pools"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+ethabi = { version = "16.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+hex = { version = "0.4.3", default_features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+# Substrate crates
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+# Optional dependencies for benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+
+# Our custom pallets
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
+cfg-utils = { path = "../../libs/utils", default-features = false }
+
+# Polkadot
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+
+fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+
+[dev-dependencies]
+hex = "0.4.3"
+serde = { version = "1.0.102" }
+
+# Substrate crates & pallets
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+
+# Orml crates
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+
+[features]
+default = ["std"]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "pallet-balances",
+  "orml-tokens",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+]
+std = [
+  "codec/std",
+  "cfg-types/std",
+  "cfg-traits/std",
+  "cfg-utils/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "orml-tokens/std",
+  "orml-traits/std",
+  "pallet-balances/std",
+  "xcm/std",
+  "pallet-ethereum/std",
+  "xcm-primitives/std",
+  "ethabi/std",
+  "pallet-uniques/std",
+  "cfg-primitives/std",
+  "frame-benchmarking/std",
+  "scale-info/std",
+  "fp-self-contained/std",
+]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "fp-self-contained/try-runtime",
+  "sp-runtime/try-runtime",
+]
