@@ -1010,6 +1010,7 @@ dependencies = [
  "hex-literal 0.2.2",
  "jsonrpsee",
  "log",
+ "orml-traits",
  "pallet-anchors",
  "pallet-pool-system",
  "pallet-transaction-payment",

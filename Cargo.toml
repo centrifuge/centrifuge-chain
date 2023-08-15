@@ -163,6 +163,8 @@ fp-consensus = { git = "https://github.com/PureStake/frontier", default-features
 fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
+
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 vergen = "3.0.4"
@@ -214,6 +216,7 @@ std = [
   "sp-transaction-pool/std",
   "xcm/std",
   "cumulus-pallet-session-benchmarking/std",
+  "orml-traits/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -259,6 +262,7 @@ fast-runtime = [
   "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
   "runtime-integration-tests/fast-runtime",
+
 ]
 
 #
