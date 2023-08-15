@@ -56,6 +56,7 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 		} else if self.id().starts_with("altair")
 			|| self.id().starts_with("charcoal")
 			|| self.id().starts_with("antares")
+			|| self.id().starts_with("algol")
 		{
 			ChainIdentity::Altair
 		} else {
