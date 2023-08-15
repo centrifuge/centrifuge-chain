@@ -187,79 +187,79 @@ fn fill_order_full_works() {
 	});
 }
 
-// #[test]
-// fn fill_order_full_correctly_consolidates_reserves_with_same_out_and_fee_currency() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::create_order_v1(
-// 			RuntimeOrigin::signed(ACCOUNT_0),
-// 			CurrencyId::ForeignAsset(0),
-// 			CurrencyId::Native,
-// 			10,
-// 			Rate::checked_from_rational(21u32, 10u32)?
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		// verify fulfill runs
-// 		assert_ok!(OrderBook::fill_order_full(
-// 			RuntimeOrigin::signed(ACCOUNT_1),
-// 			order_id
-// 		));
-// 		// verify filled order removed
-// 		assert_err!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Error::<Runtime>::OrderNotFound
-// 		);
+#[test]
+fn fill_order_full_correctly_consolidates_reserves_with_same_out_and_fee_currency() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order_v1(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CurrencyId::ForeignAsset(0),
+			CurrencyId::Native,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_rational(3u32, 2u32).unwrap()
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		// verify fulfill runs
+		assert_ok!(OrderBook::fill_order_full(
+			RuntimeOrigin::signed(ACCOUNT_1),
+			order_id
+		));
+		// verify filled order removed
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
 
-// 		assert_err!(
-// 			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
-// 			Error::<Runtime>::OrderNotFound
-// 		);
+		assert_err!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Error::<Runtime>::OrderNotFound
+		);
 
-// 		assert_eq!(
-// 			System::events()[2].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-// 				who: ACCOUNT_0,
-// 				amount: 30
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-// 				currency_id: CurrencyId::ForeignAsset(0),
-// 				to: ACCOUNT_0,
-// 				from: ACCOUNT_1,
-// 				amount: 10
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[4].event,
-// 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-// 				currency_id: CurrencyId::Native,
-// 				to: ACCOUNT_1,
-// 				from: ACCOUNT_0,
-// 				amount: 20
-// 			})
-// 		);
-// 	});
-// }
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 25 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
+				currency_id: CurrencyId::ForeignAsset(0),
+				to: ACCOUNT_0,
+				from: ACCOUNT_1,
+				amount: 10 * CURRENCY_FA0
+			})
+		);
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
+				currency_id: CurrencyId::Native,
+				to: ACCOUNT_1,
+				from: ACCOUNT_0,
+				amount: 15 * CURRENCY_NATIVE
+			})
+		);
+	});
+}
 
-// #[test]
-// fn fill_order_full_checks_asset_in_for_fulfiller() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::create_order_v1(
-// 			RuntimeOrigin::signed(ACCOUNT_0),
-// 			CurrencyId::Native,
-// 			CurrencyId::AUSD,
-// 			400 * CURRENCY_A,
-// 			Rate::checked_from_rational(21u32, 10u32)?
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		// verify fulfill runs
-// 		assert_err!(
-// 			OrderBook::fill_order_full(RuntimeOrigin::signed(ACCOUNT_1), order_id),
-// 			Error::<Runtime>::InsufficientAssetFunds
-// 		);
-// 	});
-// }
+#[test]
+fn fill_order_full_checks_asset_in_for_fulfiller() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order_v1(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CurrencyId::Native,
+			CurrencyId::AUSD,
+			400 * CURRENCY_AUSD,
+			Rate::checked_from_rational(3u32, 2u32).unwrap()
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		// verify fulfill runs
+		assert_err!(
+			OrderBook::fill_order_full(RuntimeOrigin::signed(ACCOUNT_1), order_id),
+			Error::<Runtime>::InsufficientAssetFunds
+		);
+	});
+}
 
 // // TokenSwaps trait impl tests
 // #[test]
