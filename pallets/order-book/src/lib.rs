@@ -502,6 +502,15 @@ pub mod pallet {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
+				buy_amount >= min_fullfillment_amount,
+				Error::<T>::InvalidBuyAmount
+			);
+
+			ensure!(
+				min_fullfillment_amount != <T::Balance>::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
+			ensure!(
 				buy_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
