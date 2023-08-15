@@ -484,93 +484,93 @@ fn place_order_requires_non_zero_price() {
 	})
 }
 
-// #[test]
-// fn cancel_order_works() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::place_order(
-// 			ACCOUNT_0,
-// 			CurrencyId::AUSD,
-// 			CurrencyId::ForeignAsset(0),
-// 			100,
-// 			10,
-// 			100
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		assert_ok!(OrderBook::cancel_order(order_id));
-// 		assert_err!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Error::<Runtime>::OrderNotFound
-// 		);
+#[test]
+fn cancel_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::AUSD,
+			CurrencyId::ForeignAsset(0),
+			100 * CURRENCY_AUSD,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			100 * CURRENCY_AUSD
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::cancel_order(order_id));
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
 
-// 		assert_err!(
-// 			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
-// 			Error::<Runtime>::OrderNotFound
-// 		);
+		assert_err!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Error::<Runtime>::OrderNotFound
+		);
 
-// 		assert_eq!(
-// 			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD,
-// CurrencyId::ForeignAsset(0)), 			vec![]
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-// 				currency_id: CurrencyId::ForeignAsset(0),
-// 				who: ACCOUNT_0,
-// 				amount: 1000
-// 			})
-// 		);
+		assert_eq!(
+			AssetPairOrders::<Runtime>::get(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)),
+			vec![]
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
+				currency_id: CurrencyId::ForeignAsset(0),
+				who: ACCOUNT_0,
+				amount: 150 * CURRENCY_FA0
+			})
+		);
 
-// 		assert_eq!(
-// 			System::events()[4].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-// 				who: ACCOUNT_0,
-// 				amount: 10
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[5].event,
-// 			RuntimeEvent::OrderBook(Event::OrderCancelled {
-// 				order_id,
-// 				account: ACCOUNT_0,
-// 			})
-// 		);
-// 	});
-// }
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 10 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[5].event,
+			RuntimeEvent::OrderBook(Event::OrderCancelled {
+				order_id,
+				account: ACCOUNT_0,
+			})
+		);
+	});
+}
 
-// #[test]
-// fn cancel_unreserves_correctly_when_reserve_out_same() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::place_order(
-// 			ACCOUNT_0,
-// 			CurrencyId::ForeignAsset(0),
-// 			CurrencyId::Native,
-// 			10,
-// 			2,
-// 			10
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		assert_ok!(OrderBook::cancel_order(order_id));
-// 		assert_err!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Error::<Runtime>::OrderNotFound
-// 		);
+#[test]
+fn cancel_unreserves_correctly_when_reserve_out_same() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::ForeignAsset(0),
+			CurrencyId::Native,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			10 * CURRENCY_FA0
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::cancel_order(order_id));
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
 
-// 		assert_eq!(
-// 			System::events()[2].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-// 				who: ACCOUNT_0,
-// 				amount: 30
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrderBook(Event::OrderCancelled {
-// 				order_id,
-// 				account: ACCOUNT_0,
-// 			})
-// 		);
-// 	});
-// }
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				amount: 25 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrderBook(Event::OrderCancelled {
+				order_id,
+				account: ACCOUNT_0,
+			})
+		);
+	});
+}
 
 // #[test]
 // fn update_order_works() {
