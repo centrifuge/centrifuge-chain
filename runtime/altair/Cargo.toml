@@ -100,16 +100,16 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # our custom pallets
-axelar-gateway-precompile = { path = "../../pallets/connectors-gateway/axelar-gateway-precompile", default-features = false }
+axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
-connectors-gateway-routers = { path = "../../pallets/connectors-gateway/routers", default-features = false }
+liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
-pallet-connectors = { path = "../../pallets/connectors", default-features = false }
-pallet-connectors-gateway = { path = "../../pallets/connectors-gateway", default-features = false }
+pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
@@ -128,7 +128,7 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
-# Connectors 3rd-party dependencies
+# LiquidityPools 3rd-party dependencies
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
@@ -173,8 +173,8 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
-  "pallet-connectors/std",
-  "pallet-connectors-gateway/std",
+  "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
@@ -256,8 +256,8 @@ runtime-benchmarks = [
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
-  "pallet-connectors/runtime-benchmarks",
-  "pallet-connectors-gateway/runtime-benchmarks",
+  "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
@@ -339,8 +339,8 @@ try-runtime = [
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",
-  "pallet-connectors/try-runtime",
-  "pallet-connectors-gateway/try-runtime",
+  "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-crowdloan-claim/try-runtime",
   "pallet-crowdloan-reward/try-runtime",
   "pallet-data-collector/try-runtime",
