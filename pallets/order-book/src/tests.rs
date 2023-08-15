@@ -340,6 +340,56 @@ fn place_order_works() {
 }
 
 #[test]
+fn place_order_bases_max_sell_off_buy() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::AUSD,
+			CurrencyId::ForeignAsset(0),
+			100 * CURRENCY_AUSD,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			10 * CURRENCY_AUSD
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::AUSD,
+				asset_out_id: CurrencyId::ForeignAsset(0),
+				buy_amount: 100 * CURRENCY_AUSD,
+				initial_buy_amount: 100 * CURRENCY_AUSD,
+				price: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				min_fullfillment_amount: 10 * CURRENCY_AUSD,
+				max_sell_amount: 150 * CURRENCY_FA0
+			})
+		);
+
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::ForeignAsset(0),
+				who: ACCOUNT_0,
+				amount: 150 * CURRENCY_FA0
+			})
+		);
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::OrderBook(Event::OrderCreated {
+				order_id: order_id,
+				creator_account: ACCOUNT_0,
+				currency_in: CurrencyId::AUSD,
+				currency_out: CurrencyId::ForeignAsset(0),
+				buy_amount: 100 * CURRENCY_AUSD,
+				min_fullfillment_amount: 10 * CURRENCY_AUSD,
+				sell_price_limit: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			})
+		);
+	})
+}
+
+#[test]
 fn place_order_consolidates_reserve_when_fee_matches_out() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
@@ -572,135 +622,147 @@ fn cancel_unreserves_correctly_when_reserve_out_same() {
 	});
 }
 
-// #[test]
-// fn update_order_works() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::place_order(
-// 			ACCOUNT_0,
-// 			CurrencyId::AUSD,
-// 			CurrencyId::ForeignAsset(0),
-// 			100,
-// 			10,
-// 			100
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		assert_ok!(OrderBook::update_order(ACCOUNT_0, order_id, 110, 20, 110));
-// 		assert_eq!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Ok(Order {
-// 				order_id: order_id,
-// 				placing_account: ACCOUNT_0,
-// 				asset_in_id: CurrencyId::AUSD,
-// 				asset_out_id: CurrencyId::ForeignAsset(0),
-// 				buy_amount: 110,
-// 				initial_buy_amount: 100,
-// 				price: 20,
-// 				min_fullfillment_amount: 110,
-// 				max_sell_amount: 2200
-// 			})
-// 		);
+#[test]
+fn update_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::AUSD,
+			CurrencyId::ForeignAsset(0),
+			10 * CURRENCY_AUSD,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			5 * CURRENCY_AUSD
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(
+			ACCOUNT_0,
+			order_id,
+			15 * CURRENCY_AUSD,
+			Rate::checked_from_integer(2u32).unwrap(),
+			6 * CURRENCY_AUSD
+		));
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::AUSD,
+				asset_out_id: CurrencyId::ForeignAsset(0),
+				buy_amount: 15 * CURRENCY_AUSD,
+				initial_buy_amount: 10 * CURRENCY_AUSD,
+				price: Rate::checked_from_integer(2u32).unwrap(),
+				min_fullfillment_amount: 6 * CURRENCY_AUSD,
+				max_sell_amount: 30 * CURRENCY_FA0
+			})
+		);
 
-// 		assert_eq!(
-// 			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
-// 			Ok(Order {
-// 				order_id: order_id,
-// 				placing_account: ACCOUNT_0,
-// 				asset_in_id: CurrencyId::AUSD,
-// 				asset_out_id: CurrencyId::ForeignAsset(0),
-// 				buy_amount: 110,
-// 				initial_buy_amount: 100,
-// 				price: 20,
-// 				min_fullfillment_amount: 110,
-// 				max_sell_amount: 2200
-// 			})
-// 		);
+		assert_eq!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CurrencyId::AUSD,
+				asset_out_id: CurrencyId::ForeignAsset(0),
+				buy_amount: 15 * CURRENCY_AUSD,
+				initial_buy_amount: 10 * CURRENCY_AUSD,
+				price: Rate::checked_from_integer(2u32).unwrap(),
+				min_fullfillment_amount: 6 * CURRENCY_AUSD,
+				max_sell_amount: 30 * CURRENCY_FA0
+			})
+		);
 
-// 		assert_eq!(
-// 			System::events()[1].event,
-// 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-// 				currency_id: CurrencyId::ForeignAsset(0),
-// 				who: ACCOUNT_0,
-// 				// order create reserve
-// 				amount: 1000
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-// 				currency_id: CurrencyId::ForeignAsset(0),
-// 				who: ACCOUNT_0,
-// 				// update reserve additional 1200 needed to cover new price and amount
-// 				amount: 1200
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[4].event,
-// 			RuntimeEvent::OrderBook(Event::OrderUpdated {
-// 				order_id,
-// 				account: ACCOUNT_0,
-// 				buy_amount: 110,
-// 				min_fullfillment_amount: 110,
-// 				sell_price_limit: 20
-// 			})
-// 		);
-// 	})
-// }
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::ForeignAsset(0),
+				who: ACCOUNT_0,
+				// order create reserve
+				amount: 15 * CURRENCY_FA0
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: CurrencyId::ForeignAsset(0),
+				who: ACCOUNT_0,
+				// update reserve additional 15 needed to cover new price and amount
+				amount: 15 * CURRENCY_FA0
+			})
+		);
+		assert_eq!(
+			System::events()[4].event,
+			RuntimeEvent::OrderBook(Event::OrderUpdated {
+				order_id,
+				account: ACCOUNT_0,
+				buy_amount: 15 * CURRENCY_AUSD,
+				min_fullfillment_amount: 6 * CURRENCY_AUSD,
+				sell_price_limit: Rate::checked_from_integer(2u32).unwrap()
+			})
+		);
+	})
+}
 
-// #[test]
-// fn update_order_consolidates_reserve_increase_when_asset_out_fee_currency() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::place_order(
-// 			ACCOUNT_0,
-// 			CurrencyId::ForeignAsset(0),
-// 			CurrencyId::Native,
-// 			10,
-// 			2,
-// 			10
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		assert_ok!(OrderBook::update_order(ACCOUNT_0, order_id, 10, 3, 10));
-// 		assert_eq!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Ok(Order {
-// 				order_id: order_id,
-// 				placing_account: ACCOUNT_0,
-// 				asset_out_id: CurrencyId::Native,
-// 				asset_in_id: CurrencyId::ForeignAsset(0),
-// 				buy_amount: 10,
-// 				initial_buy_amount: 10,
-// 				price: 3,
-// 				min_fullfillment_amount: 10,
-// 				max_sell_amount: 30
-// 			})
-// 		);
+#[test]
+fn update_order_consolidates_reserve_increase_when_asset_out_fee_currency() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::ForeignAsset(0),
+			CurrencyId::Native,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			10 * CURRENCY_FA0
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(
+			ACCOUNT_0,
+			order_id,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_integer(2u32).unwrap(),
+			10 * CURRENCY_FA0
+		));
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_out_id: CurrencyId::Native,
+				asset_in_id: CurrencyId::ForeignAsset(0),
+				buy_amount: 10 * CURRENCY_FA0,
+				initial_buy_amount: 10 * CURRENCY_FA0,
+				price: Rate::checked_from_integer(2u32).unwrap(),
+				min_fullfillment_amount: 10 * CURRENCY_FA0,
+				max_sell_amount: 20 * CURRENCY_NATIVE
+			})
+		);
 
-// 		assert_eq!(
-// 			System::events()[0].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-// 				who: ACCOUNT_0,
-// 				amount: 30
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[2].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-// 				who: ACCOUNT_0,
-// 				// amount increased of outgoing currency increased by 10
-// 				amount: 10
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrderBook(Event::OrderUpdated {
-// 				order_id,
-// 				account: ACCOUNT_0,
-// 				buy_amount: 10,
-// 				min_fullfillment_amount: 10,
-// 				sell_price_limit: 3
-// 			})
-// 		);
-// 	})
-// }
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
+				who: ACCOUNT_0,
+				amount: 25 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
+				who: ACCOUNT_0,
+				// amount increased of outgoing currency increased by 5
+				amount: 5 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrderBook(Event::OrderUpdated {
+				order_id,
+				account: ACCOUNT_0,
+				buy_amount: 10 * CURRENCY_FA0,
+				min_fullfillment_amount: 10 * CURRENCY_FA0,
+				sell_price_limit: Rate::checked_from_integer(2u32).unwrap()
+			})
+		);
+	})
+}
 
 // #[test]
 // fn update_order_consolidates_reserve_decrease_when_asset_out_fee_currency() {
