@@ -14,7 +14,7 @@ use cfg_mocks::pallet_mock_fees;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ConstU64, GenesisBuild},
+	traits::{ConstU128, ConstU32, GenesisBuild},
 };
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use sp_core::H256;
@@ -29,14 +29,16 @@ pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const ACCOUNT_0: u64 = 0x1;
 pub(crate) const ACCOUNT_1: u64 = 0x2;
 pub(crate) const ORDER_FEEKEY: u8 = 0u8;
-pub(crate) const ORDER_FEEKEY_AMOUNT: u64 = 10u64;
+pub(crate) const ORDER_FEEKEY_AMOUNT: u128 = 10 * CURRENCY_NATIVE;
 
-pub(crate) const CURRENCY_A: Balance = 1_000_000_000_000;
+pub(crate) const CURRENCY_AUSD: Balance = 1_000_000;
 // To ensure price/amount calculations with different
 // currency precision works
-pub(crate) const CURRENCY_B: Balance = 1_000_000_000;
+pub(crate) const CURRENCY_FA0: Balance = 1_000;
 
-type Balance = u64;
+pub(crate) const CURRENCY_NATIVE: Balance = 1_000_000;
+
+type Balance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type MockAccountId = u64;
@@ -98,9 +100,9 @@ parameter_types! {
 
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
-	type Balance = u64;
+	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
+	type ExistentialDeposit = ConstU128<1>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
@@ -147,14 +149,15 @@ parameter_types! {
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
+	type Balance = Balance;
 	type FeeCurrencyId = FeeCurrencyId;
-	// type Balance = Balance;
 	type Fees = Fees;
 	type OrderFeeKey = OrderFeeKey;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
+	type SellRatio = cfg_types::fixed_point::Rate;
 	type TradeableAsset = OrmlTokens;
 	type Weights = ();
 }
@@ -166,7 +169,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	// Add native balances for reserve/unreserve storage fees
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![(ACCOUNT_0, 300), (ACCOUNT_1, 300)],
+		balances: vec![
+			(ACCOUNT_0, 300 * CURRENCY_NATIVE),
+			(ACCOUNT_1, 300 * CURRENCY_NATIVE),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
@@ -177,9 +183,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.into_iter()
 			.flat_map(|idx| {
 				[
-					(idx, CurrencyId::AUSD, 1000 * CURRENCY_A),
-					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_B),
-					(idx, CurrencyId::Native, 100 * CURRENCY_A),
+					(idx, CurrencyId::AUSD, 1000 * CURRENCY_AUSD),
+					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_FA0),
+					(idx, CurrencyId::Native, 100 * CURRENCY_AUSD),
 				]
 			})
 			.collect(),
@@ -192,7 +198,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(
 				CurrencyId::AUSD,
 				AssetMetadata {
-					decimals: 18,
+					decimals: 6,
 					name: "MOCK TOKEN_A".as_bytes().to_vec(),
 					symbol: "MOCK_A".as_bytes().to_vec(),
 					existential_deposit: 0,
@@ -203,7 +209,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(
 				CurrencyId::ForeignAsset(0),
 				AssetMetadata {
-					decimals: 15,
+					decimals: 3,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),
 					symbol: "MOCK_B".as_bytes().to_vec(),
 					existential_deposit: 0,
@@ -214,7 +220,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(
 				CurrencyId::Native,
 				AssetMetadata {
-					decimals: 18,
+					decimals: 6,
 					name: "NATIVE TOKEN".as_bytes().to_vec(),
 					symbol: "NATIVE".as_bytes().to_vec(),
 					existential_deposit: 0,

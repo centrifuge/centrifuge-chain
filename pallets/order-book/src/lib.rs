@@ -57,11 +57,10 @@ pub mod pallet {
 	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
-			EnsureInto, EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One,
-			Saturating, Zero,
+			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
+			EnsureSub, MaybeSerializeDeserialize, One, Zero,
 		},
-		ArithmeticError, FixedPointNumber, FixedPointOperand, TypeId,
+		FixedPointNumber, FixedPointOperand,
 	};
 
 	use super::*;
@@ -378,7 +377,13 @@ pub mod pallet {
 			// maybe move to ensure if we don't need these later
 			// might need decimals from currency, but should hopefully be able to use FP
 			// price/amounts from FP balance
-			let sell_amount = order.price.ensure_mul_int(order.buy_amount)?;
+			// let sell_amount = order.price.ensure_mul_int(order.buy_amount)?;
+			let sell_amount = Self::convert_with_ratio(
+				order.asset_in_id,
+				order.asset_out_id,
+				order.price,
+				order.buy_amount,
+			)?;
 
 			ensure!(
 				T::TradeableAsset::can_reserve(order.asset_in_id, &account_id, order.buy_amount),
