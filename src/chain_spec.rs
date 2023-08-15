@@ -27,6 +27,7 @@ use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
+	xcm::XcmMetadata,
 };
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
@@ -43,6 +44,8 @@ use sp_runtime::{
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
+	v1::{Junction, Junctions},
+	VersionedMultiLocation,
 };
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -969,7 +972,134 @@ fn altair_genesis(
 				.to_vec(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
-		orml_asset_registry: Default::default(),
+		orml_asset_registry: altair_runtime::OrmlAssetRegistryConfig {
+			last_asset_id: CurrencyId::Native,
+			assets: vec![
+				(
+					CurrencyId::ForeignAsset(3),
+					orml_traits::asset_registry::AssetMetadata {
+						decimals: 12,
+						name: b"Kusama".to_vec(),
+						symbol: b"KSM".to_vec(),
+						existential_deposit: 10_000_000_000u128,
+						location: Some(VersionedMultiLocation::V1(MultiLocation {
+							parents: 1,
+							interior: Junctions::Here,
+						})),
+						additional: CustomMetadata {
+							xcm: XcmMetadata {
+								fee_per_second: None,
+							},
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+						},
+					}
+					.encode(),
+				),
+				(
+					CurrencyId::Native,
+					orml_traits::asset_registry::AssetMetadata {
+						decimals: 18,
+						name: b"Altair".to_vec(),
+						symbol: b"AIR".to_vec(),
+						existential_deposit: 1_000_000_000_000u128,
+						location: Some(VersionedMultiLocation::V1(MultiLocation {
+							parents: 1,
+							interior: Junctions::X2(
+								Junction::Parachain(2088),
+								Junction::GeneralKey(vec![0, 0, 0, 1u8].try_into().unwrap()),
+							),
+						})),
+						additional: CustomMetadata {
+							xcm: XcmMetadata {
+								fee_per_second: None,
+							},
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+						},
+					}
+					.encode(),
+				),
+				(
+					CurrencyId::ForeignAsset(1),
+					orml_traits::asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"Tether USD".to_vec(),
+						symbol: b"USDT".to_vec(),
+						existential_deposit: 10_000u128,
+						location: Some(VersionedMultiLocation::V1(MultiLocation {
+							parents: 1,
+							interior: Junctions::X3(
+								Junction::Parachain(1000),
+								Junction::PalletInstance(50),
+								Junction::GeneralIndex(1984),
+							),
+						})),
+						additional: CustomMetadata {
+							xcm: XcmMetadata {
+								fee_per_second: None,
+							},
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+						},
+					}
+					.encode(),
+				),
+				(
+					CurrencyId::AUSD,
+					orml_traits::asset_registry::AssetMetadata {
+						decimals: 0,
+						name: b"".to_vec(),
+						symbol: b"".to_vec(),
+						existential_deposit: 10_000u128,
+						location: Some(VersionedMultiLocation::V1(MultiLocation {
+							parents: 0,
+							interior: Junctions::X2(
+								Junction::OnlyChild,
+								Junction::GeneralIndex(200081),
+							),
+						})),
+						additional: CustomMetadata {
+							xcm: XcmMetadata {
+								fee_per_second: None,
+							},
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+						},
+					}
+					.encode(),
+				),
+				(
+					CurrencyId::ForeignAsset(2),
+					orml_traits::asset_registry::AssetMetadata {
+						decimals: 0,
+						name: b"Acala Dollar".to_vec(),
+						symbol: b"aUSD".to_vec(),
+						existential_deposit: 10_000_000_000u128,
+						location: Some(VersionedMultiLocation::V1(MultiLocation {
+							parents: 1,
+							interior: Junctions::X2(
+								Junction::Parachain(2000),
+								Junction::GeneralKey(vec![0, 0, 8, 1u8].try_into().unwrap()),
+							),
+						})),
+						additional: CustomMetadata {
+							xcm: XcmMetadata {
+								fee_per_second: None,
+							},
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+						},
+					}
+					.encode(),
+				),
+			],
+		},
 		orml_tokens: altair_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
