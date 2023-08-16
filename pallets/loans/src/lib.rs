@@ -102,7 +102,7 @@ pub mod pallet {
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
-	use sp_std::vec::Vec;
+	use sp_std::{vec, vec::Vec};
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus, WriteOffTrigger},
