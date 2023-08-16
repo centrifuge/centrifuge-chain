@@ -34,6 +34,7 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
 [dev-dependencies]
+cfg-mocks = { path = "../../libs/mocks" }
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
@@ -44,7 +45,6 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", default-featur
 serde = { version = "1.0.102" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-cfg-mocks = { path = "../../libs/mocks" }
 
 [features]
 default = ["std"]
