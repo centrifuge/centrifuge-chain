@@ -13,17 +13,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-<<<<<<< HEAD
-use cfg_traits::{Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState};
-use cfg_types::permissions::{PermissionScope, PoolRole, Role};
-=======
-use cfg_traits::{Permissions, PoolMutate, TrancheCurrency, UpdateState};
+use cfg_traits::{Permissions, PoolMutate, PoolWriteOffPolicyMutate, TrancheCurrency, UpdateState};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::{PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
->>>>>>> 1e4ac281d95588324503eb786f80661f63855b10
 use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
@@ -119,13 +114,11 @@ pub mod pallet {
 			Balance = Self::Balance,
 		>;
 
-<<<<<<< HEAD
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
-=======
+
 		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
 			+ Into<Self::CurrencyId>;
->>>>>>> 1e4ac281d95588324503eb786f80661f63855b10
 
 		type CurrencyId: Parameter + Copy;
 
