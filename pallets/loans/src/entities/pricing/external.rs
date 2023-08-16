@@ -21,7 +21,12 @@ use crate::{
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ExternalAmount<T: Config> {
+	/// Quantity of different assets identified by the price_id
 	pub quantity: T::Quantity,
+
+	/// Price used to borrow/repay. it must be in the interval
+	/// [price * (1 - max_price_variation), price * (1 + max_price_variation)],
+	/// being price the Oracle price.
 	pub settlement_price: T::Balance,
 }
 
@@ -67,6 +72,11 @@ pub struct ExternalPricing<T: Config> {
 
 	/// Reference price used to calculate the interest
 	pub notional: T::Balance,
+
+	/// Maximum variation between the settlement price chosen for
+	/// borrow/repay and the current oracle price.
+	/// See [`ExternalAmount::settlement_price`].
+	pub max_price_variation: T::Rate,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -148,10 +158,37 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
+	fn validate_amount(
+		&self,
+		amount: &ExternalAmount<T>,
+		pool_id: T::PoolId,
+	) -> Result<(), DispatchError> {
+		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
+		let delta = if amount.settlement_price > price {
+			amount.settlement_price.ensure_sub(price)?
+		} else {
+			price.ensure_sub(amount.settlement_price)?
+		};
+		let variation =
+			T::Rate::checked_from_rational(delta, price).ok_or(ArithmeticError::Overflow)?;
+
+		// We bypass any price if quantity is zero,
+		// because it does not take effect in the computation.
+		ensure!(
+			variation <= self.info.max_price_variation || amount.quantity.is_zero(),
+			Error::<T>::SettlementPriceExceedsVariation
+		);
+
+		Ok(())
+	}
+
 	pub fn max_borrow_amount(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		match self.info.max_borrow_amount {
 			MaxBorrowAmount::Quantity(quantity) => {
 				let available = quantity.ensure_sub(self.outstanding_quantity)?;
@@ -164,7 +201,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn max_repay_principal(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		Ok(self
 			.outstanding_quantity
 			.ensure_mul_int(amount.settlement_price)?)
