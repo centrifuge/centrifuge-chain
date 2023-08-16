@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use cfg_primitives::Block;
+use cfg_primitives::{Block, BlockNumber};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
@@ -124,7 +124,7 @@ pub fn build_altair_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
 	sc_service::Error,
@@ -172,7 +172,7 @@ pub async fn start_altair_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
@@ -304,7 +304,7 @@ pub fn build_centrifuge_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
 	sc_service::Error,
@@ -352,7 +352,7 @@ pub async fn start_centrifuge_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
@@ -484,7 +484,7 @@ pub fn build_development_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<development_runtime::RuntimeApi>>,
 	sc_service::Error,
@@ -532,7 +532,7 @@ pub async fn start_development_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<FullClient<development_runtime::RuntimeApi>>,

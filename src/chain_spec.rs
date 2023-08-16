@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
+use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
@@ -67,7 +67,7 @@ pub struct Extensions {
 	/// The id of the Parachain.
 	pub para_id: u32,
 	/// The first block which contains EVM logs
-	pub first_evm_block: u32,
+	pub first_evm_block: BlockNumber,
 }
 
 impl Extensions {

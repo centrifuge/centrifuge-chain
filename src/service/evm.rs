@@ -18,7 +18,7 @@ use std::{
 	time::Duration,
 };
 
-use cfg_primitives::{Block, Hash};
+use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
@@ -180,7 +180,7 @@ fn db_config_dir(config: &Configuration) -> PathBuf {
 #[allow(clippy::type_complexity)]
 pub fn new_partial<RuntimeApi, BIQ>(
 	config: &Configuration,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 	build_import_queue: BIQ,
 ) -> Result<
 	PartialComponents<
@@ -216,7 +216,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<FrontierBackend<Block>>,
-		u32,
+		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
@@ -321,7 +321,7 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-	first_evm_block: u32,
+	first_evm_block: BlockNumber,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -359,7 +359,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<FrontierBackend<Block>>,
-		u32,
+		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
