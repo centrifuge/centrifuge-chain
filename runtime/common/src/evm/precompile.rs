@@ -95,6 +95,10 @@ where
 	}
 }
 
+/// Altair's precompiles
+/// For now, Altair uses the exact same set of precompiles used in Development.
+pub type Altair<R> = Development<R>;
+
 /// A set of precompiles. This set might contain
 /// not yet mainnet ready precompiles in order to test
 /// those in development or staging environment without touching
