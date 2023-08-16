@@ -157,7 +157,7 @@ impl order_book::Config for Runtime {
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = cfg_types::fixed_point::Rate;
+	type SellRatio = cfg_types::fixed_point::Quantity;
 	type TradeableAsset = OrmlTokens;
 	type Weights = ();
 }
