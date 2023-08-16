@@ -14,25 +14,15 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn handle() -> Weight;
 	fn add_pool() -> Weight;
 	fn add_tranche() -> Weight;
 	fn update_token_price() -> Weight;
 	fn update_member() -> Weight;
 	fn transfer() -> Weight;
-	fn add_instance() -> Weight;
 	fn set_domain_router() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn handle() -> Weight {
-		Weight::zero()
-	}
-
-	fn add_instance() -> Weight {
-		Weight::zero()
-	}
-
 	fn set_domain_router() -> Weight {
 		Weight::zero()
 	}
