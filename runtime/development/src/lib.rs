@@ -1846,14 +1846,15 @@ parameter_types! {
 impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
 	type FeeCurrencyId = NativeToken;
 	type Fees = Fees;
-	type ForeignCurrencyBalance = Balance;
 	type OrderFeeKey = OrderBookCreationFeeKey;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
+	type SellRatio = Quantity;
 	type TradeableAsset = OrmlTokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
