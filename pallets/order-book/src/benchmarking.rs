@@ -13,7 +13,10 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use cfg_traits::fees::Fees;
-use cfg_types::tokens::{CurrencyId, CustomMetadata};
+use cfg_types::{
+	fixed_point::Quantity,
+	tokens::{CurrencyId, CustomMetadata},
+};
 use frame_benchmarking::*;
 use frame_support::traits::{Currency, Get};
 use frame_system::RawOrigin;
@@ -21,6 +24,7 @@ use orml_traits::{
 	asset_registry::{Inspect, Mutate},
 	MultiCurrency,
 };
+use sp_runtime::FixedPointNumber;
 
 // use pallet_pool_system::benchmarking::prepare_asset_registry;
 use super::*;
@@ -38,31 +42,30 @@ const CURRENCY_1: u128 = 1_000_000_000_000_000u128;
 benchmarks! {
 	where_clause {
 		where
-			T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>,
+			T: Config<AssetCurrencyId = CurrencyId, Balance = u128, SellRatio = Quantity>,
 			<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
 	}
 
 	create_order_v1 {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100u32.into(), 10u32.into())
+		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, Quantity::checked_from_integer(2u32).unwrap())
 
 	user_cancel_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Quantity::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
 
 	}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
 
 	fill_order_full {
 		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100u32.into(), 10u32.into(), 100u32.into())?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Quantity::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
 
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 }
 
-fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, ForeignCurrencyBalance = u128>>(
-) -> Result<
+fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, Balance = u128>>() -> Result<
 	(
 		T::AccountId,
 		T::AccountId,
@@ -80,11 +83,11 @@ where
 	let account_1: T::AccountId = account::<T::AccountId>("Account1", 2, 0);
 	T::ReserveCurrency::deposit_creating(
 		&account_0,
-		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u32.into(),
+		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u128,
 	);
 	T::ReserveCurrency::deposit_creating(
 		&account_1,
-		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u32.into(),
+		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u128,
 	);
 	let asset_0 = CurrencyId::AUSD;
 	let asset_1 = CurrencyId::ForeignAsset(0);
