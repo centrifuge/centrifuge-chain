@@ -92,7 +92,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
 	},
-	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
+	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -643,7 +643,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
 					// `collect_investments`, `collect_redemptions`
-					// Specifically omitting Connectors
+					// Specifically omitting LiquidityPools
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
@@ -1650,6 +1650,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
+	type PerThing = Perquintill;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PoolId = PoolId;

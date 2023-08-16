@@ -106,7 +106,7 @@ use sp_runtime::{
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
+	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -114,14 +114,13 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
-use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
 pub mod evm;
 mod weights;
 pub mod xcm;
 pub use crate::xcm::*;
 
-pub mod connectors;
+pub mod liquidity_pools;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -256,6 +255,12 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
+			// We block this call since it includes Moonbeam trait implementations such
+			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
+			// arbitrary users calling it.
+			RuntimeCall::XcmTransactor(
+				pallet_xcm_transactor::Call::transact_through_derivative { .. },
+			) => false,
 			_ => true,
 		}
 	}
@@ -506,7 +511,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// `collect_investments`, `collect_redemptions`
 					RuntimeCall::LiquidityRewards(..) |
 					RuntimeCall::BlockRewards(..) |
-					// Specifically omitting Connectors
+					// Specifically omitting LiquidityPools
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
@@ -1268,21 +1273,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Self>;
 }
 
-#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
-pub struct NullTransactor {}
-
-impl UtilityEncodeCall for NullTransactor {
-	fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
-		unimplemented!("XcmTransactor feature not used")
-	}
-}
-
-impl xcm_primitives::XcmTransact for NullTransactor {
-	fn destination(self) -> MultiLocation {
-		unimplemented!("XcmTransactor feature not used")
-	}
-}
-
 parameter_types! {
 	// 1 ROC should be enough to cover for fees opening/accepting hrmp channels
 	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
@@ -1303,7 +1293,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type Transactor = NullTransactor;
+	type Transactor = xcm_transactor::NullTransactor;
 	type UniversalLocation = UniversalLocation;
 	type Weigher = XcmWeigher;
 	type WeightInfo = ();
@@ -1392,6 +1382,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
+	type PerThing = Perquintill;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PoolId = PoolId;
@@ -1580,15 +1571,15 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_connectors::Config for Runtime {
+impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
-	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
-	type OutboundQueue = ConnectorsGateway;
+	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -1927,14 +1918,14 @@ construct_runtime!(
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		LiquidityRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
-		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
-		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
@@ -1959,6 +1950,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
