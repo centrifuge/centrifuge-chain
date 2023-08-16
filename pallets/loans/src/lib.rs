@@ -105,7 +105,7 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 	use types::{
 		self,
-		policy::{self, WriteOffRule, WriteOffStatus},
+		policy::{self, WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
 		RepayLoanError, WrittenOffError,
@@ -1025,6 +1025,20 @@ pub mod pallet {
 
 		fn update(pool_id: T::PoolId, policy: Self::Policy) -> DispatchResult {
 			Self::update_write_off_policy(pool_id, policy)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_case_policy() -> Self::Policy {
+			vec![
+				WriteOffRule::new(
+					[WriteOffTrigger::PrincipalOverdue(0)],
+					T::Rate::zero(),
+					T::Rate::zero(),
+				);
+				T::MaxWriteOffPolicySize::get() as usize
+			]
+			.try_into()
+			.unwrap()
 		}
 	}
 }

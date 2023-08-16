@@ -34,5 +34,10 @@ pub mod pallet {
 		fn update(a: T::PoolId, b: T::Policy) -> DispatchResult {
 			execute_call!((a, b))
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_case_policy() -> Self::Policy {
+			execute_call!(())
+		}
 	}
 }

@@ -252,6 +252,9 @@ pub trait PoolWriteOffPolicyMutate<PoolId> {
 
 	/// Updates the policy with the new policy
 	fn update(pool_id: PoolId, policy: Self::Policy) -> DispatchResult;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_case_policy() -> Self::Policy;
 }
 
 /// Utility to benchmark pools easily

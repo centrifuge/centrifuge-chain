@@ -99,7 +99,8 @@ benchmarks! {
 			RawOrigin::Root
 		};
 		prepare_asset_registry::<T>();
-	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None)
+		let policy = T::PoolWriteOffPolicyMutate::worst_case_policy();
+	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
