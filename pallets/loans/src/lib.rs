@@ -360,8 +360,6 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when an amount used is not a natural number
-		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
