@@ -66,6 +66,8 @@ pub struct Extensions {
 	pub relay_chain: String,
 	/// The id of the Parachain.
 	pub para_id: u32,
+	/// The first block which contains EVM logs
+	pub first_evm_block: u32,
 }
 
 impl Extensions {
@@ -81,6 +83,7 @@ fn development_extensions(para_id: u32) -> Extensions {
 	Extensions {
 		para_id,
 		relay_chain: "rococo-local".into(),
+		first_evm_block: 1,
 	}
 }
 
