@@ -69,6 +69,8 @@ fn register_pool_and_set_metadata() {
 				.to_vec();
 			let metadata = Some(hash);
 
+			MockWriteOffPolicy::mock_update(|_, _| Ok(()));
+
 			// nuno: failing with MetadataForCurrencyNotFound
 			assert_ok!(PoolRegistry::register(
 				RuntimeOrigin::signed(pool_owner),

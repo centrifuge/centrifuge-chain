@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
+use cfg_mocks::pallet_mock_write_off_policy;
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{
 	OrderManager, PoolMutate, PoolUpdateGuard, PoolWriteOffPolicyMutate, PreConditions, UpdateState,
@@ -28,7 +29,6 @@ use frame_support::{
 };
 use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_loans::write_off::WriteOffRule;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::benchmarking::create_pool;
 use pallet_pool_system::{
@@ -38,7 +38,7 @@ use pallet_pool_system::{
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup, Zero},
+	traits::{BlakeTwo256, ConstU32, IdentityLookup, Zero},
 };
 
 use crate::{self as pallet_pool_registry, Config};
@@ -243,30 +243,10 @@ impl<
 	}
 }
 
-pub struct PoolWriteOffPolicyMutateMock<T> {
-	phantom: PhantomData<T>,
-}
-
-parameter_types! {
-	pub const MaxWriteOffPolicySize: u32 = 10;
-}
-
-impl<
-		T: Config
-			+ pallet_pool_registry::Config
-			+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
-	> PoolWriteOffPolicyMutate<<T as pallet_pool_system::Config>::PoolId>
-	for PoolWriteOffPolicyMutateMock<T>
-{
-	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
-	type WriteOffRule = WriteOffRule<<T as pallet_pool_registry::Config>::Rate>;
-
-	fn update(
-		pool_id: PoolId,
-		policy: BoundedVec<Self::WriteOffRule, Self::MaxWriteOffPolicySize>,
-	) -> DispatchResult {
-		Ok(())
-	}
+impl pallet_mock_write_off_policy::Config for Test {
+	type MaxWriteOffPolicySize = ConstU32<10>;
+	type PoolId = PoolId;
+	type WriteOffRule = ();
 }
 
 pub struct Always;
@@ -288,7 +268,7 @@ impl Config for Test {
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = ModifyPoolMock<Self>;
-	type ModifyWriteOffPolicy = PoolWriteOffPolicyMutateMock<Self>;
+	type ModifyWriteOffPolicy = MockWriteOffPolicy;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
@@ -356,6 +336,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+		MockWriteOffPolicy: pallet_mock_write_off_policy,
 	}
 );
 

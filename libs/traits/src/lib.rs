@@ -248,7 +248,7 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 
 /// A trait that supports modifications of pool write-off policies
 pub trait PoolWriteOffPolicyMutate<PoolId> {
-	type WriteOffRule: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type WriteOffRule: Parameter;
 	type MaxWriteOffPolicySize: Get<u32>;
 
 	fn update(

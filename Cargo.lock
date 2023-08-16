@@ -7957,6 +7957,7 @@ dependencies = [
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
@@ -7969,7 +7970,6 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-investments",
- "pallet-loans",
  "pallet-permissions",
  "pallet-pool-system",
  "pallet-timestamp",
