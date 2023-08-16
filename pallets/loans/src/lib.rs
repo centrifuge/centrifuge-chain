@@ -750,7 +750,7 @@ pub mod pallet {
                 Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			Self::update_write_off_policy(pool_id, policy.clone());
+			Self::update_write_off_policy(pool_id, policy.clone())?;
 
 			Ok(())
 		}
