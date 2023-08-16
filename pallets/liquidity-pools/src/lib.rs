@@ -32,7 +32,7 @@ use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Convert},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
