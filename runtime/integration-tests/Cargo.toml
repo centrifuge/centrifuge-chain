@@ -162,6 +162,9 @@ std = [
   "sp-tracing/std",
   "xcm/std",
   "getrandom/std",
+  "pallet-collective/std",
+  "pallet-democracy/std",
+  "pallet-preimage/std",
 ]
 
 runtime-benchmarks = [
@@ -191,6 +194,9 @@ runtime-benchmarks = [
   "runtime-common/runtime-benchmarks",
   "sc-service/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-collective/runtime-benchmarks",
+  "pallet-democracy/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
 ]
 runtime-development = []
 runtime-altair = []

@@ -192,6 +192,7 @@ dependencies = [
 name = "altair-runtime"
 version = "0.10.28"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -214,7 +215,9 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.4",
+ "liquidity-pools-gateway-routers",
  "log",
+ "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
@@ -237,6 +240,7 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
@@ -245,6 +249,8 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
+ "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -268,6 +274,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
+ "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.4.0",
  "polkadot-parachain",
@@ -291,6 +298,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -10950,6 +10958,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-primitives",
 ]
 
 [[package]]

@@ -38,14 +38,6 @@ rand = "0.8.5"
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-]
 std = [
   "codec/std",
   "cfg-types/std",
@@ -63,4 +55,13 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]

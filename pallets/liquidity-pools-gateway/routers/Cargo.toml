@@ -60,17 +60,6 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "pallet-liquidity-pools-gateway/runtime-benchmarks",
-  "pallet-ethereum/runtime-benchmarks",
-  "pallet-ethereum-transaction/runtime-benchmarks",
-  "pallet-xcm-transactor/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
-]
 std = [
   "codec/std",
   "cfg-types/std",
@@ -87,6 +76,21 @@ std = [
   "xcm-primitives/std",
   "ethabi/std",
   "scale-info/std",
+  "pallet-evm/std",
+  "sp-runtime/std",
+]
+runtime-benchmarks = [
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -97,4 +101,6 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-ethereum-transaction/try-runtime",
   "pallet-xcm-transactor/try-runtime",
+  "pallet-evm/try-runtime",
+  "sp-runtime/try-runtime",
 ]
