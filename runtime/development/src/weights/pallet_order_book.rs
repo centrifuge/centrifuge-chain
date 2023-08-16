@@ -4,7 +4,7 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-08-16, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
-//! HOSTNAME: `Theas-MacBook-Pro.local`, CPU: `<UNKNOWN>`
+//! HOSTNAME: `Theas-MBP`, CPU: `<UNKNOWN>`
 //! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("development-local"), DB CACHE: 1024
 
 // Executed Command:
@@ -47,12 +47,12 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook Orders (max_values: None, max_size: Some(186), added: 2661, mode: MaxEncodedLen)
 	/// Storage: OrderBook UserOrders (r:0 w:1)
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
-	fn create_order_v1() -> Weight {
+	fn create_order() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1585`
-		//  Estimated: `8017313`
-		// Minimum execution time: 56_000 nanoseconds.
-		Weight::from_parts(57_000_000, 8017313)
+		//  Measured:  `1552`
+		//  Estimated: `8017280`
+		// Minimum execution time: 57_000 nanoseconds.
+		Weight::from_parts(58_000_000, 8017280)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -72,8 +72,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1464`
 		//  Estimated: `8012936`
-		// Minimum execution time: 48_000 nanoseconds.
-		Weight::from_parts(48_000_000, 8012936)
+		// Minimum execution time: 49_000 nanoseconds.
+		Weight::from_parts(50_000_000, 8012936)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -93,10 +93,10 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 	/// Proof: OrderBook UserOrders (max_values: None, max_size: Some(226), added: 2701, mode: MaxEncodedLen)
 	fn fill_order_full() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2343`
-		//  Estimated: `8030644`
-		// Minimum execution time: 91_000 nanoseconds.
-		Weight::from_parts(92_000_000, 8030644)
+		//  Measured:  `2310`
+		//  Estimated: `8030611`
+		// Minimum execution time: 93_000 nanoseconds.
+		Weight::from_parts(95_000_000, 8030611)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
