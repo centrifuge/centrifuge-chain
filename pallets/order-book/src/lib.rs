@@ -435,10 +435,7 @@ pub mod pallet {
 		pub fn get_combined_reserve(sell_amount: T::Balance) -> Result<T::Balance, DispatchError> {
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 
-			let sell_reserve_balance: T::Balance = sell_amount
-				.try_into()
-				.map_err(|_| Error::<T>::BalanceConversionErr)?;
-			Ok(sell_reserve_balance.ensure_add(fee_amount)?)
+			Ok(sell_amount.ensure_add(fee_amount)?)
 		}
 
 		/// Unreserve funds for an order that is finished either
@@ -625,10 +622,7 @@ pub mod pallet {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
 						if T::FeeCurrencyId::get() == order.asset_out_id {
-							let sell_reserve_diff_balance: T::Balance = sell_reserve_diff
-								.try_into()
-								.map_err(|_| Error::<T>::BalanceConversionErr)?;
-							T::ReserveCurrency::reserve(&account, sell_reserve_diff_balance)?
+							T::ReserveCurrency::reserve(&account, sell_reserve_diff)?
 						} else {
 							T::TradeableAsset::reserve(
 								order.asset_out_id,
@@ -640,10 +634,7 @@ pub mod pallet {
 						let sell_reserve_diff =
 							order.max_sell_amount.ensure_sub(max_sell_amount)?;
 						if T::FeeCurrencyId::get() == order.asset_out_id {
-							let sell_reserve_diff_balance: T::Balance = sell_reserve_diff
-								.try_into()
-								.map_err(|_| Error::<T>::BalanceConversionErr)?;
-							T::ReserveCurrency::unreserve(&account, sell_reserve_diff_balance);
+							T::ReserveCurrency::unreserve(&account, sell_reserve_diff);
 						} else {
 							T::TradeableAsset::unreserve(
 								order.asset_out_id,

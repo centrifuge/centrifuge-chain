@@ -95,10 +95,10 @@ pub fn convert_balance_decimals<
 		from if from == to => Ok(balance),
 		from if to > from => precision_diff::<Precision, Balance>(to, from)?
 			.ensure_mul(balance)
-			.map_err(|e| DispatchError::from(e)),
+			.map_err(DispatchError::from),
 		from => balance
 			.ensure_div(precision_diff::<Precision, Balance>(from, to)?)
-			.map_err(|e| DispatchError::from(e)),
+			.map_err(DispatchError::from),
 	}
 }
 
@@ -115,5 +115,5 @@ fn precision_diff<
 			.try_into()
 			.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
 	)
-	.map_err(|e| DispatchError::from(e))
+	.map_err(DispatchError::from)
 }
