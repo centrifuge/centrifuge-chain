@@ -281,7 +281,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.write_down(value)
 	}
 
-	fn ensure_can_borrow(&self, amount: &PricingAmount<T>) -> DispatchResult {
+	fn ensure_can_borrow(&self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.internal()?;
@@ -289,7 +289,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.external()?;
-				inner.max_borrow_amount(external_amount)?
+				inner.max_borrow_amount(external_amount, pool_id)?
 			}
 		};
 
@@ -317,8 +317,8 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn borrow(&mut self, amount: &PricingAmount<T>) -> DispatchResult {
-		self.ensure_can_borrow(amount)?;
+	pub fn borrow(&mut self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+		self.ensure_can_borrow(amount, pool_id)?;
 
 		self.total_borrowed.ensure_add_assign(amount.balance()?)?;
 
@@ -344,6 +344,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn prepare_repayment(
 		&self,
 		mut amount: RepaidPricingAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
@@ -357,7 +358,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let external_amount = amount.principal.external()?;
-				let max_repay_principal = inner.max_repay_principal(external_amount)?;
+				let max_repay_principal = inner.max_repay_principal(external_amount, pool_id)?;
 
 				(max_repay_principal, inner.outstanding_interest()?)
 			}
@@ -387,8 +388,9 @@ impl<T: Config> ActiveLoan<T> {
 	pub fn repay(
 		&mut self,
 		amount: RepaidPricingAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<RepaidPricingAmount<T>, DispatchError> {
-		let amount = self.prepare_repayment(amount)?;
+		let amount = self.prepare_repayment(amount, pool_id)?;
 
 		self.total_repaid
 			.ensure_add_assign(&amount.repaid_amount()?)?;
@@ -512,32 +514,25 @@ impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
 	type Error = DispatchError;
 
 	fn try_from((pool_id, active_loan): (T::PoolId, ActiveLoan<T>)) -> Result<Self, Self::Error> {
-		let (present_value, outstanding_principal, outstanding_interest) =
-			match &active_loan.pricing {
-				ActivePricing::Internal(inner) => {
-					let principal = active_loan
-						.total_borrowed
-						.ensure_sub(active_loan.total_repaid.principal)?;
-					let maturity_date = active_loan.schedule.maturity.date();
+		let (outstanding_principal, outstanding_interest) = match &active_loan.pricing {
+			ActivePricing::Internal(inner) => {
+				let principal = active_loan
+					.total_borrowed
+					.ensure_sub(active_loan.total_repaid.principal)?;
 
-					(
-						inner.present_value(active_loan.origination_date, maturity_date)?,
-						principal,
-						inner.outstanding_interest(principal)?,
-					)
-				}
-				ActivePricing::External(inner) => (
-					inner.present_value(pool_id)?,
-					inner.outstanding_principal(pool_id)?,
-					inner.outstanding_interest()?,
-				),
-			};
+				(principal, inner.outstanding_interest(principal)?)
+			}
+			ActivePricing::External(inner) => (
+				inner.outstanding_principal(pool_id)?,
+				inner.outstanding_interest()?,
+			),
+		};
 
 		Ok(Self {
-			active_loan,
-			present_value,
+			present_value: active_loan.present_value(pool_id)?,
 			outstanding_principal,
 			outstanding_interest,
+			active_loan,
 		})
 	}
 }
