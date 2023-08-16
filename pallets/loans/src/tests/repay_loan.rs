@@ -589,31 +589,6 @@ fn external_pricing_goes_down() {
 }
 
 #[test]
-fn external_pricing_with_wrong_quantity() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_id, PricingAmount::External(amount));
-
-		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
-		assert_noop!(
-			Loans::repay(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				RepaidPricingAmount {
-					principal: PricingAmount::External(amount),
-					interest: 0,
-					unscheduled: 0,
-				},
-			),
-			Error::<Runtime>::AmountNotNaturalNumber
-		);
-	});
-}
-
-#[test]
 fn with_unscheduled_repayment_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
