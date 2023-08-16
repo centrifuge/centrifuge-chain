@@ -31,7 +31,7 @@ use frame_system::RawOrigin;
 use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Bounded, Get, One, Zero};
-use sp_std::{time::Duration, vec};
+use sp_std::time::Duration;
 
 use crate::{
 	entities::{
@@ -43,7 +43,6 @@ use crate::{
 	},
 	pallet::*,
 	types::{
-		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
 		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
