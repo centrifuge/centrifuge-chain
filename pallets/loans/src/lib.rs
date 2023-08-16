@@ -112,7 +112,6 @@ pub mod pallet {
 	};
 
 	use super::*;
-	use crate::pallet::policy::WriteOffTrigger;
 
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
@@ -1035,6 +1034,8 @@ pub mod pallet {
 
 		#[cfg(feature = "runtime-benchmarks")]
 		fn worst_case_policy() -> Self::Policy {
+			use crate::pallet::policy::WriteOffTrigger;
+
 			vec![
 				WriteOffRule::new(
 					[WriteOffTrigger::PrincipalOverdue(0)],
