@@ -52,15 +52,9 @@ type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
 	<T as Config>::PoolId,
 >>::TrancheInput;
 
-type WriteOffRuleOf<T> =
-	<<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
-		<T as Config>::PoolId,
-	>>::WriteOffRule;
-
-type MaxWriteOffPolicySizeOf<T> =
-	<<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
-		<T as Config>::PoolId,
-	>>::MaxWriteOffPolicySize;
+type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+	<T as Config>::PoolId,
+>>::Policy;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -252,7 +246,7 @@ pub mod pallet {
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
-			write_off_policy: BoundedVec<WriteOffRuleOf<T>, MaxWriteOffPolicySizeOf<T>>,
+			write_off_policy: PolicyOf<T>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 

@@ -13,9 +13,7 @@ use std::marker::PhantomData;
 
 use cfg_mocks::pallet_mock_write_off_policy;
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{
-	OrderManager, PoolMutate, PoolUpdateGuard, PoolWriteOffPolicyMutate, PreConditions, UpdateState,
-};
+use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, Role},
@@ -25,7 +23,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
 	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
@@ -38,7 +36,7 @@ use pallet_pool_system::{
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, ConstU32, IdentityLookup, Zero},
+	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
 use crate::{self as pallet_pool_registry, Config};
@@ -244,9 +242,8 @@ impl<
 }
 
 impl pallet_mock_write_off_policy::Config for Test {
-	type MaxWriteOffPolicySize = ConstU32<10>;
+	type Policy = ();
 	type PoolId = PoolId;
-	type WriteOffRule = ();
 }
 
 pub struct Always;

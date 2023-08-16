@@ -7,8 +7,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type PoolId;
-		type WriteOffRule: Parameter;
-		type MaxWriteOffPolicySize: Get<u32>;
+		type Policy: Parameter;
 	}
 
 	#[pallet::pallet]
@@ -24,25 +23,15 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_update(
-			f: impl Fn(
-					T::PoolId,
-					BoundedVec<T::WriteOffRule, T::MaxWriteOffPolicySize>,
-				) -> DispatchResult
-				+ 'static,
-		) {
+		pub fn mock_update(f: impl Fn(T::PoolId, T::Policy) -> DispatchResult + 'static) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 	}
 
 	impl<T: Config> PoolWriteOffPolicyMutate<T::PoolId> for Pallet<T> {
-		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
-		type WriteOffRule = T::WriteOffRule;
+		type Policy = T::Policy;
 
-		fn update(
-			a: T::PoolId,
-			b: BoundedVec<T::WriteOffRule, T::MaxWriteOffPolicySize>,
-		) -> DispatchResult {
+		fn update(a: T::PoolId, b: T::Policy) -> DispatchResult {
 			execute_call!((a, b))
 		}
 	}

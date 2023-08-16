@@ -22,7 +22,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
-	BoundedVec, Parameter, RuntimeDebug,
+	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
@@ -248,13 +248,10 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 
 /// A trait that supports modifications of pool write-off policies
 pub trait PoolWriteOffPolicyMutate<PoolId> {
-	type WriteOffRule: Parameter;
-	type MaxWriteOffPolicySize: Get<u32>;
+	type Policy: Parameter;
 
-	fn update(
-		pool_id: PoolId,
-		policy: BoundedVec<Self::WriteOffRule, Self::MaxWriteOffPolicySize>,
-	) -> DispatchResult;
+	/// Updates the policy with the new policy
+	fn update(pool_id: PoolId, policy: Self::Policy) -> DispatchResult;
 }
 
 /// Utility to benchmark pools easily
