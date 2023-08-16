@@ -13,11 +13,21 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
+<<<<<<< HEAD
 use cfg_traits::{Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
+=======
+use cfg_traits::{Permissions, PoolMutate, TrancheCurrency, UpdateState};
+use cfg_types::{
+	permissions::{PermissionScope, PoolRole, Role},
+	pools::{PoolMetadata, PoolRegistrationStatus},
+	tokens::CustomMetadata,
+};
+>>>>>>> 1e4ac281d95588324503eb786f80661f63855b10
 use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
+use orml_traits::asset_registry::{Inspect, Mutate};
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
@@ -25,6 +35,7 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
+use xcm::VersionedMultiLocation;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -33,30 +44,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod weights;
-
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct PoolMetadata<MetaSize>
-where
-	MetaSize: Get<u32>,
-{
-	metadata: BoundedVec<u8, MetaSize>,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum PoolRegistrationStatus {
-	Registered,
-	Unregistered,
-}
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
 
@@ -132,7 +119,13 @@ pub mod pallet {
 			Balance = Self::Balance,
 		>;
 
+<<<<<<< HEAD
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
+=======
+		/// The currency type of investments.
+		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
+			+ Into<Self::CurrencyId>;
+>>>>>>> 1e4ac281d95588324503eb786f80661f63855b10
 
 		type CurrencyId: Parameter + Copy;
 
@@ -169,6 +162,18 @@ pub mod pallet {
 			Role = Role<Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
+
+		/// The registry type used for retrieving and updating tranche metadata
+		/// as part of the `PoolMetadata` trait implementation
+		type AssetRegistry: Mutate<
+				AssetId = Self::CurrencyId,
+				Balance = Self::Balance,
+				CustomMetadata = CustomMetadata,
+			> + Inspect<
+				AssetId = Self::CurrencyId,
+				Balance = Self::Balance,
+				CustomMetadata = CustomMetadata,
+			>;
 
 		/// Weight Information
 		type WeightInfo: WeightInfo;
@@ -393,6 +398,22 @@ pub mod pallet {
 				BadOrigin,
 			);
 
+			let checked_metadata = Self::do_set_metadata(pool_id, metadata)?;
+
+			Self::deposit_event(Event::MetadataSet {
+				pool_id,
+				metadata: checked_metadata,
+			});
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn do_set_metadata(
+			pool_id: T::PoolId,
+			metadata: Vec<u8>,
+		) -> Result<BoundedVec<u8, T::MaxSizeMetadata>, DispatchError> {
 			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
 				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
@@ -403,12 +424,63 @@ pub mod pallet {
 				},
 			);
 
-			Self::deposit_event(Event::MetadataSet {
-				pool_id,
-				metadata: checked_metadata,
-			});
+			Ok(checked_metadata)
+		}
+	}
 
-			Ok(())
+	impl<T: Config> cfg_traits::PoolMetadata<T::Balance, VersionedMultiLocation> for Pallet<T> {
+		type AssetMetadata = orml_asset_registry::AssetMetadata<T::Balance, Self::CustomMetadata>;
+		type CustomMetadata = CustomMetadata;
+		type PoolId = T::PoolId;
+		type PoolMetadata = PoolMetadataOf<T>;
+		type TrancheId = T::TrancheId;
+
+		fn get_pool_metadata(pool_id: Self::PoolId) -> Result<Self::PoolMetadata, DispatchError> {
+			PoolMetadata::<T>::get(pool_id).ok_or(Error::<T>::NoSuchPoolMetadata.into())
+		}
+
+		fn set_pool_metadata(pool_id: Self::PoolId, metadata: Vec<u8>) -> DispatchResult {
+			Self::do_set_metadata(pool_id, metadata).map(|_| ())
+		}
+
+		fn get_tranche_token_metadata(
+			pool_id: Self::PoolId,
+			tranche_id: Self::TrancheId,
+		) -> Result<Self::AssetMetadata, DispatchError> {
+			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
+			T::AssetRegistry::metadata(&currency_id)
+				.ok_or(Error::<T>::MetadataForCurrencyNotFound.into())
+		}
+
+		fn create_tranche_token_metadata(
+			pool_id: Self::PoolId,
+			tranche: Self::TrancheId,
+			metadata: Self::AssetMetadata,
+		) -> DispatchResult {
+			let currency_id = T::TrancheCurrency::generate(pool_id, tranche).into();
+			T::AssetRegistry::register_asset(Some(currency_id), metadata)
+		}
+
+		fn update_tranche_token_metadata(
+			pool_id: Self::PoolId,
+			tranche: Self::TrancheId,
+			decimals: Option<u32>,
+			name: Option<Vec<u8>>,
+			symbol: Option<Vec<u8>>,
+			existential_deposit: Option<T::Balance>,
+			location: Option<Option<VersionedMultiLocation>>,
+			additional: Option<Self::CustomMetadata>,
+		) -> DispatchResult {
+			let currency_id = T::TrancheCurrency::generate(pool_id, tranche).into();
+			T::AssetRegistry::update_asset(
+				currency_id,
+				decimals,
+				name,
+				symbol,
+				existential_deposit,
+				location,
+				additional,
+			)
 		}
 	}
 }

@@ -56,6 +56,7 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 		} else if self.id().starts_with("altair")
 			|| self.id().starts_with("charcoal")
 			|| self.id().starts_with("antares")
+			|| self.id().starts_with("algol")
 		{
 			ChainIdentity::Altair
 		} else {
@@ -76,21 +77,17 @@ fn load_spec(
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
 		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
-		"centrifuge-staging" => Ok(Box::new(chain_spec::centrifuge_staging(para_id))),
 		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(para_id))),
 		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(para_id))),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
-		"altair-staging" => Ok(Box::new(chain_spec::altair_staging(para_id))),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"altair-local" => Ok(Box::new(chain_spec::altair_local(para_id))),
+		"algol" => Ok(Box::new(chain_spec::algol_config())),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
-		"catalyst-staging" => Ok(Box::new(chain_spec::catalyst_staging(para_id))),
 		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(para_id))),
 		"antares" => Ok(Box::new(chain_spec::antares_config())),
-		"antares-staging" => Ok(Box::new(chain_spec::antares_staging(para_id))),
 		"antares-local" => Ok(Box::new(chain_spec::antares_local(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
 		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(para_id))),
 		"demo" => Ok(Box::new(chain_spec::demo(para_id))),
 		"development" => Ok(Box::new(chain_spec::development(para_id))),
@@ -308,7 +305,7 @@ pub fn run() -> Result<()> {
 					&polkadot_cli,
 					config.tokio_handle.clone(),
 				)
-				.map_err(|err| format!("Relay chain argument error: {}", err))?;
+				.map_err(|err| format!("Relay chain argument error: {err}"))?;
 
 				cmd.run(config, polkadot_config)
 			})
@@ -443,7 +440,7 @@ pub fn run() -> Result<()> {
 				);
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.unwrap_or(10001));
+					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in chain spec or CLI."));
 
 				let id = ParaId::from(para_id);
 
@@ -452,13 +449,13 @@ pub fn run() -> Result<()> {
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&*config.chain_spec, state_version)
-					.map_err(|e| format!("{:?}", e))?;
+					.map_err(|e| format!("{e:?}"))?;
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
 				let task_executor = config.tokio_handle.clone();
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, task_executor)
-						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+						.map_err(|err| format!("Relay chain argument error: {err}"))?;
 
 				info!(
 					"Relay-chain Chain spec: {:?}",

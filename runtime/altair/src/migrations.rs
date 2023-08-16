@@ -9,231 +9,332 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
+use codec::{Decode, Encode};
+#[cfg(feature = "try-runtime")]
+use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+use sp_std::vec::Vec;
 
-use crate::{AccountId, BlockRewards, ExistentialDeposit, NativeToken, OrmlAssetRegistry, Runtime};
+use crate::Runtime;
 
-pub type UpgradeAltair1027 = (
-	pallet_loans_ref::migrations::v1::Migration<Runtime>,
-	session_key_migration::ExtendSessionKeys,
-	pallet_block_rewards::migrations::InitBlockRewards<
-		Runtime,
-		init_block_rewards::CollatorRewards,
-		init_block_rewards::TotalRewards,
-	>,
-	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
-		Runtime,
-		pallet_rewards::Instance1,
-		NativeToken,
-		ExistentialDeposit,
-	>,
-	asset_registry::TrancheLocationMigration,
-	evm_chain_id::SetEvmChainId,
+pub type UpgradeAltair1028 = (
+	asset_registry::CrossChainTransferabilityMigration,
+	orml_tokens_migration::CurrencyIdRefactorMigration,
+	pool_system::MigrateAUSDPools,
 );
 
-mod init_block_rewards {
-	use frame_support::parameter_types;
+const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
-	use crate::{Balance, MaxCandidates, MILLI_AIR};
-
-	parameter_types! {
-		// = 12,000 AIR/month = 394.521 AIR/day = 98.63 AIR/session
-		// https://gov.centrifuge.io/t/adjustment-of-altair-collator-rewards/4844
-		pub const CollatorRewards: Balance = 98_630 * MILLI_AIR;
-		// Only serves as a max bound of collator rewards
-		// E.g. the remainder of TotalRewards - CollatorRewards is not minted
-		// If we set this bound closer to the current number of collators (=10),
-		// we would have to increase it via governance when new collators join.
-		pub TotalRewards: Balance = CollatorRewards::get().saturating_mul(MaxCandidates::get().into());
-	}
-}
-
-mod session_key_migration {
-	use frame_support::{
-		dispatch::GetStorageVersion,
-		inherent::Vec,
-		pallet_prelude::{StorageVersion, ValueQuery},
-		storage_alias,
-	};
-	use sp_runtime::impl_opaque_keys;
-	#[cfg(feature = "try-runtime")]
-	use {
-		codec::{Decode, Encode},
-		frame_benchmarking::Zero,
-	};
+mod asset_registry {
+	use cfg_types::{tokens as v1, tokens::CustomMetadata};
+	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
+	use orml_traits::asset_registry::AssetMetadata;
 
 	use super::*;
-	use crate::{Aura, Session, SessionKeys};
+	use crate::VERSION;
 
-	pub struct ExtendSessionKeys;
+	/// Migrate all the registered asset's metadata to the new version of
+	/// `CustomMetadata` which contains a `CrossChainTransferability` property.
+	/// At this point in time, the `transferability` of Tranche tokens should be
+	/// set to `CrossChainTransferability::Xcm` and for all other tokens to
+	/// `CrossChainTransferability::Xcm`, with the exception of
+	/// `Currency::Staking` tokens which are not registered in the first place.
+	pub struct CrossChainTransferabilityMigration;
 
-	impl_opaque_keys! {
-		pub struct OldSessionKeys {
-			pub aura: Aura,
-		}
-	}
-
+	// The old orml_asset_registry Metadata storage using v0::CustomMetadata
 	#[storage_alias]
-	type QueuedKeys<T: pallet_session::Config> =
-		StorageValue<pallet_session::Pallet<T>, Vec<(AccountId, OldSessionKeys)>, ValueQuery>;
+	type Metadata<T: orml_asset_registry::Config> = StorageMap<
+		orml_asset_registry::Pallet<T>,
+		Twox64Concat,
+		CurrencyId,
+		AssetMetadata<Balance, v0::CustomMetadata>,
+		OptionQuery,
+	>;
 
-	impl frame_support::traits::OnRuntimeUpgrade for ExtendSessionKeys {
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			let queued: Vec<(AccountId, OldSessionKeys)> = QueuedKeys::<Runtime>::get();
-
-			assert!(
-				!queued.len().is_zero(),
-				"Queued session keys must never be empty"
-			);
-
-			Ok(queued.encode())
-		}
-
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
-			use sp_runtime::SaturatedConversion;
-
-			// We must not bump the storage version of pallet_session to stay in sync with
-			// Substrate. As this migration is tightly coupled to the initialization of
-			// BlockRewards, it should be sane to trigger the session migration based on the
-			// BlockRewards storage version.
-			if BlockRewards::on_chain_storage_version() == StorageVersion::new(0) {
-				Session::upgrade_keys::<OldSessionKeys, _>(|_, old_key| SessionKeys {
-					aura: old_key.aura.clone(),
-					block_rewards: old_key.aura,
-				});
-
-				let n: u64 = pallet_session::Validators::<Runtime>::get()
-					.len()
-					.saturated_into();
-
-				<Runtime as frame_system::Config>::DbWeight::get()
-					.reads_writes(n.saturating_add(1), n)
-			} else {
-				<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
+		fn on_runtime_upgrade() -> Weight {
+			if VERSION.spec_version > 1028 {
+				return Weight::zero();
 			}
-		}
 
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(pre_state: Vec<u8>) -> Result<(), &'static str> {
-			let pre_state: Vec<(AccountId, OldSessionKeys)> =
-				Decode::decode(&mut pre_state.as_slice())
-					.expect("Pre state parameter should be generated by pre-upgrade hooks");
-
-			let queued: Vec<(AccountId, SessionKeys)> =
-				pallet_session::QueuedKeys::<Runtime>::get();
-
-			assert!(
-				pre_state.len() == queued.len(),
-				"Mismatch in number of session keys: pre {} vs post {}",
-				pre_state.len(),
-				queued.len()
-			);
-
-			pre_state.iter().zip(queued.into_iter()).for_each(
-				|((pre_acc, pre_session_key), (post_acc, post_session_key))| {
-					assert!(pre_acc == &post_acc, "Failed to match old validator key");
-					assert!(
-						&pre_session_key.aura == &post_session_key.aura,
-						"Failed to match old aura key"
-					);
-					assert!(
-						&pre_session_key.aura == &post_session_key.block_rewards,
-						"Block rewards key does not match aura one"
-					);
+			orml_asset_registry::Metadata::<Runtime>::translate(
+				|asset_id: CurrencyId, old_metadata: AssetMetadata<Balance, v0::CustomMetadata>| {
+					match asset_id {
+						CurrencyId::Staking(_) => None,
+						CurrencyId::Tranche(_, _) => Some(to_metadata_v1(
+							old_metadata,
+							v1::CrossChainTransferability::LiquidityPools,
+						)),
+						_ => Some(to_metadata_v1(
+							old_metadata.clone(),
+							v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
+						)),
+					}
 				},
 			);
 
+			let n = orml_asset_registry::Metadata::<Runtime>::iter().count() as u64;
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			let old_state: Vec<(CurrencyId, AssetMetadata<Balance, v0::CustomMetadata>)> =
+				Metadata::<Runtime>::iter().collect::<Vec<_>>();
+
+			Ok(old_state.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
+			use crate::OrmlAssetRegistry;
+
+			let old_state = sp_std::vec::Vec::<(
+				CurrencyId,
+				AssetMetadata<Balance, v0::CustomMetadata>,
+			)>::decode(&mut old_state_encoded.as_ref())
+			.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			for (asset_id, old_metadata) in old_state {
+				let new_metadata = OrmlAssetRegistry::metadata(asset_id)
+					.ok_or_else(|| "New state lost the metadata of an asset")?;
+
+				match asset_id {
+                    CurrencyId::Tranche(_, _) => ensure!(new_metadata == to_metadata_v1(
+						old_metadata,
+						v1::CrossChainTransferability::LiquidityPools,
+					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `LiquidityPools `"),
+                    _ => ensure!(new_metadata == to_metadata_v1(
+						old_metadata.clone(),
+						v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
+					), "The metadata of a NON tranche token wasn't just updated by setting `transferability` to `Xcm`"),
+                }
+			}
+
 			Ok(())
+		}
+	}
+
+	mod v0 {
+		use cfg_types::xcm::XcmMetadata;
+		use codec::{Decode, Encode, MaxEncodedLen};
+		use scale_info::TypeInfo;
+		#[cfg(feature = "std")]
+		use serde::{Deserialize, Serialize};
+
+		// The `CustomMetadata` type as it was prior to adding the `transferability`
+		// field and prior to removing the `xcm` field.
+		#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+		#[derive(
+			Clone,
+			Copy,
+			Default,
+			PartialOrd,
+			Ord,
+			PartialEq,
+			Eq,
+			Debug,
+			Encode,
+			Decode,
+			TypeInfo,
+			MaxEncodedLen,
+		)]
+		pub struct CustomMetadata {
+			pub xcm: XcmMetadata,
+			pub mintable: bool,
+			pub permissioned: bool,
+			pub pool_currency: bool,
+		}
+	}
+
+	fn to_metadata_v1(
+		old: AssetMetadata<Balance, v0::CustomMetadata>,
+		transferability: v1::CrossChainTransferability,
+	) -> AssetMetadata<Balance, v1::CustomMetadata> {
+		AssetMetadata {
+			decimals: old.decimals,
+			name: old.name,
+			symbol: old.symbol,
+			existential_deposit: old.existential_deposit,
+			location: old.location,
+			additional: CustomMetadata {
+				mintable: old.additional.mintable,
+				permissioned: old.additional.permissioned,
+				pool_currency: old.additional.pool_currency,
+				transferability,
+			},
 		}
 	}
 }
 
-mod asset_registry {
+mod orml_tokens_migration {
+	use cfg_primitives::AccountId;
+	use orml_tokens::AccountData;
+
 	use super::*;
 
-	/// This migration sets the AssetMetadata.location of all the Tranche tokens
-	/// registered in the AssetRegistry to `None`.
-	pub struct TrancheLocationMigration;
+	/// As we dropped `CurrencyId::KSM` and `CurrencyId::AUSD`, we need to
+	/// migrate the balances under the dropped variants in favour of the new,
+	/// corresponding `CurrencyId::ForeignAsset`. We have never transferred KSM
+	/// so we only need to deal with AUSD.
+	pub struct CurrencyIdRefactorMigration;
 
-	impl OnRuntimeUpgrade for TrancheLocationMigration {
-		fn on_runtime_upgrade() -> Weight {
-			for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
-				if matches!(asset_id, CurrencyId::Tranche(_, _)) && metadata.location.is_some() {
-					match OrmlAssetRegistry::do_update_asset(
-						asset_id,
-						// decimals
-						None,
-						// name
-						None,
-						// symbol
-						None,
-						// existential_deposit
-						None,
-						// location: we do set it to `None`
-						Some(None),
-						// additional
-						None,
-					) {
-						Err(e) => log::error!("TrancheLocationMigration: Failed to update asset with underlying error: {:?}", e),
-						_ => continue,
-					}
-				}
+	#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+	pub struct OldState {
+		pub total_issuance: Balance,
+		pub entries: Vec<(AccountId, AccountData<Balance>)>,
+	}
+
+	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			let total_issuance =
+				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
+			let entries: Vec<(AccountId, AccountData<Balance>)> =
+				orml_tokens::Accounts::<Runtime>::iter()
+					.filter(|(_, old_currency_id, _)| {
+						*old_currency_id == DEPRECATED_AUSD_CURRENCY_ID
+					})
+					.map(|(account, _, account_data)| (account, account_data))
+					.collect::<_>();
+
+			Ok(OldState {
+				total_issuance,
+				entries,
+			}
+			.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			use crate::OrmlTokens;
+
+			let old_state = OldState::decode(&mut state.as_ref())
+				.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			let new_total_issuance =
+				orml_tokens::TotalIssuance::<Runtime>::get(NEW_AUSD_CURRENCY_ID);
+
+			ensure!(
+				old_state.total_issuance == new_total_issuance,
+				"The old AUSD issuance differs from the new one"
+			);
+
+			for (account, account_data) in old_state.entries {
+				ensure!(
+					OrmlTokens::accounts(&account, NEW_AUSD_CURRENCY_ID) == account_data.clone(),
+					"The account data under the new AUSD Currency does NOT match the old one"
+				);
 			}
 
-			// todo(nuno): not sure how to build this properly,
-			// setting it to a conservative value for now.
-			Weight::from_ref_time(200_000_000)
+			Ok(())
 		}
 
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
-			Ok(Default::default())
-		}
+		fn on_runtime_upgrade() -> Weight {
+			use frame_support::traits::tokens::fungibles::Mutate;
 
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
-			for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
-				if matches!(asset_id, CurrencyId::Tranche(_, _)) {
-					frame_support::ensure!(
-						metadata.location.is_none(),
-						"A tranche token's location is not None"
+			let mut migrated_entries = 0;
+
+			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
+			orml_tokens::Accounts::<Runtime>::iter()
+				.filter(|(_, old_currency_id, _)| *old_currency_id == DEPRECATED_AUSD_CURRENCY_ID)
+				.for_each(|(account, _, account_data)| {
+					let balance = account_data.free;
+					// Burn the amount under the old, hardcoded CurrencyId
+					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::burn_from(
+						DEPRECATED_AUSD_CURRENCY_ID,
+						&account,
+						balance,
 					)
-				}
-			}
+					.map_err(|e| {
+						log::error!(
+							"Failed to call burn_from({:?}, {:?}, {balance}): {:?}",
+							DEPRECATED_AUSD_CURRENCY_ID,
+							account,
+							e
+						)
+					})
+					.ok();
+					// Now mint the amount under the new CurrencyID
+					<orml_tokens::Pallet<Runtime> as Mutate<AccountId>>::mint_into(
+						NEW_AUSD_CURRENCY_ID,
+						&account,
+						balance,
+					)
+					.map_err(|e| {
+						log::error!(
+							"Failed to mint_into burn_from({:?}, {:?}, {balance}): {:?}",
+							NEW_AUSD_CURRENCY_ID,
+							account,
+							e
+						)
+					})
+					.ok();
 
-			Ok(())
+					migrated_entries += 1;
+				});
+
+			// Approximate weight given for every entry migration there are two calls being
+			// made, so counting the reads and writes for each call.
+			<Runtime as frame_system::Config>::DbWeight::get()
+				.reads_writes(migrated_entries * 5, migrated_entries * 4)
 		}
 	}
 }
 
-mod evm_chain_id {
-	use pallet_evm_chain_id::ChainId;
+mod pool_system {
+	#[cfg(feature = "try-runtime")]
+	use cfg_primitives::PoolId;
+	use pallet_pool_system::pool_types::PoolDetails;
 
 	use super::*;
-	use crate::{ParachainInfo, Runtime};
 
-	/// This migration sets the EVM chain ID based on the parachain ID.
-	pub struct SetEvmChainId;
+	pub struct MigrateAUSDPools;
 
-	impl OnRuntimeUpgrade for SetEvmChainId {
+	impl OnRuntimeUpgrade for MigrateAUSDPools {
 		fn on_runtime_upgrade() -> Weight {
-			let para_id: u32 = ParachainInfo::parachain_id().into();
-			let evm_id: u64 = para_id.into();
-			ChainId::<Runtime>::put(evm_id);
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+			pallet_pool_system::Pool::<Runtime>::translate(
+				|_, mut details: PoolDetails<CurrencyId, _, _, _, _, _, _, _, _>| {
+					if details.currency == DEPRECATED_AUSD_CURRENCY_ID {
+						details.currency = NEW_AUSD_CURRENCY_ID;
+					}
+
+					Some(details)
+				},
+			);
+
+			let n = pallet_pool_system::Pool::<Runtime>::iter().count() as u64;
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
-			Ok(Default::default())
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			let ausd_pools: Vec<PoolId> = pallet_pool_system::Pool::<Runtime>::iter()
+				.filter(|(_, details)| details.currency == DEPRECATED_AUSD_CURRENCY_ID)
+				.map(|(pool_id, _)| pool_id)
+				.collect::<_>();
+
+			Ok(ausd_pools.encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
-			// Migratino is infallible
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			let ausd_pools = sp_std::vec::Vec::<PoolId>::decode(&mut state.as_ref())
+				.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			for pool_id in ausd_pools {
+				let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)
+					.expect("AUSD Pool should exist after the migration was executed");
+
+				ensure!(
+					pool.currency == NEW_AUSD_CURRENCY_ID,
+					"A AUSD pool was NOT migrated to the new AUSD CurrencyId (ForeignAsset(2))",
+				)
+			}
+
 			Ok(())
 		}
 	}

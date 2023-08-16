@@ -108,6 +108,7 @@ benchmarks! {
 			assert_eq!(vesting_info, storage_vesting_info);
 		}
   }
+
   migrate_proxy_proxies{
 		let n in 1 .. <T as Config>::MigrationMaxProxies::get();
 
@@ -189,7 +190,9 @@ fn inject_total_issuance() {
 }
 
 fn inject_system_accounts() {
-	let accounts = test_data::system_account::SYSTEM_ACCOUNT;
+	// We need to put the array into the stack (with a vec) to avoid stack overflow
+	// here
+	let accounts = test_data::system_account::SYSTEM_ACCOUNT.to_vec();
 
 	for account in accounts {
 		storage::unhashed::put_raw(&account.key[..], &account.value[..]);

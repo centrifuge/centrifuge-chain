@@ -15,7 +15,8 @@
 
 use cfg_primitives::OrderId;
 use cfg_traits::{
-	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
+	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
+	InvestmentsPortfolio, OrderManager, PreConditions,
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
@@ -48,6 +49,12 @@ mod tests;
 
 type CurrencyOf<T> =
 	<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
+
+type AccountInvestmentPortfolioOf<T> = Vec<(
+	<T as Config>::InvestmentId,
+	CurrencyOf<T>,
+	<T as Config>::Amount,
+)>;
 
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -189,7 +196,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;
+		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen + Into<CurrencyOf<Self>>;
 
 		/// Something that knows how to handle accounting for the given
 		/// investments and provides metadata about them
@@ -430,7 +437,7 @@ pub mod pallet {
 		/// needs to be put in processing and then be cleared before
 		/// a collect is possible
 		OrderStillActive,
-		/// IvestmentManager does not now given investment
+		/// InvestmentManager does not know the given investment
 		UnknownInvestment,
 		/// The user has to many uncollected orders. Before
 		/// submitting new orders, a collect of those is required.
@@ -497,7 +504,7 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users invest orders for the given
+		/// Collect the results of a user's invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
@@ -511,7 +518,7 @@ pub mod pallet {
 			Self::do_collect_invest(who, investment_id)
 		}
 
-		/// Collect the results of a users redeem orders for the given
+		/// Collect the results of a user's redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
@@ -814,7 +821,7 @@ where
 				};
 				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
-				let cur_order_id = InvestOrderId::<T>::get(investment_id);
+				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
@@ -1083,12 +1090,48 @@ where
 	}
 }
 
+impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
+	type Balance = T::Amount;
+	type CurrencyId = CurrencyOf<T>;
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
+
+	/// Get the payment currency for an investment.
+	fn get_investment_currency_id(
+		investment_id: T::InvestmentId,
+	) -> Result<CurrencyOf<T>, DispatchError> {
+		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		Ok(info.payment_currency())
+	}
+
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
+	fn get_account_investments_currency(
+		who: &T::AccountId,
+	) -> Result<Self::AccountInvestmentPortfolio, DispatchError> {
+		let mut investments_currency: Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)> =
+			Vec::new();
+		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
+			let currency = Self::get_investment_currency_id(i)?;
+			let balance = T::Accountant::balance(i, who);
+			investments_currency.push((i, currency, balance));
+			Ok::<(), DispatchError>(())
+		})?;
+		Ok(investments_currency)
+	}
+}
 impl<T: Config> Investment<T::AccountId> for Pallet<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	type Amount = T::Amount;
+	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 
@@ -1100,15 +1143,21 @@ where
 		Pallet::<T>::do_update_investment(who.clone(), investment_id, amount)
 	}
 
+	fn accepted_payment_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool {
+		T::Accountant::info(investment_id)
+			.map(|info| info.payment_currency() == currency)
+			.unwrap_or(false)
+	}
+
 	fn investment(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = InvestOrders::<T>::get(who, investment_id) {
-			Ok(order.amount())
-		} else {
-			Ok(Zero::zero())
-		}
+		Ok(InvestOrders::<T>::get(who, investment_id)
+			.map_or_else(Zero::zero, |order| order.amount()))
 	}
 
 	fn update_redemption(
@@ -1119,15 +1168,21 @@ where
 		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
 	}
 
+	fn accepted_payout_currency(
+		investment_id: Self::InvestmentId,
+		currency: Self::CurrencyId,
+	) -> bool {
+		T::Accountant::info(investment_id)
+			.map(|info| info.payment_currency() == currency)
+			.unwrap_or(false)
+	}
+
 	fn redemption(
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = RedeemOrders::<T>::get(who, investment_id) {
-			Ok(order.amount())
-		} else {
-			Ok(Zero::zero())
-		}
+		Ok(RedeemOrders::<T>::get(who, investment_id)
+			.map_or_else(Zero::zero, |order| order.amount()))
 	}
 }
 
@@ -1408,5 +1463,33 @@ where
 		});
 
 		Ok(())
+	}
+}
+
+impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
+	type Result = ();
+
+	fn collect_investment(
+		who: T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error> {
+		Pallet::<T>::do_collect_invest(who, investment_id)
+			.map_err(|e| e.error)
+			.map(|_| ())
+	}
+
+	fn collect_redemption(
+		who: T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error> {
+		Pallet::<T>::do_collect_redeem(who, investment_id)
+			.map_err(|e| e.error)
+			.map(|_| ())
 	}
 }

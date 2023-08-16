@@ -10,8 +10,13 @@ pub trait TraitB {
 	fn reference(a: &i32) -> &i32;
 }
 
+pub trait Storage {
+	fn set(value: i32);
+	fn get() -> i32;
+}
+
 #[frame_support::pallet]
-pub mod pallet_mock_ab {
+pub mod pallet_mock_test {
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -54,6 +59,14 @@ pub mod pallet_mock_ab {
 		pub fn mock_reference(f: impl Fn(&i32) -> &i32 + 'static) {
 			register_call!(f);
 		}
+
+		pub fn mock_set(f: impl Fn(i32) + 'static) {
+			register_call!(f);
+		}
+
+		pub fn mock_get(f: impl Fn() -> i32 + 'static) {
+			register_call!(move |()| f());
+		}
 	}
 
 	impl<T: Config> super::TraitA for Pallet<T> {
@@ -81,6 +94,16 @@ pub mod pallet_mock_ab {
 
 		fn reference(a: &i32) -> &i32 {
 			execute_call!(a)
+		}
+	}
+
+	impl<T: Config> super::Storage for Pallet<T> {
+		fn set(a: i32) {
+			execute_call!(a)
+		}
+
+		fn get() -> i32 {
+			execute_call!(())
 		}
 	}
 }
@@ -115,7 +138,7 @@ mod mock {
 		traits::{BlakeTwo256, IdentityLookup},
 	};
 
-	use super::{my_pallet, pallet_mock_ab};
+	use super::{my_pallet, pallet_mock_test};
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -127,7 +150,7 @@ mod mock {
 			UncheckedExtrinsic = UncheckedExtrinsic,
 		{
 			System: frame_system,
-			MockAB: pallet_mock_ab,
+			MockTest: pallet_mock_test,
 			MyPallet: my_pallet,
 		}
 	);
@@ -159,10 +182,10 @@ mod mock {
 		type Version = ();
 	}
 
-	impl pallet_mock_ab::Config for Runtime {}
+	impl pallet_mock_test::Config for Runtime {}
 
 	impl my_pallet::Config for Runtime {
-		type ActionAB = pallet_mock_ab::Pallet<Runtime>;
+		type ActionAB = pallet_mock_test::Pallet<Runtime>;
 	}
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -176,14 +199,14 @@ mod mock {
 mod test {
 	use frame_support::assert_ok;
 
-	use super::{mock::*, TraitB};
+	use super::{mock::*, Storage, TraitB};
 
 	#[test]
 	fn correct() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_foo(|p1, _| assert_eq!("hello", &p1));
-			MockAB::mock_qux(|p1| &p1 == "hello");
-			MockAB::mock_bar(|_, p2| match p2 {
+			MockTest::mock_foo(|p1, _| assert_eq!("hello", &p1));
+			MockTest::mock_qux(|p1| &p1 == "hello");
+			MockTest::mock_bar(|_, p2| match p2 {
 				true => Ok(()),
 				false => Err("err".into()),
 			});
@@ -196,7 +219,7 @@ mod test {
 	#[should_panic]
 	fn wrong() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_foo(|p1, _| assert_eq!("hello", &p1));
+			MockTest::mock_foo(|p1, _| assert_eq!("hello", &p1));
 
 			assert_ok!(MyPallet::my_call("bye".into(), 42));
 		});
@@ -221,19 +244,19 @@ mod test {
 	#[test]
 	fn generic_input() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_generic_input(|p1: i8, p2: u8| {
+			MockTest::mock_generic_input(|p1: i8, p2: u8| {
 				assert_eq!(p1, 1);
 				assert_eq!(p2, 2);
 				8
 			});
-			MockAB::mock_generic_input(|p1: i16, p2: u16| {
+			MockTest::mock_generic_input(|p1: i16, p2: u16| {
 				assert_eq!(p1, 3);
 				assert_eq!(p2, 4);
 				16
 			});
 
-			assert_eq!(MockAB::generic_input(1i8, 2u8), 8);
-			assert_eq!(MockAB::generic_input(3i16, 4u16), 16);
+			assert_eq!(MockTest::generic_input(1i8, 2u8), 8);
+			assert_eq!(MockTest::generic_input(3i16, 4u16), 16);
 		});
 	}
 
@@ -241,33 +264,46 @@ mod test {
 	#[should_panic]
 	fn generic_input_not_found() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_generic_input(|p1: i8, p2: u8| {
+			MockTest::mock_generic_input(|p1: i8, p2: u8| {
 				assert_eq!(p1, 3);
 				assert_eq!(p2, 4);
 				8
 			});
 
-			MockAB::generic_input(3i16, 4u16);
+			MockTest::generic_input(3i16, 4u16);
 		});
 	}
 
 	#[test]
 	fn generic_output() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_generic_output(|| 8i8);
-			MockAB::mock_generic_output(|| 16i16);
+			MockTest::mock_generic_output(|| 8i8);
+			MockTest::mock_generic_output(|| 16i16);
 
-			assert_eq!(MockAB::generic_output::<i8>(), 8);
-			assert_eq!(MockAB::generic_output::<i16>(), 16);
+			assert_eq!(MockTest::generic_output::<i8>(), 8);
+			assert_eq!(MockTest::generic_output::<i16>(), 16);
 		});
 	}
 
 	#[test]
 	fn reference() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_reference(|a| a);
+			MockTest::mock_reference(|a| a);
 
-			assert_eq!(MockAB::reference(&42), &42);
+			assert_eq!(MockTest::reference(&42), &42);
+		});
+	}
+
+	#[test]
+	fn get_last_set() {
+		new_test_ext().execute_with(|| {
+			MockTest::mock_set(|v| MockTest::mock_get(move || v));
+
+			MockTest::set(23);
+			assert_eq!(MockTest::get(), 23);
+
+			MockTest::set(42);
+			assert_eq!(MockTest::get(), 42);
 		});
 	}
 }

@@ -14,6 +14,8 @@
     "tokenDecimals": 18,
     "tokenSymbol": "AIR"
   },
+  "relay_chain": "kusama",
+  "para_id": 2088,
   "consensusEngine": null,
   "codeSubstitutes": {},
   "genesis": {

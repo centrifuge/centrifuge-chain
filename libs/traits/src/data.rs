@@ -11,19 +11,23 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 
 /// Abstraction that represents a storage where
 /// you can subscribe to data updates and collect them
 pub trait DataRegistry<DataId, CollectionId> {
 	/// A collection of data
-	type Collection: DataCollection<DataId>;
+	type Collection: DataCollection<DataId, Data = Self::Data>;
 
 	/// Represents a data
 	type Data;
 
-	/// Return the last data value for a data id
-	fn get(data_id: &DataId) -> Self::Data;
+	/// Identify the max number a collection can reach.
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxCollectionSize: sp_runtime::traits::Get<u32>;
+
+	/// Return the last data value for a data id in a collection
+	fn get(data_id: &DataId, collection_id: &CollectionId) -> Result<Self::Data, DispatchError>;
 
 	/// Retrives a collection of data with all data associated to a collection
 	/// id
@@ -42,5 +46,5 @@ pub trait DataCollection<DataId> {
 	type Data;
 
 	/// Return the last data value for a data id
-	fn get(&self, data_id: &DataId) -> Self::Data;
+	fn get(&self, data_id: &DataId) -> Result<Self::Data, DispatchError>;
 }

@@ -14,6 +14,8 @@
     "tokenDecimals": 18,
     "tokenSymbol": "NAIR"
   },
+  "relay_chain": "rococo-local",
+  "para_id": 2088,
   "codeSubstitutes": {},
   "genesis": {
     "runtime": {

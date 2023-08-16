@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	AccountId32,
 };
-use xcm::{v1::MultiLocation, VersionedMultiLocation};
+use xcm::{latest::MultiLocation, VersionedMultiLocation};
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
@@ -31,7 +31,7 @@ pub enum Location {
 	/// next largest is only 40 bytes other values aren't hashed as we have
 	/// blake2 hashing on storage map keys, and we don't want the extra overhead
 	XCM(H256),
-	/// DomainAddress sending location from connectors
+	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }
 
@@ -43,6 +43,14 @@ impl From<AccountId32> for Location {
 
 impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
+		// using hash here as multilocation is significantly larger than any other enum
+		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
+		Self::XCM(BlakeTwo256::hash(&ml.encode()))
+	}
+}
+
+impl From<xcm::v2::MultiLocation> for Location {
+	fn from(ml: xcm::v2::MultiLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
 		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&ml.encode()))
@@ -87,13 +95,13 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
-		let xa = VersionedMultiLocation::V1(MultiLocation::default());
+		let xa = VersionedMultiLocation::V3(MultiLocation::default());
 		let l = Location::from(xa.clone());
 		assert_eq!(
 			l,
 			Location::XCM(sp_core::H256(
 				<[u8; 32]>::from_hex(
-					"5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
+					"a943e30c855a123a9506e69e678dc65ae9f5b70149cb6b26eb2ed58a59b4bf77"
 				)
 				.unwrap()
 			))
@@ -102,8 +110,8 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
-		let xa = xcm::v1::MultiLocation::default();
-		let xb = xcm::v2::MultiLocation::default();
+		let xa = xcm::v2::MultiLocation::default();
+		let xb = xcm::v3::MultiLocation::default();
 		let l0 = Location::from(xa.clone());
 		let l1 = Location::from(xb.clone());
 		assert_eq!(l0, l1);

@@ -15,7 +15,7 @@ use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, Consen
 use pallet_evm::EnsureAddressTruncated;
 use runtime_common::{
 	account_conversion::AccountConverter,
-	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
+	evm::{precompile::Development, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
@@ -42,7 +42,7 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
+	pub PrecompilesValue: Development<crate::Runtime> = Development::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
 }
 
@@ -57,7 +57,8 @@ impl pallet_evm::Config for crate::Runtime {
 	type FindAuthor = FindAuthorTruncated<Aura>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
-	type PrecompilesType = CentrifugePrecompiles<Self>;
+	type OnCreate = ();
+	type PrecompilesType = Development<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;
@@ -82,4 +83,8 @@ impl pallet_base_fee::Config for crate::Runtime {
 impl pallet_ethereum::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for crate::Runtime {
+	type RuntimeEvent = crate::RuntimeEvent;
 }

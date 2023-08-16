@@ -14,7 +14,10 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _, UpdateState};
-use cfg_types::tokens::{CurrencyId, CustomMetadata, TrancheCurrency};
+use cfg_types::{
+	pools::TrancheMetadata,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
@@ -22,7 +25,7 @@ use frame_system::RawOrigin;
 use sp_std::vec;
 
 use super::*;
-use crate::tranches::{TrancheIndex, TrancheInput, TrancheLoc, TrancheMetadata};
+use crate::tranches::{TrancheIndex, TrancheInput, TrancheLoc};
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
@@ -34,6 +37,8 @@ const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 
 const POOL: u64 = 0;
 const TRANCHE: TrancheIndex = 0;
+
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 benchmarks! {
 	where_clause {
@@ -176,18 +181,21 @@ where
 	T::AssetRegistry:
 		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
 {
-	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+	match T::AssetRegistry::metadata(&AUSD_CURRENCY_ID) {
 		Some(_) => (),
 		None => {
 			T::AssetRegistry::register_asset(
-				Some(CurrencyId::AUSD),
+				Some(AUSD_CURRENCY_ID),
 				orml_asset_registry::AssetMetadata {
 					decimals: 18,
-					name: "MOCK TOKEN".as_bytes().to_vec(),
-					symbol: "MOCK".as_bytes().to_vec(),
+					name: "MOCK AUSD".as_bytes().to_vec(),
+					symbol: "MOCKAUSD".as_bytes().to_vec(),
 					existential_deposit: 0,
 					location: None,
-					additional: CustomMetadata::default(),
+					additional: CustomMetadata {
+						pool_currency: true,
+						..CustomMetadata::default()
+					},
 				},
 			)
 			.expect("Registering Pool asset must work");
@@ -233,7 +241,7 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
-	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
+	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone().into(), MINT_AMOUNT)?;
 	if let Some(amount) = with_tranche_tokens {
 		T::Tokens::mint_into(
 			CurrencyId::Tranche(POOL, tranche_id),
@@ -276,7 +284,7 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		caller,
 		POOL,
 		tranches,
-		CurrencyId::AUSD,
+		AUSD_CURRENCY_ID,
 		MAX_RESERVE,
 	)
 }

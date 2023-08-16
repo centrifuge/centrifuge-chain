@@ -21,6 +21,18 @@ mod tests;
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod oracle;
+
+#[macro_export]
+macro_rules! production_or_benchmark {
+	($production:expr, $benchmark:expr) => {{
+		if cfg!(feature = "runtime-benchmarks") {
+			$benchmark
+		} else {
+			$production
+		}
+	}};
+}
 
 pub mod xcm_fees {
 	use cfg_primitives::{constants::currency_decimals, types::Balance};
@@ -208,18 +220,21 @@ pub mod asset_registry {
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
-		fn successful_origin(_asset_id: &Option<CurrencyId>) -> Origin {
-			unimplemented!()
+		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
+			Err(())
 		}
 	}
 }
 
 pub mod xcm {
 	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
-	use xcm::latest::{Junction::GeneralKey, MultiLocation};
+	use sp_runtime::traits::Convert;
+	use xcm::{
+		latest::{Junction::GeneralKey, MultiLocation},
+		prelude::{AccountId32, X1},
+	};
 
 	use crate::xcm_fees::default_per_second;
 
@@ -238,18 +253,205 @@ pub mod xcm {
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			metadata
-				.additional
-				.xcm
-				.fee_per_second
-				.or_else(|| Some(default_per_second(metadata.decimals)))
+			match metadata.additional.transferability {
+				CrossChainTransferability::Xcm(xcm_metadata)
+				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
+					.fee_per_second
+					.or_else(|| Some(default_per_second(metadata.decimals))),
+				_ => None,
+			}
 		}
 	}
 
-	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
-		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.into(),
-			None,
-		))
+	/// A utils function to un-bloat and simplify the instantiation of
+	/// `GeneralKey` values
+	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
+		GeneralKey {
+			length: data.len().min(32) as u8,
+			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
+		}
+	}
+
+	/// How we convert an `[AccountId]` into an XCM MultiLocation
+	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
+	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
+	where
+		AccountId: Into<[u8; 32]>,
+	{
+		fn convert(account: AccountId) -> MultiLocation {
+			X1(AccountId32 {
+				network: None,
+				id: account.into(),
+			})
+			.into()
+		}
+	}
+}
+
+pub mod changes {
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use frame_support::RuntimeDebug;
+	use pallet_loans::ChangeOf as LoansChangeOf;
+	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
+	use scale_info::TypeInfo;
+	use sp_runtime::DispatchError;
+
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+	pub enum RuntimeChange<T: pallet_loans::Config> {
+		Loan(LoansChangeOf<T>),
+	}
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
+			use cfg_primitives::SECONDS_PER_WEEK;
+			use pallet_loans::types::{InternalMutation, LoanMutation};
+			use pallet_pool_system::pool_types::changes::Requirement;
+			use sp_std::vec;
+
+			let epoch = Requirement::NextEpoch;
+			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
+			let blocked = Requirement::BlockedByLockedRedemptions;
+
+			let requirements = match loans_change {
+				// Requirements gathered from
+				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
+				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
+					LoanMutation::Maturity(_) => vec![week, blocked],
+					LoanMutation::MaturityExtension(_) => vec![],
+					LoanMutation::InterestPayments(_) => vec![week, blocked],
+					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
+					LoanMutation::InterestRate(_) => vec![epoch],
+					LoanMutation::Internal(mutation) => match mutation {
+						InternalMutation::ValuationMethod(_) => vec![week, blocked],
+						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
+						InternalMutation::LossGivenDefault(_) => vec![epoch],
+						InternalMutation::DiscountRate(_) => vec![epoch],
+					},
+				},
+				LoansChangeOf::<T>::Policy(_) => vec![week, blocked],
+			};
+
+			PoolChangeProposal::new(requirements)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
+			// We dont add any requirement in case of benchmarking.
+			// We assume checking requirements in the pool is something very fast and
+			// deprecable in relation to reading from any storage.
+			// If tomorrow any requirement requires a lot of time,
+			// it should be precomputed in any pool stage, to make the requirement
+			// validation as fast as possible.
+			PoolChangeProposal::new([])
+		}
+	}
+
+	/// Used for building CfgChanges in pallet-loans
+	impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+			RuntimeChange::Loan(loan_change)
+		}
+	}
+
+	/// Used for recovering LoanChange in pallet-loans
+	impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+		type Error = DispatchError;
+
+		fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+			let RuntimeChange::Loan(loan_change) = self;
+			Ok(loan_change)
+		}
+	}
+
+	pub mod fast {
+		use pallet_pool_system::pool_types::changes::Requirement;
+
+		use super::*;
+
+		const SECONDS_PER_WEEK: u32 = 60;
+
+		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
+
+		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+			fn from(runtime_change: RuntimeChange<T>) -> Self {
+				PoolChangeProposal::new(
+					PoolChangeProposal::from(runtime_change.0)
+						.requirements()
+						.map(|req| match req {
+							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
+							req => req,
+						}),
+				)
+			}
+		}
+
+		/// Used for building CfgChanges in pallet-loans
+		impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
+			fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+				Self(loan_change.into())
+			}
+		}
+
+		/// Used for recovering LoanChange in pallet-loans
+		impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+			type Error = DispatchError;
+
+			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+				self.0.try_into()
+			}
+		}
+	}
+}
+
+/// Module for investment portfolio common to all runtimes
+pub mod investment_portfolios {
+
+	use cfg_traits::{InvestmentsPortfolio, TrancheCurrency};
+	use sp_std::vec::Vec;
+
+	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
+	/// investments for an account.
+	pub fn get_portfolios<
+		Runtime,
+		AccountId,
+		TrancheId,
+		Investments,
+		InvestmentId,
+		CurrencyId,
+		PoolId,
+		Balance,
+	>(
+		account_id: AccountId,
+	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
+	where
+		Investments: InvestmentsPortfolio<
+			AccountId,
+			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
+			InvestmentId = InvestmentId,
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+		>,
+		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
+		Runtime: frame_system::Config,
+	{
+		let account_investments: Vec<(InvestmentId, CurrencyId, Balance)> =
+			Investments::get_account_investments_currency(&account_id).ok()?;
+		// Pool getting defined in runtime
+		// as opposed to pallet helper method
+		// as getting pool id in investments pallet
+		// would force tighter coupling of investments
+		// and pool pallets.
+		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
+			.into_iter()
+			.map(|(investment_id, currency_id, balance)| {
+				(investment_id.of_pool(), currency_id, investment_id, balance)
+			})
+			.collect();
+		Some(portfolio)
 	}
 }

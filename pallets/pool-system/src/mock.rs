@@ -40,7 +40,7 @@ use sp_runtime::{
 
 use crate::{
 	self as pallet_pool_system,
-	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	pool_types::{changes::PoolChangeProposal, PoolDetails, ScheduledUpdateDetails},
 	Config, DispatchResult,
 };
 
@@ -48,6 +48,8 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type MockAccountId = u64;
+
+pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -73,9 +75,9 @@ parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
-
 	pub const MaxRoles: u32 = u32::MAX;
 }
+
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
@@ -328,6 +330,7 @@ impl Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = PoolChangeProposal;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -342,7 +345,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::Staking(_) => false,
 			_ => true,
 		}
 	}
@@ -424,16 +427,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: (0..10)
+		balances: (0..20)
 			.into_iter()
 			.map(|idx| (idx, 1000 * CURRENCY))
 			.collect(),
@@ -443,14 +446,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![(
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			AssetMetadata {
-				decimals: 18,
-				name: "MOCK TOKEN".as_bytes().to_vec(),
-				symbol: "MOCK".as_bytes().to_vec(),
+				decimals: 12,
+				name: "MOCK AUSD".as_bytes().to_vec(),
+				symbol: "MckAUSD".as_bytes().to_vec(),
 				existential_deposit: 0,
 				location: None,
-				additional: CustomMetadata::default(),
+				additional: CustomMetadata {
+					pool_currency: true,
+					..Default::default()
+				},
 			},
 		)],
 	}

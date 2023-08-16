@@ -19,6 +19,7 @@ use sp_runtime::{AccountId32, Storage};
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
+	AUSD_CURRENCY_ID, RELAY_ASSET_ID,
 };
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the
@@ -44,7 +45,7 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD tokens to the
+/// Provides 100_000 * DECIMAL_BASE_12 AUSD tokens to the
 /// `accounts::default_accounts()`
 pub fn default_ausd_balances<Runtime>(storage: &mut Storage)
 where
@@ -59,7 +60,7 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					CurrencyId::AUSD.into(),
+					AUSD_CURRENCY_ID.into(),
 					(100_000 * DECIMAL_BASE_12).into(),
 				)
 			})
@@ -70,7 +71,7 @@ where
 }
 
 /// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12
-/// CurrencyId::AUSD tokens to the `accounts::default_accounts()`
+/// AUSD tokens to the `accounts::default_accounts()`
 pub fn default_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_tokens::Config + pallet_balances::Config,
@@ -83,7 +84,7 @@ where
 	default_ausd_balances::<Runtime>(storage);
 }
 
-/// Register the CurrencyID::KSM and CurrencyId::AUSD as assets
+/// Register the Relay chain token and AUSD_CURRENCY_ID in the asset registry
 pub fn register_default_asset<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config,
@@ -92,7 +93,7 @@ where
 	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	let genesis = MockGenesisConfigAssetRegistry {
-		assets: vec![CurrencyId::AUSD, CurrencyId::KSM],
+		assets: vec![RELAY_ASSET_ID, AUSD_CURRENCY_ID],
 	};
 
 	<MockGenesisConfigAssetRegistry as GenesisBuild<Runtime>>::assimilate_storage(
@@ -142,7 +143,11 @@ where
 					symbol: b"mock_symbol".to_vec(),
 					existential_deposit: 0u128.into(),
 					location: None,
-					additional: CustomMetadata::default().into(),
+					additional: CustomMetadata {
+						pool_currency: asset == AUSD_CURRENCY_ID,
+						..CustomMetadata::default().into()
+					}
+					.into(),
 				},
 				Some(asset.clone().into()),
 			)
@@ -215,4 +220,32 @@ where
 	}
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+/// Sets the `default_accounts` as council members.
+pub fn default_council_members<Runtime, Instance>(storage: &mut Storage)
+where
+	Instance: 'static,
+	Runtime: pallet_collective::Config<Instance>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	council_members::<Runtime, Instance>(default_accounts(), storage)
+}
+
+/// Sets the provided account IDs as council members.
+pub fn council_members<Runtime, Instance>(members: Vec<Keyring>, storage: &mut Storage)
+where
+	Instance: 'static,
+	Runtime: pallet_collective::Config<Instance>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	pallet_collective::GenesisConfig::<Runtime, Instance> {
+		phantom: Default::default(),
+		members: members
+			.into_iter()
+			.map(|acc| acc.to_account_id().into())
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Pallet collective genesis build is not allowed to fail")
 }

@@ -14,6 +14,7 @@ use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
+use sp_runtime::traits::{One, Saturating};
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochState<EpochId> {
@@ -23,4 +24,19 @@ pub struct EpochState<EpochId> {
 	pub last_closed: Moment,
 	/// Last epoch that was executed.
 	pub last_executed: EpochId,
+}
+
+impl<EpochId: Ord + Saturating + Copy + One> EpochState<EpochId> {
+	/// ```text
+	///                      submission_period
+	///                    <------------------->
+	/// -------------------|-------------------|-----------------------
+	///  current = i + 1   |  current = i + 2  |
+	///  last_executed = i |                   | last_executed = i + 1
+	/// -------------------|-------------------|-----------------------
+	///                 close_epoch()     execute_epoch()
+	/// ```
+	pub fn is_submission_period(&self) -> bool {
+		self.last_executed.saturating_add(One::one()) < self.current
+	}
 }

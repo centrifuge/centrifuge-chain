@@ -35,7 +35,6 @@ use lazy_static::lazy_static;
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
-use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -63,6 +62,94 @@ use crate::{
 };
 
 pub mod macros {
+	/// A macro that evolves the chain until the provided event and pattern are
+	/// encountered.
+	///
+	/// Usage:
+	/// ```ignore
+	/// env::evolve_until_event!(
+	/// 		env,
+	/// 		Chain::Para(PARA_ID),
+	/// 		RuntimeEvent,
+	/// 		max_blocks,
+	/// 		RuntimeEvent::LiquidityPoolsGateway(pallet_liquidity_pools_gateway::Event::DomainRouterSet {
+	/// 			domain,
+	/// 			router,
+	/// 		}) if [*domain == test_domain && *router == test_router],
+	/// 	);
+	/// ```
+	macro_rules! evolve_until_event_is_found {
+		($env:expr, $chain:expr, $event:ty, $max_count:expr, $pattern:pat_param $(if $extra:tt)?, ) => {{
+			use frame_support::assert_ok;
+			use frame_system::EventRecord as __hidden_EventRecord;
+			use sp_core::H256 as __hidden_H256;
+			use codec::Decode as _;
+
+			use crate::utils::env::macros::{extra_counts, extra_guards};
+
+			let mut matched: Vec<$event> = Vec::new();
+
+			for _ in 0..$max_count {
+				let latest = $env
+						.centrifuge
+						.with_state(|| frame_system::Pallet::<Runtime>::block_number())
+						.expect("Failed retrieving latest block");
+
+				if latest == 0 {
+					$env.evolve().unwrap();
+					continue
+				}
+
+				let scale_events = $env
+					.events($chain, EventRange::One(latest))
+					.expect("Failed fetching events");
+
+				let events: Vec<$event> = scale_events
+					.into_iter()
+					.map(|scale_record| {
+						__hidden_EventRecord::<$event, __hidden_H256>::decode(
+							&mut scale_record.as_slice(),
+						)
+						.expect("Decoding from chain data does not fail. qed")
+					})
+					.map(|record| record.event)
+					.collect();
+
+				let matches = |event: &RuntimeEvent| {
+					match event {
+						$pattern $(if extra_guards!($extra))? => true,
+						_ => false
+					}
+				};
+
+				matched = events.clone();
+				matched.retain(|event| matches(event));
+
+				if matched.len() > 0 {
+					break
+				}
+
+				$env.evolve().unwrap();
+			}
+
+			let scale_events = $env.events($chain, EventRange::All).expect("Failed fetching events");
+			let events: Vec<$event> = scale_events
+				.into_iter()
+				.map(|scale_record| __hidden_EventRecord::<$event, __hidden_H256>::decode(&mut scale_record.as_slice())
+					.expect("Decoding from chain data does not fail. qed"))
+				.map(|record| record.event)
+				.collect();
+
+			assert!(
+				matched.len() == extra_counts!($pattern $(,$extra)?),
+				"events do not match the provided pattern - '{}'.\nMatched events: {:?}\nTotal events: {:?}\n",
+				stringify!($pattern $(,$extra)?),
+				matched,
+				events,
+			);
+		}};
+	}
+
 	/// A macro that helps checking whether a given list of events
 	/// has been included in the given range of blocks.
 	///
@@ -109,7 +196,13 @@ pub mod macros {
 
 				let mut matched = events.clone();
 				matched.retain(|event| matches(event));
-				assert!(matched.len() == extra_counts!($pattern $(,$extra)?));
+				assert!(
+					matched.len() == extra_counts!($pattern $(,$extra)?),
+					"events do not match the provided pattern - '{}'.\nMatched events: {:?}\nTotal events: {:?}\n",
+					stringify!($pattern $(,$extra)?),
+					matched,
+					events,
+				);
 			)+
 
 		}};
@@ -185,13 +278,13 @@ pub mod macros {
 			};
 
 			let mut searched_events = Vec::new();
-			for record in event_records {
+			for record in event_records.clone() {
 				if matches(&record.event) {
 					searched_events.push(record.event);
 				}
 			}
 
-			searched_events
+			(searched_events, event_records)
 		}};
 	}
 
@@ -212,7 +305,8 @@ pub mod macros {
 	/// );
 	/// ```
 	macro_rules! run {
-		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
+		// ($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
+		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr$(,)?)+);*) => {{
 				use codec::Encode as _;
 
 				trait CallAssimilator {
@@ -249,6 +343,7 @@ pub mod macros {
 	// Need to export after definition.
 	pub(crate) use assert_events;
 	pub(crate) use events;
+	pub(crate) use evolve_until_event_is_found;
 	pub(crate) use extra_counts;
 	pub(crate) use extra_guards;
 	pub(crate) use run;
@@ -290,7 +385,6 @@ type RelayCidp = Box<
 		InherentDataProviders = (
 			FudgeInherentTimestamp,
 			sp_consensus_babe::inherents::InherentDataProvider,
-			sp_authorship::InherentDataProvider<RelayHeader>,
 			FudgeDummyInherentRelayParachain<RelayHeader>,
 		),
 	>,
@@ -374,7 +468,9 @@ impl TestEnv {
 					EventRange::Latest => self.events_relay(latest),
 					EventRange::All => {
 						let mut events = Vec::new();
-						for block in 0..latest + 1 {
+						// We MUST NOT query events at genesis block, as this triggers
+						// a panic. Hence, start at 1.
+						for block in 1..latest + 1 {
 							events.extend(self.events_relay(block)?)
 						}
 
@@ -402,7 +498,9 @@ impl TestEnv {
 						EventRange::Latest => self.events_centrifuge(latest),
 						EventRange::All => {
 							let mut events = Vec::new();
-							for block in 0..latest + 1 {
+							// We MUST NOT query events at genesis block, as this triggers
+							// a panic. Hence, start at 1.
+							for block in 1..latest + 1 {
 								events.extend(self.events_centrifuge(block)?)
 							}
 
@@ -719,10 +817,6 @@ fn test_env(
 					.expect("ESSENTIAL: Relay CIDP must not fail.");
 
 				async move {
-					let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
-						&*client, parent,
-					)?;
-
 					let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 						.expect("Instances is initialized");
 
@@ -733,7 +827,7 @@ fn test_env(
 							);
 
 					let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-					Ok((timestamp, slot, uncles, relay_para_inherent))
+					Ok((timestamp, slot, relay_para_inherent))
 				}
 			})
 		};

@@ -50,7 +50,7 @@ where
 	}
 }
 
-// Implement connectors account conversion using our shared conversion code
+// Implement liquidityPools account conversion using our shared conversion code
 impl<R> Convert<DomainAddress, AccountId> for AccountConverter<R> {
 	fn convert(domain_address: DomainAddress) -> AccountId {
 		match domain_address {

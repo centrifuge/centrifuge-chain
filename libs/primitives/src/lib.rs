@@ -15,6 +15,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+pub mod conversion;
 mod impls;
 
 pub use constants::*;
@@ -176,13 +177,13 @@ pub mod types {
 	/// A representation of a loan identifier
 	pub type LoanId = u64;
 
-	/// A representation of a price identifier
-	pub type PriceId = u64;
+	/// The type for indexing pallets on a Substrate runtime
+	pub type PalletIndex = u8;
 }
 
 /// Common constants for all runtimes
 pub mod constants {
-	use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
+	use cumulus_primitives_core::relay_chain::MAX_POV_SIZE;
 	use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
 
@@ -210,6 +211,8 @@ pub mod constants {
 	pub const SECONDS_PER_MINUTE: u64 = 60;
 	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
 	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
+	pub const SECONDS_PER_WEEK: u64 = SECONDS_PER_DAY * 7;
+	pub const SECONDS_PER_MONTH: u64 = SECONDS_PER_DAY * 30;
 	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize`
@@ -259,8 +262,13 @@ pub mod constants {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
 
-	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
+	/// Unhashed 36-bytes prefix for currencies managed by LiquidityPools.
 	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
+
+	/// Transaction recovery ID used for generating a signature in the Ethereum
+	/// Transaction pallet. As per:
+	/// <https://github.com/PureStake/moonbeam/blob/fb63014a5e487f17e31283776e4f6b0befd009a2/primitives/xcm/src/ethereum_xcm.rs#L167>
+	pub const TRANSACTION_RECOVERY_ID: u64 = 42;
 }
 
 /// Listing of parachains we integrate with.
@@ -311,8 +319,8 @@ pub mod parachains {
 	}
 }
 
-pub mod connectors {
-	/// The hashed prefix for currencies managed by Connectors.
+pub mod liquidity_pools {
+	/// The hashed prefix for currencies managed by LiquidityPools.
 	pub struct GeneralCurrencyPrefix;
 
 	impl sp_core::Get<[u8; 12]> for GeneralCurrencyPrefix {

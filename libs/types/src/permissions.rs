@@ -37,7 +37,7 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	Borrower,
 	PricingAdmin,
 	LiquidityAdmin,
-	MemberListAdmin,
+	InvestorAdmin,
 	LoanAdmin,
 	TrancheInvestor(TrancheId, Moment),
 	PODReadAccess,
@@ -93,7 +93,7 @@ bitflags::bitflags! {
 		const BORROWER  = 0b00000010;
 		const PRICING_ADMIN = 0b00000100;
 		const LIQUIDITY_ADMIN = 0b00001000;
-		const MEMBER_LIST_ADMIN = 0b00010000;
+		const INVESTOR_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
 		const POD_READ_ACCESS = 0b01000000;
 	}
@@ -219,9 +219,7 @@ where
 				}
 				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
 				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
-				PoolRole::MemberListAdmin => {
-					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
-				}
+				PoolRole::InvestorAdmin => self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN),
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
 				PoolRole::PODReadAccess => {
@@ -260,8 +258,8 @@ where
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
-					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
+				PoolRole::InvestorAdmin => {
+					Ok(self.pool_admin.remove(PoolAdminRoles::INVESTOR_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
@@ -294,8 +292,8 @@ where
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
-					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
+				PoolRole::InvestorAdmin => {
+					Ok(self.pool_admin.insert(PoolAdminRoles::INVESTOR_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
@@ -473,7 +471,6 @@ mod tests {
 
 	///! Tests for some types in the common section for our runtimes
 	use super::*;
-	use crate::tokens::StakingCurrency;
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
@@ -619,10 +616,10 @@ mod tests {
 
 		// Adding roles works normally
 		assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.add(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
 		assert!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 
 		// Role exists for as long as permission is given
@@ -662,47 +659,10 @@ mod tests {
 
 		// Removing roles work normally for Non-TrancheInvestor roles
 		assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.rm(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
 		assert!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
-	}
-
-	/// Sanity check for every CurrencyId variant's encoding value.
-	/// This will stop us from accidentally moving or dropping variants
-	/// around which could have silent but serious negative consequences.
-	#[test]
-	fn currency_id_encode_sanity() {
-		use crate::tokens::CurrencyId::*;
-
-		// Verify that every variant encodes to what we would expect it to.
-		// If this breaks, we must have changed the order of a variant, added
-		// a new variant in between existing variants, or deleted one.
-		vec![Native, Tranche(42, [42; 16]), KSM, AUSD, ForeignAsset(89)]
-			.into_iter()
-			.for_each(|variant| {
-				let encoded_u64: Vec<u64> = variant.encode().iter().map(|x| *x as u64).collect();
-
-				assert_eq!(encoded_u64, expected_encoding_value(variant))
-			});
-
-		/// Return the expected encoding.
-		/// This is useful to force at compile time that we handle all existing
-		/// variants.
-		fn expected_encoding_value(id: crate::tokens::CurrencyId) -> Vec<u64> {
-			match id {
-				Native => vec![0],
-				Tranche(pool_id, tranche_id) => {
-					let mut r = vec![1, pool_id, 0, 0, 0, 0, 0, 0, 0];
-					r.append(&mut tranche_id.map(|x| x as u64).to_vec());
-					r
-				}
-				KSM => vec![2],
-				AUSD => vec![3],
-				ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
-				Staking(StakingCurrency::BlockRewards) => vec![5, 1, 0, 0, 0],
-			}
-		}
 	}
 }

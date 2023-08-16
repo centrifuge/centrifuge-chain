@@ -246,11 +246,30 @@ macro_rules! impl_mock_registry {
 						location: Option<Option<__private_VersionedMultiLocation>>,
 						additional: Option<$custom_metadata>,
 					) -> __private_DispatchResult {
-						if let Some(meta) = self.get_meta(&asset_id) {
-							Ok(())
-						} else {
-							Err(__private_DispatchError::Other("Asset not registered"))
+						for (curr_id, curr_meta) in &mut self.metadata {
+							if curr_id == &asset_id {
+								if let Some(decimals) = decimals {
+									curr_meta.decimals = decimals;
+								}
+								if let Some(name) = name.clone() {
+									curr_meta.name = name;
+								}
+								if let Some(symbol) = symbol.clone() {
+									curr_meta.symbol = symbol;
+								}
+								if let Some(existential_deposit) = existential_deposit {
+									curr_meta.existential_deposit = existential_deposit;
+								}
+								if let Some(location) = location.clone() {
+									curr_meta.location = location;
+								}
+								if let Some(additional) = additional {
+									curr_meta.additional = additional;
+								}
+								return Ok(());
+							}
 						}
+						Err(__private_DispatchError::Other("Asset not registered"))
 					}
 				}
 

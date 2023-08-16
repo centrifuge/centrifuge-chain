@@ -10,12 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
+use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT, TrancheTokenPrice};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
-	xcm::XcmMetadata,
+	pools::TrancheMetadata,
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
@@ -33,11 +33,105 @@ use crate::{
 	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
 	tranches::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
-		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+		TrancheInput, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolInspect,
-	PoolState, UnhealthyState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolState,
+	UnhealthyState,
 };
+
+const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
+pub mod util {
+	use sp_std::time::Duration;
+
+	use super::*;
+
+	pub fn advance_secs(secs: u64) {
+		Timestamp::set_timestamp(Timestamp::get() + Duration::from_secs(secs).as_millis() as u64);
+	}
+
+	pub mod default_pool {
+		use super::*;
+
+		pub fn create() {
+			PoolSystem::create(
+				DEFAULT_POOL_OWNER,
+				DEFAULT_POOL_OWNER,
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: Rate::default(),
+							min_risk_buffer: Perquintill::default(),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+				],
+				AUSD_CURRENCY_ID,
+				0,
+			)
+			.unwrap();
+		}
+
+		pub fn close_epoch() {
+			// This non-zero investment avoids close_epoch()
+			// to execute automatically the next epoch,
+			// forcing to call `execute_epoch()` later.
+			Investments::update_invest_order(
+				RuntimeOrigin::signed(0),
+				TrancheCurrency::generate(0, JuniorTrancheId::get()),
+				500 * CURRENCY,
+			)
+			.unwrap();
+
+			Pool::<Runtime>::try_mutate(DEFAULT_POOL_ID, |maybe_pool| -> Result<(), ()> {
+				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+				maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+				Ok(())
+			})
+			.unwrap();
+
+			PoolSystem::close_epoch(RuntimeOrigin::signed(DEFAULT_POOL_OWNER), DEFAULT_POOL_ID)
+				.unwrap();
+		}
+
+		pub fn execute_epoch() {
+			assert_ok!(PoolSystem::submit_solution(
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			));
+
+			next_block();
+
+			assert_ok!(PoolSystem::execute_epoch(
+				RuntimeOrigin::signed(DEFAULT_POOL_OWNER),
+				DEFAULT_POOL_ID
+			));
+		}
+	}
+}
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -67,7 +161,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -151,7 +245,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -251,7 +345,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -356,7 +450,7 @@ fn pool_constraints_pass() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
+			currency: AUSD_CURRENCY_ID,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -452,7 +546,7 @@ fn epoch() {
 					}
 				}
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 		assert_ok!(Investments::update_invest_order(
@@ -477,10 +571,10 @@ fn epoch() {
 		));
 
 		assert_eq!(
-			<PoolSystem as PoolInspect<
+			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
 			Rate::one()
@@ -615,9 +709,12 @@ fn epoch() {
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = PoolSystem::pool(0).unwrap();
-		let senior_price = PoolSystem::get_tranche_token_price(0, SeniorTrancheId::get())
-			.unwrap()
-			.price;
+		let senior_price = <PoolSystem as TrancheTokenPrice<
+			<Runtime as frame_system::Config>::AccountId,
+			<Runtime as Config>::CurrencyId,
+		>>::get(0, SeniorTrancheId::get())
+		.unwrap()
+		.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert_eq!(
 			pool.tranches.residual_tranche().unwrap().reserve,
@@ -639,10 +736,10 @@ fn epoch() {
 		);
 
 		assert_eq!(
-			<PoolSystem as PoolInspect<
+			<PoolSystem as TrancheTokenPrice<
 				<Runtime as frame_system::Config>::AccountId,
 				<Runtime as Config>::CurrencyId,
-			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
 			Rate::from_inner(1004126524122317386524000000)
@@ -686,7 +783,7 @@ fn submission_period() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 		assert_ok!(Investments::update_invest_order(
@@ -875,7 +972,7 @@ fn execute_info_removed_after_epoch_execute() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -946,7 +1043,7 @@ fn pool_updates_should_be_constrained() {
 					token_symbol: BoundedVec::default(),
 				}
 			}],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1105,7 +1202,7 @@ fn tranche_ids_are_unique() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1156,7 +1253,7 @@ fn tranche_ids_are_unique() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1194,7 +1291,7 @@ fn same_pool_id_not_possible() {
 					token_symbol: BoundedVec::default(),
 				}
 			},],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1211,7 +1308,7 @@ fn same_pool_id_not_possible() {
 						token_symbol: BoundedVec::default(),
 					}
 				},],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::PoolInUse
@@ -1276,7 +1373,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1338,7 +1435,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1392,7 +1489,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1443,7 +1540,7 @@ fn valid_tranche_structure_is_enforced() {
 						}
 					},
 				],
-				CurrencyId::AUSD,
+				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
 			),
 			Error::<Runtime>::InvalidTrancheStructure
@@ -1488,7 +1585,7 @@ fn triger_challange_period_with_zero_solution() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1582,7 +1679,7 @@ fn min_challenge_time_is_respected() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -1679,7 +1776,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -1880,7 +1977,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -2133,7 +2230,7 @@ fn only_usd_as_pool_currency_allowed() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 	});
@@ -2177,7 +2274,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(0).unwrap();
@@ -2214,7 +2311,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(1).unwrap();
@@ -2253,7 +2350,7 @@ fn creation_takes_deposit() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
 		));
 
@@ -2300,7 +2397,7 @@ fn create_tranche_token_metadata() {
 					}
 				},
 			],
-			CurrencyId::AUSD,
+			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
 		));
 
@@ -2310,7 +2407,9 @@ fn create_tranche_token_metadata() {
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
 			AssetMetadata {
-				decimals: 18,
+				// The decimals of the tranche token need to match the decimals for the pool
+				// currency.
+				decimals: 12,
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
@@ -2319,13 +2418,245 @@ fn create_tranche_token_metadata() {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: XcmMetadata {
-						fee_per_second: None,
-					},
+					transferability: CrossChainTransferability::LiquidityPools,
 				},
 			}
 		);
 	});
+}
+
+mod changes {
+	use cfg_traits::changes::ChangeGuard;
+	use sp_std::collections::btree_set::BTreeSet;
+
+	use super::*;
+	use crate::{
+		pool_types::changes::{PoolChangeProposal, Requirement},
+		Event,
+	};
+
+	#[test]
+	fn no_overwriten_changes() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([]);
+			let change_id_1 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change_id_2 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_3 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			// Same change but different moment;
+			util::advance_secs(1);
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_4 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let ids = [change_id_1, change_id_2, change_id_3, change_id_4];
+			assert_eq!(BTreeSet::from(ids.clone()).len(), ids.len());
+		});
+	}
+
+	#[test]
+	fn overwriten_changes() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_1 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_2 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			assert_eq!(change_id_1, change_id_2)
+		});
+	}
+
+	#[test]
+	fn event() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change.clone()).unwrap();
+
+			assert_eq!(
+				System::events().last().unwrap().event,
+				RuntimeEvent::PoolSystem(Event::ProposedChange {
+					pool_id: DEFAULT_POOL_ID,
+					change_id,
+					change,
+				})
+			);
+		});
+	}
+
+	#[test]
+	fn release_with_wrong_change_id() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			// ChangeId not found
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, Default::default()),
+				Error::<Runtime>::ChangeNotFound
+			);
+
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change.clone()).unwrap();
+
+			// ChangeId not found in the pool
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID + 1, change_id),
+				Error::<Runtime>::ChangeNotFound
+			);
+
+			// Already released
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn no_requirements() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn default_requirement_non_submitted_period() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			// Starts submitted period
+			util::default_pool::close_epoch();
+
+			assert_err!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			// Ends submitted period
+			util::default_pool::execute_epoch();
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_delay_time() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(23)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			util::advance_secs(22);
+
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			util::advance_secs(1);
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_next_epoch() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([Requirement::NextEpoch]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			util::advance_secs(1);
+
+			util::default_pool::close_epoch();
+			util::default_pool::execute_epoch();
+
+			util::advance_secs(1);
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_next_epoch_no_pool() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			assert_err!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::NoSuchPool
+			);
+		});
+	}
+
+	#[test]
+	fn requirement_blocked_by_locked_redemptions() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([Requirement::BlockedByLockedRedemptions]);
+			let _change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			/* TODO: 1407
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			// TODO: make the change ready
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+			*/
+		});
+	}
+
+	#[test]
+	fn several_requirements() {
+		new_test_ext().execute_with(|| {
+			util::default_pool::create();
+
+			let change = PoolChangeProposal::new([
+				Requirement::DelayTime(1),
+				Requirement::DelayTime(5),
+				Requirement::DelayTime(3),
+			]);
+
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			util::advance_secs(4);
+
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady // Blocked by the second requirement
+			);
+		});
+	}
 }
 
 #[test]

@@ -41,6 +41,10 @@ pub enum FeeKey {
 	/// Key to identify the balance reserved for Allowances.
 	/// See more at `pallet-transfer-allowlist`
 	AllowanceCreation,
+
+	/// Key to identify the balance reserved for Orderbook Orders
+	/// See more at `pallet-order-book`
+	OrderBookOrderCreation,
 }
 
 /// Only needed for initializing the runtime benchmark with some value.

@@ -13,13 +13,13 @@
 use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto},
-	TrancheCurrency as TrancheCurrencyT,
-};
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
-use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
+use cfg_types::{
+	pools::TrancheMetadata,
+	tokens::{CrossChainTransferability, CustomMetadata},
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -35,7 +35,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::{
-	traits::{Member, One, Zero},
+	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, Member, One, Zero},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
@@ -119,18 +119,6 @@ where
 			) => interest_prev >= interest_next,
 		}
 	}
-}
-
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-// TODO: Why same struct twice? pool-registry and pool-system. Maybe because of
-// circular dependencies?
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -248,9 +236,7 @@ where
 				mintable: false,
 				permissioned: true,
 				pool_currency: false,
-				xcm: XcmMetadata {
-					fee_per_second: None,
-				},
+				transferability: CrossChainTransferability::LiquidityPools,
 			},
 		}
 	}

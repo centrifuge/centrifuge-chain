@@ -1,14 +1,22 @@
+mod change_guard;
 mod data;
 mod fees;
+mod liquidity_pools;
+mod liquidity_pools_gateway_routers;
 mod permissions;
 mod pools;
 mod rewards;
+mod time;
 
+pub use change_guard::pallet_mock_change_guard;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
+pub use liquidity_pools::{pallet as pallet_mock_liquidity_pools, MessageMock};
+pub use liquidity_pools_gateway_routers::{pallet as pallet_mock_routers, RouterMock};
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
 pub use rewards::pallet as pallet_mock_rewards;
+pub use time::pallet as pallet_mock_time;
 
 #[cfg(test)]
 #[allow(unused)]

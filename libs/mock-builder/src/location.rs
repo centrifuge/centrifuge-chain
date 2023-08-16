@@ -44,7 +44,7 @@ impl FunctionLocation {
 			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
 			.unwrap_or(path);
 
-		Self(format!("{}::{}", path, name))
+		Self(format!("{path}::{name}"))
 	}
 
 	/// Remove the prefix from the function name.
@@ -57,7 +57,7 @@ impl FunctionLocation {
 			)
 		});
 
-		Self(format!("{}::{}", path, name))
+		Self(format!("{path}::{name}"))
 	}
 
 	/// Add a representation of the function input and output types

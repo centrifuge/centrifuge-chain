@@ -13,12 +13,10 @@
 
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
-	traits::Zero, ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
-	FixedPointOperand, FixedU128,
+	traits::{EnsureAdd, EnsureFixedPointNumber, Zero},
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand, FixedU128,
 };
 use sp_std::vec::Vec;
-
-use crate::ops::{EnsureAdd, EnsureFixedPointNumber};
 
 /// Abstraction over a distribution reward groups.
 pub trait GroupRewards {
