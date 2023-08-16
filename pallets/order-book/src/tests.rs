@@ -7,9 +7,9 @@ use crate::mock::*;
 
 // Extrinsics tests
 #[test]
-fn create_order_v1_works() {
+fn create_order_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
 			CurrencyId::ForeignAsset(0),
@@ -55,7 +55,7 @@ fn create_order_v1_works() {
 #[test]
 fn user_cancel_order_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
 			CurrencyId::ForeignAsset(0),
@@ -87,7 +87,7 @@ fn user_cancel_order_works() {
 #[test]
 fn user_cancel_order_only_works_for_valid_account() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
 			CurrencyId::ForeignAsset(0),
@@ -121,7 +121,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 #[test]
 fn fill_order_full_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::AUSD,
 			CurrencyId::ForeignAsset(0),
@@ -190,7 +190,7 @@ fn fill_order_full_works() {
 #[test]
 fn fill_order_full_correctly_consolidates_reserves_with_same_out_and_fee_currency() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::ForeignAsset(0),
 			CurrencyId::Native,
@@ -245,7 +245,7 @@ fn fill_order_full_correctly_consolidates_reserves_with_same_out_and_fee_currenc
 #[test]
 fn fill_order_full_checks_asset_in_for_fulfiller() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order_v1(
+		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::Native,
 			CurrencyId::AUSD,

@@ -333,8 +333,8 @@ pub mod pallet {
 		/// Create an order, with the minimum fulfillment amount set to the buy
 		/// amount, as the first iteration will not have partial fulfillment
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::Weights::create_order_v1())]
-		pub fn create_order_v1(
+		#[pallet::weight(T::Weights::create_order())]
+		pub fn create_order(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,

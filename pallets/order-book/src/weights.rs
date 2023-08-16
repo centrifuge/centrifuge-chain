@@ -13,13 +13,13 @@
 pub use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn create_order_v1() -> Weight;
+	fn create_order() -> Weight;
 	fn user_cancel_order() -> Weight;
 	fn fill_order_full() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn create_order_v1() -> Weight {
+	fn create_order() -> Weight {
 		Weight::zero()
 	}
 

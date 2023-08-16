@@ -46,9 +46,9 @@ benchmarks! {
 			<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
 	}
 
-	create_order_v1 {
+	create_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:create_order_v1(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, Quantity::checked_from_integer(2u32).unwrap())
+		}:create_order(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, Quantity::checked_from_integer(2u32).unwrap())
 
 	user_cancel_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
