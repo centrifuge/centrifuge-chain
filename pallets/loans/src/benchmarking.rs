@@ -16,19 +16,16 @@ use cfg_traits::{
 	changes::ChangeGuard,
 	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolBenchmarkHelper,
+	Permissions, PoolBenchmarkHelper, PoolWriteOffPolicyMutate,
 };
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::{
-	storage::bounded_vec::BoundedVec,
-	traits::{
-		tokens::nonfungibles::{Create, Mutate},
-		UnixTime,
-	},
+use frame_support::traits::{
+	tokens::nonfungibles::{Create, Mutate},
+	UnixTime,
 };
 use frame_system::RawOrigin;
 use orml_traits::DataFeeder;
@@ -233,33 +230,20 @@ where
 		.unwrap()
 	}
 
-	// Worst case policy where you need to iterate for the whole policy.
-	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
-		vec![
-			WriteOffRule::new(
-				[WriteOffTrigger::PrincipalOverdue(0)],
-				T::Rate::zero(),
-				T::Rate::zero(),
-			);
-			T::MaxWriteOffPolicySize::get() as usize
-		]
-		.try_into()
-		.unwrap()
-	}
-
 	fn propose_policy(pool_id: T::PoolId) -> T::Hash {
 		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
+		let policy = Pallet::<T>::worst_case_policy();
 		Pallet::<T>::propose_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
 			pool_id,
-			Self::create_policy(),
+			policy.clone(),
 		)
 		.unwrap();
 
 		// We need to call noted again
 		// (that is idempotent for the same change and instant)
 		// to obtain the ChangeId used previously.
-		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(Self::create_policy()).into()).unwrap()
+		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(policy).into()).unwrap()
 	}
 
 	fn set_policy(pool_id: T::PoolId) {
@@ -418,7 +402,7 @@ benchmarks! {
 	propose_write_off_policy {
 		let pool_admin = account("pool_admin", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
-		let policy = Helper::<T>::create_policy();
+		let policy = Pallet::<T>::worst_case_policy();
 
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 

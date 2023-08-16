@@ -26,6 +26,11 @@ pub mod pallet {
 		pub fn mock_update(f: impl Fn(T::PoolId, T::Policy) -> DispatchResult + 'static) {
 			register_call!(move |(a, b)| f(a, b));
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_worst_case_policy(f: impl Fn() -> T::Policy + 'static) {
+			register_call!(move |()| f());
+		}
 	}
 
 	impl<T: Config> PoolWriteOffPolicyMutate<T::PoolId> for Pallet<T> {

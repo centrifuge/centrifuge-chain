@@ -99,7 +99,11 @@ benchmarks! {
 			RawOrigin::Root
 		};
 		prepare_asset_registry::<T>();
-		let policy = T::PoolWriteOffPolicyMutate::worst_case_policy();
+
+		#[cfg(test)]
+		mock::MockWriteOffPolicy::mock_worst_case_policy(|| ());
+
+		let policy = T::ModifyWriteOffPolicy::worst_case_policy();
 	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy)
 	verify {
 		let pool = get_pool::<T>();
