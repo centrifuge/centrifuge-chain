@@ -94,7 +94,7 @@ where
 /// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
 ///
 /// LiquidityPools contract call:
-/// <https://github.com/centrifuge/connectors/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
+/// <https://github.com/centrifuge/liquidity-pools/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
 pub(crate) fn get_axelar_encoded_msg(
 	serialized_msg: Vec<u8>,
 	target_chain: EVMChain,

@@ -266,12 +266,6 @@ pub mod pallet {
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
-	/// The set of known instances of deployed liquidity pools across arbitrary
-	/// domains. This set is used as an allow-list when authorizing the origin
-	/// of incoming messages.
-	#[pallet::storage]
-	pub(crate) type KnownInstances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
-
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Failed to map the asset to the corresponding LiquidityPools' General
@@ -344,17 +338,6 @@ pub mod pallet {
 
 			<DomainRouter<T>>::insert(domain.clone(), router.clone());
 			Self::deposit_event(Event::SetDomainRouter { domain, router });
-
-			Ok(())
-		}
-
-		/// Add an AccountId to the set of known liquidity pool instances,
-		/// allowing that origin to send incoming messages.
-		#[pallet::weight(< T as Config >::WeightInfo::add_instance())]
-		#[pallet::call_index(1)]
-		pub fn add_instance(origin: OriginFor<T>, instance: T::AccountId) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-			KnownInstances::<T>::insert(instance, ());
 
 			Ok(())
 		}
