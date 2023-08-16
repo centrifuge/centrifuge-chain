@@ -1339,6 +1339,10 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type XcmSender = XcmRouter;
 }
 
+parameter_types! {
+	pub const LiquidityPoolsPalletId: PalletId = cfg_types::ids::LIQUIDITY_POOLS_PALLET_ID;
+}
+
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1359,6 +1363,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = PoolSystem;
 	type WeightInfo = ();
+	type PalletId = LiquidityPoolsPalletId;
 }
 
 parameter_types! {

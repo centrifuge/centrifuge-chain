@@ -1571,6 +1571,10 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const LiquidityPoolsPalletId: PalletId = cfg_types::ids::LIQUIDITY_POOLS_PALLET_ID;
+}
+
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1591,6 +1595,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = PoolSystem;
 	type WeightInfo = ();
+	type PalletId = LiquidityPoolsPalletId;
 }
 
 parameter_types! {

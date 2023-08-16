@@ -1095,7 +1095,7 @@ mod tests {
 	#[test]
 	fn schedule_upgrade() {
 		test_encode_decode_identity(
-			ConnectorMessage::ScheduleUpgrade {
+			LiquidityPoolsMessage::ScheduleUpgrade {
 				contract: vec_to_fixed_array(default_address_20().to_vec()),
 			},
 			"131231231231231231231231231231231231231231000000000000000000000000",

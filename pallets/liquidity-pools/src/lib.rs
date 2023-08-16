@@ -26,6 +26,7 @@ use frame_support::{
 		PalletInfo,
 	},
 	transactional,
+	PalletId,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
@@ -239,6 +240,9 @@ pub mod pallet {
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
+
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 	}
 
 	#[pallet::event]
@@ -693,20 +697,18 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(origin: OriginFor<T>, contract: DomainAddress) -> DispatchResult {
-			match contract {
-				DomainAddress::EVM(_, _) => {
-					let who = ensure_signed(origin)?;
-
-					T::OutboundQueue::submit(
-						who,
-						contract.domain(),
-						Message::ScheduleUpgrade {
-							contract: contract.address(),
-						},
-					)
-				}
-				_ => Err(DispatchError::Other("Not an EVM domain address")),
-			}
+			ensure_root(origin)?;
+			// get account id of soverign account
+			let who = T::PalletId::get().into_account_truncating();
+			ensure!(contract.domain() != Domain::Centrifuge, Error::<T>::InvalidDomain);
+      
+			T::OutboundQueue::submit(
+			  who,
+			  contract.domain(),
+			  Message::ScheduleUpgrade {
+			    contract: contract.address(),
+			  },
+			)
 		}
 	}
 
