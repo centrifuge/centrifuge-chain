@@ -121,7 +121,7 @@ mod weights;
 pub mod xcm;
 pub use crate::xcm::*;
 
-pub mod connectors;
+pub mod liquidity_pools;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -506,7 +506,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// `collect_investments`, `collect_redemptions`
 					RuntimeCall::LiquidityRewards(..) |
 					RuntimeCall::BlockRewards(..) |
-					// Specifically omitting Connectors
+					// Specifically omitting LiquidityPools
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
@@ -1580,15 +1580,15 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_connectors::Config for Runtime {
+impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
-	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
-	type OutboundQueue = ConnectorsGateway;
+	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -1866,6 +1866,11 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1927,14 +1932,14 @@ construct_runtime!(
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		LiquidityRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
-		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
-		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 
 		// XCM
@@ -1959,6 +1964,7 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		ConnectorsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

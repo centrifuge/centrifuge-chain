@@ -36,14 +36,14 @@ use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
-/// Traits related to connectors.
-pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
 /// Traits related to Ethereum/EVM.
 pub mod ethereum;
 /// Traits related to interest rates.
 pub mod interest;
+/// Traits related to liquidity pools.
+pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
 
