@@ -42,7 +42,7 @@ std = [
   "pallet-liquidity-pools-gateway/std",
   "cfg-types/std",
   "ethabi/std",
-  "frame-benchmarking/std"
+  "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
