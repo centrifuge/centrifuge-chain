@@ -72,7 +72,7 @@ pub mod macros {
 	/// 		Chain::Para(PARA_ID),
 	/// 		RuntimeEvent,
 	/// 		max_blocks,
-	/// 		RuntimeEvent::ConnectorsGateway(pallet_connectors_gateway::Event::DomainRouterSet {
+	/// 		RuntimeEvent::LiquidityPoolsGateway(pallet_liquidity_pools_gateway::Event::DomainRouterSet {
 	/// 			domain,
 	/// 			router,
 	/// 		}) if [*domain == test_domain && *router == test_router],

@@ -31,7 +31,7 @@ pub enum Location {
 	/// next largest is only 40 bytes other values aren't hashed as we have
 	/// blake2 hashing on storage map keys, and we don't want the extra overhead
 	XCM(H256),
-	/// DomainAddress sending location from connectors
+	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
 }
 
