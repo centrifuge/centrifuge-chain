@@ -306,27 +306,6 @@ fn with_wrong_big_amount_external_pricing() {
 }
 
 #[test]
-fn with_wrong_quantity_amount_external_pricing() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-
-		// It's not multiple of PRICE_VALUE
-		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
-
-		assert_noop!(
-			Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PricingAmount::External(amount)
-			),
-			Error::<Runtime>::AmountNotNaturalNumber
-		);
-	});
-}
-
-#[test]
 fn with_incorrect_settlement_price_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());

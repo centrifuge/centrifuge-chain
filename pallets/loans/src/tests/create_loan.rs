@@ -152,28 +152,6 @@ fn with_wrong_interest_rate() {
 }
 
 #[test]
-fn with_no_natural_quantity() {
-	new_test_ext().execute_with(|| {
-		config_mocks(POOL_A);
-
-		let loan = LoanInfo {
-			pricing: Pricing::External(ExternalPricing {
-				max_borrow_amount: ExtMaxBorrowAmount::Quantity(
-					QUANTITY + Quantity::from_float(0.1),
-				),
-				..util::base_external_pricing()
-			}),
-			..util::base_external_loan()
-		};
-
-		assert_noop!(
-			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-			Error::<Runtime>::AmountNotNaturalNumber
-		);
-	});
-}
-
-#[test]
 fn with_unregister_price_id() {
 	new_test_ext().execute_with(|| {
 		config_mocks(POOL_A);
