@@ -698,7 +698,7 @@ pub mod pallet {
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(origin: OriginFor<T>, contract: DomainAddress) -> DispatchResult {
 			ensure_root(origin)?;
-			// get account id of soverign account
+			// get account id of this pallet
 			let who = T::PalletId::get().into_account_truncating();
 			ensure!(contract.domain() != Domain::Centrifuge, Error::<T>::InvalidDomain);
       
