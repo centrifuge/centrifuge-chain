@@ -46,19 +46,6 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 [features]
 default = ['std']
-runtime-benchmarks = [
-  'frame-benchmarking/runtime-benchmarks',
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  'sp-runtime/runtime-benchmarks',
-  'cfg-types/runtime-benchmarks',
-  'cfg-traits/runtime-benchmarks',
-  'cfg-primitives/runtime-benchmarks',
-  "orml-asset-registry/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
-  "cfg-test-utils/runtime-benchmarks",
-
-]
 std = [
   'codec/std',
   'frame-support/std',
@@ -76,8 +63,21 @@ std = [
 ]
 try-runtime = [
   'frame-support/try-runtime',
+  'frame-system/try-runtime',
   'sp-runtime/try-runtime',
   'cfg-primitives/try-runtime',
   'cfg-types/try-runtime',
   'cfg-traits/try-runtime',
+]
+runtime-benchmarks = [
+  'frame-benchmarking/runtime-benchmarks',
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  'sp-runtime/runtime-benchmarks',
+  'cfg-types/runtime-benchmarks',
+  'cfg-traits/runtime-benchmarks',
+  'cfg-primitives/runtime-benchmarks',
+  "orml-asset-registry/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
 ]

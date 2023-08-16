@@ -240,6 +240,8 @@ std = [
   "polkadot-parachain/std",
   "scale-info/std",
   "xcm-primitives/std",
+  "liquidity-pools-gateway-routers/std",
+  "pallet-xcm-transactor/std",
 ]
 runtime-benchmarks = [
   "axelar-gateway-precompile/runtime-benchmarks",
@@ -305,6 +307,8 @@ runtime-benchmarks = [
   "pallet-evm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "liquidity-pools-gateway-routers/runtime-benchmarks",
+  "pallet-rewards/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -382,6 +386,7 @@ try-runtime = [
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
   "pallet-xcm-transactor/try-runtime",
+  "liquidity-pools-gateway-routers/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

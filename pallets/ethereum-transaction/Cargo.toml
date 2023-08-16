@@ -44,15 +44,6 @@ pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "m
 
 [features]
 default = ["std"]
-runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "pallet-ethereum/runtime-benchmarks",
-  "pallet-evm/runtime-benchmarks",
-]
 std = [
   "codec/std",
   "cfg-traits/std",
@@ -67,6 +58,7 @@ std = [
   "pallet-evm/std",
   "fp-evm/std",
   "ethereum/std",
+  "cfg-primitives/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -75,4 +67,15 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-evm/try-runtime",
   "sp-runtime/try-runtime",
+  "cfg-primitives/try-runtime",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
 ]

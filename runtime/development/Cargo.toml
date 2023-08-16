@@ -344,6 +344,8 @@ runtime-benchmarks = [
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "axelar-gateway-precompile/runtime-benchmarks",
+  "pallet-claims/runtime-benchmarks",
+  "pallet-rewards/runtime-benchmarks",
 ]
 
 try-runtime = [

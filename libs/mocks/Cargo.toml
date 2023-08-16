@@ -42,6 +42,7 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "orml-traits/std",
+  "mock-builder/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -50,6 +51,7 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "mock-builder/runtime-benchmarks"
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -58,4 +60,5 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "sp-runtime/try-runtime",
+  "mock-builder/try-runtime"
 ]
