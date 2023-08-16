@@ -46,6 +46,7 @@ pub mod migrations {
 
 /// High level types that uses `pallet::Config`
 pub mod entities {
+	pub mod changes;
 	pub mod interest;
 	pub mod loans;
 	pub mod pricing;
@@ -84,6 +85,7 @@ pub mod pallet {
 	};
 	use codec::HasCompact;
 	use entities::{
+		changes::{Change, LoanMutation},
 		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
 		pricing::{PricingAmount, RepaidPricingAmount},
 	};
@@ -110,8 +112,8 @@ pub mod pallet {
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
-		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepayLoanError, WrittenOffError,
+		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
+		WrittenOffError,
 	};
 
 	use super::*;
@@ -124,8 +126,6 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
-	pub type ChangeOf<T> =
-		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -139,7 +139,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Represent a runtime change
-		type RuntimeChange: From<ChangeOf<Self>> + TryInto<ChangeOf<Self>>;
+		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
@@ -782,7 +782,7 @@ pub mod pallet {
 		/// The repaid and borrow amount must match.
 		#[pallet::weight(T::WeightInfo::transfer_debt(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(11)]
-		pub fn transfer_debt(
+		pub fn propose_transfer_debt(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
@@ -792,35 +792,62 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(
-				from_loan_id != to_loan_id,
-				Error::<T>::TransferDebtToSameLoan
-			);
+			transactional::with_transaction(|| {
+				let result = Self::transfer_debt_action(
+					&who,
+					pool_id,
+					from_loan_id,
+					to_loan_id,
+					repaid_amount.clone(),
+					borrow_amount.clone(),
+				);
 
-			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
+				// We do not want to apply the mutation,
+				// only check if there is no error in applying it
+				TransactionOutcome::Rollback(result)
+			})?;
 
-			match &borrow_amount {
-				PricingAmount::Internal(value) => {
-					ensure!(
-						*value == repaid_amount.repaid_amount()?.total()?,
-						Error::<T>::TransferDebtAmountMismatched
-					)
-				}
-				PricingAmount::External(_external) => {
-					// TODO (1): handle it once slippage is added.
-					// TODO (2): if quantity is measured as a rate,
-					// then instead of using slippage we can use quantity with
-					// decimals.
-				}
-			}
+			T::ChangeGuard::note(
+				pool_id,
+				Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount).into(),
+			)?;
 
-			let _count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
+			Ok(())
+		}
+
+		/// Transfer debt from one loan to another loan,
+		/// repaying from the first loan and borrowing the same amount from the
+		/// second loan. `from_loan_id` is the loan used to repay.
+		/// `to_loan_id` is the loan used to borrow.
+		/// The repaid and borrow amount must match.
+		#[pallet::weight(T::WeightInfo::transfer_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(12)]
+		pub fn apply_transfer_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount) =
+            Self::get_released_change(pool_id, change_id)? else {
+                Err(Error::<T>::UnrelatedChangeId)?
+			};
+
+			let (amount, _count) = Self::transfer_debt_action(
+				&who,
+				pool_id,
+				from_loan_id,
+				to_loan_id,
+				repaid_amount,
+				borrow_amount,
+			)?;
 
 			Self::deposit_event(Event::<T>::TransferDebt {
 				pool_id,
 				from_loan_id,
 				to_loan_id,
-				amount: repaid_amount.repaid_amount()?.total()?,
+				amount,
 			});
 
 			Ok(())
@@ -895,7 +922,7 @@ pub mod pallet {
 		fn get_released_change(
 			pool_id: T::PoolId,
 			change_id: T::Hash,
-		) -> Result<ChangeOf<T>, DispatchError> {
+		) -> Result<Change<T>, DispatchError> {
 			T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
@@ -1044,6 +1071,41 @@ pub mod pallet {
 				Self::ensure_loan_borrower(who, loan.borrower())?;
 				loan.repay(amount.clone())
 			})
+		}
+
+		fn transfer_debt_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			repaid_amount: RepaidPricingAmount<T>,
+			borrow_amount: PricingAmount<T>,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			ensure!(
+				from_loan_id != to_loan_id,
+				Error::<T>::TransferDebtToSameLoan
+			);
+
+			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
+
+			match &borrow_amount {
+				PricingAmount::Internal(value) => {
+					ensure!(
+						*value == repaid_amount.repaid_amount()?.total()?,
+						Error::<T>::TransferDebtAmountMismatched
+					)
+				}
+				PricingAmount::External(_external) => {
+					// TODO (1): handle it once slippage is added.
+					// TODO (2): if quantity is measured as a rate,
+					// then instead of using slippage we can use quantity with
+					// decimals.
+				}
+			}
+
+			let count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
+
+			Ok((repaid_amount.repaid_amount()?.total()?, count))
 		}
 
 		/// Set the maturity date of the loan to this instant.

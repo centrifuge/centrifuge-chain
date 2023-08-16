@@ -13,11 +13,11 @@ use sp_runtime::{
 };
 
 use crate::{
-	entities::interest::ActiveInterestRate,
+	entities::{changes::InternalMutation, interest::ActiveInterestRate},
 	pallet::{Config, Error},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		CreateLoanError, InternalMutation, MutationError,
+		CreateLoanError, MutationError,
 	},
 };
 

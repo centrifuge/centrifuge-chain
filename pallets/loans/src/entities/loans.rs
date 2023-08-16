@@ -17,17 +17,19 @@ use sp_runtime::{
 	DispatchError,
 };
 
-use super::pricing::{
-	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
-	PricingAmount, RepaidPricingAmount,
-};
 use crate::{
+	entities::{
+		changes::LoanMutation,
+		pricing::{
+			external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing,
+			Pricing, PricingAmount, RepaidPricingAmount,
+		},
+	},
 	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
-		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
-		LoanRestrictions, MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
-		RepaymentSchedule,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
+		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
