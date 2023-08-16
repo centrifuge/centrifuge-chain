@@ -1854,7 +1854,7 @@ impl pallet_order_book::Config for Runtime {
 	type OrderPairVecSize = OrderPairVecSize;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = Quantity;
+	type SellRatio = Rate;
 	type TradeableAsset = OrmlTokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
