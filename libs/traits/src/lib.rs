@@ -714,28 +714,28 @@ pub trait TokenSwaps<Account> {
 	/// cost more than 1.5 units of asset out. Returns `Result` with `OrderId`
 	/// upon successful order creation.
 	///
-	///	Example usage with pallet_order_book impl:
+	/// Example usage with pallet_order_book impl:
 	/// OrderBook::place_order(
-	///		{AccountId},
-	///		CurrencyId::ForeignAsset(0),
-	///		CurrencyId::ForeignAsset(1),
-	///		100 * FOREIGN_ASSET_0_DECIMALS,
-	///		Quantity::checked_from_rational(3u32, 2u32).unwrap(),
-	///		100 * FOREIGN_ASSET_0_DECIMALS
+	///     {AccountId},
+	///     CurrencyId::ForeignAsset(0),
+	///     CurrencyId::ForeignAsset(1),
+	///     100 * FOREIGN_ASSET_0_DECIMALS,
+	///     Quantity::checked_from_rational(3u32, 2u32).unwrap(),
+	///     100 * FOREIGN_ASSET_0_DECIMALS
 	/// )
 	/// Would return Ok({OrderId})
 	/// and create the following order in storage:
 	/// Order {
-	///		order_id: {OrderId},
-	///		placing_account: {AccountId},
-	///		asset_in_id: CurrencyId::ForeignAsset(0),
-	///		asset_out_id: CurrencyId::ForeignAsset(1),
-	///		buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///		initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///		max_price: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
-	///		min_fullfillment_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///		max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS
-	///}
+	///     order_id: {OrderId},
+	///     placing_account: {AccountId},
+	///     asset_in_id: CurrencyId::ForeignAsset(0),
+	///     asset_out_id: CurrencyId::ForeignAsset(1),
+	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     max_price: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
+	///     min_fullfillment_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS
+	/// }
 	fn place_order(
 		account: Account,
 		currency_out: Self::CurrencyId,
@@ -756,27 +756,27 @@ pub trait TokenSwaps<Account> {
 	///      the system has already fulfilled up to the previous
 	///      one.
 	///
-	///	Example usage with pallet_order_book impl:
+	/// Example usage with pallet_order_book impl:
 	/// OrderBook::update_order(
-	///		{AccountId},
-	///		{OrderId},
-	///		15 * FOREIGN_ASSET_0_DECIMALS,
-	///		Quantity::checked_from_integer(2u32).unwrap(),
-	///		6 * FOREIGN_ASSET_0_DECIMALS
+	///     {AccountId},
+	///     {OrderId},
+	///     15 * FOREIGN_ASSET_0_DECIMALS,
+	///     Quantity::checked_from_integer(2u32).unwrap(),
+	///     6 * FOREIGN_ASSET_0_DECIMALS
 	/// )
 	/// Would return Ok(())
 	/// and update the following order in storage:
 	/// Order {
-	///		order_id: {OrderId},
-	///		placing_account: {AccountId},
-	///		asset_in_id: CurrencyId::ForeignAsset(0),
-	///		asset_out_id: CurrencyId::ForeignAsset(1),
-	///		buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
-	///		initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///		max_price: Quantity::checked_from_integer(2u32).unwrap(),
-	///		min_fullfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
-	///		max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
-	///}
+	///     order_id: {OrderId},
+	///     placing_account: {AccountId},
+	///     asset_in_id: CurrencyId::ForeignAsset(0),
+	///     asset_out_id: CurrencyId::ForeignAsset(1),
+	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
+	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     max_price: Quantity::checked_from_integer(2u32).unwrap(),
+	///     min_fullfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
+	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
+	/// }
 	fn update_order(
 		account: Account,
 		order_id: Self::OrderId,
