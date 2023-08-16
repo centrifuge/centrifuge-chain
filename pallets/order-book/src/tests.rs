@@ -1,6 +1,6 @@
 use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
 use frame_support::{assert_err, assert_ok};
-use sp_runtime::{traits::CheckedConversion, FixedPointNumber};
+use sp_runtime::FixedPointNumber;
 
 use super::*;
 use crate::mock::*;
@@ -764,61 +764,67 @@ fn update_order_consolidates_reserve_increase_when_asset_out_fee_currency() {
 	})
 }
 
-// #[test]
-// fn update_order_consolidates_reserve_decrease_when_asset_out_fee_currency() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(OrderBook::place_order(
-// 			ACCOUNT_0,
-// 			CurrencyId::ForeignAsset(0),
-// 			CurrencyId::Native,
-// 			10,
-// 			2,
-// 			10
-// 		));
-// 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-// 		assert_ok!(OrderBook::update_order(ACCOUNT_0, order_id, 10, 1, 10));
-// 		assert_eq!(
-// 			Orders::<Runtime>::get(order_id),
-// 			Ok(Order {
-// 				order_id: order_id,
-// 				placing_account: ACCOUNT_0,
-// 				asset_out_id: CurrencyId::Native,
-// 				asset_in_id: CurrencyId::ForeignAsset(0),
-// 				buy_amount: 10,
-// 				initial_buy_amount: 10,
-// 				price: 1,
-// 				min_fullfillment_amount: 10,
-// 				max_sell_amount: 10
-// 			})
-// 		);
+#[test]
+fn update_order_consolidates_reserve_decrease_when_asset_out_fee_currency() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			CurrencyId::ForeignAsset(0),
+			CurrencyId::Native,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			10 * CURRENCY_FA0
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(
+			ACCOUNT_0,
+			order_id,
+			10 * CURRENCY_FA0,
+			Rate::checked_from_integer(1u32).unwrap(),
+			10 * CURRENCY_FA0
+		));
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_out_id: CurrencyId::Native,
+				asset_in_id: CurrencyId::ForeignAsset(0),
+				buy_amount: 10 * CURRENCY_FA0,
+				initial_buy_amount: 10 * CURRENCY_FA0,
+				price: Rate::checked_from_integer(1u32).unwrap(),
+				min_fullfillment_amount: 10 * CURRENCY_FA0,
+				max_sell_amount: 10 * CURRENCY_NATIVE
+			})
+		);
 
-// 		assert_eq!(
-// 			System::events()[0].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
-// 				who: ACCOUNT_0,
-// 				amount: 30
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[2].event,
-// 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
-// 				who: ACCOUNT_0,
-// 				// amount decreased of outgoing currency decreased by 10
-// 				amount: 10
-// 			})
-// 		);
-// 		assert_eq!(
-// 			System::events()[3].event,
-// 			RuntimeEvent::OrderBook(Event::OrderUpdated {
-// 				order_id,
-// 				account: ACCOUNT_0,
-// 				buy_amount: 10,
-// 				min_fullfillment_amount: 10,
-// 				sell_price_limit: 1
-// 			})
-// 		);
-// 	})
-// }
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved {
+				who: ACCOUNT_0,
+				amount: 25 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved {
+				who: ACCOUNT_0,
+				// amount decreased of outgoing currency decreased by 10
+				amount: 5 * CURRENCY_NATIVE
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrderBook(Event::OrderUpdated {
+				order_id,
+				account: ACCOUNT_0,
+				buy_amount: 10 * CURRENCY_FA0,
+				min_fullfillment_amount: 10 * CURRENCY_FA0,
+				sell_price_limit: Rate::checked_from_integer(1u32).unwrap()
+			})
+		);
+	})
+}
 
 pub fn get_account_orders(
 	account_id: <Runtime as frame_system::Config>::AccountId,
