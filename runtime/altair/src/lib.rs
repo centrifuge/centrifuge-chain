@@ -1742,7 +1742,7 @@ construct_runtime!(
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
-		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
