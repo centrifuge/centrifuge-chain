@@ -144,7 +144,7 @@ std = [
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
-  "cumulus-pallet-session-benchmarking?/std",
+  "cumulus-pallet-session-benchmarking/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
   "cumulus-primitives-core/std",
@@ -296,6 +296,8 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-builder/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
+  "pallet-claims/runtime-benchmarks",
+  "pallet-rewards/runtime-benchmarks",
 ]
 
 try-runtime = [

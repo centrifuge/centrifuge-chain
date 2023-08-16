@@ -109,6 +109,12 @@ std = [
   "fp-self-contained/std",
   "xcm-primitives/std",
   "axelar-gateway-precompile/std",
+  "pallet-evm-precompile-blake2/std",
+  "pallet-evm-precompile-bn128/std",
+  "pallet-evm-precompile-modexp/std",
+  "pallet-evm-precompile-sha3fips/std",
+  "pallet-evm-precompile-simple/std",
+  "pallet-investments/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -129,6 +135,7 @@ runtime-benchmarks = [
   "pallet-ethereum/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "axelar-gateway-precompile/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -158,4 +165,5 @@ try-runtime = [
   "pallet-evm-chain-id/try-runtime",
   "fp-self-contained/try-runtime",
   "axelar-gateway-precompile/try-runtime",
+  "pallet-investments/try-runtime",
 ]

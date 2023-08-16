@@ -42,6 +42,7 @@ std = [
   "pallet-liquidity-pools-gateway/std",
   "cfg-types/std",
   "ethabi/std",
+  "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -58,4 +59,5 @@ try-runtime = [
   "pallet-liquidity-pools-gateway/try-runtime",
   "cfg-types/try-runtime",
   "pallet-evm/try-runtime",
+  "sp-runtime/try-runtime",
 ]
