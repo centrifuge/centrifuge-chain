@@ -11,34 +11,28 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ForeignInvestment, Investment, StatusNotificationHook, TokenSwaps};
-use cfg_types::investments::{ExecutedDecrease, InvestmentInfo};
-use frame_support::{ensure, traits::Get, transactional};
+use frame_support::ensure;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureSub, Zero},
-	ArithmeticError, DispatchError, DispatchResult,
+	traits::{EnsureAdd, EnsureSub},
+	ArithmeticError, DispatchError,
 };
 
-use crate::{
-	types::{
-		InnerRedeemState,
-		InnerRedeemState::{
-			ActiveSwapIntoReturnCurrency, ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-			CollectableRedemption, CollectableRedemptionAndActiveSwapIntoReturnCurrency,
-			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-			CollectableRedemptionAndSwapIntoReturnDone, Redeeming,
-			RedeemingAndActiveSwapIntoReturnCurrency,
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-			RedeemingAndCollectableRedemption,
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency,
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone, RedeemingAndSwapIntoReturnDone,
-			SwapIntoReturnDone,
-		},
-		InvestTransition, RedeemState, RedeemTransition, Swap,
+use crate::types::{
+	InnerRedeemState,
+	InnerRedeemState::{
+		ActiveSwapIntoReturnCurrency, ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
+		CollectableRedemption, CollectableRedemptionAndActiveSwapIntoReturnCurrency,
+		CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
+		CollectableRedemptionAndSwapIntoReturnDone, Redeeming,
+		RedeemingAndActiveSwapIntoReturnCurrency,
+		RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
+		RedeemingAndCollectableRedemption,
+		RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency,
+		RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
+		RedeemingAndCollectableRedemptionAndSwapIntoReturnDone, RedeemingAndSwapIntoReturnDone,
+		SwapIntoReturnDone,
 	},
-	Config, Error, ForeignInvestmentInfo, ForeignInvestmentInfoOf, InvestmentState, Pallet, SwapOf,
-	TokenSwapOrderIds,
+	RedeemState, RedeemTransition, Swap,
 };
 
 impl<Balance, Currency> RedeemState<Balance, Currency>
@@ -61,9 +55,7 @@ where
 			RedeemTransition::FulfillSwapOrder(swap) => {
 				Self::handle_fulfilled_swap_order(&self, swap)
 			}
-			RedeemTransition::Collect(return_currency, pool_currency) => {
-				Self::handle_collect(&self, return_currency, pool_currency)
-			}
+			RedeemTransition::Collect(swap) => Self::handle_collect(&self, swap),
 		}
 	}
 
@@ -442,6 +434,7 @@ where
 				RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { collect_amount, done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoReturnDone { collect_amount, done_swap }),
 				RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { collect_amount, swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { collect_amount, swap, done_amount }),
 				// Throw for states without `Redeeming`
+				// TODO: Create pallet error NotRedeeming
 				inner => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
 			}
 		}
@@ -578,13 +571,12 @@ where
 	///   (should never happen).
 	fn transition_collect(
 		&self,
-		return_currency: Currency,
-		pool_currency: Currency,
+		collected_swap: Swap<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
 		ensure!(
 			self.get_active_swap()
 				.map(|swap| (swap.currency_in, swap.currency_out)
-					== (return_currency, pool_currency))
+					== (collected_swap.currency_in, collected_swap.currency_out))
 				.unwrap_or(true),
 			DispatchError::Other("Invalid swap currencies when transitioning collect redemption")
 		);
@@ -597,34 +589,27 @@ where
 			RedeemingAndActiveSwapIntoReturnCurrency { .. } |
 			RedeemingAndSwapIntoReturnDone { .. } |
 			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { .. } => Ok(*self),
+			// TODO: Probably just ignore `collect_amount`
 			CollectableRedemption { collect_amount } => Ok(Self::ActiveSwapIntoReturnCurrency {
-				swap: Swap {
-					amount: collect_amount,
-					currency_in: return_currency,
-					currency_out: pool_currency,
-				}
+				swap: collected_swap,
 			}),
 			RedeemingAndCollectableRedemption { redeem_amount, collect_amount } => Ok(Self::RedeemingAndActiveSwapIntoReturnCurrency {
 				redeem_amount,
-				swap: Swap {
-					amount: collect_amount,
-					currency_in: return_currency,
-					currency_out: pool_currency,
-				}
+				swap: collected_swap,
 			}),
 			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, collect_amount, swap } => Ok(Self::RedeemingAndActiveSwapIntoReturnCurrency {
 				redeem_amount,
 				swap: Swap {
-					amount: swap.amount.ensure_add(collect_amount)?,
-					..swap
+					amount: swap.amount.ensure_add(collected_swap.amount)?,
+					..collected_swap
 				}
 			}),
 			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, collect_amount, done_swap } => {
 				Ok(Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 					redeem_amount,
 					swap: Swap {
-						amount: collect_amount,
-						..done_swap
+						amount: collected_swap.amount,
+						..collected_swap
 					},
 					done_amount: done_swap.amount
 				})
@@ -633,8 +618,8 @@ where
 				Ok(Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 					redeem_amount,
 					swap: Swap {
-						amount: swap.amount.ensure_add(collect_amount)?,
-						..swap
+						amount: swap.amount.ensure_add(collected_swap.amount)?,
+						..collected_swap
 					},
 					done_amount
 				})
@@ -642,16 +627,16 @@ where
 			CollectableRedemptionAndActiveSwapIntoReturnCurrency { collect_amount, swap } => {
 				Ok(Self::ActiveSwapIntoReturnCurrency {
 					swap: Swap {
-						amount: swap.amount.ensure_add(collect_amount)?,
-						..swap
+						amount: swap.amount.ensure_add(collected_swap.amount)?,
+						..collected_swap
 					}
 				})
 			},
 			CollectableRedemptionAndSwapIntoReturnDone { collect_amount, done_swap } => {
 				Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 					swap: Swap {
-						amount: collect_amount,
-						..done_swap
+						amount: collected_swap.amount,
+						..collected_swap
 					},
 					done_amount: done_swap.amount,
 				})
@@ -659,8 +644,8 @@ where
 			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { collect_amount, swap, done_amount } => {
 				Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 					swap: Swap {
-						amount: swap.amount.ensure_add(collect_amount)?,
-						..swap
+						amount: swap.amount.ensure_add(collected_swap.amount)?,
+						..collected_swap
 					},
 					done_amount
 				})
@@ -737,7 +722,6 @@ where
 			// state
 			Some(redeem_amount) if redeem_amount == amount => match self {
 				Self::NoState | Self::Invested { .. } => error_not_redeeming,
-				Self::Invested { invest_amount } => error_not_redeeming,
 				Self::NotInvestedAnd { inner } => match inner {
 					Redeeming { .. } => Ok(Self::Invested {
 						invest_amount: amount,
@@ -767,8 +751,9 @@ where
 				let redeem_amount = old_redeem_amount.ensure_sub(amount)?;
 
 				match self {
-					Self::NoState | Self::Invested { .. } => error_not_redeeming,
-					Self::Invested { invest_amount } => error_not_redeeming,
+					Self::NoState | Self::Invested { .. } | Self::Invested { .. } => {
+						error_not_redeeming
+					}
 					Self::NotInvestedAnd { inner } => Ok(Self::InvestedAnd {
 						invest_amount: amount,
 						inner: inner.set_redeem_amount(redeem_amount)?,
@@ -816,21 +801,14 @@ where
 	/// Throws if the state does not allow for collection or the the inner state
 	/// includes an active/done swap with mismatching currencies to the provided
 	/// ones.
-	fn handle_collect(
-		&self,
-		return_currency: Currency,
-		pool_currency: Currency,
-	) -> Result<Self, DispatchError> {
+	fn handle_collect(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
 		match self {
 			RedeemState::NoState | RedeemState::Invested { .. } => Err(DispatchError::Other(
 				"Invalid redeem state when transitioning collect",
 			)),
-			RedeemState::NotInvestedAnd { inner } | RedeemState::InvestedAnd { inner, .. } => {
-				Ok(Self::swap_inner_state(
-					&self,
-					inner.transition_collect(return_currency, pool_currency)?,
-				))
-			}
+			RedeemState::NotInvestedAnd { inner } | RedeemState::InvestedAnd { inner, .. } => Ok(
+				Self::swap_inner_state(&self, inner.transition_collect(swap)?),
+			),
 		}
 	}
 }

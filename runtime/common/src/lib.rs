@@ -410,7 +410,7 @@ pub mod changes {
 /// Module for investment portfolio common to all runtimes
 pub mod investment_portfolios {
 
-	use cfg_traits::{InvestmentsPortfolio, TrancheCurrency};
+	use cfg_traits::investments::{InvestmentsPortfolio, TrancheCurrency};
 	use sp_std::vec::Vec;
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all

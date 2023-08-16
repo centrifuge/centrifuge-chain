@@ -11,9 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{ForeignInvestment, Permissions, PoolInspect};
+use cfg_traits::{
+	connectors::OutboundQueue, investments::ForeignInvestment, Permissions, PoolInspect,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	investments::ExecutedCollectInvest,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -25,7 +28,7 @@ use sp_runtime::{
 	DispatchResult,
 };
 
-use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Pallet};
+use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, MessageOf, Pallet};
 
 impl<T: Config> Pallet<T> {
 	/// Executes a transfer from another domain exclusively for
@@ -85,6 +88,9 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Directly mints the additional investment amount into the investor
 	/// account.
+	///
+	/// If the provided currency does not match the pool currency, a token swap
+	/// is initiated.
 	pub fn handle_increase_invest_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
@@ -111,12 +117,15 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Decreases an existing investment order of the investor.
+	/// Initiates the decrement of an existing investment order of the investor.
 	///
-	/// Initiates a return `ExecutedDecreaseInvestOrder` message to refund the
-	/// decreased amount on the source domain. The dispatch of this message is
-	/// delayed until the execution of the investment, e.g. at least until the
-	/// next epoch transition.
+	/// On success, the unprocessed investment amount is decremented and a swap
+	/// back into the provided return currency initiated.
+	///
+	/// The finalization of this call (fulfillment of the swap) is assumed to be
+	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
+	/// which burns the corresponding amount in return currency and dispatches
+	/// `ExecutedDecreaseInvestOrder`.
 	pub fn handle_decrease_invest_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
@@ -137,23 +146,12 @@ impl<T: Config> Pallet<T> {
 			pool_currency,
 		)?;
 
-		// TODO: Handle response `ExecutedDecreaseInvestOrder` message to
-		// source destination which should refund the decreased amount. This includes
-		// burning it from the investor account.
-		//
-		// NOTES:
-		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// 	* Should be handled by `pallet-foreign-investment`
-		//  * Requires notification of `currency_payout` and `remaining_invest_order`
-		//    balances
-
 		Ok(())
 	}
 
 	/// Increases an existing redemption order of the investor.
-	// FIXME: This does not make sense? Once the redemption is processed and collected, the foreign
-	// investment swaps it into return currency into the investor, not the domainlocator.
-	/// Transfers the decreased redemption amount from the holdings of the
+	///
+	/// Transfers the increase redemption amount from the holdings of the
 	/// `DomainLocator` account of origination domain of this message into the
 	/// investor account.
 	///
@@ -167,79 +165,131 @@ impl<T: Config> Pallet<T> {
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+
+		// Transfer tranche tokens from `DomainLocator` account of
+		// origination domain
+		// TODO(@review): Should this rather be pat of `increase_foreign_redemption`?
+		T::Tokens::transfer(
+			invest_id.clone().into(),
+			&Domain::convert(sending_domain.domain()),
+			&investor,
+			amount,
+			false,
+		)?;
+
 		T::ForeignInvestment::increase_foreign_redemption(&investor, invest_id, amount)?;
 
 		Ok(())
-
-		// TODO: Handle transfer in hook or drop entirely
-		// // Transfer tranche tokens from `DomainLocator` account of
-		// origination domain T::Tokens::transfer(
-		// 	invest_id.clone().into(),
-		// 	&Domain::convert(sending_domain.domain()),
-		// 	&investor,
-		// 	amount,
-		// 	false,
-		// )?;
 	}
 
 	/// Decreases an existing redemption order of the investor.
 	///
 	/// Initiates a return `ExecutedDecreaseRedemption` message to refund the
-	/// decreased amount on the source domain. The dispatch of this message is
-	/// delayed until the execution of the redemption, e.g. at least until the
-	/// next epoch transition.
+	/// decreased amount on the source domain.
+	///
+	/// NOTE: In contrast to investments, redemption decrements happen
+	/// fully synchronously as they can only be called in between increasing a
+	/// redemption and its (full) processing.
 	pub fn handle_decrease_redemption(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
+		investor_bytes: [u8; 32],
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
-		_sending_domain: DomainAddress,
+		destination: Domain,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		T::ForeignInvestment::decrease_foreign_redemption(&investor, invest_id, amount)?;
+		// TODO(@review): This is exactly `amount` as we can only decrement up to the
+		// unprocessed redemption
+		let tranche_tokens_payout = T::ForeignInvestment::decrease_foreign_redemption(
+			&investor,
+			invest_id.clone(),
+			amount,
+		)?;
+
+		T::Tokens::transfer(
+			invest_id.into(),
+			&investor,
+			&Domain::convert(destination.clone()),
+			tranche_tokens_payout,
+			false,
+		)?;
+
+		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
+			pool_id,
+			tranche_id,
+			investor: investor_bytes,
+			currency: currency_index.index,
+			tranche_tokens_payout: tranche_tokens_payout,
+		};
+
+		T::OutboundQueue::submit(investor, destination, message)?;
 
 		Ok(())
-
-		// TODO: Handle response `ExecutedDecreaseRedemption` message to
-		// source destination which should refund the decreased amount. This
-		// includes transferring the amount from the investor to the domain
-		// locator account of the origination domain.
-		//
-		// NOTES:
-		// 	* Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
-		// 	* Should be handled by `pallet-foreign-investment`
-		//  * Requires notification of `tranche_tokens_payout` and
-		//    `remaining_redeem_order` balances
 	}
 
 	/// Collect the results of a user's invest orders for the given investment
 	/// id. If any amounts are not fulfilled, they are directly appended to the
 	/// next active order for this investment.
+	///
+	/// Transfers collected amount from investor's sovereign account to the
+	/// sending domain locator.
+	///
+	/// NOTE: In contrast to collecting a redemption, investments can be
+	/// collected entirely synchronously as it does not involve swapping. It
+	/// simply transfers the tranche tokens from the pool to the sovereign
+	/// investor account on the local domain.
 	pub fn handle_collect_investment(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
+		investor_bytes: [u8; 32],
+		currency_index: GeneralCurrencyIndexOf<T>,
+		destination: Domain,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id)?;
+		let ExecutedCollectInvest::<T::Balance> {
+			amount_currency_payout,
+			amount_tranche_tokens_payout,
+			amount_remaining,
+		} = T::ForeignInvestment::collect_foreign_investment(&investor, invest_id.clone())?;
 
-		// T::ForeignInvestment::collect_foreign_investment(investor, invest_id, )
+		T::Tokens::transfer(
+			invest_id.into(),
+			&investor,
+			&Domain::convert(destination.clone()),
+			amount_tranche_tokens_payout,
+			false,
+		)?;
 
-		// TODO: Handle response `ExecutedCollectInvest` message to
-		// source destination.
-		//
-		// Requires notification of `currency_payout`, `tranche_tokens_payout` and
-		// `remaining_invest_order` balances as well as the payout currency id, which
-		// needs to be mapped to its general index.
+		let message: MessageOf<T> = Message::ExecutedCollectInvest {
+			pool_id,
+			tranche_id,
+			investor: investor_bytes,
+			currency: currency_index.index,
+			currency_payout: amount_currency_payout,
+			tranche_tokens_payout: amount_tranche_tokens_payout,
+			remaining_invest_order: amount_remaining,
+		};
+
+		T::OutboundQueue::submit(investor, destination, message)?;
 
 		Ok(())
 	}
 
 	/// Collect the results of a user's redeem orders for the given investment
-	/// id. If any amounts are not fulfilled, they are directly appended to the
-	/// next active order for this investment.
+	/// id in the pool currency. If any amounts are not fulfilled, they are
+	/// directly appended to the next active order for this investment.
+	///
+	/// On success, a swap will be initiated to exchange the (partially)
+	/// collected amount in pool currency into the desired return currency.
+	///
+	/// The termination of this call (fulfillment of the swap) is assumed to be
+	/// asynchronous and handled by the `CollectRedeemHook`. It burns the return
+	/// currency amount and dispatches `Message::ExecutedCollectRedeem` to the
+	/// destination domain.
 	pub fn handle_collect_redemption(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
@@ -258,16 +308,6 @@ impl<T: Config> Pallet<T> {
 			pool_currency,
 		)?;
 
-		// TODO: Handle response `ExecutedCollectRedeem` message to
-		// source destination.
-		//
-		// Requires notification of `currency_payout`, `tranche_tokens_payout` and
-		// `remaining_redeem_order` balances as well as the payout currency id, which
-		// needs to be mapped to its general index.
-
 		Ok(())
 	}
-
-	// TODO: At some point, some token transfer needs to happen for redemptions and
-	// decrease investment
 }

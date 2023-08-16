@@ -13,7 +13,7 @@
 use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 use cfg_types::{

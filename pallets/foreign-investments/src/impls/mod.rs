@@ -12,12 +12,15 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	ForeignInvestment, Investment, InvestmentCollector, StatusNotificationHook, TokenSwaps,
+	investments::{ForeignInvestment, Investment, InvestmentCollector},
+	StatusNotificationHook, TokenSwaps,
 };
-use cfg_types::investments::{ExecutedCollect, ExecutedDecrease, InvestmentInfo};
+use cfg_types::investments::{
+	CollectedAmount, ExecutedCollectInvest, ExecutedCollectRedeem, ExecutedDecrease,
+};
 use frame_support::{traits::Get, transactional};
 use sp_runtime::{
-	traits::{EnsureAdd, Zero},
+	traits::{EnsureAdd, EnsureAddAssign, Zero},
 	DispatchError, DispatchResult,
 };
 
@@ -26,8 +29,8 @@ use crate::{
 		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition, Swap,
 		TokenSwapReason,
 	},
-	Config, Error, ForeignInvestmentInfo, ForeignInvestmentInfoOf, InvestmentState, Pallet,
-	RedemptionState, SwapOf, TokenSwapOrderIds, TokenSwapReasons,
+	CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo, ForeignInvestmentInfoOf,
+	InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds, TokenSwapReasons,
 };
 
 mod invest;
@@ -61,6 +64,10 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 				let post_state =
 					pre_state.transition(RedeemTransition::FulfillSwapOrder(status))?;
 				Pallet::<T>::apply_redeem_state_transition(&info.owner, info.id, post_state)
+
+				// TODO: When RedeemState includes `SwapIntoReturnDone` without
+				// `ActiveSwapIntoReturnCurrency`, we must emit
+				// `ExecutedCollectRedeem`.
 			}
 		}
 	}
@@ -68,10 +75,12 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type Amount = T::Balance;
+	type CollectInvestResult = ExecutedCollectInvest<T::Balance>;
 	type CurrencyId = T::CurrencyId;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 
+	#[transactional]
 	fn increase_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -91,6 +100,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		Ok(())
 	}
 
+	#[transactional]
 	fn decrease_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -110,6 +120,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		Ok(())
 	}
 
+	#[transactional]
 	fn increase_foreign_redemption(
 		who: &T::AccountId,
 		// return_currency: T::CurrencyId,
@@ -125,54 +136,67 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		Ok(())
 	}
 
+	#[transactional]
 	fn decrease_foreign_redemption(
 		who: &T::AccountId,
-		// return_currency: T::CurrencyId,
-		// pool_currency: T::CurrencyId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
-	) -> Result<(), DispatchError> {
+	) -> Result<T::Balance, DispatchError> {
 		let pre_amount = T::Investment::redemption(who, investment_id.clone())?;
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state =
-			pre_state.transition(RedeemTransition::DecreaseRedeemOrder(pre_amount - amount))?;
-
-		Self::notify_executed_decrease_redeem(who, investment_id, amount)?;
+		let post_state = pre_state.transition(RedeemTransition::DecreaseRedeemOrder(amount))?;
 
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
-		Ok(())
+		Ok(amount)
 	}
 
-	// TODO: check if this should be transactional
+	#[transactional]
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<(), DispatchError> {
+	) -> Result<ExecutedCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
 		// independent of the current `InvestState`
-		let amount_collected = T::Investment::collect_investment(who.clone(), investment_id)?;
-		Self::notify_executed_collect_invest(who, investment_id, amount_collected)
+		let CollectedAmount::<T::Balance> {
+			amount_collected,
+			amount_payment,
+		} = T::Investment::collect_investment(who.clone(), investment_id)?;
+		let amount_currency_unprocessed = T::Investment::investment(who, investment_id)?;
+
+		Ok(ExecutedCollectInvest {
+			amount_currency_payout: amount_payment,
+			amount_tranche_tokens_payout: amount_collected,
+			amount_remaining: amount_currency_unprocessed,
+		})
 	}
 
+	#[transactional]
 	fn collect_foreign_redemption(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		return_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
+		CollectedRedemption::<T>::try_mutate(who, investment_id, |collected_redemption| {
+			collected_redemption
+				.amount_collected
+				.ensure_add_assign(collected.amount_collected)?;
+			collected_redemption
+				.amount_payment
+				.ensure_add_assign(collected.amount_payment)?;
+
+			Ok::<(), DispatchError>(())
+		})?;
+
 		// Transition state to initiate swap from pool to return currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state =
-			pre_state.transition(RedeemTransition::Collect(return_currency, pool_currency))?;
-
-		let amount_collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
-		Self::notify_executed_collect_redeem(
-			who,
-			investment_id,
-			return_currency,
-			amount_collected,
-		)?;
+		let post_state = pre_state.transition(RedeemTransition::Collect(SwapOf::<T> {
+			amount: collected.amount_collected,
+			currency_in: return_currency,
+			currency_out: pool_currency,
+		}))?;
 
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
@@ -229,10 +253,14 @@ impl<T: Config> Pallet<T> {
 	/// `RedemptionState` might require an update.
 	///
 	/// 4. If the token swap handling resulted in a new `InvestState`, update
-	/// `InvestmentState` again.
+	/// `InvestmentState` again. Additionally, emit `ForeignInvestmentUpdate` or
+	/// `ForeignInvestmentCleared`.
 	///
-	/// 5. If the token swap handling resulted in a new `RedeemState`,
-	/// update `RedemptionState`.
+	/// 5. If the token swap handling resulted in a new `RedeemState`, update
+	/// `RedemptionState` again. If the corresponding new `InnerRedeemState`
+	/// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`,
+	/// remove the `SwapIntoReturnDone` part or kill it. Additionally, emit
+	/// `ForeignRedemptionUpdate` or `ForeignRedemptionCleared`.
 	///
 	/// 6. Update the investment. This also includes setting it to zero. We
 	/// assume the impl of `<T as Config>::Investment` handles this case.
@@ -248,81 +276,74 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		state: InvestState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
+		// Do first round of updates and forward state, swap as well as invest amount
 		match state.clone() {
 			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
 
-				Ok((None, Zero::zero()))
+				Ok((InvestState::NoState, None, Zero::zero()))
 			},
 			InvestState::InvestmentOngoing { invest_amount } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
 
-				Ok((None, invest_amount))
+				Ok((state, None, invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrency { swap } |
 			InvestState::ActiveSwapIntoReturnCurrency { swap } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
-				Ok((Some(swap), Zero::zero()))
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
+				Ok((state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
-				Ok((Some(swap), invest_amount))
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
+				Ok((state, Some(swap), invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_amount)?;
+				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
-				Ok((Some(swap), Zero::zero()))
+				Ok((new_state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_amount)?;
+				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
-				Ok((Some(swap), invest_amount))
+				Ok((new_state, Some(swap), invest_amount))
 			},
 			InvestState::SwapIntoReturnDone { done_swap } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount)?;
+				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount, done_swap.currency_in)?;
 
 				InvestmentState::<T>::remove(who, investment_id);
 
-				Ok((None, Zero::zero()))
+				Ok((InvestState::NoState, None, Zero::zero()))
 			},
 			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, invest_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount)?;
+				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount, done_swap.currency_in)?;
 
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
-				Ok((None, invest_amount))
+				Ok((new_state, None, invest_amount))
 			},
 		}
-		.map(|(maybe_swap, invest_amount)| {
-			let (maybe_invest_state, maybe_redeem_state) =
-			Self::handle_swap_order(who, investment_id, maybe_swap,  TokenSwapReason::Investment)?;
+		.map(|(invest_state, maybe_swap, invest_amount)| {
+			let (maybe_invest_state_prio, maybe_new_redeem_state) = Self::handle_swap_order(who, investment_id, maybe_swap,  TokenSwapReason::Investment)?;
 
-			// update invest and redeem states if necessary
-			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
-				if maybe_invest_state != *current_invest_state {
-					*current_invest_state = maybe_invest_state;
-				}
-				// TODO: Maybe emit event of invest state transition from `state` to `current_invest_state`
-			});
-
-			RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
-				if maybe_redeem_state != *current_redeem_state {
-					*current_redeem_state = maybe_redeem_state;
-					// TODO: Maybe emit event of redeem state transition from `current_redeem_state` to `new_state`
-				}
-			});
+			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
+			if let Some(invest_state_prio) = maybe_invest_state_prio {
+				Self::deposit_investment_event(who, investment_id, Some(invest_state_prio));
+			} else {
+				Self::deposit_investment_event(who, investment_id, Some(invest_state));
+			}
+			Self::deposit_redemption_event(who, investment_id, maybe_new_redeem_state);
 
 			// Finally, update investment after all states have been updated
 			T::Investment::update_investment(who, investment_id, invest_amount)?;
@@ -351,10 +372,14 @@ impl<T: Config> Pallet<T> {
 	/// `RedemptionState` might require an update.
 	///
 	/// 4. If the token swap handling resulted in a new `RedeemState`, update
-	/// `RedemptionState` again.
+	/// `RedemptionState` again. If the corresponding new `InnerRedeemState`
+	/// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`,
+	/// remove the `SwapIntoReturnDone` part or kill it. Additionally, emit
+	/// `ForeignRedemptionUpdate` or `ForeignRedemptionCleared`.
 	///
 	/// 5. If the token swap handling resulted in a new `InvestState`,
-	/// update `InvestmentState`.
+	/// update `InvestmentState`. Additionally, emit `ForeignInvestmentUpdate`
+	/// or `ForeignInvestmentCleared`.
 	///
 	/// 6. Update the redemption. This also includes setting it to zero. We
 	/// assume the impl of `<T as Config>::Investment` handles this case.
@@ -372,14 +397,15 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_amount = state.get_invest_amount().unwrap_or_default();
 
+		// Do first round of updates and forward state as well as swap
 		match state.clone() {
 			RedeemState::NoState => {
 				RedemptionState::<T>::remove(who, investment_id);
-				Ok(None)
+				Ok((Some(RedeemState::NoState), None))
 			}
 			RedeemState::Invested { .. } => {
 				RedemptionState::<T>::insert(who, investment_id, state);
-				Ok(None)
+				Ok((Some(state), None))
 			}
 			RedeemState::InvestedAnd { inner, .. } | RedeemState::NotInvestedAnd { inner } => {
 				match inner {
@@ -387,7 +413,7 @@ impl<T: Config> Pallet<T> {
 					InnerRedeemState::RedeemingAndCollectableRedemption { .. } |
 					InnerRedeemState::CollectableRedemption { .. } => {
 						RedemptionState::<T>::insert(who, investment_id, state);
-						Ok(None)
+						Ok((Some(state), None))
 					},
 					InnerRedeemState::RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } |
 					InnerRedeemState::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
@@ -398,55 +424,31 @@ impl<T: Config> Pallet<T> {
 					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } |
 					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
 						RedemptionState::<T>::insert(who, investment_id, state);
-						Ok(Some(swap))
+						Ok((Some(state), Some(swap)))
 					},
-					InnerRedeemState::SwapIntoReturnDone { done_swap } => {
-						RedemptionState::<T>::remove(who, investment_id);
-						Ok(None)
-					},
-					// TODO: Check whether we can just remove these four states
-					InnerRedeemState::RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => {
-						let new_state = state.swap_inner_state(InnerRedeemState::Redeeming { redeem_amount });
-						RedemptionState::<T>::insert(who, investment_id, new_state);
-						Ok(None)
-					},
-					InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, collect_amount, done_swap } =>  {
-						let new_state = state.swap_inner_state(InnerRedeemState::RedeemingAndCollectableRedemption { redeem_amount, collect_amount });
-						RedemptionState::<T>::insert(who, investment_id, new_state);
-						Ok(None)
-					},
-					InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone { collect_amount, done_swap } => {
-						let new_state = state.swap_inner_state(InnerRedeemState::CollectableRedemption { collect_amount });
-						RedemptionState::<T>::insert(who, investment_id, new_state);
-						Ok(None)
-					},
+					// Only states left include `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` such that we can notify collect
+					inner => {
+						let maybe_new_state = Self::apply_collect_redeem_transition(who, investment_id, state, inner)?;
+						Ok((maybe_new_state, None))
+					}
 				}
 			}
 		}
-		.map(|maybe_swap| {
-			let (maybe_invest_state, maybe_redeem_state) = Self::handle_swap_order(
+		.map(|(maybe_new_state, maybe_swap)| {
+			let (maybe_new_invest_state, maybe_new_state_prio) = Self::handle_swap_order(
 				who,
 				investment_id,
 				maybe_swap,
 				TokenSwapReason::Redemption,
 			)?;
 
-			// update invest and redeem states if necessary
-			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
-				if maybe_invest_state != *current_invest_state {
-					*current_invest_state = maybe_invest_state;
-				}
-				// TODO: Maybe emit event of invest state transition from
-				// `state` to `current_invest_state`
-			});
-
-			RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
-				if maybe_redeem_state != *current_redeem_state {
-					*current_redeem_state = maybe_redeem_state;
-					// TODO: Maybe emit event of redeem state transition from
-					// `current_redeem_state` to `new_state`
-				}
-			});
+			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
+			if let Some(redeem_state_post_swap) = maybe_new_state_prio {
+				Self::deposit_redemption_event(who, investment_id, Some(redeem_state_post_swap));
+			} else {
+				Self::deposit_redemption_event(who, investment_id, maybe_new_state);
+			}
+			Self::deposit_investment_event(who, investment_id, maybe_new_invest_state);
 
 			// Finally, update redemption after all states have been updated
 			T::Investment::update_redemption(who, investment_id, invest_amount)?;
@@ -456,6 +458,150 @@ impl<T: Config> Pallet<T> {
 		.map_err(|e: DispatchError| e)?
 	}
 
+	/// Emits an event indicating the corresponding `InvestState` was either
+	/// updated or cleared.
+	///
+	/// NOTE: Noop if the provided state is `None`.
+	fn deposit_investment_event(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		maybe_state: Option<InvestState<T::Balance, T::CurrencyId>>,
+	) {
+		match maybe_state {
+			Some(state) if state == InvestState::NoState => {
+				Self::deposit_event(Event::<T>::ForeignInvestmentCleared {
+					investor: who.clone(),
+					investment_id,
+				})
+			}
+			Some(state) => Self::deposit_event(Event::<T>::ForeignInvestmentUpdated {
+				investor: who.clone(),
+				investment_id,
+				state,
+			}),
+			_ => {}
+		}
+	}
+
+	/// Emits an event indicating the corresponding `InvestState` was either
+	/// updated or cleared.
+	///
+	/// NOTE: Noop if the provided state is `None`.
+	fn deposit_redemption_event(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		maybe_state: Option<RedeemState<T::Balance, T::CurrencyId>>,
+	) {
+		match maybe_state {
+			Some(state) if state == RedeemState::NoState => {
+				Self::deposit_event(Event::<T>::ForeignRedemptionCleared {
+					investor: who.clone(),
+					investment_id,
+				})
+			}
+			Some(state) => Self::deposit_event(Event::<T>::ForeignRedemptionUpdated {
+				investor: who.clone(),
+				investment_id,
+				state,
+			}),
+			None => {}
+		}
+	}
+
+	/// Terminates a redeem collection which required swapping into return
+	/// currency.
+	///
+	/// Only acts upon inner redeem states which include `SwapIntoReturnDone`
+	/// without `ActiveSwapIntoReturnCurrency`. Other inner states are ignored.
+	/// Either updates the corresponding `RedemptionState` or drops it entirely.
+	///
+	/// Emits `notify_executed_collect_redeem`.
+	///
+	/// Returning...
+	/// * `Some(RedeemState::NoState)` indicates a `ForeignRedemptionCleared`
+	///   event can be deposited
+	/// * `Some(state)` indicates a `ForeignRedemptionUpdated` event can be
+	///   deposited
+	/// * `None` indicates no state mutation occurred	///
+	#[transactional]
+	fn apply_collect_redeem_transition(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		state: RedeemState<T::Balance, T::CurrencyId>,
+		inner_redeem_state: InnerRedeemState<T::Balance, T::CurrencyId>,
+	) -> Result<Option<RedeemState<T::Balance, T::CurrencyId>>, DispatchError> {
+		// TODO: Should just be amount and maybe factor in the remaining amount as well
+		let collected_redemption = CollectedRedemption::<T>::get(who, investment_id);
+
+		// Send notification and kill `CollectedRedemption` iff the state includes
+		// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`
+		match inner_redeem_state {
+			InnerRedeemState::SwapIntoReturnDone { done_swap, .. }
+			| InnerRedeemState::RedeemingAndSwapIntoReturnDone { done_swap, .. }
+			| InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+				done_swap,
+				..
+			}
+			| InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => {
+				Self::notify_executed_collect_redeem(
+					who,
+					investment_id,
+					done_swap.currency_in,
+					CollectedAmount {
+						amount_collected: done_swap.amount,
+						amount_payment: collected_redemption.amount_payment,
+					},
+				)?;
+				CollectedRedemption::<T>::remove(who, investment_id);
+
+				Ok(())
+			}
+			_ => Ok(()),
+		}
+		.map_err(|e: DispatchError| e)?;
+
+		// Update state iff the state includes `SwapIntoReturnDone` without
+		// `ActiveSwapIntoReturnCurrency`
+		match inner_redeem_state {
+			InnerRedeemState::SwapIntoReturnDone { .. } => {
+				RedemptionState::<T>::remove(who, investment_id);
+
+				Ok(Some(RedeemState::NoState))
+			}
+			InnerRedeemState::RedeemingAndSwapIntoReturnDone { redeem_amount, .. } => {
+				let new_state =
+					state.swap_inner_state(InnerRedeemState::Redeeming { redeem_amount });
+				RedemptionState::<T>::insert(who, investment_id, new_state);
+
+				Ok(Some(new_state))
+			}
+			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+				redeem_amount,
+				collect_amount,
+				..
+			} => {
+				let new_state =
+					state.swap_inner_state(InnerRedeemState::RedeemingAndCollectableRedemption {
+						redeem_amount,
+						collect_amount,
+					});
+				RedemptionState::<T>::insert(who, investment_id, new_state);
+
+				Ok(Some(new_state))
+			}
+			InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone {
+				collect_amount, ..
+			} => {
+				let new_state = state
+					.swap_inner_state(InnerRedeemState::CollectableRedemption { collect_amount });
+				RedemptionState::<T>::insert(who, investment_id, new_state);
+
+				Ok(Some(new_state))
+			}
+			_ => Ok(None),
+		}
+	}
+
 	/// Updates or kills a token swap order. If the final swap amount is zero,
 	/// kills the swap order and all associated storage. Else, creates or
 	/// updates an existing swap order.
@@ -463,12 +609,13 @@ impl<T: Config> Pallet<T> {
 	/// If the provided reason does not match the latest one stored in
 	/// `TokenSwapReasons`, also resolves the _merge conflict_ resulting from
 	/// updating and thus overwriting opposite swaps. See
-	/// [Self::handle_concurrent_swap_orders] for details.
-	///
-	/// Returns potentially altered invest and redeem states which are not
-	/// updated in storage yet!
+	/// [Self::handle_concurrent_swap_orders] for details. If this results in
+	/// either an altered invest state and/or an altered redeem state, the
+	/// corresponding storage is updated and the new states returned. The latter
+	/// is required for emitting events.
 	///
 	/// NOTE: Must not call any other swap order updating function.
+	#[transactional]
 	fn handle_swap_order(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -486,7 +633,7 @@ impl<T: Config> Pallet<T> {
 			let (maybe_updated_swap, maybe_invest_state, maybe_redeem_state) =
 				Self::handle_concurrent_swap_orders(who, investment_id, swap_order_id, reason)?;
 
-			// update or kill swap order with updated order having priority in case it was
+			// Update or kill swap order with updated order having priority in case it was
 			// overwritten
 			if let Some(swap_order) = maybe_updated_swap {
 				Self::place_swap_order(who, investment_id, swap_order, reason)?;
@@ -496,9 +643,46 @@ impl<T: Config> Pallet<T> {
 				Self::kill_swap_order(who, investment_id)?;
 			}
 
-			Ok((maybe_invest_state, maybe_redeem_state))
+			// Update invest and redeem states if necessary
+			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
+				// Should never occur but let's be safe
+				if let Some(InvestState::NoState) = maybe_invest_state {
+					*current_invest_state = None;
+				} else if maybe_invest_state != *current_invest_state {
+					*current_invest_state = maybe_invest_state.clone();
+				}
+			});
+
+			// Need to check if `SwapReturnDone` is part of inner state without
+			// `ActiveSwapIntoReturnCurrency` as this implies the successful termination of
+			// a collect (with swap into return currency). If this is the case, the returned
+			// redeem state needs to be updated as well.
+			match maybe_redeem_state {
+				Some(RedeemState::InvestedAnd { inner, .. })
+				| Some(RedeemState::NotInvestedAnd { inner }) => {
+					let redeem_state = maybe_redeem_state.unwrap_or_default();
+					let maybe_collected_redeem_state = Self::apply_collect_redeem_transition(
+						who,
+						investment_id,
+						redeem_state,
+						inner,
+					)?;
+					Ok((maybe_invest_state, maybe_collected_redeem_state))
+				}
+				Some(_) => {
+					RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
+						// Update and emit event on mismatch
+						if maybe_redeem_state != *current_redeem_state {
+							*current_redeem_state = maybe_redeem_state;
+						}
+					});
+					Ok((maybe_invest_state, maybe_redeem_state))
+				}
+				None => Ok((maybe_invest_state, maybe_redeem_state)),
+			}
+			.map_err(|e: DispatchError| e)
 		}
-		// update to provided value, if not none
+		// Update to provided value, if not none
 		else if let Some(swap_order) = maybe_swap {
 			Self::place_swap_order(who, investment_id, swap_order, reason)?;
 			Ok((None, None))
@@ -513,7 +697,7 @@ impl<T: Config> Pallet<T> {
 	/// NOTE: Must only be called in `handle_swap_order`.
 	fn kill_swap_order(who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
-			T::TokenSwaps::cancel_order(swap_order_id);
+			T::TokenSwaps::cancel_order(swap_order_id)?;
 			ForeignInvestmentInfo::<T>::remove(swap_order_id);
 			TokenSwapReasons::<T>::remove(swap_order_id);
 		}
@@ -525,6 +709,7 @@ impl<T: Config> Pallet<T> {
 	/// to the provided value.
 	///
 	/// NOTE: Must only be called in `handle_swap_order`.
+	#[transactional]
 	fn place_swap_order(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -678,7 +863,7 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 			// We must not alter the invest state if there is no active pool currency swap
-			state => Ok(None),
+			_ => Ok(None),
 		}
 		.map_err(|e: DispatchError| e)?;
 
@@ -736,10 +921,12 @@ impl<T: Config> Pallet<T> {
 	/// Sends `ExecutedDecreaseInvestHook` notification such that any potential
 	/// consumer could act upon that, e.g. Connectors for
 	/// `ExecutedDecreaseInvestOrder`.
+	#[transactional]
 	fn notify_executed_decrease_invest(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		amount_decreased: T::Balance,
+		return_currency: T::CurrencyId,
 	) -> DispatchResult {
 		// TODO(@mustermeiszer): Does this return the entire desired amount or do we
 		// need to tap into collecting? > Requires artificial collect (which does not
@@ -756,34 +943,7 @@ impl<T: Config> Pallet<T> {
 			ExecutedDecrease {
 				amount_decreased,
 				amount_remaining,
-			},
-		)
-	}
-
-	/// Sends `ExecutedDecreaseRedeemHook` notification such that any potential
-	/// consumer could act upon that, e.g. Connectors for
-	/// `ExecutedDecreaseRedeemOrder`.
-	///
-	/// NOTE: In contrast to investments, redemption decrements happen
-	/// fully synchronously as they can only be called in between increasing a
-	/// redemption and its (full) processing. The asynchronous token swap
-	/// happens much later.
-	fn notify_executed_decrease_redeem(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		amount_decreased: T::Balance,
-	) -> DispatchResult {
-		// TODO: Check if this is correct and sufficient
-		let amount_remaining = T::Investment::redemption(who, investment_id)?;
-
-		T::ExecutedDecreaseRedeemHook::notify_status_change(
-			ForeignInvestmentInfoOf::<T> {
-				owner: who.clone(),
-				id: investment_id,
-			},
-			ExecutedDecrease {
-				amount_decreased,
-				amount_remaining,
+				return_currency,
 			},
 		)
 	}
@@ -791,51 +951,24 @@ impl<T: Config> Pallet<T> {
 	/// Sends `ExecutedCollectRedeemHook` notification such that any potential
 	/// consumer could act upon that, e.g. Connectors for
 	/// `ExecutedCollectRedeemOrder`.
-	fn notify_executed_collect_invest(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		amount_tranche_tokens_payout: T::Balance,
-	) -> DispatchResult {
-		// FIXME: Insufficient
-		let amount_remaining: <T as Config>::Balance =
-			T::Investment::investment(who, investment_id)?;
-
-		T::ExecutedCollectInvestHook::notify_status_change(
-			ForeignInvestmentInfoOf::<T> {
-				owner: who.clone(),
-				id: investment_id,
-			},
-			ExecutedCollect {
-				currency: None,
-				amount_currency_payout: todo!("needs to be derived from processing"),
-				amount_tranche_tokens_payout,
-				amount_remaining,
-			},
-		)
-	}
-
-	/// Sends `ExecutedCollectRedeemHook` notification such that any potential
-	/// consumer could act upon that, e.g. Connectors for
-	/// `ExecutedCollectRedeemOrder`.
+	#[transactional]
 	fn notify_executed_collect_redeem(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		currency: T::CurrencyId,
-		amount_currency_payout: T::Balance,
+		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		// TODO: Check if this is correct and sufficient
-		let amount_remaining: <T as Config>::Balance =
-			T::Investment::redemption(who, investment_id)?;
+		let amount_remaining = T::Investment::redemption(&who, investment_id)?;
 
 		T::ExecutedCollectRedeemHook::notify_status_change(
 			ForeignInvestmentInfoOf::<T> {
 				owner: who.clone(),
 				id: investment_id,
 			},
-			ExecutedCollect {
-				currency: Some(currency),
-				amount_currency_payout,
-				amount_tranche_tokens_payout: todo!("needs to be derived from processing"),
+			ExecutedCollectRedeem {
+				currency,
+				amount_currency_payout: collected.amount_collected,
+				amount_tranche_tokens_payout: collected.amount_payment,
 				amount_remaining,
 			},
 		)

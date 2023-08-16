@@ -42,8 +42,11 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 // TODO: Remove dev_mode before merging
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
-	use cfg_traits::{InvestmentCollector, StatusNotificationHook, TokenSwaps, TrancheCurrency};
-	use cfg_types::investments::{ExecutedCollect, ExecutedDecrease};
+	use cfg_traits::{
+		investments::{InvestmentCollector, TrancheCurrency},
+		StatusNotificationHook, TokenSwaps,
+	};
+	use cfg_types::investments::{CollectedAmount, ExecutedCollectRedeem, ExecutedDecrease};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
@@ -112,7 +115,7 @@ pub mod pallet {
 
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
-		type Investment: cfg_traits::Investment<
+		type Investment: cfg_traits::investments::Investment<
 				Self::AccountId,
 				Amount = Self::Balance,
 				CurrencyId = Self::CurrencyId,
@@ -122,7 +125,7 @@ pub mod pallet {
 				Self::AccountId,
 				Error = DispatchError,
 				InvestmentId = Self::InvestmentId,
-				Result = Self::Balance,
+				Result = CollectedAmount<Self::Balance>,
 			>;
 
 		/// The default sell price limit for token swaps which defines the
@@ -166,25 +169,13 @@ pub mod pallet {
 
 		type ExecutedDecreaseInvestHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedDecrease<Self::Balance>,
-			Error = DispatchError,
-		>;
-
-		type ExecutedDecreaseRedeemHook: StatusNotificationHook<
-			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedDecrease<Self::Balance>,
-			Error = DispatchError,
-		>;
-
-		type ExecutedCollectInvestHook: StatusNotificationHook<
-			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedDecrease<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
 		type ExecutedCollectRedeemHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedCollect<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedCollectRedeem<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 	}
@@ -256,6 +247,24 @@ pub mod pallet {
 		T::TokenSwapOrderId,
 	>;
 
+	/// Maps an investor and their `InvestmentId` to the amount of collected
+	/// pool currency and the corresponding amount of tranche tokens burned for
+	/// the conversion based on the fulfillment price(s).
+	///
+	/// NOTE: The lifetime of this storage starts with collecting a redemption
+	/// in pool currency and ends with having swapped the entire amount to
+	/// return currency.
+	#[pallet::storage]
+	pub(super) type CollectedRedemption<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		CollectedAmount<T::Balance>,
+		ValueQuery,
+	>;
+
 	/// Maps a `TokenSwapOrderId` to the corresponding `TokenSwapReason` for
 	/// which it was last updated, i.e. `Investment` or `Redemption`.
 	///
@@ -276,7 +285,24 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		SomethingStored { something: u32, who: T::AccountId },
+		ForeignInvestmentUpdated {
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+			state: InvestState<T::Balance, T::CurrencyId>,
+		},
+		ForeignInvestmentCleared {
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+		},
+		ForeignRedemptionUpdated {
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+			state: RedeemState<T::Balance, T::CurrencyId>,
+		},
+		ForeignRedemptionCleared {
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+		},
 	}
 
 	#[pallet::error]

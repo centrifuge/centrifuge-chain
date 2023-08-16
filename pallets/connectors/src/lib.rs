@@ -16,6 +16,7 @@ use core::convert::TryFrom;
 use cfg_traits::connectors::{InboundQueue, OutboundQueue};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
+	investments::ExecutedCollectInvest,
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -52,6 +53,7 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
+pub mod hooks;
 mod inbound;
 
 /// The Parachains that Centrifuge Connectors support.
@@ -83,8 +85,8 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		CurrencyInspect, ForeignInvestment, Permissions, PoolInspect, TrancheCurrency,
-		TrancheTokenPrice,
+		investments::{ForeignInvestment, TrancheCurrency},
+		CurrencyInspect, Permissions, PoolInspect, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -93,7 +95,7 @@ pub mod pallet {
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::Zero;
+	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
 
 	use super::*;
@@ -196,6 +198,7 @@ pub mod pallet {
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
+			CollectInvestResult = ExecutedCollectInvest<Self::Balance>,
 		>;
 
 		/// The source of truth for the transferability of assets via
@@ -890,15 +893,24 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor.into(),
+					investor,
 					currency.into(),
 					amount,
-					sender,
+					sender.into(),
 				),
 				Message::CollectInvest {
 					pool_id,
 					tranche_id,
 					investor,
-				} => Self::handle_collect_investment(pool_id, tranche_id, investor.into()),
+					currency,
+				} => Self::handle_collect_investment(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					investor,
+					currency.into(),
+					sender.into(),
+				),
 				Message::CollectRedeem {
 					pool_id,
 					tranche_id,

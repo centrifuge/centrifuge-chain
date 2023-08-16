@@ -21,8 +21,8 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	investments::{OrderManager, TrancheCurrency as _},
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},

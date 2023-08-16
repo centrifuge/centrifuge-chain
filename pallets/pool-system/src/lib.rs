@@ -179,7 +179,10 @@ impl Default for Release {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
+	use cfg_traits::{
+		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
+		PoolUpdateGuard,
+	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
 		tokens::CustomMetadata,

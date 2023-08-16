@@ -25,8 +25,9 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _, TrancheTokenPrice,
+	investments::{OrderManager, TrancheCurrency as _},
+	CurrencyPrice, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
+	PriceValue, TrancheTokenPrice,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -103,7 +104,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
@@ -1582,37 +1583,23 @@ impl orml_asset_registry::Config for Runtime {
 
 parameter_types! {
 	// TODO: Discuss, refine
-	pub const DefaultTokenMinFulfillmentAmount: Balance = Balance::one();
-	pub const DefaultTokenSwapSellPriceLimit: Balance = Balance::one();
+	pub const DefaultTokenMinFulfillmentAmount: Balance = 1;
+	pub const DefaultTokenSwapSellPriceLimit: Balance = 1;
 }
 
-// TODO: Remove me
-struct DummyHook;
-impl cfg_traits::StatusNotificationHook for DummyHook {
-	type Error = DispatchError;
-	type Id = u128;
-	type Status = ();
-
-	fn notify_status_change(id: u128, status: ()) -> Result<(), DispatchError> {
-		unimplemented!("Remove the entire impl before merging")
-	}
-}
-
-impl pallet_foreign_investment::Config for Runtime {
+impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type DefaultTokenMinFulfillmentAmount = DefaultTokenMinFulfillmentAmount;
 	type DefaultTokenSwapSellPriceLimit = DefaultTokenSwapSellPriceLimit;
-	type ExecutedCollectInvestHook = DummyHook;
-	type ExecutedCollectRedeemHook = DummyHook;
-	type ExecutedDecreaseInvestHook = DummyHook;
-	type ExecutedDecreaseRedeemHook = DummyHook;
+	type ExecutedCollectRedeemHook = pallet_connectors::hooks::CollectRedeemHook<Runtime>;
+	type ExecutedDecreaseInvestHook = pallet_connectors::hooks::DecreaseInvestOrderHook<Runtime>;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
-	type TokenSwapOrderId = u128;
-	type TokenSwaps = ();
+	type TokenSwapOrderId = u64;
+	type TokenSwaps = OrderBook;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
@@ -1973,7 +1960,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
-		ForeignInvestments: pallet_foreign_investment::{Pallet, Call, Storage, Event<T>} = 117,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

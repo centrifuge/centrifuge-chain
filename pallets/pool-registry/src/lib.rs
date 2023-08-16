@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolMutate, TrancheCurrency, UpdateState};
+use cfg_traits::{investments::TrancheCurrency, Permissions, PoolMutate, UpdateState};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::{PoolMetadata, PoolRegistrationStatus},

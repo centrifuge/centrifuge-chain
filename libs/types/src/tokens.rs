@@ -13,7 +13,7 @@
 use core::marker::PhantomData;
 
 use cfg_primitives::types::{PoolId, TrancheId};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
@@ -21,7 +21,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
 
-use crate::{xcm::XcmMetadata, EVMChainId};
+use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -306,6 +306,14 @@ pub enum ConnectorsWrappedToken {
 		/// The token contract address
 		address: [u8; 20],
 	},
+}
+
+impl Into<DomainAddress> for ConnectorsWrappedToken {
+	fn into(self) -> DomainAddress {
+		match self {
+			Self::EVM { chain_id, address } => DomainAddress::EVM(chain_id, address),
+		}
+	}
 }
 
 pub mod before {

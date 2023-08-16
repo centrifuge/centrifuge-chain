@@ -11,8 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
-	TrancheCurrency, TrancheTokenPrice, UpdateState,
+	changes::ChangeGuard,
+	investments::{InvestmentAccountant, TrancheCurrency},
+	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;

@@ -185,6 +185,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
+		currency: u128,
 	},
 	/// Collect the proceeds for the specified pair of pool and
 	/// tranche token.
@@ -240,9 +241,6 @@ where
 		/// original `DecreaseRedeemOrder` message, i.e., the amount by which
 		/// the redeem order was actually decreased by.
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of tranche tokens the investor still has locked
-		/// to redeem at a later epoch execution
-		remaining_redeem_order: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectInvest` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -264,7 +262,6 @@ where
 		tranche_tokens_payout: Balance,
 		/// The remaining amount of `currency` the investor still has locked to
 		/// invest at a later epoch execution
-		// TODO: Should be MORE than Investment::investment(who, investment_id)
 		remaining_invest_order: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectRedeem` message
@@ -495,9 +492,15 @@ impl<
 				pool_id,
 				tranche_id,
 				investor,
+				currency,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
 			),
 			Message::CollectRedeem {
 				pool_id,
@@ -537,7 +540,6 @@ impl<
 				investor,
 				currency,
 				tranche_tokens_payout,
-				remaining_redeem_order,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -546,7 +548,6 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_redeem_order),
 				],
 			),
 			Message::ExecutedCollectInvest {
@@ -673,6 +674,7 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			14 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -694,7 +696,6 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			17 => Ok(Self::ExecutedCollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -1008,6 +1009,7 @@ mod tests {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
+				currency: TOKEN_ID,
 			},
 			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
@@ -1050,7 +1052,6 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_redeem_order: AMOUNT * 2
 			},
 			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
 		)
