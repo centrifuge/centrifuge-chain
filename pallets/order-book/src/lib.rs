@@ -192,9 +192,10 @@ pub mod pallet {
 		pub buy_amount: ForeignCurrencyBalance,
 		/// Original buy amount, used for tracking amount fulfilled
 		pub initial_buy_amount: ForeignCurrencyBalance,
-		/// How much currency being purchased (asset in) costs with asset sold
-		/// (asset out)
-		pub price: SellRatio,
+		/// Maximim relative price of the asset in being purchased relative to
+		/// asset out ie: Rate::checked_from_rational(3u32, 2u32) would mean
+		/// that 1 asset in would correspond with 1.5 asset out.
+		pub max_price: SellRatio,
 		/// Minimum amount of an order that can be fulfilled
 		/// for partial fulfillment
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
@@ -258,7 +259,7 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 			min_fullfillment_amount: T::Balance,
-			sell_price_limit: T::SellRatio,
+			sell_rate_limit: T::SellRatio,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -270,7 +271,7 @@ pub mod pallet {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
 			buy_amount: T::Balance,
-			sell_price_limit: T::SellRatio,
+			sell_rate_limit: T::SellRatio,
 			min_fullfillment_amount: T::Balance,
 		},
 		/// Event emitted when an order is fulfilled.
@@ -285,7 +286,7 @@ pub mod pallet {
 			fulfillment_amount: T::Balance,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			sell_price_limit: T::SellRatio,
+			sell_rate_limit: T::SellRatio,
 		},
 	}
 
@@ -310,7 +311,7 @@ pub mod pallet {
 		InvalidBuyAmount,
 		/// Error when an account specifies an invalid buy price -- currently
 		/// `0`.
-		InvalidMinPrice,
+		InvalidMaxPrice,
 		/// Error when an order is placed with a currency that is not in the
 		/// asset registry.
 		InvalidAssetId,
@@ -381,7 +382,7 @@ pub mod pallet {
 			let sell_amount = Self::convert_with_ratio(
 				order.asset_in_id,
 				order.asset_out_id,
-				order.price,
+				order.max_price,
 				order.buy_amount,
 			)?;
 
@@ -412,7 +413,7 @@ pub mod pallet {
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
 				fulfillment_amount: order.buy_amount,
-				sell_price_limit: order.price,
+				sell_rate_limit: order.max_price,
 			});
 
 			Ok(())
@@ -493,7 +494,7 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
-			sell_price_limit: T::SellRatio,
+			sell_rate_limit: T::SellRatio,
 			min_fullfillment_amount: T::Balance,
 		) -> Result<Self::OrderId, DispatchError> {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
@@ -512,8 +513,8 @@ pub mod pallet {
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != T::SellRatio::zero(),
-				Error::<T>::InvalidMinPrice
+				sell_rate_limit != T::SellRatio::zero(),
+				Error::<T>::InvalidMaxPrice
 			);
 
 			<OrderIdNonceStore<T>>::try_mutate(|n| {
@@ -522,7 +523,7 @@ pub mod pallet {
 			})?;
 
 			let max_sell_amount =
-				Self::convert_with_ratio(currency_in, currency_out, sell_price_limit, buy_amount)?;
+				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
 			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
 			if T::FeeCurrencyId::get() == currency_out {
@@ -541,7 +542,7 @@ pub mod pallet {
 				asset_in_id: currency_in,
 				asset_out_id: currency_out,
 				buy_amount,
-				price: sell_price_limit,
+				max_price: sell_rate_limit,
 				initial_buy_amount: buy_amount,
 				min_fullfillment_amount,
 				max_sell_amount,
@@ -557,7 +558,7 @@ pub mod pallet {
 			<UserOrders<T>>::insert(&account, order_id, new_order);
 			Self::deposit_event(Event::OrderCreated {
 				creator_account: account,
-				sell_price_limit,
+				sell_rate_limit,
 				order_id,
 				buy_amount,
 				currency_in,
@@ -590,7 +591,7 @@ pub mod pallet {
 			account: T::AccountId,
 			order_id: Self::OrderId,
 			buy_amount: T::Balance,
-			sell_price_limit: T::SellRatio,
+			sell_rate_limit: T::SellRatio,
 			min_fullfillment_amount: T::Balance,
 		) -> DispatchResult {
 			ensure!(
@@ -598,26 +599,26 @@ pub mod pallet {
 				Error::<T>::InvalidBuyAmount
 			);
 			ensure!(
-				sell_price_limit != T::SellRatio::zero(),
-				Error::<T>::InvalidMinPrice
+				sell_rate_limit != T::SellRatio::zero(),
+				Error::<T>::InvalidMaxPrice
 			);
 
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
-				// let max_sell_amount = buy_amount.ensure_mul(sell_price_limit)?;
+				// let max_sell_amount = buy_amount.ensure_mul(sell_rate_limit)?;
 
 				let max_sell_amount = Self::convert_with_ratio(
 					order.asset_in_id,
 					order.asset_out_id,
-					sell_price_limit,
+					sell_rate_limit,
 					buy_amount,
 				)?;
 
 				// ensure proper amount can be, and is reserved of outgoing currency for updated
 				// order.
 				// Also minimise reserve/unreserve operations.
-				if buy_amount != order.buy_amount || sell_price_limit != order.price {
+				if buy_amount != order.buy_amount || sell_rate_limit != order.max_price {
 					if max_sell_amount > order.max_sell_amount {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
@@ -645,7 +646,7 @@ pub mod pallet {
 					}
 				};
 				order.buy_amount = buy_amount;
-				order.price = sell_price_limit;
+				order.max_price = sell_rate_limit;
 				order.min_fullfillment_amount = min_fullfillment_amount;
 				order.max_sell_amount = max_sell_amount;
 
@@ -659,11 +660,11 @@ pub mod pallet {
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,
 						order.asset_out_id,
-						sell_price_limit,
+						sell_rate_limit,
 						buy_amount,
 					)?;
 					order.buy_amount = buy_amount;
-					order.price = sell_price_limit;
+					order.max_price = sell_rate_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 					Ok(())
@@ -673,7 +674,7 @@ pub mod pallet {
 				account,
 				order_id,
 				buy_amount,
-				sell_price_limit,
+				sell_rate_limit,
 				min_fullfillment_amount,
 			});
 
