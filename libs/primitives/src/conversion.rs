@@ -69,7 +69,20 @@ pub fn fixed_point_to_balance<
 	new_integer_part.ensure_add(new_frac_part)
 }
 
-// TODO: docstring, readability cleanup & more tests.
+/// Converts a `uint` `Balance` of one precision into a `Balance` of another
+/// precision i.e:
+/// ```rust
+/// use cfg_primitives::conversion::convert_balance_decimals;
+/// # use frame_support::{assert_err, assert_ok};
+/// # use sp_runtime::DispatchError;
+/// # use sp_arithmetic::ArithmeticError;
+///
+/// assert_ok!(convert_balance_decimals(3u32, 6u32, 1_234_567u64), 1_234_567_000u64);
+/// assert_ok!(convert_balance_decimals(6u32, 3u32, 1_234_567u64), 1_234u64);
+/// assert_ok!(convert_balance_decimals(6u32, 6u32, 1_234_567u64), 1_234_567u64);
+///
+/// assert_err!(convert_balance_decimals(6u32, 42u32, 1_000_000u64), DispatchError::Arithmetic(ArithmeticError::Overflow));
+/// ```
 pub fn convert_balance_decimals<
 	Precision: AtLeast32BitUnsigned + TryInto<usize>,
 	Balance: BaseArithmetic + Copy,
@@ -78,13 +91,14 @@ pub fn convert_balance_decimals<
 	to: Precision,
 	balance: Balance,
 ) -> Result<Balance, DispatchError> {
-	// Ok(..?) has more succinct error conversion to dispatch error
 	match from {
 		from if from == to => Ok(balance),
-		from if to > from => {
-			Ok(precision_diff::<Precision, Balance>(to, from)?.ensure_mul(balance)?)
-		}
-		from => Ok(balance.ensure_div(precision_diff::<Precision, Balance>(from, to)?)?),
+		from if to > from => precision_diff::<Precision, Balance>(to, from)?
+			.ensure_mul(balance)
+			.map_err(|e| DispatchError::from(e)),
+		from => balance
+			.ensure_div(precision_diff::<Precision, Balance>(from, to)?)
+			.map_err(|e| DispatchError::from(e)),
 	}
 }
 
@@ -95,29 +109,11 @@ fn precision_diff<
 	gt: Precision,
 	lt: Precision,
 ) -> Result<Balance, DispatchError> {
-	// Ok(..?) has more succinct error conversion to dispatch error
-	Ok(ensure_pow(
+	ensure_pow(
 		Balance::from(10),
 		gt.ensure_sub(lt)?
 			.try_into()
 			.map_err(|_| DispatchError::Other("Unable to Convert decimal precision to u32"))?,
-	)?)
-}
-
-#[cfg(test)]
-mod test {
-	use super::convert_balance_decimals;
-
-	#[test]
-	fn convert_balance_decimals_works() {
-		assert_eq!(
-			Ok(1_000_000),
-			convert_balance_decimals(3u32, 6u32, 1_000u64)
-		);
-		assert_eq!(Ok(1_000), convert_balance_decimals(3u32, 3u32, 1_000u64));
-		assert_eq!(
-			Ok(1_000),
-			convert_balance_decimals(6u32, 3u32, 1_000_000u64)
-		)
-	}
+	)
+	.map_err(|e| DispatchError::from(e))
 }
