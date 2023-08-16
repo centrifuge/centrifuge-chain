@@ -192,6 +192,7 @@ dependencies = [
 name = "altair-runtime"
 version = "0.10.28"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -214,7 +215,9 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.4",
+ "liquidity-pools-gateway-routers",
  "log",
+ "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
@@ -237,14 +240,18 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
  "pallet-fees",
+ "pallet-foreign-investments",
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
+ "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -268,6 +275,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
+ "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.4.0",
  "polkadot-parachain",
@@ -291,6 +299,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -574,6 +583,27 @@ name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
+
+[[package]]
+name = "axelar-gateway-precompile"
+version = "0.1.0"
+dependencies = [
+ "cfg-types",
+ "ethabi 18.0.0",
+ "fp-evm",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-evm",
+ "pallet-liquidity-pools-gateway",
+ "parity-scale-codec 3.4.0",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "backtrace"
@@ -1543,40 +1573,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c278839b831783b70278b14df4d45e1beb1aad306c07bb796637de9a0e323e8e"
 dependencies = [
  "crossbeam-utils",
-]
-
-[[package]]
-name = "connectors-gateway-routers"
-version = "0.0.1"
-dependencies = [
- "cfg-mocks",
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "cumulus-primitives-core",
- "ethabi",
- "frame-support",
- "frame-system",
- "orml-traits",
- "pallet-balances",
- "pallet-connectors-gateway",
- "pallet-ethereum",
- "pallet-ethereum-transaction",
- "pallet-evm",
- "pallet-evm-chain-id",
- "pallet-evm-precompile-simple",
- "pallet-timestamp",
- "pallet-xcm-transactor",
- "parity-scale-codec 3.4.0",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
- "xcm-builder",
- "xcm-executor",
- "xcm-primitives",
 ]
 
 [[package]]
@@ -2636,11 +2632,11 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.20"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "chainbridge",
- "connectors-gateway-routers",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -2662,6 +2658,7 @@ dependencies = [
  "getrandom 0.2.8",
  "hex",
  "hex-literal 0.3.4",
+ "liquidity-pools-gateway-routers",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-oracle",
@@ -2681,8 +2678,6 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-connectors",
- "pallet-connectors-gateway",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-data-collector",
@@ -2699,6 +2694,8 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
+ "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
@@ -3080,6 +3077,20 @@ dependencies = [
  "ethereum-types 0.12.1",
  "hex",
  "sha3 0.9.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "ethabi"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
+dependencies = [
+ "ethereum-types 0.14.1",
+ "hex",
+ "serde",
+ "sha3 0.10.6",
  "thiserror",
  "uint",
 ]
@@ -5735,6 +5746,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d59d8c75012853d2e872fb56bc8a2e53718e2cafe1a4c823143141c6d90c322f"
 
 [[package]]
+name = "liquidity-pools-gateway-routers"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "cumulus-primitives-core",
+ "ethabi 16.0.0",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-ethereum",
+ "pallet-ethereum-transaction",
+ "pallet-evm",
+ "pallet-evm-chain-id",
+ "pallet-evm-precompile-simple",
+ "pallet-liquidity-pools-gateway",
+ "pallet-timestamp",
+ "pallet-xcm-transactor",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+ "xcm-primitives",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7068,57 +7113,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-connectors"
-version = "0.0.1"
-dependencies = [
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "cfg-utils",
- "ethabi",
- "fp-self-contained",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-ethereum",
- "pallet-timestamp",
- "pallet-uniques",
- "parity-scale-codec 3.4.0",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
- "xcm-primitives",
-]
-
-[[package]]
-name = "pallet-connectors-gateway"
-version = "0.0.1"
-dependencies = [
- "cfg-mocks",
- "cfg-traits",
- "cfg-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec 3.4.0",
- "rand 0.8.5",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-conviction-voting"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -7622,6 +7616,57 @@ dependencies = [
  "frame-system",
  "pallet-balances",
  "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-liquidity-pools"
+version = "0.0.1"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "cfg-utils",
+ "ethabi 16.0.0",
+ "fp-self-contained",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-ethereum",
+ "pallet-timestamp",
+ "pallet-uniques",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-liquidity-pools-gateway"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "rand 0.8.5",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -10892,6 +10937,7 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -10906,7 +10952,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
- "pallet-connectors",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
@@ -10918,6 +10963,7 @@ dependencies = [
  "pallet-evm-precompile-sha3fips",
  "pallet-evm-precompile-simple",
  "pallet-investments",
+ "pallet-liquidity-pools",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
@@ -10932,6 +10978,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -10944,7 +10991,6 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "connectors-gateway-routers",
  "cumulus-primitives-core",
  "development-runtime",
  "ethereum",
@@ -10956,6 +11002,7 @@ dependencies = [
  "hex",
  "kusama-runtime",
  "lazy_static",
+ "liquidity-pools-gateway-routers",
  "node-primitives",
  "orml-asset-registry",
  "orml-tokens",
@@ -10966,13 +11013,13 @@ dependencies = [
  "pallet-block-rewards",
  "pallet-collator-selection",
  "pallet-collective",
- "pallet-connectors",
- "pallet-connectors-gateway",
  "pallet-democracy",
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-investments",
+ "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -14625,7 +14672,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.2.3",
+ "rustc_version 0.4.0",
 ]
 
 [[package]]

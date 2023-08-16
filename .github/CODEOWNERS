@@ -16,7 +16,7 @@ node/res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @wischli
 *.toml @mikiquantum @mustermeiszer @branan @NunoAlexandre @lemunozm @wischli @cdamian @thea-leake
 
 ## Changes to specific pallets
-pallets/connectors/* @NunoAlexandre @cdamian @wischli @mustermeiszer
+pallets/liquidity-pools/* @NunoAlexandre @cdamian @wischli @mustermeiszer
 pallets/rewards/* @lemunozm @mikiquantum
 pallets/liquidity-rewards/* @lemunozm @mikiquantum
 pallets/block-rewards/* @wischli @lemunozm

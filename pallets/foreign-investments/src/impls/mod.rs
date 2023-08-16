@@ -919,7 +919,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Sends `ExecutedDecreaseInvestHook` notification such that any potential
-	/// consumer could act upon that, e.g. Connectors for
+	/// consumer could act upon that, e.g. Liqudity Pools for
 	/// `ExecutedDecreaseInvestOrder`.
 	#[transactional]
 	fn notify_executed_decrease_invest(
@@ -949,7 +949,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Sends `ExecutedCollectRedeemHook` notification such that any potential
-	/// consumer could act upon that, e.g. Connectors for
+	/// consumer could act upon that, e.g. Liqudity Pools for
 	/// `ExecutedCollectRedeemOrder`.
 	#[transactional]
 	fn notify_executed_collect_redeem(
