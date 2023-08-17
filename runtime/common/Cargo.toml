@@ -66,14 +66,19 @@ pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-featu
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
+# Used for migrations
+log = "0.4"
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
 [dev-dependencies]
 hex-literal = "0.2.1"
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
 [features]
 default = ["std"]
 std = [
   "codec/std",
+  "log/std",
   "frame-support/std",
   "frame-system/std",
   "pallet-authorship/std",
@@ -91,6 +96,7 @@ std = [
   "sp-arithmetic/std",
   "sp-core/std",
   "sp-runtime/std",
+  "sp-io/std",
   "cfg-types/std",
   "pallet-anchors/std",
   "frame-support/std",
