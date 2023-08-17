@@ -7964,6 +7964,7 @@ dependencies = [
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
