@@ -57,6 +57,9 @@ where
 				Self::handle_fulfilled_swap_order(&self, swap)
 			}
 			RedeemTransition::Collect(swap) => Self::handle_collect(&self, swap),
+			RedeemTransition::EpochExecution(amount_unprocessed) => {
+				Self::handle_epoch_execution(&self, amount_unprocessed)
+			}
 		}
 	}
 
@@ -141,13 +144,37 @@ where
 		}
 	}
 
-	// pub(crate) increase_invested(&self, amount: Balance) -> Result<Self,
-	// DispatchError> { 	match self {
-	// 		Self::InvestedAnd { invest_amount, inner } => {
-
-	// 		}
-	// 	}
-	// }
+	/// Update or kill the unprocessed redemption amount of the inner state.
+	/// * If the outer state does not include an inner state with `Redeeming`,
+	///   there is nothing to transition, i.e. we return the current state
+	/// * Else If the provided `unprocessed_amount` is zero, remove `Redeeming`
+	///   from the inner state
+	/// * Else set the `redeem_amount` to `unprocessed_amount`
+	fn handle_epoch_execution(&self, amount_unprocessed: Balance) -> Result<Self, DispatchError> {
+		match *self {
+			RedeemState::NoState | RedeemState::Invested { .. } => Ok(*self),
+			RedeemState::NotInvestedAnd { inner } => match inner {
+				Redeeming { .. } if !amount_unprocessed.is_zero() => Ok(Self::Invested {
+					invest_amount: amount_unprocessed,
+				}),
+				state => Ok(RedeemState::NotInvestedAnd {
+					inner: state.set_existing_redeem_amount(amount_unprocessed)?,
+				}),
+			},
+			RedeemState::InvestedAnd {
+				inner,
+				invest_amount,
+			} => match inner {
+				Redeeming { .. } if !amount_unprocessed.is_zero() => Ok(Self::Invested {
+					invest_amount: amount_unprocessed,
+				}),
+				state => Ok(RedeemState::InvestedAnd {
+					inner: state.set_existing_redeem_amount(amount_unprocessed)?,
+					invest_amount,
+				}),
+			},
+		}
+	}
 }
 
 impl<Balance, Currency> InnerRedeemState<Balance, Currency>
@@ -399,7 +426,25 @@ where
 		}
 	}
 
-	/// Sets the redeeming amount to the provided value:
+	/// Removes `Redeeming` from the state.
+	fn remove_redeem_amount(&self) -> Result<Self, DispatchError> {
+		match *self {
+			Redeeming { .. } => Err(DispatchError::Other("Outer RedeemState must be transitioned to Self::Invested")),
+			RedeemingAndCollectableRedemption { .. } => Ok(CollectableRedemption),
+			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(ActiveSwapIntoReturnCurrency { swap }),
+			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(SwapIntoReturnDone { done_swap }),
+			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
+			// Throw for states without `Redeeming`
+			// TODO: Create pallet error NotRedeeming
+			inner => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
+		}
+	}
+
+	/// Either adds a non existing redeeming amount to the state or overwrites
+	/// it.
 	/// * If the value is not zero and the state involves `Redeeming`: Sets the
 	///   amount.
 	/// * Else if the value is not zero and the state does not involve
@@ -408,48 +453,46 @@ where
 	/// * If the value is zero and the state includes `Redeeming`: Removes
 	///   `Redeeming` from the state.
 	/// * Else throws.
-	///
-	/// NOTE: If setting the amount to a non-zero value, assumes this function
-	/// is **only called on inner states of `RedeemState::InvestedAnd`** as the
-	/// redeeming amounts can at most equal the processed investment amount.
-	/// Since the inner state has no knowledge about the investment amount, this
-	/// check must be done beforehand.
-	fn set_redeem_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
-		// Remove `Redeeming` from state
+	fn add_or_overwrite_redeem_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
 		if amount.is_zero() {
-			match *self {
-				Redeeming { .. } => Err(DispatchError::Other("Outer RedeemState must be transitioned to Self::Invested")),
-				RedeemingAndCollectableRedemption { .. } => Ok(CollectableRedemption),
-				RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(ActiveSwapIntoReturnCurrency { swap }),
-				RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(SwapIntoReturnDone { done_swap }),
-				RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
-				RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap }),
-				RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap }),
-				RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
-				// Throw for states without `Redeeming`
-				// TODO: Create pallet error NotRedeeming
-				inner => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
-			}
+			return Self::remove_redeem_amount(&self);
 		}
-		// Set `redeeming` to non-zero value. Add `Redeeming` if not part of state yet.
-		else {
-			match *self {
-				Redeeming { redeem_amount } => Ok(Redeeming { redeem_amount: amount }),
-				RedeemingAndCollectableRedemption { redeem_amount } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-				RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-				RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-				RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-				RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-				RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-				RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-				CollectableRedemption => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-				ActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
-				ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
-				SwapIntoReturnDone { done_swap } => Ok(RedeemingAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
-				CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
-				CollectableRedemptionAndSwapIntoReturnDone { done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
-				CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
-			}
+		match *self {
+			Redeeming { redeem_amount } => Ok(Redeeming { redeem_amount: amount }),
+			RedeemingAndCollectableRedemption { redeem_amount } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
+			RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			CollectableRedemption => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
+			ActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
+			ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
+			SwapIntoReturnDone { done_swap } => Ok(RedeemingAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
+			CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
+			CollectableRedemptionAndSwapIntoReturnDone { done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
+			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
+		}
+	}
+
+	/// Sets the redeeming amount of the state to the given amount.
+	///
+	/// Throws if the the state does not include `Redeeming`.
+	fn set_existing_redeem_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
+		if amount.is_zero() {
+			return Self::remove_redeem_amount(&self);
+		}
+		match *self {
+			Redeeming { redeem_amount } => Ok(Redeeming { redeem_amount: amount }),
+			RedeemingAndCollectableRedemption { redeem_amount } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
+			RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			_ => Err(DispatchError::Other("Cannot set existing redeem amount of inner redeem state which does not include `Redeeming`")),
 		}
 	}
 
@@ -651,7 +694,7 @@ where
 					})
 				}
 			},
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {;
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
 				if collected_swap.amount.is_zero() {
 					Ok(Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 						redeem_amount,
@@ -827,12 +870,12 @@ where
 			} => {
 				if &amount == invest_amount {
 					Ok(Self::NotInvestedAnd {
-						inner: inner.set_redeem_amount(amount)?,
+						inner: inner.add_or_overwrite_redeem_amount(amount)?,
 					})
 				} else {
 					Ok(Self::InvestedAnd {
 						invest_amount: invest_amount.ensure_sub(amount)?,
-						inner: inner.set_redeem_amount(amount)?,
+						inner: inner.add_or_overwrite_redeem_amount(amount)?,
 					})
 				}
 			}
@@ -867,7 +910,7 @@ where
 					}),
 					_ => Ok(Self::InvestedAnd {
 						invest_amount: amount,
-						inner: inner.set_redeem_amount(Balance::zero())?,
+						inner: inner.add_or_overwrite_redeem_amount(Balance::zero())?,
 					}),
 				},
 				Self::InvestedAnd {
@@ -879,7 +922,7 @@ where
 						Redeeming { .. } => Ok(Self::Invested { invest_amount }),
 						_ => Ok(Self::InvestedAnd {
 							invest_amount,
-							inner: inner.set_redeem_amount(Balance::zero())?,
+							inner: inner.add_or_overwrite_redeem_amount(Balance::zero())?,
 						}),
 					}
 				}
@@ -890,12 +933,10 @@ where
 				let redeem_amount = old_redeem_amount.ensure_sub(amount)?;
 
 				match self {
-					Self::NoState | Self::Invested { .. } | Self::Invested { .. } => {
-						error_not_redeeming
-					}
+					Self::NoState | Self::Invested { .. } => error_not_redeeming,
 					Self::NotInvestedAnd { inner } => Ok(Self::InvestedAnd {
 						invest_amount: amount,
-						inner: inner.set_redeem_amount(redeem_amount)?,
+						inner: inner.add_or_overwrite_redeem_amount(redeem_amount)?,
 					}),
 					Self::InvestedAnd {
 						invest_amount,
@@ -904,7 +945,7 @@ where
 						let invest_amount = invest_amount.ensure_add(amount)?;
 						Ok(Self::InvestedAnd {
 							invest_amount,
-							inner: inner.set_redeem_amount(redeem_amount)?,
+							inner: inner.add_or_overwrite_redeem_amount(redeem_amount)?,
 						})
 					}
 				}

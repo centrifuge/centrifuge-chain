@@ -39,6 +39,9 @@ where
 			InvestTransition::FulfillSwapOrder(swap) => {
 				Self::handle_fulfilled_swap_order(&self, swap)
 			}
+			InvestTransition::EpochExecution(amount_unprocessed) => {
+				Self::handle_epoch_execution(&self, amount_unprocessed)
+			}
 		}
 	}
 
@@ -820,6 +823,101 @@ where
 				"Invalid invest state when transitioning a decreased swap order with the same in- \
 				 and outgoing currency",
 			))
+		}
+	}
+
+	/// Update or kill the unprocessed investment amount.
+	/// * If the state does not include `InvestmentOngoing` and the unprocessed
+	///   amount is not zero, there is nothing to transition, return the current
+	///   state. If the unprocessed amount is zero, state is corrupted.
+	/// * Else If the provided `unprocessed_amount` is zero, remove
+	///   `InvestmentOngoing` from the state
+	/// * Else set the `invest_amount` to `unprocessed_amount`
+	fn handle_epoch_execution(&self, unprocessed_amount: Balance) -> Result<Self, DispatchError> {
+		match *self {
+			Self::InvestmentOngoing { .. } => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::NoState)
+				} else {
+					Ok(Self::InvestmentOngoing {
+						invest_amount: unprocessed_amount,
+					})
+				}
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::ActiveSwapIntoPoolCurrency { swap })
+				} else {
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+						swap,
+						invest_amount: unprocessed_amount,
+					})
+				}
+			}
+			Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, .. } => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::ActiveSwapIntoReturnCurrency { swap })
+				} else {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+						swap,
+						invest_amount: unprocessed_amount,
+					})
+				}
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				swap,
+				done_amount,
+				..
+			} => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount })
+				} else {
+					Ok(
+						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+							swap,
+							done_amount,
+							invest_amount: unprocessed_amount,
+						},
+					)
+				}
+			}
+			Self::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, .. } => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::SwapIntoReturnDone { done_swap })
+				} else {
+					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						done_swap,
+						invest_amount: unprocessed_amount,
+					})
+				}
+			}
+			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				swap,
+				done_amount,
+				..
+			} => {
+				if unprocessed_amount.is_zero() {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						swap,
+						done_amount,
+					})
+				} else {
+					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+						swap,
+						done_amount,
+						invest_amount: unprocessed_amount,
+					})
+				}
+			}
+			state => {
+				if unprocessed_amount.is_zero() {
+					Ok(state)
+				} else {
+					Err(DispatchError::Other(
+						"Invalid invest state when transitioning epoch execution",
+					))
+				}
+			}
 		}
 	}
 }

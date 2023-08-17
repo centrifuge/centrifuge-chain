@@ -273,7 +273,7 @@ impl<T: Config> Pallet<T> {
 	/// * When updating token swap orders, only `handle_swap_order` should
 	/// be called.
 	#[transactional]
-	fn apply_invest_state_transition(
+	pub(crate) fn apply_invest_state_transition(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		state: InvestState<T::Balance, T::CurrencyId>,
@@ -387,12 +387,12 @@ impl<T: Config> Pallet<T> {
 	/// assume the impl of `<T as Config>::Investment` handles this case.
 	///
 	/// NOTES:
-	/// * Must be called after transitioning any `RedeemState` via
+	/// * Must be called after transitionin g any `RedeemState` via
 	/// `transition` to update the chain storage.
 	/// * When updating token swap orders, only `handle_swap_order` should
 	/// be called.
 	#[transactional]
-	fn apply_redeem_state_transition(
+	pub(crate) fn apply_redeem_state_transition(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		state: RedeemState<T::Balance, T::CurrencyId>,

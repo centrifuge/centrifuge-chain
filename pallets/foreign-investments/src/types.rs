@@ -31,7 +31,18 @@ pub enum TokenSwapReason {
 /// into a pool currency or back, if the investment is decreased before it is
 /// fully processed.
 #[derive(
-	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Default,
+	PartialOrd,
+	Ord,
+	Copy,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 pub enum InvestState<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
@@ -145,6 +156,7 @@ pub enum InvestTransition<
 	/// 	* If the previous state includes `ActiveSwapIntoReturnCurrency`,
 	///    `currency_in` is the return currency.
 	FulfillSwapOrder(Swap<Balance, Currency>),
+	EpochExecution(Balance),
 }
 
 /// Reflects all states a foreign redemption can have until transferred to the
@@ -313,4 +325,5 @@ pub enum RedeemTransition<
 	DecreaseRedeemOrder(Balance),
 	FulfillSwapOrder(Swap<Balance, Currency>),
 	Collect(Swap<Balance, Currency>),
+	EpochExecution(Balance),
 }

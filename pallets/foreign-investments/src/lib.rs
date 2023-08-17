@@ -41,13 +41,16 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{InvestmentCollector, TrancheCurrency},
+		investments::{Investment as InvestmentT, InvestmentCollector, TrancheCurrency},
 		StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
 		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
 	};
-	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
+	use frame_support::{
+		dispatch::HasCompact,
+		pallet_prelude::{DispatchResultWithPostInfo, *},
+	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use types::{InvestState, RedeemState, TokenSwapReason};
@@ -114,7 +117,7 @@ pub mod pallet {
 
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
-		type Investment: cfg_traits::investments::Investment<
+		type Investment: InvestmentT<
 				Self::AccountId,
 				Amount = Self::Balance,
 				CurrencyId = Self::CurrencyId,
@@ -334,5 +337,67 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		/// Attempts to transition an `InvestState` after an epoch execution:
+		/// * If the state includes `InvestmentOngoing` and the unprocessed
+		///   investment amount is zero, removes `InvestmentOngoing`.
+		/// * If the state includes `InvestmentOngoing` and the unprocessed
+		///   investment amount is positive, updates the `invest_amount` to the
+		///   unprocessed one.
+		///
+		/// NOOP: If the unprocessed investment amount is zero or the state does
+		/// not include `InvestmentOngoing`
+		// TODO: weights/benchmark, numbers chosen by rough estimation
+		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
+		#[pallet::call_index(1)]
+		pub fn nudge_invest_state(
+			origin: OriginFor<T>,
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			if let Some(invest_state) = InvestmentState::<T>::get(&investor, investment_id) {
+				let amount_unprocessed_investment =
+					T::Investment::investment(&investor, investment_id)?;
+				let new_state = invest_state.transition(
+					types::InvestTransition::EpochExecution(amount_unprocessed_investment),
+				)?;
+				Pallet::<T>::apply_invest_state_transition(&investor, investment_id, new_state)?;
+
+				Ok(Some(T::DbWeight::get().reads_writes(5, 5)).into())
+			} else {
+				Ok(Some(T::DbWeight::get().reads(1)).into())
+			}
+		}
+
+		/// Attempts to transition a `RedeemState` after an epoch execution:
+		/// * If the inner state includes `Redeeming` and the unprocessed
+		///   redemption amount is zero, removes `Redeeming`.
+		/// * If the inner state includes `Redeeming` and the unprocessed
+		///   redemption amount is positive, updates the amount to the
+		///   unprocessed one.
+		///
+		/// NOOP: If the unprocessed redemption amount is zero or the inner
+		/// state does not include `Redeeming`.
+		// TODO: weights/benchmark, numbers chosen by rough estimation
+		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
+		#[pallet::call_index(2)]
+		pub fn nudge_redeem_state(
+			origin: OriginFor<T>,
+			investor: T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			if let Some(redeem_state) = RedemptionState::<T>::get(&investor, investment_id) {
+				let amount_unprocessed_redemption =
+					T::Investment::redemption(&investor, investment_id)?;
+				let new_state = redeem_state.transition(
+					types::RedeemTransition::EpochExecution(amount_unprocessed_redemption),
+				)?;
+				Pallet::<T>::apply_redeem_state_transition(&investor, investment_id, new_state)?;
+
+				Ok(Some(T::DbWeight::get().reads_writes(5, 5)).into())
+			} else {
+				Ok(Some(T::DbWeight::get().reads(1)).into())
+			}
+		}
+	}
 }
