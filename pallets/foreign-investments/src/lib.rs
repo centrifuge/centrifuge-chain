@@ -248,21 +248,21 @@ pub mod pallet {
 		T::TokenSwapOrderId,
 	>;
 
-	/// Maps an investor and their `InvestmentId` to the amount of collected
-	/// pool currency and the corresponding amount of tranche tokens burned for
-	/// the conversion based on the fulfillment price(s).
+	/// Maps an investor and their `InvestmentId` to the amount of
+	/// tranche tokens burned for the conversion into pool currency based on the
+	/// fulfillment price(s) during collection.
 	///
 	/// NOTE: The lifetime of this storage starts with collecting a redemption
 	/// in pool currency and ends with having swapped the entire amount to
-	/// return currency.
+	/// return currency which is assumed to be asynchronous.
 	#[pallet::storage]
-	pub(super) type CollectedRedemption<T: Config> = StorageDoubleMap<
+	pub(super) type CollectedRedemptionTrancheTokens<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		CollectedAmount<T::Balance>,
+		T::Balance,
 		ValueQuery,
 	>;
 

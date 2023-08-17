@@ -30,8 +30,9 @@ use crate::{
 		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition,
 		TokenSwapReason,
 	},
-	CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo, ForeignInvestmentInfoOf,
-	InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds, TokenSwapReasons,
+	CollectedRedemptionTrancheTokens, Config, Error, Event, ForeignInvestmentInfo,
+	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds,
+	TokenSwapReasons,
 };
 
 mod invest;
@@ -173,13 +174,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
-		CollectedRedemption::<T>::try_mutate(who, investment_id, |collected_redemption| {
-			collected_redemption
-				.amount_collected
-				.ensure_add_assign(collected.amount_collected)?;
-			collected_redemption
-				.amount_payment
-				.ensure_add_assign(collected.amount_payment)?;
+		CollectedRedemptionTrancheTokens::<T>::try_mutate(who, investment_id, |amount| {
+			amount.ensure_add_assign(collected.amount_payment)?;
 
 			Ok::<(), DispatchError>(())
 		})?;
@@ -536,11 +532,11 @@ impl<T: Config> Pallet<T> {
 		state: RedeemState<T::Balance, T::CurrencyId>,
 		inner_redeem_state: InnerRedeemState<T::Balance, T::CurrencyId>,
 	) -> Result<Option<RedeemState<T::Balance, T::CurrencyId>>, DispatchError> {
-		// TODO: Should just be amount and maybe factor in the remaining amount as well
-		let collected_redemption = CollectedRedemption::<T>::get(who, investment_id);
+		let amount_payment_tranche_tokens =
+			CollectedRedemptionTrancheTokens::<T>::get(who, investment_id);
 
-		// Send notification and kill `CollectedRedemption` iff the state includes
-		// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`
+		// Send notification and kill `CollectedRedemptionTrancheTokens` iff the state
+		// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`
 		match inner_redeem_state {
 			InnerRedeemState::SwapIntoReturnDone { done_swap, .. }
 			| InnerRedeemState::RedeemingAndSwapIntoReturnDone { done_swap, .. }
@@ -555,10 +551,10 @@ impl<T: Config> Pallet<T> {
 					done_swap.currency_in,
 					CollectedAmount {
 						amount_collected: done_swap.amount,
-						amount_payment: collected_redemption.amount_payment,
+						amount_payment: amount_payment_tranche_tokens,
 					},
 				)?;
-				CollectedRedemption::<T>::remove(who, investment_id);
+				CollectedRedemptionTrancheTokens::<T>::remove(who, investment_id);
 				Ok(())
 			}
 			_ => Ok(()),
@@ -751,7 +747,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Determines the correct amount for a token swap based on the current
+	/// Determines the correct amount of a token swap based on the current
 	/// `InvestState` and `RedeemState` corresponding to the `TokenSwapOrderId`.
 	///
 	/// Returns a tuple of the total swap order amount as well as potentially
