@@ -308,10 +308,10 @@ pub enum LiquidityPoolsWrappedToken {
 	},
 }
 
-impl Into<DomainAddress> for LiquidityPoolsWrappedToken {
-	fn into(self) -> DomainAddress {
-		match self {
-			Self::EVM { chain_id, address } => DomainAddress::EVM(chain_id, address),
+impl From<LiquidityPoolsWrappedToken> for DomainAddress {
+	fn from(token: LiquidityPoolsWrappedToken) -> Self {
+		match token {
+			LiquidityPoolsWrappedToken::EVM { chain_id, address } => Self::EVM(chain_id, address),
 		}
 	}
 }

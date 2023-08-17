@@ -138,6 +138,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
+		// TODO: Check if we can drop the below line
 		let pre_amount = T::Investment::redemption(who, investment_id.clone())?;
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
 		let post_state = pre_state.transition(RedeemTransition::DecreaseRedeemOrder(amount))?;

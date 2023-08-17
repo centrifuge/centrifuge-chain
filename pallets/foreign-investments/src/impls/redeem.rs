@@ -71,7 +71,7 @@ where
 	pub(crate) fn get_active_swap(&self) -> Option<Swap<Balance, Currency>> {
 		match self {
 			Self::NoState => None,
-			Self::Invested { invest_amount } => None,
+			Self::Invested { .. } => None,
 			Self::NotInvestedAnd { inner } | Self::InvestedAnd { inner, .. } => {
 				inner.get_active_swap()
 			}
@@ -85,7 +85,7 @@ where
 	pub(crate) fn get_redeeming_amount(&self) -> Option<Balance> {
 		match self {
 			Self::NoState => None,
-			Self::Invested { invest_amount } => None,
+			Self::Invested { .. } => None,
 			Self::NotInvestedAnd { inner } | Self::InvestedAnd { inner, .. } => {
 				inner.get_redeeming_amount()
 			}
@@ -439,7 +439,7 @@ where
 			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
 			// Throw for states without `Redeeming`
 			// TODO: Create pallet error NotRedeeming
-			inner => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
+			_ => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
 		}
 	}
 
@@ -458,14 +458,14 @@ where
 			return Self::remove_redeem_amount(&self);
 		}
 		match *self {
-			Redeeming { redeem_amount } => Ok(Redeeming { redeem_amount: amount }),
-			RedeemingAndCollectableRedemption { redeem_amount } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-			RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
+			RedeemingAndCollectableRedemption { .. } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
+			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
 			CollectableRedemption => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
 			ActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
 			ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
@@ -484,14 +484,14 @@ where
 			return Self::remove_redeem_amount(&self);
 		}
 		match *self {
-			Redeeming { redeem_amount } => Ok(Redeeming { redeem_amount: amount }),
-			RedeemingAndCollectableRedemption { redeem_amount } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-			RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
+			RedeemingAndCollectableRedemption { .. } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
+			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
 			_ => Err(DispatchError::Other("Cannot set existing redeem amount of inner redeem state which does not include `Redeeming`")),
 		}
 	}

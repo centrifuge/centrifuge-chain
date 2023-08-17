@@ -355,6 +355,8 @@ pub mod pallet {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
 			if let Some(invest_state) = InvestmentState::<T>::get(&investor, investment_id) {
 				let amount_unprocessed_investment =
 					T::Investment::investment(&investor, investment_id)?;
@@ -386,6 +388,8 @@ pub mod pallet {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
 			if let Some(redeem_state) = RedemptionState::<T>::get(&investor, investment_id) {
 				let amount_unprocessed_redemption =
 					T::Investment::redemption(&investor, investment_id)?;
