@@ -36,14 +36,14 @@ use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
-/// Traits related to connectors.
-pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
 /// Traits related to Ethereum/EVM.
 pub mod ethereum;
 /// Traits related to interest rates.
 pub mod interest;
+/// Traits related to liquidity pools.
+pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
 
@@ -244,6 +244,17 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
+}
+
+/// A trait that supports modifications of pool write-off policies
+pub trait PoolWriteOffPolicyMutate<PoolId> {
+	type Policy: Parameter;
+
+	/// Updates the policy with the new policy
+	fn update(pool_id: PoolId, policy: Self::Policy) -> DispatchResult;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_case_policy() -> Self::Policy;
 }
 
 /// Utility to benchmark pools easily
@@ -727,4 +738,24 @@ pub trait TokenSwaps<Account> {
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
+}
+
+/// Trait to handle Investment Portfolios for accounts
+pub trait InvestmentsPortfolio<Account> {
+	type InvestmentId;
+	type CurrencyId;
+	type Balance;
+	type Error;
+	type AccountInvestmentPortfolio;
+
+	/// Get the payment currency for an investment.
+	fn get_investment_currency_id(
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::CurrencyId, Self::Error>;
+
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
+	fn get_account_investments_currency(
+		who: &Account,
+	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
 }

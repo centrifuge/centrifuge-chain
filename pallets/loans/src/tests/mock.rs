@@ -25,12 +25,12 @@ use frame_support::traits::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use scale_info::TypeInfo;
-use sp_arithmetic::fixed_point::FixedU64;
+use sp_arithmetic::{fixed_point::FixedU64, Perbill};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, FixedU128,
+	FixedU128,
 };
 
 use crate::{pallet as pallet_loans, ChangeOf};
@@ -70,8 +70,9 @@ pub const REGISTER_PRICE_ID: PriceId = 42;
 pub const UNREGISTER_PRICE_ID: PriceId = 88;
 pub const PRICE_VALUE: Balance = 998;
 pub const NOTIONAL: Balance = 1000;
-pub const QUANTITY: Quantity = Quantity::from_rational(20, 1);
+pub const QUANTITY: Quantity = Quantity::from_rational(12, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
+pub const MAX_PRICE_VARIATION: Rate = Rate::from_rational(1, 100);
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -206,7 +207,7 @@ impl pallet_mock_permissions::Config for Runtime {
 impl pallet_mock_data::Config for Runtime {
 	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
 	type CollectionId = PoolId;
-	type Data = Result<(Balance, Moment), DispatchError>;
+	type Data = (Balance, Moment);
 	type DataElem = Balance;
 	type DataId = PriceId;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -230,6 +231,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
+	type PerThing = Perbill;
 	type Permissions = MockPermissions;
 	type Pool = MockPools;
 	type PoolId = PoolId;

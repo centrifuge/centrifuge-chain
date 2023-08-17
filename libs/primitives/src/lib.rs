@@ -15,6 +15,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+pub mod conversion;
 mod impls;
 
 pub use constants::*;
@@ -261,7 +262,7 @@ pub mod constants {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
 
-	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
+	/// Unhashed 36-bytes prefix for currencies managed by LiquidityPools.
 	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
 
 	/// Transaction recovery ID used for generating a signature in the Ethereum
@@ -318,8 +319,8 @@ pub mod parachains {
 	}
 }
 
-pub mod connectors {
-	/// The hashed prefix for currencies managed by Connectors.
+pub mod liquidity_pools {
+	/// The hashed prefix for currencies managed by LiquidityPools.
 	pub struct GeneralCurrencyPrefix;
 
 	impl sp_core::Get<[u8; 12]> for GeneralCurrencyPrefix {

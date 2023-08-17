@@ -351,7 +351,8 @@ fn with_percentage_applied_external() {
 
 		advance_time(YEAR + DAY);
 
-		MockPrices::mock_get(|id| {
+		MockPrices::mock_get(|id, pool_id| {
+			assert_eq!(*pool_id, POOL_A);
 			assert_eq!(*id, REGISTER_PRICE_ID);
 			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});

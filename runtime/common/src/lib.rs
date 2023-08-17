@@ -18,9 +18,14 @@
 #[cfg(test)]
 mod tests;
 
+pub mod migrations {
+	pub mod nuke;
+}
+
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod oracle;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -287,113 +292,6 @@ pub mod xcm {
 	}
 }
 
-pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment};
-	use cfg_types::oracles::OracleKey;
-	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
-	use sp_runtime::DispatchResult;
-	use sp_std::{marker::PhantomData, vec::Vec};
-
-	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
-
-	/// Always choose the last updated value in case of several values.
-	pub struct LastOracleValue;
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-		fn combine_data(
-			_: &OracleKey,
-			values: Vec<OracleValue>,
-			_: Option<OracleValue>,
-		) -> Option<OracleValue> {
-			values
-				.into_iter()
-				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
-		}
-	}
-
-	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
-	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
-	/// and can be removed once they fix this.
-	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
-
-	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
-		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
-	{
-		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
-			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
-		}
-
-		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
-			OrmlOracle::get_all_values()
-				.into_iter()
-				.map(|elem| {
-					(
-						elem.0,
-						elem.1
-							.map(|OracleValue { value, timestamp }| (value, timestamp)),
-					)
-				})
-				.collect()
-		}
-	}
-
-	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
-		for DataProviderBridge<OrmlOracle>
-	{
-		fn get(key: &OracleKey) -> Option<Balance> {
-			OrmlOracle::get(key)
-		}
-	}
-
-	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
-		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
-	{
-		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
-			OrmlOracle::feed_value(who, key, value)
-		}
-	}
-
-	/// This is used for feeding the oracle from the data-collector in
-	/// benchmarks.
-	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-	#[cfg(feature = "runtime-benchmarks")]
-	pub mod benchmarks_util {
-		use frame_support::traits::SortedMembers;
-		use sp_std::vec::Vec;
-
-		use super::*;
-
-		impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-			fn combine_data(
-				_: &OracleKey,
-				_: Vec<OracleValue>,
-				_: Option<OracleValue>,
-			) -> Option<OracleValue> {
-				Some(OracleValue {
-					value: Default::default(),
-					timestamp: 0,
-				})
-			}
-		}
-
-		pub struct Members;
-
-		impl SortedMembers<AccountId> for Members {
-			fn sorted_members() -> Vec<AccountId> {
-				// We do not want members for benchmarking
-				Vec::default()
-			}
-
-			fn contains(_: &AccountId) -> bool {
-				// We want to mock the member permission for benchmark
-				// Allowing any member
-				true
-			}
-		}
-	}
-}
-
 pub mod changes {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
@@ -509,6 +407,79 @@ pub mod changes {
 			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
 				self.0.try_into()
 			}
+		}
+	}
+}
+
+/// Module for investment portfolio common to all runtimes
+pub mod investment_portfolios {
+
+	use cfg_traits::{InvestmentsPortfolio, TrancheCurrency};
+	use sp_std::vec::Vec;
+
+	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
+	/// investments for an account.
+	pub fn get_portfolios<
+		Runtime,
+		AccountId,
+		TrancheId,
+		Investments,
+		InvestmentId,
+		CurrencyId,
+		PoolId,
+		Balance,
+	>(
+		account_id: AccountId,
+	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
+	where
+		Investments: InvestmentsPortfolio<
+			AccountId,
+			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
+			InvestmentId = InvestmentId,
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+		>,
+		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
+		Runtime: frame_system::Config,
+	{
+		let account_investments: Vec<(InvestmentId, CurrencyId, Balance)> =
+			Investments::get_account_investments_currency(&account_id).ok()?;
+		// Pool getting defined in runtime
+		// as opposed to pallet helper method
+		// as getting pool id in investments pallet
+		// would force tighter coupling of investments
+		// and pool pallets.
+		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
+			.into_iter()
+			.map(|(investment_id, currency_id, balance)| {
+				(investment_id.of_pool(), currency_id, investment_id, balance)
+			})
+			.collect();
+		Some(portfolio)
+	}
+}
+
+pub mod xcm_transactor {
+	use codec::{Decode, Encode};
+	use scale_info::TypeInfo;
+	use sp_std::{vec, vec::Vec};
+	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
+
+	/// NOTE: our usage of XcmTransactor does NOT use this type so we have it
+	/// implement the required traits by returning safe dummy values.
+	#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+	pub struct NullTransactor {}
+
+	impl UtilityEncodeCall for NullTransactor {
+		fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
+			vec![]
+		}
+	}
+
+	impl XcmTransact for NullTransactor {
+		fn destination(self) -> xcm::latest::MultiLocation {
+			Default::default()
 		}
 	}
 }
