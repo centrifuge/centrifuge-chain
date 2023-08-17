@@ -695,21 +695,17 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		#[pallet::call_index(10)]
-		pub fn schedule_upgrade(origin: OriginFor<T>, contract: DomainAddress) -> DispatchResult {
+		pub fn schedule_upgrade(
+			origin: OriginFor<T>,
+			evm_chain_id: EVMChainId,
+			contract: [u8; 20],
+		) -> DispatchResult {
 			ensure_root(origin)?;
-			// get account id of this pallet
-			let who = T::PalletId::get().into_account_truncating();
-			ensure!(
-				contract.domain() != Domain::Centrifuge,
-				Error::<T>::InvalidDomain
-			);
 
 			T::OutboundQueue::submit(
-				who,
-				contract.domain(),
-				Message::ScheduleUpgrade {
-					contract: contract.address(),
-				},
+				T::PalletId::get().into_account_truncating(),
+				Domain::EVM(evm_chain_id),
+				Message::ScheduleUpgrade { contract },
 			)
 		}
 	}
