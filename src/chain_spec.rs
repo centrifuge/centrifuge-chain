@@ -776,6 +776,10 @@ fn altair_genesis(
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
+		liquidity_rewards_base: altair_runtime::LiquidityRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: altair_runtime::ExistentialDeposit::get(),
+		},
 	}
 }
 
