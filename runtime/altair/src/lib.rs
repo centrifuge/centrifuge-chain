@@ -1200,6 +1200,12 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: u32 = 50;
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
+
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1218,6 +1224,14 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		SingleCurrencyMovement,
 	>;
 	type RuntimeEvent = RuntimeEvent;
+}
+
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type DistributionId = u32;
+	type Balance = Balance;
+	type IBalance = IBalance;
+	type Rate = FixedI128;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
 }
 
 frame_support::parameter_types! {
@@ -1375,6 +1389,33 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = ();
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+	pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = GapRewardMechanism;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
@@ -1745,6 +1786,9 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
+		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
+		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
+		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

@@ -1777,7 +1777,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
