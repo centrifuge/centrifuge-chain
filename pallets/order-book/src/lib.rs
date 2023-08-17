@@ -467,6 +467,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::InvalidAssetId)?
 				.decimals;
 			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
+				.map_err(DispatchError::from)
 		}
 	}
 
