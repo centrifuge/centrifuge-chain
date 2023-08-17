@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
+use cfg_mocks::pallet_mock_write_off_policy;
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
@@ -240,6 +241,11 @@ impl<
 	}
 }
 
+impl pallet_mock_write_off_policy::Config for Test {
+	type Policy = ();
+	type PoolId = PoolId;
+}
+
 pub struct Always;
 impl<T> PreConditions<T> for Always {
 	type Result = DispatchResult;
@@ -259,6 +265,7 @@ impl Config for Test {
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = ModifyPoolMock<Self>;
+	type ModifyWriteOffPolicy = MockWriteOffPolicy;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
@@ -326,6 +333,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+		MockWriteOffPolicy: pallet_mock_write_off_policy,
 	}
 );
 
