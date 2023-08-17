@@ -14,7 +14,7 @@
 use cfg_types::investments::Swap;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
-	ArithmeticError, DispatchError, DispatchResult,
+	ArithmeticError, DispatchError,
 };
 
 use crate::types::{InvestState, InvestTransition};
@@ -134,7 +134,7 @@ where
 			}
 			// Bump pool swap
 			Self::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
-				Self::ensure_currencies_match(true, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, true)?;
 				Ok(Self::ActiveSwapIntoPoolCurrency {
 					swap: Swap {
 						amount: swap.amount.ensure_add(pool_swap.amount)?,
@@ -145,7 +145,7 @@ where
 			// Reduce return swap amount by the increasing amount and increase investing amount as
 			// well adding return_done amount by the minimum of active swap amounts
 			Self::ActiveSwapIntoReturnCurrency { swap: return_swap } => {
-				Self::ensure_currencies_match(false, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, false)?;
 				let invest_amount = swap.amount.min(return_swap.amount);
 				let done_amount = swap.amount.min(return_swap.amount);
 
@@ -190,7 +190,7 @@ where
 				swap: pool_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, true)?;
 
 				Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 					swap: Swap {
@@ -206,7 +206,7 @@ where
 				swap: return_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(false, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, false)?;
 				let invest_amount =
 					invest_amount.ensure_add(swap.amount.min(return_swap.amount))?;
 				let done_amount = swap.amount.min(return_swap.amount);
@@ -253,7 +253,7 @@ where
 				swap: return_swap,
 				done_amount,
 			} => {
-				Self::ensure_currencies_match(false, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, false)?;
 				let invest_amount = swap.amount.min(return_swap.amount);
 				let done_amount = invest_amount.ensure_add(*done_amount)?;
 
@@ -303,7 +303,7 @@ where
 				done_amount,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(false, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, false)?;
 				let invest_amount =
 					invest_amount.ensure_add(swap.amount.min(return_swap.amount))?;
 				let done_amount = swap
@@ -409,7 +409,7 @@ where
 			},
 			// Increment return done amount up to amount of the active pool swap
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
-				Self::ensure_currencies_match(false, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, false)?;
 
 				if swap.amount == pool_swap.amount {
 					Ok(Self::SwapIntoReturnDone { done_swap: swap })
@@ -433,7 +433,7 @@ where
 				swap: pool_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(false, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, false)?;
 				let done_amount = swap.amount.min(pool_swap.amount);
 				let invest_amount = invest_amount.ensure_sub(done_amount)?;
 				let max_decrease_amount = pool_swap.amount.ensure_add(invest_amount)?;
@@ -487,7 +487,7 @@ where
 				swap: return_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
 				if swap.amount < *invest_amount {
@@ -511,7 +511,7 @@ where
 				done_amount,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
 				if swap.amount < *invest_amount {
@@ -573,7 +573,7 @@ where
 			)),
 			// Increment ongoing investment by swapped amount
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
-				Self::ensure_currencies_match(true, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, true)?;
 
 				if swap.amount == pool_swap.amount {
 					Ok(Self::InvestmentOngoing {
@@ -596,7 +596,7 @@ where
 			},
 			// Increment done_return by swapped amount
 			InvestState::ActiveSwapIntoReturnCurrency { swap: return_swap } => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 
 				if swap.amount == return_swap.amount {
 					Ok(Self::SwapIntoReturnDone { done_swap: swap })
@@ -620,7 +620,7 @@ where
 				swap: pool_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, pool_swap)?;
+				swap.ensure_currencies_match(pool_swap, true)?;
 				let invest_amount = invest_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == pool_swap.amount {
@@ -645,7 +645,7 @@ where
 				swap: return_swap,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 
 				if swap.amount == return_swap.amount {
 					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
@@ -675,7 +675,7 @@ where
 				swap: return_swap,
 				done_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == return_swap.amount {
@@ -706,7 +706,7 @@ where
 				done_amount,
 				invest_amount,
 			} => {
-				Self::ensure_currencies_match(true, &swap, return_swap)?;
+				swap.ensure_currencies_match(return_swap, true)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				if swap.amount == return_swap.amount {
@@ -820,38 +820,6 @@ where
 				"Invalid invest state when transitioning a decreased swap order with the same in- \
 				 and outgoing currency",
 			))
-		}
-	}
-
-	// TODO(@review): Can we ensure this check at an earlier stage?
-
-	/// Ensures that the ingoing and outgoing currencies of two swaps...
-	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
-	/// the same for both swaps, i.e. (pool, pool) or (return, return)
-	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
-	///   if the swap direction is opposite, i.e. (pool, return) or (return,
-	///   pool)
-	fn ensure_currencies_match(
-		is_same_swap_direction: bool,
-		swap_1: &Swap<Balance, Currency>,
-		swap_2: &Swap<Balance, Currency>,
-	) -> DispatchResult {
-		if is_same_swap_direction
-			&& swap_1.currency_in != swap_2.currency_in
-			&& swap_1.currency_out != swap_2.currency_out
-		{
-			Err(DispatchError::Other(
-				"Swap currency mismatch for same swap direction",
-			))
-		} else if !is_same_swap_direction
-			&& swap_1.currency_in != swap_2.currency_out
-			&& swap_1.currency_out != swap_2.currency_in
-		{
-			Err(DispatchError::Other(
-				"Swap currency mismatch for opposite swap direction",
-			))
-		} else {
-			Ok(())
 		}
 	}
 }

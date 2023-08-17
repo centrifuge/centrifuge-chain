@@ -16,7 +16,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
-use sp_runtime::traits::Zero;
+use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
 use sp_std::cmp::PartialEq;
 
 use crate::orders::Order;
@@ -183,6 +183,40 @@ pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: C
 	pub currency_out: Currency,
 	/// The amount of outgoing currency which shall be exchanged.
 	pub amount: Balance,
+}
+
+impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq>
+	Swap<Balance, Currency>
+{
+	/// Ensures that the ingoing and outgoing currencies of two swaps...
+	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
+	///   the same for both swaps, i.e. (pool, pool) or (return, return)
+	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
+	///   if the swap direction is opposite, i.e. (pool, return) or (return,
+	///   pool)
+	pub fn ensure_currencies_match(
+		&self,
+		other: &Self,
+		is_same_swap_direction: bool,
+	) -> DispatchResult {
+		if is_same_swap_direction
+			&& self.currency_in != other.currency_in
+			&& self.currency_out != other.currency_out
+		{
+			Err(DispatchError::Other(
+				"Swap currency mismatch for same swap direction",
+			))
+		} else if !is_same_swap_direction
+			&& self.currency_in != other.currency_out
+			&& self.currency_out != other.currency_in
+		{
+			Err(DispatchError::Other(
+				"Swap currency mismatch for opposite swap direction",
+			))
+		} else {
+			Ok(())
+		}
+	}
 }
 
 /// A representation of an executed investment decrement.
