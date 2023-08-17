@@ -31,6 +31,7 @@ use pallet_pool_system::{
 	Call as PoolSystemCall,
 };
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
+use sp_std::vec;
 
 use crate::{
 	chain::centrifuge::{
@@ -382,6 +383,7 @@ pub fn create_pool_call(
 		currency,
 		max_reserve,
 		metadata: None,
+		write_off_policy: vec![],
 	})
 }
 
