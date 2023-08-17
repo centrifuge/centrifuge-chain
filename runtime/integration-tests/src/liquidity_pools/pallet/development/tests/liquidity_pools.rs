@@ -27,7 +27,7 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId, CFG};
 use cfg_traits::{
 	liquidity_pools::{Codec, InboundQueue},
 	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
@@ -41,7 +41,7 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{
 		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
-		ForeignAssetId,
+		ForeignAssetId, LiquidityPoolsWrappedToken,
 	},
 	xcm::XcmMetadata,
 };
@@ -49,7 +49,7 @@ use codec::Encode;
 use development_runtime::{
 	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, Loans, OrmlAssetRegistry,
 	OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
-	XTokens, XcmTransactor,
+	TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -1147,6 +1147,43 @@ fn allow_pool_should_fail() {
 			),
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
 		);
+	});
+}
+
+#[test]
+fn schedule_upgrade() {
+	use frame_support::traits::fungible::Mutate;
+
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Only Root can call `schedule_upgrade`
+		assert_noop!(
+			LiquidityPools::schedule_upgrade(
+				RuntimeOrigin::signed(BOB.into()),
+				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+			),
+			BadOrigin
+		);
+
+		// Failing because Root (?) or the LiquidityPools pallet account has no funds
+		assert_noop!(
+			LiquidityPools::schedule_upgrade(
+				RuntimeOrigin::root(),
+				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+			),
+			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
+		);
+
+		Balances::mint_into(&LiquidityPools::account(), 10 * CFG).unwrap();
+
+		// todo: this still fails...
+		assert_ok!(LiquidityPools::schedule_upgrade(
+			RuntimeOrigin::root(),
+			DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+		));
 	});
 }
 

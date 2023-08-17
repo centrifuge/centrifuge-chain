@@ -719,6 +719,10 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
+		pub fn account() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		/// Returns the `u128` general index of a currency as the concatenation
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.
