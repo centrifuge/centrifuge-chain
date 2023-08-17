@@ -1912,7 +1912,7 @@ construct_runtime!(
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,

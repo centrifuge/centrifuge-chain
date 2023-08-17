@@ -641,7 +641,6 @@ fn centrifuge_genesis(
 			threshold: 1,
 		},
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: centrifuge_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()
@@ -766,7 +765,6 @@ fn altair_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
@@ -915,7 +913,6 @@ fn development_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: development_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()

@@ -167,20 +167,6 @@ pub struct RateDetails<Rate> {
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
-#[repr(u32)]
-pub enum Release {
-	V0,
-	V1,
-	V2,
-}
-
-impl Default for Release {
-	fn default() -> Self {
-		Self::V2
-	}
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
@@ -188,8 +174,11 @@ pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -234,10 +223,6 @@ pub mod pallet {
 	#[pallet::getter(fn last_updated)]
 	pub(super) type LastUpdated<T: Config> = StorageValue<_, Moment, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn storage_version)]
-	pub(super) type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
-
 	#[pallet::event]
 	pub enum Event<T: Config> {}
 
@@ -253,23 +238,6 @@ pub mod pallet {
 		InvalidRate,
 		/// Emits when adding a new rate would exceed the storage limits
 		TooManyRates,
-	}
-
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config>(core::marker::PhantomData<T>);
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self(core::marker::PhantomData)
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			StorageVersion::<T>::put(Release::V2);
-		}
 	}
 
 	#[pallet::hooks]
