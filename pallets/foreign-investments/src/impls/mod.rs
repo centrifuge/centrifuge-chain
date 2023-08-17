@@ -417,7 +417,7 @@ impl<T: Config> Pallet<T> {
 				match inner {
 					InnerRedeemState::Redeeming { .. } |
 					InnerRedeemState::RedeemingAndCollectableRedemption { .. } |
-					InnerRedeemState::CollectableRedemption { .. } => {
+					InnerRedeemState::CollectableRedemption => {
 						RedemptionState::<T>::insert(who, investment_id, state);
 						Ok((Some(state), None))
 					},
@@ -580,22 +580,17 @@ impl<T: Config> Pallet<T> {
 			}
 			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
 				redeem_amount,
-				collect_amount,
 				..
 			} => {
 				let new_state =
 					state.swap_inner_state(InnerRedeemState::RedeemingAndCollectableRedemption {
 						redeem_amount,
-						collect_amount,
 					});
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
 			}
-			InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone {
-				collect_amount, ..
-			} => {
-				let new_state = state
-					.swap_inner_state(InnerRedeemState::CollectableRedemption { collect_amount });
+			InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone { .. } => {
+				let new_state = state.swap_inner_state(InnerRedeemState::CollectableRedemption);
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
 			}
