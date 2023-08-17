@@ -155,7 +155,7 @@ pub fn issue_default_loan(
 /// Should always be used instead of manually issuing a loan as this keeps the
 /// `NftManager` in sync.
 ///
-/// * owner should also be `PricingAdmin`
+/// * owner should also be `Borrower`
 /// * owner should be owner of `CollateralClass`
 ///
 /// Does create the following calls:
