@@ -105,7 +105,7 @@ impl<T: Config> CreatedLoan<T> {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
 			info: self.info,
 			total_borrowed: Zero::zero(),
-			total_repaid: Zero::zero(),
+			total_repaid: Default::default(),
 		};
 
 		Ok((loan, self.borrower))
@@ -126,7 +126,7 @@ pub struct ClosedLoan<T: Config> {
 	total_borrowed: T::Balance,
 
 	/// Total repaid amount of this loan
-	total_repaid: T::Balance,
+	total_repaid: RepaidAmount<T::Balance>,
 }
 
 impl<T: Config> ClosedLoan<T> {
@@ -456,7 +456,7 @@ impl<T: Config> ActiveLoan<T> {
 				restrictions: self.restrictions,
 			},
 			total_borrowed: self.total_borrowed,
-			total_repaid: self.total_repaid.total()?,
+			total_repaid: self.total_repaid,
 		};
 
 		Ok((loan, self.borrower))

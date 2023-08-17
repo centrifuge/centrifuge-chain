@@ -376,6 +376,11 @@ fn with_correct_settlement_price_external_pricing() {
 			PricingAmount::External(amount)
 		));
 
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE),
+			util::current_loan_pv(loan_id)
+		);
+
 		// Same
 		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
@@ -386,6 +391,11 @@ fn with_correct_settlement_price_external_pricing() {
 			loan_id,
 			PricingAmount::External(amount)
 		));
+
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE) * 2,
+			util::current_loan_pv(loan_id)
+		);
 
 		// Lower
 		let amount = ExternalAmount::new(
@@ -400,6 +410,11 @@ fn with_correct_settlement_price_external_pricing() {
 			loan_id,
 			PricingAmount::External(amount)
 		));
+
+		assert_eq!(
+			QUANTITY.saturating_mul_int(PRICE_VALUE),
+			util::current_loan_pv(loan_id)
+		);
 	});
 }
 
