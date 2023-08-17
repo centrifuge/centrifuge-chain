@@ -1873,6 +1873,7 @@ impl pallet_order_book::Config for Runtime {
 	type FeeCurrencyId = NativeToken;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = Balance;
+	type FulfilledOrderHook = ForeignInvestments;
 	type OrderFeeKey = OrderBookCreationFeeKey;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;

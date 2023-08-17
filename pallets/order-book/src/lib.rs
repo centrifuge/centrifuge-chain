@@ -39,8 +39,8 @@ pub mod pallet {
 
 	use core::fmt::Debug;
 
-	use cfg_traits::fees::Fees;
-	use cfg_types::tokens::CustomMetadata;
+	use cfg_traits::{fees::Fees, StatusNotificationHook};
+	use cfg_types::{investments::Swap, tokens::CustomMetadata};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
@@ -168,6 +168,13 @@ pub mod pallet {
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
 		type OrderPairVecSize: Get<u32>;
+
+		/// The hook which acts upon a (partially) fulfilled order
+		type FulfilledOrderHook: StatusNotificationHook<
+			Id = Self::OrderIdNonce,
+			Status = Swap<Self::ForeignCurrencyBalance, Self::AssetCurrencyId>,
+			Error = DispatchError,
+		>;
 
 		/// Type for pallet weights
 		type Weights: WeightInfo;
@@ -394,6 +401,16 @@ pub mod pallet {
 				sell_amount,
 			)?;
 			Self::remove_order(order.order_id)?;
+
+			T::FulfilledOrderHook::notify_status_change(
+				order_id,
+				Swap {
+					amount: order.buy_amount,
+					currency_in: order.asset_in_id,
+					currency_out: order.asset_out_id,
+				},
+			)?;
+
 			Self::deposit_event(Event::OrderFulfillment {
 				order_id,
 				placing_account: order.placing_account,
@@ -463,7 +480,7 @@ pub mod pallet {
 		type OrderId = T::OrderIdNonce;
 
 		/// Creates an order.
-		/// Verify funds available in, and reserve for  both chains fee currency
+		/// Verify funds available in, and reserve for both chains fee currency
 		/// for storage fee, and amount of outgoing currency as determined by
 		/// the buy amount and price.
 		fn place_order(
