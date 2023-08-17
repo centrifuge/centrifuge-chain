@@ -235,6 +235,7 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
+		#[allow(clippy::too_many_arguments)]
 		#[pallet::weight(T::WeightInfo::register(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
 		#[pallet::call_index(0)]
