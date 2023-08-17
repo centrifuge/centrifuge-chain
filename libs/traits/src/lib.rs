@@ -499,7 +499,9 @@ pub trait TokenSwaps<Account> {
 	fn is_active(order: Self::OrderId) -> bool;
 }
 
-// TODO: Docs
+/// Trait to transmit a change of status for anything uniquely identifiable.
+///
+/// NOTE: The main use case to handle asynchronous operations.
 pub trait StatusNotificationHook {
 	/// The identifying type
 	type Id;

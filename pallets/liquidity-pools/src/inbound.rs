@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::ExecutedCollectInvest,
+	investments::ExecutedForeignCollectInvest,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -250,10 +250,9 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
-		let ExecutedCollectInvest::<T::Balance> {
+		let ExecutedForeignCollectInvest::<T::Balance> {
 			amount_currency_payout,
 			amount_tranche_tokens_payout,
-			amount_remaining,
 		} = T::ForeignInvestment::collect_foreign_investment(&investor, invest_id.clone())?;
 
 		T::Tokens::transfer(
@@ -271,7 +270,6 @@ impl<T: Config> Pallet<T> {
 			currency: currency_index.index,
 			currency_payout: amount_currency_payout,
 			tranche_tokens_payout: amount_tranche_tokens_payout,
-			remaining_invest_order: amount_remaining,
 		};
 
 		T::OutboundQueue::submit(investor, destination, message)?;

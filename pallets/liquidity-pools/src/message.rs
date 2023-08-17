@@ -220,8 +220,6 @@ where
 		/// `DecreaseInvestOrder` message, i.e., the amount by which the
 		/// investment order was actually decreased by.
 		currency_payout: Balance,
-		/// The outstanding order, in `currency` units
-		remaining_invest_order: Balance,
 	},
 	/// The message sent back to the domain from which a `DecreaseRedeemOrder`
 	/// message was received, ensuring the correct state update on said domain
@@ -256,13 +254,10 @@ where
 		investor: Address,
 		/// The currency in which the investment was realised
 		currency: u128,
-		/// The amount that was actually collected
+		/// The amount that was actually collected, in `currency` units
 		currency_payout: Balance,
 		/// The amount of tranche tokens received for the investment made
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of `currency` the investor still has locked to
-		/// invest at a later epoch execution
-		remaining_invest_order: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectRedeem` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -282,9 +277,6 @@ where
 		currency_payout: Balance,
 		/// How many tranche tokens were actually redeemed
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of tranche tokens the investor still has locked
-		/// to redeem at a later epoch execution
-		remaining_redeem_order: Balance,
 	},
 }
 
@@ -522,7 +514,6 @@ impl<
 				investor,
 				currency,
 				currency_payout,
-				remaining_invest_order,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -531,7 +522,6 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(currency_payout),
-					encode_be(remaining_invest_order),
 				],
 			),
 			Message::ExecutedDecreaseRedeemOrder {
@@ -557,7 +547,6 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
-				remaining_invest_order,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -567,7 +556,6 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_invest_order),
 				],
 			),
 			Message::ExecutedCollectRedeem {
@@ -577,7 +565,6 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
-				remaining_redeem_order,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -587,7 +574,6 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_redeem_order),
 				],
 			),
 		}
@@ -674,7 +660,7 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
-				currency: decode_be_bytes::<8, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			14 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -688,7 +674,6 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			16 => Ok(Self::ExecutedDecreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -704,7 +689,6 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			18 => Ok(Self::ExecutedCollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -713,7 +697,6 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1011,7 +994,7 @@ mod tests {
 				investor: default_address_32(),
 				currency: TOKEN_ID,
 			},
-			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -1037,9 +1020,8 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT / 2,
-				remaining_invest_order: AMOUNT * 2
 			},
-			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
 		)
 	}
 
@@ -1053,7 +1035,7 @@ mod tests {
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
 			},
-			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
 		)
 	}
 
@@ -1067,9 +1049,8 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_invest_order: AMOUNT * 3,
 			},
-			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)
 	}
 
@@ -1083,9 +1064,8 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_redeem_order: AMOUNT * 3,
 			},
-			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)
 	}
 
@@ -1098,8 +1078,12 @@ mod tests {
 		let encoded = msg.serialize();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
-			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
+		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> = Message::deserialize(
+			&mut hex::decode(expected_hex)
+				.expect("Decode should work")
+				.as_slice(),
+		)
+		.expect("Deserialization should work");
 		assert_eq!(msg, decoded);
 	}
 

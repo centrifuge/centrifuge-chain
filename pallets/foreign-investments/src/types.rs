@@ -11,29 +11,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::investments::Swap;
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub};
-
-#[derive(
-	Clone,
-	Default,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-)]
-pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq> {
-	pub currency_in: Currency,
-	pub currency_out: Currency,
-	pub amount: Balance,
-}
 
 /// Reflects the reason for the last token swap update such that it can be
 /// updated accordingly if the last and current reason mismatch.

@@ -15,6 +15,7 @@ use cfg_traits::investments::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
 use sp_runtime::traits::Zero;
 use sp_std::cmp::PartialEq;
 
@@ -136,8 +137,8 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 }
 
 /// The collected investment/redemption amount for an account
-#[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct CollectedAmount<Balance: Default> {
+#[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
 	/// The amount which was was collected
 	/// * If investment: Tranche tokens
 	/// * If redemption: Payment currency
@@ -150,29 +151,6 @@ pub struct CollectedAmount<Balance: Default> {
 	pub amount_payment: Balance,
 }
 
-// /// The collected investment for an account
-// #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug,
-// TypeInfo)] pub struct CollectedInvestment<Balance: Default> {
-// 	/// The amount of tranche tokens which was was collected
-// 	pub amount_collected: Balance,
-
-// 	/// The amount of payment currency which invested and converted into tranche
-// 	/// tokens during processing based on the fulfillment price(s)
-// 	pub amount_payment: Balance,
-// }
-
-// /// The collected redemption for an account
-// #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug,
-// TypeInfo)] pub struct CollectedRedemption<Balance: Default> {
-// 	/// The amount of payment currency which was was collected
-// 	pub amount_collected: Balance,
-
-// 	/// The tranche tokens which which was held as an investment and converted
-// 	/// into payment currency during processing based on the fulfillment
-// 	/// price(s)
-// 	pub amount_payment: Balance,
-// }
-
 /// A representation of an investment identifier and the corresponding owner.
 ///
 /// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
@@ -183,41 +161,60 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId> {
 	pub id: InvestmentId,
 }
 
-/// A representation of an executed decreased investment or redemption.
+/// A simple representation of a currency swap.
+#[derive(
+	Clone,
+	Default,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq> {
+	/// The incoming currency, i.e. the desired one.
+	pub currency_in: Currency,
+	/// The outgoing currency, i.e. the one which should be replaced.
+	pub currency_out: Currency,
+	/// The amount of outgoing currency which shall be exchanged.
+	pub amount: Balance,
+}
+
+/// A representation of an executed investment decrement.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedDecrease<Balance, Currency> {
+pub struct ExecutedForeignDecrease<Balance, Currency> {
+	/// The currency in which `DecreaseInvestOrder` was realised
 	pub return_currency: Currency,
+	/// The amount of `currency` that was actually executed in the original
+	/// `DecreaseInvestOrder` message, i.e., the amount by which the
+	/// investment order was actually decreased by.
 	pub amount_decreased: Balance,
-	pub amount_remaining: Balance,
 }
 
 /// A representation of an executed collected investment.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedCollectInvest<Balance> {
+pub struct ExecutedForeignCollectInvest<Balance> {
 	/// The amount that was actually collected
 	pub amount_currency_payout: Balance,
 	/// The amount of tranche tokens received for the investment made
 	pub amount_tranche_tokens_payout: Balance,
-	// TODO: Processed or unprocessed?
-	/// The remaining, unprocessed investment amount which the investor
-	/// still has locked to invest at a later epoch execution
-	pub amount_remaining: Balance,
 }
 
 /// A representation of an executed collected redemption.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedCollectRedeem<Balance, Currency> {
+pub struct ExecutedForeignCollectRedeem<Balance, Currency> {
 	/// The return currency in which the payout takes place
 	pub currency: Currency,
 	/// The amount of `currency` being paid out to the investor
 	pub amount_currency_payout: Balance,
 	/// How many tranche tokens were actually redeemed
 	pub amount_tranche_tokens_payout: Balance,
-	// TODO: Processed or unprocessed?
-	/// The remaining amount of tranche tokens the investor still has locked
-	/// to redeem at a later epoch execution
-	pub amount_remaining: Balance,
 }

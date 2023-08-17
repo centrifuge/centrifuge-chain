@@ -16,7 +16,7 @@ use core::convert::TryFrom;
 use cfg_traits::liquidity_pools::{InboundQueue, OutboundQueue};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::ExecutedCollectInvest,
+	investments::ExecutedForeignCollectInvest,
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -198,7 +198,7 @@ pub mod pallet {
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
-			CollectInvestResult = ExecutedCollectInvest<Self::Balance>,
+			CollectInvestResult = ExecutedForeignCollectInvest<Self::Balance>,
 		>;
 
 		/// The source of truth for the transferability of assets via the

@@ -13,11 +13,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/reference/frame-pallets/>
-pub use pallet::*;
-
 // #[cfg(test)]
 // mod mock;
 
@@ -28,7 +23,11 @@ pub use pallet::*;
 // mod benchmarking;
 // pub mod weights;
 // pub use weights::*;
-use crate::types::Swap;
+use cfg_types::investments::Swap;
+/// Edit this file to define custom logic or remove it if it is not needed.
+/// Learn more about FRAME and the core library of Substrate FRAME pallets:
+/// <https://docs.substrate.io/reference/frame-pallets/>
+pub use pallet::*;
 
 pub mod impls;
 pub mod types;
@@ -39,14 +38,15 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 	<T as Config>::InvestmentId,
 >;
 
-// TODO: Remove dev_mode before merging
-#[frame_support::pallet(dev_mode)]
+#[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
 		investments::{InvestmentCollector, TrancheCurrency},
 		StatusNotificationHook, TokenSwaps,
 	};
-	use cfg_types::investments::{CollectedAmount, ExecutedCollectRedeem, ExecutedDecrease};
+	use cfg_types::investments::{
+		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
+	};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
@@ -67,7 +67,6 @@ pub mod pallet {
 		/// Type representing the weight of this pallet
 		type WeightInfo: frame_system::WeightInfo;
 
-		// TODO: Check whether we actually want something like CurrencyBalance
 		/// The source of truth for the balance of accounts
 		type Balance: Parameter
 			+ Member
@@ -167,15 +166,17 @@ pub mod pallet {
 			OrderId = Self::TokenSwapOrderId,
 		>;
 
+		/// The hook type which acts upon a finalized investment decrement.
 		type ExecutedDecreaseInvestHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedDecrease<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignDecrease<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
+		/// The hook type which acts upon a finalized redemption collection.
 		type ExecutedCollectRedeemHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
-			Status = ExecutedCollectRedeem<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignCollectRedeem<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 	}
@@ -306,6 +307,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
+	// TODO: Add more errors
 	pub enum Error<T> {
 		/// Failed to retrieve the `InvestmentInfo` from the given
 		/// `TokenSwapOrderId`.

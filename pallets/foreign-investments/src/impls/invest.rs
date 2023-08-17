@@ -11,12 +11,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::investments::Swap;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
 	ArithmeticError, DispatchError, DispatchResult,
 };
 
-use crate::types::{InvestState, InvestTransition, Swap};
+use crate::types::{InvestState, InvestTransition};
 
 impl<Balance, Currency> InvestState<Balance, Currency>
 where

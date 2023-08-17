@@ -324,9 +324,6 @@ pub trait ForeignInvestment<AccountId> {
 	/// investment amount.
 	fn increase_foreign_redemption(
 		who: &AccountId,
-		// TODO: Check if we do not require them if can be derived in CollectRedeemOrder
-		// return_currency: Self::CurrencyId,
-		// pool_currency: Self::CurrencyId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;

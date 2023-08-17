@@ -16,7 +16,8 @@ use cfg_traits::{
 	StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedCollectInvest, ExecutedCollectRedeem, ExecutedDecrease,
+	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
+	ExecutedForeignDecrease, Swap,
 };
 use frame_support::{traits::Get, transactional};
 use sp_runtime::{
@@ -26,7 +27,7 @@ use sp_runtime::{
 
 use crate::{
 	types::{
-		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition, Swap,
+		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition,
 		TokenSwapReason,
 	},
 	CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo, ForeignInvestmentInfoOf,
@@ -64,10 +65,6 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 				let post_state =
 					pre_state.transition(RedeemTransition::FulfillSwapOrder(status))?;
 				Pallet::<T>::apply_redeem_state_transition(&info.owner, info.id, post_state)
-
-				// TODO: When RedeemState includes `SwapIntoReturnDone` without
-				// `ActiveSwapIntoReturnCurrency`, we must emit
-				// `ExecutedCollectRedeem`.
 			}
 		}
 	}
@@ -75,7 +72,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type Amount = T::Balance;
-	type CollectInvestResult = ExecutedCollectInvest<T::Balance>;
+	type CollectInvestResult = ExecutedForeignCollectInvest<T::Balance>;
 	type CurrencyId = T::CurrencyId;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
@@ -123,8 +120,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	#[transactional]
 	fn increase_foreign_redemption(
 		who: &T::AccountId,
-		// return_currency: T::CurrencyId,
-		// pool_currency: T::CurrencyId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<(), DispatchError> {
@@ -155,19 +150,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<ExecutedCollectInvest<T::Balance>, DispatchError> {
+	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
 		// independent of the current `InvestState`
 		let CollectedAmount::<T::Balance> {
 			amount_collected,
 			amount_payment,
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
-		let amount_currency_unprocessed = T::Investment::investment(who, investment_id)?;
 
-		Ok(ExecutedCollectInvest {
+		Ok(ExecutedForeignCollectInvest {
+			// TODO: Translate from `pool_currency` to `return_currency`
 			amount_currency_payout: amount_payment,
 			amount_tranche_tokens_payout: amount_collected,
-			amount_remaining: amount_currency_unprocessed,
 		})
 	}
 
@@ -207,6 +201,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
+		// TODO: Needs to be translated from `pool_currency` to `return_currency`
 		T::Investment::investment(who, investment_id)
 	}
 
@@ -214,19 +209,30 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
+		// TODO: Needs to be translated from `pool_currency` to `return_currency`
 		T::Investment::redemption(who, investment_id)
 	}
 
-	// TODO: Maybe add pool_currency derived via
-	// PoolInspect::currency_for(investment_id.into())
-
 	fn accepted_payment_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		// FIXME: Check whether order can be created for pair (payment, pool)
+		// TODO(future): If this returns false, we should add a mechanism which checks
+		// whether `currency` can be swapped into an accepted payment currency.
+		//
+		// This requires
+		//   * Querying all accepted payment currencies of an investment
+		//   * Checking whether there are orders from `currency` into an accepted
+		//     payment currency
 		T::Investment::accepted_payment_currency(investment_id, currency)
 	}
 
 	fn accepted_payout_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		// FIXME: Check whether order can be created for pair (pool, payment)
+		// TODO(future): If this returns false, we should add a mechanism which checks
+		// whether any of the accepted `payout` currencies can be swapped into
+		// `currency`.
+		//
+		// This requires
+		//   * Querying all accepted payout currencies of an investment
+		//   * Checking whether there are orders from an accepted payout currency into
+		//     `currency`
 		T::Investment::accepted_payout_currency(investment_id, currency)
 	}
 }
@@ -553,7 +559,6 @@ impl<T: Config> Pallet<T> {
 					},
 				)?;
 				CollectedRedemption::<T>::remove(who, investment_id);
-
 				Ok(())
 			}
 			_ => Ok(()),
@@ -565,14 +570,12 @@ impl<T: Config> Pallet<T> {
 		match inner_redeem_state {
 			InnerRedeemState::SwapIntoReturnDone { .. } => {
 				RedemptionState::<T>::remove(who, investment_id);
-
 				Ok(Some(RedeemState::NoState))
 			}
 			InnerRedeemState::RedeemingAndSwapIntoReturnDone { redeem_amount, .. } => {
 				let new_state =
 					state.swap_inner_state(InnerRedeemState::Redeeming { redeem_amount });
 				RedemptionState::<T>::insert(who, investment_id, new_state);
-
 				Ok(Some(new_state))
 			}
 			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
@@ -586,7 +589,6 @@ impl<T: Config> Pallet<T> {
 						collect_amount,
 					});
 				RedemptionState::<T>::insert(who, investment_id, new_state);
-
 				Ok(Some(new_state))
 			}
 			InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone {
@@ -595,7 +597,6 @@ impl<T: Config> Pallet<T> {
 				let new_state = state
 					.swap_inner_state(InnerRedeemState::CollectableRedemption { collect_amount });
 				RedemptionState::<T>::insert(who, investment_id, new_state);
-
 				Ok(Some(new_state))
 			}
 			_ => Ok(None),
@@ -720,39 +721,39 @@ impl<T: Config> Pallet<T> {
 		if swap.amount.is_zero() {
 			return Self::kill_swap_order(who, investment_id);
 		}
-		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::get(who, investment_id) {
-			T::TokenSwaps::update_order(
-				who.clone(),
-				swap_order_id,
-				swap.amount,
-				T::DefaultTokenSwapSellPriceLimit::get(),
-				T::DefaultTokenMinFulfillmentAmount::get(),
-			)?;
-			TokenSwapReasons::<T>::insert(swap_order_id, reason);
-
-			Ok(())
-		} else {
-			// TODO: How to handle potential failure?
-			let swap_order_id = T::TokenSwaps::place_order(
-				who.clone(),
-				swap.currency_out,
-				swap.currency_in,
-				swap.amount,
-				T::DefaultTokenSwapSellPriceLimit::get(),
-				T::DefaultTokenMinFulfillmentAmount::get(),
-			)?;
-			TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
-			ForeignInvestmentInfo::<T>::insert(
-				swap_order_id,
-				ForeignInvestmentInfoOf::<T> {
-					owner: who.clone(),
-					id: investment_id,
-				},
-			);
-			TokenSwapReasons::<T>::insert(swap_order_id, reason);
-
-			Ok(())
-		}
+		match TokenSwapOrderIds::<T>::get(who, investment_id) {
+			Some(swap_order_id) if T::TokenSwaps::is_active(swap_order_id) => {
+				T::TokenSwaps::update_order(
+					who.clone(),
+					swap_order_id,
+					swap.amount,
+					T::DefaultTokenSwapSellPriceLimit::get(),
+					T::DefaultTokenMinFulfillmentAmount::get(),
+				)?;
+				TokenSwapReasons::<T>::insert(swap_order_id, reason);
+			}
+			_ => {
+				// TODO: How to handle potential failure?
+				let swap_order_id = T::TokenSwaps::place_order(
+					who.clone(),
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+					T::DefaultTokenSwapSellPriceLimit::get(),
+					T::DefaultTokenMinFulfillmentAmount::get(),
+				)?;
+				TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
+				ForeignInvestmentInfo::<T>::insert(
+					swap_order_id,
+					ForeignInvestmentInfoOf::<T> {
+						owner: who.clone(),
+						id: investment_id,
+					},
+				);
+				TokenSwapReasons::<T>::insert(swap_order_id, reason);
+			}
+		};
+		Ok(())
 	}
 
 	/// Determines the correct amount for a token swap based on the current
@@ -919,7 +920,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Sends `ExecutedDecreaseInvestHook` notification such that any potential
-	/// consumer could act upon that, e.g. Liqudity Pools for
+	/// consumer could act upon that, e.g. Liquidity Pools for
 	/// `ExecutedDecreaseInvestOrder`.
 	#[transactional]
 	fn notify_executed_decrease_invest(
@@ -928,28 +929,20 @@ impl<T: Config> Pallet<T> {
 		amount_decreased: T::Balance,
 		return_currency: T::CurrencyId,
 	) -> DispatchResult {
-		// TODO(@mustermeiszer): Does this return the entire desired amount or do we
-		// need to tap into collecting? > Requires artificial collect (which does not
-		// mutate state) and then look at order id.
-		// NOTE: We might change amounts to be deltas.
-		let amount_remaining = T::Investment::investment(who, investment_id)?;
-
-		// TODO(@mustermeiszer): Do we add the active swap amount?
 		T::ExecutedDecreaseInvestHook::notify_status_change(
 			ForeignInvestmentInfoOf::<T> {
 				owner: who.clone(),
 				id: investment_id,
 			},
-			ExecutedDecrease {
+			ExecutedForeignDecrease {
 				amount_decreased,
-				amount_remaining,
 				return_currency,
 			},
 		)
 	}
 
 	/// Sends `ExecutedCollectRedeemHook` notification such that any potential
-	/// consumer could act upon that, e.g. Liqudity Pools for
+	/// consumer could act upon that, e.g. Liquidity Pools for
 	/// `ExecutedCollectRedeemOrder`.
 	#[transactional]
 	fn notify_executed_collect_redeem(
@@ -958,18 +951,15 @@ impl<T: Config> Pallet<T> {
 		currency: T::CurrencyId,
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		let amount_remaining = T::Investment::redemption(&who, investment_id)?;
-
 		T::ExecutedCollectRedeemHook::notify_status_change(
 			ForeignInvestmentInfoOf::<T> {
 				owner: who.clone(),
 				id: investment_id,
 			},
-			ExecutedCollectRedeem {
+			ExecutedForeignCollectRedeem {
 				currency,
 				amount_currency_payout: collected.amount_collected,
 				amount_tranche_tokens_payout: collected.amount_payment,
-				amount_remaining,
 			},
 		)
 	}

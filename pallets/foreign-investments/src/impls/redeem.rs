@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::investments::Swap;
 use frame_support::ensure;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
@@ -32,7 +33,7 @@ use crate::types::{
 		RedeemingAndCollectableRedemptionAndSwapIntoReturnDone, RedeemingAndSwapIntoReturnDone,
 		SwapIntoReturnDone,
 	},
-	RedeemState, RedeemTransition, Swap,
+	RedeemState, RedeemTransition,
 };
 
 impl<Balance, Currency> RedeemState<Balance, Currency>

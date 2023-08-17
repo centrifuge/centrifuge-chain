@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::DomainAddress,
-	investments::{ExecutedDecrease, ForeignInvestmentInfo},
+	investments::{ExecutedForeignDecrease, ForeignInvestmentInfo},
 };
 use frame_support::{traits::fungibles::Mutate, transactional};
 use sp_runtime::{DispatchError, DispatchResult};
@@ -24,10 +24,10 @@ use sp_std::marker::PhantomData;
 
 use crate::{pallet::Config, Message, MessageOf, Pallet};
 
-// TODO: Docs
+/// The hook struct which acts upon a finalized investment decrement.
 pub struct DecreaseInvestOrderHook<T>(PhantomData<T>);
 
-// TODO: Docs
+/// The hook struct which acts upon a finalized redemption collection.
 
 pub struct CollectRedeemHook<T>(PhantomData<T>);
 
@@ -37,12 +37,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>;
-	type Status = ExecutedDecrease<T::Balance, T::CurrencyId>;
+	type Status = ExecutedForeignDecrease<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>,
-		status: ExecutedDecrease<T::Balance, T::CurrencyId>,
+		status: ExecutedForeignDecrease<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
@@ -60,7 +60,6 @@ where
 			investor: investor.clone().into(),
 			currency,
 			currency_payout: status.amount_decreased,
-			remaining_invest_order: status.amount_remaining,
 		};
 
 		T::OutboundQueue::submit(investor, domain_address.into(), message)?;
@@ -75,12 +74,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>;
-	type Status = cfg_types::investments::ExecutedCollectRedeem<T::Balance, T::CurrencyId>;
+	type Status = cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>,
-		status: cfg_types::investments::ExecutedCollectRedeem<T::Balance, T::CurrencyId>,
+		status: cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
@@ -99,7 +98,6 @@ where
 			currency,
 			currency_payout: status.amount_currency_payout,
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
-			remaining_invest_order: status.amount_remaining,
 		};
 
 		T::OutboundQueue::submit(investor, domain_address.into(), message)?;
