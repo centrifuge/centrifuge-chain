@@ -192,10 +192,10 @@ pub mod pallet {
 		pub buy_amount: ForeignCurrencyBalance,
 		/// Original buy amount, used for tracking amount fulfilled
 		pub initial_buy_amount: ForeignCurrencyBalance,
-		/// Maximim relative price of the asset in being purchased relative to
+		/// Maximum relative price of the asset in being purchased relative to
 		/// asset out ie: Rate::checked_from_rational(3u32, 2u32) would mean
 		/// that 1 asset in would correspond with 1.5 asset out.
-		pub max_price: SellRatio,
+		pub max_sell_rate: SellRatio,
 		/// Minimum amount of an order that can be fulfilled
 		/// for partial fulfillment
 		pub min_fullfillment_amount: ForeignCurrencyBalance,
@@ -382,7 +382,7 @@ pub mod pallet {
 			let sell_amount = Self::convert_with_ratio(
 				order.asset_in_id,
 				order.asset_out_id,
-				order.max_price,
+				order.max_sell_rate,
 				order.buy_amount,
 			)?;
 
@@ -413,7 +413,7 @@ pub mod pallet {
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
 				fulfillment_amount: order.buy_amount,
-				sell_rate_limit: order.max_price,
+				sell_rate_limit: order.max_sell_rate,
 			});
 
 			Ok(())
@@ -542,7 +542,7 @@ pub mod pallet {
 				asset_in_id: currency_in,
 				asset_out_id: currency_out,
 				buy_amount,
-				max_price: sell_rate_limit,
+				max_sell_rate: sell_rate_limit,
 				initial_buy_amount: buy_amount,
 				min_fullfillment_amount,
 				max_sell_amount,
@@ -618,7 +618,7 @@ pub mod pallet {
 				// ensure proper amount can be, and is reserved of outgoing currency for updated
 				// order.
 				// Also minimise reserve/unreserve operations.
-				if buy_amount != order.buy_amount || sell_rate_limit != order.max_price {
+				if buy_amount != order.buy_amount || sell_rate_limit != order.max_sell_rate {
 					if max_sell_amount > order.max_sell_amount {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
@@ -646,7 +646,7 @@ pub mod pallet {
 					}
 				};
 				order.buy_amount = buy_amount;
-				order.max_price = sell_rate_limit;
+				order.max_sell_rate = sell_rate_limit;
 				order.min_fullfillment_amount = min_fullfillment_amount;
 				order.max_sell_amount = max_sell_amount;
 
@@ -664,7 +664,7 @@ pub mod pallet {
 						buy_amount,
 					)?;
 					order.buy_amount = buy_amount;
-					order.max_price = sell_rate_limit;
+					order.max_sell_rate = sell_rate_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 					Ok(())
