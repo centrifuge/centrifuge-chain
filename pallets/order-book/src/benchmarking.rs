@@ -18,12 +18,9 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_benchmarking::*;
-use frame_support::traits::{Currency, Get};
+use frame_support::traits::{fungibles::Mutate as FungiblesMutate, Currency, Get};
 use frame_system::RawOrigin;
-use orml_traits::{
-	asset_registry::{Inspect, Mutate},
-	MultiCurrency,
-};
+use orml_traits::asset_registry::{Inspect, Mutate};
 use sp_runtime::FixedPointNumber;
 
 // use pallet_pool_system::benchmarking::prepare_asset_registry;
@@ -92,10 +89,10 @@ where
 	let asset_0 = CurrencyId::AUSD;
 	let asset_1 = CurrencyId::ForeignAsset(0);
 	prepare_asset_registry::<T>();
-	T::TradeableAsset::deposit(asset_0, &account_0, 1_000 * CURRENCY_0)?;
-	T::TradeableAsset::deposit(asset_1, &account_0, 1_000 * CURRENCY_1)?;
-	T::TradeableAsset::deposit(asset_0, &account_1, 1_000 * CURRENCY_0)?;
-	T::TradeableAsset::deposit(asset_1, &account_1, 1_000 * CURRENCY_1)?;
+	T::TradeableAsset::mint_into(asset_0, &account_0, 1_000 * CURRENCY_0)?;
+	T::TradeableAsset::mint_into(asset_1, &account_0, 1_000 * CURRENCY_1)?;
+	T::TradeableAsset::mint_into(asset_0, &account_1, 1_000 * CURRENCY_0)?;
+	T::TradeableAsset::mint_into(asset_1, &account_1, 1_000 * CURRENCY_1)?;
 	Ok((account_0, account_1, asset_0, asset_1))
 }
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

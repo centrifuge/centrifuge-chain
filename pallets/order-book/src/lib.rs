@@ -45,14 +45,15 @@ pub mod pallet {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
-		traits::{tokens::AssetId, Currency, ReservableCurrency},
+		traits::{
+			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold, Transfer},
+			tokens::AssetId,
+			Currency, ReservableCurrency,
+		},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use orml_traits::{
-		asset_registry::{self, Inspect as _},
-		MultiCurrency, MultiReservableCurrency,
-	};
+	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
@@ -153,11 +154,11 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// Type for currency orders can be made for
-		type TradeableAsset: MultiReservableCurrency<
-			Self::AccountId,
-			Balance = Self::Balance,
-			CurrencyId = Self::AssetCurrencyId,
-		>;
+		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
+			+ InspectHold<Self::AccountId>
+			+ MutateHold<Self::AccountId>
+			+ Mutate<Self::AccountId>
+			+ Transfer<Self::AccountId>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
@@ -375,19 +376,9 @@ pub mod pallet {
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
-			// maybe move to ensure if we don't need these later
-			// might need decimals from currency, but should hopefully be able to use FP
-			// price/amounts from FP balance
-			// let sell_amount = order.price.ensure_mul_int(order.buy_amount)?;
-			let sell_amount = Self::convert_with_ratio(
-				order.asset_in_id,
-				order.asset_out_id,
-				order.max_sell_rate,
-				order.buy_amount,
-			)?;
 
 			ensure!(
-				T::TradeableAsset::can_reserve(order.asset_in_id, &account_id, order.buy_amount),
+				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, order.buy_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
 
@@ -397,12 +388,14 @@ pub mod pallet {
 				&account_id,
 				&order.placing_account,
 				order.buy_amount,
+				false,
 			)?;
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
 				&order.placing_account,
 				&account_id,
-				sell_amount,
+				order.max_sell_amount,
+				false,
 			)?;
 			Self::remove_order(order.order_id)?;
 			Self::deposit_event(Event::OrderFulfillment {
@@ -446,11 +439,12 @@ pub mod pallet {
 				let total_reserve_amount = Self::get_combined_reserve(order.max_sell_amount)?;
 				T::ReserveCurrency::unreserve(&order.placing_account, total_reserve_amount);
 			} else {
-				T::TradeableAsset::unreserve(
+				T::TradeableAsset::release(
 					order.asset_out_id,
 					&order.placing_account,
 					order.max_sell_amount,
-				);
+					false,
+				)?;
 				T::ReserveCurrency::unreserve(
 					&order.placing_account,
 					T::Fees::fee_value(T::OrderFeeKey::get()),
@@ -532,7 +526,7 @@ pub mod pallet {
 			} else {
 				T::ReserveCurrency::reserve(&account, fee_amount)?;
 
-				T::TradeableAsset::reserve(currency_out, &account, max_sell_amount)?;
+				T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
 			}
 
 			let order_id = <OrderIdNonceStore<T>>::get();
@@ -625,7 +619,7 @@ pub mod pallet {
 						if T::FeeCurrencyId::get() == order.asset_out_id {
 							T::ReserveCurrency::reserve(&account, sell_reserve_diff)?
 						} else {
-							T::TradeableAsset::reserve(
+							T::TradeableAsset::hold(
 								order.asset_out_id,
 								&account,
 								sell_reserve_diff,
@@ -637,11 +631,12 @@ pub mod pallet {
 						if T::FeeCurrencyId::get() == order.asset_out_id {
 							T::ReserveCurrency::unreserve(&account, sell_reserve_diff);
 						} else {
-							T::TradeableAsset::unreserve(
+							T::TradeableAsset::release(
 								order.asset_out_id,
 								&account,
 								sell_reserve_diff,
-							);
+								false,
+							)?;
 						}
 					}
 				};
