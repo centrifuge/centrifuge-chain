@@ -25,8 +25,7 @@ use frame_support::{
 		fungibles::{Inspect, Mutate, Transfer},
 		PalletInfo,
 	},
-	transactional,
-	PalletId,
+	transactional, PalletId,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
@@ -700,14 +699,17 @@ pub mod pallet {
 			ensure_root(origin)?;
 			// get account id of this pallet
 			let who = T::PalletId::get().into_account_truncating();
-			ensure!(contract.domain() != Domain::Centrifuge, Error::<T>::InvalidDomain);
-      
+			ensure!(
+				contract.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidDomain
+			);
+
 			T::OutboundQueue::submit(
-			  who,
-			  contract.domain(),
-			  Message::ScheduleUpgrade {
-			    contract: contract.address(),
-			  },
+				who,
+				contract.domain(),
+				Message::ScheduleUpgrade {
+					contract: contract.address(),
+				},
 			)
 		}
 	}

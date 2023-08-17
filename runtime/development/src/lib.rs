@@ -1584,6 +1584,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
+	type PalletId = LiquidityPoolsPalletId;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -1595,7 +1596,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheTokenPrice = PoolSystem;
 	type WeightInfo = ();
-	type PalletId = LiquidityPoolsPalletId;
 }
 
 parameter_types! {
