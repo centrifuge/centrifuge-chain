@@ -16,6 +16,7 @@
   },
   "relay_chain": "rococo-local",
   "para_id": 2088,
+  "first_evm_block": 1,
   "codeSubstitutes": {},
   "genesis": {
     "runtime": {
