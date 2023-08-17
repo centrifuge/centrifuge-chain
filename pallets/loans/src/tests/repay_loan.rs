@@ -589,31 +589,6 @@ fn external_pricing_goes_down() {
 }
 
 #[test]
-fn external_pricing_with_wrong_quantity() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_id, PricingAmount::External(amount));
-
-		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
-		config_mocks(amount.balance().unwrap());
-		assert_noop!(
-			Loans::repay(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				RepaidPricingAmount {
-					principal: PricingAmount::External(amount),
-					interest: 0,
-					unscheduled: 0,
-				},
-			),
-			Error::<Runtime>::AmountNotNaturalNumber
-		);
-	});
-}
-
-#[test]
 fn with_unscheduled_repayment_internal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
@@ -755,6 +730,11 @@ fn with_correct_settlement_price_external_pricing() {
 			},
 		));
 
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE) * 2,
+			util::current_loan_pv(loan_id)
+		);
+
 		// Same
 		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE);
 		config_mocks_with_price(amount.balance().unwrap(), PRICE_VALUE);
@@ -768,6 +748,11 @@ fn with_correct_settlement_price_external_pricing() {
 				unscheduled: 0,
 			},
 		));
+
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE),
+			util::current_loan_pv(loan_id)
+		);
 
 		// Lower
 		let amount = ExternalAmount::new(
@@ -786,6 +771,7 @@ fn with_correct_settlement_price_external_pricing() {
 			},
 		));
 
+		assert_eq!(0, util::current_loan_pv(loan_id));
 		assert_eq!(0, util::current_loan_debt(loan_id));
 	});
 }

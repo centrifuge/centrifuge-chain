@@ -40,10 +40,6 @@
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
 //! loans.
 
-pub mod migrations {
-	pub mod nuke;
-}
-
 /// High level types that uses `pallet::Config`
 pub mod entities {
 	pub mod interest;
@@ -119,7 +115,7 @@ pub mod pallet {
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -360,8 +356,6 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when an amount used is not a natural number
-		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
