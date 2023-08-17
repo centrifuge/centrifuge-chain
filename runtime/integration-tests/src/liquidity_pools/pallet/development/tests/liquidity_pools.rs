@@ -47,9 +47,9 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, Loans, OrmlAssetRegistry,
-	OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
-	TreasuryAccount, XTokens, XcmTransactor,
+	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, LiquidityPoolsPalletId, Loans,
+	OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
+	RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -84,7 +84,8 @@ use crate::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::utils::{
-			get_default_moonbeam_native_token_location, DEFAULT_MOONBEAM_LOCATION,
+			get_default_moonbeam_native_token_location, DEFAULT_BALANCE_GLMR,
+			DEFAULT_MOONBEAM_LOCATION,
 		},
 	},
 	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
@@ -1177,9 +1178,15 @@ fn schedule_upgrade() {
 			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
 		);
 
-		Balances::mint_into(&LiquidityPools::account(), 10 * CFG).unwrap();
+		// The LiquidityPools pallet account needs GLRM to cover the fees of sending
+		// this message
+		OrmlTokens::deposit(
+			GLIMMER_CURRENCY_ID,
+			&LiquidityPools::account(),
+			DEFAULT_BALANCE_GLMR,
+		);
 
-		// todo: this still fails...
+		// Now it finally works
 		assert_ok!(LiquidityPools::schedule_upgrade(
 			RuntimeOrigin::root(),
 			DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
