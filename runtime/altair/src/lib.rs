@@ -1512,6 +1512,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
