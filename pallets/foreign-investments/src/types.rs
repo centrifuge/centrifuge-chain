@@ -325,5 +325,5 @@ pub enum RedeemTransition<
 	IncreaseRedeemOrder(Balance),
 	DecreaseRedeemOrder(Balance),
 	FulfillSwapOrder(Swap<Balance, Currency>),
-	Collect(Swap<Balance, Currency>),
+	Collect(Swap<Balance, Currency>, Balance),
 }

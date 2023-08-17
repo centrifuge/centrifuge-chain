@@ -16,7 +16,7 @@ use cfg_traits::{
 	StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
+	CollectedInvestment, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
 	ExecutedForeignDecrease, Swap,
 };
 use frame_support::{traits::Get, transactional};
@@ -30,7 +30,7 @@ use crate::{
 		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition,
 		TokenSwapReason,
 	},
-	CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo, ForeignInvestmentInfoOf,
+	CollectedRedemptions, Config, Error, Event, ForeignInvestmentInfo, ForeignInvestmentInfoOf,
 	InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds, TokenSwapReasons,
 };
 
@@ -153,7 +153,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
 		// independent of the current `InvestState`
-		let CollectedAmount::<T::Balance> {
+		let CollectedInvestment::<T::Balance> {
 			amount_collected,
 			amount_payment,
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
@@ -173,10 +173,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
-		CollectedRedemption::<T>::try_mutate(who, investment_id, |collected_redemption| {
+		CollectedRedemptions::<T>::try_mutate(who, investment_id, |collected_redemption| {
 			collected_redemption
 				.amount_collected
 				.ensure_add_assign(collected.amount_collected)?;
+			// TODO: We only need this at a later stage
 			collected_redemption
 				.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
@@ -186,11 +187,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 		// Transition state to initiate swap from pool to return currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state = pre_state.transition(RedeemTransition::Collect(SwapOf::<T> {
-			amount: collected.amount_collected,
-			currency_in: return_currency,
-			currency_out: pool_currency,
-		}))?;
+		let post_state = pre_state.transition(RedeemTransition::Collect(
+			SwapOf::<T> {
+				amount: collected.amount_collected,
+				currency_in: return_currency,
+				currency_out: pool_currency,
+			},
+			collected.amount_remaining_collectable,
+		))?;
 
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
@@ -537,9 +541,9 @@ impl<T: Config> Pallet<T> {
 		inner_redeem_state: InnerRedeemState<T::Balance, T::CurrencyId>,
 	) -> Result<Option<RedeemState<T::Balance, T::CurrencyId>>, DispatchError> {
 		// TODO: Should just be amount and maybe factor in the remaining amount as well
-		let collected_redemption = CollectedRedemption::<T>::get(who, investment_id);
+		let collected_redemption = CollectedRedemptions::<T>::get(who, investment_id);
 
-		// Send notification and kill `CollectedRedemption` iff the state includes
+		// Send notification and kill `CollectedRedemptions` iff the state includes
 		// `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`
 		match inner_redeem_state {
 			InnerRedeemState::SwapIntoReturnDone { done_swap, .. }
@@ -553,12 +557,12 @@ impl<T: Config> Pallet<T> {
 					who,
 					investment_id,
 					done_swap.currency_in,
-					CollectedAmount {
+					CollectedInvestment {
 						amount_collected: done_swap.amount,
 						amount_payment: collected_redemption.amount_payment,
 					},
 				)?;
-				CollectedRedemption::<T>::remove(who, investment_id);
+				CollectedRedemptions::<T>::remove(who, investment_id);
 				Ok(())
 			}
 			_ => Ok(()),
@@ -949,7 +953,7 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		currency: T::CurrencyId,
-		collected: CollectedAmount<T::Balance>,
+		collected: CollectedInvestment<T::Balance>,
 	) -> DispatchResult {
 		T::ExecutedCollectRedeemHook::notify_status_change(
 			ForeignInvestmentInfoOf::<T> {

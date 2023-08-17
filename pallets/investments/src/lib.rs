@@ -23,7 +23,10 @@ use cfg_traits::{
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection},
+	investments::{
+		CollectedInvestment, CollectedRedemption, InvestCollection, InvestmentAccount,
+		RedeemCollection,
+	},
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
@@ -634,7 +637,7 @@ where
 	pub(crate) fn do_collect_invest(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<(CollectedAmount<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	) -> Result<(CollectedInvestment<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		InvestOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
 			// Exit early if order does not exist
@@ -713,7 +716,7 @@ where
 				},
 			);
 
-			let collected_investment = CollectedAmount {
+			let collected_investment = CollectedInvestment {
 				amount_collected: collection.payout_investment_invest,
 				amount_payment,
 			};
@@ -739,7 +742,7 @@ where
 	pub(crate) fn do_collect_redeem(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<(CollectedAmount<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	) -> Result<(CollectedRedemption<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		RedeemOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
 			// Exit early if order does not exist
@@ -774,6 +777,7 @@ where
 				});
 				// TODO: Return correct weight
 				//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+				// TODO: Check in foreign if its okay to return 0 remaining
 				return Ok((Default::default(), ().into()));
 			}
 
@@ -826,9 +830,10 @@ where
 				},
 			);
 
-			let collected_redemption = CollectedAmount {
+			let collected_redemption = CollectedRedemption {
 				amount_collected: collection.payout_investment_redeem,
 				amount_payment,
+				amount_remaining_collectable: collection.remaining_investment_redeem,
 			};
 
 			Self::deposit_event(Event::RedeemOrdersCollected {
@@ -1436,14 +1441,15 @@ where
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	type Error = DispatchError;
+	type InvestResult = CollectedInvestment<T::Amount>;
 	type InvestmentId = T::InvestmentId;
-	type Result = CollectedAmount<T::Amount>;
+	type RedeemResult = CollectedRedemption<T::Amount>;
 
 	// TODO: Write unit test in investments to test this
 	fn collect_investment(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<CollectedAmount<T::Amount>, DispatchError> {
+	) -> Result<CollectedInvestment<T::Amount>, DispatchError> {
 		Pallet::<T>::do_collect_invest(who, investment_id)
 			.map_err(|e| e.error)
 			.map(|(collected_amount, _)| collected_amount)
@@ -1453,7 +1459,7 @@ where
 	fn collect_redemption(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<CollectedAmount<T::Amount>, DispatchError> {
+	) -> Result<CollectedRedemption<T::Amount>, DispatchError> {
 		Pallet::<T>::do_collect_redeem(who, investment_id)
 			.map_err(|e| e.error)
 			.map(|(collected_amount, _)| collected_amount)

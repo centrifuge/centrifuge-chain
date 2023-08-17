@@ -91,7 +91,8 @@ pub trait Investment<AccountId> {
 pub trait InvestmentCollector<AccountId> {
 	type Error: Debug;
 	type InvestmentId;
-	type Result: Debug;
+	type InvestResult: Debug;
+	type RedeemResult: Debug;
 
 	/// Collect the results of a user's invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
@@ -99,7 +100,7 @@ pub trait InvestmentCollector<AccountId> {
 	fn collect_investment(
 		who: AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error>;
+	) -> Result<Self::InvestResult, Self::Error>;
 
 	/// Collect the results of a users redeem orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
@@ -107,7 +108,7 @@ pub trait InvestmentCollector<AccountId> {
 	fn collect_redemption(
 		who: AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error>;
+	) -> Result<Self::RedeemResult, Self::Error>;
 }
 
 /// A trait, when implemented must take care of
