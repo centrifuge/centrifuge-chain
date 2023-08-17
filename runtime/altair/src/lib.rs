@@ -1192,7 +1192,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 
 // Block Rewards
 
-frame_support::parameter_types! {
+parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
@@ -1227,14 +1227,14 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 }
 
 impl pallet_rewards::mechanism::gap::Config for Runtime {
-	type DistributionId = u32;
 	type Balance = Balance;
+	type DistributionId = u32;
 	type IBalance = IBalance;
-	type Rate = FixedI128;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(StakingCurrency::BlockRewards);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1413,7 +1413,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
 	type RewardIssuance =
-	pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = GapRewardMechanism;
 	type RuntimeEvent = RuntimeEvent;
 }

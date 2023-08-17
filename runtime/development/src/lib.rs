@@ -1730,7 +1730,7 @@ impl<
 	}
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
 	#[derive(scale_info::TypeInfo)]
@@ -1800,7 +1800,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
