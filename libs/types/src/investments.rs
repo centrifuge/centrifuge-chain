@@ -136,30 +136,19 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 	}
 }
 
-/// The collected investment amounts for an account
+/// The collected investment/redemption amount for an account
 #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct CollectedInvestment<Balance: Default + MaxEncodedLen> {
-	/// The amount of tranche tokens which was was collected
+pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
+	/// The amount which was was collected
+	/// * If investment: Tranche tokens
+	/// * If redemption: Payment currency
 	pub amount_collected: Balance,
 
-	/// The previously invested amount of payment currency which was converted
-	/// during processing based on the fulfillment price(s)
+	/// The amount which invested and converted during processing based on the
+	/// fulfillment price(s)
+	/// * If investment: Payment currency
+	/// * If redemption: Tranche tokens
 	pub amount_payment: Balance,
-}
-
-/// The collected redemption amounts for an account
-#[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct CollectedRedemption<Balance: Default + MaxEncodedLen> {
-	/// The amount of payment currency which was was collected
-	pub amount_collected: Balance,
-
-	/// The previously invested amount of tranche tokens which was converted
-	/// during processing based on the fulfillment price(s)
-	pub amount_payment: Balance,
-
-	/// The remaining collectable amount which was already processed during
-	/// epoch execution
-	pub amount_remaining_collectable: Balance,
 }
 
 /// A representation of an investment identifier and the corresponding owner.

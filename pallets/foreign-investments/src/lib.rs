@@ -45,8 +45,7 @@ pub mod pallet {
 		StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
-		CollectedInvestment, CollectedRedemption, ExecutedForeignCollectRedeem,
-		ExecutedForeignDecrease,
+		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
 	};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
@@ -125,8 +124,7 @@ pub mod pallet {
 				Self::AccountId,
 				Error = DispatchError,
 				InvestmentId = Self::InvestmentId,
-				InvestResult = CollectedInvestment<Self::Balance>,
-				RedeemResult = CollectedRedemption<Self::Balance>,
+				Result = CollectedAmount<Self::Balance>,
 			>;
 
 		/// The default sell price limit for token swaps which defines the
@@ -258,13 +256,13 @@ pub mod pallet {
 	/// in pool currency and ends with having swapped the entire amount to
 	/// return currency.
 	#[pallet::storage]
-	pub(super) type CollectedRedemptions<T: Config> = StorageDoubleMap<
+	pub(super) type CollectedRedemption<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		CollectedInvestment<T::Balance>,
+		CollectedAmount<T::Balance>,
 		ValueQuery,
 	>;
 
