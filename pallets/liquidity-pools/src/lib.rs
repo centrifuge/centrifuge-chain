@@ -25,13 +25,13 @@ use frame_support::{
 		fungibles::{Inspect, Mutate, Transfer},
 		PalletInfo,
 	},
-	transactional, PalletId,
+	transactional,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Convert},
+	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, vec, vec::Vec};
@@ -241,7 +241,7 @@ pub mod pallet {
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
 		#[pallet::constant]
-		type PalletId: Get<PalletId>;
+		type TreasuryAccount: Get<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -703,7 +703,7 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			T::OutboundQueue::submit(
-				T::PalletId::get().into_account_truncating(),
+				T::TreasuryAccount::get(),
 				Domain::EVM(evm_chain_id),
 				Message::ScheduleUpgrade { contract },
 			)
@@ -713,10 +713,6 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
-		}
-
-		pub fn account() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
 		}
 
 		/// Returns the `u128` general index of a currency as the concatenation

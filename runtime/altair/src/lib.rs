@@ -1339,10 +1339,6 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type XcmSender = XcmRouter;
 }
 
-parameter_types! {
-	pub const LiquidityPoolsPalletId: PalletId = cfg_types::ids::LIQUIDITY_POOLS_PALLET_ID;
-}
-
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -1352,7 +1348,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
-	type PalletId = LiquidityPoolsPalletId;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
