@@ -479,3 +479,78 @@ pub mod xcm_transactor {
 		}
 	}
 }
+
+pub mod foreign_investments {
+	use cfg_primitives::Balance;
+	use cfg_traits::SimpleCurrencyConversion;
+	use cfg_types::{
+		fixed_point::{FixedPointNumberExtension, Rate},
+		tokens::CurrencyId,
+	};
+	use frame_support::pallet_prelude::PhantomData;
+	use sp_runtime::{traits::Get, DispatchError};
+
+	/// Simple stable coin amount converter from one stable to another.
+	///
+	/// For now, converts any `ForeignAsset` into another with the configured
+	/// rate.
+	///
+	/// NOTE: Should be deprecated ASAP!
+	// TODO(@review): Can we determine whether a ForeignAsset is a stable coin at
+	// this point of time?
+	pub struct SimpleStableCurrencyConverter<RateForeignToPool>(PhantomData<RateForeignToPool>);
+
+	impl<RateForeignToPool> SimpleCurrencyConversion
+		for SimpleStableCurrencyConverter<RateForeignToPool>
+	where
+		RateForeignToPool: Get<Rate>,
+	{
+		type Balance = Balance;
+		type Currency = CurrencyId;
+		type Error = DispatchError;
+
+		fn foreign_to_pool(
+			currency_foreign: Self::Currency,
+			amount_foreign: Self::Balance,
+			currency_pool: Self::Currency,
+		) -> Result<Self::Balance, Self::Error> {
+			match (currency_foreign, currency_pool) {
+				(out, inc) if out == inc => Ok(amount_foreign),
+				// TODO(future): Conversion must be limited to asset ids which reflect stable coins
+				(CurrencyId::ForeignAsset(_out_id), CurrencyId::ForeignAsset(_in_id)) => {
+					// NOTE: Rounding down to favor system side
+					RateForeignToPool::get()
+						.checked_mul_int_floor(amount_foreign)
+						.ok_or(DispatchError::Arithmetic(
+							sp_arithmetic::ArithmeticError::Overflow,
+						))
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+
+		fn pool_to_foreign(
+			currency_foreign: Self::Currency,
+			amount_foreign: Self::Balance,
+			currency_pool: Self::Currency,
+		) -> Result<Self::Balance, Self::Error> {
+			match (currency_foreign, currency_pool) {
+				(out, inc) if out == inc => Ok(amount_foreign),
+				// TODO(future): Conversion must be limited to asset ids which reflect stable coins
+				(CurrencyId::ForeignAsset(_out_id), CurrencyId::ForeignAsset(_in_id)) => {
+					// NOTE: Rounding down to favor system side
+					RateForeignToPool::get()
+						.reciprocal_floor()
+						.ok_or(DispatchError::Arithmetic(
+							sp_arithmetic::ArithmeticError::DivisionByZero,
+						))?
+						.checked_mul_int_floor(amount_foreign)
+						.ok_or(DispatchError::Arithmetic(
+							sp_arithmetic::ArithmeticError::Overflow,
+						))
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+}

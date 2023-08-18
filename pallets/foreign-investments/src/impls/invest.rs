@@ -121,7 +121,6 @@ where
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
 	fn handle_increase(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
-		// TODO(@review): Can we check this at an earlier stage?
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_increase_non_foreign(&self, swap);
 		}
@@ -383,7 +382,6 @@ where
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
 	fn handle_decrease(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
-		// TODO(@review): Can we check this at an earlier stage?
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_decrease_non_foreign(&self, swap);
 		}
@@ -744,9 +742,6 @@ where
 		}
 	}
 
-	// TODO(@review): Do we need to handle this case at all or assume to always have
-	// required swaps through foreign investments?
-
 	/// Handle increase transitions for the same incoming and outgoing
 	/// currencies.
 	///
@@ -787,9 +782,6 @@ where
 			)),
 		}
 	}
-
-	// TODO(@review): Do we need to handle this case at all or assume to always have
-	// required swaps through foreign investments?
 
 	/// Handle decrease transitions for the same incoming and outgoing
 	/// currencies.

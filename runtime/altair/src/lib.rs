@@ -1340,13 +1340,16 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	// TODO: Discuss, refine
+	// TODO(@review): Discuss and refine all of these three parameters
 	pub const DefaultTokenMinFulfillmentAmount: Balance = 1;
 	pub const DefaultTokenSwapSellPriceLimit: Balance = 1;
+	pub ConversionRate: Rate = Rate::from((98, 100));
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type CurrencyConverter =
+		runtime_common::foreign_investments::SimpleStableCurrencyConverter<ConversionRate>;
 	type CurrencyId = CurrencyId;
 	type DefaultTokenMinFulfillmentAmount = DefaultTokenMinFulfillmentAmount;
 	type DefaultTokenSwapSellPriceLimit = DefaultTokenSwapSellPriceLimit;

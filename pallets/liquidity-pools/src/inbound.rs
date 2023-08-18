@@ -294,11 +294,20 @@ where
 		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let currency_index_u128 = currency_index.index;
+		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let pool_currency =
+			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
 
 		let ExecutedForeignCollectInvest::<T::Balance> {
 			amount_currency_payout,
 			amount_tranche_tokens_payout,
-		} = T::ForeignInvestment::collect_foreign_investment(&investor, invest_id.clone())?;
+		} = T::ForeignInvestment::collect_foreign_investment(
+			&investor,
+			invest_id.clone(),
+			payment_currency,
+			pool_currency,
+		)?;
 
 		T::Tokens::transfer(
 			invest_id.into(),
@@ -312,7 +321,7 @@ where
 			pool_id,
 			tranche_id,
 			investor: investor.clone().into(),
-			currency: currency_index.index,
+			currency: currency_index_u128,
 			currency_payout: amount_currency_payout,
 			tranche_tokens_payout: amount_tranche_tokens_payout,
 		};

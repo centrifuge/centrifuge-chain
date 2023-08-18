@@ -13,7 +13,7 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector},
-	StatusNotificationHook, TokenSwaps,
+	SimpleCurrencyConversion, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
@@ -138,11 +138,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		// TODO: Check if we can drop the below line
-		let pre_amount = T::Investment::redemption(who, investment_id.clone())?;
+		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id.clone())?;
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state = pre_state.transition(RedeemTransition::DecreaseRedeemOrder(amount))?;
+		frame_support::ensure!(
+			unprocessed_redeem_amount == pre_state.get_redeeming_amount().unwrap_or_default(),
+			DispatchError::Corruption
+		);
 
+		let post_state = pre_state.transition(RedeemTransition::DecreaseRedeemOrder(amount))?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(amount)
@@ -152,6 +155,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
+		return_currency: T::CurrencyId,
+		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
 		// independent of the current `InvestState`
@@ -160,9 +165,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			amount_payment,
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
 
+		let amount_currency_payout =
+			T::CurrencyConverter::pool_to_foreign(pool_currency, amount_payment, return_currency)?;
+
 		Ok(ExecutedForeignCollectInvest {
-			// TODO: Translate from `pool_currency` to `return_currency`
-			amount_currency_payout: amount_payment,
+			amount_currency_payout,
 			amount_tranche_tokens_payout: amount_collected,
 		})
 	}

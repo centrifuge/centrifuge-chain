@@ -345,6 +345,8 @@ pub trait ForeignInvestment<AccountId> {
 	fn collect_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
+		return_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
 	) -> Result<Self::CollectInvestResult, Self::Error>;
 
 	/// Collect the results of a user's foreign redeem orders for the given

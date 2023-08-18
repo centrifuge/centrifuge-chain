@@ -133,12 +133,12 @@ pub mod pallet {
 		/// The default sell price limit for token swaps which defines the
 		/// lowest acceptable buy price.
 		///
-		/// TODO(@review): Since we will only support stable coins from the
-		/// beginning, a global default value could be feasible or do we want to
-		/// have better granularity?
-		///
 		/// NOTE: Can be removed once we implement a
 		/// more sophisticated swap price discovery.
+		// TODO(@review): Since we will only support stable coins from the
+		// beginning, a global default value could be feasible or do we want to
+		// have better granularity?
+		#[pallet::constant]
 		type DefaultTokenSwapSellPriceLimit: Get<Self::Balance>;
 
 		/// The default minimum fulfillment amount for token swaps.
@@ -149,6 +149,10 @@ pub mod pallet {
 		///
 		/// NOTE: Can be removed once we implement a more sophisticated swap
 		/// price discovery.
+		// TODO(@review): Since we will only support stable coins from the
+		// beginning, a global default value could be feasible or do we want to
+		// have better granularity?
+		#[pallet::constant]
 		type DefaultTokenMinFulfillmentAmount: Get<Self::Balance>;
 
 		/// The token swap order identifying type
@@ -180,6 +184,14 @@ pub mod pallet {
 		type ExecutedCollectRedeemHook: StatusNotificationHook<
 			Id = ForeignInvestmentInfoOf<Self>,
 			Status = ExecutedForeignCollectRedeem<Self::Balance, Self::CurrencyId>,
+			Error = DispatchError,
+		>;
+
+		/// Type which provides a conversion from one currency amount to another
+		/// currency amount.
+		type CurrencyConverter: cfg_traits::SimpleCurrencyConversion<
+			Balance = Self::Balance,
+			Currency = Self::CurrencyId,
 			Error = DispatchError,
 		>;
 	}

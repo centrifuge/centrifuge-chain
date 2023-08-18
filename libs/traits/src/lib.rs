@@ -513,3 +513,26 @@ pub trait StatusNotificationHook {
 	/// Notify that the status has changed for the given id
 	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
 }
+
+/// Trait to synchronously provide a currency conversion estimation for foreign
+/// currencies into/from pool currencies.
+pub trait SimpleCurrencyConversion {
+	type Currency;
+	type Balance;
+	type Error;
+
+	/// Estimate the worth of a foreign stable currency in a particular pool
+	/// currency.
+	fn foreign_to_pool(
+		currency_foreign: Self::Currency,
+		amount_foreign: Self::Balance,
+		currency_pool: Self::Currency,
+	) -> Result<Self::Balance, Self::Error>;
+
+	/// Estimate the worth of a pool currency in a particular foreign currency.
+	fn pool_to_foreign(
+		currency_pool: Self::Currency,
+		amount_pool: Self::Balance,
+		currency_foreign: Self::Currency,
+	) -> Result<Self::Balance, Self::Error>;
+}
