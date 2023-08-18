@@ -1198,21 +1198,15 @@ parameter_types! {
 	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
+	pub const BlockRewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
-
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxCurrencyMovements: u32 = 50;
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxGroups: u32 = 20;
-	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
-	type PalletId = RewardsPalletId;
+	type PalletId = BlockRewardsPalletId;
 	type RewardCurrency = RewardCurrency;
 	// Must not change this to ensure block rewards are minted
 	type RewardIssuance =
@@ -1224,15 +1218,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		SingleCurrencyMovement,
 	>;
 	type RuntimeEvent = RuntimeEvent;
-}
-
-#[cfg(feature = "testnet-runtime")]
-impl pallet_rewards::mechanism::gap::Config for Runtime {
-	type Balance = Balance;
-	type DistributionId = u32;
-	type IBalance = IBalance;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
-	type Rate = FixedI128;
 }
 
 parameter_types! {
@@ -1260,6 +1245,56 @@ impl pallet_block_rewards::Config for Runtime {
 	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
+}
+
+// Liquidity rewards
+
+#[cfg(feature = "testnet-runtime")]
+parameter_types! {
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	pub const LiquidityRewardsPalletId: PalletId = cfg_types::ids::LIQUIDITY_REWARDS_PALLET_ID;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+}
+
+#[cfg(feature = "testnet-runtime")]
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type Balance = Balance;
+	type DistributionId = u32;
+	type IBalance = IBalance;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
+}
+
+#[cfg(feature = "testnet-runtime")]
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = ();
+}
+
+#[cfg(feature = "testnet-runtime")]
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type PalletId = LiquidityRewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = GapRewardMechanism;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 // PoolSystem & Loans
@@ -1390,35 +1425,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();
-}
-
-#[cfg(feature = "testnet-runtime")]
-impl pallet_liquidity_rewards::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type GroupId = u32;
-	type InitialEpochDuration = InitialEpochDuration;
-	type MaxChangesPerEpoch = MaxChangesPerEpoch;
-	type MaxGroups = MaxGroups;
-	type Rewards = LiquidityRewardsBase;
-	type RuntimeEvent = RuntimeEvent;
-	type Timer = Timestamp;
-	type Weight = u64;
-	type WeightInfo = ();
-}
-
-#[cfg(feature = "testnet-runtime")]
-impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type GroupId = u32;
-	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
-	type RewardIssuance =
-		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
-	type RewardMechanism = GapRewardMechanism;
-	type RuntimeEvent = RuntimeEvent;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
