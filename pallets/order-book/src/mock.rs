@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
+use cfg_primitives::CFG;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::{
 	parameter_types,
@@ -28,15 +29,20 @@ use crate as order_book;
 pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const ACCOUNT_0: u64 = 0x1;
 pub(crate) const ACCOUNT_1: u64 = 0x2;
-pub(crate) const ORDER_FEEKEY: u8 = 0u8;
-pub(crate) const ORDER_FEEKEY_AMOUNT: u128 = 10 * CURRENCY_NATIVE;
 
-pub(crate) const CURRENCY_AUSD: Balance = 1_000_000;
-// To ensure price/amount calculations with different
-// currency precision works
-pub(crate) const CURRENCY_FA0: Balance = 1_000;
+// Minimum order amounts for orderbook orders v1 implementation.
+// This will be replaced by runtime specifiable minimum,
+// which will likely be set by governance.
+pub(crate) const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+pub(crate) const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+pub(crate) const CURRENCY_USDT_DECIMALS: u128 = 1_000_000;
+pub(crate) const CURRENCY_AUSD_DECIMALS: u128 = 1_000_000_000_000;
+pub(crate) const CURRENCY_NATIVE_DECIMALS: Balance = CFG;
 
-pub(crate) const CURRENCY_NATIVE: Balance = 1_000_000;
+const DEFAULT_DEV_MIN_ORDER: u128 = 5;
+const MIN_DEV_USDT_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_USDT_DECIMALS;
+const MIN_DEV_AUSD_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_AUSD_DECIMALS;
+const MIN_DEV_NATIVE_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_NATIVE_DECIMALS;
 
 type Balance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -173,12 +179,12 @@ parameter_types! {
 parameter_type_with_key! {
 		pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
 				match pair {
-						(CurrencyId::Native, CurrencyId::AUSD) => Some(5 * CURRENCY_NATIVE),
-						(CurrencyId::AUSD, CurrencyId::Native) => Some(5 * CURRENCY_AUSD),
-						(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)) => Some(5 * CURRENCY_AUSD),
-						(CurrencyId::ForeignAsset(0), CurrencyId::AUSD) => Some(5 * CURRENCY_FA0),
-						(CurrencyId::Native, CurrencyId::ForeignAsset(0)) => Some(5 * CURRENCY_NATIVE),
-						(CurrencyId::ForeignAsset(0), CurrencyId::Native) => Some(5 * CURRENCY_FA0),
+						(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+						(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
+						(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+						(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
+						(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
+						(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
 						_ => None
 				}
 		};
@@ -202,25 +208,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Runtime>()
 		.unwrap();
 
-	// Add native balances for reserve/unreserve storage fees
-	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![
-			(ACCOUNT_0, 300 * CURRENCY_NATIVE),
-			(ACCOUNT_1, 300 * CURRENCY_NATIVE),
-		],
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-
 	// Add foreign currency balances of differing precisions
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..3)
 			.into_iter()
 			.flat_map(|idx| {
 				[
-					(idx, CurrencyId::AUSD, 1000 * CURRENCY_AUSD),
-					(idx, CurrencyId::ForeignAsset(0), 1000 * CURRENCY_FA0),
-					(idx, CurrencyId::Native, 100 * CURRENCY_AUSD),
+					(idx, DEV_AUSD_CURRENCY_ID, 1000 * CURRENCY_AUSD_DECIMALS),
+					(idx, DEV_USDT_CURRENCY_ID, 1000 * CURRENCY_USDT_DECIMALS),
+					(idx, CurrencyId::Native, 100 * CURRENCY_NATIVE_DECIMALS),
 				]
 			})
 			.collect(),
@@ -231,9 +227,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
 			(
-				CurrencyId::AUSD,
+				DEV_AUSD_CURRENCY_ID,
 				AssetMetadata {
-					decimals: 6,
+					decimals: 12,
 					name: "MOCK TOKEN_A".as_bytes().to_vec(),
 					symbol: "MOCK_A".as_bytes().to_vec(),
 					existential_deposit: 0,
@@ -242,9 +238,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				},
 			),
 			(
-				CurrencyId::ForeignAsset(0),
+				DEV_USDT_CURRENCY_ID,
 				AssetMetadata {
-					decimals: 3,
+					decimals: 6,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),
 					symbol: "MOCK_B".as_bytes().to_vec(),
 					existential_deposit: 0,
@@ -255,7 +251,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			(
 				CurrencyId::Native,
 				AssetMetadata {
-					decimals: 6,
+					decimals: 18,
 					name: "NATIVE TOKEN".as_bytes().to_vec(),
 					symbol: "NATIVE".as_bytes().to_vec(),
 					existential_deposit: 0,
@@ -272,10 +268,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	e.execute_with(|| {
 		System::set_block_number(STARTING_BLOCK);
-		Fees::mock_fee_value(|key| match key {
-			ORDER_FEEKEY => ORDER_FEEKEY_AMOUNT.into(),
-			_ => panic!("No valid fee key"),
-		});
 	});
 	e
 }
