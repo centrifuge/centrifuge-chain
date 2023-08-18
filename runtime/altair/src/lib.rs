@@ -1709,6 +1709,27 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
+	pub const OrderPairVecSize: u32 = 1_000_000u32;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type FeeCurrencyId = NativeToken;
+	type Fees = Fees;
+	type ForeignCurrencyBalance = Balance;
+	type FulfilledOrderHook = ForeignInvestments;
+	type OrderFeeKey = OrderBookCreationFeeKey;
+	type OrderIdNonce = u64;
+	type OrderPairVecSize = OrderPairVecSize;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type TradeableAsset = OrmlTokens;
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1771,7 +1792,8 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Call, Storage, Event<T>} = 110,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 110,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Call, Storage, Event<T>} = 111,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2342,6 +2364,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
+			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2412,6 +2435,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
+			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

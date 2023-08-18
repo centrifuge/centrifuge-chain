@@ -122,6 +122,7 @@ pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-order-book = { path = "../../pallets/order-book", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -197,6 +198,8 @@ std = [
   "pallet-multisig/std",
   "pallet-membership/std",
   "pallet-nft-sales/std",
+  "pallet-order-book/std",
+  "pallet-permissions/std",
   "pallet-permissions/std",
   "moonbeam-relay-encoder/std",
   "pallet-pool-system/std",
@@ -281,6 +284,7 @@ runtime-benchmarks = [
   "pallet-multisig/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -368,6 +372,7 @@ try-runtime = [
   "pallet-multisig/try-runtime",
   "pallet-membership/try-runtime",
   "pallet-nft-sales/try-runtime",
+  "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-pool-registry/try-runtime",

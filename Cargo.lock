@@ -257,6 +257,7 @@ dependencies = [
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft-sales",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
