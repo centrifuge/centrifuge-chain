@@ -654,10 +654,7 @@ fn centrifuge_genesis(
 			collator_reward: 8_325 * MILLI_CFG,
 			total_reward: 10_048 * CFG,
 		},
-		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: centrifuge_runtime::ExistentialDeposit::get(),
-		},
+		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
@@ -746,10 +743,7 @@ fn altair_genesis(
 			collator_reward: 98_630 * MILLI_AIR,
 			total_reward: 98_630 * MILLI_AIR * 100,
 		},
-		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: altair_runtime::ExistentialDeposit::get(),
-		},
+		block_rewards_base: Default::default(),
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
 			keys: initial_authorities
@@ -776,10 +770,7 @@ fn altair_genesis(
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
-		liquidity_rewards_base: altair_runtime::LiquidityRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: altair_runtime::ExistentialDeposit::get(),
-		},
+		liquidity_rewards_base: Default::default(),
 	}
 }
 
@@ -938,14 +929,8 @@ fn development_genesis(
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
-		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: development_runtime::ExistentialDeposit::get(),
-		},
-		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: development_runtime::ExistentialDeposit::get(),
-		},
+		block_rewards_base: Default::default(),
+		liquidity_rewards_base: Default::default(),
 	}
 }
 
