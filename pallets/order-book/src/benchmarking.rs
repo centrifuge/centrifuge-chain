@@ -24,13 +24,6 @@ use sp_runtime::FixedPointNumber;
 
 // use pallet_pool_system::benchmarking::prepare_asset_registry;
 use super::*;
-#[cfg(test)]
-fn config_mocks() {
-	use crate::mock::Fees;
-
-	Fees::mock_fee_value(|_| 0);
-	Fees::mock_fee_to_author(|_, _| Ok(()));
-}
 
 const CURRENCY_0: u128 = 1_000_000;
 const CURRENCY_1: u128 = 1_000_000_000_000;
@@ -73,8 +66,6 @@ fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, Balance = u12
 where
 	<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
 {
-	#[cfg(test)]
-	config_mocks();
 	let account_0: T::AccountId = account::<T::AccountId>("Account0", 1, 0);
 	let account_1: T::AccountId = account::<T::AccountId>("Account1", 2, 0);
 	let asset_0 = CurrencyId::ForeignAsset(1);
@@ -92,7 +83,7 @@ pub fn prepare_asset_registry<T: Config>()
 where
 	T::AssetRegistry: Mutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
 {
-	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(1)) {
 		Some(_) => (),
 		None => {
 			T::AssetRegistry::register_asset(
@@ -110,7 +101,7 @@ where
 		}
 	}
 
-	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(0)) {
+	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(2)) {
 		Some(_) => (),
 		None => {
 			T::AssetRegistry::register_asset(
