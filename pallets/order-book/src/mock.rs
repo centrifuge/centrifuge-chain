@@ -16,7 +16,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU128, ConstU32, GenesisBuild},
 };
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key, GetByKey};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -146,16 +146,27 @@ parameter_types! {
 		pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
+parameter_type_with_key! {
+		pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
+				match pair {
+						(CurrencyId::Native, CurrencyId::AUSD) => Some(5 * CURRENCY_NATIVE),
+						(CurrencyId::AUSD, CurrencyId::Native) => Some(5 * CURRENCY_AUSD),
+						(CurrencyId::AUSD, CurrencyId::ForeignAsset(0)) => Some(5 * CURRENCY_AUSD),
+						(CurrencyId::ForeignAsset(0), CurrencyId::AUSD) => Some(5 * CURRENCY_FA0),
+						(CurrencyId::Native, CurrencyId::ForeignAsset(0)) => Some(5 * CURRENCY_NATIVE),
+						(CurrencyId::ForeignAsset(0), CurrencyId::Native) => Some(5 * CURRENCY_FA0),
+						_ => None
+				}
+		};
+}
+
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type FeeCurrencyId = FeeCurrencyId;
-	type Fees = Fees;
-	type OrderFeeKey = OrderFeeKey;
+	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
-	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type SellRatio = cfg_types::fixed_point::Rate;
 	type TradeableAsset = OrmlTokens;

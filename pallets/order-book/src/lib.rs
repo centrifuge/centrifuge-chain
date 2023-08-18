@@ -40,7 +40,6 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::fees::Fees;
 	use cfg_types::tokens::CustomMetadata;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
@@ -48,12 +47,14 @@ pub mod pallet {
 		traits::{
 			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold, Transfer},
 			tokens::AssetId,
-			Currency, ReservableCurrency,
 		},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use orml_traits::asset_registry::{self, Inspect as _};
+	use orml_traits::{
+		asset_registry::{self, Inspect as _},
+		GetByKey,
+	};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
@@ -74,6 +75,7 @@ pub mod pallet {
 		<T as Config>::Balance,
 		<T as Config>::SellRatio,
 	>;
+	pub type BalanceOf<T> = <T as Config>::Balance;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -105,31 +107,6 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen;
-
-		/// Currency for Reserve/Unreserve with allowlist adding/removal,
-		/// given that the allowlist will be in storage
-		type ReserveCurrency: Currency<Self::AccountId, Balance = Self::Balance>
-			+ ReservableCurrency<Self::AccountId>;
-
-		/// Fee handler for the reserve/unreserve
-		/// Currently just stores the amounts, will be extended to handle
-		/// reserve/unreserve as well in future
-		/// Uses default balance type as opposed to ForeignCurrencyBalance
-		type Fees: Fees<
-			AccountId = <Self as frame_system::Config>::AccountId,
-			Balance = Self::Balance,
-		>;
-
-		/// Fee Key used to find amount for allowance reserve/unreserve
-		type OrderFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
-
-		/// Token Id for token used for fee reserving
-		/// as represented by `AssetCurrencyId`.
-		/// Used for reserve-able fund checking to ensure
-		/// amount traded and storage fees can be reserved
-		/// when trading for fee currency.
-		/// This should typically be native chain currency.
-		type FeeCurrencyId: Get<Self::AssetCurrencyId>;
 
 		/// Type used for OrderId. OrderIdNonce ensures each
 		/// OrderId is unique. OrderIdNonce incremented with each new order.
@@ -170,6 +147,13 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
+
+		/// Minimum order amount, this allows us to stop spammers
+		/// From making large number of small orders
+		type MinimumOrderAmount: GetByKey<
+			(Self::AssetCurrencyId, Self::AssetCurrencyId),
+			Option<Self::Balance>,
+		>;
 
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
@@ -302,17 +286,14 @@ pub mod pallet {
 		/// type.
 		ConflictingAssetIds,
 		/// Error when an account cannot reserve or transfer the amount
-		/// specified for trade, or amount to be fulfilled.
-		InsufficientAssetFunds,
-		/// Error when an account does not have enough funds in chains reserve
-		/// currency to place order.
-		InsufficientReserveFunds,
-		/// Error when account tries to buy an invalid amount of currency --
 		/// currently `0`.
 		InvalidBuyAmount,
 		/// Error when an account specifies an invalid buy price -- currently
-		/// `0`.
+		/// specified for trade, or amount to be fulfilled.
+		InsufficientAssetFunds,
 		InvalidMaxPrice,
+		/// Error when an order amount is too small
+		InsufficientOrderSize,
 		/// Error when an order is placed with a currency that is not in the
 		/// asset registry.
 		InvalidAssetId,
@@ -425,32 +406,27 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Get reserve amount when fee and out currency are the same
-		pub fn get_combined_reserve(sell_amount: T::Balance) -> Result<T::Balance, DispatchError> {
-			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
-
-			Ok(sell_amount.ensure_add(fee_amount)?)
-		}
-
 		/// Unreserve funds for an order that is finished either
 		/// through fulfillment or cancellation.
-		pub fn unreserve_order(order: &OrderOf<T>) -> Result<(), DispatchError> {
-			if T::FeeCurrencyId::get() == order.asset_out_id {
-				let total_reserve_amount = Self::get_combined_reserve(order.max_sell_amount)?;
-				T::ReserveCurrency::unreserve(&order.placing_account, total_reserve_amount);
-			} else {
-				T::TradeableAsset::release(
-					order.asset_out_id,
-					&order.placing_account,
-					order.max_sell_amount,
-					false,
-				)?;
-				T::ReserveCurrency::unreserve(
-					&order.placing_account,
-					T::Fees::fee_value(T::OrderFeeKey::get()),
-				);
-			};
-			Ok(())
+		pub fn unreserve_order(order: &OrderOf<T>) -> Result<BalanceOf<T>, DispatchError> {
+			T::TradeableAsset::release(
+				order.asset_out_id,
+				&order.placing_account,
+				order.max_sell_amount,
+				false,
+			)
+		}
+
+		/// Check min order amount
+		pub fn is_valid_min_order(
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::Balance,
+		) -> DispatchResult {
+			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
+				Some(amount) if amount <= buy_amount => Ok(()).into(),
+				_ => Err(Error::<T>::InsufficientOrderSize)?,
+			}
 		}
 
 		pub fn convert_with_ratio(
@@ -495,15 +471,6 @@ pub mod pallet {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
-				buy_amount >= min_fullfillment_amount,
-				Error::<T>::InvalidBuyAmount
-			);
-
-			ensure!(
-				min_fullfillment_amount != <T::Balance>::zero(),
-				Error::<T>::InvalidBuyAmount
-			);
-			ensure!(
 				buy_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
@@ -517,18 +484,17 @@ pub mod pallet {
 				Ok::<_, DispatchError>(())
 			})?;
 
+			ensure!(
+				buy_amount >= min_fullfillment_amount,
+				Error::<T>::InvalidBuyAmount
+			);
+
+			Self::is_valid_min_order(currency_in, currency_out, buy_amount)?;
+
 			let max_sell_amount =
 				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
-			let fee_amount = T::Fees::fee_value(T::OrderFeeKey::get());
-			if T::FeeCurrencyId::get() == currency_out {
-				let total_reserve_amount = Self::get_combined_reserve(max_sell_amount)?;
-				T::ReserveCurrency::reserve(&account, total_reserve_amount)?;
-			} else {
-				T::ReserveCurrency::reserve(&account, fee_amount)?;
-
-				T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
-			}
+			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
 
 			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {
@@ -593,13 +559,21 @@ pub mod pallet {
 				buy_amount != T::Balance::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
+
 			ensure!(
 				sell_rate_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMaxPrice
 			);
 
+			// We want to ensure that spammers cannot
+			ensure!(
+				buy_amount >= min_fullfillment_amount,
+				Error::<T>::InvalidBuyAmount
+			);
+
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+				Self::is_valid_min_order(order.asset_in_id, order.asset_out_id, buy_amount)?;
 
 				// let max_sell_amount = buy_amount.ensure_mul(sell_rate_limit)?;
 
@@ -617,28 +591,16 @@ pub mod pallet {
 					if max_sell_amount > order.max_sell_amount {
 						let sell_reserve_diff =
 							max_sell_amount.ensure_sub(order.max_sell_amount)?;
-						if T::FeeCurrencyId::get() == order.asset_out_id {
-							T::ReserveCurrency::reserve(&account, sell_reserve_diff)?
-						} else {
-							T::TradeableAsset::hold(
-								order.asset_out_id,
-								&account,
-								sell_reserve_diff,
-							)?;
-						}
+						T::TradeableAsset::hold(order.asset_out_id, &account, sell_reserve_diff)?;
 					} else {
 						let sell_reserve_diff =
 							order.max_sell_amount.ensure_sub(max_sell_amount)?;
-						if T::FeeCurrencyId::get() == order.asset_out_id {
-							T::ReserveCurrency::unreserve(&account, sell_reserve_diff);
-						} else {
-							T::TradeableAsset::release(
-								order.asset_out_id,
-								&account,
-								sell_reserve_diff,
-								false,
-							)?;
-						}
+						T::TradeableAsset::release(
+							order.asset_out_id,
+							&account,
+							sell_reserve_diff,
+							false,
+						)?;
 					}
 				};
 				order.buy_amount = buy_amount;
