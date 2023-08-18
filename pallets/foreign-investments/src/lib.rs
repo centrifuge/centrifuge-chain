@@ -38,10 +38,7 @@ pub mod pallet {
 	use cfg_types::investments::{
 		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
 	};
-	use frame_support::{
-		dispatch::HasCompact,
-		pallet_prelude::{DispatchResultWithPostInfo, *},
-	};
+	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use types::{InvestState, RedeemState};
@@ -346,14 +343,13 @@ pub mod pallet {
 		///
 		/// NOOP: If the unprocessed investment amount is zero or the state does
 		/// not include `InvestmentOngoing`
-		// TODO: weights/benchmark, numbers chosen by rough estimation
 		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
 		#[pallet::call_index(1)]
 		pub fn nudge_invest_state(
 			origin: OriginFor<T>,
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			if let Some(invest_state) = InvestmentState::<T>::get(&investor, investment_id) {
@@ -363,11 +359,8 @@ pub mod pallet {
 					types::InvestTransition::EpochExecution(amount_unprocessed_investment),
 				)?;
 				Pallet::<T>::apply_invest_state_transition(&investor, investment_id, new_state)?;
-
-				Ok(Some(T::DbWeight::get().reads_writes(5, 5)).into())
-			} else {
-				Ok(Some(T::DbWeight::get().reads(1)).into())
 			}
+			Ok(())
 		}
 
 		/// Attempts to transition a `RedeemState` after an epoch execution:
@@ -379,14 +372,13 @@ pub mod pallet {
 		///
 		/// NOOP: If the unprocessed redemption amount is zero or the inner
 		/// state does not include `Redeeming`.
-		// TODO: weights/benchmark, numbers chosen by rough estimation
 		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
 		#[pallet::call_index(2)]
 		pub fn nudge_redeem_state(
 			origin: OriginFor<T>,
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			if let Some(redeem_state) = RedemptionState::<T>::get(&investor, investment_id) {
@@ -396,11 +388,9 @@ pub mod pallet {
 					types::RedeemTransition::EpochExecution(amount_unprocessed_redemption),
 				)?;
 				Pallet::<T>::apply_redeem_state_transition(&investor, investment_id, new_state)?;
-
-				Ok(Some(T::DbWeight::get().reads_writes(5, 5)).into())
-			} else {
-				Ok(Some(T::DbWeight::get().reads(1)).into())
 			}
+
+			Ok(())
 		}
 	}
 }
