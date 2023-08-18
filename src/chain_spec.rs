@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
+use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
@@ -66,6 +66,8 @@ pub struct Extensions {
 	pub relay_chain: String,
 	/// The id of the Parachain.
 	pub para_id: u32,
+	/// The first block which contains EVM logs
+	pub first_evm_block: BlockNumber,
 }
 
 impl Extensions {
@@ -81,6 +83,7 @@ fn development_extensions(para_id: u32) -> Extensions {
 	Extensions {
 		para_id,
 		relay_chain: "rococo-local".into(),
+		first_evm_block: 1,
 	}
 }
 
@@ -641,7 +644,6 @@ fn centrifuge_genesis(
 			threshold: 1,
 		},
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: centrifuge_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()
@@ -766,7 +768,6 @@ fn altair_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
@@ -915,7 +916,6 @@ fn development_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: development_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()

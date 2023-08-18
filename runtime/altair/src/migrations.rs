@@ -23,6 +23,8 @@ pub type UpgradeAltair1028 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
 	pool_system::MigrateAUSDPools,
+	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 );
 
 const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;

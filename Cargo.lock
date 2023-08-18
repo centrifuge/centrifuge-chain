@@ -7704,7 +7704,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "orml-traits",
  "pallet-balances",
  "pallet-interest-accrual",
@@ -7986,6 +7985,7 @@ dependencies = [
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
@@ -10947,6 +10947,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.2.2",
+ "log",
  "orml-oracle",
  "orml-traits",
  "pallet-anchors",

@@ -18,6 +18,10 @@
 #[cfg(test)]
 mod tests;
 
+pub mod migrations {
+	pub mod nuke;
+}
+
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;

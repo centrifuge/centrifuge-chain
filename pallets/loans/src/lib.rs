@@ -40,10 +40,6 @@
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
 //! loans.
 
-pub mod migrations {
-	pub mod nuke;
-}
-
 /// High level types that uses `pallet::Config`
 pub mod entities {
 	pub mod interest;
@@ -73,7 +69,7 @@ pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
-		PoolInspect, PoolNAV, PoolReserve,
+		PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -102,7 +98,7 @@ pub mod pallet {
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
-	use sp_std::vec::Vec;
+	use sp_std::{vec, vec::Vec};
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
@@ -119,7 +115,7 @@ pub mod pallet {
 	pub type ChangeOf<T> =
 		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -753,9 +749,7 @@ pub mod pallet {
                 Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
-
-			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+			Self::update_write_off_policy(pool_id, policy)?;
 
 			Ok(())
 		}
@@ -932,6 +926,17 @@ pub mod pallet {
 			})
 		}
 
+		fn update_write_off_policy(
+			pool_id: T::PoolId,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		) -> DispatchResult {
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
+
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+
+			Ok(())
+		}
+
 		fn take_active_loan(
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
@@ -1011,6 +1016,30 @@ pub mod pallet {
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
 			// This Loans implementation does not need to initialize explicitally.
 			Ok(())
+		}
+	}
+
+	impl<T: Config> PoolWriteOffPolicyMutate<T::PoolId> for Pallet<T> {
+		type Policy = BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>;
+
+		fn update(pool_id: T::PoolId, policy: Self::Policy) -> DispatchResult {
+			Self::update_write_off_policy(pool_id, policy)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_case_policy() -> Self::Policy {
+			use crate::pallet::policy::WriteOffTrigger;
+
+			vec![
+				WriteOffRule::new(
+					[WriteOffTrigger::PrincipalOverdue(0)],
+					T::Rate::zero(),
+					T::Rate::zero(),
+				);
+				T::MaxWriteOffPolicySize::get() as usize
+			]
+			.try_into()
+			.unwrap()
 		}
 	}
 }
