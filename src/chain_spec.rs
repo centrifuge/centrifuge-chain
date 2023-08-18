@@ -928,7 +928,6 @@ fn development_genesis(
 		ethereum: Default::default(),
 		evm: Default::default(),
 		block_rewards_base: Default::default(),
-		#[cfg(feature = "testnet-runtime")]
 		liquidity_rewards_base: Default::default(),
 	}
 }
