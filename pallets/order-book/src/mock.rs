@@ -54,6 +54,7 @@ frame_support::construct_runtime!(
 			System: frame_system,
 		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
+			Tokens: pallet_restricted_tokens,
 	  }
 );
 
@@ -138,11 +139,34 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_types! {
-		pub const OrderFeeKey: u8 = ORDER_FEEKEY;
+
+		pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Fungibles = OrmlTokens;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+	type PreCurrency = cfg_traits::Always;
+	type PreExtrTransfer = cfg_traits::Always;
+	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
+	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 parameter_types! {
-		pub const FeeCurrencyId: CurrencyId = CurrencyId::Native;
 		pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
@@ -169,7 +193,7 @@ impl order_book::Config for Runtime {
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
 	type SellRatio = cfg_types::fixed_point::Rate;
-	type TradeableAsset = OrmlTokens;
+	type TradeableAsset = Tokens;
 	type Weights = ();
 }
 
