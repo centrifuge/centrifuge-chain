@@ -12,13 +12,12 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use cfg_traits::fees::Fees;
 use cfg_types::{
 	fixed_point::Rate,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_benchmarking::*;
-use frame_support::traits::{fungibles::Mutate as FungiblesMutate, Currency, Get};
+use frame_support::traits::fungibles::Mutate as FungiblesMutate;
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect, Mutate};
 use sp_runtime::FixedPointNumber;
@@ -78,14 +77,6 @@ where
 	config_mocks();
 	let account_0: T::AccountId = account::<T::AccountId>("Account0", 1, 0);
 	let account_1: T::AccountId = account::<T::AccountId>("Account1", 2, 0);
-	T::ReserveCurrency::deposit_creating(
-		&account_0,
-		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u128,
-	);
-	T::ReserveCurrency::deposit_creating(
-		&account_1,
-		T::Fees::fee_value(T::OrderFeeKey::get()) * 4u128,
-	);
 	let asset_0 = CurrencyId::AUSD;
 	let asset_1 = CurrencyId::ForeignAsset(0);
 	prepare_asset_registry::<T>();
