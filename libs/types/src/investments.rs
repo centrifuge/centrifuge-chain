@@ -201,15 +201,13 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + Part
 		is_same_swap_direction: bool,
 	) -> DispatchResult {
 		if is_same_swap_direction
-			&& self.currency_in != other.currency_in
-			&& self.currency_out != other.currency_out
+			&& (self.currency_in != other.currency_in || self.currency_out != other.currency_out)
 		{
 			Err(DispatchError::Other(
 				"Swap currency mismatch for same swap direction",
 			))
 		} else if !is_same_swap_direction
-			&& self.currency_in != other.currency_out
-			&& self.currency_out != other.currency_in
+			&& (self.currency_in != other.currency_out || self.currency_out != other.currency_in)
 		{
 			Err(DispatchError::Other(
 				"Swap currency mismatch for opposite swap direction",
