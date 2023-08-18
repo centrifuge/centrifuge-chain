@@ -320,7 +320,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
-		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
 		/// Set a Domain's router
 		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
@@ -643,7 +643,7 @@ pub mod pallet {
 
 		/// Allow a currency to be used as a pool currency and to invest in a
 		/// pool on the domain derived from the given currency.
-		#[pallet::call_index(90)]
+		#[pallet::call_index(9)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		pub fn allow_pool_currency(
 			origin: OriginFor<T>,
@@ -682,6 +682,51 @@ pub mod pallet {
 				Domain::EVM(chain_id),
 				Message::AllowPoolCurrency { pool_id, currency },
 			)?;
+
+			Ok(())
+		}
+
+		/// Collect a user's foreign investment as if we had received a
+		/// `CollectInvest` message from another domain.
+		#[pallet::call_index(10)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn collect_foreign_investment_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			investor: T::AccountId,
+			currency: CurrencyIdOf<T>,
+			destination: DomainAddress,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+			let currency_index = currency.try_into()?;
+
+			Self::handle_collect_investment(
+				pool_id,
+				tranche_id,
+				investor,
+				currency_index,
+				destination,
+			)?;
+
+			Ok(())
+		}
+
+		/// Collect a user's foreign redemption as if we had received a
+		/// `CollectRedeem` message from another domain.
+		#[pallet::call_index(11)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn collect_foreign_redemption_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			investor: T::AccountId,
+			currency: CurrencyIdOf<T>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+			let currency_index = currency.try_into()?;
+
+			Self::handle_collect_redemption(pool_id, tranche_id, investor, currency_index)?;
 
 			Ok(())
 		}
@@ -800,7 +845,7 @@ pub mod pallet {
 
 	impl<T: Config> InboundQueue for Pallet<T>
 	where
-		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
 		type Message = MessageOf<T>;
 		type Sender = DomainAddress;
@@ -876,10 +921,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor.into(),
-					investor,
 					currency.into(),
 					amount,
-					sender.into(),
+					sender,
 				),
 				Message::CollectInvest {
 					pool_id,
@@ -890,9 +934,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor.into(),
-					investor,
 					currency.into(),
-					sender.into(),
+					sender,
 				),
 				Message::CollectRedeem {
 					pool_id,
@@ -925,9 +968,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor.into(),
-					investor,
 					currency.into(),
-					sender.into(),
+					sender,
 				),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;

@@ -30,7 +30,10 @@ use sp_runtime::{
 
 use crate::{pallet::Error, Config, GeneralCurrencyIndexOf, Message, MessageOf, Pallet};
 
-impl<T: Config> Pallet<T> {
+impl<T: Config> Pallet<T>
+where
+	T::AccountId: Into<[u8; 32]>,
+{
 	/// Executes a transfer from another domain exclusively for
 	/// non-tranche-tokens.
 	///
@@ -214,10 +217,9 @@ impl<T: Config> Pallet<T> {
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		investor_bytes: [u8; 32],
 		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
-		destination: Domain,
+		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		// TODO(@review): This is exactly `amount` as we can only decrement up to the
@@ -231,7 +233,7 @@ impl<T: Config> Pallet<T> {
 		T::Tokens::transfer(
 			invest_id.into(),
 			&investor,
-			&Domain::convert(destination.clone()),
+			&Domain::convert(destination.domain()),
 			tranche_tokens_payout,
 			false,
 		)?;
@@ -239,12 +241,12 @@ impl<T: Config> Pallet<T> {
 		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
 			pool_id,
 			tranche_id,
-			investor: investor_bytes,
+			investor: investor.clone().into(),
 			currency: currency_index.index,
 			tranche_tokens_payout: tranche_tokens_payout,
 		};
 
-		T::OutboundQueue::submit(investor, destination, message)?;
+		T::OutboundQueue::submit(investor, destination.domain(), message)?;
 
 		Ok(())
 	}
@@ -258,9 +260,8 @@ impl<T: Config> Pallet<T> {
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		investor_bytes: [u8; 32],
 		currency_index: GeneralCurrencyIndexOf<T>,
-		destination: Domain,
+		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let amount = T::ForeignInvestment::redemption(&investor, invest_id)?;
@@ -268,7 +269,6 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			tranche_id,
 			investor,
-			investor_bytes,
 			currency_index,
 			amount,
 			destination,
@@ -290,9 +290,8 @@ impl<T: Config> Pallet<T> {
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		investor_bytes: [u8; 32],
 		currency_index: GeneralCurrencyIndexOf<T>,
-		destination: Domain,
+		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 
@@ -304,7 +303,7 @@ impl<T: Config> Pallet<T> {
 		T::Tokens::transfer(
 			invest_id.into(),
 			&investor,
-			&Domain::convert(destination.clone()),
+			&Domain::convert(destination.domain()),
 			amount_tranche_tokens_payout,
 			false,
 		)?;
@@ -312,13 +311,13 @@ impl<T: Config> Pallet<T> {
 		let message: MessageOf<T> = Message::ExecutedCollectInvest {
 			pool_id,
 			tranche_id,
-			investor: investor_bytes,
+			investor: investor.clone().into(),
 			currency: currency_index.index,
 			currency_payout: amount_currency_payout,
 			tranche_tokens_payout: amount_tranche_tokens_payout,
 		};
 
-		T::OutboundQueue::submit(investor, destination, message)?;
+		T::OutboundQueue::submit(investor, destination.domain(), message)?;
 
 		Ok(())
 	}

@@ -62,7 +62,7 @@ where
 			currency_payout: status.amount_decreased,
 		};
 
-		T::OutboundQueue::submit(investor, domain_address.into(), message)?;
+		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
 
 		Ok(())
 	}
@@ -100,7 +100,7 @@ where
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
 		};
 
-		T::OutboundQueue::submit(investor, domain_address.into(), message)?;
+		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
 
 		Ok(())
 	}
