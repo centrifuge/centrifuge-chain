@@ -363,13 +363,6 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.expect("Session pallet's storage can be assimilated");
 
-		pallet_rewards::GenesisConfig::<Test, pallet_rewards::Instance1> {
-			currency_id: CurrencyId::Native,
-			amount: ExistentialDeposit::get(),
-		}
-		.assimilate_storage(&mut storage)
-		.expect("Rewards pallet's storage can be assimilated");
-
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
