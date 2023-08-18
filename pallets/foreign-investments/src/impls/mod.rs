@@ -98,11 +98,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		return_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
-		let unprocessed_invest_amount = T::Investment::investment(&who, investment_id.clone())?;
+		let unprocessed_invest_amount = T::Investment::investment(who, investment_id)?;
 		ensure!(
 			unprocessed_invest_amount == pre_state.get_investing_amount(),
 			DispatchError::Corruption
@@ -132,11 +132,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		return_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
-		let unprocessed_invest_amount = T::Investment::investment(&who, investment_id.clone())?;
+		let unprocessed_invest_amount = T::Investment::investment(who, investment_id)?;
 		ensure!(
 			unprocessed_invest_amount == pre_state.get_investing_amount(),
 			DispatchError::Corruption
@@ -164,11 +164,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<(), DispatchError> {
-		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
-		let unprocessed_redeem_amount = T::Investment::redemption(&who, investment_id.clone())?;
+		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id)?;
 		ensure!(
 			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
 			DispatchError::Corruption
@@ -192,11 +192,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
-		let unprocessed_redeem_amount = T::Investment::redemption(&who, investment_id.clone())?;
+		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id)?;
 		ensure!(
 			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
 			DispatchError::Corruption
@@ -248,7 +248,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		})?;
 
 		// Transition state to initiate swap from pool to return currency
-		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
 		let post_state = pre_state
 			.transition(RedeemTransition::Collect(SwapOf::<T> {
 				amount: collected.amount_collected,
@@ -350,14 +350,14 @@ impl<T: Config> Pallet<T> {
 		state: InvestState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		// Do first round of updates and forward state, swap as well as invest amount
-		match state.clone() {
+		match state {
 			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
 			InvestState::InvestmentOngoing { invest_amount } => {
-				InvestmentState::<T>::insert(who, investment_id, state.clone());
+				InvestmentState::<T>::insert(who, investment_id, state);
 
 				Ok((state, None, invest_amount))
 			},
@@ -365,21 +365,21 @@ impl<T: Config> Pallet<T> {
 			InvestState::ActiveSwapIntoReturnCurrency { swap } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state.clone());
+				InvestmentState::<T>::insert(who, investment_id, state);
 				Ok((state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			// We don't care about `done_amount` until swap into return is fulfilled
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state.clone());
+				InvestmentState::<T>::insert(who, investment_id, state);
 				Ok((state, Some(swap), invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
 				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
-				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
+				InvestmentState::<T>::insert(who, investment_id, new_state);
 
 				Ok((new_state, Some(swap), Zero::zero()))
 			},
@@ -387,7 +387,7 @@ impl<T: Config> Pallet<T> {
 				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
+				InvestmentState::<T>::insert(who, investment_id, new_state);
 
 				Ok((new_state, Some(swap), invest_amount))
 			},
@@ -402,7 +402,7 @@ impl<T: Config> Pallet<T> {
 				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount, done_swap.currency_in)?;
 
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
+				InvestmentState::<T>::insert(who, investment_id, new_state);
 
 				Ok((new_state, None, invest_amount))
 			},
@@ -471,7 +471,7 @@ impl<T: Config> Pallet<T> {
 		let invest_amount = state.get_invested_amount().unwrap_or_default();
 
 		// Do first round of updates and forward state as well as swap
-		match state.clone() {
+		match state {
 			RedeemState::NoState => {
 				RedemptionState::<T>::remove(who, investment_id);
 				Ok((Some(RedeemState::NoState), None))
@@ -595,7 +595,8 @@ impl<T: Config> Pallet<T> {
 	///   event can be deposited
 	/// * `Some(state)` indicates a `ForeignRedemptionUpdated` event can be
 	///   deposited
-	/// * `None` indicates no state mutation occurred	///
+	/// * `None` indicates no state mutation occurred
+	#[allow(clippy::type_complexity)]
 	#[transactional]
 	fn apply_collect_redeem_transition(
 		who: &T::AccountId,
@@ -678,6 +679,7 @@ impl<T: Config> Pallet<T> {
 	/// is required for emitting events.
 	///
 	/// NOTE: Must not call any other swap order updating function.
+	#[allow(clippy::type_complexity)]
 	#[transactional]
 	fn handle_swap_order(
 		who: &T::AccountId,
@@ -712,7 +714,7 @@ impl<T: Config> Pallet<T> {
 				if let Some(InvestState::NoState) = maybe_invest_state {
 					*current_invest_state = None;
 				} else if maybe_invest_state != *current_invest_state {
-					*current_invest_state = maybe_invest_state.clone();
+					*current_invest_state = maybe_invest_state;
 				}
 			});
 
@@ -890,7 +892,7 @@ impl<T: Config> Pallet<T> {
 			invest_swap_amount.max(redeem_swap_amount) - resolved_amount;
 
 		// Determine new invest state
-		let new_invest_state = match invest_state.clone() {
+		let new_invest_state = match invest_state {
 			// As redeem swap can only be into return currency, we need to delta on the opposite
 			// swap directions
 			InvestState::ActiveSwapIntoPoolCurrency { swap } => {
@@ -937,7 +939,7 @@ impl<T: Config> Pallet<T> {
 		.map_err(|e: DispatchError| e)?;
 
 		// Determine final swap amount and new redeem state
-		let (final_swap_amount, new_redeem_state) = match invest_state.clone() {
+		let (final_swap_amount, new_redeem_state) = match invest_state {
 			// Opposite swaps cancel out at least one (or if equal amounts) both swaps
 			InvestState::ActiveSwapIntoPoolCurrency { .. }
 			| InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { .. } => {

@@ -104,7 +104,7 @@ where
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
+			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		// Mint additional amount of payment currency
 		T::Tokens::mint_into(payment_currency, &investor, amount)?;
@@ -139,7 +139,7 @@ where
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
+			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
 			&investor,
@@ -243,7 +243,7 @@ where
 			tranche_id,
 			investor: investor.clone().into(),
 			currency: currency_index.index,
-			tranche_tokens_payout: tranche_tokens_payout,
+			tranche_tokens_payout,
 		};
 
 		T::OutboundQueue::submit(investor, destination.domain(), message)?;
@@ -297,7 +297,7 @@ where
 		let currency_index_u128 = currency_index.index;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
+			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		let ExecutedForeignCollectInvest::<T::Balance> {
 			amount_currency_payout,
@@ -351,7 +351,7 @@ where
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or_else(|| Error::<T>::PoolNotFound)?;
+			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		T::ForeignInvestment::collect_foreign_redemption(
 			&investor,

@@ -61,24 +61,24 @@ pub enum InvestState<
 	ActiveSwapIntoReturnCurrency { swap: Swap<Balance, Currency> },
 	/// The investment is not fully swapped into pool currency and thus split
 	/// into two parts:
-	///     * One part is still being swapped.
-	///     * The remainder is already waiting to be processed as investment.
+	/// * One part is still being swapped.
+	/// * The remainder is already waiting to be processed as investment.
 	ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 		swap: Swap<Balance, Currency>,
 		invest_amount: Balance,
 	},
 	/// The investment is split into two parts:
-	///     * One part is waiting to be processed as investment.
-	///     * The remainder is swapped back into the return currency as a result
-	///       of decreasing the invested amount before being processed.
+	/// * One part is waiting to be processed as investment.
+	/// * The remainder is swapped back into the return currency as a result of
+	///   decreasing the invested amount before being processed.
 	ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
 		swap: Swap<Balance, Currency>,
 		invest_amount: Balance,
 	},
 	/// The investment is split into two parts:
-	///     * The one part is swapping into pool currency.
-	///     * The remainder was swapped back into the return currency as a
-	///       result of decreasing the invested amount before being processed.
+	/// * The one part is swapping into pool currency.
+	/// * The remainder was swapped back into the return currency as a result of
+	///   decreasing the invested amount before being processed.
 	///
 	/// NOTE: This state can be transitioned into `ActiveSwapIntoPoolCurrency`
 	/// by applying the corresponding trigger to handle the return amount.
@@ -93,10 +93,10 @@ pub enum InvestState<
 		done_amount: Balance,
 	},
 	/// The investment is split into three parts:
-	///     * One part is currently swapping into the pool currency.
-	///     * The second is already waiting to be processed as investment.
-	///     * The remainder was swapped back into the return currency as a
-	///       result of decreasing the invested amount before being processed.
+	/// * One part is currently swapping into the pool currency.
+	/// * The second is already waiting to be processed as investment.
+	/// * The remainder was swapped back into the return currency as a result of
+	///   decreasing the invested amount before being processed.
 	///
 	/// NOTE: This state can be transitioned into
 	/// `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` by applying the
@@ -107,10 +107,10 @@ pub enum InvestState<
 		invest_amount: Balance,
 	},
 	/// The investment is split into three parts:
-	///     * One is waiting to be processed as investment.
-	///     * The second is swapped back into the return currency as a result of
-	///       decreasing the invested amount before being processed.
-	///     * The remainder was already swapped back into the return currency.
+	/// * One is waiting to be processed as investment.
+	/// * The second is swapped back into the return currency as a result of
+	///   decreasing the invested amount before being processed.
+	/// * The remainder was already swapped back into the return currency.
 	///
 	/// NOTE: This state should not be transitioned by applying the trigger for
 	/// the done part but wait until the active swap is fulfilled.
@@ -125,9 +125,9 @@ pub enum InvestState<
 	/// handle the return amount.
 	SwapIntoReturnDone { done_swap: Swap<Balance, Currency> },
 	/// The investment is split into two parts:
-	///     * One part is waiting to be processed as an investment
-	///     * The swapped back into the return currency as a result of
-	///       decreasing the invested amount before being processed.
+	/// * One part is waiting to be processed as an investment
+	/// * The swapped back into the return currency as a result of decreasing
+	///   the invested amount before being processed.
 	///
 	/// NOTE: This state can be transitioned into `InvestmentOngoing` by
 	/// applying the corresponding trigger to handle the return amount.
@@ -151,10 +151,10 @@ pub enum InvestTransition<
 	DecreaseInvestOrder(Swap<Balance, Currency>),
 	/// Implicitly derives `swap.currency_in` and `swap.currency_out` from
 	/// previous state:
-	///  	* If the previous state includes `ActiveSwapIntoPoolCurrency`,
-	///     `currency_in` is the pool currency.
-	/// 	* If the previous state includes `ActiveSwapIntoReturnCurrency`,
-	///    `currency_in` is the return currency.
+	/// * If the previous state includes `ActiveSwapIntoPoolCurrency`,
+	///   `currency_in` is the pool currency.
+	/// * If the previous state includes `ActiveSwapIntoReturnCurrency`,
+	///   `currency_in` is the return currency.
 	FulfillSwapOrder(Swap<Balance, Currency>),
 	EpochExecution(Balance),
 }
@@ -224,8 +224,8 @@ pub enum InnerRedeemState<
 	ActiveSwapIntoReturnCurrency { swap: Swap<Balance, Currency> },
 	/// The redemption was fully processed, collected and partially swapped into
 	/// the return currency. It is split into two parts:
-	///     * One part is swapping back into the return currency.
-	///     * The remainder was already swapped back.
+	/// * One part is swapping back into the return currency.
+	/// * The remainder was already swapped back.
 	ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,
@@ -238,75 +238,75 @@ pub enum InnerRedeemState<
 	/// similar to the corresponding state in `InvestState`.
 	SwapIntoReturnDone { done_swap: Swap<Balance, Currency> },
 	/// The redemption is split into two parts:
-	///     * One part is waiting to be processed as redemption.
-	///     * The remainder is swapping back into the return currency as a
-	///       result of processing and collecting beforehand.
+	/// * One part is waiting to be processed as redemption.
+	/// * The remainder is swapping back into the return currency as a result of
+	///   processing and collecting beforehand.
 	RedeemingAndActiveSwapIntoReturnCurrency {
 		redeem_amount: Balance,
 		swap: Swap<Balance, Currency>,
 	},
 	/// The redemption is split into two parts:
-	///     * One part is waiting to be processed as redemption.
-	///     * The remainder is swapping back into the return currency as a
-	///       result of processing and collecting beforehand.
+	/// * One part is waiting to be processed as redemption.
+	/// * The remainder is swapping back into the return currency as a result of
+	///   processing and collecting beforehand.
 	RedeemingAndSwapIntoReturnDone {
 		redeem_amount: Balance,
 		done_swap: Swap<Balance, Currency>,
 	},
 	/// The redemption is split into three parts:
-	/// 	* One part is waiting to be processed as redemption.
-	///     * The second is swapping back into the return currency as a result
-	///       of processing and collecting beforehand.
-	///     * The remainder was already swapped back.
+	/// * One part is waiting to be processed as redemption.
+	/// * The second is swapping back into the return currency as a result of
+	///   processing and collecting beforehand.
+	/// * The remainder was already swapped back.
 	RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 		redeem_amount: Balance,
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,
 	},
 	/// The redemption is split into three parts:
-	/// 	* One part is waiting to be processed as redemption.
-	/// 	* The second is waiting to be collected.
-	///     * The remainder is swapping back into the return currency as a
-	///       result of processing and collecting beforehand.
+	/// * One part is waiting to be processed as redemption.
+	/// * The second is waiting to be collected.
+	/// * The remainder is swapping back into the return currency as a result of
+	///   processing and collecting beforehand.
 	RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency {
 		redeem_amount: Balance,
 		swap: Swap<Balance, Currency>,
 	},
 	/// The redemption is split into three parts:
-	/// 	* One part is waiting to be processed as redemption.
-	/// 	* The second is waiting to be collected.
-	///     * The remainder was successfully swapped back into the return
-	///       currency as a result of processing and collecting beforehand.
+	/// * One part is waiting to be processed as redemption.
+	/// * The second is waiting to be collected.
+	/// * The remainder was successfully swapped back into the return currency
+	///   as a result of processing and collecting beforehand.
 	RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
 		redeem_amount: Balance,
 		done_swap: Swap<Balance, Currency>,
 	},
 	/// The redemption is split into four parts:
-	/// 	* One part is waiting to be processed as redemption.
-	/// 	* The second is waiting to be collected.
-	/// 	* The third part is swapping back into the return currency as a result
-	///    of processing and collecting beforehand
-	///     * The remainder was already swapped back.
+	/// * One part is waiting to be processed as redemption.
+	/// * The second is waiting to be collected.
+	/// * The third part is swapping back into the return currency as a result
+	///   of processing and collecting beforehand
+	/// * The remainder was already swapped back.
 	RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 		redeem_amount: Balance,
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,
 	},
 	/// The redemption is split into two parts:
-	///     * One part is waiting to be collected.
-	///     * The remainder is swapping back into the return currency as a
-	///       result of processing and collecting beforehand.
+	/// * One part is waiting to be collected.
+	/// * The remainder is swapping back into the return currency as a result of
+	///   processing and collecting beforehand.
 	CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap: Swap<Balance, Currency> },
 	/// The redemption is split into two parts:
-	///     * One part is waiting to be collected.
-	///     * The remainder was successfully swapped back into the return
-	///       currency as a result of processing and collecting beforehand.
+	/// * One part is waiting to be collected.
+	/// * The remainder was successfully swapped back into the return currency
+	///   as a result of processing and collecting beforehand.
 	CollectableRedemptionAndSwapIntoReturnDone { done_swap: Swap<Balance, Currency> },
 	/// The redemption is split into three parts:
-	/// 	* One part is waiting to be collected.
-	/// 	* The second is swapping back into the return currency as a result of
-	///    processing and collecting beforehand
-	///     * The remainder was already swapped back.
+	/// * One part is waiting to be collected.
+	/// * The second is swapping back into the return currency as a result of
+	///   processing and collecting beforehand
+	/// * The remainder was already swapped back.
 	CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,

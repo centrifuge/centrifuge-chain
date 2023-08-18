@@ -11,6 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use core::cmp::Ordering;
+
 use cfg_types::investments::Swap;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
@@ -34,13 +36,13 @@ where
 		transition: InvestTransition<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
 		match transition {
-			InvestTransition::IncreaseInvestOrder(swap) => Self::handle_increase(&self, swap),
-			InvestTransition::DecreaseInvestOrder(swap) => Self::handle_decrease(&self, swap),
+			InvestTransition::IncreaseInvestOrder(swap) => Self::handle_increase(self, swap),
+			InvestTransition::DecreaseInvestOrder(swap) => Self::handle_decrease(self, swap),
 			InvestTransition::FulfillSwapOrder(swap) => {
-				Self::handle_fulfilled_swap_order(&self, swap)
+				Self::handle_fulfilled_swap_order(self, swap)
 			}
 			InvestTransition::EpochExecution(amount_unprocessed) => {
-				Self::handle_epoch_execution(&self, amount_unprocessed)
+				Self::handle_epoch_execution(self, amount_unprocessed)
 			}
 		}
 	}
@@ -135,7 +137,7 @@ where
 	/// this can never occur!
 	fn handle_increase(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
-			return Self::handle_increase_non_foreign(&self, swap);
+			return Self::handle_increase_non_foreign(self, swap);
 		}
 
 		match &self {
@@ -164,40 +166,40 @@ where
 				let invest_amount = swap.amount.min(return_swap.amount);
 				let done_amount = swap.amount.min(return_swap.amount);
 
-				// pool swap amount is immediately invested and done amount increased equally
-				if swap.amount < return_swap.amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount < return_swap.amount
-								amount: return_swap.amount - swap.amount,
-								..*return_swap
+				match swap.amount.cmp(&return_swap.amount) {
+					// pool swap amount is immediately invested and done amount increased equally
+					Ordering::Equal => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount < return_swap.amount
+									amount: return_swap.amount - swap.amount,
+									..*return_swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
-				}
-				// swap amount is immediately invested and done amount increased equally
-				else if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						)
+					}
+					// swap amount is immediately invested and done amount increased equally
+					Ordering::Less => Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
 						done_swap: *return_swap,
 						invest_amount,
-					})
-				}
-				// return swap amount is immediately invested and done amount increased equally
-				else {
-					Ok(
-						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount > return_swap.amount
-								amount: swap.amount - return_swap.amount,
-								..swap
+					}),
+					// return swap amount is immediately invested and done amount increased equally
+					Ordering::Greater => {
+						Ok(
+							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount > return_swap.amount
+									amount: swap.amount - return_swap.amount,
+									..swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
+						)
+					}
 				}
 			}
 			// Bump pool swap
@@ -226,40 +228,40 @@ where
 					invest_amount.ensure_add(swap.amount.min(return_swap.amount))?;
 				let done_amount = swap.amount.min(return_swap.amount);
 
-				// pool swap amount is immediately invested and done amount increased equally
-				if swap.amount < return_swap.amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount < return_swap.amount
-								amount: return_swap.amount - swap.amount,
-								..*return_swap
+				match swap.amount.cmp(&return_swap.amount) {
+					// pool swap amount is immediately invested and done amount increased equally
+					Ordering::Equal => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount < return_swap.amount
+									amount: return_swap.amount - swap.amount,
+									..*return_swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
-				}
-				// swap amount is immediately invested and done amount increased equally
-				else if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+						)
+					}
+					// swap amount is immediately invested and done amount increased equally
+					Ordering::Less => Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
 						done_swap: *return_swap,
 						invest_amount,
-					})
-				}
-				// return swap amount is immediately invested and done amount increased equally
-				else {
-					Ok(
-						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount > return_swap.amount
-								amount: swap.amount - return_swap.amount,
-								..swap
+					}),
+					// return swap amount is immediately invested and done amount increased equally
+					Ordering::Greater => {
+						Ok(
+							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount > return_swap.amount
+									amount: swap.amount - return_swap.amount,
+									..swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
+						)
+					}
 				}
 			}
 			// Reduce amount of return by the increasing amount and increase investing as well as
@@ -273,42 +275,42 @@ where
 				let done_amount = invest_amount.ensure_add(*done_amount)?;
 
 				// pool swap amount is immediately invested and done amount increased equally
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+				match swap.amount.cmp(&return_swap.amount) {
+					Ordering::Equal => Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
 						done_swap: Swap {
 							amount: done_amount,
 							..*return_swap
 						},
 						invest_amount,
-					})
-				}
-				// swap amount is immediately invested and done amount increased equally
-				else if swap.amount < return_swap.amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount < return_swap.amount
-								amount: return_swap.amount - swap.amount,
-								..*return_swap
+					}),
+					// swap amount is immediately invested and done amount increased equally
+					Ordering::Less => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount < return_swap.amount
+									amount: return_swap.amount - swap.amount,
+									..*return_swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
-				}
-				// return swap amount is immediately invested and done amount increased equally
-				else {
-					Ok(
-						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount > return_swap.amount
-								amount: swap.amount - return_swap.amount,
-								..swap
+						)
+					}
+					// return swap amount is immediately invested and done amount increased equally
+					Ordering::Greater => {
+						Ok(
+							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe since swap.amount > return_swap.amount
+									amount: swap.amount - return_swap.amount,
+									..swap
+								},
+								done_amount,
+								invest_amount,
 							},
-							done_amount,
-							invest_amount,
-						},
-					)
+						)
+					}
 				}
 			}
 			// Reduce amount of return swap by increasing amount and increase investing as well as
@@ -326,19 +328,17 @@ where
 					.min(return_swap.amount)
 					.ensure_add(*done_amount)?;
 
-				// pool swap amount is immediately invested and done amount increased equally
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+				match swap.amount.cmp(&return_swap.amount) {
+					// pool swap amount is immediately invested and done amount increased equally
+					Ordering::Equal => Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
 						done_swap: Swap {
 							amount: done_amount,
 							..*return_swap
 						},
 						invest_amount,
-					})
-				}
-				// swap amount is immediately invested and done amount increased equally
-				else if swap.amount < return_swap.amount {
-					Ok(
+					}),
+					// swap amount is immediately invested and done amount increased equally
+					Ordering::Less => Ok(
 						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
 							swap: Swap {
 								// safe since swap.amount < return_swap.amount
@@ -348,11 +348,9 @@ where
 							done_amount,
 							invest_amount,
 						},
-					)
-				}
-				// return swap amount is immediately invested and done amount increased equally
-				else {
-					Ok(
+					),
+					// return swap amount is immediately invested and done amount increased equally
+					Ordering::Greater => Ok(
 						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
 							swap: Swap {
 								// safe since swap.amount > return_swap.amount
@@ -362,7 +360,7 @@ where
 							done_amount,
 							invest_amount,
 						},
-					)
+					),
 				}
 			}
 			_ => Err(DispatchError::Other(
@@ -396,7 +394,7 @@ where
 	/// this can never occur!
 	fn handle_decrease(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
-			return Self::handle_decrease_non_foreign(&self, swap);
+			return Self::handle_decrease_non_foreign(self, swap);
 		}
 
 		match &self {
@@ -408,38 +406,44 @@ where
 			},
 			// Increment return swap amount up to ongoing investment
 			InvestState::InvestmentOngoing { invest_amount } => {
-				if swap.amount < *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
-						swap,
-						invest_amount: *invest_amount - swap.amount,
-					})
-				} else if swap.amount == *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrency { swap })
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+				match swap.amount.cmp(invest_amount) {
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+							swap,
+							invest_amount: *invest_amount - swap.amount,
+						})
+					},
+					Ordering::Equal => {
+						Ok(Self::ActiveSwapIntoReturnCurrency { swap })
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+					}
 				}
 			},
 			// Increment return done amount up to amount of the active pool swap
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, false)?;
 
-				if swap.amount == pool_swap.amount {
-					Ok(Self::SwapIntoReturnDone { done_swap: swap })
-				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone {
-						swap: Swap {
-							// safe because swap.amount < pool_swap.amount
-							amount: pool_swap.amount - swap.amount,
-							..*pool_swap
-						},
-						done_amount: swap.amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+				match swap.amount.cmp(&pool_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::SwapIntoReturnDone { done_swap: swap })
+					},
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone {
+							swap: Swap {
+								// safe because swap.amount < pool_swap.amount
+								amount: pool_swap.amount - swap.amount,
+								..*pool_swap
+							},
+							done_amount: swap.amount,
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+					}
 				}
 			},
 			// Increment `return_done` up to pool swap amount and increment return swap amount up to ongoing investment
@@ -504,20 +508,23 @@ where
 				swap.ensure_currencies_match(return_swap, true)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
-				if swap.amount < *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
-						swap: Swap { amount, ..swap },
-						// safe because invest_amount > swap_amount
-						invest_amount: *invest_amount - swap.amount,
-					})
-				} else if swap.amount == *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrency {
-						swap: Swap { amount, ..swap },
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+				match swap.amount.cmp(invest_amount) {
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing {
+							swap: Swap { amount, ..swap },
+							// safe because invest_amount > swap_amount
+							invest_amount: *invest_amount - swap.amount,
+						})
+					},
+					Ordering::Equal => {
+						Ok(Self::ActiveSwapIntoReturnCurrency {
+							swap: Swap { amount, ..swap },
+						})
+					},
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+					},
 				}
 			},
 			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
@@ -528,24 +535,27 @@ where
 				swap.ensure_currencies_match(return_swap, true)?;
 				let amount = return_swap.amount.ensure_add(swap.amount)?;
 
-				if swap.amount < *invest_amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+				match swap.amount.cmp(invest_amount) {
+					Ordering::Less => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap { amount, ..swap },
+								done_amount: *done_amount,
+								// safe because swap.amount < invest_amount
+								invest_amount: *invest_amount - swap.amount,
+							},
+						)
+					},
+					Ordering::Equal => {
+						Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
 							swap: Swap { amount, ..swap },
 							done_amount: *done_amount,
-							// safe because swap.amount < invest_amount
-							invest_amount: *invest_amount - swap.amount,
-						},
-					)
-				} else if swap.amount == *invest_amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
-						swap: Swap { amount, ..swap },
-						done_amount: *done_amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
+					}
 				}
 			},
 			_ => Err(DispatchError::Other(
@@ -595,44 +605,50 @@ where
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, true)?;
 
-				if swap.amount == pool_swap.amount {
-					Ok(Self::InvestmentOngoing {
-						invest_amount: swap.amount,
-					})
-				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-						swap: Swap {
-							// safe because pool_swap.amount > swap.amount
-							amount: pool_swap.amount - swap.amount,
-							..swap
-						},
-						invest_amount: swap.amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+				match swap.amount.cmp(&pool_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::InvestmentOngoing {
+							invest_amount: swap.amount,
+						})
+					},
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+							swap: Swap {
+								// safe because pool_swap.amount > swap.amount
+								amount: pool_swap.amount - swap.amount,
+								..swap
+							},
+							invest_amount: swap.amount,
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			// Increment done_return by swapped amount
 			InvestState::ActiveSwapIntoReturnCurrency { swap: return_swap } => {
 				swap.ensure_currencies_match(return_swap, true)?;
 
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDone { done_swap: swap })
-				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
-						swap: Swap {
-							// safe because return_swap.amount > swap.amount
-							amount: return_swap.amount - swap.amount,
-							..swap
-						},
-						done_amount: swap.amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+				match swap.amount.cmp(&return_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::SwapIntoReturnDone { done_swap: swap })
+					}
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+							swap: Swap {
+								// safe because return_swap.amount > swap.amount
+								amount: return_swap.amount - swap.amount,
+								..swap
+							},
+							done_amount: swap.amount,
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			// Increment ongoing investment by swapped amount
@@ -643,21 +659,24 @@ where
 				swap.ensure_currencies_match(pool_swap, true)?;
 				let invest_amount = invest_amount.ensure_add(swap.amount)?;
 
-				if swap.amount == pool_swap.amount {
-					Ok(Self::InvestmentOngoing { invest_amount })
-				} else if swap.amount < pool_swap.amount {
-					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-						swap: Swap {
-							// safe because pool_swap.amount > swap.amount
-							amount: pool_swap.amount - swap.amount,
-							..swap
-						},
-						invest_amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+				match swap.amount.cmp(&pool_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::InvestmentOngoing { invest_amount })
+					},
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+							swap: Swap {
+								// safe because pool_swap.amount > swap.amount
+								amount: pool_swap.amount - swap.amount,
+								..swap
+							},
+							invest_amount,
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			// Increment done_return by swapped amount, leave invest amount untouched
@@ -667,27 +686,30 @@ where
 			} => {
 				swap.ensure_currencies_match(return_swap, true)?;
 
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
-						done_swap: swap,
-						invest_amount: *invest_amount,
-					})
-				} else if swap.amount < return_swap.amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe because return_swap.amount > swap.amount
-								amount: return_swap.amount - swap.amount,
-								..swap
-							},
-							done_amount: swap.amount,
+				match swap.amount.cmp(&return_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+							done_swap: swap,
 							invest_amount: *invest_amount,
-						},
-					)
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+						})
+					}
+					Ordering::Less => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe because return_swap.amount > swap.amount
+									amount: return_swap.amount - swap.amount,
+									..swap
+								},
+								done_amount: swap.amount,
+								invest_amount: *invest_amount,
+							},
+						)
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			// Increment done_return by swapped amount
@@ -698,26 +720,29 @@ where
 				swap.ensure_currencies_match(return_swap, true)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDone {
-						done_swap: Swap {
-							amount: done_amount,
-							..swap
-						},
-					})
-				} else if swap.amount < return_swap.amount {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
-						swap: Swap {
-							// safe because return_swap.amount > swap.amount
-							amount: return_swap.amount - swap.amount,
-							..swap
-						},
-						done_amount,
-					})
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+				match swap.amount.cmp(&return_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::SwapIntoReturnDone {
+							done_swap: Swap {
+								amount: done_amount,
+								..swap
+							},
+						})
+					}
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+							swap: Swap {
+								// safe because return_swap.amount > swap.amount
+								amount: return_swap.amount - swap.amount,
+								..swap
+							},
+							done_amount,
+						})
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			// Increment done_return by swapped amount, leave invest amount untouched
@@ -729,30 +754,33 @@ where
 				swap.ensure_currencies_match(return_swap, true)?;
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
-				if swap.amount == return_swap.amount {
-					Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
-						done_swap: Swap {
-							amount: done_amount,
-							..swap
-						},
-						invest_amount: *invest_amount,
-					})
-				} else if swap.amount < return_swap.amount {
-					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe because return_swap.amount > swap.amount
-								amount: return_swap.amount - swap.amount,
+				match swap.amount.cmp(&return_swap.amount) {
+					Ordering::Equal => {
+						Ok(Self::SwapIntoReturnDoneAndInvestmentOngoing {
+							done_swap: Swap {
+								amount: done_amount,
 								..swap
 							},
-							done_amount,
 							invest_amount: *invest_amount,
-						},
-					)
-				}
-				// should never occur but let's be safe here
-				else {
-					Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+						})
+					}
+					Ordering::Less => {
+						Ok(
+							Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing {
+								swap: Swap {
+									// safe because return_swap.amount > swap.amount
+									amount: return_swap.amount - swap.amount,
+									..swap
+								},
+								done_amount,
+								invest_amount: *invest_amount,
+							},
+						)
+					}
+					// should never occur but let's be safe here
+					Ordering::Greater => {
+						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+					}
 				}
 			},
 			_ => Err(DispatchError::Other(

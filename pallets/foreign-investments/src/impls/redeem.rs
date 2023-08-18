@@ -51,14 +51,14 @@ where
 		transition: RedeemTransition<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
 		match transition {
-			RedeemTransition::IncreaseRedeemOrder(amount) => Self::handle_increase(&self, amount),
-			RedeemTransition::DecreaseRedeemOrder(amount) => Self::handle_decrease(&self, amount),
+			RedeemTransition::IncreaseRedeemOrder(amount) => Self::handle_increase(self, amount),
+			RedeemTransition::DecreaseRedeemOrder(amount) => Self::handle_decrease(self, amount),
 			RedeemTransition::FulfillSwapOrder(swap) => {
-				Self::handle_fulfilled_swap_order(&self, swap)
+				Self::handle_fulfilled_swap_order(self, swap)
 			}
-			RedeemTransition::Collect(swap) => Self::handle_collect(&self, swap),
+			RedeemTransition::Collect(swap) => Self::handle_collect(self, swap),
 			RedeemTransition::EpochExecution(amount_unprocessed) => {
-				Self::handle_epoch_execution(&self, amount_unprocessed)
+				Self::handle_epoch_execution(self, amount_unprocessed)
 			}
 		}
 	}
@@ -133,7 +133,7 @@ where
 	) -> Result<Self, DispatchError> {
 		match self {
 			Self::InvestedAnd { inner, .. } | Self::NotInvestedAnd { inner } => Ok(
-				Self::swap_inner_state(&self, inner.fulfill_active_swap_amount(amount)?),
+				Self::swap_inner_state(self, inner.fulfill_active_swap_amount(amount)?),
 			),
 			_ => Err(DispatchError::Other(
 				"Cannot alter active swap amount for RedeemStates without swap",
@@ -437,7 +437,7 @@ where
 	/// * Else throws.
 	fn add_or_overwrite_redeem_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
 		if amount.is_zero() {
-			return Self::remove_redeem_amount(&self);
+			return Self::remove_redeem_amount(self);
 		}
 		match *self {
 			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
@@ -463,7 +463,7 @@ where
 	/// Throws if the the state does not include `Redeeming`.
 	fn set_existing_redeem_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
 		if amount.is_zero() {
-			return Self::remove_redeem_amount(&self);
+			return Self::remove_redeem_amount(self);
 		}
 		match *self {
 			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
@@ -601,7 +601,7 @@ where
 		);
 
 		if collected_swap.currency_in == collected_swap.currency_out {
-			return Self::transition_collect_non_foreign(&self, collected_swap);
+			return Self::transition_collect_non_foreign(self, collected_swap);
 		}
 
 		// A collectable redemption is considered to be _done_ iff the amount of pool
@@ -943,7 +943,7 @@ where
 				"Invalid redeem state when transitioning collect",
 			)),
 			RedeemState::NotInvestedAnd { inner } | RedeemState::InvestedAnd { inner, .. } => Ok(
-				Self::swap_inner_state(&self, inner.transition_collect(swap)?),
+				Self::swap_inner_state(self, inner.transition_collect(swap)?),
 			),
 		}
 	}
