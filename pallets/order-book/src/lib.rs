@@ -427,7 +427,7 @@ pub mod pallet {
 			buy_amount: T::Balance,
 		) -> DispatchResult {
 			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
-				Some(amount) if amount <= buy_amount => Ok(()).into(),
+				Some(amount) if amount <= buy_amount => Ok(()),
 				_ => Err(Error::<T>::InsufficientOrderSize)?,
 			}
 		}
