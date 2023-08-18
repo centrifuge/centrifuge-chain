@@ -732,10 +732,10 @@ pub trait TokenSwaps<Account> {
 	///     asset_out_id: CurrencyId::ForeignAsset(1),
 	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     max_price: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
-	///     min_fullfillment_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS
-	/// }
+	///     sell_rate_limit: Quantity::checked_from_rational(3u32,
+	/// 2u32).unwrap(),     min_fullfillment_amount: 100 *
+	/// FOREIGN_ASSET_0_DECIMALS,     max_sell_amount: 150 *
+	/// FOREIGN_ASSET_1_DECIMALS }
 	fn place_order(
 		account: Account,
 		currency_out: Self::CurrencyId,
@@ -773,7 +773,7 @@ pub trait TokenSwaps<Account> {
 	///     asset_out_id: CurrencyId::ForeignAsset(1),
 	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     max_price: Quantity::checked_from_integer(2u32).unwrap(),
+	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
 	///     min_fullfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
 	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
 	/// }
