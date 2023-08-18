@@ -1281,7 +1281,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Timer = Timestamp;
 	type Weight = u64;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_liquidity_rewards::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "testnet-runtime")]

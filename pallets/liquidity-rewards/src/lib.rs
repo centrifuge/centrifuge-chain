@@ -62,7 +62,7 @@ use sp_runtime::{
 	FixedPointOperand,
 };
 use sp_std::mem;
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 /// Type that contains the associated data of an epoch
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
