@@ -19,6 +19,7 @@ use cfg_types::investments::Swap;
 /// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
 
+pub mod errors;
 pub mod impls;
 pub mod types;
 
@@ -38,6 +39,7 @@ pub mod pallet {
 	use cfg_types::investments::{
 		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
 	};
+	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
@@ -303,33 +305,42 @@ pub mod pallet {
 	#[pallet::error]
 	// TODO: Add more errors
 	pub enum Error<T> {
-		/// Failed to retrieve the `InvestmentInfo` from the given
-		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
-		InvestmentInfoNotFound,
 		// TODO: Not used at the moment
 		/// Failed to retrieve the `RedemptionInfo` from the given
 		/// `TokenSwapOrderId`.
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		RedemptionInfoNotFound,
-		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
-		TokenSwapReasonNotFound,
-		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
-		ForeignInvestmentInfoNotFound,
 		// TODO: Not used at the moment
 		/// Failed to determine whether the corresponding currency can be either
 		/// used for payment or payout of an investment.
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		InvalidInvestmentCurrency,
+		/// Failed to retrieve the `TokenSwapReason` from the given
+		/// `TokenSwapOrderId`.
+		///
+		/// NOTE: We must ensure, this can practically never happen!
+		InvestmentInfoNotFound,
+		/// Failed to retrieve the `TokenSwapReason` from the given
+		/// `TokenSwapOrderId`.
+		///
+		/// NOTE: We must ensure, this can practically never happen!
+		TokenSwapReasonNotFound,
+		InvestError(InvestError),
+		RedeemError(RedeemError),
+	}
+
+	impl<T> From<InvestError> for Error<T> {
+		fn from(error: InvestError) -> Self {
+			Error::<T>::InvestError(error)
+		}
+	}
+
+	impl<T> From<RedeemError> for Error<T> {
+		fn from(error: RedeemError) -> Self {
+			Error::<T>::RedeemError(error)
+		}
 	}
 
 	#[pallet::call]
@@ -355,9 +366,14 @@ pub mod pallet {
 			if let Some(invest_state) = InvestmentState::<T>::get(&investor, investment_id) {
 				let amount_unprocessed_investment =
 					T::Investment::investment(&investor, investment_id)?;
-				let new_state = invest_state.transition(
-					types::InvestTransition::EpochExecution(amount_unprocessed_investment),
-				)?;
+				let new_state = invest_state
+					.transition(types::InvestTransition::EpochExecution(
+						amount_unprocessed_investment,
+					))
+					.map_err(|e| {
+						log::debug!("InvestState transition error: {:?}", e);
+						Error::<T>::from(InvestError::EpochExecution)
+					})?;
 				Pallet::<T>::apply_invest_state_transition(&investor, investment_id, new_state)?;
 			}
 			Ok(())
@@ -384,9 +400,14 @@ pub mod pallet {
 			if let Some(redeem_state) = RedemptionState::<T>::get(&investor, investment_id) {
 				let amount_unprocessed_redemption =
 					T::Investment::redemption(&investor, investment_id)?;
-				let new_state = redeem_state.transition(
-					types::RedeemTransition::EpochExecution(amount_unprocessed_redemption),
-				)?;
+				let new_state = redeem_state
+					.transition(types::RedeemTransition::EpochExecution(
+						amount_unprocessed_redemption,
+					))
+					.map_err(|e| {
+						log::debug!("RedeemState transition error: {:?}", e);
+						Error::<T>::from(RedeemError::EpochExecution)
+					})?;
 				Pallet::<T>::apply_redeem_state_transition(&investor, investment_id, new_state)?;
 			}
 

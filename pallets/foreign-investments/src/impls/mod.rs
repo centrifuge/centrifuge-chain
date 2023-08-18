@@ -26,6 +26,7 @@ use sp_runtime::{
 };
 
 use crate::{
+	errors::{InvestError, RedeemError},
 	types::{
 		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition,
 		TokenSwapReason,
@@ -58,14 +59,24 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 		match reason {
 			TokenSwapReason::Investment => {
 				let pre_state = InvestmentState::<T>::get(&info.owner, info.id).unwrap_or_default();
-				let post_state =
-					pre_state.transition(InvestTransition::FulfillSwapOrder(status))?;
+				let post_state = pre_state
+					.transition(InvestTransition::FulfillSwapOrder(status))
+					.map_err(|e| {
+						// Inner error holds finer granularity but should never occur
+						log::debug!("ForeignInvestment state transition error: {:?}", e);
+						Error::<T>::from(InvestError::FulfillSwapOrder)
+					})?;
 				Pallet::<T>::apply_invest_state_transition(&info.owner, info.id, post_state)
 			}
 			TokenSwapReason::Redemption => {
 				let pre_state = RedemptionState::<T>::get(&info.owner, info.id).unwrap_or_default();
-				let post_state =
-					pre_state.transition(RedeemTransition::FulfillSwapOrder(status))?;
+				let post_state = pre_state
+					.transition(RedeemTransition::FulfillSwapOrder(status))
+					.map_err(|e| {
+						// Inner error holds finer granularity but should never occur
+						log::debug!("ForeignInvestment state transition error: {:?}", e);
+						Error::<T>::from(RedeemError::FulfillSwapOrder)
+					})?;
 				Pallet::<T>::apply_redeem_state_transition(&info.owner, info.id, post_state)
 			}
 		}
@@ -97,11 +108,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			DispatchError::Corruption
 		);
 
-		let post_state = pre_state.transition(InvestTransition::IncreaseInvestOrder(Swap {
-			currency_in: pool_currency,
-			currency_out: return_currency,
-			amount,
-		}))?;
+		let post_state = pre_state
+			.transition(InvestTransition::IncreaseInvestOrder(Swap {
+				currency_in: pool_currency,
+				currency_out: return_currency,
+				amount,
+			}))
+			.map_err(|e| {
+				// Inner error holds finer granularity but should never occur
+				log::debug!("InvestState transition error: {:?}", e);
+				Error::<T>::from(InvestError::Increase)
+			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -125,11 +142,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			DispatchError::Corruption
 		);
 
-		let post_state = pre_state.transition(InvestTransition::DecreaseInvestOrder(Swap {
-			currency_in: pool_currency,
-			currency_out: return_currency,
-			amount,
-		}))?;
+		let post_state = pre_state
+			.transition(InvestTransition::DecreaseInvestOrder(Swap {
+				currency_in: pool_currency,
+				currency_out: return_currency,
+				amount,
+			}))
+			.map_err(|e| {
+				// Inner error holds finer granularity but should never occur
+				log::debug!("InvestState transition error: {:?}", e);
+				Error::<T>::from(InvestError::Decrease)
+			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -151,7 +174,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			DispatchError::Corruption
 		);
 
-		let post_state = pre_state.transition(RedeemTransition::IncreaseRedeemOrder(amount))?;
+		let post_state = pre_state
+			.transition(RedeemTransition::IncreaseRedeemOrder(amount))
+			.map_err(|e| {
+				// Inner error holds finer granularity but should never occur
+				log::debug!("RedeemState transition error: {:?}", e);
+				Error::<T>::from(RedeemError::Increase)
+			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -173,7 +202,9 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			DispatchError::Corruption
 		);
 
-		let post_state = pre_state.transition(RedeemTransition::DecreaseRedeemOrder(amount))?;
+		let post_state = pre_state
+			.transition(RedeemTransition::DecreaseRedeemOrder(amount))
+			.map_err(|_| Error::<T>::from(RedeemError::Decrease))?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(amount)
@@ -218,11 +249,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 		// Transition state to initiate swap from pool to return currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state = pre_state.transition(RedeemTransition::Collect(SwapOf::<T> {
-			amount: collected.amount_collected,
-			currency_in: return_currency,
-			currency_out: pool_currency,
-		}))?;
+		let post_state = pre_state
+			.transition(RedeemTransition::Collect(SwapOf::<T> {
+				amount: collected.amount_collected,
+				currency_in: return_currency,
+				currency_out: pool_currency,
+			}))
+			.map_err(|e| {
+				// Inner error holds finer granularity but should never occur
+				log::debug!("RedeemState transition error: {:?}", e);
+				Error::<T>::from(RedeemError::Collect)
+			})?;
 
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
@@ -826,7 +863,7 @@ impl<T: Config> Pallet<T> {
 		DispatchError,
 	> {
 		let last_reason = ForeignInvestmentInfo::<T>::get(swap_order_id)
-			.ok_or(Error::<T>::ForeignInvestmentInfoNotFound)?
+			.ok_or(Error::<T>::InvestmentInfoNotFound)?
 			.last_swap_reason
 			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
 
