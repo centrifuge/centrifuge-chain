@@ -19,7 +19,7 @@ use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
 	ExecutedForeignDecrease, Swap,
 };
-use frame_support::{traits::Get, transactional};
+use frame_support::{ensure, traits::Get, transactional};
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureAddAssign, Zero},
 	DispatchError, DispatchResult,
@@ -87,12 +87,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+
+		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
+		// removed before deploying to production
+		let unprocessed_invest_amount = T::Investment::investment(&who, investment_id.clone())?;
+		ensure!(
+			unprocessed_invest_amount == pre_state.get_investing_amount(),
+			DispatchError::Corruption
+		);
+
 		let post_state = pre_state.transition(InvestTransition::IncreaseInvestOrder(Swap {
 			currency_in: pool_currency,
 			currency_out: return_currency,
 			amount,
 		}))?;
-
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -107,12 +115,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id.clone()).unwrap_or_default();
+
+		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
+		// removed before deploying to production
+		let unprocessed_invest_amount = T::Investment::investment(&who, investment_id.clone())?;
+		ensure!(
+			unprocessed_invest_amount == pre_state.get_investing_amount(),
+			DispatchError::Corruption
+		);
+
 		let post_state = pre_state.transition(InvestTransition::DecreaseInvestOrder(Swap {
 			currency_in: pool_currency,
 			currency_out: return_currency,
 			amount,
 		}))?;
-
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -125,8 +141,16 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		amount: T::Balance,
 	) -> Result<(), DispatchError> {
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		let post_state = pre_state.transition(RedeemTransition::IncreaseRedeemOrder(amount))?;
 
+		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
+		// removed before deploying to production
+		let unprocessed_redeem_amount = T::Investment::redemption(&who, investment_id.clone())?;
+		ensure!(
+			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
+			DispatchError::Corruption
+		);
+
+		let post_state = pre_state.transition(RedeemTransition::IncreaseRedeemOrder(amount))?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -138,10 +162,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id.clone())?;
 		let pre_state = RedemptionState::<T>::get(who, investment_id.clone()).unwrap_or_default();
-		frame_support::ensure!(
-			unprocessed_redeem_amount == pre_state.get_redeeming_amount().unwrap_or_default(),
+
+		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
+		// removed before deploying to production
+		let unprocessed_redeem_amount = T::Investment::redemption(&who, investment_id.clone())?;
+		ensure!(
+			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
 			DispatchError::Corruption
 		);
 
@@ -403,7 +430,7 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		state: RedeemState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		let invest_amount = state.get_invest_amount().unwrap_or_default();
+		let invest_amount = state.get_invested_amount().unwrap_or_default();
 
 		// Do first round of updates and forward state as well as swap
 		match state.clone() {

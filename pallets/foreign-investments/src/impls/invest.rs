@@ -70,6 +70,19 @@ where
 			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { .. } => None,
 		}
 	}
+
+	/// Returns the `invest_amount` if existent, else zero.
+	pub(crate) fn get_investing_amount(&self) -> Balance {
+		match *self {
+			InvestState::InvestmentOngoing { invest_amount}  |
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { invest_amount, .. } |
+			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { invest_amount, .. } |
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { invest_amount, .. } |
+			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { invest_amount, .. } |
+			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { invest_amount, .. } => invest_amount,
+			_ => Balance::zero()
+		}
+	}
 }
 
 // Actual impl of transition
