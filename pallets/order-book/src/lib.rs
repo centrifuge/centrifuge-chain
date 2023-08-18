@@ -288,9 +288,12 @@ pub mod pallet {
 		/// Error when an account cannot reserve or transfer the amount
 		/// currently `0`.
 		InvalidBuyAmount,
+		/// Error when min order amount is invalid, currently `0`
+		InvalidMinimumFulfillment,
 		/// Error when an account specifies an invalid buy price -- currently
 		/// specified for trade, or amount to be fulfilled.
 		InsufficientAssetFunds,
+		/// Error when Max price ratio is invalid
 		InvalidMaxPrice,
 		/// Error when an order amount is too small
 		InsufficientOrderSize,
@@ -474,6 +477,11 @@ pub mod pallet {
 				buy_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidBuyAmount
 			);
+
+			ensure!(
+				min_fullfillment_amount != <T::Balance>::zero(),
+				Error::<T>::InvalidMinimumFulfillment
+			);
 			ensure!(
 				sell_rate_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMaxPrice
@@ -565,7 +573,11 @@ pub mod pallet {
 				Error::<T>::InvalidMaxPrice
 			);
 
-			// We want to ensure that spammers cannot
+			ensure!(
+				min_fullfillment_amount != <T::Balance>::zero(),
+				Error::<T>::InvalidMinimumFulfillment
+			);
+
 			ensure!(
 				buy_amount >= min_fullfillment_amount,
 				Error::<T>::InvalidBuyAmount

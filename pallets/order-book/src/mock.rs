@@ -16,7 +16,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU128, ConstU32, GenesisBuild},
 };
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key, GetByKey};
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
