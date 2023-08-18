@@ -36,6 +36,7 @@ pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::InvestmentId,
+	crate::types::TokenSwapReason,
 >;
 
 #[frame_support::pallet]
@@ -53,7 +54,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::{InvestState, RedeemState, TokenSwapReason};
+	use types::{InvestState, RedeemState};
 
 	use super::*;
 
@@ -175,14 +176,22 @@ pub mod pallet {
 
 		/// The hook type which acts upon a finalized investment decrement.
 		type ExecutedDecreaseInvestHook: StatusNotificationHook<
-			Id = ForeignInvestmentInfoOf<Self>,
+			Id = cfg_types::investments::ForeignInvestmentInfo<
+				Self::AccountId,
+				Self::InvestmentId,
+				(),
+			>,
 			Status = ExecutedForeignDecrease<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
 		/// The hook type which acts upon a finalized redemption collection.
 		type ExecutedCollectRedeemHook: StatusNotificationHook<
-			Id = ForeignInvestmentInfoOf<Self>,
+			Id = cfg_types::investments::ForeignInvestmentInfo<
+				Self::AccountId,
+				Self::InvestmentId,
+				(),
+			>,
 			Status = ExecutedForeignCollectRedeem<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
@@ -237,12 +246,12 @@ pub mod pallet {
 		RedeemState<T::Balance, T::CurrencyId>,
 	>;
 
-	/// Maps `TokenSwapOrders` to `InvestmentInfo` to implicitly enable mapping
-	/// to `InvestmentState`.
+	/// Maps `TokenSwapOrders` to `ForeignInvestmentInfo` to implicitly enable
+	/// mapping to `InvestmentState` and `RedemptionState`.
 	///
 	/// NOTE: The storage is immediately killed when the swap order is
-	/// completely fulfilled even if the investment might not be fully
-	/// processed.
+	/// completely fulfilled even if the corresponding investment and/or
+	/// redemption might not be fully processed.
 	#[pallet::storage]
 	pub(super) type ForeignInvestmentInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, ForeignInvestmentInfoOf<T>>;
@@ -280,23 +289,6 @@ pub mod pallet {
 		T::Balance,
 		ValueQuery,
 	>;
-
-	/// Maps a `TokenSwapOrderId` to the corresponding `TokenSwapReason` for
-	/// which it was last updated, i.e. `Investment` or `Redemption`.
-	///
-	/// As there can always be at most a single active token swap for any
-	/// `TokenSwapOrderId`, and thus also for any `(AccountId, InvestmentId)`
-	/// pair, we only need to keep track of the last reason when we act upon a
-	/// notified status update for any ongoing swap. Otherwise, it would be
-	/// impossible to know whether an invest or a redeem transition needs to be
-	/// applied.
-	///
-	/// NOTE: The storage is immediately killed when the swap order is
-	/// completely fulfilled even if the investment might not be fully
-	/// processed.
-	#[pallet::storage]
-	pub(super) type TokenSwapReasons<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, TokenSwapReason>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -340,6 +332,11 @@ pub mod pallet {
 		///
 		/// NOTE: We must ensure, this can practically never happen!
 		TokenSwapReasonNotFound,
+		/// Failed to retrieve the `TokenSwapReason` from the given
+		/// `TokenSwapOrderId`.
+		///
+		/// NOTE: We must ensure, this can practically never happen!
+		ForeignInvestmentInfoNotFound,
 		// TODO: Not used at the moment
 		/// Failed to determine whether the corresponding currency can be either
 		/// used for payment or payout of an investment.

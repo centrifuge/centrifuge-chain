@@ -591,9 +591,6 @@ where
 	fn transition_collect(
 		&self,
 		collected_swap: Swap<Balance, Currency>,
-		// TODO: Check whether we need to check this at another place, i.e. when transitioning
-		// redeem
-		// amount_unprocessed_redemption: Balance,
 	) -> Result<Self, DispatchError> {
 		ensure!(
 			self.get_active_swap()

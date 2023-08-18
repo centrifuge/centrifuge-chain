@@ -36,17 +36,18 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>;
+	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
 	type Status = ExecutedForeignDecrease<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>,
+		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
 		status: ExecutedForeignDecrease<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
 			owner: investor,
+			..
 		} = id;
 		let currency = Pallet::<T>::try_get_general_index(status.return_currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.return_currency)?;
@@ -73,17 +74,18 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>;
+	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
 	type Status = cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency>,
+		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
 		status: cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
 			owner: investor,
+			..
 		} = id;
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;

@@ -32,7 +32,6 @@ use crate::{
 	},
 	CollectedRedemptionTrancheTokens, Config, Error, Event, ForeignInvestmentInfo,
 	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds,
-	TokenSwapReasons,
 };
 
 mod invest;
@@ -52,7 +51,9 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 		status: SwapOf<T>,
 	) -> Result<(), DispatchError> {
 		let info = ForeignInvestmentInfo::<T>::get(id).ok_or(Error::<T>::InvestmentInfoNotFound)?;
-		let reason = TokenSwapReasons::<T>::get(id).ok_or(Error::<T>::TokenSwapReasonNotFound)?;
+		let reason = info
+			.last_swap_reason
+			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
 
 		match reason {
 			TokenSwapReason::Investment => {
@@ -632,8 +633,8 @@ impl<T: Config> Pallet<T> {
 	/// updates an existing swap order.
 	///
 	/// If the provided reason does not match the latest one stored in
-	/// `TokenSwapReasons`, also resolves the _merge conflict_ resulting from
-	/// updating and thus overwriting opposite swaps. See
+	/// `ForeignInvestmentInfo`, also resolves the _merge conflict_ resulting
+	/// from updating and thus overwriting opposite swaps. See
 	/// [Self::handle_concurrent_swap_orders] for details. If this results in
 	/// either an altered invest state and/or an altered redeem state, the
 	/// corresponding storage is updated and the new states returned. The latter
@@ -724,14 +725,12 @@ impl<T: Config> Pallet<T> {
 		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
 			T::TokenSwaps::cancel_order(swap_order_id)?;
 			ForeignInvestmentInfo::<T>::remove(swap_order_id);
-			TokenSwapReasons::<T>::remove(swap_order_id);
 		}
 		Ok(())
 	}
 
 	/// Sets up `TokenSwapOrderIds` and `ForeignInvestmentInfo` storages, if the
-	/// order does not exist yet. Moreover, updates `TokenSwapReasons` pointer
-	/// to the provided value.
+	/// order does not exist yet.
 	///
 	/// NOTE: Must only be called in `handle_swap_order`.
 	#[transactional]
@@ -754,10 +753,16 @@ impl<T: Config> Pallet<T> {
 					T::DefaultTokenSwapSellPriceLimit::get(),
 					T::DefaultTokenMinFulfillmentAmount::get(),
 				)?;
-				TokenSwapReasons::<T>::insert(swap_order_id, reason);
+				ForeignInvestmentInfo::<T>::insert(
+					swap_order_id,
+					ForeignInvestmentInfoOf::<T> {
+						owner: who.clone(),
+						id: investment_id,
+						last_swap_reason: Some(reason),
+					},
+				);
 			}
 			_ => {
-				// TODO: How to handle potential failure?
 				let swap_order_id = T::TokenSwaps::place_order(
 					who.clone(),
 					swap.currency_out,
@@ -772,9 +777,9 @@ impl<T: Config> Pallet<T> {
 					ForeignInvestmentInfoOf::<T> {
 						owner: who.clone(),
 						id: investment_id,
+						last_swap_reason: Some(reason),
 					},
 				);
-				TokenSwapReasons::<T>::insert(swap_order_id, reason);
 			}
 		};
 		Ok(())
@@ -820,8 +825,10 @@ impl<T: Config> Pallet<T> {
 		),
 		DispatchError,
 	> {
-		let last_reason =
-			TokenSwapReasons::<T>::get(swap_order_id).ok_or(Error::<T>::TokenSwapReasonNotFound)?;
+		let last_reason = ForeignInvestmentInfo::<T>::get(swap_order_id)
+			.ok_or(Error::<T>::ForeignInvestmentInfoNotFound)?
+			.last_swap_reason
+			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
 
 		// Exit early if both reasons match, i.e. we would not override any opposite
 		// swap order
@@ -954,9 +961,11 @@ impl<T: Config> Pallet<T> {
 		return_currency: T::CurrencyId,
 	) -> DispatchResult {
 		T::ExecutedDecreaseInvestHook::notify_status_change(
-			ForeignInvestmentInfoOf::<T> {
+			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
 				owner: who.clone(),
 				id: investment_id,
+				// not relevant here
+				last_swap_reason: None,
 			},
 			ExecutedForeignDecrease {
 				amount_decreased,
@@ -976,9 +985,11 @@ impl<T: Config> Pallet<T> {
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
 		T::ExecutedCollectRedeemHook::notify_status_change(
-			ForeignInvestmentInfoOf::<T> {
+			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
 				owner: who.clone(),
 				id: investment_id,
+				// not relevant here
+				last_swap_reason: None,
 			},
 			ExecutedForeignCollectRedeem {
 				currency,

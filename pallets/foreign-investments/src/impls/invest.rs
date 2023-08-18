@@ -577,6 +577,11 @@ where
 	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
+
+	// FIXME(@review): This handler assumes partial fulfillments and 1-to-1
+	// conversion of amounts, i.e., 100 `return_currency` equals 100
+	// `pool_currency`. If we use the CurrencyConverter, the amounts could be off as
+	// the `CurrencyConverter` is decoupled from the `TokenSwaps` trait.
 	fn handle_fulfilled_swap_order(
 		&self,
 		swap: Swap<Balance, Currency>,
@@ -585,6 +590,7 @@ where
 			InvestState::NoState | InvestState::InvestmentOngoing { .. } => Err(DispatchError::Other(
 				"Invalid invest state when transitioning a fulfilled order",
 			)),
+
 			// Increment ongoing investment by swapped amount
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, true)?;

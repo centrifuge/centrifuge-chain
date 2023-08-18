@@ -156,9 +156,10 @@ pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
 /// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ForeignInvestmentInfo<AccountId, InvestmentId> {
+pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 	pub owner: AccountId,
 	pub id: InvestmentId,
+	pub last_swap_reason: Option<TokenSwapReason>,
 }
 
 /// A simple representation of a currency swap.
