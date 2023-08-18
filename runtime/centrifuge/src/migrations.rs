@@ -15,7 +15,11 @@ use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
 use crate::Runtime;
 
-pub type UpgradeCentrifuge1020 = (asset_registry::CrossChainTransferabilityMigration,);
+pub type UpgradeCentrifuge1020 = (
+	asset_registry::CrossChainTransferabilityMigration,
+	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+);
 
 mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
