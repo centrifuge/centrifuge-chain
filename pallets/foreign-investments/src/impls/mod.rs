@@ -198,7 +198,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		// TODO: Needs to be translated from `pool_currency` to `return_currency`
 		T::Investment::investment(who, investment_id)
 	}
 
@@ -206,7 +205,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		// TODO: Needs to be translated from `pool_currency` to `return_currency`
 		T::Investment::redemption(who, investment_id)
 	}
 

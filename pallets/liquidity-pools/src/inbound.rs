@@ -149,6 +149,26 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Cancels an invest order by decreasing by the entire unprocessed
+	/// investment amount.
+	///
+	/// On success, a swap  back into the provided return currency initiated.
+	///
+	/// The finalization of this call (fulfillment of the swap) is assumed to be
+	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
+	/// which burns the corresponding amount in return currency and dispatches
+	/// `ExecutedDecreaseInvestOrder`.
+	pub fn handle_cancel_invest_order(
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
+		investor: T::AccountId,
+		currency_index: GeneralCurrencyIndexOf<T>,
+	) -> DispatchResult {
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let amount = T::ForeignInvestment::investment(&investor, invest_id)?;
+		Self::handle_decrease_invest_order(pool_id, tranche_id, investor, currency_index, amount)
+	}
+
 	/// Increases an existing redemption order of the investor.
 	///
 	/// Transfers the increase redemption amount from the holdings of the
@@ -157,7 +177,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Assumes that the amount of tranche tokens has been locked in the
 	/// `DomainLocator` account of the origination domain beforehand.
-	pub fn handle_increase_redemption(
+	pub fn handle_increase_redeem_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
@@ -190,7 +210,7 @@ impl<T: Config> Pallet<T> {
 	/// NOTE: In contrast to investments, redemption decrements happen
 	/// fully synchronously as they can only be called in between increasing a
 	/// redemption and its (full) processing.
-	pub fn handle_decrease_redemption(
+	pub fn handle_decrease_redeem_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
@@ -227,6 +247,32 @@ impl<T: Config> Pallet<T> {
 		T::OutboundQueue::submit(investor, destination, message)?;
 
 		Ok(())
+	}
+
+	/// Cancels an existing redemption order of the investor by decreasing the
+	/// redemption by the entire unprocessed amount.
+	///
+	/// Initiates a return `ExecutedDecreaseRedemption` message to refund the
+	/// decreased amount on the source domain.
+	pub fn handle_cancel_redeem_order(
+		pool_id: T::PoolId,
+		tranche_id: T::TrancheId,
+		investor: T::AccountId,
+		investor_bytes: [u8; 32],
+		currency_index: GeneralCurrencyIndexOf<T>,
+		destination: Domain,
+	) -> DispatchResult {
+		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let amount = T::ForeignInvestment::redemption(&investor, invest_id)?;
+		Self::handle_decrease_redeem_order(
+			pool_id,
+			tranche_id,
+			investor,
+			investor_bytes,
+			currency_index,
+			amount,
+			destination,
+		)
 	}
 
 	/// Collect the results of a user's invest orders for the given investment

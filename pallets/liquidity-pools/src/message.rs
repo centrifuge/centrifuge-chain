@@ -278,6 +278,42 @@ where
 		/// How many tranche tokens were actually redeemed
 		tranche_tokens_payout: Balance,
 	},
+	/// Cancel an unprocessed invest order for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Special instance of `DecreaseInvestOrder` where the amount is chosen
+	/// properly to cancel out the ongoing investment. Required for ERC4646.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Directionality: Centrifuge <- EVM Domain.
+	CancelInvestOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		investor: Address,
+		currency: u128,
+	},
+	/// Reduce the redeem order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Special instance of `DecreaseRedeemOrder` where the amount is chosen
+	/// properly to cancel out the ongoing redemption. Required for ERC4646.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Directionality: Centrifuge <- EVM Domain.
+	CancelRedeemOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		investor: Address,
+		currency: u128,
+	},
 }
 
 impl<
@@ -315,6 +351,8 @@ impl<
 			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
 			Self::ExecutedCollectInvest { .. } => 17,
 			Self::ExecutedCollectRedeem { .. } => 18,
+			Self::CancelInvestOrder { .. } => 19,
+			Self::CancelRedeemOrder { .. } => 20,
 		}
 	}
 }
@@ -576,6 +614,34 @@ impl<
 					encode_be(tranche_tokens_payout),
 				],
 			),
+			Message::CancelInvestOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
+			),
+			Message::CancelRedeemOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
+			),
 		}
 	}
 
@@ -697,6 +763,18 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			19 => Ok(Self::CancelInvestOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			20 => Ok(Self::CancelRedeemOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -958,6 +1036,19 @@ mod tests {
 	}
 
 	#[test]
+	fn cancel_invest_order() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelInvestOrder {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				investor: default_address_32(),
+				currency: TOKEN_ID,
+			},
+			"130000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
 	fn increase_redeem_order() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::IncreaseRedeemOrder {
@@ -982,6 +1073,19 @@ mod tests {
 				amount: AMOUNT,
 			},
 			"0c0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
+	#[test]
+	fn cancel_redeem_order() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelRedeemOrder {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				investor: default_address_32(),
+				currency: TOKEN_ID,
+			},
+			"140000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
