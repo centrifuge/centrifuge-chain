@@ -13,7 +13,10 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _, UpdateState};
+use cfg_traits::{
+	investments::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _},
+	UpdateState,
+};
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},

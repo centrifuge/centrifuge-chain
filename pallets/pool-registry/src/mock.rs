@@ -12,7 +12,9 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
+use cfg_traits::{
+	investments::OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState,
+};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, Role},

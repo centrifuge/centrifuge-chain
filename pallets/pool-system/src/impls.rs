@@ -446,7 +446,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
-	use cfg_traits::{Investment, PoolBenchmarkHelper};
+	use cfg_traits::{investments::Investment, PoolBenchmarkHelper};
 	use cfg_types::{
 		pools::TrancheMetadata,
 		tokens::{CurrencyId, CustomMetadata},

@@ -11,8 +11,13 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_types::tokens::{CurrencyId, CustomMetadata};
+use cfg_traits::StatusNotificationHook;
+use cfg_types::{
+	investments::Swap,
+	tokens::{CurrencyId, CustomMetadata},
+};
 use frame_support::{
+	pallet_prelude::DispatchResult,
 	parameter_types,
 	traits::{ConstU32, ConstU64, GenesisBuild},
 };
@@ -145,6 +150,17 @@ parameter_types! {
 		pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
+pub struct DummyHook;
+impl StatusNotificationHook for DummyHook {
+	type Error = sp_runtime::DispatchError;
+	type Id = u64;
+	type Status = Swap<ForeignCurrencyBalance, CurrencyId>;
+
+	fn notify_status_change(_id: u64, _status: Self::Status) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
@@ -152,6 +168,7 @@ impl order_book::Config for Runtime {
 	// type Balance = Balance;
 	type Fees = Fees;
 	type ForeignCurrencyBalance = ForeignCurrencyBalance;
+	type FulfilledOrderHook = DummyHook;
 	type OrderFeeKey = OrderFeeKey;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;

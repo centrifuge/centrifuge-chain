@@ -12,8 +12,8 @@
 use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as TrancheCurrencyT,
+	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
+	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 };
 pub use cfg_types::fixed_point::Rate;
 use cfg_types::{

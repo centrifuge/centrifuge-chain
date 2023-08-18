@@ -10,6 +10,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+#![allow(clippy::map_identity)]
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector},
@@ -851,6 +852,7 @@ impl<T: Config> Pallet<T> {
 	///   into the opposite direction, i.e. `ActiveSwapIntoReturnCurrency`, we
 	///   need to resolve the delta between both swap order amounts and update
 	///   the states accordingly.
+	#[allow(clippy::type_complexity)]
 	fn handle_concurrent_swap_orders(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,

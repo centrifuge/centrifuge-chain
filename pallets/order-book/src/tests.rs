@@ -26,7 +26,7 @@ fn create_order_v1_works() {
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				max_sell_amount: 1000
 			})
 		);
@@ -40,7 +40,7 @@ fn create_order_v1_works() {
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				max_sell_amount: 1000
 			})
 		);
@@ -110,7 +110,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				max_sell_amount: 1000
 			})
 		);
@@ -283,7 +283,7 @@ fn place_order_works() {
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				max_sell_amount: 1000
 			})
 		);
@@ -298,7 +298,7 @@ fn place_order_works() {
 				buy_amount: 100,
 				initial_buy_amount: 100,
 				price: 10,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				max_sell_amount: 1000
 			})
 		);
@@ -331,7 +331,7 @@ fn place_order_works() {
 				currency_in: CurrencyId::AUSD,
 				currency_out: CurrencyId::ForeignAsset(0),
 				buy_amount: 100,
-				min_fullfillment_amount: 100,
+				min_fulfillment_amount: 100,
 				sell_price_limit: 10
 			})
 		);
@@ -360,7 +360,7 @@ fn place_order_consolidates_reserve_when_fee_matches_out() {
 				buy_amount: 10,
 				initial_buy_amount: 10,
 				price: 2,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				max_sell_amount: 20
 			})
 		);
@@ -381,7 +381,7 @@ fn place_order_consolidates_reserve_when_fee_matches_out() {
 				currency_in: CurrencyId::ForeignAsset(0),
 				currency_out: CurrencyId::Native,
 				buy_amount: 10,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				sell_price_limit: 2
 			})
 		);
@@ -560,7 +560,7 @@ fn update_order_works() {
 				buy_amount: 110,
 				initial_buy_amount: 100,
 				price: 20,
-				min_fullfillment_amount: 110,
+				min_fulfillment_amount: 110,
 				max_sell_amount: 2200
 			})
 		);
@@ -575,7 +575,7 @@ fn update_order_works() {
 				buy_amount: 110,
 				initial_buy_amount: 100,
 				price: 20,
-				min_fullfillment_amount: 110,
+				min_fulfillment_amount: 110,
 				max_sell_amount: 2200
 			})
 		);
@@ -604,7 +604,7 @@ fn update_order_works() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 110,
-				min_fullfillment_amount: 110,
+				min_fulfillment_amount: 110,
 				sell_price_limit: 20
 			})
 		);
@@ -634,7 +634,7 @@ fn update_order_consolidates_reserve_increase_when_asset_out_fee_currency() {
 				buy_amount: 10,
 				initial_buy_amount: 10,
 				price: 3,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				max_sell_amount: 30
 			})
 		);
@@ -660,7 +660,7 @@ fn update_order_consolidates_reserve_increase_when_asset_out_fee_currency() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 10,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				sell_price_limit: 3
 			})
 		);
@@ -690,7 +690,7 @@ fn update_order_consolidates_reserve_decrease_when_asset_out_fee_currency() {
 				buy_amount: 10,
 				initial_buy_amount: 10,
 				price: 1,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				max_sell_amount: 10
 			})
 		);
@@ -716,7 +716,7 @@ fn update_order_consolidates_reserve_decrease_when_asset_out_fee_currency() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 10,
-				min_fullfillment_amount: 10,
+				min_fulfillment_amount: 10,
 				sell_price_limit: 1
 			})
 		);

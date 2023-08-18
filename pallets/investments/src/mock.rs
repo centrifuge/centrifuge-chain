@@ -15,7 +15,7 @@ use std::ops::Add;
 
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
-use cfg_traits::{OrderManager, PreConditions};
+use cfg_traits::{investments::OrderManager, PreConditions};
 use cfg_types::{
 	fixed_point::Rate,
 	investments::InvestmentAccount,

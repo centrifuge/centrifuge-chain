@@ -105,7 +105,7 @@ macro_rules! impl_mock_accountant {
 				pub payment_currency: $currency_id,
 			}
 
-			impl<Tokens> cfg_traits::InvestmentAccountant<$account_id> for $name<Tokens>
+			impl<Tokens> cfg_traits::investments::InvestmentAccountant<$account_id> for $name<Tokens>
 			where
 				Tokens: frame_support::traits::tokens::fungibles::Mutate<$account_id>
 					+ frame_support::traits::tokens::fungibles::Transfer<$account_id>
@@ -166,7 +166,7 @@ macro_rules! impl_mock_accountant {
 				}
 			}
 
-			impl cfg_traits::InvestmentProperties<$account_id> for InvestmentInfo {
+			impl cfg_traits::investments::InvestmentProperties<$account_id> for InvestmentInfo {
 				type Currency = $currency_id;
 				type Id = $investment_id;
 
