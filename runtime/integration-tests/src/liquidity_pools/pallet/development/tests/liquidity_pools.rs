@@ -29,13 +29,14 @@ use ::xcm::{
 };
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::{
+	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 	liquidity_pools::{Codec, InboundQueue},
-	OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
+	Permissions as _, PoolMutate,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::Rate,
-	investments::InvestmentAccount,
+	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
 	pools::TrancheMetadata,
@@ -59,6 +60,7 @@ use frame_support::{
 use hex::FromHex;
 use liquidity_pools_gateway_routers::XcmDomain as GatewayXcmDomain;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::{
 	encoded_contract_call, Error::UnauthorizedTransfer, Message, ParachainId, Router, XcmDomain,
 };
@@ -1305,6 +1307,7 @@ fn inbound_collect_invest_order() {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
+			currency: general_currency_index(currency_id),
 		};
 
 		// Execute byte message
@@ -1364,11 +1367,11 @@ fn inbound_collect_invest_order() {
 					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
 					processed_orders: vec![0],
 					who: investor.clone(),
-					collection: pallet_investments::InvestCollection::<Balance> {
+					collection: InvestCollection::<Balance> {
 						payout_investment_invest: amount,
 						remaining_investment_invest: 0,
 					},
-					outcome: pallet_investments::CollectOutcome::FullyCollected,
+					outcome: CollectOutcome::FullyCollected,
 				}
 				.into()
 		}));
@@ -1542,6 +1545,7 @@ fn inbound_collect_redeem_order() {
 			pool_id,
 			tranche_id: default_tranche_id(pool_id),
 			investor: investor.clone().into(),
+			currency: general_currency_index(currency_id),
 		};
 
 		// Execute byte message
@@ -1595,11 +1599,11 @@ fn inbound_collect_redeem_order() {
 					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
 					processed_orders: vec![0],
 					who: investor.clone(),
-					collection: pallet_investments::RedeemCollection::<Balance> {
+					collection: RedeemCollection::<Balance> {
 						payout_investment_redeem: amount,
 						remaining_investment_redeem: 0,
 					},
-					outcome: pallet_investments::CollectOutcome::FullyCollected,
+					outcome: CollectOutcome::FullyCollected,
 				}
 				.into()
 		}));
