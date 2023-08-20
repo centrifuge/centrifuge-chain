@@ -1,14 +1,20 @@
-use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use frame_support::traits::{ConstU128, ConstU16, ConstU32, ConstU64};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+use crate::pallet as pallet_foreign_investments;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type AccountId = u64;
+pub type Balance = u128;
+pub type CurrencyId = u16;
+pub type TrancheId = u32;
+pub type PoolId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -17,6 +23,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
+		ForeignInvestment: pallet_foreign_investments,
 	}
 );
 
@@ -45,4 +52,22 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = ConstU16<42>;
 	type SystemWeightInfo = ();
 	type Version = ();
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyConverter = mock_it!();
+	type CurrencyId = CurrencyId;
+	type DefaultTokenMinFulfillmentAmount = ConstU128<1>;
+	type DefaultTokenSwapSellPriceLimit = ConstU128<1>;
+	type ExecutedCollectRedeemHook = mock_it!();
+	type ExecutedDecreaseInvestHook = mock_it!();
+	type Investment = mock_it!();
+	type InvestmentId = mock_it!();
+	type PoolId = PoolId;
+	type RuntimeEvent = RuntimeEvent;
+	type TokenSwapOrderId = u64;
+	type TokenSwaps = mock_it!();
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
 }

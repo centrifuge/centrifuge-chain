@@ -121,13 +121,7 @@ pub mod pallet {
 			+ core::fmt::Debug;
 
 		/// The tranche id type required for the investment identifier
-		type TrancheId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<[u8; 16]>;
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The investment identifying type required for the investment type
 		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
