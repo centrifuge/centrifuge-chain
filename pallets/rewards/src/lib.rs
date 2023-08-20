@@ -143,24 +143,12 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>
-	where
-		BalanceOf<T, I>: MaybeSerializeDeserialize,
-	{
-		pub currency_id: T::CurrencyId,
-		pub amount: BalanceOf<T, I>,
-	}
+	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>(core::marker::PhantomData<(T, I)>);
 
 	#[cfg(feature = "std")]
-	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I>
-	where
-		BalanceOf<T, I>: MaybeSerializeDeserialize,
-	{
+	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
 		fn default() -> Self {
-			Self {
-				currency_id: Default::default(),
-				amount: Default::default(),
-			}
+			Self(core::marker::PhantomData)
 		}
 	}
 
@@ -171,9 +159,9 @@ pub mod pallet {
 	{
 		fn build(&self) {
 			T::Currency::mint_into(
-				self.currency_id,
+				T::RewardCurrency::get(),
 				&T::PalletId::get().into_account_truncating(),
-				self.amount,
+				T::Currency::minimum_balance(T::RewardCurrency::get()),
 			)
 			.expect("Should not fail to mint ED for rewards sovereign pallet account");
 		}
