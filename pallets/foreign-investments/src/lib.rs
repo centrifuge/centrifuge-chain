@@ -103,13 +103,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency type of transferrable tokens
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
 		type PoolId: Member
