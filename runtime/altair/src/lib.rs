@@ -1249,7 +1249,6 @@ impl pallet_block_rewards::Config for Runtime {
 
 // Liquidity rewards
 
-#[cfg(feature = "testnet-runtime")]
 parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
@@ -1259,7 +1258,6 @@ parameter_types! {
 	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
 }
 
-#[cfg(feature = "testnet-runtime")]
 impl pallet_rewards::mechanism::gap::Config for Runtime {
 	type Balance = Balance;
 	type DistributionId = u32;
@@ -1268,7 +1266,6 @@ impl pallet_rewards::mechanism::gap::Config for Runtime {
 	type Rate = FixedI128;
 }
 
-#[cfg(feature = "testnet-runtime")]
 impl pallet_liquidity_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Balance = Balance;
@@ -1284,7 +1281,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = weights::pallet_liquidity_rewards::WeightInfo<Runtime>;
 }
 
-#[cfg(feature = "testnet-runtime")]
 impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
@@ -1795,11 +1791,8 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
-		#[cfg(feature = "testnet-runtime")]
 		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
-		#[cfg(feature = "testnet-runtime")]
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
-		#[cfg(feature = "testnet-runtime")]
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
 
 		// XCM
