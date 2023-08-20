@@ -1,6 +1,7 @@
 mod change_guard;
 mod data;
 mod fees;
+mod investment;
 mod liquidity_pools;
 mod liquidity_pools_gateway_routers;
 mod permissions;
@@ -13,6 +14,7 @@ mod write_off_policy;
 pub use change_guard::pallet_mock_change_guard;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
+pub use investment::pallet as pallet_mock_investment;
 pub use liquidity_pools::{pallet as pallet_mock_liquidity_pools, MessageMock};
 pub use liquidity_pools_gateway_routers::{pallet as pallet_mock_routers, RouterMock};
 pub use permissions::pallet as pallet_mock_permissions;
