@@ -19,7 +19,9 @@ use sp_std::vec::Vec;
 
 use crate::Runtime;
 
-pub type UpgradeAltair1028 = (
+// NOTE: Do not remove before Altair release, even if we might bump spec version
+// as this is most likely related to Algol
+pub type UpgradeAltair1030 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
 	pool_system::MigrateAUSDPools,
@@ -58,7 +60,7 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version > 1028 {
+			if VERSION.spec_version > 1030 {
 				return Weight::zero();
 			}
 
