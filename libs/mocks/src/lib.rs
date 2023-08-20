@@ -7,6 +7,7 @@ mod liquidity_pools_gateway_routers;
 mod permissions;
 mod pools;
 mod rewards;
+mod status_notification;
 mod time;
 mod token_swaps;
 mod try_convert;
@@ -21,6 +22,7 @@ pub use liquidity_pools_gateway_routers::{pallet as pallet_mock_routers, RouterM
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
 pub use rewards::pallet as pallet_mock_rewards;
+pub use status_notification::pallet as pallet_mock_status_notification;
 pub use time::pallet as pallet_mock_time;
 pub use token_swaps::pallet as pallet_mock_token_swaps;
 pub use try_convert::pallet as pallet_mock_try_convert;
