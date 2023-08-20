@@ -305,29 +305,16 @@ pub mod pallet {
 	#[pallet::error]
 	// TODO: Add more errors
 	pub enum Error<T> {
-		// TODO: Not used at the moment
-		/// Failed to retrieve the `RedemptionInfo` from the given
-		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
-		RedemptionInfoNotFound,
-		// TODO: Not used at the moment
-		/// Failed to determine whether the corresponding currency can be either
-		/// used for payment or payout of an investment.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
 		InvalidInvestmentCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
 		InvestmentInfoNotFound,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
-		///
-		/// NOTE: We must ensure, this can practically never happen!
 		TokenSwapReasonNotFound,
+		/// Failed to transition the `InvestState`.
 		InvestError(InvestError),
+		/// Failed to transition the `RedeemState.`
 		RedeemError(RedeemError),
 	}
 

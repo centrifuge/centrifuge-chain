@@ -17,18 +17,29 @@ use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 pub enum InvestError {
+	/// Failed to increase the investment.
 	Increase,
+	/// Failed to decrease the unprocessed investment.
 	Decrease,
+	/// Failed to transition after fulfilled swap order.
 	FulfillSwapOrder,
+	/// Failed to transition a (partially) processed investment after an epoch
+	/// was executed.
 	EpochExecution,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 
 pub enum RedeemError {
+	/// Failed to increase the redemption.
 	Increase,
+	/// Failed to collect the redemption.
 	Collect,
+	/// Failed to decrease the unprocessed redemption.
 	Decrease,
-	EpochExecution,
+	/// Failed to transition after fulfilled swap order.
 	FulfillSwapOrder,
+	/// Failed to transition a (partially) processed redemption after an epoch
+	/// was executed.
+	EpochExecution,
 }
