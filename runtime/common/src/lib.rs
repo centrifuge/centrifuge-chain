@@ -494,7 +494,9 @@ pub mod foreign_investments {
 	use frame_support::pallet_prelude::PhantomData;
 	use sp_runtime::{traits::Get, DispatchError};
 
-	/// Simple stable coin amount converter from one stable to another.
+	/// Simple stable coin amount converter from one stable to another. Provides
+	/// a synchronous estimation of the amount of one stable currency in
+	/// another, e.g., the worth of 100 EthWrappedDai in USDC.
 	///
 	/// For now, converts any `ForeignAsset` into another with the configured
 	/// rate.
@@ -513,42 +515,18 @@ pub mod foreign_investments {
 		type Currency = CurrencyId;
 		type Error = DispatchError;
 
-		fn foreign_to_pool(
-			currency_foreign: Self::Currency,
-			amount_foreign: Self::Balance,
-			currency_pool: Self::Currency,
+		fn stable_to_stable(
+			currency_out: Self::Currency,
+			amount_out: Self::Balance,
+			currency_in: Self::Currency,
 		) -> Result<Self::Balance, Self::Error> {
-			match (currency_foreign, currency_pool) {
-				(out, inc) if out == inc => Ok(amount_foreign),
+			match (currency_out, currency_in) {
+				(out, inc) if out == inc => Ok(amount_out),
 				// TODO(future): Conversion must be limited to asset ids which reflect stable coins
 				(CurrencyId::ForeignAsset(_out_id), CurrencyId::ForeignAsset(_in_id)) => {
 					// NOTE: Rounding down to favor system side
 					RateForeignToPool::get()
-						.checked_mul_int_floor(amount_foreign)
-						.ok_or(DispatchError::Arithmetic(
-							sp_arithmetic::ArithmeticError::Overflow,
-						))
-				}
-				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
-			}
-		}
-
-		fn pool_to_foreign(
-			currency_foreign: Self::Currency,
-			amount_foreign: Self::Balance,
-			currency_pool: Self::Currency,
-		) -> Result<Self::Balance, Self::Error> {
-			match (currency_foreign, currency_pool) {
-				(out, inc) if out == inc => Ok(amount_foreign),
-				// TODO(future): Conversion must be limited to asset ids which reflect stable coins
-				(CurrencyId::ForeignAsset(_out_id), CurrencyId::ForeignAsset(_in_id)) => {
-					// NOTE: Rounding down to favor system side
-					RateForeignToPool::get()
-						.reciprocal_floor()
-						.ok_or(DispatchError::Arithmetic(
-							sp_arithmetic::ArithmeticError::DivisionByZero,
-						))?
-						.checked_mul_int_floor(amount_foreign)
+						.checked_mul_int_floor(amount_out)
 						.ok_or(DispatchError::Arithmetic(
 							sp_arithmetic::ArithmeticError::Overflow,
 						))

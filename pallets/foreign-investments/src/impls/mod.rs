@@ -226,7 +226,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
 
 		let amount_currency_payout =
-			T::CurrencyConverter::pool_to_foreign(pool_currency, amount_payment, return_currency)?;
+			T::CurrencyConverter::stable_to_stable(pool_currency, amount_payment, return_currency)?;
 
 		Ok(ExecutedForeignCollectInvest {
 			amount_currency_payout,

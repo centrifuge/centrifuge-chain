@@ -532,18 +532,11 @@ pub trait SimpleCurrencyConversion {
 	type Balance;
 	type Error;
 
-	/// Estimate the worth of a foreign stable currency in a particular pool
+	/// Estimate the worth of an outgoing currency amount in the incoming
 	/// currency.
-	fn foreign_to_pool(
-		currency_foreign: Self::Currency,
-		amount_foreign: Self::Balance,
-		currency_pool: Self::Currency,
-	) -> Result<Self::Balance, Self::Error>;
-
-	/// Estimate the worth of a pool currency in a particular foreign currency.
-	fn pool_to_foreign(
-		currency_pool: Self::Currency,
-		amount_pool: Self::Balance,
-		currency_foreign: Self::Currency,
+	fn stable_to_stable(
+		currency_out: Self::Currency,
+		amount_out: Self::Balance,
+		currency_in: Self::Currency,
 	) -> Result<Self::Balance, Self::Error>;
 }
