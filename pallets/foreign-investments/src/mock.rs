@@ -1,4 +1,4 @@
-use cfg_mocks::pallet_mock_investment;
+use cfg_mocks::{pallet_mock_investment, pallet_mock_token_swaps};
 use cfg_traits::investments::TrancheCurrency;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{ConstU128, ConstU16, ConstU32, ConstU64};
@@ -22,7 +22,7 @@ pub type AccountId = u64;
 pub type Balance = u128;
 pub type TrancheId = u32;
 pub type PoolId = u64;
-pub type TokenSwapOrderId = u64;
+pub type OrderId = u64;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum CurrencyId {
@@ -63,7 +63,8 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
-		Investment: pallet_mock_investment,
+		MockInvestment: pallet_mock_investment,
+		MockTokenSwaps: pallet_mock_token_swaps,
 		ForeignInvestment: pallet_foreign_investments,
 	}
 );
@@ -101,6 +102,12 @@ impl pallet_mock_investment::Config for Runtime {
 	type InvestmentId = InvestmentId;
 }
 
+impl pallet_mock_token_swaps::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type OrderId = OrderId;
+}
+
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyConverter = mock_it!();
@@ -109,12 +116,12 @@ impl pallet_foreign_investments::Config for Runtime {
 	type DefaultTokenSwapSellPriceLimit = ConstU128<1>;
 	type ExecutedCollectRedeemHook = mock_it!();
 	type ExecutedDecreaseInvestHook = mock_it!();
-	type Investment = Investment;
+	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
 	type PoolId = PoolId;
 	type RuntimeEvent = RuntimeEvent;
-	type TokenSwapOrderId = TokenSwapOrderId;
-	type TokenSwaps = mock_it!();
+	type TokenSwapOrderId = OrderId;
+	type TokenSwaps = MockTokenSwaps;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }

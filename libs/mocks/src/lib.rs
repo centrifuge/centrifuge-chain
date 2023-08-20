@@ -8,6 +8,7 @@ mod permissions;
 mod pools;
 mod rewards;
 mod time;
+mod token_swaps;
 mod try_convert;
 mod write_off_policy;
 
@@ -21,6 +22,7 @@ pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
 pub use rewards::pallet as pallet_mock_rewards;
 pub use time::pallet as pallet_mock_time;
+pub use token_swaps::pallet as pallet_mock_token_swaps;
 pub use try_convert::pallet as pallet_mock_try_convert;
 pub use write_off_policy::pallet as pallet_mock_write_off_policy;
 
