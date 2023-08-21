@@ -37,7 +37,7 @@ pub type UpgradeAltair1030 = (
 	>,
 );
 
-/// The Upgrade set for Algol - it exludes the migrations already executed in
+/// The Upgrade set for Algol - it excludes the migrations already executed in
 /// the side releases that only landed on Algol (1028 & 1029) but not yet on
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
