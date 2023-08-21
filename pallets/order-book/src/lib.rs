@@ -300,6 +300,10 @@ pub mod pallet {
 		/// Error when an order is placed with a currency that is not in the
 		/// asset registry.
 		InvalidAssetId,
+		/// Error when a trade is using an invalid trading pair.
+		/// Currently can happen when there is not a minimum order size
+		/// defined for the trading pair.
+		InvalidTradingPair,
 		/// Error when an operation is attempted on an order id that is not in
 		/// storage.
 		OrderNotFound,
@@ -448,6 +452,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
 				Some(amount) if amount <= buy_amount => Ok(()),
+				None => Err(Error::<T>::InvalidTradingPair)?,
 				_ => Err(Error::<T>::InsufficientOrderSize)?,
 			}
 		}
@@ -606,8 +611,6 @@ pub mod pallet {
 			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
 				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 				Self::is_valid_min_order(order.asset_in_id, order.asset_out_id, buy_amount)?;
-
-				// let max_sell_amount = buy_amount.ensure_mul(sell_rate_limit)?;
 
 				let max_sell_amount = Self::convert_with_ratio(
 					order.asset_in_id,

@@ -35,8 +35,10 @@ pub(crate) const ACCOUNT_1: u64 = 0x2;
 // which will likely be set by governance.
 pub(crate) const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 pub(crate) const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+pub(crate) const FOREIGN_CURRENCY_NO_MIN_ID: CurrencyId = CurrencyId::ForeignAsset(3);
 pub(crate) const CURRENCY_USDT_DECIMALS: u128 = 1_000_000;
 pub(crate) const CURRENCY_AUSD_DECIMALS: u128 = 1_000_000_000_000;
+pub(crate) const CURRENCY_NO_MIN_DECIMALS: u128 = 1_000_000_000_000;
 pub(crate) const CURRENCY_NATIVE_DECIMALS: Balance = CFG;
 
 const DEFAULT_DEV_MIN_ORDER: u128 = 5;
@@ -216,6 +218,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				[
 					(idx, DEV_AUSD_CURRENCY_ID, 1000 * CURRENCY_AUSD_DECIMALS),
 					(idx, DEV_USDT_CURRENCY_ID, 1000 * CURRENCY_USDT_DECIMALS),
+					(
+						idx,
+						FOREIGN_CURRENCY_NO_MIN_ID,
+						1000 * CURRENCY_NO_MIN_DECIMALS,
+					),
 					(idx, CurrencyId::Native, 100 * CURRENCY_NATIVE_DECIMALS),
 				]
 			})
@@ -239,6 +246,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			),
 			(
 				DEV_USDT_CURRENCY_ID,
+				AssetMetadata {
+					decimals: 6,
+					name: "MOCK TOKEN_B".as_bytes().to_vec(),
+					symbol: "MOCK_B".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			),
+			(
+				FOREIGN_CURRENCY_NO_MIN_ID,
 				AssetMetadata {
 					decimals: 6,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),

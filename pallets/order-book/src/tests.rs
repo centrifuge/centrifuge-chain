@@ -404,6 +404,23 @@ fn place_order_requires_min_buy() {
 }
 
 #[test]
+fn place_order_requires_pair_with_defined_min() {
+	new_test_ext().execute_with(|| {
+		assert_err!(
+			OrderBook::place_order(
+				ACCOUNT_0,
+				DEV_AUSD_CURRENCY_ID,
+				FOREIGN_CURRENCY_NO_MIN_ID,
+				10 * CURRENCY_AUSD_DECIMALS,
+				Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				1 * CURRENCY_AUSD_DECIMALS,
+			),
+			Error::<Runtime>::InvalidTradingPair
+		);
+	})
+}
+
+#[test]
 fn place_order_requires_non_zero_min_fulfillment() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
