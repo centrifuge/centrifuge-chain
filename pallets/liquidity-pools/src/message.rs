@@ -1099,7 +1099,7 @@ mod tests {
 			LiquidityPoolsMessage::ScheduleUpgrade {
 				contract: vec_to_fixed_array(default_address_20().to_vec()),
 			},
-			"131231231231231231231231231231231231231231000000000000000000000000",
+			"131231231231231231231231231231231231231231",
 		)
 	}
 
