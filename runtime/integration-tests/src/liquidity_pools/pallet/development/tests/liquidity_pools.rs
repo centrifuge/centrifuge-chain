@@ -1172,11 +1172,7 @@ fn schedule_upgrade() {
 
 		// Failing because the treasury has no funds
 		assert_noop!(
-			LiquidityPools::schedule_upgrade(
-				RuntimeOrigin::signed(BOB.into()),
-				MOONBEAM_EVM_CHAIN_ID,
-				[7; 20]
-			),
+			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
 			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
 		);
 
@@ -1190,7 +1186,7 @@ fn schedule_upgrade() {
 
 		// Now it finally works
 		assert_ok!(LiquidityPools::schedule_upgrade(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::root(),
 			MOONBEAM_EVM_CHAIN_ID,
 			[7; 20]
 		));
