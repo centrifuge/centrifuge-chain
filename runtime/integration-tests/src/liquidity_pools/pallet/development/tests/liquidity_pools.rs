@@ -1170,7 +1170,7 @@ fn schedule_upgrade() {
 			BadOrigin
 		);
 
-		// Failing because Root (?) or the LiquidityPools pallet account has no funds
+		// Failing because the treasury has no funds
 		assert_noop!(
 			LiquidityPools::schedule_upgrade(
 				RuntimeOrigin::signed(BOB.into()),
