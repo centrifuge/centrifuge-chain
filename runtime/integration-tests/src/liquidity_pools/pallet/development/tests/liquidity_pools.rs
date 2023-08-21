@@ -1180,7 +1180,7 @@ fn schedule_upgrade() {
 			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
 		);
 
-		// The LiquidityPools pallet account needs GLRM to cover the fees of sending
+		// The treasury needs GLRM to cover the fees of sending
 		// this message
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
