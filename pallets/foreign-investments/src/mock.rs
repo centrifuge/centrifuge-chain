@@ -1,4 +1,7 @@
-use cfg_mocks::{pallet_mock_investment, pallet_mock_status_notification, pallet_mock_token_swaps};
+use cfg_mocks::{
+	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_status_notification,
+	pallet_mock_token_swaps,
+};
 use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
 	ExecutedForeignCollectRedeem, ExecutedForeignDecrease, ForeignInvestmentInfo,
@@ -70,6 +73,7 @@ frame_support::construct_runtime!(
 		MockTokenSwaps: pallet_mock_token_swaps,
 		MockDecreaseInvestHook: pallet_mock_status_notification::<Instance1>,
 		MockCollectRedeemHook: pallet_mock_status_notification::<Instance2>,
+		MockCurrencyConversion: pallet_mock_currency_conversion,
 		ForeignInvestment: pallet_foreign_investments,
 	}
 );
@@ -125,9 +129,14 @@ impl pallet_mock_status_notification::Config<Hook2> for Runtime {
 	type Status = ExecutedForeignCollectRedeem<Balance, CurrencyId>;
 }
 
+impl pallet_mock_currency_conversion::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+}
+
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
-	type CurrencyConverter = mock_it!();
+	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
 	type DefaultTokenMinFulfillmentAmount = ConstU128<1>;
 	type DefaultTokenSwapSellPriceLimit = ConstU128<1>;

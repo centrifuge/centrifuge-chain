@@ -1,4 +1,5 @@
 mod change_guard;
+mod currency_conversion;
 mod data;
 mod fees;
 mod investment;
@@ -14,6 +15,7 @@ mod try_convert;
 mod write_off_policy;
 
 pub use change_guard::pallet_mock_change_guard;
+pub use currency_conversion::pallet as pallet_mock_currency_conversion;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use investment::pallet as pallet_mock_investment;
