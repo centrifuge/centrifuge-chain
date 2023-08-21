@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_types::investments::Swap;
-use frame_support::ensure;
+use frame_support::{dispatch::fmt::Debug, ensure};
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
 	ArithmeticError, DispatchError,
@@ -38,8 +38,8 @@ use crate::types::{
 
 impl<Balance, Currency> RedeemState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Solely apply state machine to transition one `RedeemState` into another
 	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Redemption-States
@@ -176,8 +176,8 @@ where
 
 impl<Balance, Currency> InnerRedeemState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Returns the potentially existing active swap into return currency:
 	/// * If the state includes `ActiveSwapIntoReturnCurrency`, it returns the
@@ -420,7 +420,6 @@ where
 			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap }),
 			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
 			// Throw for states without `Redeeming`
-			// TODO: Create pallet error NotRedeeming
 			_ => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
 		}
 	}
@@ -787,8 +786,8 @@ where
 // Actual impl of transition
 impl<Balance, Currency> RedeemState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
 	/// redeem state diagram:

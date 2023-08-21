@@ -86,7 +86,8 @@ use crate::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::utils::{
-			get_default_moonbeam_native_token_location, DEFAULT_MOONBEAM_LOCATION,
+			get_default_moonbeam_native_token_location, liquidity_pools_transferable_multilocation,
+			DEFAULT_MOONBEAM_LOCATION,
 		},
 	},
 	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
@@ -1183,7 +1184,7 @@ fn inbound_increase_invest_order() {
 }
 
 #[test]
-fn inbound_decrease_invest_order() {
+fn inbound_decrease_invest_order_same_currencies() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -1217,6 +1218,21 @@ fn inbound_decrease_invest_order() {
 			amount: decrease_amount,
 		};
 
+		// Expect failure if transferability is disabled since this is required for
+		// preparing the `ExecutedDecreaseInvest` message.
+		assert_noop!(
+			LiquidityPools::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
+		);
+		utils::enable_liquidity_pool_transferability(
+			currency_id,
+			Some(Some(utils::liquidity_pools_transferable_multilocation(
+				MOONBEAM_EVM_CHAIN_ID,
+				// Value of evm_address is irrelevant here
+				[1u8; 20],
+			))),
+		);
+
 		// Execute byte message
 		assert_ok!(LiquidityPools::submit(
 			utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
@@ -1231,18 +1247,22 @@ fn inbound_decrease_invest_order() {
 			),
 			final_amount
 		);
-		// The transfer does not happen right away, so should still be in investor's
-		// wallet
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &investor),
-			decrease_amount
-		);
+		// Since the investment was done in the pool currency, the decrement happens
+		// synchronously and thus it must be burned from investor's holdings
+		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
 		assert!(System::events().iter().any(|e| e.event
 			== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
 				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
 				submitted_at: 0,
 				who: investor.clone(),
 				amount: final_amount
+			}
+			.into()));
+		assert!(System::events().iter().any(|e| e.event
+			== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+				currency_id,
+				who: investor.clone(),
+				amount: decrease_amount
 			}
 			.into()));
 		assert_eq!(
@@ -1646,9 +1666,11 @@ mod utils {
 	use liquidity_pools_gateway_routers::{
 		ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmTransactInfo,
 	};
+	use orml_asset_registry::Metadata;
 
 	use super::*;
 	use crate::{
+		chain::centrifuge::development,
 		liquidity_pools::pallet::development::tests::register_ausd,
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	};
@@ -1673,33 +1695,6 @@ mod utils {
 			parents: 1,
 			interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
 		}
-	}
-
-	/// Returns a `VersionedMultiLocation` that can be converted into
-	/// `LiquidityPoolsWrappedToken` which is required for cross chain asset
-	/// registration and transfer.
-	pub fn liquidity_pools_transferable_multilocation(
-		chain_id: u64,
-		address: [u8; 20],
-	) -> VersionedMultiLocation {
-		VersionedMultiLocation::V3(MultiLocation {
-			parents: 0,
-			interior:
-				X3(
-					PalletInstance(
-						<DevelopmentRuntime as frame_system::Config>::PalletInfo::index::<
-							LiquidityPools,
-						>()
-						.expect("LiquidityPools should have pallet index")
-						.saturated_into(),
-					),
-					GlobalConsensus(NetworkId::Ethereum { chain_id }),
-					AccountKey20 {
-						network: None,
-						key: address,
-					},
-				),
-		})
 	}
 
 	pub fn set_test_domain_router(
@@ -1834,6 +1829,59 @@ mod utils {
 			],
 			currency_id,
 			currency_decimals,
+		));
+	}
+
+	/// Returns a `VersionedMultiLocation` that can be converted into
+	/// `LiquidityPoolsWrappedToken` which is required for cross chain asset
+	/// registration and transfer.
+	pub fn liquidity_pools_transferable_multilocation(
+		chain_id: u64,
+		address: [u8; 20],
+	) -> VersionedMultiLocation {
+		VersionedMultiLocation::V3(MultiLocation {
+			parents: 0,
+			interior:
+				X3(
+					PalletInstance(
+						<DevelopmentRuntime as frame_system::Config>::PalletInfo::index::<
+							LiquidityPools,
+						>()
+						.expect("LiquidityPools should have pallet index")
+						.saturated_into(),
+					),
+					GlobalConsensus(NetworkId::Ethereum { chain_id }),
+					AccountKey20 {
+						network: None,
+						key: address,
+					},
+				),
+		})
+	}
+
+	/// Enables `LiquidityPoolsTransferable` in the custom asset metadata for
+	/// the given currency_id. If provided, also updates the location which is
+	/// required for LiquidityPoolsWrappedToken conversions.
+	pub fn enable_liquidity_pool_transferability(
+		currency_id: CurrencyId,
+		maybe_location: Option<Option<VersionedMultiLocation>>,
+	) {
+		let metadata = Metadata::<DevelopmentRuntime>::get(currency_id)
+			.expect("Currency should be registered");
+
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			maybe_location,
+			Some(CustomMetadata {
+				// Changed: Allow liquidity_pools transferability
+				transferability: CrossChainTransferability::LiquidityPools,
+				..metadata.additional
+			})
 		));
 	}
 

@@ -13,6 +13,7 @@
 
 use cfg_types::investments::Swap;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::dispatch::fmt::Debug;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub};
 
@@ -45,8 +46,8 @@ pub enum TokenSwapReason {
 	MaxEncodedLen,
 )]
 pub enum InvestState<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	#[default]
 	/// Placeholder state for initialization which will never be stored on
@@ -142,8 +143,8 @@ pub enum InvestState<
 /// updating an unprocessed investment.
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum InvestTransition<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	/// Assumes `swap.currency_in` is pool currency as we increase here.
 	IncreaseInvestOrder(Swap<Balance, Currency>),
@@ -179,8 +180,8 @@ pub enum InvestTransition<
 	MaxEncodedLen,
 )]
 pub enum RedeemState<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	#[default]
 	/// Placeholder state for initialization which will never be stored on
@@ -208,8 +209,8 @@ pub enum RedeemState<
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub enum InnerRedeemState<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	/// The redemption is pending until it is processed during epoch execution.
 	Redeeming { redeem_amount: Balance },
@@ -318,8 +319,8 @@ pub enum InnerRedeemState<
 /// updating an unprocessed redemption.
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub enum RedeemTransition<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	IncreaseRedeemOrder(Balance),
 	DecreaseRedeemOrder(Balance),

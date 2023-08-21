@@ -13,7 +13,7 @@
 use cfg_primitives::OrderId;
 use cfg_traits::investments::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::RuntimeDebug;
+use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
 use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
@@ -177,7 +177,10 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 	TypeInfo,
 	MaxEncodedLen,
 )]
-pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq> {
+pub struct Swap<
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + PartialEq,
+> {
 	/// The incoming currency, i.e. the desired one.
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
@@ -186,7 +189,7 @@ pub struct Swap<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: C
 	pub amount: Balance,
 }
 
-impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord, Currency: Clone + PartialEq>
+impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clone + PartialEq>
 	Swap<Balance, Currency>
 {
 	/// Ensures that the ingoing and outgoing currencies of two swaps...

@@ -14,6 +14,7 @@
 use core::cmp::Ordering;
 
 use cfg_types::investments::Swap;
+use frame_support::dispatch::fmt::Debug;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub},
 	ArithmeticError, DispatchError,
@@ -23,8 +24,8 @@ use crate::types::{InvestState, InvestTransition};
 
 impl<Balance, Currency> InvestState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram.
@@ -90,8 +91,8 @@ where
 // Actual impl of transition
 impl<Balance, Currency> InvestState<Balance, Currency>
 where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord,
-	Currency: Clone + Copy + PartialEq,
+	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
 	/// invest state diagram:
@@ -846,6 +847,11 @@ where
 		&self,
 		swap: Swap<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
+		#[cfg(feature = "std")]
+		{
+			println!("Inside invest handle_decrease_non_foreign");
+			dbg!(self, swap);
+		}
 		if let Self::InvestmentOngoing { invest_amount } = &self {
 			if swap.amount < *invest_amount {
 				Ok(InvestState::SwapIntoReturnDoneAndInvestmentOngoing {

@@ -155,7 +155,7 @@ where
 	/// Cancels an invest order by decreasing by the entire unprocessed
 	/// investment amount.
 	///
-	/// On success, a swap  back into the provided return currency initiated.
+	/// On success, initiates a swap back into the provided return currency.
 	///
 	/// The finalization of this call (fulfillment of the swap) is assumed to be
 	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`

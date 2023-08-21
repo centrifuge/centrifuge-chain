@@ -39,10 +39,8 @@ use crate::{
 mod invest;
 mod redeem;
 
-// Handles the second stage of updating investments. Whichever (potentially
-// async) code path of the first stage concludes it (partially) should call
-// `Swap::Config::SwapNotificationHandler::notify_status_update(swap_order_id,
-// swapped_amount)`.
+// Hook execution for (partially) fulfilled token swaps which should be consumed
+// by `TokenSwaps`.
 impl<T: Config> StatusNotificationHook for Pallet<T> {
 	type Error = DispatchError;
 	type Id = T::TokenSwapOrderId;
@@ -314,9 +312,9 @@ impl<T: Config> Pallet<T> {
 	/// The following execution order must not be changed:
 	///
 	/// 1. If the `InvestState` includes `SwapIntoReturnDone` without
-	/// `ActiveSwapIntoReturnCurrency`: Send executed decrease hook & transition
-	/// state into its form without `SwapIntoReturnDone`. If the state is just
-	/// `SwapIntoReturnDone`, kill it.
+	/// `ActiveSwapIntoReturnCurrency`: Prepare "executed decrease" hook &
+	/// transition state into its form without `SwapIntoReturnDone`. If the
+	/// state is just `SwapIntoReturnDone`, kill it.
 	///
 	/// 2. Update the `InvestmentState` storage. This step is required as the
 	/// next step reads this storage entry.
@@ -339,6 +337,8 @@ impl<T: Config> Pallet<T> {
 	/// 6. Update the investment. This also includes setting it to zero. We
 	/// assume the impl of `<T as Config>::Investment` handles this case.
 	///
+	/// 7. If "executed decrease" happened, send notification.
+	///
 	/// NOTES:
 	/// * Must be called after transitioning any `InvestState` via
 	/// `transition` to update the chain storage.
@@ -350,7 +350,10 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		state: InvestState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
+		// Must not send executed decrease notification before updating redemption
+		let mut maybe_executed_decrease: Option<(T::CurrencyId, T::Balance)> = None;
 		// Do first round of updates and forward state, swap as well as invest amount
+
 		match state {
 			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
@@ -377,7 +380,7 @@ impl<T: Config> Pallet<T> {
 				Ok((state, Some(swap), invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
+				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
@@ -385,7 +388,7 @@ impl<T: Config> Pallet<T> {
 				Ok((new_state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_amount, swap.currency_out)?;
+				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
@@ -393,14 +396,14 @@ impl<T: Config> Pallet<T> {
 				Ok((new_state, Some(swap), invest_amount))
 			},
 			InvestState::SwapIntoReturnDone { done_swap } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount, done_swap.currency_in)?;
+				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				InvestmentState::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
 			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, invest_amount } => {
-				Self::notify_executed_decrease_invest(who, investment_id, done_swap.amount, done_swap.currency_in)?;
+				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
 				InvestmentState::<T>::insert(who, investment_id, new_state);
@@ -419,8 +422,14 @@ impl<T: Config> Pallet<T> {
 			}
 			Self::deposit_redemption_event(who, investment_id, maybe_new_redeem_state);
 
-			// Finally, update investment after all states have been updated
+			// Update investment after all states have been updated
 			T::Investment::update_investment(who, investment_id, invest_amount)?;
+
+			// Send notification after updating invest as else funds are still locked in investment account
+			if let Some((return_currency, decreased_amount)) = maybe_executed_decrease {
+				Self::notify_executed_decrease_invest(who, investment_id, return_currency, decreased_amount)?;
+			}
+
 
 			Ok(())
 		})
@@ -998,8 +1007,8 @@ impl<T: Config> Pallet<T> {
 	fn notify_executed_decrease_invest(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		amount_decreased: T::Balance,
 		return_currency: T::CurrencyId,
+		amount_decreased: T::Balance,
 	) -> DispatchResult {
 		T::ExecutedDecreaseInvestHook::notify_status_change(
 			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
