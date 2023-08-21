@@ -86,10 +86,7 @@ pub mod pallet {
 		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect,
 		TrancheCurrency, TrancheTokenPrice,
 	};
-	use cfg_types::{
-		permissions::{PermissionScope, PoolRole, Role},
-		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
-	};
+	use cfg_types::{EVMChainId, permissions::{PermissionScope, PoolRole, Role}, tokens::{CustomMetadata, LiquidityPoolsWrappedToken}};
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -693,6 +690,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
 		#[pallet::weight(10_000)]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(
