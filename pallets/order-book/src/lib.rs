@@ -608,54 +608,56 @@ pub mod pallet {
 				Error::<T>::InvalidBuyAmount
 			);
 
-			<Orders<T>>::try_mutate_exists(order_id, |maybe_order| -> DispatchResult {
-				let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
-				Self::is_valid_min_order(order.asset_in_id, order.asset_out_id, buy_amount)?;
-
-				let max_sell_amount = Self::convert_with_ratio(
-					order.asset_in_id,
-					order.asset_out_id,
-					sell_rate_limit,
-					buy_amount,
-				)?;
-
-				// ensure proper amount can be, and is reserved of outgoing currency for updated
-				// order.
-				// Also minimise reserve/unreserve operations.
-				if buy_amount != order.buy_amount || sell_rate_limit != order.max_sell_rate {
-					if max_sell_amount > order.max_sell_amount {
-						let sell_reserve_diff =
-							max_sell_amount.ensure_sub(order.max_sell_amount)?;
-						T::TradeableAsset::hold(order.asset_out_id, &account, sell_reserve_diff)?;
-					} else {
-						let sell_reserve_diff =
-							order.max_sell_amount.ensure_sub(max_sell_amount)?;
-						T::TradeableAsset::release(
-							order.asset_out_id,
-							&account,
-							sell_reserve_diff,
-							false,
-						)?;
-					}
-				};
-				order.buy_amount = buy_amount;
-				order.max_sell_rate = sell_rate_limit;
-				order.min_fullfillment_amount = min_fullfillment_amount;
-				order.max_sell_amount = max_sell_amount;
-
-				Ok(())
-			})?;
-			<UserOrders<T>>::try_mutate_exists(
-				&account,
+			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
-				|maybe_order| -> DispatchResult {
+				|maybe_order| -> Result<T::Balance, DispatchError> {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					Self::is_valid_min_order(order.asset_in_id, order.asset_out_id, buy_amount)?;
+
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,
 						order.asset_out_id,
 						sell_rate_limit,
 						buy_amount,
 					)?;
+
+					// ensure proper amount can be, and is reserved of outgoing currency for updated
+					// order.
+					// Also minimise reserve/unreserve operations.
+					if buy_amount != order.buy_amount || sell_rate_limit != order.max_sell_rate {
+						if max_sell_amount > order.max_sell_amount {
+							let sell_reserve_diff =
+								max_sell_amount.ensure_sub(order.max_sell_amount)?;
+							T::TradeableAsset::hold(
+								order.asset_out_id,
+								&account,
+								sell_reserve_diff,
+							)?;
+						} else {
+							let sell_reserve_diff =
+								order.max_sell_amount.ensure_sub(max_sell_amount)?;
+							T::TradeableAsset::release(
+								order.asset_out_id,
+								&account,
+								sell_reserve_diff,
+								false,
+							)?;
+						}
+					};
+					order.buy_amount = buy_amount;
+					order.max_sell_rate = sell_rate_limit;
+					order.min_fullfillment_amount = min_fullfillment_amount;
+					order.max_sell_amount = max_sell_amount;
+
+					Ok(max_sell_amount)
+				},
+			)?;
+
+			<UserOrders<T>>::try_mutate_exists(
+				&account,
+				order_id,
+				|maybe_order| -> DispatchResult {
+					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 					order.buy_amount = buy_amount;
 					order.max_sell_rate = sell_rate_limit;
 					order.min_fullfillment_amount = min_fullfillment_amount;
