@@ -151,3 +151,15 @@ impl pallet_foreign_investments::Config for Runtime {
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
+
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	let storage = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(storage);
+	ext.execute_with(|| {
+		// Initialize default mocking methods here
+	});
+	ext
+}

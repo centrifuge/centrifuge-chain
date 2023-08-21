@@ -57,6 +57,9 @@ pub mod types;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
