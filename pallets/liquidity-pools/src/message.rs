@@ -292,7 +292,8 @@ where
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	ScheduleUpgrade {
-		contract: Address,
+		/// An EVM contract address
+		contract: [u8; 20],
 	},
 }
 
