@@ -16,6 +16,7 @@
   },
   "relay_chain": "rococo",
   "para_id": 2031,
+  "first_evm_block": 2360676,
   "consensusEngine": null,
   "codeSubstitutes": {},
   "genesis": {

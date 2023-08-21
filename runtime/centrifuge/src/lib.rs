@@ -1377,6 +1377,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
@@ -1796,7 +1797,7 @@ construct_runtime!(
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 181,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 182,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 183,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 184,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 184,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,

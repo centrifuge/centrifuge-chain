@@ -251,6 +251,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -7964,6 +7965,7 @@ dependencies = [
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
