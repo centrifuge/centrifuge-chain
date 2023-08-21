@@ -349,13 +349,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
-			if account_id == order.placing_account {
-				<Self as TokenSwaps<T::AccountId>>::update_order(
-					account_id, order_id, buy_amount, price, buy_amount,
-				)
-			} else {
-				Err(DispatchError::from(Error::<T>::Unauthorised))
-			}
+			ensure!(
+				account_id == order.placing_account,
+				Error::<T>::Unauthorised
+			);
+			<Self as TokenSwaps<T::AccountId>>::update_order(
+				account_id, order_id, buy_amount, price, buy_amount,
+			)
 		}
 
 		///  Cancel an existing order that had been created by calling account.
@@ -370,12 +370,13 @@ pub mod pallet {
 			// UserOrders using Resultquery, if signed account
 			// does not match user for order id, we will get an Err Result
 			let order = <Orders<T>>::get(order_id)?;
-			if account_id == order.placing_account {
-				Self::cancel_order(order_id)?;
-				Ok(())
-			} else {
-				Err(DispatchError::from(Error::<T>::Unauthorised))
-			}
+
+			ensure!(
+				account_id == order.placing_account,
+				Error::<T>::Unauthorised
+			);
+			Self::cancel_order(order_id)?;
+			Ok(())
 		}
 
 		/// Fill an existing order, fulfilling the entire order.
