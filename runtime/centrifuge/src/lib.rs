@@ -62,7 +62,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::{Transaction as EthereumTransaction, TransactionAction};
+use pallet_ethereum::Transaction as EthereumTransaction;
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -89,9 +89,7 @@ use sp_runtime::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
-	transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
-	},
+	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::prelude::*;
@@ -108,12 +106,9 @@ mod migrations;
 mod weights;
 pub mod xcm;
 
+use runtime_common::fees::{DealWithFees, WeightToFee};
 /// common types for the runtime.
 pub use runtime_common::*;
-use runtime_common::{
-	evm::GetTransactionAction,
-	fees::{DealWithFees, WeightToFee},
-};
 
 pub use crate::xcm::*;
 
@@ -1843,77 +1838,6 @@ pub type Executive = frame_executive::Executive<
 	migrations::UpgradeCentrifuge1020,
 >;
 
-impl fp_self_contained::SelfContainedCall for RuntimeCall {
-	type SignedInfo = H160;
-
-	fn is_self_contained(&self) -> bool {
-		match self {
-			RuntimeCall::Ethereum(call) => call.is_self_contained(),
-			_ => false,
-		}
-	}
-
-	// This is the only method here which is not a simple passthrough
-	// to `pallet_ethereum`. We additionally unpack the included
-	// Ethereum transaction in order to filter out contract creation
-	// calls.
-	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
-		match self {
-			RuntimeCall::Ethereum(call) => match call {
-				pallet_ethereum::Call::transact { transaction }
-					if transaction.action() == TransactionAction::Create =>
-				{
-					Some(Err(TransactionValidityError::Invalid(
-						InvalidTransaction::Call,
-					)))
-				}
-				_ => call.check_self_contained(),
-			},
-			_ => None,
-		}
-	}
-
-	fn validate_self_contained(
-		&self,
-		info: &Self::SignedInfo,
-		dispatch_info: &DispatchInfoOf<RuntimeCall>,
-		len: usize,
-	) -> Option<TransactionValidity> {
-		match self {
-			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
-			_ => None,
-		}
-	}
-
-	fn pre_dispatch_self_contained(
-		&self,
-		info: &Self::SignedInfo,
-		dispatch_info: &DispatchInfoOf<RuntimeCall>,
-		len: usize,
-	) -> Option<Result<(), TransactionValidityError>> {
-		match self {
-			RuntimeCall::Ethereum(call) => {
-				call.pre_dispatch_self_contained(info, dispatch_info, len)
-			}
-			_ => None,
-		}
-	}
-
-	fn apply_self_contained(
-		self,
-		info: Self::SignedInfo,
-	) -> Option<sp_runtime::DispatchResultWithInfo<PostDispatchInfoOf<Self>>> {
-		match self {
-			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => {
-				Some(call.dispatch(RuntimeOrigin::from(
-					pallet_ethereum::RawOrigin::EthereumTransaction(info),
-				)))
-			}
-			_ => None,
-		}
-	}
-}
-
 pub struct TransactionConverter;
 
 impl fp_rpc::ConvertTransaction<UncheckedExtrinsic> for TransactionConverter {
@@ -2444,4 +2368,66 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 	CheckInherents = CheckInherents,
+}
+
+impl fp_self_contained::SelfContainedCall for RuntimeCall {
+	type SignedInfo = H160;
+
+	fn is_self_contained(&self) -> bool {
+		match self {
+			RuntimeCall::Ethereum(call) => call.is_self_contained(),
+			_ => false,
+		}
+	}
+
+	// This is the only method here which is not a simple passthrough
+	// to `pallet_ethereum`. We additionally unpack the included
+	// Ethereum transaction in order to filter out contract creation
+	// calls.
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
+			_ => None,
+		}
+	}
+
+	fn validate_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<TransactionValidity> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			_ => None,
+		}
+	}
+
+	fn pre_dispatch_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<Result<(), TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => {
+				call.pre_dispatch_self_contained(info, dispatch_info, len)
+			}
+			_ => None,
+		}
+	}
+
+	fn apply_self_contained(
+		self,
+		info: Self::SignedInfo,
+	) -> Option<sp_runtime::DispatchResultWithInfo<PostDispatchInfoOf<Self>>> {
+		match self {
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => {
+				Some(call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				)))
+			}
+			_ => None,
+		}
+	}
 }
