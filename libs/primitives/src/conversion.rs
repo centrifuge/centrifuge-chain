@@ -1,7 +1,8 @@
 use sp_arithmetic::{
-	traits::{ensure_pow, BaseArithmetic},
+	traits::{ensure_pow, AtLeast32BitUnsigned, BaseArithmetic},
 	ArithmeticError, FixedPointNumber,
 };
+use sp_runtime::traits::EnsureInto;
 
 /// Transform a fixed point number to a Balance.
 /// The resulting Balance will be represented with the `decimals` given.
@@ -66,4 +67,43 @@ pub fn fixed_point_to_balance<
 	};
 
 	new_integer_part.ensure_add(new_frac_part)
+}
+
+/// Converts a `uint` `Balance` of one precision into a `Balance` of another
+/// precision i.e:
+/// ```rust
+/// use cfg_primitives::conversion::convert_balance_decimals;
+/// # use frame_support::{assert_err, assert_ok};
+/// # use sp_runtime::DispatchError;
+/// # use sp_arithmetic::ArithmeticError;
+///
+/// assert_ok!(convert_balance_decimals(3u32, 6u32, 1_234_567u64), 1_234_567_000u64);
+/// assert_ok!(convert_balance_decimals(6u32, 3u32, 1_234_567u64), 1_234u64);
+/// assert_ok!(convert_balance_decimals(6u32, 6u32, 1_234_567u64), 1_234_567u64);
+///
+/// assert_err!(convert_balance_decimals(6u32, 42u32, 1_000_000u64), ArithmeticError::Overflow);
+/// ```
+pub fn convert_balance_decimals<
+	Precision: AtLeast32BitUnsigned + TryInto<usize>,
+	Balance: BaseArithmetic + Copy,
+>(
+	from: Precision,
+	to: Precision,
+	balance: Balance,
+) -> Result<Balance, ArithmeticError> {
+	match from {
+		from if from == to => Ok(balance),
+		from if to > from => precision_diff::<Precision, Balance>(to, from)?.ensure_mul(balance),
+		from => balance.ensure_div(precision_diff::<Precision, Balance>(from, to)?),
+	}
+}
+
+fn precision_diff<
+	Precision: AtLeast32BitUnsigned + TryInto<usize>,
+	Balance: BaseArithmetic + Copy,
+>(
+	gt: Precision,
+	lt: Precision,
+) -> Result<Balance, ArithmeticError> {
+	ensure_pow(Balance::from(10), gt.ensure_sub(lt)?.ensure_into()?)
 }
