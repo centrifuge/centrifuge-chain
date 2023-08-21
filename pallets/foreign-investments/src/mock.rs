@@ -25,6 +25,9 @@ pub type OrderId = u64;
 pub type CurrencyId = u8;
 pub type InvestmentId = u16;
 
+pub const SELL_PRICE_LIMIT: Balance = 5;
+pub const MIN_FULFILLMENT: Balance = 1;
+
 frame_support::construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -101,8 +104,8 @@ impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
-	type DefaultTokenMinFulfillmentAmount = ConstU128<1>;
-	type DefaultTokenSwapSellPriceLimit = ConstU128<1>;
+	type DefaultTokenMinFulfillmentAmount = ConstU128<MIN_FULFILLMENT>;
+	type DefaultTokenSwapSellPriceLimit = ConstU128<SELL_PRICE_LIMIT>;
 	type ExecutedCollectRedeemHook = MockCollectRedeemHook;
 	type ExecutedDecreaseInvestHook = MockDecreaseInvestHook;
 	type Investment = MockInvestment;
