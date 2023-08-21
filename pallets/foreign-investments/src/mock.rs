@@ -2,13 +2,10 @@ use cfg_mocks::{
 	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_status_notification,
 	pallet_mock_token_swaps,
 };
-use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
 	ExecutedForeignCollectRedeem, ExecutedForeignDecrease, ForeignInvestmentInfo,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{ConstU128, ConstU16, ConstU32, ConstU64};
-use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -16,10 +13,6 @@ use sp_runtime::{
 };
 
 use crate::pallet as pallet_foreign_investments;
-
-// =============
-//     Types
-// =============
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -29,38 +22,8 @@ pub type Balance = u128;
 pub type TrancheId = u32;
 pub type PoolId = u64;
 pub type OrderId = u64;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum CurrencyId {
-	Tranche(PoolId, TrancheId),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct InvestmentId(PoolId, TrancheId);
-
-impl From<InvestmentId> for CurrencyId {
-	fn from(investment: InvestmentId) -> Self {
-		CurrencyId::Tranche(investment.0, investment.1)
-	}
-}
-
-impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		Self(pool_id, tranche_id)
-	}
-
-	fn of_pool(&self) -> PoolId {
-		self.0
-	}
-
-	fn of_tranche(&self) -> TrancheId {
-		self.1
-	}
-}
-
-// ======================
-//     Runtime config
-// ======================
+pub type CurrencyId = u8;
+pub type InvestmentId = u16;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where

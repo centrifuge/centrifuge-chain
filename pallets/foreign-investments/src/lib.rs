@@ -121,13 +121,7 @@ pub mod pallet {
 		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The investment identifying type required for the investment type
-		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
-			+ Clone
-			+ Member
-			+ Parameter
-			+ Copy
-			+ MaxEncodedLen;
+		type InvestmentId: Clone + Member + Parameter + Copy + MaxEncodedLen;
 
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
