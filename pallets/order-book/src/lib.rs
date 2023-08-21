@@ -340,7 +340,7 @@ pub mod pallet {
 
 		/// Update an existing order
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::user_update_order())]
 		pub fn user_update_order(
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,

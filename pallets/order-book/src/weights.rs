@@ -15,6 +15,7 @@ pub use frame_support::weights::Weight;
 pub trait WeightInfo {
 	fn create_order() -> Weight;
 	fn user_cancel_order() -> Weight;
+	fn user_update_order() -> Weight;
 	fn fill_order_full() -> Weight;
 }
 
@@ -24,6 +25,10 @@ impl WeightInfo for () {
 	}
 
 	fn user_cancel_order() -> Weight {
+		Weight::zero()
+	}
+
+	fn user_update_order() -> Weight {
 		Weight::zero()
 	}
 

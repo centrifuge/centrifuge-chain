@@ -39,6 +39,14 @@ benchmarks! {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 		}:create_order(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap())
 
+
+	user_update_order {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
+
+		}:user_update_order(RawOrigin::Signed(account_0.clone()), order_id, 150 * CURRENCY_0, Rate::checked_from_integer(1u32).unwrap())
+
 	user_cancel_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
