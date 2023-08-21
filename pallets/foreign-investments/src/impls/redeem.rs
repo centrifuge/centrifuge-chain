@@ -21,17 +21,17 @@ use sp_runtime::{
 use crate::types::{
 	InnerRedeemState,
 	InnerRedeemState::{
-		ActiveSwapIntoReturnCurrency, ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-		CollectableRedemption, CollectableRedemptionAndActiveSwapIntoReturnCurrency,
-		CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-		CollectableRedemptionAndSwapIntoReturnDone, Redeeming,
-		RedeemingAndActiveSwapIntoReturnCurrency,
-		RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
+		ActiveSwapIntoForeignCurrency, ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone,
+		CollectableRedemption, CollectableRedemptionAndActiveSwapIntoForeignCurrency,
+		CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone,
+		CollectableRedemptionAndSwapIntoForeignDone, Redeeming,
+		RedeemingAndActiveSwapIntoForeignCurrency,
+		RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone,
 		RedeemingAndCollectableRedemption,
-		RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency,
-		RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone,
-		RedeemingAndCollectableRedemptionAndSwapIntoReturnDone, RedeemingAndSwapIntoReturnDone,
-		SwapIntoReturnDone,
+		RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency,
+		RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone,
+		RedeemingAndCollectableRedemptionAndSwapIntoForeignDone, RedeemingAndSwapIntoForeignDone,
+		SwapIntoForeignDone,
 	},
 	RedeemState, RedeemTransition,
 };
@@ -63,10 +63,10 @@ where
 		}
 	}
 
-	/// Returns the potentially existing active swap into return currency of the
-	/// inner state:
-	/// * If the inner state includes `ActiveSwapIntoReturnCurrency`, it returns
-	///   the corresponding `Some(swap)`.
+	/// Returns the potentially existing active swap into foreign currency of
+	/// the inner state:
+	/// * If the inner state includes `ActiveSwapIntoForeignCurrency`, it
+	///   returns the corresponding `Some(swap)`.
 	/// * Else, it returns `None`.
 	pub(crate) fn get_active_swap(&self) -> Option<Swap<Balance, Currency>> {
 		match self {
@@ -114,18 +114,18 @@ where
 		}
 	}
 
-	/// Reduce the amount of an active swap (into return currency) of the
+	/// Reduce the amount of an active swap (into foreign currency) of the
 	/// `InnerRedeemState` by the provided value:
 	/// * If the provided value equals the swap amount, the state is
-	///   transitioned into `*AndSwapIntoReturnDone`.
+	///   transitioned into `*AndSwapIntoForeignDone`.
 	/// * Else, it is transitioned into
-	///   `*ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone`.
+	///   `*ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone`.
 	///
 	/// NOTE: Throws if any of the following holds true:
 	/// * The outer `RedeemState` is not `InvestedAnd` or `NotInvested` as this
 	///   implies there is no active swap.
 	/// * The inner state is not an active swap, i.e. the state does not include
-	///   `ActiveSwapIntoReturnCurrency`.
+	///   `ActiveSwapIntoForeignCurrency`.
 	/// * The reducible amount exceeds the active swap amount.
 	pub(crate) fn fulfill_active_swap_amount(
 		&self,
@@ -179,20 +179,20 @@ where
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
 	Currency: Clone + Copy + PartialEq + Debug,
 {
-	/// Returns the potentially existing active swap into return currency:
-	/// * If the state includes `ActiveSwapIntoReturnCurrency`, it returns the
+	/// Returns the potentially existing active swap into foreign currency:
+	/// * If the state includes `ActiveSwapIntoForeignCurrency`, it returns the
 	///   corresponding `Some(swap)`.
 	/// * Else, it returns `None`.
 	fn get_active_swap(&self) -> Option<Swap<Balance, Currency>> {
 		match *self {
-			Self::ActiveSwapIntoReturnCurrency { swap } |
-			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-			Self::RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } |
-			Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } |
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-			Self::CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } |
-			Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => Some(swap),
+			Self::ActiveSwapIntoForeignCurrency { swap } |
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+			Self::RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } |
+			Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+			Self::CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
+			Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Some(swap),
 			_ => None,
 		}
 	}
@@ -202,33 +202,33 @@ where
 		match *self {
 			Self::Redeeming { redeem_amount } |
 			Self::RedeemingAndCollectableRedemption { redeem_amount, .. } |
-			Self::RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, .. } |
-			Self::RedeemingAndSwapIntoReturnDone { redeem_amount, .. } |
-			Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, .. } |
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, .. } |
-			Self::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, .. } |
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, .. } => redeem_amount,
+			Self::RedeemingAndActiveSwapIntoForeignCurrency { redeem_amount, .. } |
+			Self::RedeemingAndSwapIntoForeignDone { redeem_amount, .. } |
+			Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, .. } |
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount, .. } |
+			Self::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { redeem_amount, .. } |
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, .. } => redeem_amount,
 			_ => Balance::zero(),
 		}
 	}
 
-	/// Reduce the amount of an active swap (into return currency) by the
+	/// Reduce the amount of an active swap (into foreign currency) by the
 	/// provided value:
 	/// * Throws if there is no active swap, i.e. the state does not include
-	///   `ActiveSwapIntoReturnCurrency` or if the reducible amount exceeds the
+	///   `ActiveSwapIntoForeignCurrency` or if the reducible amount exceeds the
 	///   swap amount
 	/// * If the provided value equals the swap amount, the state is
-	///   transitioned into `*AndSwapIntoReturnDone`.
+	///   transitioned into `*AndSwapIntoForeignDone`.
 	/// * Else, it is transitioned into
-	///   `*ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone`.
+	///   `*ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone`.
 	fn fulfill_active_swap_amount(&self, amount: Balance) -> Result<Self, DispatchError> {
 		match self {
-			Self::ActiveSwapIntoReturnCurrency { swap } => {
+			Self::ActiveSwapIntoForeignCurrency { swap } => {
 				if amount == swap.amount{
-					Ok(Self::SwapIntoReturnDone { done_swap: *swap })
+					Ok(Self::SwapIntoForeignDone { done_swap: *swap })
 				} else {
 					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -238,12 +238,12 @@ where
 					)
 				}
 			},
-			Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 
 				if amount == swap.amount {
 					Ok(
-						Self::SwapIntoReturnDone {
+						Self::SwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
 								..*swap
@@ -252,7 +252,7 @@ where
 					)
 				} else {
 					Ok(
-						Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -262,10 +262,10 @@ where
 					)
 				}
 			},
-			Self::RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => {
+			Self::RedeemingAndActiveSwapIntoForeignCurrency { redeem_amount, swap } => {
 				if amount == swap.amount {
 					Ok(
-						Self::RedeemingAndSwapIntoReturnDone {
+						Self::RedeemingAndSwapIntoForeignDone {
 							done_swap: Swap {
 								amount,
 								..*swap
@@ -275,7 +275,7 @@ where
 					)
 				} else {
 					Ok(
-						Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -286,12 +286,12 @@ where
 					)
 				}
 			},
-			Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
+			Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 
 				if amount == swap.amount {
 					Ok(
-						Self::RedeemingAndSwapIntoReturnDone {
+						Self::RedeemingAndSwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
 								..*swap
@@ -301,7 +301,7 @@ where
 					)
 				} else {
 					Ok(
-						Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -312,17 +312,17 @@ where
 					)
 				}
 			},
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => {
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount, swap } => {
 				if amount == swap.amount {
 					Ok(
-						Self::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+						Self::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
 							done_swap: *swap,
 							redeem_amount: *redeem_amount,
 						}
 					)
 				} else {
 					Ok(
-						Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -333,12 +333,12 @@ where
 					)
 				}
 			},
-			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
+			Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 
 				if amount == swap.amount {
 					Ok(
-						Self::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+						Self::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
 								..*swap
@@ -348,7 +348,7 @@ where
 					)
 				} else {
 					Ok(
-						Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -359,16 +359,16 @@ where
 					)
 				}
 			},
-			Self::CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => {
+			Self::CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap } => {
 				if amount == swap.amount {
 					Ok(
-						Self::CollectableRedemptionAndSwapIntoReturnDone {
+						Self::CollectableRedemptionAndSwapIntoForeignDone {
 							done_swap: *swap,
 						}
 					)
 				} else {
 					Ok(
-						Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -378,12 +378,12 @@ where
 						)
 				}
 			},
-			Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 
 				if amount == swap.amount {
 					Ok(
-						Self::CollectableRedemptionAndSwapIntoReturnDone {
+						Self::CollectableRedemptionAndSwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
 								..*swap
@@ -392,7 +392,7 @@ where
 					)
 				} else {
 					Ok(
-						Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+						Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
 								amount: swap.amount.ensure_sub(amount)?,
 								..*swap
@@ -413,12 +413,12 @@ where
 		match *self {
 			Redeeming { .. } => Err(DispatchError::Other("Outer RedeemState must be transitioned to Self::Invested")),
 			RedeemingAndCollectableRedemption { .. } => Ok(CollectableRedemption),
-			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(ActiveSwapIntoReturnCurrency { swap }),
-			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(SwapIntoReturnDone { done_swap }),
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap }),
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount }),
+			RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(ActiveSwapIntoForeignCurrency { swap }),
+			RedeemingAndSwapIntoForeignDone { done_swap, .. } => Ok(SwapIntoForeignDone { done_swap }),
+			RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap, .. } => Ok(CollectableRedemptionAndSwapIntoForeignDone { done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount }),
 			// Throw for states without `Redeeming`
 			_ => Err(DispatchError::Other("Cannot remove redeeming amount of inner redeem state which does not include `Redeeming`")),
 		}
@@ -441,19 +441,19 @@ where
 		match *self {
 			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
 			RedeemingAndCollectableRedemption { .. } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoForeignCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoForeignDone { done_swap, .. } => Ok(RedeemingAndSwapIntoForeignDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount: amount, swap, done_amount }),
 			CollectableRedemption => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-			ActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
-			ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
-			SwapIntoReturnDone { done_swap } => Ok(RedeemingAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
-			CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, redeem_amount: amount }),
-			CollectableRedemptionAndSwapIntoReturnDone { done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, redeem_amount: amount }),
-			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, redeem_amount: amount }),
+			ActiveSwapIntoForeignCurrency { swap } => Ok(RedeemingAndActiveSwapIntoForeignCurrency { swap, redeem_amount: amount }),
+			ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => Ok(RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, redeem_amount: amount }),
+			SwapIntoForeignDone { done_swap } => Ok(RedeemingAndSwapIntoForeignDone { done_swap, redeem_amount: amount }),
+			CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, redeem_amount: amount }),
+			CollectableRedemptionAndSwapIntoForeignDone { done_swap } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap, redeem_amount: amount }),
+			CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, redeem_amount: amount }),
 		}
 	}
 
@@ -467,29 +467,29 @@ where
 		match *self {
 			Redeeming { .. } => Ok(Redeeming { redeem_amount: amount }),
 			RedeemingAndCollectableRedemption { .. } => Ok(RedeemingAndCollectableRedemption { redeem_amount: amount }),
-			RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount: amount, swap }),
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount: amount, done_swap }),
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(RedeemingAndActiveSwapIntoForeignCurrency { redeem_amount: amount, swap }),
+			RedeemingAndSwapIntoForeignDone { done_swap, .. } => Ok(RedeemingAndSwapIntoForeignDone { redeem_amount: amount, done_swap }),
+			RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount: amount, swap, done_amount }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount: amount, swap }),
+			RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap, .. } => Ok(RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { redeem_amount: amount, done_swap }),
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount, .. } => Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount: amount, swap, done_amount }),
 			_ => Err(DispatchError::Other("Cannot set existing redeem amount of inner redeem state which does not include `Redeeming`")),
 		}
 	}
 
 	/// Transition all inner states which include
-	/// `ActiveSwapIntoReturnCurrency`. The transitioned state either includes
-	/// `*SwapIntoReturnDone` or
-	/// `*ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone`.
+	/// `ActiveSwapIntoForeignCurrency`. The transitioned state either includes
+	/// `*SwapIntoForeignDone` or
+	/// `*ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone`.
 	///
 	/// Also supports non-foreign swaps, i.e. those with matching in and out
 	/// currency.
 	///
-	/// Throws if the fulfilled swap direction is not into return currency or if
-	/// the amount exceeds the states active swap amount.
+	/// Throws if the fulfilled swap direction is not into foreign currency or
+	/// if the amount exceeds the states active swap amount.
 	///
 	/// NOTE: We can ignore all states which do not include
-	/// `ActiveSwapIntoReturnCurrency`.
+	/// `ActiveSwapIntoForeignCurrency`.
 	fn transition_fulfilled_swap_order(
 		&self,
 		fulfilled_swap: Swap<Balance, Currency>,
@@ -512,64 +512,64 @@ where
 		// Edge case: if currency_in matches currency_out, we can immediately fulfill
 		// the swap
 		match *self {
-			ActiveSwapIntoReturnCurrency { swap } => {
+			ActiveSwapIntoForeignCurrency { swap } => {
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount })
+					Ok(ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount })
 				} else {
-					Ok(SwapIntoReturnDone { done_swap: swap })
+					Ok(SwapIntoForeignDone { done_swap: swap })
 				}
 			},
-			ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount })
+					Ok(ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount })
 				} else {
-					Ok(SwapIntoReturnDone { done_swap: Swap { amount: done_amount, ..swap } })
+					Ok(SwapIntoForeignDone { done_swap: Swap { amount: done_amount, ..swap } })
 				}
 			},
-			RedeemingAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => {
+			RedeemingAndActiveSwapIntoForeignCurrency { redeem_amount, swap } => {
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount, redeem_amount })
+					Ok(RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount, redeem_amount })
 				} else {
-					Ok(RedeemingAndSwapIntoReturnDone { done_swap: swap, redeem_amount })
+					Ok(RedeemingAndSwapIntoForeignDone { done_swap: swap, redeem_amount })
 				}
 			},
-			RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
+			RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount, redeem_amount })
+					Ok(RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount, redeem_amount })
 				} else {
-					Ok(RedeemingAndSwapIntoReturnDone { done_swap: Swap { amount: done_amount, ..swap }, redeem_amount })
+					Ok(RedeemingAndSwapIntoForeignDone { done_swap: Swap { amount: done_amount, ..swap }, redeem_amount })
 				}
 			},
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => {
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount, swap } => {
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount, redeem_amount })
+					Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount, redeem_amount })
 				} else {
-					Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap: swap, redeem_amount })
+					Ok(RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap: swap, redeem_amount })
 				}
 			},
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount, redeem_amount })
+					Ok(RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount, redeem_amount })
 				} else {
-					Ok(RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { done_swap: Swap { amount: done_amount, ..swap }, redeem_amount })
+					Ok(RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { done_swap: Swap { amount: done_amount, ..swap }, redeem_amount })
 				}
 			},
-			CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => {
+			CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap } => {
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount })
+					Ok(CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount: amount })
 				} else {
-					Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap: swap })
+					Ok(CollectableRedemptionAndSwapIntoForeignDone { done_swap: swap })
 				}
 			},
-			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				let done_amount = done_amount.ensure_add(amount)?;
 				if amount < swap.amount && swap.currency_in != swap.currency_out {
-					Ok(CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount })
+					Ok(CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap: Swap { amount: swap.amount - amount, ..swap }, done_amount })
 				} else {
-					Ok(CollectableRedemptionAndSwapIntoReturnDone { done_swap: Swap { amount: done_amount, ..swap } })
+					Ok(CollectableRedemptionAndSwapIntoForeignDone { done_swap: Swap { amount: done_amount, ..swap } })
 				}
 			},
 			_ => Err(DispatchError::Other("Invalid inner redeem state when transitioning fulfilled swap order")),
@@ -578,7 +578,7 @@ where
 
 	/// Apply the transition of the state after collecting a redemption:
 	/// * If the collected amount (in pool currency) is positive, this indicates
-	///   that we need to initiate the swap into return currency
+	///   that we need to initiate the swap into foreign currency
 	/// * If the collected amount is zero, this indicates that the collection is
 	///   considered to be done.
 	///
@@ -586,7 +586,7 @@ where
 	/// * The current state includes an active/done swap and in and out
 	///   currencies do not match the provided ones; or
 	/// * The collected amount is zero but the state does not include a foreign
-	///   `ActiveSwapIntoReturnCurrency` or `SwapIntoReturnDone`
+	///   `ActiveSwapIntoForeignCurrency` or `SwapIntoForeignDone`
 	fn transition_collect(
 		&self,
 		collected_swap: Swap<Balance, Currency>,
@@ -610,7 +610,7 @@ where
 				if collected_swap.amount.is_zero() {
 					Err(DispatchError::Other("Cannot clear CollectableRedemption if the collected amount is zero and state does not include swap"))
 				} else {
-					Ok(Self::CollectableRedemptionAndActiveSwapIntoReturnCurrency {
+					Ok(Self::CollectableRedemptionAndActiveSwapIntoForeignCurrency {
 						swap: collected_swap,
 					})
 				}
@@ -619,21 +619,21 @@ where
 				if collected_swap.amount.is_zero() {
 					Err(DispatchError::Other("Cannot clear CollectableRedemption if the collected amount is zero and state does not include swap"))
 				} else {
-					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency {
+					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency {
 						redeem_amount,
 						swap: collected_swap,
 					})
 				}
 			},
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { redeem_amount, swap } => {
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { redeem_amount, swap } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::RedeemingAndActiveSwapIntoReturnCurrency {
+					Ok(Self::RedeemingAndActiveSwapIntoForeignCurrency {
 						redeem_amount,
 						swap
 					})
 				}
 				else {
-					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency {
+					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency {
 						redeem_amount,
 						swap: Swap {
 							amount: swap.amount.ensure_add(collected_swap.amount)?,
@@ -642,14 +642,14 @@ where
 					})
 				}
 			},
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone { redeem_amount, done_swap } => {
+			RedeemingAndCollectableRedemptionAndSwapIntoForeignDone { redeem_amount, done_swap } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::RedeemingAndSwapIntoReturnDone {
+					Ok(Self::RedeemingAndSwapIntoForeignDone {
 						redeem_amount,
 						done_swap,
 					})
 				} else {
-					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						redeem_amount,
 						swap: Swap {
 							amount: collected_swap.amount,
@@ -659,15 +659,15 @@ where
 					})
 				}
 			},
-			RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { redeem_amount, swap, done_amount } => {
+			RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { redeem_amount, swap, done_amount } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						redeem_amount,
 						swap,
 						done_amount
 					})
 				} else {
-					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						redeem_amount,
 						swap: Swap {
 							amount: swap.amount.ensure_add(collected_swap.amount)?,
@@ -677,13 +677,13 @@ where
 					})
 				}
 			},
-			CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap } => {
+			CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::ActiveSwapIntoReturnCurrency {
+					Ok(Self::ActiveSwapIntoForeignCurrency {
 						swap,
 					})
 				} else {
-					Ok(Self::CollectableRedemptionAndActiveSwapIntoReturnCurrency {
+					Ok(Self::CollectableRedemptionAndActiveSwapIntoForeignCurrency {
 						swap: Swap {
 							amount: swap.amount.ensure_add(collected_swap.amount)?,
 							..collected_swap
@@ -691,13 +691,13 @@ where
 					})
 				}
 			},
-			CollectableRedemptionAndSwapIntoReturnDone { done_swap } => {
+			CollectableRedemptionAndSwapIntoForeignDone { done_swap } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::SwapIntoReturnDone {
+					Ok(Self::SwapIntoForeignDone {
 						done_swap,
 					})
 				} else {
-					Ok(Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						swap: Swap {
 							amount: collected_swap.amount,
 							..collected_swap
@@ -706,14 +706,14 @@ where
 					})
 				}
 			},
-			CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				if collected_swap.amount.is_zero() {
-					Ok(Self::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						swap,
 						done_amount
 					})
 				} else {
-					Ok(Self::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone {
+					Ok(Self::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						swap: Swap {
 							amount: swap.amount.ensure_add(collected_swap.amount)?,
 							..collected_swap
@@ -730,11 +730,11 @@ where
 	/// non-foreign currencies.
 	///  * Ignores any states without `CollectableRedemption`.
 	///  * Throws for all states with `CollectableRedemption` and
-	///    `ActiveSwapIntoReturnCurrency` as there can't be an active swap for
+	///    `ActiveSwapIntoForeignCurrency` as there can't be an active swap for
 	///    non-foreign currencies, these should immediately fulfilled.
-	///  * Else replaces `CollectableRedemption` with `SwapIntoReturnDone` if it
-	///    did not exist already. If it did, increment the done swap amount by
-	///    the collected one.
+	///  * Else replaces `CollectableRedemption` with `SwapIntoForeignDone` if
+	///    it did not exist already. If it did, increment the done swap amount
+	///    by the collected one.
 	fn transition_collect_non_foreign(
 		&self,
 		collected_swap: Swap<Balance, Currency>,
@@ -744,7 +744,7 @@ where
 				if collected_swap.amount.is_zero() {
 					Err(DispatchError::Other("Cannot clear CollectableRedemption if the collected amount is zero and state does not include done swap"))
 				} else {
-					Ok(Self::CollectableRedemptionAndSwapIntoReturnDone {
+					Ok(Self::CollectableRedemptionAndSwapIntoForeignDone {
 						done_swap: collected_swap,
 					})
 				}
@@ -753,24 +753,24 @@ where
 				if collected_swap.amount.is_zero() {
 					Err(DispatchError::Other("Cannot clear CollectableRedemption if the collected amount is zero and state does not include done swap"))
 				} else {
-					Ok(Self::RedeemingAndSwapIntoReturnDone {
+					Ok(Self::RedeemingAndSwapIntoForeignDone {
 						redeem_amount,
 						done_swap: collected_swap,
 					})
 				}
 			}
 
-			RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+			RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
 				redeem_amount,
 				done_swap,
-			} => Ok(RedeemingAndSwapIntoReturnDone {
+			} => Ok(RedeemingAndSwapIntoForeignDone {
 				redeem_amount,
 				done_swap: Swap {
 					amount: done_swap.amount.ensure_add(collected_swap.amount)?,
 					..collected_swap
 				},
 			}),
-			CollectableRedemptionAndSwapIntoReturnDone { done_swap } => Ok(SwapIntoReturnDone {
+			CollectableRedemptionAndSwapIntoForeignDone { done_swap } => Ok(SwapIntoForeignDone {
 				done_swap: Swap {
 					amount: done_swap.amount.ensure_add(collected_swap.amount)?,
 					..collected_swap
@@ -907,7 +907,7 @@ where
 		}
 	}
 
-	/// Update the inner state if it includes `ActiveSwapIntoReturnCurrency`.
+	/// Update the inner state if it includes `ActiveSwapIntoForeignCurrency`.
 	fn handle_fulfilled_swap_order(
 		&self,
 		swap: Swap<Balance, Currency>,
@@ -930,7 +930,7 @@ where
 	}
 
 	/// Remove `CollectableRedemption` from all inner states which include it.
-	/// Either swap it with `ActiveSwapIntoReturnCurrency` if the inner state
+	/// Either swap it with `ActiveSwapIntoForeignCurrency` if the inner state
 	/// did not include an active swap or simply drop it.
 	///
 	/// Throws if the state does not allow for collection or the the inner state

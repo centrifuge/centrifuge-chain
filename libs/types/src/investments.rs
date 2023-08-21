@@ -194,9 +194,9 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 {
 	/// Ensures that the ingoing and outgoing currencies of two swaps...
 	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
-	///   the same for both swaps, i.e. (pool, pool) or (return, return)
+	///   the same for both swaps, i.e. (pool, pool) or (foreign, foreign)
 	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
-	///   if the swap direction is opposite, i.e. (pool, return) or (return,
+	///   if the swap direction is opposite, i.e. (pool, foreign) or (foreign,
 	///   pool)
 	pub fn ensure_currencies_match(
 		&self,
@@ -226,7 +226,7 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 
 pub struct ExecutedForeignDecrease<Balance, Currency> {
 	/// The currency in which `DecreaseInvestOrder` was realised
-	pub return_currency: Currency,
+	pub foreign_currency: Currency,
 	/// The amount of `currency` that was actually executed in the original
 	/// `DecreaseInvestOrder` message, i.e., the amount by which the
 	/// investment order was actually decreased by.
@@ -247,7 +247,7 @@ pub struct ExecutedForeignCollectInvest<Balance> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
 pub struct ExecutedForeignCollectRedeem<Balance, Currency> {
-	/// The return currency in which the payout takes place
+	/// The foreign currency in which the payout takes place
 	pub currency: Currency,
 	/// The amount of `currency` being paid out to the investor
 	pub amount_currency_payout: Balance,

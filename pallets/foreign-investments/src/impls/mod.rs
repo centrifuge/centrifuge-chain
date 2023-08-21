@@ -94,7 +94,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
-		return_currency: T::CurrencyId,
+		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
@@ -110,7 +110,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		let post_state = pre_state
 			.transition(InvestTransition::IncreaseInvestOrder(Swap {
 				currency_in: pool_currency,
-				currency_out: return_currency,
+				currency_out: foreign_currency,
 				amount,
 			}))
 			.map_err(|e| {
@@ -128,7 +128,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
-		return_currency: T::CurrencyId,
+		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
@@ -144,7 +144,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		let post_state = pre_state
 			.transition(InvestTransition::DecreaseInvestOrder(Swap {
 				currency_in: pool_currency,
-				currency_out: return_currency,
+				currency_out: foreign_currency,
 				amount,
 			}))
 			.map_err(|e| {
@@ -213,7 +213,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		return_currency: T::CurrencyId,
+		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
@@ -223,8 +223,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			amount_payment,
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
 
-		let amount_currency_payout =
-			T::CurrencyConverter::stable_to_stable(pool_currency, amount_payment, return_currency)?;
+		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
+			pool_currency,
+			amount_payment,
+			foreign_currency,
+		)?;
 
 		Ok(ExecutedForeignCollectInvest {
 			amount_currency_payout,
@@ -236,7 +239,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_redemption(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		return_currency: T::CurrencyId,
+		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
@@ -246,12 +249,12 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Ok::<(), DispatchError>(())
 		})?;
 
-		// Transition state to initiate swap from pool to return currency
+		// Transition state to initiate swap from pool to foreign currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
 		let post_state = pre_state
 			.transition(RedeemTransition::Collect(SwapOf::<T> {
 				amount: collected.amount_collected,
-				currency_in: return_currency,
+				currency_in: foreign_currency,
 				currency_out: pool_currency,
 			}))
 			.map_err(|e| {
@@ -311,10 +314,10 @@ impl<T: Config> Pallet<T> {
 	///
 	/// The following execution order must not be changed:
 	///
-	/// 1. If the `InvestState` includes `SwapIntoReturnDone` without
-	/// `ActiveSwapIntoReturnCurrency`: Prepare "executed decrease" hook &
-	/// transition state into its form without `SwapIntoReturnDone`. If the
-	/// state is just `SwapIntoReturnDone`, kill it.
+	/// 1. If the `InvestState` includes `SwapIntoForeignDone` without
+	/// `ActiveSwapIntoForeignCurrency`: Prepare "executed decrease" hook &
+	/// transition state into its form without `SwapIntoForeignDone`. If the
+	/// state is just `SwapIntoForeignDone`, kill it.
 	///
 	/// 2. Update the `InvestmentState` storage. This step is required as the
 	/// next step reads this storage entry.
@@ -330,8 +333,8 @@ impl<T: Config> Pallet<T> {
 	///
 	/// 5. If the token swap handling resulted in a new `RedeemState`, update
 	/// `RedemptionState` again. If the corresponding new `InnerRedeemState`
-	/// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`,
-	/// remove the `SwapIntoReturnDone` part or kill it. Additionally, emit
+	/// includes `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency`,
+	/// remove the `SwapIntoForeignDone` part or kill it. Additionally, emit
 	/// `ForeignRedemptionUpdate` or `ForeignRedemptionCleared`.
 	///
 	/// 6. Update the investment. This also includes setting it to zero. We
@@ -366,20 +369,20 @@ impl<T: Config> Pallet<T> {
 				Ok((state, None, invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrency { swap } |
-			InvestState::ActiveSwapIntoReturnCurrency { swap } |
-			// We don't care about `done_amount` until swap into return is fulfilled
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
+			InvestState::ActiveSwapIntoForeignCurrency { swap } |
+			// We don't care about `done_amount` until swap into foreign is fulfilled
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
 				InvestmentState::<T>::insert(who, investment_id, state);
 				Ok((state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
-			InvestState::ActiveSwapIntoReturnCurrencyAndInvestmentOngoing { swap, invest_amount } |
-			// We don't care about `done_amount` until swap into return is fulfilled
-			InvestState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
+			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, invest_amount } |
+			// We don't care about `done_amount` until swap into foreign is fulfilled
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
 				InvestmentState::<T>::insert(who, investment_id, state);
 				Ok((state, Some(swap), invest_amount))
 			},
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDone { swap, done_amount } => {
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
@@ -387,7 +390,7 @@ impl<T: Config> Pallet<T> {
 
 				Ok((new_state, Some(swap), Zero::zero()))
 			},
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoReturnDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, done_amount, invest_amount } => {
 				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
@@ -395,14 +398,14 @@ impl<T: Config> Pallet<T> {
 
 				Ok((new_state, Some(swap), invest_amount))
 			},
-			InvestState::SwapIntoReturnDone { done_swap } => {
+			InvestState::SwapIntoForeignDone { done_swap } => {
 				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				InvestmentState::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
-			InvestState::SwapIntoReturnDoneAndInvestmentOngoing { done_swap, invest_amount } => {
+			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, invest_amount } => {
 				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
@@ -426,8 +429,8 @@ impl<T: Config> Pallet<T> {
 			T::Investment::update_investment(who, investment_id, invest_amount)?;
 
 			// Send notification after updating invest as else funds are still locked in investment account
-			if let Some((return_currency, decreased_amount)) = maybe_executed_decrease {
-				Self::notify_executed_decrease_invest(who, investment_id, return_currency, decreased_amount)?;
+			if let Some((foreign_currency, decreased_amount)) = maybe_executed_decrease {
+				Self::notify_executed_decrease_invest(who, investment_id, foreign_currency, decreased_amount)?;
 			}
 
 
@@ -442,9 +445,9 @@ impl<T: Config> Pallet<T> {
 	///
 	/// The following execution order must not be changed:
 	///
-	/// 1. If the `RedeemState` includes `SwapIntoReturnDone` without
-	/// `ActiveSwapIntoReturnCurrency`, remove the `SwapIntoReturnDone` part or
-	/// kill it.
+	/// 1. If the `RedeemState` includes `SwapIntoForeignDone` without
+	/// `ActiveSwapIntoForeignCurrency`, remove the `SwapIntoForeignDone` part
+	/// or kill it.
 	///
 	/// 2. Update the `RedemptionState` storage. This step is required as the
 	/// next step reads this storage entry.
@@ -456,8 +459,8 @@ impl<T: Config> Pallet<T> {
 	///
 	/// 4. If the token swap handling resulted in a new `RedeemState`, update
 	/// `RedemptionState` again. If the corresponding new `InnerRedeemState`
-	/// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`,
-	/// remove the `SwapIntoReturnDone` part or kill it. Additionally, emit
+	/// includes `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency`,
+	/// remove the `SwapIntoForeignDone` part or kill it. Additionally, emit
 	/// `ForeignRedemptionUpdate` or `ForeignRedemptionCleared`.
 	///
 	/// 5. If the token swap handling resulted in a new `InvestState`,
@@ -498,18 +501,18 @@ impl<T: Config> Pallet<T> {
 						RedemptionState::<T>::insert(who, investment_id, state);
 						Ok((Some(state), None))
 					},
-					InnerRedeemState::RedeemingAndActiveSwapIntoReturnCurrency { swap, .. } |
-					InnerRedeemState::RedeemingAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } |
-					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-					InnerRedeemState::ActiveSwapIntoReturnCurrency { swap, .. } |
-					InnerRedeemState::ActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } |
-					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoReturnCurrency { swap, .. } |
-					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoReturnCurrencyAndSwapIntoReturnDone { swap, .. } => {
+					InnerRedeemState::RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } |
+					InnerRedeemState::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
+					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+					InnerRedeemState::ActiveSwapIntoForeignCurrency { swap, .. } |
+					InnerRedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
+					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
+					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
 						RedemptionState::<T>::insert(who, investment_id, state);
 						Ok((Some(state), Some(swap)))
 					},
-					// Only states left include `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency` such that we can notify collect
+					// Only states left include `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency` such that we can notify collect
 					inner => {
 						let maybe_new_state = Self::apply_collect_redeem_transition(who, investment_id, state, inner)?;
 						Ok((maybe_new_state, None))
@@ -591,11 +594,11 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Terminates a redeem collection which required swapping into return
+	/// Terminates a redeem collection which required swapping into foreign
 	/// currency.
 	///
-	/// Only acts upon inner redeem states which include `SwapIntoReturnDone`
-	/// without `ActiveSwapIntoReturnCurrency`. Other inner states are ignored.
+	/// Only acts upon inner redeem states which include `SwapIntoForeignDone`
+	/// without `ActiveSwapIntoForeignCurrency`. Other inner states are ignored.
 	/// Either updates the corresponding `RedemptionState` or drops it entirely.
 	///
 	/// Emits `notify_executed_collect_redeem`.
@@ -618,15 +621,15 @@ impl<T: Config> Pallet<T> {
 			CollectedRedemptionTrancheTokens::<T>::get(who, investment_id);
 
 		// Send notification and kill `CollectedRedemptionTrancheTokens` iff the state
-		// includes `SwapIntoReturnDone` without `ActiveSwapIntoReturnCurrency`
+		// includes `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency`
 		match inner_redeem_state {
-			InnerRedeemState::SwapIntoReturnDone { done_swap, .. }
-			| InnerRedeemState::RedeemingAndSwapIntoReturnDone { done_swap, .. }
-			| InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+			InnerRedeemState::SwapIntoForeignDone { done_swap, .. }
+			| InnerRedeemState::RedeemingAndSwapIntoForeignDone { done_swap, .. }
+			| InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
 				done_swap,
 				..
 			}
-			| InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone { done_swap, .. } => {
+			| InnerRedeemState::CollectableRedemptionAndSwapIntoForeignDone { done_swap, .. } => {
 				Self::notify_executed_collect_redeem(
 					who,
 					investment_id,
@@ -643,20 +646,20 @@ impl<T: Config> Pallet<T> {
 		}
 		.map_err(|e: DispatchError| e)?;
 
-		// Update state iff the state includes `SwapIntoReturnDone` without
-		// `ActiveSwapIntoReturnCurrency`
+		// Update state iff the state includes `SwapIntoForeignDone` without
+		// `ActiveSwapIntoForeignCurrency`
 		match inner_redeem_state {
-			InnerRedeemState::SwapIntoReturnDone { .. } => {
+			InnerRedeemState::SwapIntoForeignDone { .. } => {
 				RedemptionState::<T>::remove(who, investment_id);
 				Ok(Some(RedeemState::NoState))
 			}
-			InnerRedeemState::RedeemingAndSwapIntoReturnDone { redeem_amount, .. } => {
+			InnerRedeemState::RedeemingAndSwapIntoForeignDone { redeem_amount, .. } => {
 				let new_state =
 					state.swap_inner_state(InnerRedeemState::Redeeming { redeem_amount });
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
 			}
-			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoReturnDone {
+			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
 				redeem_amount,
 				..
 			} => {
@@ -667,7 +670,7 @@ impl<T: Config> Pallet<T> {
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
 			}
-			InnerRedeemState::CollectableRedemptionAndSwapIntoReturnDone { .. } => {
+			InnerRedeemState::CollectableRedemptionAndSwapIntoForeignDone { .. } => {
 				let new_state = state.swap_inner_state(InnerRedeemState::CollectableRedemption);
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
@@ -729,9 +732,9 @@ impl<T: Config> Pallet<T> {
 			});
 
 			// Need to check if `SwapReturnDone` is part of inner state without
-			// `ActiveSwapIntoReturnCurrency` as this implies the successful termination of
-			// a collect (with swap into return currency). If this is the case, the returned
-			// redeem state needs to be updated as well.
+			// `ActiveSwapIntoForeignCurrency` as this implies the successful termination of
+			// a collect (with swap into foreign currency). If this is the case, the
+			// returned redeem state needs to be updated as well.
 			match maybe_redeem_state {
 				Some(RedeemState::InvestedAnd { inner, .. })
 				| Some(RedeemState::NotInvestedAnd { inner }) => {
@@ -846,19 +849,19 @@ impl<T: Config> Pallet<T> {
 	/// InvestmentId)` pair whereas investments and redemptions can both mutate
 	/// orders. Assume, as a result of an `InvestState` transition, a token swap
 	/// order into pool currency is initialized. Then, as a result of a
-	/// `RedeemState` transition, a token swap order into return currency is
+	/// `RedeemState` transition, a token swap order into foreign currency is
 	/// needed. This handler resolves the _merge conflict_ in situations where
 	/// the reason to create/update a swap order does not match the previous
 	/// reason.
 	///
 	/// * Is noop, if the the current reason equals the previous one.
-	/// * If both states are swapping into return currency, i.e. their invest
-	///   and redeem states include `ActiveSwapIntoReturnCurrency`, the states
+	/// * If both states are swapping into foreign currency, i.e. their invest
+	///   and redeem states include `ActiveSwapIntoForeignCurrency`, the states
 	///   stay the same. However the total order amount needs to be updated by
 	///   summing up both swap order amounts.
 	/// * If the `InvestState` includes swapping into pool currency, i.e.
 	///   `ActiveSwapIntoPoolCurrency`, whereas the `RedeemState` is swapping
-	///   into the opposite direction, i.e. `ActiveSwapIntoReturnCurrency`, we
+	///   into the opposite direction, i.e. `ActiveSwapIntoForeignCurrency`, we
 	///   need to resolve the delta between both swap order amounts and update
 	///   the states accordingly.
 	#[allow(clippy::type_complexity)]
@@ -904,11 +907,11 @@ impl<T: Config> Pallet<T> {
 
 		// Determine new invest state
 		let new_invest_state = match invest_state {
-			// As redeem swap can only be into return currency, we need to delta on the opposite
+			// As redeem swap can only be into foreign currency, we need to delta on the opposite
 			// swap directions
 			InvestState::ActiveSwapIntoPoolCurrency { swap } => {
 				if invest_swap_amount > redeem_swap_amount {
-					Ok(Some(
+					Some(
 						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
 								amount: swap_amount_opposite_direction,
@@ -916,11 +919,11 @@ impl<T: Config> Pallet<T> {
 							},
 							invest_amount: resolved_amount,
 						},
-					))
+					)
 				} else {
-					Ok(Some(InvestState::InvestmentOngoing {
+					Some(InvestState::InvestmentOngoing {
 						invest_amount: resolved_amount,
-					}))
+					})
 				}
 			}
 			// Same as above except for the base investment amount which is incremented
@@ -929,7 +932,7 @@ impl<T: Config> Pallet<T> {
 				invest_amount,
 			} => {
 				if invest_swap_amount > redeem_swap_amount {
-					Ok(Some(
+					Some(
 						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
 								amount: swap_amount_opposite_direction,
@@ -937,17 +940,16 @@ impl<T: Config> Pallet<T> {
 							},
 							invest_amount: invest_amount.ensure_add(resolved_amount)?,
 						},
-					))
+					)
 				} else {
-					Ok(Some(InvestState::InvestmentOngoing {
+					Some(InvestState::InvestmentOngoing {
 						invest_amount: invest_amount.ensure_add(resolved_amount)?,
-					}))
+					})
 				}
 			}
 			// We must not alter the invest state if there is no active pool currency swap
-			_ => Ok(None),
-		}
-		.map_err(|e: DispatchError| e)?;
+			_ => None,
+		};
 
 		// Determine final swap amount and new redeem state
 		let (final_swap_amount, new_redeem_state) = match invest_state {
@@ -963,7 +965,7 @@ impl<T: Config> Pallet<T> {
 				Ok((swap_amount_opposite_direction, new_state))
 			}
 			// All leftover combinations either do not involve any active swaps or both
-			// swaps have the same direction, i.e. into return currency. Thus, we can
+			// swaps have the same direction, i.e. into foreign currency. Thus, we can
 			// leave states untouched and just add up the potential swap amount.
 			_ => Ok((
 				invest_swap_amount.ensure_add(redeem_swap_amount)?,
@@ -1007,7 +1009,7 @@ impl<T: Config> Pallet<T> {
 	fn notify_executed_decrease_invest(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		return_currency: T::CurrencyId,
+		foreign_currency: T::CurrencyId,
 		amount_decreased: T::Balance,
 	) -> DispatchResult {
 		T::ExecutedDecreaseInvestHook::notify_status_change(
@@ -1019,7 +1021,7 @@ impl<T: Config> Pallet<T> {
 			},
 			ExecutedForeignDecrease {
 				amount_decreased,
-				return_currency,
+				foreign_currency,
 			},
 		)
 	}

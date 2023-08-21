@@ -123,11 +123,11 @@ where
 	/// Initiates the decrement of an existing investment order of the investor.
 	///
 	/// On success, the unprocessed investment amount is decremented and a swap
-	/// back into the provided return currency initiated.
+	/// back into the provided foreign currency initiated.
 	///
 	/// The finalization of this call (fulfillment of the swap) is assumed to be
 	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
-	/// which burns the corresponding amount in return currency and dispatches
+	/// which burns the corresponding amount in foreign currency and dispatches
 	/// `ExecutedDecreaseInvestOrder`.
 	pub fn handle_decrease_invest_order(
 		pool_id: T::PoolId,
@@ -155,11 +155,11 @@ where
 	/// Cancels an invest order by decreasing by the entire unprocessed
 	/// investment amount.
 	///
-	/// On success, initiates a swap back into the provided return currency.
+	/// On success, initiates a swap back into the provided foreign currency.
 	///
 	/// The finalization of this call (fulfillment of the swap) is assumed to be
 	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
-	/// which burns the corresponding amount in return currency and dispatches
+	/// which burns the corresponding amount in foreign currency and dispatches
 	/// `ExecutedDecreaseInvestOrder`.
 	pub fn handle_cancel_invest_order(
 		pool_id: T::PoolId,
@@ -336,7 +336,7 @@ where
 	/// directly appended to the next active order for this investment.
 	///
 	/// On success, a swap will be initiated to exchange the (partially)
-	/// collected amount in pool currency into the desired return currency.
+	/// collected amount in pool currency into the desired foreign currency.
 	///
 	/// The termination of this call (fulfillment of the swap) is assumed to be
 	/// asynchronous and handled by the `CollectRedeemHook`. It burns the return

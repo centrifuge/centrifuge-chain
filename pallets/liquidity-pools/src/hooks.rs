@@ -49,11 +49,11 @@ where
 			owner: investor,
 			..
 		} = id;
-		let currency = Pallet::<T>::try_get_general_index(status.return_currency)?;
-		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.return_currency)?;
+		let currency = Pallet::<T>::try_get_general_index(status.foreign_currency)?;
+		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.foreign_currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
 
-		T::Tokens::burn_from(status.return_currency, &investor, status.amount_decreased)?;
+		T::Tokens::burn_from(status.foreign_currency, &investor, status.amount_decreased)?;
 
 		let message: MessageOf<T> = Message::ExecutedDecreaseInvestOrder {
 			pool_id: investment_id.of_pool(),

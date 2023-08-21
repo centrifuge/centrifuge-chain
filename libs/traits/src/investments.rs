@@ -286,10 +286,10 @@ pub trait ForeignInvestment<AccountId> {
 	type CollectInvestResult;
 
 	/// Initiates the increment of a foreign investment amount in
-	/// `return_currency` of who into the investment class `pool_currency` to
+	/// `foreign_currency` of who into the investment class `pool_currency` to
 	/// amount.
 	///
-	/// NOTE: In general, we can assume that the return and pool currencies
+	/// NOTE: In general, we can assume that the foreign and pool currencies
 	/// mismatch and that swapping one into the other happens asynchronously. In
 	/// that case, the finalization of updating the investment needs to be
 	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
@@ -297,15 +297,15 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
-		return_currency: Self::CurrencyId,
+		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign investment amount in
-	/// `return_currency` of who into the investment class `pool_currency` to
+	/// `foreign_currency` of who into the investment class `pool_currency` to
 	/// amount.
 	///
-	/// NOTE: In general, we can assume that the return and pool currencies
+	/// NOTE: In general, we can assume that the foreign and pool currencies
 	/// mismatch and that swapping one into the other happens asynchronously. In
 	/// that case, the finalization of updating the investment needs to be
 	/// handled decoupled from the ForeignInvestment trait, e.g., by some hook.
@@ -313,12 +313,12 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
-		return_currency: Self::CurrencyId,
+		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the increment of a foreign redemption amount from
-	/// `pool_currency` of who into `return_currency` to amount.
+	/// `pool_currency` of who into `foreign_currency` to amount.
 	///
 	/// NOTE: The incrementing redemption amount is bound by the processed
 	/// investment amount.
@@ -329,7 +329,7 @@ pub trait ForeignInvestment<AccountId> {
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign redemption amount from
-	/// `pool_currency` of who into `return_currency` to amount.
+	/// `pool_currency` of who into `foreign_currency` to amount.
 	///
 	/// NOTE: The decrementing redemption amount is bound by the previously
 	/// incremented redemption amount.
@@ -345,7 +345,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn collect_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		return_currency: Self::CurrencyId,
+		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<Self::CollectInvestResult, Self::Error>;
 
@@ -354,11 +354,11 @@ pub trait ForeignInvestment<AccountId> {
 	/// appended to the next active order for this investment.
 	///
 	/// NOTE: The currency of the collected amount will be `pool_currency`
-	/// whereas the user eventually wants to receive it in `return_currency`.
+	/// whereas the user eventually wants to receive it in `foreign_currency`.
 	fn collect_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		return_currency: Self::CurrencyId,
+		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
