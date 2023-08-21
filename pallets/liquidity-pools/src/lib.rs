@@ -86,7 +86,11 @@ pub mod pallet {
 		CurrencyInspect, Investment, InvestmentCollector, Permissions, PoolInspect,
 		TrancheCurrency, TrancheTokenPrice,
 	};
-	use cfg_types::{EVMChainId, permissions::{PermissionScope, PoolRole, Role}, tokens::{CustomMetadata, LiquidityPoolsWrappedToken}};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
+		EVMChainId,
+	};
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
