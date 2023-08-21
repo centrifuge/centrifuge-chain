@@ -53,6 +53,41 @@ fn create_order_works() {
 }
 
 #[test]
+fn user_update_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			10 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3, 2).unwrap()
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::user_update_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			order_id,
+			15 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_integer(2u32).unwrap(),
+		));
+
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: DEV_AUSD_CURRENCY_ID,
+				asset_out_id: DEV_USDT_CURRENCY_ID,
+				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
+				min_fullfillment_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
+			})
+		);
+	})
+}
+
+#[test]
 fn user_cancel_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::create_order(
@@ -453,7 +488,7 @@ fn cancel_order_works() {
 }
 
 #[test]
-fn update_order_works() {
+fn update_order_works_with_order_increase() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
@@ -529,6 +564,88 @@ fn update_order_works() {
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_integer(2u32).unwrap()
+			})
+		);
+	})
+}
+
+#[test]
+fn update_order_works_with_order_decrease() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			15 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			5 * CURRENCY_AUSD_DECIMALS
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(
+			ACCOUNT_0,
+			order_id,
+			10 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_integer(1u32).unwrap(),
+			6 * CURRENCY_AUSD_DECIMALS
+		));
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: DEV_AUSD_CURRENCY_ID,
+				asset_out_id: DEV_USDT_CURRENCY_ID,
+				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
+				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
+			})
+		);
+
+		assert_eq!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Ok(Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: DEV_AUSD_CURRENCY_ID,
+				asset_out_id: DEV_USDT_CURRENCY_ID,
+				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
+				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
+			})
+		);
+
+		// create order reserve
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
+				currency_id: DEV_USDT_CURRENCY_ID,
+				who: ACCOUNT_0,
+				// order create reserve -- 22.5
+				amount: 225 * CURRENCY_USDT_DECIMALS / 10
+			})
+		);
+
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
+				currency_id: DEV_USDT_CURRENCY_ID,
+				who: ACCOUNT_0,
+				// update reserve to free 12.5 outgoing tokens no longer needed to cover trade.
+				amount: 125 * CURRENCY_USDT_DECIMALS / 10
+			})
+		);
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::OrderBook(Event::OrderUpdated {
+				order_id,
+				account: ACCOUNT_0,
+				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				sell_rate_limit: Rate::checked_from_integer(1u32).unwrap()
 			})
 		);
 	})

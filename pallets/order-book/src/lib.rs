@@ -334,8 +334,28 @@ pub mod pallet {
 			Ok(())
 		}
 
-		///  Cancel an existing order that had been created by calling account.
+		/// Update an existing order
 		#[pallet::call_index(1)]
+		#[pallet::weight(T::Weights::create_order())]
+		pub fn user_update_order(
+			origin: OriginFor<T>,
+			order_id: T::OrderIdNonce,
+			buy_amount: T::Balance,
+			price: T::SellRatio,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			let order = <Orders<T>>::get(order_id)?;
+			if account_id == order.placing_account {
+				<Self as TokenSwaps<T::AccountId>>::update_order(
+					account_id, order_id, buy_amount, price, buy_amount,
+				)
+			} else {
+				Err(DispatchError::from(Error::<T>::Unauthorised))
+			}
+		}
+
+		///  Cancel an existing order that had been created by calling account.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::Weights::user_cancel_order())]
 		pub fn user_cancel_order(
 			origin: OriginFor<T>,
@@ -355,7 +375,7 @@ pub mod pallet {
 		}
 
 		/// Fill an existing order, fulfilling the entire order.
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::Weights::fill_order_full())]
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
