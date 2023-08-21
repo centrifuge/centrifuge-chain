@@ -19,12 +19,29 @@ use sp_std::vec::Vec;
 
 use crate::Runtime;
 
-// NOTE: Do not remove before Altair release, even if we might bump spec version
-// as this is most likely related to Algol
+/// The migration set for Altair 1030 @ Kusama. It includes all the migrations
+/// that have to be applied on that chain, which includes migrations that have
+/// already been executed on Algol (1028 & 1029).
+#[cfg(not(feature = "testnet-runtime"))]
 pub type UpgradeAltair1030 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
 	pool_system::MigrateAUSDPools,
+	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
+		crate::Runtime,
+		pallet_rewards::Instance2,
+		crate::NativeToken,
+		crate::ExistentialDeposit,
+	>,
+);
+
+/// The Upgrade set for Algol - it exludes the migrations already executed in
+/// the side releases that only landed on Algol (1028 & 1029) but not yet on
+/// Altair.
+#[cfg(feature = "testnet-runtime")]
+pub type UpgradeAltair1030 = (
 	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
