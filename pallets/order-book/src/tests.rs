@@ -100,6 +100,29 @@ fn user_update_order_works() {
 }
 
 #[test]
+fn user_update_order_only_works_for_valid_account() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::create_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			10 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3, 2).unwrap()
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_err!(
+			OrderBook::user_update_order(
+				RuntimeOrigin::signed(ACCOUNT_1),
+				order_id,
+				15 * CURRENCY_AUSD_DECIMALS,
+				Rate::checked_from_integer(2u32).unwrap(),
+			),
+			Error::<Runtime>::Unauthorised
+		);
+	})
+}
+
+#[test]
 fn user_cancel_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::create_order(
