@@ -382,6 +382,7 @@ pub fn create_pool_call(
 		currency,
 		max_reserve,
 		metadata: None,
+		write_off_policy: BoundedVec::default(),
 	})
 }
 
