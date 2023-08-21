@@ -47,9 +47,9 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, LiquidityPoolsPalletId, Loans,
-	OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
-	RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
+	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, Loans, OrmlAssetRegistry,
+	OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
+	TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -1164,7 +1164,8 @@ fn schedule_upgrade() {
 		assert_noop!(
 			LiquidityPools::schedule_upgrade(
 				RuntimeOrigin::signed(BOB.into()),
-				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+				MOONBEAM_EVM_CHAIN_ID,
+				[7; 20]
 			),
 			BadOrigin
 		);
@@ -1172,8 +1173,9 @@ fn schedule_upgrade() {
 		// Failing because Root (?) or the LiquidityPools pallet account has no funds
 		assert_noop!(
 			LiquidityPools::schedule_upgrade(
-				RuntimeOrigin::root(),
-				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+				RuntimeOrigin::signed(BOB.into()),
+				MOONBEAM_EVM_CHAIN_ID,
+				[7; 20]
 			),
 			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
 		);
@@ -1182,14 +1184,15 @@ fn schedule_upgrade() {
 		// this message
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
-			&LiquidityPools::account(),
+			&TreasuryAccount::get(),
 			DEFAULT_BALANCE_GLMR,
 		);
 
 		// Now it finally works
 		assert_ok!(LiquidityPools::schedule_upgrade(
-			RuntimeOrigin::root(),
-			DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [7; 20])
+			RuntimeOrigin::signed(BOB.into()),
+			MOONBEAM_EVM_CHAIN_ID,
+			[7; 20]
 		));
 	});
 }

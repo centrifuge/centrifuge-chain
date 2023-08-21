@@ -37,7 +37,6 @@ pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 pub const BLOCK_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/blrw");
 pub const LIQUIDITY_REWARDS_PALLET_ID: PalletId = PalletId(*b"cfg/lqrw");
 pub const PRICE_ORACLE_PALLET_ID: PalletId = PalletId(*b"or/price");
-pub const LIQUIDITY_POOLS_PALLET_ID: PalletId = PalletId(*b"lqdypool");
 
 // Other ids
 pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";
