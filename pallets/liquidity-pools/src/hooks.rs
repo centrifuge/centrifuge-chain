@@ -19,6 +19,7 @@ use cfg_types::{
 	investments::{ExecutedForeignDecrease, ForeignInvestmentInfo},
 };
 use frame_support::{traits::fungibles::Mutate, transactional};
+use sp_core::Get;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
@@ -58,13 +59,12 @@ where
 		let message: MessageOf<T> = Message::ExecutedDecreaseInvestOrder {
 			pool_id: investment_id.of_pool(),
 			tranche_id: investment_id.of_tranche(),
-			investor: investor.clone().into(),
+			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_decreased,
 		};
 
-		// TODO: Collect payment from treasury instead
-		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
+		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
 
 		Ok(())
 	}
@@ -97,14 +97,13 @@ where
 		let message: MessageOf<T> = Message::ExecutedCollectInvest {
 			pool_id: investment_id.of_pool(),
 			tranche_id: investment_id.of_tranche(),
-			investor: investor.clone().into(),
+			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout,
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
 		};
 
-		// TODO: Collect payment from treasury instead
-		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
+		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
 
 		Ok(())
 	}

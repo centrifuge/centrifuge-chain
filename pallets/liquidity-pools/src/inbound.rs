@@ -23,6 +23,7 @@ use frame_support::{
 	ensure,
 	traits::fungibles::{Mutate, Transfer},
 };
+use sp_core::Get;
 use sp_runtime::{
 	traits::{Convert, Zero},
 	DispatchResult,
@@ -241,13 +242,12 @@ where
 		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
 			pool_id,
 			tranche_id,
-			investor: investor.clone().into(),
+			investor: investor.into(),
 			currency: currency_index.index,
 			tranche_tokens_payout,
 		};
 
-		// TODO: Collect fee from treasury instead
-		T::OutboundQueue::submit(investor, destination.domain(), message)?;
+		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
 
 		Ok(())
 	}
@@ -321,14 +321,13 @@ where
 		let message: MessageOf<T> = Message::ExecutedCollectInvest {
 			pool_id,
 			tranche_id,
-			investor: investor.clone().into(),
+			investor: investor.into(),
 			currency: currency_index_u128,
 			currency_payout: amount_currency_payout,
 			tranche_tokens_payout: amount_tranche_tokens_payout,
 		};
 
-		// TODO: Collect fee from treasury instead
-		T::OutboundQueue::submit(investor, destination.domain(), message)?;
+		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
 
 		Ok(())
 	}

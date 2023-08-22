@@ -235,6 +235,14 @@ pub mod pallet {
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
+
+		/// The type for paying the transaction fees for the dispatch of
+		/// `Executed*` messages.
+		///
+		/// NOTE: We need to make sure to collect the appropriate amount
+		/// beforehand as part of receiving the corresponding investment
+		/// message.
+		type TreasuryAccount: Get<<Self as frame_system::Config>::AccountId>;
 	}
 
 	#[pallet::event]
