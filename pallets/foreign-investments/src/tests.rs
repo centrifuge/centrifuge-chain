@@ -13,11 +13,34 @@ const INVESTMENT_ID: InvestmentId = 23;
 const USER_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 
+mod util {
+	use super::*;
+
+	pub fn new_invest(order_id: OrderId, amount: Balance) {
+		MockInvestment::mock_investment(|_, _| Ok(0));
+		MockTokenSwaps::mock_place_order(move |_, _, _, _, _, _| Ok(order_id));
+		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
+
+		ForeignInvestment::increase_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			amount,
+			USER_CURR,
+			POOL_CURR,
+		)
+		.unwrap();
+
+		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
+		MockTokenSwaps::mock_place_order(|_, _, _, _, _, _| unimplemented!("no mock"));
+		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
+	}
+}
+
 mod use_case {
 	use super::*;
 
 	#[test]
-	fn invest() {
+	fn new_invest() {
 		const AMOUNT: Balance = 100;
 		const ORDER_ID: OrderId = 1;
 
@@ -109,6 +132,54 @@ mod use_case {
 				USER,
 				INVESTMENT_ID
 			));
+		});
+	}
+
+	#[test]
+	fn increase_pending_invest() {
+		const INITIAL_AMOUNT: Balance = 100;
+		const INCREASE_AMOUNT: Balance = 500;
+		const ORDER_ID: OrderId = 1;
+
+		new_test_ext().execute_with(|| {
+			util::new_invest(ORDER_ID, INITIAL_AMOUNT);
+
+			MockInvestment::mock_investment(|_, _| Ok(0));
+			MockTokenSwaps::mock_is_active(|order_id| {
+				assert_eq!(order_id, ORDER_ID);
+				true
+			});
+			MockTokenSwaps::mock_update_order(|account_id, order_id, amount, limit, min| {
+				assert_eq!(account_id, USER);
+				assert_eq!(order_id, ORDER_ID);
+				assert_eq!(amount, INITIAL_AMOUNT + INCREASE_AMOUNT);
+				assert_eq!(limit, SELL_PRICE_LIMIT);
+				assert_eq!(min, MIN_FULFILLMENT);
+				Ok(())
+			});
+			MockInvestment::mock_update_investment(|_, _, amount| {
+				assert_eq!(amount, 0);
+				Ok(())
+			});
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				INCREASE_AMOUNT,
+				USER_CURR,
+				POOL_CURR,
+			));
+
+			assert_eq!(
+				InvestmentState::<Runtime>::get(USER, INVESTMENT_ID),
+				Some(InvestState::ActiveSwapIntoPoolCurrency {
+					swap: Swap {
+						currency_out: USER_CURR,
+						currency_in: POOL_CURR,
+						amount: INITIAL_AMOUNT + INCREASE_AMOUNT,
+					}
+				})
+			);
 		});
 	}
 }
