@@ -30,6 +30,7 @@ RepaymentSchedule *----> InterestPayments
 enum BorrowRestrictions {
     NoWrittenOff
     FullOnce
+    OraclePriceRequired
 }
 
 enum RepayRestrictions {

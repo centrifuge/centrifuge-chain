@@ -272,6 +272,8 @@ fn with_unregister_price_id() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 
+		// TODO: test for loan with OraclePriceRequired borrow restriction
+
 		assert_ok!(Loans::borrow(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,

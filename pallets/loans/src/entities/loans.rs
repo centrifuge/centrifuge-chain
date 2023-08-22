@@ -304,6 +304,12 @@ impl<T: Config> ActiveLoan<T> {
 				BorrowRestrictions::FullOnce => {
 					self.total_borrowed.is_zero() && amount.balance()? == max_borrow_amount
 				}
+				BorrowRestrictions::OraclePriceRequired => {
+					match &self.pricing {
+						ActivePricing::Internal(_) => true,
+						ActivePricing::External(inner) => inner.last_updated(pool_id).is_ok(),
+					}
+				}
 			},
 			Error::<T>::from(BorrowLoanError::Restriction)
 		);
