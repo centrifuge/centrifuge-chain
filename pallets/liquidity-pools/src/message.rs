@@ -718,7 +718,7 @@ impl<
 				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			19 => Ok(Self::ScheduleUpgrade {
-				contract: decode::<32, _, _>(input)?,
+				contract: decode::<20, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1097,7 +1097,7 @@ mod tests {
 	fn schedule_upgrade() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::ScheduleUpgrade {
-				contract: vec_to_fixed_array(default_address_20().to_vec()),
+				contract: default_address_20(),
 			},
 			"131231231231231231231231231231231231231231",
 		)
