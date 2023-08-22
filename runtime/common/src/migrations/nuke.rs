@@ -113,7 +113,7 @@ where
 		);
 
 		ensure!(
-			!unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()),
+			!contains_prefixed_key_skip_storage_version::<Pallet>(&pallet_prefix::<Pallet>()),
 			"Pallet prefix still exists!"
 		);
 
@@ -123,4 +123,20 @@ where
 
 fn pallet_prefix<Pallet: PalletInfoAccess>() -> [u8; 16] {
 	sp_io::hashing::twox_128(Pallet::name().as_bytes())
+}
+
+pub fn contains_prefixed_key_skip_storage_version<Pallet: PalletInfoAccess>(prefix: &[u8]) -> bool {
+	let mut next_key = prefix.to_vec();
+	loop {
+		match sp_io::storage::next_key(&next_key) {
+			// We catch the storage version if it is found.
+			// If we catch another key first, the trie contains keys that are not the
+			// the storage version. We check the prefix and break the loop.
+			Some(key) if key == StorageVersion::storage_key::<Pallet>() => next_key = key,
+			Some(key) => break key.starts_with(prefix),
+			None => {
+				break false;
+			}
+		}
+	}
 }
