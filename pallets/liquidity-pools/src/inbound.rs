@@ -246,6 +246,7 @@ where
 			tranche_tokens_payout,
 		};
 
+		// TODO: Collect fee from treasury instead
 		T::OutboundQueue::submit(investor, destination.domain(), message)?;
 
 		Ok(())
@@ -326,6 +327,7 @@ where
 			tranche_tokens_payout: amount_tranche_tokens_payout,
 		};
 
+		// TODO: Collect fee from treasury instead
 		T::OutboundQueue::submit(investor, destination.domain(), message)?;
 
 		Ok(())

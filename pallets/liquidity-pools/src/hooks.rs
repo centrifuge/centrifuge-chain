@@ -63,6 +63,7 @@ where
 			currency_payout: status.amount_decreased,
 		};
 
+		// TODO: Collect payment from treasury instead
 		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
 
 		Ok(())
@@ -102,6 +103,7 @@ where
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
 		};
 
+		// TODO: Collect payment from treasury instead
 		T::OutboundQueue::submit(investor, domain_address.domain(), message)?;
 
 		Ok(())

@@ -1794,7 +1794,7 @@ construct_runtime!(
 		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 110,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Call, Storage, Event<T>} = 111,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 111,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

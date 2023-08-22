@@ -158,7 +158,7 @@ pub enum InvestTransition<
 	/// * If the previous state includes `ActiveSwapIntoForeignCurrency`,
 	///   `currency_in` is the foreign currency.
 	FulfillSwapOrder(Swap<Balance, Currency>),
-	EpochExecution(Balance),
+	CollectInvestment(Balance),
 }
 
 /// Reflects all states a foreign redemption can have until transferred to the
@@ -326,6 +326,5 @@ pub enum RedeemTransition<
 	IncreaseRedeemOrder(Balance),
 	DecreaseRedeemOrder(Balance),
 	FulfillSwapOrder(Swap<Balance, Currency>),
-	Collect(Swap<Balance, Currency>),
-	EpochExecution(Balance),
+	CollectRedemption(Balance, Swap<Balance, Currency>),
 }

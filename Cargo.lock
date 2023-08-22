@@ -11019,6 +11019,7 @@ dependencies = [
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-foreign-investments",
  "pallet-investments",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",

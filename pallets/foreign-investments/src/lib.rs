@@ -41,7 +41,6 @@ pub mod pallet {
 	};
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
-	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use types::{InvestState, RedeemState};
 
@@ -202,20 +201,22 @@ pub mod pallet {
 	/// investment after the potential swap. In case a swap is not required, the
 	/// investment starts with `InvestState::InvestmentOngoing`.
 	#[pallet::storage]
-	pub(super) type InvestmentState<T: Config> = StorageDoubleMap<
+	pub type InvestmentState<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
 		InvestState<T::Balance, T::CurrencyId>,
+		ValueQuery,
 	>;
 
 	/// Maps an investor and their `InvestmentId` to the corresponding
 	/// `RedeemState`.
 	///
 	/// NOTE: The lifetime of this storage starts with increasing a redemption
-	/// if there exists a processed investment. It ends with transferring back
+	/// which requires owning at least the amount of tranche tokens by which the
+	/// redemption shall be increased by. It ends with transferring back
 	/// the swapped return currency to the corresponding source domain from
 	/// which the investment originated. The lifecycle must go through the
 	/// following stages:
@@ -226,13 +227,14 @@ pub mod pallet {
 	/// 	5. Completely fulfill swap order
 	/// 	6. Transfer back to source domain --> Kill storage entry
 	#[pallet::storage]
-	pub(super) type RedemptionState<T: Config> = StorageDoubleMap<
+	pub type RedemptionState<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
 		RedeemState<T::Balance, T::CurrencyId>,
+		ValueQuery,
 	>;
 
 	/// Maps `TokenSwapOrders` to `ForeignInvestmentInfo` to implicitly enable
@@ -269,7 +271,7 @@ pub mod pallet {
 	/// in pool currency and ends with having swapped the entire amount to
 	/// return currency which is assumed to be asynchronous.
 	#[pallet::storage]
-	pub(super) type CollectedRedemptionTrancheTokens<T: Config> = StorageDoubleMap<
+	pub type CollectedRedemptionTrancheTokens<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -303,7 +305,6 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	// TODO: Add more errors
 	pub enum Error<T> {
 		InvalidInvestmentCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
@@ -327,78 +328,6 @@ pub mod pallet {
 	impl<T> From<RedeemError> for Error<T> {
 		fn from(error: RedeemError) -> Self {
 			Error::<T>::RedeemError(error)
-		}
-	}
-
-	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		/// Attempts to transition an `InvestState` after an epoch execution:
-		/// * If the state includes `InvestmentOngoing` and the unprocessed
-		///   investment amount is zero, removes `InvestmentOngoing`.
-		/// * If the state includes `InvestmentOngoing` and the unprocessed
-		///   investment amount is positive, updates the `invest_amount` to the
-		///   unprocessed one.
-		///
-		/// NOOP: If the unprocessed investment amount is zero or the state does
-		/// not include `InvestmentOngoing`
-		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
-		#[pallet::call_index(1)]
-		pub fn nudge_invest_state(
-			origin: OriginFor<T>,
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			if let Some(invest_state) = InvestmentState::<T>::get(&investor, investment_id) {
-				let amount_unprocessed_investment =
-					T::Investment::investment(&investor, investment_id)?;
-				let new_state = invest_state
-					.transition(types::InvestTransition::EpochExecution(
-						amount_unprocessed_investment,
-					))
-					.map_err(|e| {
-						log::debug!("InvestState transition error: {:?}", e);
-						Error::<T>::from(InvestError::EpochExecution)
-					})?;
-				Pallet::<T>::apply_invest_state_transition(&investor, investment_id, new_state)?;
-			}
-			Ok(())
-		}
-
-		/// Attempts to transition a `RedeemState` after an epoch execution:
-		/// * If the inner state includes `Redeeming` and the unprocessed
-		///   redemption amount is zero, removes `Redeeming`.
-		/// * If the inner state includes `Redeeming` and the unprocessed
-		///   redemption amount is positive, updates the amount to the
-		///   unprocessed one.
-		///
-		/// NOOP: If the unprocessed redemption amount is zero or the inner
-		/// state does not include `Redeeming`.
-		#[pallet::weight(100_000_000 + T::DbWeight::get().reads_writes(5, 5).ref_time())]
-		#[pallet::call_index(2)]
-		pub fn nudge_redeem_state(
-			origin: OriginFor<T>,
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			if let Some(redeem_state) = RedemptionState::<T>::get(&investor, investment_id) {
-				let amount_unprocessed_redemption =
-					T::Investment::redemption(&investor, investment_id)?;
-				let new_state = redeem_state
-					.transition(types::RedeemTransition::EpochExecution(
-						amount_unprocessed_redemption,
-					))
-					.map_err(|e| {
-						log::debug!("RedeemState transition error: {:?}", e);
-						Error::<T>::from(RedeemError::EpochExecution)
-					})?;
-				Pallet::<T>::apply_redeem_state_transition(&investor, investment_id, new_state)?;
-			}
-
-			Ok(())
 		}
 	}
 }

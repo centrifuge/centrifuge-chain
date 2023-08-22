@@ -671,7 +671,7 @@ where
 				return Ok((Default::default(), ().into()));
 			}
 
-			let mut amount_payment: T::Amount = Default::default();
+			let mut amount_payment = T::Amount::zero();
 			for order_id in order.submitted_at()..last_processed_order_id {
 				let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
 					.map_err(|_| Error::<T>::OrderNotCleared)?;
@@ -777,7 +777,7 @@ where
 				return Ok((Default::default(), ().into()));
 			}
 
-			let mut amount_payment: T::Amount = Default::default();
+			let mut amount_payment = T::Amount::zero();
 			for order_id in order.submitted_at()..last_processed_order_id {
 				let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
 					.map_err(|_| Error::<T>::OrderNotCleared)?;

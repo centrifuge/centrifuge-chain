@@ -42,8 +42,8 @@ where
 			InvestTransition::FulfillSwapOrder(swap) => {
 				Self::handle_fulfilled_swap_order(self, swap)
 			}
-			InvestTransition::EpochExecution(amount_unprocessed) => {
-				Self::handle_epoch_execution(self, amount_unprocessed)
+			InvestTransition::CollectInvestment(amount_unprocessed) => {
+				Self::handle_collect(self, amount_unprocessed)
 			}
 		}
 	}
@@ -848,11 +848,6 @@ where
 		&self,
 		swap: Swap<Balance, Currency>,
 	) -> Result<Self, DispatchError> {
-		#[cfg(feature = "std")]
-		{
-			println!("Inside invest handle_decrease_non_foreign");
-			dbg!(self, swap);
-		}
 		if let Self::InvestmentOngoing { invest_amount } = &self {
 			if swap.amount < *invest_amount {
 				Ok(InvestState::SwapIntoForeignDoneAndInvestmentOngoing {
@@ -872,14 +867,12 @@ where
 		}
 	}
 
-	/// Update or kill the unprocessed investment amount.
-	/// * If the state does not include `InvestmentOngoing` and the unprocessed
-	///   amount is not zero, there is nothing to transition, return the current
-	///   state. If the unprocessed amount is zero, state is corrupted.
-	/// * Else If the provided `unprocessed_amount` is zero, remove
-	///   `InvestmentOngoing` from the state
-	/// * Else set the `invest_amount` to `unprocessed_amount`
-	fn handle_epoch_execution(&self, unprocessed_amount: Balance) -> Result<Self, DispatchError> {
+	/// Update or kill the state's unprocessed investing amount.
+	/// * If the state includes `InvestmentOngoing`, either update or remove the
+	///   invested amount.
+	/// * Else the unprocessed amount should be zero. If it is not, state is
+	///   corrupted as this reflects the investment was increased improperly.
+	fn handle_collect(&self, unprocessed_amount: Balance) -> Result<Self, DispatchError> {
 		match *self {
 			Self::InvestmentOngoing { .. } => {
 				if unprocessed_amount.is_zero() {

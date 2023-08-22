@@ -1957,7 +1957,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Call, Storage, Event<T>} = 117,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

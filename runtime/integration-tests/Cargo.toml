@@ -97,6 +97,7 @@ liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gatewa
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
 pallet-investments = { path = "../../pallets/investments" }
+pallet-foreign-investments = { path = "../../pallets/foreign-investments" }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools" }
 pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway" }
 pallet-loans = { path = "../../pallets/loans" }
@@ -136,6 +137,7 @@ std = [
   "orml-xtokens/std",
   "pallet-aura/std",
   "pallet-balances/std",
+  "pallet-foreign-investments/std",
   "pallet-investments/std",
   "pallet-transaction-payment/std",
   "pallet-uniques/std",
@@ -182,6 +184,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",

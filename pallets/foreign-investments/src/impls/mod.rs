@@ -57,7 +57,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 
 		match reason {
 			TokenSwapReason::Investment => {
-				let pre_state = InvestmentState::<T>::get(&info.owner, info.id).unwrap_or_default();
+				let pre_state = InvestmentState::<T>::get(&info.owner, info.id);
 				let post_state = pre_state
 					.transition(InvestTransition::FulfillSwapOrder(status))
 					.map_err(|e| {
@@ -68,7 +68,7 @@ impl<T: Config> StatusNotificationHook for Pallet<T> {
 				Pallet::<T>::apply_invest_state_transition(&info.owner, info.id, post_state)
 			}
 			TokenSwapReason::Redemption => {
-				let pre_state = RedemptionState::<T>::get(&info.owner, info.id).unwrap_or_default();
+				let pre_state = RedemptionState::<T>::get(&info.owner, info.id);
 				let post_state = pre_state
 					.transition(RedeemTransition::FulfillSwapOrder(status))
 					.map_err(|e| {
@@ -97,7 +97,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
@@ -131,7 +131,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let pre_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
@@ -163,7 +163,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<(), DispatchError> {
-		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
+		let pre_state =
+			RedemptionState::<T>::get(who, investment_id).increase_invested_amount(amount)?;
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
@@ -191,7 +192,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
+		let pre_state = RedemptionState::<T>::get(who, investment_id);
 
 		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
 		// removed before deploying to production
@@ -223,6 +224,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			amount_payment,
 		} = T::Investment::collect_investment(who.clone(), investment_id)?;
 
+		// Update invest state
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
+		let investing_amount = T::Investment::investment(who, investment_id)?;
+		let post_state =
+			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
+		Self::apply_invest_state_transition(who, investment_id, post_state).map_err(|e| {
+			log::debug!("InvestState transition error: {:?}", e);
+			Error::<T>::from(InvestError::Collect)
+		})?;
+
+		// Determine payout amount in foreign currency instead of current pool currency
+		// denomination
 		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
 			pool_currency,
 			amount_payment,
@@ -250,13 +263,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		})?;
 
 		// Transition state to initiate swap from pool to foreign currency
-		let pre_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
+		let pre_state = RedemptionState::<T>::get(who, investment_id);
+		let amount_unprocessed_redemption = T::Investment::redemption(who, investment_id)?;
 		let post_state = pre_state
-			.transition(RedeemTransition::Collect(SwapOf::<T> {
-				amount: collected.amount_collected,
-				currency_in: foreign_currency,
-				currency_out: pool_currency,
-			}))
+			.transition(RedeemTransition::CollectRedemption(
+				amount_unprocessed_redemption,
+				SwapOf::<T> {
+					amount: collected.amount_collected,
+					currency_in: foreign_currency,
+					currency_out: pool_currency,
+				},
+			))
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("RedeemState transition error: {:?}", e);
@@ -425,14 +442,15 @@ impl<T: Config> Pallet<T> {
 			}
 			Self::deposit_redemption_event(who, investment_id, maybe_new_redeem_state);
 
-			// Update investment after all states have been updated
-			T::Investment::update_investment(who, investment_id, invest_amount)?;
+			if T::Investment::investment(who, investment_id)? != invest_amount {
+				// Finally, update investment after all states have been updated
+				T::Investment::update_investment(who, investment_id, invest_amount)?;
+			}
 
 			// Send notification after updating invest as else funds are still locked in investment account
 			if let Some((foreign_currency, decreased_amount)) = maybe_executed_decrease {
 				Self::notify_executed_decrease_invest(who, investment_id, foreign_currency, decreased_amount)?;
 			}
-
 
 			Ok(())
 		})
@@ -481,7 +499,7 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		state: RedeemState<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		let invest_amount = state.get_invested_amount().unwrap_or_default();
+		let redeeming_amount = state.get_redeeming_amount();
 
 		// Do first round of updates and forward state as well as swap
 		match state {
@@ -528,7 +546,7 @@ impl<T: Config> Pallet<T> {
 				TokenSwapReason::Redemption,
 			)?;
 
-			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
+			// Dispatch transition event, post swap state has priority if it exists as it is the result of the latest update
 			if let Some(redeem_state_post_swap) = maybe_new_state_prio {
 				Self::deposit_redemption_event(who, investment_id, Some(redeem_state_post_swap));
 			} else {
@@ -536,8 +554,10 @@ impl<T: Config> Pallet<T> {
 			}
 			Self::deposit_investment_event(who, investment_id, maybe_new_invest_state);
 
-			// Finally, update redemption after all states have been updated
-			T::Investment::update_redemption(who, investment_id, invest_amount)?;
+			if T::Investment::redemption(who, investment_id)? != redeeming_amount {
+				// Finally, update redemption after all states have been updated
+				T::Investment::update_redemption(who, investment_id, redeeming_amount)?;
+			}
 
 			Ok(())
 		})
@@ -724,10 +744,8 @@ impl<T: Config> Pallet<T> {
 			// Update invest and redeem states if necessary
 			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
 				// Should never occur but let's be safe
-				if let Some(InvestState::NoState) = maybe_invest_state {
-					*current_invest_state = None;
-				} else if maybe_invest_state != *current_invest_state {
-					*current_invest_state = maybe_invest_state;
+				if let Some(state) = maybe_invest_state {
+					*current_invest_state = state;
 				}
 			});
 
@@ -735,30 +753,34 @@ impl<T: Config> Pallet<T> {
 			// `ActiveSwapIntoForeignCurrency` as this implies the successful termination of
 			// a collect (with swap into foreign currency). If this is the case, the
 			// returned redeem state needs to be updated as well.
-			match maybe_redeem_state {
+			let returning_redeem_state = match maybe_redeem_state {
 				Some(RedeemState::InvestedAnd { inner, .. })
 				| Some(RedeemState::NotInvestedAnd { inner }) => {
-					let redeem_state = maybe_redeem_state.unwrap_or_default();
-					let maybe_collected_redeem_state = Self::apply_collect_redeem_transition(
+					if let Some(collected_redeem_state) = Self::apply_collect_redeem_transition(
 						who,
 						investment_id,
-						redeem_state,
+						maybe_redeem_state.unwrap_or_default(),
 						inner,
-					)?;
-					Ok((maybe_invest_state, maybe_collected_redeem_state))
+					)? {
+						Ok(Some(collected_redeem_state))
+					} else {
+						Ok(maybe_redeem_state)
+					}
 				}
 				Some(_) => {
 					RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
 						// Update and emit event on mismatch
-						if maybe_redeem_state != *current_redeem_state {
-							*current_redeem_state = maybe_redeem_state;
+						if let Some(state) = maybe_redeem_state {
+							*current_redeem_state = state
 						}
-					});
-					Ok((maybe_invest_state, maybe_redeem_state))
+						Ok(maybe_redeem_state)
+					})
 				}
-				None => Ok((maybe_invest_state, maybe_redeem_state)),
+				None => Ok(maybe_redeem_state),
 			}
-			.map_err(|e: DispatchError| e)
+			.map_err(|e: DispatchError| e)?;
+
+			Ok((maybe_invest_state, returning_redeem_state))
 		}
 		// Update to provided value, if not none
 		else if let Some(swap_order) = maybe_swap {
@@ -890,8 +912,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// Read states from storage and determine amounts
-		let invest_state = InvestmentState::<T>::get(who, investment_id).unwrap_or_default();
-		let redeem_state = RedemptionState::<T>::get(who, investment_id).unwrap_or_default();
+		let invest_state = InvestmentState::<T>::get(who, investment_id);
+		let redeem_state = RedemptionState::<T>::get(who, investment_id);
 		let invest_swap_amount = invest_state
 			.get_active_swap()
 			.map(|s| s.amount)

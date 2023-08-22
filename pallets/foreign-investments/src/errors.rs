@@ -23,9 +23,9 @@ pub enum InvestError {
 	Decrease,
 	/// Failed to transition after fulfilled swap order.
 	FulfillSwapOrder,
-	/// Failed to transition a (partially) processed investment after an epoch
-	/// was executed.
-	EpochExecution,
+	/// Failed to transition a (partially) processed investment after
+	/// collecting.
+	Collect,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
