@@ -166,6 +166,7 @@ package pricing {
             info: ExternalPricing
             outstanding_quantity: Rate,
             interest: ActiveInterestRate
+            latest_settlement_price: Option<Balance>
         }
 
         ExternalActivePricing *-r-> ActiveInterestRate
