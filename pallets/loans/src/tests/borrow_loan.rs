@@ -1,3 +1,5 @@
+use sp_arithmetic::traits::EnsureFixedPointNumber;
+
 use super::*;
 
 /// Used where the error comes from other pallet impl. unknown from the tests
@@ -19,10 +21,7 @@ fn config_mocks(withdraw_amount: Balance) {
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
-		match *id {
-			REGISTER_PRICE_ID => Ok(()),
-			_ => Err(PRICE_ID_NO_FOUND),
-		}
+		Ok(())
 	});
 }
 
@@ -273,14 +272,16 @@ fn with_unregister_price_id() {
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
 		config_mocks(amount.balance().unwrap());
 
-		assert_noop!(
-			Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				PricingAmount::External(amount)
-			),
-			PRICE_ID_NO_FOUND
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			QUANTITY.ensure_mul_int(PRICE_VALUE).unwrap(),
+			util::current_loan_pv(loan_id)
 		);
 	});
 }

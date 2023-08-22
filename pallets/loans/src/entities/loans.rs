@@ -327,6 +327,9 @@ impl<T: Config> ActiveLoan<T> {
 				inner.adjust(Adjustment::Increase(amount.balance()?))?
 			}
 			ActivePricing::External(inner) => {
+				let settlement_price = amount.external()?.settlement_price;
+				inner.update_latest_settlement_price(settlement_price)?;
+
 				let quantity = amount.external()?.quantity;
 				inner.adjust(Adjustment::Increase(quantity), Zero::zero())?
 			}
@@ -402,7 +405,10 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(inner) => {
 				let quantity = amount.principal.external()?.quantity;
-				inner.adjust(Adjustment::Decrease(quantity), amount.interest)?
+				inner.adjust(Adjustment::Decrease(quantity), amount.interest)?;
+
+				let settlement_price = amount.principal.external()?.settlement_price;
+				inner.update_latest_settlement_price(settlement_price)?
 			}
 		}
 

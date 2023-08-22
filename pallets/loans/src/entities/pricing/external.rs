@@ -97,6 +97,9 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
+
+	/// Settlement price used in the most recent borrow or repay transaction.
+	latest_settlement_price: Option<T::Balance>,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -110,6 +113,7 @@ impl<T: Config> ExternalActivePricing<T> {
 			info,
 			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
+			latest_settlement_price: None,
 		})
 	}
 
@@ -126,7 +130,12 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
+		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => Ok(data.0),
+			Err(_) => self
+				.latest_settlement_price
+				.ok_or(DispatchError::Other("No price found")),
+		}?;
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -156,23 +165,28 @@ impl<T: Config> ExternalActivePricing<T> {
 		amount: &ExternalAmount<T>,
 		pool_id: T::PoolId,
 	) -> Result<(), DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
-		let delta = if amount.settlement_price > price {
-			amount.settlement_price.ensure_sub(price)?
-		} else {
-			price.ensure_sub(amount.settlement_price)?
-		};
-		let variation =
-			T::Rate::checked_from_rational(delta, price).ok_or(ArithmeticError::Overflow)?;
+		match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => {
+				let price = data.0;
+				let delta = if amount.settlement_price > price {
+					amount.settlement_price.ensure_sub(price)?
+				} else {
+					price.ensure_sub(amount.settlement_price)?
+				};
+				let variation = T::Rate::checked_from_rational(delta, price)
+					.ok_or(ArithmeticError::Overflow)?;
 
-		// We bypass any price if quantity is zero,
-		// because it does not take effect in the computation.
-		ensure!(
-			variation <= self.info.max_price_variation || amount.quantity.is_zero(),
-			Error::<T>::SettlementPriceExceedsVariation
-		);
+				// We bypass any price if quantity is zero,
+				// because it does not take effect in the computation.
+				ensure!(
+					variation <= self.info.max_price_variation || amount.quantity.is_zero(),
+					Error::<T>::SettlementPriceExceedsVariation
+				);
 
-		Ok(())
+				Ok(())
+			}
+			Err(_) => Ok(()),
+		}
 	}
 
 	pub fn max_borrow_amount(
@@ -217,6 +231,15 @@ impl<T: Config> ExternalActivePricing<T> {
 		})?;
 
 		self.interest.adjust_debt(interest_adj)?;
+
+		Ok(())
+	}
+
+	pub fn update_latest_settlement_price(
+		&mut self,
+		settlement_price: T::Balance,
+	) -> DispatchResult {
+		self.latest_settlement_price = Some(settlement_price);
 
 		Ok(())
 	}
