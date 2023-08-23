@@ -27,7 +27,7 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId, CFG};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 	liquidity_pools::{Codec, InboundQueue},
@@ -50,12 +50,12 @@ use codec::Encode;
 use development_runtime::{
 	Balances, ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsGateway, Loans,
 	OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
-	RuntimeOrigin, System, XTokens, XcmTransactor,
+	RuntimeOrigin, System, TreasuryPalletId, XTokens, XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::Weight,
-	traits::{fungibles::Mutate, Get, PalletInfo},
+	traits::{fungible::Mutate as _, fungibles::Mutate, Get, PalletInfo},
 };
 use hex::FromHex;
 use liquidity_pools_gateway_routers::XcmDomain as GatewayXcmDomain;
@@ -1199,6 +1199,119 @@ mod non_foreign_currencies {
 	}
 
 	#[test]
+	fn inbound_cancel_invest_order() {
+		TestNet::reset();
+
+		Development::execute_with(|| {
+			utils::setup_pre_requirements();
+
+			let pool_id = 42;
+			let invest_amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+
+			// Create new pool
+			utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+			// Set permissions and execute initial investment
+			utils::investments::do_initial_increase_investment(
+				pool_id,
+				invest_amount,
+				investor.clone(),
+				currency_id,
+			);
+
+			// Verify investment account holds funds before cancelling
+			assert_eq!(
+				OrmlTokens::free_balance(
+					currency_id,
+					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+				),
+				invest_amount
+			);
+
+			// Mock incoming cancel message
+			let msg = utils::LiquidityPoolMessage::CancelInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
+
+			// Expect failure if transferability is disabled since this is required for
+			// preparing the `ExecutedDecreaseInvest` message.
+			assert_noop!(
+				LiquidityPools::submit(utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
+				pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
+			);
+			utils::enable_liquidity_pool_transferability(
+				currency_id,
+				Some(Some(utils::liquidity_pools_transferable_multilocation(
+					MOONBEAM_EVM_CHAIN_ID,
+					// Value of evm_address is irrelevant here
+					[1u8; 20],
+				))),
+			);
+
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(
+				utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+				msg
+			));
+
+			// Foreign InvestmentState should be cleared
+			assert!(!pallet_foreign_investments::InvestmentState::<
+				DevelopmentRuntime,
+			>::contains_key(
+				&investor,
+				investment_id(pool_id, default_tranche_id(pool_id))
+			));
+			assert!(System::events().iter().any(|e| {
+				e.event == pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+					investor: investor.clone(),
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+				}
+				.into()
+			}));
+
+			// Verify investment was entirely drained from investment account
+			assert_eq!(
+				OrmlTokens::free_balance(
+					currency_id,
+					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+				),
+				0
+			);
+			// Since the investment was done in the pool currency, the decrement happens
+			// synchronously and thus it must be burned from investor's holdings
+			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert!(System::events().iter().any(|e| e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: 0
+				}
+				.into()));
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount: invest_amount
+				}
+				.into()));
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					investment_id(pool_id, default_tranche_id(pool_id))
+				)
+				.amount,
+				0
+			);
+		});
+	}
+
+	#[test]
 	fn inbound_collect_invest_order() {
 		TestNet::reset();
 
@@ -1757,7 +1870,8 @@ mod utils {
 	///  	* transact info and domain router for Moonbeam `MultiLocation`,
 	///  	* fee for GLMR (`GLIMMER_CURRENCY_ID`),
 	///  * Register GLMR and AUSD in `OrmlAssetRegistry`,
-	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice and Bob.
+	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice, Bob and the
+	///    Treasury.
 	///
 	/// NOTE: AUSD is the default pool currency in `create_pool`.
 	/// Neither AUSD nor GLMR are registered as a liquidityPools-transferable
@@ -1787,9 +1901,15 @@ mod utils {
 			Some(GLIMMER_CURRENCY_ID)
 		));
 
-		// Give Alice and BOB enough glimmer to pay for fees
+		// Give Alice, Bob and Treasury enough glimmer to pay for fees
 		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
 		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
+		// Treasury pays for `Executed*` messages
+		OrmlTokens::deposit(
+			GLIMMER_CURRENCY_ID,
+			&TreasuryPalletId::get().into_account_truncating(),
+			DEFAULT_BALANCE_GLMR,
+		);
 
 		// Register AUSD in the asset registry which is the default pool currency in
 		// `create_pool`
