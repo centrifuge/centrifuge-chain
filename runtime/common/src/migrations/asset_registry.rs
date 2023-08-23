@@ -20,14 +20,13 @@ use frame_support::{
 };
 use orml_traits::asset_registry::AssetMetadata;
 use sp_core::Get;
+#[cfg(feature = "try-runtime")]
+use sp_std::vec::Vec;
 use xcm::{
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
 	v3::{MultiLocation, NetworkId},
 	VersionedMultiLocation,
 };
-
-#[cfg(feature = "try-runtime")]
-use sp_std::vec::Vec;
 
 pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
 
@@ -75,7 +74,8 @@ where
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
 		frame_support::ensure!(
-			AssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID) == Some(metadata(LiquidityPoolsPalletIndex::get())),
+			AssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID)
+				== Some(metadata(LiquidityPoolsPalletIndex::get())),
 			"The LpEthUSDC's token metadata does NOT match what we expected it to be"
 		);
 
