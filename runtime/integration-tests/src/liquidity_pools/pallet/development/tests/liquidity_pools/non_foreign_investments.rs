@@ -22,16 +22,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use ::xcm::{
-	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
-	prelude::{Parachain, X1, X2},
-	VersionedMultiLocation,
-};
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId, CFG};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-	liquidity_pools::{Codec, InboundQueue},
-	Permissions as _, PoolMutate,
+	liquidity_pools::InboundQueue,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -44,35 +38,19 @@ use cfg_types::{
 		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
 		ForeignAssetId,
 	},
-	xcm::XcmMetadata,
 };
-use codec::Encode;
 use development_runtime::{
-	Balances, ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsGateway, Loans,
-	OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
-	RuntimeOrigin, System, TreasuryPalletId, XTokens, XcmTransactor,
+	Balances, ForeignInvestments, Investments, LiquidityPools, OrmlAssetRegistry, OrmlTokens,
+	Permissions, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
 };
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::Weight,
 	traits::{fungible::Mutate as _, fungibles::Mutate, Get, PalletInfo},
 };
-use hex::FromHex;
-use liquidity_pools_gateway_routers::XcmDomain as GatewayXcmDomain;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_foreign_investments::types::{InnerRedeemState, InvestState, RedeemState};
 use pallet_investments::CollectOutcome;
-use pallet_liquidity_pools::{
-	encoded_contract_call, Error::UnauthorizedTransfer, Message, ParachainId, Router, XcmDomain,
-};
-use pallet_pool_system::{
-	pool_types::PoolDetails,
-	tranches::{TrancheInput, TrancheLoc, TrancheType},
-};
-use runtime_common::{
-	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
-};
-use sp_core::H160;
+use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, Perquintill, SaturatedConversion, WeakBoundedVec,
@@ -84,7 +62,9 @@ use crate::{
 		setup::{dollar, ALICE, BOB},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::{
-			non_foreign_investments::setup::{do_initial_increase_investment, do_initial_increase_redemption},
+			non_foreign_investments::setup::{
+				do_initial_increase_investment, do_initial_increase_redemption,
+			},
 			setup::{
 				asset_metadata, create_ausd_pool, create_currency_pool,
 				enable_liquidity_pool_transferability,
@@ -92,13 +72,12 @@ use crate::{
 					default_investment_account, default_investment_id, default_tranche_id,
 					general_currency_index, investment_id,
 				},
-				liquidity_pools_transferable_multilocation, set_test_domain_router,
 				setup_pre_requirements, LiquidityPoolMessage, DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-				DEFAULT_MOONBEAM_LOCATION, DEFAULT_POOL_ID, DEFAULT_VALIDITY,
+				DEFAULT_POOL_ID, DEFAULT_VALIDITY,
 			},
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::AUSD_CURRENCY_ID,
 };
 
 #[test]
@@ -873,7 +852,7 @@ mod setup {
 			pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
 				investment_id: default_investment_id(),
 				submitted_at: 0,
-				who: investor.clone(),
+				who: investor,
 				amount
 			}
 			.into()

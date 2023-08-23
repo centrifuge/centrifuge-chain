@@ -134,11 +134,11 @@ pub fn set_test_domain_router(
 }
 
 /// Initializes universally required storage for liquidityPools tests:
-///  * Set the EthereumXCM router which in turn sets:
-///  	* transact info and domain router for Moonbeam `MultiLocation`,
-///  	* fee for GLMR (`GLIMMER_CURRENCY_ID`),
-///  * Register GLMR and AUSD in `OrmlAssetRegistry`,
-///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice, Bob and the Treasury.
+/// * Set the EthereumXCM router which in turn sets:
+///     * transact info and domain router for Moonbeam `MultiLocation`,
+///     * fee for GLMR (`GLIMMER_CURRENCY_ID`),
+/// * Register GLMR and AUSD in `OrmlAssetRegistry`,
+/// * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice, Bob and the Treasury.
 ///
 /// NOTE: AUSD is the default pool currency in `create_pool`.
 /// Neither AUSD nor GLMR are registered as a liquidityPools-transferable
