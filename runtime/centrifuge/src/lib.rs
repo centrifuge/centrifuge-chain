@@ -1626,7 +1626,7 @@ impl pallet_data_collector::Config for Runtime {
 
 parameter_types! {
 	// todo(nuno): reserving this pallet index implicitly. Can we not duplicate this but instead
-    // fetch the actual pallet index once we add LiquidityPools pallet?
+	// fetch the actual pallet index once we add LiquidityPools pallet?
 	pub const LiquidityPoolsPalletIndex: PalletIndex = 103;
 }
 

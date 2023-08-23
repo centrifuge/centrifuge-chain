@@ -13,13 +13,13 @@ use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
-use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, Runtime};
+use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
 
 pub type UpgradeCentrifuge1020 = (
 	asset_registry::CrossChainTransferabilityMigration,
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
-	asset_registry::RegisterLpEthUSDC<LiquidityPoolsPalletIndex, OrmlAssetRegistry>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	asset_registry::RegisterLpEthUSDC<LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight>,
 );
 
 mod asset_registry {
@@ -28,10 +28,9 @@ mod asset_registry {
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
+	pub use runtime_common::migrations::asset_registry::RegisterLpEthUSDC;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
-
-	pub use runtime_common::migrations::asset_registry::RegisterLpEthUSDC;
 
 	use super::*;
 	use crate::VERSION;

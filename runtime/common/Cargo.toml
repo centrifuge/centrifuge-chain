@@ -8,6 +8,7 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+hex = { version = "0.4.3", default_features = false }
 serde = { version = "1.0.119" }
 smallvec = "1.6.1"
 
@@ -78,6 +79,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = tr
 default = ["std"]
 std = [
   "codec/std",
+  "hex/std",
   "log/std",
   "frame-support/std",
   "frame-system/std",

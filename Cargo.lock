@@ -10928,6 +10928,7 @@ dependencies = [
  "fp-self-contained",
  "frame-support",
  "frame-system",
+ "hex",
  "hex-literal 0.2.2",
  "log",
  "orml-oracle",

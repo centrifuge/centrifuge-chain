@@ -12,5 +12,5 @@
 
 //! Centrifuge Runtime-Common Migrations
 
-pub mod nuke;
 pub mod asset_registry;
+pub mod nuke;
