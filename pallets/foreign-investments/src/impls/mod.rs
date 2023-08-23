@@ -152,6 +152,10 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				log::debug!("InvestState transition error: {:?}", e);
 				Error::<T>::from(InvestError::Decrease)
 			})?;
+		#[cfg(feature = "std")]
+		{
+			dbg!(pre_state, post_state);
+		}
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
