@@ -72,6 +72,10 @@ jobs:
         name: Publish to GCS
         run: |
           gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.compressed.wasm gs://centrifuge-artifact-releases/test-parachain/altair_runtime-$(git rev-parse --short HEAD).compact.compressed.wasm
+      - if: ${{ matrix.target == 'build-runtime-testnet' && matrix.package == 'altair-runtime' }}
+          name: Publish to GCS
+          run: |
+            gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.compressed.wasm gs://centrifuge-artifact-releases/parachain/algol-$(git rev-parse --short HEAD).compact.compressed.wasm
       - if: ${{ matrix.target == 'build-runtime' && matrix.package == 'centrifuge-runtime' }}
         name: Publish to GCS
         run: |
