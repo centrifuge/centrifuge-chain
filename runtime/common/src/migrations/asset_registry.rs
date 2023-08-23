@@ -26,6 +26,9 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
+#[cfg(feature = "try-runtime")]
+use sp_std::vec::Vec;
+
 pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
 
 pub struct RegisterLpEthUSDC<LiquidityPoolsPalletIndex, AssetRegistry, DbWeight>(
@@ -72,9 +75,11 @@ where
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
 		frame_support::ensure!(
-			AssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID) == metadata(&LP_ETH_USDC_CURRENCY_ID),
+			AssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID) == Some(metadata(LiquidityPoolsPalletIndex::get())),
 			"The LpEthUSDC's token metadata does NOT match what we expected it to be"
 		);
+
+		Ok(())
 	}
 }
 
