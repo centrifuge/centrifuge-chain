@@ -17,7 +17,7 @@ use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 use sp_std::vec::Vec;
 
-use crate::Runtime;
+use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
 
 /// The migration set for Altair 1030 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain, which includes migrations that have
@@ -27,14 +27,15 @@ pub type UpgradeAltair1030 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
 	pool_system::MigrateAUSDPools,
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
+	asset_registry::RegisterLpEthUSDC<LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight>,
 );
 
 /// The Upgrade set for Algol - it excludes the migrations already executed in
@@ -42,8 +43,8 @@ pub type UpgradeAltair1030 = (
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
 pub type UpgradeAltair1030 = (
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -59,6 +60,7 @@ mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
+	pub use runtime_common::migrations::asset_registry::RegisterLpEthUSDC;
 
 	use super::*;
 	use crate::VERSION;
