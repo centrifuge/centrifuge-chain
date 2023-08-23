@@ -1624,6 +1624,12 @@ impl pallet_data_collector::Config for Runtime {
 	type Moment = Moment;
 }
 
+parameter_types! {
+	// todo(nuno): reserving this pallet index implicitly. Can we not duplicate this but instead
+    // fetch the actual pallet index once we add LiquidityPools pallet?
+	pub const LiquidityPoolsPalletIndex: PalletIndex = 103;
+}
+
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	// TODO: This is a stopgap value until we can calculate it correctly with
