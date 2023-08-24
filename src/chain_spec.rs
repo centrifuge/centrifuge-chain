@@ -26,14 +26,15 @@ use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{
+		lp_eth_usdc_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		GOERLI_USDC, LP_ETH_USDC_CURRENCY_ID,
+	},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::{
-	account_conversion::AccountConverter, migrations::asset_registry::LP_ETH_USDC_CURRENCY_ID,
-};
+use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -987,8 +988,11 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 		),
 		(
 			LP_ETH_USDC_CURRENCY_ID,
-			runtime_common::migrations::asset_registry::metadata(
+			lp_eth_usdc_metadata(
 				development_runtime::LiquidityPoolsPalletIndex::get(),
+				// Goerli evm chain id
+				5,
+				GOERLI_USDC,
 			)
 			.encode(),
 		),

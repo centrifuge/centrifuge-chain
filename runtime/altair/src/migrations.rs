@@ -17,7 +17,7 @@ use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 use sp_std::vec::Vec;
 
-use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
+use crate::{OrmlAssetRegistry, RocksDbWeight, Runtime};
 
 /// The migration set for Altair 1030 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain, which includes migrations that have
@@ -35,7 +35,6 @@ pub type UpgradeAltair1030 = (
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
-	asset_registry::RegisterLpEthUSDC<LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight>,
 );
 
 /// The Upgrade set for Algol - it excludes the migrations already executed in
@@ -60,7 +59,6 @@ mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
-	pub use runtime_common::migrations::asset_registry::RegisterLpEthUSDC;
 
 	use super::*;
 	use crate::VERSION;

@@ -1385,10 +1385,6 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type XcmSender = XcmRouter;
 }
 
-parameter_types! {
-	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
-}
-
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;

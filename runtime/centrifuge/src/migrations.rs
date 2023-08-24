@@ -19,16 +19,18 @@ pub type UpgradeCentrifuge1020 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
-	asset_registry::RegisterLpEthUSDC<LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight>,
+	asset_registry::RegisterLpEthUSDC,
 );
 
 mod asset_registry {
-	use cfg_types::{tokens as v1, tokens::CustomMetadata};
+	use cfg_types::{
+		tokens as v1,
+		tokens::{lp_eth_usdc_metadata, CustomMetadata, ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID},
+	};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
-	use orml_traits::asset_registry::AssetMetadata;
-	pub use runtime_common::migrations::asset_registry::RegisterLpEthUSDC;
+	use orml_traits::asset_registry::{AssetMetadata};
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
@@ -167,6 +169,61 @@ mod asset_registry {
 				pool_currency: old.additional.pool_currency,
 				transferability,
 			},
+		}
+	}
+
+	/// Register the LiquidityPools Wrapped Ethereum USDC
+	pub struct RegisterLpEthUSDC;
+
+	impl OnRuntimeUpgrade for RegisterLpEthUSDC {
+		fn on_runtime_upgrade() -> Weight {
+			use orml_traits::asset_registry::Mutate;
+
+			if OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_some() {
+				log::info!("LpEthUSDC is already registered");
+				return RocksDbWeight::get().reads(1);
+			}
+
+			<OrmlAssetRegistry as Mutate>::register_asset(
+				Some(LP_ETH_USDC_CURRENCY_ID),
+				lp_eth_usdc_metadata(
+					LiquidityPoolsPalletIndex::get(),
+					// Ethereum mainnet chain id
+					1,
+					ETHEREUM_USDC,
+				),
+			)
+			.map_err(|_| log::error!("Failed to register LpEthUSDC"))
+			.ok();
+
+			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: success!");
+			RocksDbWeight::get().reads_writes(1, 1)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			frame_support::ensure!(
+				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_none(),
+				"LpEthUSDC is already registered; this migration will NOT need to be executed"
+			);
+
+			Ok(Default::default())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			frame_support::ensure!(
+				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID)
+					== Some(lp_eth_usdc_metadata(
+						LiquidityPoolsPalletIndex::get(),
+						1,
+						ETHEREUM_USDC
+					)),
+				"The LpEthUSDC's token metadata does NOT match what we expected it to be"
+			);
+
+			log::info!("RegisterLpEthUSDC: post_upgrade: the token metadata looks correct!");
+			Ok(())
 		}
 	}
 }
