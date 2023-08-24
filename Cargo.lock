@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.28"
+version = "0.10.30"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -252,6 +252,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -7955,9 +7956,11 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-restricted-tokens",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

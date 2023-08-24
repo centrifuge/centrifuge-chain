@@ -1759,7 +1759,7 @@ impl<
 	}
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
 	#[derive(scale_info::TypeInfo)]
@@ -1806,7 +1806,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
@@ -1829,7 +1829,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1868,23 +1868,46 @@ impl pallet_transfer_allowlist::Config for Runtime {
 }
 
 parameter_types! {
-		pub const OrderBookCreationFeeKey: FeeKey = FeeKey::OrderBookOrderCreation;
 		pub const OrderPairVecSize: u32 = 1_000_000u32;
+}
+
+// Minimum order amounts for orderbook orders v1 implementation.
+// This will be replaced by runtime specifiable minimum,
+// which will likely be set by governance.
+const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+const DEV_USDT_DECIMALS: u128 = 1_000_000;
+const DEV_AUSD_DECIMALS: u128 = 1_000_000_000_000;
+const DEFAULT_DEV_MIN_ORDER: u128 = 5;
+const MIN_DEV_USDT_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * DEV_USDT_DECIMALS;
+const MIN_DEV_AUSD_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * DEV_AUSD_DECIMALS;
+const MIN_DEV_NATIVE_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * CFG;
+
+parameter_type_with_key! {
+		pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
+				match pair {
+						(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+						(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
+						(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+						(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
+						(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
+						(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
+						_ => None
+				}
+		};
 }
 
 impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
-	type FeeCurrencyId = NativeToken;
-	type Fees = Fees;
-	type ForeignCurrencyBalance = Balance;
+	type Balance = Balance;
 	type FulfilledOrderHook = ForeignInvestments;
-	type OrderFeeKey = OrderBookCreationFeeKey;
+	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
-	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type TradeableAsset = OrmlTokens;
+	type SellRatio = Rate;
+	type TradeableAsset = Tokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 

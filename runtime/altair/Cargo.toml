@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.28"
+version = "0.10.30"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -119,6 +119,7 @@ pallet-investments = { path = "../../pallets/investments", default-features = fa
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
+pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
@@ -177,6 +178,7 @@ std = [
   "pallet-collective/std",
   "pallet-liquidity-pools/std",
   "pallet-liquidity-pools-gateway/std",
+  "pallet-liquidity-rewards/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
@@ -265,6 +267,7 @@ runtime-benchmarks = [
   "pallet-collective/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
   "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
@@ -352,6 +355,7 @@ try-runtime = [
   "pallet-collective/try-runtime",
   "pallet-liquidity-pools/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
+  "pallet-liquidity-rewards/try-runtime",
   "pallet-crowdloan-claim/try-runtime",
   "pallet-crowdloan-reward/try-runtime",
   "pallet-data-collector/try-runtime",
