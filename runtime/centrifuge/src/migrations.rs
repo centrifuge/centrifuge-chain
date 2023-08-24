@@ -30,7 +30,7 @@ mod asset_registry {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
-	use orml_traits::asset_registry::{AssetMetadata};
+	use orml_traits::asset_registry::AssetMetadata;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
