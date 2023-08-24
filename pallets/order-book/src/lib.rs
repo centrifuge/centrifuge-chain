@@ -230,6 +230,8 @@ pub mod pallet {
 
 	/// Map of Vec containing OrderIds of same asset in/out pairs.
 	/// Allows looking up orders available corresponding pairs.
+	///
+	/// NOTE: The key order is (currency_in, currency_out).
 	#[pallet::storage]
 	pub type AssetPairOrders<T: Config> = StorageDoubleMap<
 		_,
@@ -698,6 +700,27 @@ pub mod pallet {
 		/// Check whether an order is active.
 		fn is_active(order: Self::OrderId) -> bool {
 			<Orders<T>>::contains_key(order)
+		}
+
+		/// Check whether there already exist orders for the given trading pair.
+		fn order_pair_exists(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+		) -> bool {
+			!AssetPairOrders::<T>::get(currency_in, currency_out)
+				.len()
+				.is_zero()
+		}
+
+		/// Check whether there already exist counter orders for the given
+		/// trading pair against which could be traded.
+		fn counter_order_pair_exists(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+		) -> bool {
+			!AssetPairOrders::<T>::get(currency_out, currency_in)
+				.len()
+				.is_zero()
 		}
 	}
 }

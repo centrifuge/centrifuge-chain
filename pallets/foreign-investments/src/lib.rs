@@ -34,7 +34,7 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 pub mod pallet {
 	use cfg_traits::{
 		investments::{Investment as InvestmentT, InvestmentCollector, TrancheCurrency},
-		StatusNotificationHook, TokenSwaps,
+		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
 		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
@@ -119,30 +119,28 @@ pub mod pallet {
 				Result = CollectedAmount<Self::Balance>,
 			>;
 
-		/// The default sell price limit for token swaps which defines the
-		/// lowest acceptable buy price.
+		/// Type for price ratio for cost of incoming currency relative to
+		/// outgoing
+		type Rate: Parameter
+			+ Member
+			+ sp_runtime::FixedPointNumber
+			+ sp_runtime::traits::EnsureMul
+			+ sp_runtime::traits::EnsureDiv
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
+
+		/// The default sell rate for token swaps which will be applied to all
+		/// swaps created/updated through Foreign Investments.
+		///
+		/// Example: Say this rate is set to 3/2, then the incoming currency
+		/// should never cost more than 1.5 of the outgoing currency.
 		///
 		/// NOTE: Can be removed once we implement a
-		/// more sophisticated swap price discovery.
-		// TODO(@review): Since we will only support stable coins from the
-		// beginning, a global default value could be feasible or do we want to
-		// have better granularity?
+		/// more sophisticated swap price discovery. For now, this should be set
+		/// to one.
 		#[pallet::constant]
-		type DefaultTokenSwapSellPriceLimit: Get<Self::Balance>;
-
-		/// The default minimum fulfillment amount for token swaps.
-		///
-		/// TODO(@review): Since we will only support stable coins from the
-		/// beginning, a global default value could be feasible or do we want to
-		/// have better granularity?
-		///
-		/// NOTE: Can be removed once we implement a more sophisticated swap
-		/// price discovery.
-		// TODO(@review): Since we will only support stable coins from the
-		// beginning, a global default value could be feasible or do we want to
-		// have better granularity?
-		#[pallet::constant]
-		type DefaultTokenMinFulfillmentAmount: Get<Self::Balance>;
+		type DefaultTokenSellRate: Get<Self::Rate>;
 
 		/// The token swap order identifying type
 		type TokenSwapOrderId: Parameter
@@ -160,6 +158,7 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 			OrderId = Self::TokenSwapOrderId,
+			SellRatio = Self::Rate,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -190,6 +189,15 @@ pub mod pallet {
 			Balance = Self::Balance,
 			Currency = Self::CurrencyId,
 			Error = DispatchError,
+		>;
+
+		/// The source of truth for pool currencies.
+		type PoolInspect: PoolInspect<
+			Self::AccountId,
+			Self::CurrencyId,
+			Rate = Self::Rate,
+			PoolId = Self::PoolId,
+			TrancheId = Self::TrancheId,
 		>;
 	}
 

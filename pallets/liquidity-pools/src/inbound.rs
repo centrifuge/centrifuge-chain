@@ -191,7 +191,7 @@ where
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
@@ -231,7 +231,8 @@ where
 		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
+		let currency_u128 = currency_index.index;
+		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
 		// TODO(@review): This is exactly `amount` as we can only decrement up to the
 		// unprocessed redemption
@@ -254,7 +255,7 @@ where
 			pool_id,
 			tranche_id,
 			investor: investor.into(),
-			currency: currency_index.index,
+			currency: currency_u128,
 			tranche_tokens_payout,
 		};
 
@@ -282,8 +283,8 @@ where
 			pool_id,
 			tranche_id,
 			investor,
-			currency_index,
 			amount,
+			currency_index,
 			destination,
 		)
 	}
@@ -362,7 +363,7 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
 			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 

@@ -560,6 +560,16 @@ pub trait TokenSwaps<Account> {
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
+
+	/// Check whether there already exist orders for the given trading pair.
+	fn order_pair_exists(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+
+	/// Check whether there already exist counter orders for the given trading
+	/// pair against which could be traded.
+	fn counter_order_pair_exists(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+	) -> bool;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

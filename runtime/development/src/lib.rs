@@ -104,7 +104,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -1574,10 +1574,8 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	// TODO(@review): Discuss and refine all of these three parameters
-	pub const DefaultTokenMinFulfillmentAmount: Balance = 1;
-	pub const DefaultTokenSwapSellPriceLimit: Balance = 1;
-	pub ConversionRate: Rate = Rate::from((98, 100));
+	pub DefaultTokenSellRate: Rate = Rate::one();
+	pub ConversionRate: Rate = Rate::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
@@ -1585,14 +1583,15 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyConverter =
 		runtime_common::foreign_investments::SimpleStableCurrencyConverter<ConversionRate>;
 	type CurrencyId = CurrencyId;
-	type DefaultTokenMinFulfillmentAmount = DefaultTokenMinFulfillmentAmount;
-	type DefaultTokenSwapSellPriceLimit = DefaultTokenSwapSellPriceLimit;
+	type DefaultTokenSellRate = DefaultTokenSellRate;
 	type ExecutedCollectRedeemHook = pallet_liquidity_pools::hooks::CollectRedeemHook<Runtime>;
 	type ExecutedDecreaseInvestHook =
 		pallet_liquidity_pools::hooks::DecreaseInvestOrderHook<Runtime>;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = u64;
 	type TokenSwaps = OrderBook;

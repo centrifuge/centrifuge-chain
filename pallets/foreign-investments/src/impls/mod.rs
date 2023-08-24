@@ -13,8 +13,8 @@
 #![allow(clippy::map_identity)]
 
 use cfg_traits::{
-	investments::{ForeignInvestment, Investment, InvestmentCollector},
-	SimpleCurrencyConversion, StatusNotificationHook, TokenSwaps,
+	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
+	PoolInspect, SimpleCurrencyConversion, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
@@ -337,26 +337,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	}
 
 	fn accepted_payment_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		// TODO(future): If this returns false, we should add a mechanism which checks
-		// whether `currency` can be swapped into an accepted payment currency.
-		//
-		// This requires
-		//   * Querying all accepted payment currencies of an investment
-		//   * Checking whether there are orders from `currency` into an accepted
-		//     payment currency
-		T::Investment::accepted_payment_currency(investment_id, currency)
+		if T::Investment::accepted_payment_currency(investment_id, currency) {
+			true
+		} else {
+			T::PoolInspect::currency_for(investment_id.of_pool())
+				.map(|pool_currency| {
+					// TODO(@review): Or just `order_pair_exists`?
+					T::TokenSwaps::counter_order_pair_exists(currency, pool_currency)
+				})
+				.unwrap_or(false)
+		}
 	}
 
 	fn accepted_payout_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		// TODO(future): If this returns false, we should add a mechanism which checks
-		// whether any of the accepted `payout` currencies can be swapped into
-		// `currency`.
-		//
-		// This requires
-		//   * Querying all accepted payout currencies of an investment
-		//   * Checking whether there are orders from an accepted payout currency into
-		//     `currency`
-		T::Investment::accepted_payout_currency(investment_id, currency)
+		Self::accepted_payment_currency(investment_id, currency)
 	}
 }
 
@@ -861,8 +855,10 @@ impl<T: Config> Pallet<T> {
 					who.clone(),
 					swap_order_id,
 					swap.amount,
-					T::DefaultTokenSwapSellPriceLimit::get(),
-					T::DefaultTokenMinFulfillmentAmount::get(),
+					// The max accepted sell rate is independent of the asset type for now
+					T::DefaultTokenSellRate::get(),
+					// The minimum fulfillment must be everything
+					swap.amount,
 				)?;
 				ForeignInvestmentInfo::<T>::insert(
 					swap_order_id,
@@ -879,8 +875,10 @@ impl<T: Config> Pallet<T> {
 					swap.currency_out,
 					swap.currency_in,
 					swap.amount,
-					T::DefaultTokenSwapSellPriceLimit::get(),
-					T::DefaultTokenMinFulfillmentAmount::get(),
+					// The max accepted sell rate is independent of the asset type for now
+					T::DefaultTokenSellRate::get(),
+					// The minimum fulfillment must be everything
+					swap.amount,
 				)?;
 				TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
 				ForeignInvestmentInfo::<T>::insert(

@@ -697,6 +697,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
 		/// Collect a user's foreign investment as if we had received a
 		/// `CollectInvest` message from another domain.
 		#[pallet::call_index(10)]
@@ -706,23 +707,21 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			investor: T::AccountId,
-			currency: CurrencyIdOf<T>,
-			destination: DomainAddress,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-			let currency_index = currency.try_into()?;
 
 			Self::handle_collect_investment(
 				pool_id,
 				tranche_id,
 				investor,
-				currency_index,
-				destination,
+				todo!("query via foreign investments"),
+				todo!("derive via currency"),
 			)?;
 
 			Ok(())
 		}
 
+		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
 		/// Collect a user's foreign redemption as if we had received a
 		/// `CollectRedeem` message from another domain.
 		#[pallet::call_index(11)]
@@ -732,12 +731,15 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			investor: T::AccountId,
-			currency: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-			let currency_index = currency.try_into()?;
 
-			Self::handle_collect_redemption(pool_id, tranche_id, investor, currency_index)?;
+			Self::handle_collect_redemption(
+				pool_id,
+				tranche_id,
+				investor,
+				todo!("query via foreign investments"),
+			)?;
 
 			Ok(())
 		}

@@ -871,6 +871,33 @@ fn update_order_requires_non_zero_price() {
 	})
 }
 
+#[test]
+fn order_pair_exists() {
+	new_test_ext().execute_with(|| {
+		let currency_in = DEV_AUSD_CURRENCY_ID;
+		let currency_out = DEV_USDT_CURRENCY_ID;
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			currency_in,
+			currency_out,
+			15 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			5 * CURRENCY_AUSD_DECIMALS
+		));
+		assert!(OrderBook::order_pair_exists(currency_in, currency_out));
+		assert!(OrderBook::counter_order_pair_exists(
+			currency_out,
+			currency_in
+		));
+
+		assert!(!OrderBook::order_pair_exists(currency_out, currency_in));
+		assert!(!OrderBook::counter_order_pair_exists(
+			currency_in,
+			currency_out
+		));
+	})
+}
+
 pub fn get_account_orders(
 	account_id: <Runtime as frame_system::Config>::AccountId,
 ) -> Result<sp_std::vec::Vec<(<Runtime as Config>::OrderIdNonce, OrderOf<Runtime>)>, Error<Runtime>>
