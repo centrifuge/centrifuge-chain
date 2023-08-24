@@ -277,6 +277,20 @@ pub mod pallet {
 				.unwrap_or_default()
 				.amount)
 		}
+
+		fn investment_requires_collect(
+			_investor: &T::AccountId,
+			_investment_id: Self::InvestmentId,
+		) -> bool {
+			unimplemented!("not needed here, could also default to false")
+		}
+
+		fn redemption_requires_collect(
+			_investor: &T::AccountId,
+			_investment_id: Self::InvestmentId,
+		) -> bool {
+			unimplemented!("not needed here, could also default to false")
+		}
 	}
 
 	impl<T: Config> OrderManager for Pallet<T>

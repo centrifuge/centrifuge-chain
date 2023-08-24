@@ -391,7 +391,7 @@ pub(crate) fn price_of(full: Balance, dec_n: Balance, dec_d: Balance) -> Rate {
 	full.add(decimals)
 }
 
-/// Creates a fullfillment of given perc and price
+/// Creates a fulfillment of given perc and price
 pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithPrice<Rate> {
 	FulfillmentWithPrice {
 		of_amount: perc,

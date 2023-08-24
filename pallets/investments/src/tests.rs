@@ -1375,7 +1375,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -1411,7 +1411,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -2052,7 +2052,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -2088,7 +2088,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY less, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(

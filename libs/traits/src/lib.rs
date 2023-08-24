@@ -503,7 +503,7 @@ pub trait TokenSwaps<Account> {
 	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     sell_rate_limit: Quantity::checked_from_rational(3u32,
-	/// 2u32).unwrap(),     min_fullfillment_amount: 100 *
+	/// 2u32).unwrap(),     min_fulfillment_amount: 100 *
 	/// FOREIGN_ASSET_0_DECIMALS,     max_sell_amount: 150 *
 	/// FOREIGN_ASSET_1_DECIMALS }
 	fn place_order(
@@ -512,7 +512,7 @@ pub trait TokenSwaps<Account> {
 		currency_in: Self::CurrencyId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fullfillment_amount: Self::Balance,
+		min_fulfillment_amount: Self::Balance,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
@@ -544,7 +544,7 @@ pub trait TokenSwaps<Account> {
 	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
-	///     min_fullfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
+	///     min_fulfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
 	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
 	/// }
 	fn update_order(
@@ -552,7 +552,7 @@ pub trait TokenSwaps<Account> {
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fullfillment_amount: Self::Balance,
+		min_fulfillment_amount: Self::Balance,
 	) -> DispatchResult;
 
 	/// Cancel an already active order.

@@ -39,7 +39,7 @@ fn create_order_works() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -53,7 +53,7 @@ fn create_order_works() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -92,7 +92,7 @@ fn user_update_order_works() {
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
-				min_fullfillment_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -181,7 +181,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -292,7 +292,7 @@ fn place_order_works() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -307,7 +307,7 @@ fn place_order_works() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -333,7 +333,7 @@ fn place_order_works() {
 				currency_in: DEV_AUSD_CURRENCY_ID,
 				currency_out: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				min_fullfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap(),
 			})
 		);
@@ -362,7 +362,7 @@ fn place_order_bases_max_sell_off_buy() {
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -375,7 +375,7 @@ fn place_order_bases_max_sell_off_buy() {
 				currency_in: DEV_AUSD_CURRENCY_ID,
 				currency_out: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				min_fullfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap(),
 			})
 		);
@@ -568,7 +568,7 @@ fn update_order_works_with_order_increase() {
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -583,7 +583,7 @@ fn update_order_works_with_order_increase() {
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -614,7 +614,7 @@ fn update_order_works_with_order_increase() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_integer(2u32).unwrap()
 			})
 		);
@@ -653,7 +653,7 @@ fn update_order_updates_min_fulfillment() {
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -669,7 +669,7 @@ fn update_order_updates_min_fulfillment() {
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 
 				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -682,7 +682,7 @@ fn update_order_updates_min_fulfillment() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				min_fullfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap()
 			})
 		);
@@ -718,7 +718,7 @@ fn update_order_works_with_order_decrease() {
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -733,7 +733,7 @@ fn update_order_works_with_order_decrease() {
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
 			})
 		);
@@ -764,7 +764,7 @@ fn update_order_works_with_order_decrease() {
 				order_id,
 				account: ACCOUNT_0,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				min_fullfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				sell_rate_limit: Rate::checked_from_integer(1u32).unwrap()
 			})
 		);

@@ -39,10 +39,9 @@ pub mod pallet {
 
 	use core::fmt::Debug;
 
-	use cfg_traits::{StatusNotificationHook};
-	use cfg_types::{investments::Swap, tokens::CustomMetadata};
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_types::tokens::CustomMetadata;
+	use cfg_traits::StatusNotificationHook;
+	use cfg_types::{investments::Swap, tokens::CustomMetadata};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
@@ -164,7 +163,7 @@ pub mod pallet {
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
 			Id = Self::OrderIdNonce,
-			Status = Swap<Self::ForeignCurrencyBalance, Self::AssetCurrencyId>,
+			Status = Swap<Self::Balance, Self::AssetCurrencyId>,
 			Error = DispatchError,
 		>;
 
@@ -252,7 +251,7 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
-			min_fullfillment_amount: T::Balance,
+			min_fulfillment_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 		},
 		/// Event emitted when an order is cancelled.
@@ -265,9 +264,14 @@ pub mod pallet {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
 			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+			min_fulfillment_amount: T::Balance,
+		},
+		/// Event emitted when an order is fulfilled.
 		/// Can be for either partial or total fulfillment.
 		/// Contains amount fulfilled, and whether fulfillment was partial or
 		/// full.
+		OrderFulfillment {
 			order_id: T::OrderIdNonce,
 			placing_account: T::AccountId,
 			fulfilling_account: T::AccountId,
@@ -509,13 +513,19 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
-			min_fullfillment_amount: T::Balance,
+			min_fulfillment_amount: T::Balance,
 		) -> Result<Self::OrderId, DispatchError> {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
-				min_fullfillment_amount != <T::Balance>::zero(),
+				buy_amount != <T::Balance>::zero(),
+				Error::<T>::InvalidBuyAmount
+			);
+
+			ensure!(
+				min_fulfillment_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidMinimumFulfillment
+			);
 			ensure!(
 				sell_rate_limit != T::SellRatio::zero(),
 				Error::<T>::InvalidMaxPrice
@@ -527,7 +537,7 @@ pub mod pallet {
 			})?;
 
 			ensure!(
-				buy_amount >= min_fullfillment_amount,
+				buy_amount >= min_fulfillment_amount,
 				Error::<T>::InvalidBuyAmount
 			);
 
@@ -595,7 +605,7 @@ pub mod pallet {
 			order_id: Self::OrderId,
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
-			min_fullfillment_amount: T::Balance,
+			min_fulfillment_amount: T::Balance,
 		) -> DispatchResult {
 			ensure!(
 				buy_amount != T::Balance::zero(),
@@ -608,12 +618,12 @@ pub mod pallet {
 			);
 
 			ensure!(
-				min_fullfillment_amount != <T::Balance>::zero(),
+				min_fulfillment_amount != <T::Balance>::zero(),
 				Error::<T>::InvalidMinimumFulfillment
 			);
 
 			ensure!(
-				buy_amount >= min_fullfillment_amount,
+				buy_amount >= min_fulfillment_amount,
 				Error::<T>::InvalidBuyAmount
 			);
 
@@ -655,7 +665,7 @@ pub mod pallet {
 					};
 					order.buy_amount = buy_amount;
 					order.max_sell_rate = sell_rate_limit;
-					order.min_fullfillment_amount = min_fullfillment_amount;
+					order.min_fulfillment_amount = min_fulfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 
 					Ok(max_sell_amount)
@@ -669,7 +679,7 @@ pub mod pallet {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 					order.buy_amount = buy_amount;
 					order.max_sell_rate = sell_rate_limit;
-					order.min_fullfillment_amount = min_fullfillment_amount;
+					order.min_fulfillment_amount = min_fulfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 					Ok(())
 				},
@@ -679,7 +689,7 @@ pub mod pallet {
 				order_id,
 				buy_amount,
 				sell_rate_limit,
-				min_fullfillment_amount,
+				min_fulfillment_amount,
 			});
 
 			Ok(())
