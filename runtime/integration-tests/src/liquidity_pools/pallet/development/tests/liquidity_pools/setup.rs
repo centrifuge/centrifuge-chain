@@ -70,7 +70,7 @@ use crate::{
 		setup::{dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		tests::register_ausd,
 	},
-	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 };
 
 pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
@@ -148,7 +148,7 @@ pub fn setup_pre_requirements() {
 	set_test_domain_router(
 		MOONBEAM_EVM_CHAIN_ID,
 		DEFAULT_MOONBEAM_LOCATION.into(),
-		GLIMMER_CURRENCY_ID,
+		GLMR_CURRENCY_ID,
 		get_default_moonbeam_native_token_location().into(),
 	);
 
@@ -165,15 +165,15 @@ pub fn setup_pre_requirements() {
 			)),
 			CrossChainTransferability::Xcm(Default::default()),
 		),
-		Some(GLIMMER_CURRENCY_ID)
+		Some(GLMR_CURRENCY_ID)
 	));
 
 	// Give Alice, Bob and Treasury enough glimmer to pay for fees
-	OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
-	OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
+	OrmlTokens::deposit(GLMR_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
+	OrmlTokens::deposit(GLMR_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
 	// Treasury pays for `Executed*` messages
 	OrmlTokens::deposit(
-		GLIMMER_CURRENCY_ID,
+		GLMR_CURRENCY_ID,
 		&TreasuryPalletId::get().into_account_truncating(),
 		DEFAULT_BALANCE_GLMR,
 	);

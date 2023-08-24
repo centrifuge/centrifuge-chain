@@ -78,7 +78,6 @@ use crate::{
 #[test]
 fn add_pool() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 		let pool_id = DEFAULT_POOL_ID;
@@ -124,7 +123,6 @@ fn add_pool() {
 #[test]
 fn add_tranche() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 		let decimals: u8 = 15;
@@ -172,7 +170,6 @@ fn add_tranche() {
 #[test]
 fn update_member() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -253,7 +250,6 @@ fn update_member() {
 #[test]
 fn update_token_price() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 		let decimals: u8 = 15;
@@ -275,7 +271,6 @@ fn update_token_price() {
 #[test]
 fn add_currency() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -294,7 +289,6 @@ fn add_currency() {
 #[test]
 fn add_currency_should_fail() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -398,7 +392,6 @@ fn add_currency_should_fail() {
 #[test]
 fn allow_pool_currency() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 

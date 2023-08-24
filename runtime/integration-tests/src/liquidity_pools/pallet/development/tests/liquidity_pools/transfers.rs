@@ -69,7 +69,6 @@ use crate::{
 #[test]
 fn transfer_non_tranche_tokens_from_local() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		// Register GLMR and fund BOB
 		setup_pre_requirements();
@@ -171,7 +170,6 @@ fn transfer_non_tranche_tokens_from_local() {
 #[test]
 fn transfer_non_tranche_tokens_to_local() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -219,7 +217,6 @@ fn transfer_non_tranche_tokens_to_local() {
 #[test]
 fn transfer_tranche_tokens_from_local() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -309,7 +306,6 @@ fn transfer_tranche_tokens_from_local() {
 #[test]
 fn transfer_tranche_tokens_to_local() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
@@ -387,7 +383,6 @@ fn transfer_tranche_tokens_to_local() {
 /// existing pools.
 fn transferring_invalid_tranche_tokens_should_fail() {
 	TestNet::reset();
-
 	Development::execute_with(|| {
 		setup_pre_requirements();
 		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
