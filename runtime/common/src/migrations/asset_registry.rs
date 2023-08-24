@@ -85,7 +85,8 @@ where
 	}
 }
 
-fn metadata(pallet_index: PalletIndex) -> AssetMetadata<Balance, CustomMetadata> {
+/// The metadata for the LpEthUSDC token
+pub fn metadata(pallet_index: PalletIndex) -> AssetMetadata<Balance, CustomMetadata> {
 	AssetMetadata {
 		decimals: 6,
 		name: "LP Ethereum Wrapped USDC".as_bytes().to_vec(),

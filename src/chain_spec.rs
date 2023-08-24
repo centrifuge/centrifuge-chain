@@ -31,7 +31,9 @@ use cfg_types::{
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{
+	account_conversion::AccountConverter, migrations::asset_registry::LP_ETH_USDC_CURRENCY_ID,
+};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -981,6 +983,13 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
+			.encode(),
+		),
+		(
+			LP_ETH_USDC_CURRENCY_ID,
+			runtime_common::migrations::asset_registry::metadata(
+				development_runtime::LiquidityPoolsPalletIndex::get(),
+			)
 			.encode(),
 		),
 	]
