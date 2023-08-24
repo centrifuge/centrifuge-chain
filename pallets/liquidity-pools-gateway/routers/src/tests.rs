@@ -194,6 +194,7 @@ mod xcm_router {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
@@ -630,6 +631,7 @@ mod axelar_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
@@ -882,6 +884,7 @@ mod ethereum_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
