@@ -17,7 +17,7 @@ use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 use sp_std::vec::Vec;
 
-use crate::{OrmlAssetRegistry, RocksDbWeight, Runtime};
+use crate::{RocksDbWeight, Runtime};
 
 /// The migration set for Altair 1030 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain, which includes migrations that have
