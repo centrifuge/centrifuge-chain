@@ -233,11 +233,10 @@ where
 			ethereum_xcm_call,
 			OriginKind::SovereignAccount,
 			TransactWeights {
-				// Convert the max gas_limit into a max transact weight following
-				// Moonbeam's formula.
-				transact_required_weight_at_most: Weight::from_all(
-					self.xcm_domain.max_gas_limit * 25_000 + 100_000_000,
-				),
+				transact_required_weight_at_most: {
+					Weight::from_ref_time(self.xcm_domain.max_gas_limit)
+						.set_proof_size(self.xcm_domain.max_pov_size)
+				},
 				overall_weight: None,
 			},
 		)?;
@@ -297,6 +296,9 @@ pub struct XcmDomain<CurrencyId> {
 
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
+
+	/// The maximum PoV size we want to propose for a remote evm execution
+	pub max_pov_size: u64,
 
 	/// The XCM transact info that will be stored in the
 	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
