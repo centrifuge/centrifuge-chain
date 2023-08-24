@@ -1754,6 +1754,7 @@ mod utils {
 					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 					contract_address: H160::from(utils::DEFAULT_EVM_ADDRESS_MOONBEAM),
 					max_gas_limit: 700_000,
+					max_pov_size: 10_000,
 					transact_info: XcmTransactInfo {
 						transact_extra_weight: 1.into(),
 						max_weight: 8_000_000_000_000_000.into(),

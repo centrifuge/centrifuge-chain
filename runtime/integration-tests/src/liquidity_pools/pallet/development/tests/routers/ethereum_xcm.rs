@@ -104,6 +104,7 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
+						max_pov_size: 10_000,
 						transact_info: XcmTransactInfo {
 							transact_extra_weight: 1.into(),
 							max_weight: 8_000_000_000_000_000.into(),
@@ -142,6 +143,7 @@ fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
+						max_pov_size: 10_000,
 						transact_info: XcmTransactInfo {
 							transact_extra_weight: 1.into(),
 							max_weight: 8_000_000_000_000_000.into(),
