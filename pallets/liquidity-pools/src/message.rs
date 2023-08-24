@@ -292,7 +292,7 @@ where
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	ScheduleUpgrade {
-		/// An EVM contract address
+		/// The EVM contract address
 		contract: [u8; 20],
 	},
 }
@@ -332,7 +332,7 @@ impl<
 			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
 			Self::ExecutedCollectInvest { .. } => 17,
 			Self::ExecutedCollectRedeem { .. } => 18,
-			Self::ScheduleUpgrade { .. } => 19,
+			Self::ScheduleUpgrade { .. } => 21,
 		}
 	}
 }
@@ -717,7 +717,7 @@ impl<
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
 				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			19 => Ok(Self::ScheduleUpgrade {
+			21 => Ok(Self::ScheduleUpgrade {
 				contract: decode::<20, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
@@ -1099,7 +1099,7 @@ mod tests {
 			LiquidityPoolsMessage::ScheduleUpgrade {
 				contract: default_address_20(),
 			},
-			"131231231231231231231231231231231231231231",
+			"151231231231231231231231231231231231231231",
 		)
 	}
 
