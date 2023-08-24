@@ -99,7 +99,7 @@ pub struct ExternalActivePricing<T: Config> {
 	pub interest: ActiveInterestRate<T>,
 
 	/// Settlement price used in the most recent borrow or repay transaction.
-	latest_settlement_price: Option<T::Balance>,
+	latest_settlement_price: T::Balance,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -107,13 +107,14 @@ impl<T: Config> ExternalActivePricing<T> {
 		info: ExternalPricing<T>,
 		interest_rate: InterestRate<T::Rate>,
 		pool_id: T::PoolId,
+		amount: ExternalAmount<T>,
 	) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
-			latest_settlement_price: None,
+			latest_settlement_price: amount.settlement_price,
 		})
 	}
 
@@ -131,11 +132,9 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
 		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
-			Ok(data) => Ok(data.0),
-			Err(_) => self
-				.latest_settlement_price
-				.ok_or(DispatchError::Other("No price found")),
-		}?;
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -219,27 +218,23 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn adjust(
 		&mut self,
-		quantity_adj: Adjustment<T::Quantity>,
+		amount_adj: Adjustment<ExternalAmount<T>>,
 		interest: T::Balance,
 	) -> DispatchResult {
-		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
+		self.outstanding_quantity = amount_adj
+			.clone()
+			.map(|amount| amount.quantity)
+			.ensure_add(self.outstanding_quantity)?;
 
-		let interest_adj = quantity_adj.try_map(|quantity| {
-			quantity
+		let interest_adj = amount_adj.clone().try_map(|amount| {
+			amount
+				.quantity
 				.ensure_mul_int(self.info.notional)?
 				.ensure_add(interest)
 		})?;
 
 		self.interest.adjust_debt(interest_adj)?;
-
-		Ok(())
-	}
-
-	pub fn update_latest_settlement_price(
-		&mut self,
-		settlement_price: T::Balance,
-	) -> DispatchResult {
-		self.latest_settlement_price = Some(settlement_price);
+		self.latest_settlement_price = amount_adj.abs().settlement_price;
 
 		Ok(())
 	}

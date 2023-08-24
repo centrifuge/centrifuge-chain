@@ -96,8 +96,18 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(self, pool_id: T::PoolId) -> Result<ActiveLoan<T>, DispatchError> {
-		ActiveLoan::new(pool_id, self.info, self.borrower, T::Time::now().as_secs())
+	pub fn activate(
+		self,
+		pool_id: T::PoolId,
+		initial_amount: PricingAmount<T>,
+	) -> Result<ActiveLoan<T>, DispatchError> {
+		ActiveLoan::new(
+			pool_id,
+			self.info,
+			self.borrower,
+			initial_amount,
+			T::Time::now().as_secs(),
+		)
 	}
 
 	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
@@ -176,6 +186,7 @@ impl<T: Config> ActiveLoan<T> {
 		pool_id: T::PoolId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
+		initial_amount: PricingAmount<T>,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
 		Ok(ActiveLoan {
@@ -189,9 +200,14 @@ impl<T: Config> ActiveLoan<T> {
 				Pricing::Internal(inner) => ActivePricing::Internal(
 					InternalActivePricing::activate(inner, info.interest_rate)?,
 				),
-				Pricing::External(inner) => ActivePricing::External(
-					ExternalActivePricing::activate(inner, info.interest_rate, pool_id)?,
-				),
+				Pricing::External(inner) => {
+					ActivePricing::External(ExternalActivePricing::activate(
+						inner,
+						info.interest_rate,
+						pool_id,
+						initial_amount.external()?,
+					)?)
+				}
 			},
 			total_borrowed: T::Balance::zero(),
 			total_repaid: RepaidAmount::default(),
@@ -333,11 +349,7 @@ impl<T: Config> ActiveLoan<T> {
 				inner.adjust(Adjustment::Increase(amount.balance()?))?
 			}
 			ActivePricing::External(inner) => {
-				let settlement_price = amount.external()?.settlement_price;
-				inner.update_latest_settlement_price(settlement_price)?;
-
-				let quantity = amount.external()?.quantity;
-				inner.adjust(Adjustment::Increase(quantity), Zero::zero())?
+				inner.adjust(Adjustment::Increase(amount.external()?), Zero::zero())?
 			}
 		}
 
@@ -410,11 +422,8 @@ impl<T: Config> ActiveLoan<T> {
 				inner.adjust(Adjustment::Decrease(amount))?
 			}
 			ActivePricing::External(inner) => {
-				let quantity = amount.principal.external()?.quantity;
-				inner.adjust(Adjustment::Decrease(quantity), amount.interest)?;
-
-				let settlement_price = amount.principal.external()?.settlement_price;
-				inner.update_latest_settlement_price(settlement_price)?
+				let principal = amount.principal.external()?;
+				inner.adjust(Adjustment::Decrease(principal), amount.interest)?;
 			}
 		}
 
