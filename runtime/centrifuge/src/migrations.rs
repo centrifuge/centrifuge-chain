@@ -55,9 +55,9 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			// if VERSION.spec_version != 1020 {
-			// 	return Weight::zero();
-			// }
+			if VERSION.spec_version != 1020 {
+				return Weight::zero();
+			}
 
 			orml_asset_registry::Metadata::<Runtime>::translate(
 				|asset_id: CurrencyId, old_metadata: AssetMetadata<Balance, v0::CustomMetadata>| {
