@@ -97,16 +97,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let pre_state = InvestmentState::<T>::get(who, investment_id);
-
-		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
-		// removed before deploying to production
-		let unprocessed_invest_amount = T::Investment::investment(who, investment_id)?;
+		// TODO(future): Add implicit collection or error handling (i.e. message to
+		// source domain)
 		ensure!(
-			unprocessed_invest_amount == pre_state.get_investing_amount(),
-			DispatchError::Corruption
+			!T::Investment::investment_requires_collect(who, investment_id),
+			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
-
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		let post_state = pre_state
 			.transition(InvestTransition::IncreaseInvestOrder(Swap {
 				currency_in: pool_currency,
@@ -131,14 +128,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		// TODO(future): Add implicit collection or error handling (i.e. message to
+		// source domain)
+		ensure!(
+			!T::Investment::investment_requires_collect(who, investment_id),
+			Error::<T>::InvestError(InvestError::CollectRequired)
+		);
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 
-		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
-		// removed before deploying to production
-		let unprocessed_invest_amount = T::Investment::investment(who, investment_id)?;
 		ensure!(
-			unprocessed_invest_amount == pre_state.get_investing_amount(),
-			DispatchError::Corruption
+			pre_state.get_investing_amount() >= amount,
+			Error::<T>::InvestError(InvestError::Decrease)
 		);
 
 		let post_state = pre_state
@@ -152,10 +152,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				log::debug!("InvestState transition error: {:?}", e);
 				Error::<T>::from(InvestError::Decrease)
 			})?;
-		#[cfg(feature = "std")]
-		{
-			dbg!(pre_state, post_state);
-		}
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
 		Ok(())
@@ -167,17 +163,15 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<(), DispatchError> {
-		let pre_state =
-			RedemptionState::<T>::get(who, investment_id).increase_invested_amount(amount)?;
-
-		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
-		// removed before deploying to production
-		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id)?;
+		// TODO(future): Add implicit collection or error handling (i.e. message to
+		// source domain)
 		ensure!(
-			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
-			DispatchError::Corruption
+			!T::Investment::redemption_requires_collect(who, investment_id),
+			Error::<T>::RedeemError(RedeemError::CollectRequired)
 		);
 
+		let pre_state =
+			RedemptionState::<T>::get(who, investment_id).increase_invested_amount(amount)?;
 		let post_state = pre_state
 			.transition(RedeemTransition::IncreaseRedeemOrder(amount))
 			.map_err(|e| {
@@ -196,19 +190,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		let pre_state = RedemptionState::<T>::get(who, investment_id);
-
-		// NOTE: This adds one db read but let's be safe for the MVP, can hopefully be
-		// removed before deploying to production
-		let unprocessed_redeem_amount = T::Investment::redemption(who, investment_id)?;
+		// TODO(future): Add implicit collection or error handling (i.e. message to
+		// source domain)
 		ensure!(
-			unprocessed_redeem_amount == pre_state.get_redeeming_amount(),
-			DispatchError::Corruption
+			!T::Investment::redemption_requires_collect(who, investment_id),
+			Error::<T>::RedeemError(RedeemError::CollectRequired)
 		);
 
+		let pre_state = RedemptionState::<T>::get(who, investment_id);
 		let post_state = pre_state
 			.transition(RedeemTransition::DecreaseRedeemOrder(amount))
-			.map_err(|_| Error::<T>::from(RedeemError::Decrease))?;
+			.map_err(|e| {
+				log::debug!("RedeemState transition error: {:?}", e);
+				Error::<T>::from(RedeemError::Decrease)
+			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
 		Ok(amount)

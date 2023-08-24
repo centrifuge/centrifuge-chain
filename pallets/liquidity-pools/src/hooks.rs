@@ -54,16 +54,7 @@ where
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.foreign_currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
 
-		#[cfg(feature = "std")]
-		{
-			println!("Before burning");
-			dbg!(status.clone());
-		}
 		T::Tokens::burn_from(status.foreign_currency, &investor, status.amount_decreased)?;
-		#[cfg(feature = "std")]
-		{
-			println!("After burning");
-		}
 
 		let message: MessageOf<T> = Message::ExecutedDecreaseInvestOrder {
 			pool_id: investment_id.of_pool(),
@@ -72,17 +63,7 @@ where
 			currency,
 			currency_payout: status.amount_decreased,
 		};
-		#[cfg(feature = "std")]
-		{
-			dbg!(message.clone());
-		}
-
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
-
-		#[cfg(feature = "std")]
-		{
-			println!("After submitting");
-		}
 
 		Ok(())
 	}

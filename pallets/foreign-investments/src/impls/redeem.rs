@@ -762,7 +762,7 @@ where
 		match self.get_redeeming_amount() {
 			amount if amount.is_zero() => error_not_redeeming,
 			// Can only decrease up to current redeeming amount
-			redeem_amount if redeem_amount <= amount => {
+			redeem_amount if redeem_amount < amount => {
 				Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
 			}
 			// Entire redeeming amount becomes invested amount, i.e. remove `Redeeming` from inner

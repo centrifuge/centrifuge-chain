@@ -1148,6 +1148,30 @@ where
 		Ok(RedeemOrders::<T>::get(who, investment_id)
 			.map_or_else(Zero::zero, |order| order.amount()))
 	}
+
+	fn investment_requires_collect(
+		investor: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> bool {
+		InvestOrders::<T>::get(investor, investment_id)
+			.map(|order| {
+				let cur_order_id = InvestOrderId::<T>::get(investment_id);
+				order.submitted_at() != cur_order_id
+			})
+			.unwrap_or(false)
+	}
+
+	fn redemption_requires_collect(
+		investor: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> bool {
+		RedeemOrders::<T>::get(investor, investment_id)
+			.map(|order| {
+				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
+				order.submitted_at() != cur_order_id
+			})
+			.unwrap_or(false)
+	}
 }
 
 impl<T: Config> OrderManager for Pallet<T>

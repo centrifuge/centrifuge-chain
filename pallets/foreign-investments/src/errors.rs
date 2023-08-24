@@ -26,6 +26,8 @@ pub enum InvestError {
 	/// Failed to transition a (partially) processed investment after
 	/// collecting.
 	Collect,
+	/// The investment needs to be collected before it can be updated further.
+	CollectRequired,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -42,4 +44,6 @@ pub enum RedeemError {
 	/// Failed to transition a (partially) processed redemption after an epoch
 	/// was executed.
 	EpochExecution,
+	/// The redemption needs to be collected before it can be updated further.
+	CollectRequired,
 }

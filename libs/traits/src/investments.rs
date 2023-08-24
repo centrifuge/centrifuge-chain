@@ -85,6 +85,20 @@ pub trait Investment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
+
+	/// Checks whether an investment requires to be collected before it can be
+	/// updated.
+	///
+	/// NOTE: Returns false if the investment does not exist.
+	fn investment_requires_collect(investor: &AccountId, investment_id: Self::InvestmentId)
+		-> bool;
+
+	/// Checks whether a redemption requires to be collected before it can be
+	/// further updated.
+	///
+	/// NOTE: Returns false if the redemption does not exist.
+	fn redemption_requires_collect(investor: &AccountId, investment_id: Self::InvestmentId)
+		-> bool;
 }
 
 /// A trait which allows to collect existing investments and redemptions.
@@ -190,14 +204,14 @@ pub trait InvestmentAccountant<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Increases the existance of
+	/// Increases the existence of
 	fn deposit(
 		buyer: &AccountId,
 		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Reduce the existance of an asset
+	/// Reduce the existence of an asset
 	fn withdraw(
 		seller: &AccountId,
 		id: Self::InvestmentId,
