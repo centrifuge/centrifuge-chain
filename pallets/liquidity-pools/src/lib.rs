@@ -89,6 +89,7 @@ pub mod pallet {
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
+		EVMChainId,
 	};
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
@@ -239,6 +240,9 @@ pub mod pallet {
 		/// The prefix for currencies added via the LiquidityPools feature.
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
+
+		#[pallet::constant]
+		type TreasuryAccount: Get<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -688,6 +692,23 @@ pub mod pallet {
 			)?;
 
 			Ok(())
+		}
+
+		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(10)]
+		pub fn schedule_upgrade(
+			origin: OriginFor<T>,
+			evm_chain_id: EVMChainId,
+			contract: [u8; 20],
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			T::OutboundQueue::submit(
+				T::TreasuryAccount::get(),
+				Domain::EVM(evm_chain_id),
+				Message::ScheduleUpgrade { contract },
+			)
 		}
 	}
 
