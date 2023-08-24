@@ -287,6 +287,14 @@ where
 		/// to redeem at a later epoch execution
 		remaining_redeem_order: Balance,
 	},
+	/// Schedules an EVM address to become rely-able by the gateway. Intended to
+	/// be used via governance to execute EVM spells.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ScheduleUpgrade {
+		/// The EVM contract address
+		contract: [u8; 20],
+	},
 }
 
 impl<
@@ -324,6 +332,7 @@ impl<
 			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
 			Self::ExecutedCollectInvest { .. } => 17,
 			Self::ExecutedCollectRedeem { .. } => 18,
+			Self::ScheduleUpgrade { .. } => 21,
 		}
 	}
 }
@@ -581,6 +590,9 @@ impl<
 					encode_be(remaining_redeem_order),
 				],
 			),
+			Message::ScheduleUpgrade { contract } => {
+				encoded_message(self.call_type(), vec![contract.to_vec()])
+			}
 		}
 	}
 
@@ -704,6 +716,9 @@ impl<
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
 				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			21 => Ok(Self::ScheduleUpgrade {
+				contract: decode::<20, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1075,6 +1090,16 @@ mod tests {
 				remaining_redeem_order: AMOUNT * 3,
 			},
 			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+		)
+	}
+
+	#[test]
+	fn schedule_upgrade() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::ScheduleUpgrade {
+				contract: default_address_20(),
+			},
+			"151231231231231231231231231231231231231231",
 		)
 	}
 
