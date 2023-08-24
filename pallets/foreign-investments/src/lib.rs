@@ -281,6 +281,20 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Maps an investor and their investment id to the foreign payout currency
+	/// requested on the initial redemption increment.
+	///
+	/// NOTE: The lifetime of this storage mirrors the one of `RedemptionState`.
+	#[pallet::storage]
+	pub type RedemptionPayoutCurrency<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		T::CurrencyId,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -310,6 +324,12 @@ pub mod pallet {
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		InvestmentInfoNotFound,
+		/// The provided currency does not match the one provided when the first
+		/// redemption increase was triggered.
+		///
+		/// NOTE: As long as the `RedemptionState` has not been cleared, the
+		/// payout currency cannot change from the initially provided one.
+		InvalidRedemptionPayoutCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		TokenSwapReasonNotFound,
@@ -330,4 +350,6 @@ pub mod pallet {
 			Error::<T>::RedeemError(error)
 		}
 	}
+
+	// TODO: Add call to allow payment currency
 }

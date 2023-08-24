@@ -187,9 +187,11 @@ where
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		amount: <T as Config>::Balance,
+		currency_index: GeneralCurrencyIndexOf<T>,
 		sending_domain: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
@@ -202,7 +204,12 @@ where
 			false,
 		)?;
 
-		T::ForeignInvestment::increase_foreign_redemption(&investor, invest_id, amount)?;
+		T::ForeignInvestment::increase_foreign_redemption(
+			&investor,
+			invest_id,
+			amount,
+			payout_currency,
+		)?;
 
 		Ok(())
 	}
@@ -219,17 +226,20 @@ where
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as Config>::Balance,
+		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
+
 		// TODO(@review): This is exactly `amount` as we can only decrement up to the
 		// unprocessed redemption
 		let tranche_tokens_payout = T::ForeignInvestment::decrease_foreign_redemption(
 			&investor,
 			invest_id.clone(),
 			amount,
+			payout_currency,
 		)?;
 
 		T::Tokens::transfer(
@@ -298,7 +308,7 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let currency_index_u128 = currency_index.index;
-		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
 			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
@@ -308,7 +318,7 @@ where
 		} = T::ForeignInvestment::collect_foreign_investment(
 			&investor,
 			invest_id.clone(),
-			payment_currency,
+			payout_currency,
 			pool_currency,
 		)?;
 
@@ -352,14 +362,14 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		let payout_currency = Self::try_get_payout_currency(invest_id, currency_index)?;
 		let pool_currency =
 			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		T::ForeignInvestment::collect_foreign_redemption(
 			&investor,
 			invest_id,
-			payment_currency,
+			payout_currency,
 			pool_currency,
 		)?;
 

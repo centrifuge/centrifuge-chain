@@ -33,7 +33,8 @@ use crate::{
 		TokenSwapReason,
 	},
 	CollectedRedemptionTrancheTokens, Config, Error, Event, ForeignInvestmentInfo,
-	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionState, SwapOf, TokenSwapOrderIds,
+	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionPayoutCurrency, RedemptionState,
+	SwapOf, TokenSwapOrderIds,
 };
 
 mod invest;
@@ -162,7 +163,23 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
+		payout_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		// TODO(future): This error needs to be communicated to sending domain as it
+		// cannot be resolved by triggering a bot
+		let currency_matches =
+			RedemptionPayoutCurrency::<T>::mutate(who, investment_id, |maybe_currency| {
+				if let Some(currency) = maybe_currency {
+					currency == &payout_currency
+				} else {
+					*maybe_currency = Some(payout_currency);
+					true
+				}
+			});
+		ensure!(
+			currency_matches,
+			Error::<T>::InvalidRedemptionPayoutCurrency
+		);
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
@@ -189,7 +206,19 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		amount: T::Balance,
+		payout_currency: T::CurrencyId,
 	) -> Result<T::Balance, DispatchError> {
+		// TODO(future): This error needs to be communicated to sending domain as it
+		// cannot be resolved by triggering a bot
+		ensure!(
+			RedemptionPayoutCurrency::<T>::get(who, investment_id)
+				.map(|currency| currency == payout_currency)
+				.unwrap_or_else(|| {
+					log::debug!("Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
+					false
+				}),
+			Error::<T>::InvalidRedemptionPayoutCurrency
+		);
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
@@ -213,7 +242,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		foreign_currency: T::CurrencyId,
+		foreign_payout_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		// No need to transition or update state as collection of tranche tokens is
@@ -238,7 +267,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
 			pool_currency,
 			amount_payment,
-			foreign_currency,
+			foreign_payout_currency,
 		)?;
 
 		Ok(ExecutedForeignCollectInvest {
@@ -251,9 +280,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_redemption(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		foreign_currency: T::CurrencyId,
+		foreign_payout_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		ensure!(
+			RedemptionPayoutCurrency::<T>::get(who, investment_id)
+				.map(|currency| currency == foreign_payout_currency)
+				.unwrap_or_else(|| {
+					log::debug!("Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
+					false
+				}),
+			Error::<T>::InvalidRedemptionPayoutCurrency
+		);
 		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
 		CollectedRedemptionTrancheTokens::<T>::try_mutate(who, investment_id, |amount| {
 			amount.ensure_add_assign(collected.amount_payment)?;
@@ -269,7 +307,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				amount_unprocessed_redemption,
 				SwapOf::<T> {
 					amount: collected.amount_collected,
-					currency_in: foreign_currency,
+					currency_in: foreign_payout_currency,
 					currency_out: pool_currency,
 				},
 			))

@@ -980,7 +980,7 @@ mod should_fail {
 				};
 				assert_noop!(
 					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
-					pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidInvestCurrency
+					pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 				);
 
 				// TODO: Add foreign currency to accepted payment

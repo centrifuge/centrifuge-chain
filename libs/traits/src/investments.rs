@@ -47,11 +47,11 @@ pub trait Investment<AccountId> {
 		currency: Self::CurrencyId,
 	) -> bool;
 
-	/// Returns, if possible, the current investment amount (in pool currency)
-	/// of who into the given investment class.
+	/// Returns, if possible, the currently unprocessed investment amount (in
+	/// pool currency) of who into the given investment class.
 	///
-	/// NOTE: Does NOT include any (partially) processed investment from pool
-	/// currency into tranche tokens.
+	/// NOTE: If the investment was (partially) processed, the unprocessed
+	/// amount is only updated upon collecting.
 	fn investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
@@ -76,11 +76,11 @@ pub trait Investment<AccountId> {
 		currency: Self::CurrencyId,
 	) -> bool;
 
-	/// Returns, if possible, the current redemption amount (in tranche tokens)
-	/// of who into the given investment class.
+	/// Returns, if possible, the currently unprocessed redemption amount (in
+	/// tranche tokens) of who into the given investment class.
 	///
-	/// NOTE: Does NOT include any (partially) processed redemption from tranche
-	/// tokens into pool currency.
+	/// NOTE: If the redemption was (partially) processed, the unprocessed
+	/// amount is only updated upon collecting.
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
@@ -89,14 +89,14 @@ pub trait Investment<AccountId> {
 	/// Checks whether an investment requires to be collected before it can be
 	/// updated.
 	///
-	/// NOTE: Returns false if the investment does not exist.
+	/// NOTE: Defaults to false if the investment does not exist.
 	fn investment_requires_collect(investor: &AccountId, investment_id: Self::InvestmentId)
 		-> bool;
 
 	/// Checks whether a redemption requires to be collected before it can be
 	/// further updated.
 	///
-	/// NOTE: Returns false if the redemption does not exist.
+	/// NOTE: Defaults to false if the redemption does not exist.
 	fn redemption_requires_collect(investor: &AccountId, investment_id: Self::InvestmentId)
 		-> bool;
 }
@@ -300,8 +300,8 @@ pub trait ForeignInvestment<AccountId> {
 	type CollectInvestResult;
 
 	/// Initiates the increment of a foreign investment amount in
-	/// `foreign_currency` of who into the investment class `pool_currency` to
-	/// amount.
+	/// `foreign_payment_currency` of who into the investment class
+	/// `pool_currency` to amount.
 	///
 	/// NOTE: In general, we can assume that the foreign and pool currencies
 	/// mismatch and that swapping one into the other happens asynchronously. In
@@ -311,13 +311,13 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
-		foreign_currency: Self::CurrencyId,
+		foreign_payment_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign investment amount in
-	/// `foreign_currency` of who into the investment class `pool_currency` to
-	/// amount.
+	/// `foreign_payment_currency` of who into the investment class
+	/// `pool_currency` to amount.
 	///
 	/// NOTE: In general, we can assume that the foreign and pool currencies
 	/// mismatch and that swapping one into the other happens asynchronously. In
@@ -327,30 +327,35 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
-		foreign_currency: Self::CurrencyId,
+		foreign_payment_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
-	/// Initiates the increment of a foreign redemption amount from
-	/// `pool_currency` of who into `foreign_currency` to amount.
+	/// Initiates the increment of a foreign redemption amount for the given
+	/// investment id.
 	///
-	/// NOTE: The incrementing redemption amount is bound by the processed
-	/// investment amount.
+	/// NOTE: The `foreign_payout_currency` is only required to ensure
+	/// subsequent redemption updating calls match to the original chosen
+	/// `foreign_payment_currency`.
 	fn increase_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
+		foreign_payout_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
-	/// Initiates the decrement of a foreign redemption amount from
-	/// `pool_currency` of who into `foreign_currency` to amount.
+	/// Initiates the decrement of a foreign redemption amount.
 	///
-	/// NOTE: The decrementing redemption amount is bound by the previously
-	/// incremented redemption amount.
+	/// NOTES:
+	/// * The decrementing redemption amount is bound by the previously
+	///   incremented redemption amount.
+	/// * The `foreign_payout_currency` is only required for the potential
+	///   dispatch of a response message.
 	fn decrease_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
+		foreign_payout_currency: Self::CurrencyId,
 	) -> Result<Self::Amount, Self::Error>;
 
 	/// Collect the results of a user's foreign invest orders for the given
@@ -368,29 +373,30 @@ pub trait ForeignInvestment<AccountId> {
 	/// appended to the next active order for this investment.
 	///
 	/// NOTE: The currency of the collected amount will be `pool_currency`
-	/// whereas the user eventually wants to receive it in `foreign_currency`.
+	/// whereas the user eventually wants to receive it in
+	/// `foreign_payout_currency`.
 	fn collect_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		foreign_currency: Self::CurrencyId,
+		foreign_payout_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
-	/// Returns, if possible, the current investment amount (in pool currency)
-	/// of who into the given investment class.
+	/// Returns, if possible, the currently unprocessed investment amount (in
+	/// pool currency) of who into the given investment class.
 	///
-	/// NOTE: Does NOT include any (partially) processed investment from pool
-	/// currency into tranche tokens.
+	/// NOTE: If the investment was (partially) processed, the unprocessed
+	/// amount is only updated upon collecting.
 	fn investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
 
-	/// Returns, if possible, the current redemption amount (in tranche tokens)
-	/// of who into the given investment class.
+	/// Returns, if possible, the currently unprocessed redemption amount (in
+	/// tranche tokens) of who into the given investment class.
 	///
-	/// NOTE: Does NOT include any (partially) processed redemption from tranche
-	/// tokens into pool currency.
+	/// NOTE: If the redemption was (partially) processed, the unprocessed
+	/// amount is only updated upon collecting.
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,

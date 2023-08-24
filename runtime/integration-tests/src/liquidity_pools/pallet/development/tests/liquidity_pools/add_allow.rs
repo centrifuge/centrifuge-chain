@@ -482,7 +482,7 @@ fn allow_pool_should_fail() {
 				default_tranche_id(pool_id),
 				ausd_currency_id,
 			),
-			pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidInvestCurrency
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 		);
 
 		// Should fail if currency is not liquidityPools transferable

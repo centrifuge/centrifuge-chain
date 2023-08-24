@@ -313,9 +313,12 @@ pub mod pallet {
 		InvalidDomain,
 		/// The validity is in the past.
 		InvalidTrancheInvestorValidity,
-		/// Failed to match the provided GeneralCurrencyIndex against the
-		/// investment currency of the pool.
-		InvalidInvestCurrency,
+		/// The derived currency from the provided GeneralCurrencyIndex is not
+		/// accepted as payment for the given pool.
+		InvalidPaymentCurrency,
+		/// The derived currency from the provided GeneralCurrencyIndex is not
+		/// accepted as payout for the given pool.
+		InvalidPayoutCurrency,
 		/// The currency is not allowed to be transferred via LiquidityPools.
 		InvalidTransferCurrency,
 		/// The account derived from the [Domain] and [DomainAddress] has not
@@ -668,7 +671,7 @@ pub mod pallet {
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			ensure!(
 				T::ForeignInvestment::accepted_payment_currency(invest_id, currency_id),
-				Error::<T>::InvalidInvestCurrency
+				Error::<T>::InvalidPaymentCurrency
 			);
 
 			// Ensure the currency is enabled as pool_currency
@@ -833,8 +836,9 @@ pub mod pallet {
 			Ok(TrancheCurrency::generate(pool_id, tranche_id))
 		}
 
-		/// Ensures that the payment currency of the given investment id matches
-		/// the derived currency and returns the latter.
+		/// Ensures that currency id can be derived from the
+		/// GeneralCurrencyIndex and that the former is an accepted payment
+		/// currency for the given investment id.
 		pub fn try_get_payment_currency(
 			invest_id: <T as pallet::Config>::TrancheCurrency,
 			currency_index: GeneralCurrencyIndexOf<T>,
@@ -844,10 +848,22 @@ pub mod pallet {
 
 			ensure!(
 				T::ForeignInvestment::accepted_payment_currency(invest_id, currency),
-				Error::<T>::InvalidInvestCurrency
+				Error::<T>::InvalidPaymentCurrency
 			);
 
 			Ok(currency)
+		}
+
+		/// Ensures that currency id can be derived from the
+		/// GeneralCurrencyIndex and that the former is an accepted payout
+		/// currency for the given investment id.
+		///
+		/// NOTE: Exactly the same as try_get_payment_currency for now.
+		pub fn try_get_payout_currency(
+			invest_id: <T as pallet::Config>::TrancheCurrency,
+			currency_index: GeneralCurrencyIndexOf<T>,
+		) -> Result<CurrencyIdOf<T>, DispatchError> {
+			Self::try_get_payment_currency(invest_id, currency_index)
 		}
 	}
 
@@ -911,12 +927,13 @@ pub mod pallet {
 					tranche_id,
 					investor,
 					amount,
-					..
+					currency,
 				} => Self::handle_increase_redeem_order(
 					pool_id,
 					tranche_id,
 					investor.into(),
 					amount,
+					currency.into(),
 					sender,
 				),
 				Message::DecreaseRedeemOrder {
@@ -929,8 +946,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor.into(),
-					currency.into(),
 					amount,
+					currency.into(),
 					sender,
 				),
 				Message::CollectInvest {
