@@ -55,9 +55,9 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1020 {
-				return Weight::zero();
-			}
+			// if VERSION.spec_version != 1020 {
+			// 	return Weight::zero();
+			// }
 
 			orml_asset_registry::Metadata::<Runtime>::translate(
 				|asset_id: CurrencyId, old_metadata: AssetMetadata<Balance, v0::CustomMetadata>| {
@@ -92,8 +92,6 @@ mod asset_registry {
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
 			use codec::Decode;
-
-			use crate::OrmlAssetRegistry;
 
 			let old_state = sp_std::vec::Vec::<(
 				CurrencyId,

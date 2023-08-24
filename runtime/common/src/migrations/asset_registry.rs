@@ -58,6 +58,7 @@ where
 		.map_err(|_| log::error!("Failed to register LpEthUSDC"))
 		.ok();
 
+		log::info!("RegisterLpEthUSDC: on_runtime_upgrade: success!");
 		DbWeight::get().reads_writes(1, 1)
 	}
 
@@ -79,6 +80,7 @@ where
 			"The LpEthUSDC's token metadata does NOT match what we expected it to be"
 		);
 
+		log::info!("RegisterLpEthUSDC: post_upgrade: the token metadata looks correct!");
 		Ok(())
 	}
 }

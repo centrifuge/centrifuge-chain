@@ -1773,6 +1773,8 @@ construct_runtime!(
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 100,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 102,
+		// RESERVED 103 index for LiquidityPools
+		// LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 103,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
