@@ -1760,6 +1760,7 @@ parameter_types! {
 	pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
+// FIXME: Do not merge before discussing this!
 // Minimum order amounts for orderbook orders v1 implementation.
 // This will be replaced by runtime specifiable minimum,
 // which will likely be set by governance.

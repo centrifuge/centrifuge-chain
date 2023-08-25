@@ -300,7 +300,7 @@ runtime-benchmarks = [
   "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
-  # "pallet-foreign-investments/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",

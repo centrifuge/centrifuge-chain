@@ -1,18 +1,18 @@
 [package]
 name = "pallet-order-book"
-description = "Pallet to add order book for currency exchanges.  Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
+description = "Pallet to add order book for currency exchanges. Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
 version = "0.1.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
-homepage = 'https://centrifuge.io'
+homepage = "https://centrifuge.io"
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
+repository = "https://github.com/centrifuge/centrifuge-chain"
 edition = "2021"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -26,9 +26,8 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
-## Benchmark dependencies
-# Orml crates
-
+# Benchmark dependencies
+## Orml crates
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
@@ -37,53 +36,50 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks" }
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
+pallet-restricted-tokens = { path = "../restricted-tokens", default-features = false }
 # Orml crates
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
 # Parity crates
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-pallet-restricted-tokens = { path = "../restricted-tokens", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 [features]
-default = ['std']
-
-runtime-benchmarks = [
-  'frame-benchmarking/runtime-benchmarks',
-  'frame-support/runtime-benchmarks',
-  'frame-system/runtime-benchmarks',
-  'sp-runtime/runtime-benchmarks',
-  'cfg-types/runtime-benchmarks',
-  'cfg-traits/runtime-benchmarks',
-  'cfg-primitives/runtime-benchmarks',
-  'orml-asset-registry/runtime-benchmarks',
-  'cfg-mocks/runtime-benchmarks',
-  'cfg-test-utils/runtime-benchmarks',
-
-]
-
+default = ["std"]
 std = [
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'frame-benchmarking/std',
-  'scale-info/std',
-  'serde/std',
-  'sp-core/std',
-  'sp-arithmetic/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'orml-traits/std',
-  'cfg-primitives/std',
-  'cfg-types/std',
-  'cfg-traits/std',
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking/std",
+  "scale-info/std",
+  "serde/std",
+  "sp-core/std",
+  "sp-arithmetic/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "orml-traits/std",
+  "cfg-primitives/std",
+  "cfg-types/std",
+  "cfg-traits/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
 ]
 try-runtime = [
-  'frame-support/try-runtime',
-  'frame-system/try-runtime',
-  'sp-runtime/try-runtime',
-  'cfg-primitives/try-runtime',
-  'cfg-types/try-runtime',
-  'cfg-traits/try-runtime',
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-traits/try-runtime",
 ]

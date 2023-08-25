@@ -38,7 +38,7 @@ use cfg_types::{
 };
 use development_runtime::{
 	LiquidityPools, OrmlAssetRegistry, Permissions, Runtime as DevelopmentRuntime, RuntimeOrigin,
-	System,
+	System, TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
@@ -56,9 +56,10 @@ use crate::{
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
-			enable_liquidity_pool_transferability, investments::default_tranche_id,
-			liquidity_pools_transferable_multilocation, setup_pre_requirements, DEFAULT_POOL_ID,
-			DEFAULT_VALIDITY,
+			enable_liquidity_pool_transferability, get_default_moonbeam_native_token_location,
+			investments::default_tranche_id, liquidity_pools_transferable_multilocation,
+			setup_pre_requirements, DEFAULT_BALANCE_GLMR, DEFAULT_MOONBEAM_LOCATION,
+			DEFAULT_POOL_ID, DEFAULT_VALIDITY,
 		},
 	},
 	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
@@ -592,5 +593,47 @@ fn allow_pool_should_fail() {
 			),
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
 		);
+	});
+}
+
+#[test]
+fn schedule_upgrade() {
+	use frame_support::traits::fungible::Mutate;
+
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Only Root can call `schedule_upgrade`
+		assert_noop!(
+			LiquidityPools::schedule_upgrade(
+				RuntimeOrigin::signed(BOB.into()),
+				MOONBEAM_EVM_CHAIN_ID,
+				[7; 20]
+			),
+			BadOrigin
+		);
+
+		// Failing because the treasury has no funds
+		assert_noop!(
+			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
+			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
+		);
+
+		// The treasury needs GLRM to cover the fees of sending
+		// this message
+		OrmlTokens::deposit(
+			GLIMMER_CURRENCY_ID,
+			&TreasuryAccount::get(),
+			DEFAULT_BALANCE_GLMR,
+		);
+
+		// Now it finally works
+		assert_ok!(LiquidityPools::schedule_upgrade(
+			RuntimeOrigin::root(),
+			MOONBEAM_EVM_CHAIN_ID,
+			[7; 20]
+		));
 	});
 }
