@@ -108,8 +108,14 @@ impl<T: Config> ExternalActivePricing<T> {
 		interest_rate: InterestRate<T::Rate>,
 		pool_id: T::PoolId,
 		amount: ExternalAmount<T>,
+		price_required: bool,
 	) -> Result<Self, DispatchError> {
-		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
+		let result = T::PriceRegistry::register_id(&info.price_id, &pool_id);
+		if price_required {
+			// Only if the price is required, we treat the error as an error.
+			result?;
+		}
+
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Quantity::zero(),
@@ -155,7 +161,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	where
 		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
-		let price = cache.get(&self.info.price_id)?.0;
+		let price = match cache.get(&self.info.price_id) {
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 

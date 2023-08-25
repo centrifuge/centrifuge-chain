@@ -192,7 +192,6 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(ActiveLoan {
 			schedule: info.schedule,
 			collateral: info.collateral,
-			restrictions: info.restrictions,
 			borrower,
 			write_off_percentage: T::Rate::zero(),
 			origination_date: now,
@@ -206,9 +205,11 @@ impl<T: Config> ActiveLoan<T> {
 						info.interest_rate,
 						pool_id,
 						initial_amount.external()?,
+						info.restrictions.borrows == BorrowRestrictions::OraclePriceRequired,
 					)?)
 				}
 			},
+			restrictions: info.restrictions,
 			total_borrowed: T::Balance::zero(),
 			total_repaid: RepaidAmount::default(),
 			repayments_on_schedule_until: now,
