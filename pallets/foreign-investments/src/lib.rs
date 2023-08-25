@@ -70,7 +70,7 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment as InvestmentT, InvestmentCollector, TrancheCurrency},
+		investments::{Investment as InvestmentT, InvestmentCollector},
 		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
