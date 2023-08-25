@@ -91,6 +91,7 @@ pub mod pallet {
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
+		EVMChainId,
 	};
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
@@ -236,13 +237,14 @@ pub mod pallet {
 		#[pallet::constant]
 		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 
+		#[pallet::constant]
 		/// The type for paying the transaction fees for the dispatch of
-		/// `Executed*` messages.
+		/// `Executed*` and `ScheduleUpgrade` messages.
 		///
 		/// NOTE: We need to make sure to collect the appropriate amount
 		/// beforehand as part of receiving the corresponding investment
 		/// message.
-		type TreasuryAccount: Get<<Self as frame_system::Config>::AccountId>;
+		type TreasuryAccount: Get<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -697,10 +699,27 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(10)]
+		pub fn schedule_upgrade(
+			origin: OriginFor<T>,
+			evm_chain_id: EVMChainId,
+			contract: [u8; 20],
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			T::OutboundQueue::submit(
+				T::TreasuryAccount::get(),
+				Domain::EVM(evm_chain_id),
+				Message::ScheduleUpgrade { contract },
+			)
+		}
+
 		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
 		/// Collect a user's foreign investment as if we had received a
 		/// `CollectInvest` message from another domain.
-		#[pallet::call_index(10)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		pub fn collect_foreign_investment_for(
 			origin: OriginFor<T>,
@@ -724,7 +743,7 @@ pub mod pallet {
 		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
 		/// Collect a user's foreign redemption as if we had received a
 		/// `CollectRedeem` message from another domain.
-		#[pallet::call_index(11)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		pub fn collect_foreign_redemption_for(
 			origin: OriginFor<T>,

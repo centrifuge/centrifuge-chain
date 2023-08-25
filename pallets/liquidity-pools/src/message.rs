@@ -314,6 +314,14 @@ where
 		investor: Address,
 		currency: u128,
 	},
+	/// Schedules an EVM address to become rely-able by the gateway. Intended to
+	/// be used via governance to execute EVM spells.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	ScheduleUpgrade {
+		/// The EVM contract address
+		contract: [u8; 20],
+	},
 }
 
 impl<
@@ -353,6 +361,7 @@ impl<
 			Self::ExecutedCollectRedeem { .. } => 18,
 			Self::CancelInvestOrder { .. } => 19,
 			Self::CancelRedeemOrder { .. } => 20,
+			Self::ScheduleUpgrade { .. } => 21,
 		}
 	}
 }
@@ -642,6 +651,9 @@ impl<
 					encode_be(currency),
 				],
 			),
+			Message::ScheduleUpgrade { contract } => {
+				encoded_message(self.call_type(), vec![contract.to_vec()])
+			}
 		}
 	}
 
@@ -775,6 +787,9 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			21 => Ok(Self::ScheduleUpgrade {
+				contract: decode::<20, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1170,6 +1185,16 @@ mod tests {
 				tranche_tokens_payout: AMOUNT / 2,
 			},
 			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
+		)
+	}
+
+	#[test]
+	fn schedule_upgrade() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::ScheduleUpgrade {
+				contract: default_address_20(),
+			},
+			"151231231231231231231231231231231231231231",
 		)
 	}
 
