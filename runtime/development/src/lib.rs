@@ -1580,13 +1580,14 @@ parameter_types! {
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type CollectedForeignRedemptionHook =
+		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter =
 		runtime_common::foreign_investments::SimpleStableCurrencyConverter<ConversionRate>;
 	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook =
+		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
 	type DefaultTokenSellRate = DefaultTokenSellRate;
-	type ExecutedCollectRedeemHook = pallet_liquidity_pools::hooks::CollectRedeemHook<Runtime>;
-	type ExecutedDecreaseInvestHook =
-		pallet_liquidity_pools::hooks::DecreaseInvestOrderHook<Runtime>;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
@@ -1699,6 +1700,10 @@ impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
+	type CollectedInvestmentHook =
+		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
+	type CollectedRedemptionHook =
+		pallet_foreign_investments::hooks::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
@@ -1900,7 +1905,7 @@ impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type FulfilledOrderHook = ForeignInvestments;
+	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
 	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;

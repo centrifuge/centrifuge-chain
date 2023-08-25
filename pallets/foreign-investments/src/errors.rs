@@ -28,6 +28,8 @@ pub enum InvestError {
 	Collect,
 	/// The investment needs to be collected before it can be updated further.
 	CollectRequired,
+	/// Attempted to collect an investment which has not been processed yet.
+	NothingCollected,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]

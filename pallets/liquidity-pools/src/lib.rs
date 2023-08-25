@@ -10,6 +10,34 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+//! # Liquidity Pools pallet
+//!
+//! Provides the toolset to enable foreign investments on foreign domains.
+//!
+//! - [`Pallet`]
+//!
+//! ## Assumptions
+//! - Sending/recipient domains handle cross-chain transferred currencies
+//!   properly on their side. This pallet only ensures correctness on the local
+//!   domain.
+//! - The implementer of the pallet's associated `ForeignInvestment` type sends
+//!   notifications for completed investment decrements via the
+//!   `DecreasedForeignInvestOrderHook`. Otherwise the domain which initially
+//!   sent the `DecreaseInvestOrder` message will never be notified about the
+//!   completion.
+//! - The implementer of the pallet's associated `ForeignInvestment` type sends
+//!   notifications for completed redemption collections via the
+//!   `CollectedForeignRedemptionHook`. Otherwise the domain which initially
+//!   sent the `CollectRedeem` message will never be notified about the
+//!   completion.
+//! - The pallet's associated `TreasuryAccount` holds sufficient balance for the
+//!   corresponding fee currencies of all possible recipient domains for the
+//!   following outgoing messages: [`Message::ExecutedDecreaseInvestOrder`],
+//!   [`Message::ExecutedDecreaseRedeemOrder`],
+//!   [`Message::ExecutedCollectInvest`], [`Message::ExecutedCollectRedeem`],
+//!   [`Message::ScheduleUpgrade`].
+
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
@@ -714,53 +742,6 @@ pub mod pallet {
 				Domain::EVM(evm_chain_id),
 				Message::ScheduleUpgrade { contract },
 			)
-		}
-
-		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
-		/// Collect a user's foreign investment as if we had received a
-		/// `CollectInvest` message from another domain.
-		#[pallet::call_index(11)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn collect_foreign_investment_for(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			investor: T::AccountId,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			Self::handle_collect_investment(
-				pool_id,
-				tranche_id,
-				investor,
-				todo!("query via foreign investments"),
-				todo!("derive via currency"),
-			)?;
-
-			Ok(())
-		}
-
-		// TODO: Split up, see https://centrifuge.hackmd.io/tKGS5CwqSQeeI3bU1dKUlw#Action-items
-		/// Collect a user's foreign redemption as if we had received a
-		/// `CollectRedeem` message from another domain.
-		#[pallet::call_index(12)]
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn collect_foreign_redemption_for(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			investor: T::AccountId,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			Self::handle_collect_redemption(
-				pool_id,
-				tranche_id,
-				investor,
-				todo!("query via foreign investments"),
-			)?;
-
-			Ok(())
 		}
 	}
 

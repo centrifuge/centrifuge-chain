@@ -32,56 +32,13 @@ use crate::{
 		InnerRedeemState, InvestState, InvestTransition, RedeemState, RedeemTransition,
 		TokenSwapReason,
 	},
-	CollectedRedemptionTrancheTokens, Config, Error, Event, ForeignInvestmentInfo,
+	CollectedInvestment, CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo,
 	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionPayoutCurrency, RedemptionState,
 	SwapOf, TokenSwapOrderIds,
 };
 
 mod invest;
 mod redeem;
-
-// Hook execution for (partially) fulfilled token swaps which should be consumed
-// by `TokenSwaps`.
-impl<T: Config> StatusNotificationHook for Pallet<T> {
-	type Error = DispatchError;
-	type Id = T::TokenSwapOrderId;
-	type Status = SwapOf<T>;
-
-	fn notify_status_change(
-		id: T::TokenSwapOrderId,
-		status: SwapOf<T>,
-	) -> Result<(), DispatchError> {
-		let info = ForeignInvestmentInfo::<T>::get(id).ok_or(Error::<T>::InvestmentInfoNotFound)?;
-		let reason = info
-			.last_swap_reason
-			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
-
-		match reason {
-			TokenSwapReason::Investment => {
-				let pre_state = InvestmentState::<T>::get(&info.owner, info.id);
-				let post_state = pre_state
-					.transition(InvestTransition::FulfillSwapOrder(status))
-					.map_err(|e| {
-						// Inner error holds finer granularity but should never occur
-						log::debug!("ForeignInvestment state transition error: {:?}", e);
-						Error::<T>::from(InvestError::FulfillSwapOrder)
-					})?;
-				Pallet::<T>::apply_invest_state_transition(&info.owner, info.id, post_state)
-			}
-			TokenSwapReason::Redemption => {
-				let pre_state = RedemptionState::<T>::get(&info.owner, info.id);
-				let post_state = pre_state
-					.transition(RedeemTransition::FulfillSwapOrder(status))
-					.map_err(|e| {
-						// Inner error holds finer granularity but should never occur
-						log::debug!("ForeignInvestment state transition error: {:?}", e);
-						Error::<T>::from(RedeemError::FulfillSwapOrder)
-					})?;
-				Pallet::<T>::apply_redeem_state_transition(&info.owner, info.id, post_state)
-			}
-		}
-	}
-}
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type Amount = T::Balance;
@@ -245,35 +202,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_payout_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
-		// No need to transition or update state as collection of tranche tokens is
-		// independent of the current `InvestState`
-		let CollectedAmount::<T::Balance> {
-			amount_collected,
-			amount_payment,
-		} = T::Investment::collect_investment(who.clone(), investment_id)?;
+		// Note: We assume the configured Investment trait to notify about the collected
+		// amounts via the `CollectedInvestmentHook` which handles incrementing the
+		// `CollectedInvestment` amount.
+		T::Investment::collect_investment(who.clone(), investment_id)?;
 
-		// Update invest state
-		let pre_state = InvestmentState::<T>::get(who, investment_id);
-		let investing_amount = T::Investment::investment(who, investment_id)?;
-		let post_state =
-			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
-		Self::apply_invest_state_transition(who, investment_id, post_state).map_err(|e| {
-			log::debug!("InvestState transition error: {:?}", e);
-			Error::<T>::from(InvestError::Collect)
-		})?;
-
-		// Determine payout amount in foreign currency instead of current pool currency
-		// denomination
-		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
-			pool_currency,
-			amount_payment,
+		Self::transfer_collected_investment(
+			who,
+			investment_id,
 			foreign_payout_currency,
-		)?;
-
-		Ok(ExecutedForeignCollectInvest {
-			amount_currency_payout,
-			amount_tranche_tokens_payout: amount_collected,
-		})
+			pool_currency,
+		)
 	}
 
 	#[transactional]
@@ -287,37 +226,24 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			RedemptionPayoutCurrency::<T>::get(who, investment_id)
 				.map(|currency| currency == foreign_payout_currency)
 				.unwrap_or_else(|| {
-					log::debug!("Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
+					log::debug!("Corruption: Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
 					false
 				}),
 			Error::<T>::InvalidRedemptionPayoutCurrency
 		);
-		let collected = T::Investment::collect_redemption(who.clone(), investment_id)?;
-		CollectedRedemptionTrancheTokens::<T>::try_mutate(who, investment_id, |amount| {
-			amount.ensure_add_assign(collected.amount_payment)?;
+		ensure!(T::PoolInspect::currency_for(investment_id.of_pool())
+			.map(|currency| currency == pool_currency)
+			.unwrap_or_else(|| {
+				log::debug!("Corruption: Failed to derive pool currency from investment id when collecting foreign redemption. Should never occur if redemption has been increased beforehand");
+				false
+			}),
+			DispatchError::Corruption
+		);
 
-			Ok::<(), DispatchError>(())
-		})?;
-
-		// Transition state to initiate swap from pool to foreign currency
-		let pre_state = RedemptionState::<T>::get(who, investment_id);
-		let amount_unprocessed_redemption = T::Investment::redemption(who, investment_id)?;
-		let post_state = pre_state
-			.transition(RedeemTransition::CollectRedemption(
-				amount_unprocessed_redemption,
-				SwapOf::<T> {
-					amount: collected.amount_collected,
-					currency_in: foreign_payout_currency,
-					currency_out: pool_currency,
-				},
-			))
-			.map_err(|e| {
-				// Inner error holds finer granularity but should never occur
-				log::debug!("RedeemState transition error: {:?}", e);
-				Error::<T>::from(RedeemError::Collect)
-			})?;
-
-		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
+		// Note: We assume the configured Investment trait to notify about the collected
+		// amounts via the `CollectedRedemptionHook` which handles incrementing the
+		// `CollectedRedemption` amount.
+		T::Investment::collect_redemption(who.clone(), investment_id)?;
 
 		Ok(())
 	}
@@ -668,8 +594,10 @@ impl<T: Config> Pallet<T> {
 		state: RedeemState<T::Balance, T::CurrencyId>,
 		inner_redeem_state: InnerRedeemState<T::Balance, T::CurrencyId>,
 	) -> Result<Option<RedeemState<T::Balance, T::CurrencyId>>, DispatchError> {
-		let amount_payment_tranche_tokens =
-			CollectedRedemptionTrancheTokens::<T>::get(who, investment_id);
+		let CollectedAmount::<T::Balance> {
+			amount_payment: amount_payment_tranche_tokens,
+			..
+		} = CollectedRedemption::<T>::get(who, investment_id);
 
 		// Send notification and kill `CollectedRedemptionTrancheTokens` iff the state
 		// includes `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency`
@@ -690,7 +618,7 @@ impl<T: Config> Pallet<T> {
 						amount_payment: amount_payment_tranche_tokens,
 					},
 				)?;
-				CollectedRedemptionTrancheTokens::<T>::remove(who, investment_id);
+				CollectedRedemption::<T>::remove(who, investment_id);
 				Ok(())
 			}
 			_ => Ok(()),
@@ -1059,17 +987,131 @@ impl<T: Config> Pallet<T> {
 		Ok((token_swap, new_invest_state, new_redeem_state))
 	}
 
-	/// Sends `ExecutedDecreaseInvestHook` notification such that any potential
-	/// consumer could act upon that, e.g. Liquidity Pools for
+	/// Increments the collected investment amount and transitions investment
+	/// state as a result of collecting the investment.
+	///
+	/// NOTE: Does not transfer back the collected tranche tokens. This happens
+	/// in `transfer_collected_investment`.
+	pub(crate) fn denote_collected_investment(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		collected: CollectedAmount<T::Balance>,
+	) -> DispatchResult {
+		// Increment by previously stored amounts (via `CollectedInvestmentHook`)
+		CollectedInvestment::<T>::mutate(who, investment_id, |collected_before| {
+			collected_before
+				.amount_collected
+				.ensure_add_assign(collected.amount_collected)?;
+			collected_before
+				.amount_payment
+				.ensure_add_assign(collected.amount_payment)?;
+			Ok::<(), DispatchError>(())
+		})?;
+
+		// Update invest state to decrease the unprocessed investing amount
+		let investing_amount = T::Investment::investment(who, investment_id)?;
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
+		let post_state =
+			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
+		Self::apply_invest_state_transition(who, investment_id, post_state).map_err(|e| {
+			log::debug!("InvestState transition error: {:?}", e);
+			Error::<T>::from(InvestError::Collect)
+		})?;
+
+		Ok(())
+	}
+
+	/// Consumes the `CollectedInvestment` amounts and returns these.
+	///
+	/// NOTE: Converts the collected pool currency payment amount to foreign
+	/// currency via the `CurrencyConverter` trait.
+	pub(crate) fn transfer_collected_investment(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		foreign_payout_currency: T::CurrencyId,
+		pool_currency: T::CurrencyId,
+	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
+		let collected = CollectedInvestment::<T>::take(who, investment_id);
+		ensure!(
+			collected.amount_payment.is_zero(),
+			Error::<T>::InvestError(InvestError::NothingCollected)
+		);
+
+		// Determine payout amount in foreign currency instead of current pool currency
+		// denomination
+		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
+			pool_currency,
+			collected.amount_payment,
+			foreign_payout_currency,
+		)?;
+
+		Ok(ExecutedForeignCollectInvest {
+			amount_currency_payout,
+			amount_tranche_tokens_payout: collected.amount_collected,
+		})
+	}
+
+	/// Increments the collected redemption amount and transitions redemption
+	/// state as a result of collecting the redemption.
+	///
+	/// NOTE: Neither initiates a swap from the collected pool currency into
+	/// foreign currency nor transfers back any currency to the investor. This
+	/// happens in `transfer_collected_redemption`.
+	pub(crate) fn denote_collected_redemption(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		collected: CollectedAmount<T::Balance>,
+	) -> DispatchResult {
+		let foreign_payout_currency =
+			RedemptionPayoutCurrency::<T>::get(who, investment_id).expect("Foreign redemption payout currency is set by initial increment before collecting is possible");
+		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
+			.expect("Impossible to collect redemption for non existing pool at this point");
+
+		// Increment by previously stored amounts (via `CollectedInvestmentHook`)
+		let collected = CollectedRedemption::<T>::mutate(who, investment_id, |collected_before| {
+			collected_before
+				.amount_collected
+				.ensure_add_assign(collected.amount_collected)?;
+			collected_before
+				.amount_payment
+				.ensure_add_assign(collected.amount_payment)?;
+			Ok::<CollectedAmount<T::Balance>, DispatchError>(collected_before.clone())
+		})?;
+
+		// Transition state to initiate swap from pool to foreign currency
+		let pre_state = RedemptionState::<T>::get(who, investment_id);
+		let amount_unprocessed_redemption = T::Investment::redemption(who, investment_id)?;
+		let post_state = pre_state
+			.transition(RedeemTransition::CollectRedemption(
+				amount_unprocessed_redemption,
+				SwapOf::<T> {
+					amount: collected.amount_collected,
+					currency_in: foreign_payout_currency,
+					currency_out: pool_currency,
+				},
+			))
+			.map_err(|e| {
+				// Inner error holds finer granularity but should never occur
+				log::debug!("RedeemState transition error: {:?}", e);
+				Error::<T>::from(RedeemError::Collect)
+			})?;
+
+		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
+
+		Ok(())
+	}
+
+	/// Sends `DecreasedForeignInvestOrderHook` notification such that any
+	/// potential consumer could act upon that, e.g. Liquidity Pools for
 	/// `ExecutedDecreaseInvestOrder`.
 	#[transactional]
-	fn notify_executed_decrease_invest(
+	pub(crate) fn notify_executed_decrease_invest(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		foreign_currency: T::CurrencyId,
 		amount_decreased: T::Balance,
 	) -> DispatchResult {
-		T::ExecutedDecreaseInvestHook::notify_status_change(
+		T::DecreasedForeignInvestOrderHook::notify_status_change(
 			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
 				owner: who.clone(),
 				id: investment_id,
@@ -1083,17 +1125,17 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	/// Sends `ExecutedCollectRedeemHook` notification such that any potential
-	/// consumer could act upon that, e.g. Liquidity Pools for
+	/// Sends `CollectedForeignRedemptionHook` notification such that any
+	/// potential consumer could act upon that, e.g. Liquidity Pools for
 	/// `ExecutedCollectRedeemOrder`.
 	#[transactional]
-	fn notify_executed_collect_redeem(
+	pub(crate) fn notify_executed_collect_redeem(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		currency: T::CurrencyId,
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		T::ExecutedCollectRedeemHook::notify_status_change(
+		T::CollectedForeignRedemptionHook::notify_status_change(
 			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
 				owner: who.clone(),
 				id: investment_id,

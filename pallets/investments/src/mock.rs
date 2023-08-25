@@ -140,6 +140,17 @@ cfg_test_utils::mocks::accountant::impl_mock_accountant!(
 	Balance
 );
 
+pub struct NoopCollectHook;
+impl cfg_traits::StatusNotificationHook for NoopCollectHook {
+	type Error = sp_runtime::DispatchError;
+	type Id = cfg_types::investments::ForeignInvestmentInfo<u64, InvestmentId, ()>;
+	type Status = cfg_types::investments::CollectedAmount<Balance>;
+
+	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
+		Ok(())
+	}
+}
+
 parameter_types! {
 	pub const MaxOutstandingCollect: u64 = 10;
 }
@@ -148,6 +159,8 @@ impl pallet_investments::Config for MockRuntime {
 	type Accountant = MockAccountant<OrmlTokens>;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
+	type CollectedInvestmentHook = NoopCollectHook;
+	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollect;
 	type PreConditions = Always;

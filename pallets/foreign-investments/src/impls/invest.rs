@@ -28,7 +28,7 @@ where
 	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Solely apply state machine to transition one `InvestState` into another
-	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram.
+	/// based on the transition, see <https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram>.
 	///
 	/// NOTE: MUST call `apply_invest_state_transition` on the post state to
 	/// actually mutate storage.

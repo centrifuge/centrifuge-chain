@@ -11,6 +11,36 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+//! # Foreign Investment pallet
+//!
+//! Enables investing, redeeming and collecting in foreign and non-foreign
+//! currencies. Can be regarded as an extension of `pallet-investment` which
+//! provides the same toolset for pool (non-foreign) currencies.
+//!
+//! - [`Pallet`]
+//!
+//! ## Assumptions
+//!
+//! - The implementer of the pallet's associated `Investment` type sends
+//!   notifications for collected investments via `CollectedInvestmentHook` and
+//!   for collected redemptions via `CollectedRedemptionHook`]. Otherwise the
+//!   payment and collected amounts for foreign investments/redemptions are
+//!   never incremented.
+//! - The implementer of the pallet's associated `TokenSwaps` type sends
+//!   notifications for fulfilled swap orders via the `FulfilledSwapOrderHook`.
+//!   Otherwise investment/redemption states can never advance the
+//!   `ActiveSwapInto*Currency` state.
+//! - The implementer of the pallet's associated `TokenSwaps` type sends
+//!   notifications for fulfilled swap orders via the `FulfilledSwapOrderHook`.
+//!   Otherwise investment/redemption states can never advance the
+//!   `ActiveSwapInto*Currency` state.
+//! - The implementer of the pallet's associated
+//!   `DecreasedForeignInvestOrderHook` type handles the refund of the decreased
+//!   amount to the investor.
+//! - The implementer of the pallet's associated
+//!   `CollectedForeignRedemptionHook` type handles the transfer of the
+//!   collected amount in foreign currency to the investor.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::investments::Swap;
@@ -20,6 +50,7 @@ use cfg_types::investments::Swap;
 pub use pallet::*;
 
 pub mod errors;
+pub mod hooks;
 pub mod impls;
 pub mod types;
 
@@ -116,7 +147,7 @@ pub mod pallet {
 				Self::AccountId,
 				Error = DispatchError,
 				InvestmentId = Self::InvestmentId,
-				Result = CollectedAmount<Self::Balance>,
+				Result = (),
 			>;
 
 		/// Type for price ratio for cost of incoming currency relative to
@@ -162,7 +193,7 @@ pub mod pallet {
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
-		type ExecutedDecreaseInvestHook: StatusNotificationHook<
+		type DecreasedForeignInvestOrderHook: StatusNotificationHook<
 			Id = cfg_types::investments::ForeignInvestmentInfo<
 				Self::AccountId,
 				Self::InvestmentId,
@@ -173,7 +204,7 @@ pub mod pallet {
 		>;
 
 		/// The hook type which acts upon a finalized redemption collection.
-		type ExecutedCollectRedeemHook: StatusNotificationHook<
+		type CollectedForeignRedemptionHook: StatusNotificationHook<
 			Id = cfg_types::investments::ForeignInvestmentInfo<
 				Self::AccountId,
 				Self::InvestmentId,
@@ -271,21 +302,44 @@ pub mod pallet {
 		T::TokenSwapOrderId,
 	>;
 
-	/// Maps an investor and their `InvestmentId` to the amount of
-	/// tranche tokens burned for the conversion into pool currency based on the
-	/// fulfillment price(s) during collection.
+	/// Maps an investor and their `InvestmentId` to the collected investment
+	/// amount, i.e., the payment amount of pool currency burned for the
+	/// conversion into collected amount of tranche tokens based on the
+	/// fulfillment price(s).
 	///
-	/// NOTE: The lifetime of this storage starts with collecting a redemption
-	/// in pool currency and ends with having swapped the entire amount to
-	/// return currency which is assumed to be asynchronous.
+	/// NOTE: The lifetime of this storage starts with receiving a notification
+	/// of an executed investment via the `CollectedInvestmentHook`. It ends
+	/// with transferring the collected tranche tokens by executing
+	/// `transfer_collected_investment` which is part of
+	/// `collect_foreign_investment`.
 	#[pallet::storage]
-	pub type CollectedRedemptionTrancheTokens<T: Config> = StorageDoubleMap<
+	pub type CollectedInvestment<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		T::Balance,
+		CollectedAmount<T::Balance>,
+		ValueQuery,
+	>;
+
+	/// Maps an investor and their `InvestmentId` to the collected redemption
+	/// amount, i.e., the payment amount of tranche tokens burned for the
+	/// conversion into collected pool currency based on the
+	/// fulfillment price(s).
+	///
+	/// NOTE: The lifetime of this storage starts with receiving a notification
+	/// of an executed redemption collection into pool currency via the
+	/// `CollectedRedemptionHook`. It ends with having swapped the entire amount
+	/// to foreign currency which is assumed to be asynchronous.
+	#[pallet::storage]
+	pub type CollectedRedemption<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		CollectedAmount<T::Balance>,
 		ValueQuery,
 	>;
 

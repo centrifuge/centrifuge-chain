@@ -712,10 +712,9 @@ fn inbound_collect_redeem_order() {
 		}));
 
 		// Foreign CollectedRedemptionTrancheTokens should be killed
-		assert!(!pallet_foreign_investments::CollectedRedemptionTrancheTokens::<DevelopmentRuntime>::contains_key(
-				investor.clone(),
-				default_investment_id(),
-			));
+		assert!(!pallet_foreign_investments::CollectedRedemption::<
+			DevelopmentRuntime,
+		>::contains_key(investor.clone(), default_investment_id(),));
 
 		// Foreign RedemptionState should be killed
 		assert!(!pallet_foreign_investments::RedemptionState::<

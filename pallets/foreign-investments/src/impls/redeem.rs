@@ -42,7 +42,7 @@ where
 	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Solely apply state machine to transition one `RedeemState` into another
-	/// based on the transition, see https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Redemption-States
+	/// based on the transition, see <https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Redemption-States>
 	///
 	/// NOTE: MUST call `apply_redeem_state_transition` on the post state to
 	/// actually mutate storage.

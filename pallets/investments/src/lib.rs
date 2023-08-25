@@ -19,15 +19,17 @@ use cfg_traits::{
 		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
 		InvestmentsPortfolio, OrderManager,
 	},
-	PreConditions,
+	PreConditions, StatusNotificationHook,
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection},
+	investments::{
+		CollectedAmount, ForeignInvestmentInfo, InvestCollection, InvestmentAccount,
+		RedeemCollection,
+	},
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
-	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
@@ -105,6 +107,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_types::investments::ForeignInvestmentInfo;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -171,6 +174,24 @@ pub mod pallet {
 		type PreConditions: PreConditions<
 			OrderType<Self::AccountId, Self::InvestmentId, Self::Amount>,
 			Result = DispatchResult,
+		>;
+
+		/// The hook which acts upon a collected investment.
+		///
+		/// NOTE: NOOP if the investment is not foreign.
+		type CollectedInvestmentHook: StatusNotificationHook<
+			Error = DispatchError,
+			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Status = CollectedAmount<Self::Amount>,
+		>;
+
+		/// The hook which acts upon a (partially) fulfilled order
+		///
+		/// NOTE: NOOP if the redemption is not foreign.
+		type CollectedRedemptionHook: StatusNotificationHook<
+			Error = DispatchError,
+			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Status = CollectedAmount<Self::Amount>,
 		>;
 
 		/// The weight information for this pallet extrinsics.
@@ -441,7 +462,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect_invest(who, investment_id).map(|(_, info)| info)
+			Self::do_collect_invest(who, investment_id)
 		}
 
 		/// Collect the results of a user's redeem orders for the given
@@ -455,7 +476,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect_redeem(who, investment_id).map(|(_, info)| info)
+			Self::do_collect_redeem(who, investment_id)
 		}
 
 		/// Collect the results of another users invest orders for the given
@@ -470,7 +491,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_invest(who, investment_id).map(|(_, info)| info)
+			Self::do_collect_invest(who, investment_id)
 		}
 
 		/// Collect the results of another users redeem orders for the given
@@ -485,7 +506,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_redeem(who, investment_id).map(|(_, info)| info)
+			Self::do_collect_redeem(who, investment_id)
 		}
 	}
 }
@@ -634,7 +655,7 @@ where
 	pub(crate) fn do_collect_invest(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<(CollectedAmount<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		InvestOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
 			// Exit early if order does not exist
@@ -647,7 +668,7 @@ where
 				});
 				// TODO: Return correct weight
 				//       - Accountant::info() + Storage::read() + Storage::write()
-				return Ok((Default::default(), ().into()));
+				return Ok(().into());
 			};
 
 			let mut collection = InvestCollection::<T::Amount>::from_order(order);
@@ -668,7 +689,7 @@ where
 				});
 				// TODO: Return correct weight
 				//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-				return Ok((Default::default(), ().into()));
+				return Ok(().into());
 			}
 
 			let mut amount_payment = T::Amount::zero();
@@ -730,8 +751,18 @@ where
 				},
 			});
 
+			// NOOP if investment is not foreign
+			T::CollectedInvestmentHook::notify_status_change(
+				ForeignInvestmentInfo {
+					owner: who.clone(),
+					id: investment_id,
+					last_swap_reason: None,
+				},
+				collected_investment,
+			)?;
+
 			// TODO: Actually weight with amount of collects here
-			Ok((collected_investment, ().into()))
+			Ok(().into())
 		})
 	}
 
@@ -739,7 +770,7 @@ where
 	pub(crate) fn do_collect_redeem(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
-	) -> Result<(CollectedAmount<T::Amount>, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		RedeemOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
 			// Exit early if order does not exist
@@ -753,7 +784,7 @@ where
 				});
 				// TODO: Return correct weight
 				//       - Accountant::info() + Storage::read() + Storage::write()
-				return Ok((Default::default(), ().into()));
+				return Ok(().into());
 			};
 
 			let mut collection = RedeemCollection::<T::Amount>::from_order(order);
@@ -774,7 +805,7 @@ where
 				});
 				// TODO: Return correct weight
 				//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-				return Ok((Default::default(), ().into()));
+				return Ok(().into());
 			}
 
 			let mut amount_payment = T::Amount::zero();
@@ -843,8 +874,18 @@ where
 				},
 			});
 
+			// NOOP if investment is not foreign
+			T::CollectedRedemptionHook::notify_status_change(
+				ForeignInvestmentInfo {
+					owner: who.clone(),
+					id: investment_id,
+					last_swap_reason: None,
+				},
+				collected_redemption,
+			)?;
+
 			// TODO: Actually weight this with collected_ids
-			Ok((collected_redemption, ().into()))
+			Ok(().into())
 		})
 	}
 
@@ -1461,25 +1502,17 @@ where
 {
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
-	type Result = CollectedAmount<T::Amount>;
+	type Result = ();
 
-	// TODO: Write unit test in investments to test this
-	fn collect_investment(
-		who: T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<CollectedAmount<T::Amount>, DispatchError> {
+	fn collect_investment(who: T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		Pallet::<T>::do_collect_invest(who, investment_id)
 			.map_err(|e| e.error)
-			.map(|(collected_amount, _)| collected_amount)
+			.map(|_| ())
 	}
 
-	// TODO: Write unit test in investments to test this
-	fn collect_redemption(
-		who: T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> Result<CollectedAmount<T::Amount>, DispatchError> {
+	fn collect_redemption(who: T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		Pallet::<T>::do_collect_redeem(who, investment_id)
 			.map_err(|e| e.error)
-			.map(|(collected_amount, _)| collected_amount)
+			.map(|_| ())
 	}
 }

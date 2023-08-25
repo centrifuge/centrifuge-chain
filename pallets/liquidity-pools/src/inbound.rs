@@ -127,9 +127,9 @@ where
 	/// back into the provided foreign currency initiated.
 	///
 	/// The finalization of this call (fulfillment of the swap) is assumed to be
-	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
-	/// which burns the corresponding amount in foreign currency and dispatches
-	/// `ExecutedDecreaseInvestOrder`.
+	/// asynchronous. In any case, it is handled by
+	/// `DecreasedForeignInvestOrderHook` which burns the corresponding amount
+	/// in foreign currency and dispatches `ExecutedDecreaseInvestOrder`.
 	pub fn handle_decrease_invest_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
@@ -159,9 +159,9 @@ where
 	/// On success, initiates a swap back into the provided foreign currency.
 	///
 	/// The finalization of this call (fulfillment of the swap) is assumed to be
-	/// asynchronous. In any case, it is handled by `DecreaseInvestOrderHook`
-	/// which burns the corresponding amount in foreign currency and dispatches
-	/// `ExecutedDecreaseInvestOrder`.
+	/// asynchronous. In any case, it is handled by
+	/// `DecreasedForeignInvestOrderHook` which burns the corresponding amount
+	/// in foreign currency and dispatches `ExecutedDecreaseInvestOrder`.
 	pub fn handle_cancel_invest_order(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
@@ -353,9 +353,9 @@ where
 	/// collected amount in pool currency into the desired foreign currency.
 	///
 	/// The termination of this call (fulfillment of the swap) is assumed to be
-	/// asynchronous and handled by the `CollectRedeemHook`. It burns the return
-	/// currency amount and dispatches `Message::ExecutedCollectRedeem` to the
-	/// destination domain.
+	/// asynchronous and handled by the `CollectedForeignRedemptionHook`. It
+	/// burns the return currency amount and dispatches
+	/// `Message::ExecutedCollectRedeem` to the destination domain.
 	pub fn handle_collect_redemption(
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,

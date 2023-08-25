@@ -22,7 +22,7 @@
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, StatusNotificationHook,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
@@ -1548,10 +1548,24 @@ impl<
 	}
 }
 
+// TODO: Remove when adding pallet_foreign_investments to runtime
+pub struct NoopCollectHook;
+impl StatusNotificationHook for NoopCollectHook {
+	type Error = DispatchError;
+	type Id = cfg_types::investments::ForeignInvestmentInfo<AccountId, TrancheCurrency, ()>;
+	type Status = cfg_types::investments::CollectedAmount<Balance>;
+
+	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
+	type CollectedInvestmentHook = NoopCollectHook;
+	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
