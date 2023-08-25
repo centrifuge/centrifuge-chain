@@ -2,22 +2,23 @@ use super::*;
 
 fn config_mocks() {
 	MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
-	MockPrices::mock_get(|id, pool_id| {
+	MockPrices::mock_get(move |id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
-		assert_eq!(*id, REGISTER_PRICE_ID);
-		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err(PRICE_ID_NO_FOUND),
+		}
 	});
 	MockPrices::mock_collection(|pool_id| {
 		assert_eq!(*pool_id, POOL_A);
-		MockDataCollection::new(|id| {
-			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		MockDataCollection::new(|id| match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err(PRICE_ID_NO_FOUND),
 		})
 	});
 }
 
 fn update_portfolio() {
-	config_mocks();
 	assert_ok!(Loans::update_portfolio_valuation(
 		RuntimeOrigin::signed(ANY),
 		POOL_A
@@ -26,8 +27,8 @@ fn update_portfolio() {
 
 fn expected_portfolio(valuation: Balance) {
 	assert_eq!(
-		PortfolioValuation::<Runtime>::get(POOL_A).value(),
-		valuation
+		valuation,
+		PortfolioValuation::<Runtime>::get(POOL_A).value()
 	);
 }
 
@@ -60,6 +61,7 @@ fn without_active_loans() {
 
 		advance_time(YEAR / 2);
 
+		config_mocks();
 		update_portfolio();
 		expected_portfolio(0);
 	});
@@ -82,6 +84,7 @@ fn with_active_loans() {
 		let valuation = amount.balance().unwrap() + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
 
 		expected_portfolio(valuation);
+		config_mocks();
 		update_portfolio();
 		expected_portfolio(valuation);
 
@@ -111,6 +114,7 @@ fn with_active_written_off_loans() {
 		util::write_off_loan(loan_1);
 		util::write_off_loan(loan_2);
 
+		config_mocks();
 		update_portfolio();
 		expected_portfolio(util::current_loan_pv(loan_1) + util::current_loan_pv(loan_2));
 	});
@@ -141,6 +145,7 @@ fn filled_and_cleaned() {
 
 		advance_time(YEAR / 2);
 
+		config_mocks();
 		update_portfolio();
 		expected_portfolio(0);
 
@@ -158,12 +163,43 @@ fn exact_and_inexact_matches() {
 		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		advance_time(YEAR / 2);
+		config_mocks();
 		update_portfolio();
 
 		// repay_loan() should affect to the portfolio valuation with the same value as
 		// the absolute valuation of the loan
 		util::repay_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE / 2));
 		expected_portfolio(util::current_loan_pv(loan_1));
+	});
+}
+
+#[test]
+fn with_unregister_price_id_and_oracle_not_required() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+		let loan_1 = util::create_loan(loan);
+
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		util::borrow_loan(loan_1, PricingAmount::External(amount.clone()));
+
+		advance_time(YEAR / 2);
+		config_mocks();
+		update_portfolio();
+		expected_portfolio(QUANTITY.saturating_mul_int(PRICE_VALUE));
+
+		// Suddenty, the oracle set a value
+		MockPrices::mock_collection(|_| {
+			MockDataCollection::new(|_| Ok((PRICE_VALUE * 8, BLOCK_TIME.as_secs())))
+		});
+
+		update_portfolio();
+		expected_portfolio(QUANTITY.saturating_mul_int(PRICE_VALUE * 8));
 	});
 }
 
