@@ -22,7 +22,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-mod add_allow;
+mod add_allow_upgrade;
 mod foreign_investments;
 mod non_foreign_investments;
 mod setup;

@@ -24,6 +24,7 @@ cfg-types = { path = "../../libs/types", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Benchmarking dependencies - optional
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
@@ -45,6 +46,7 @@ std = [
   "log/std",
   "scale-info/std",
   "sp-runtime/std",
+  "sp-std/std",
 ]
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",

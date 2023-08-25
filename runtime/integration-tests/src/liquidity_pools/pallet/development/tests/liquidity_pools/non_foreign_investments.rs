@@ -979,7 +979,7 @@ mod should_fail {
 					amount: 1,
 				};
 				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg.clone()),
 					pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 				);
 

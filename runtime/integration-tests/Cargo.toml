@@ -96,8 +96,8 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
-pallet-investments = { path = "../../pallets/investments" }
 pallet-foreign-investments = { path = "../../pallets/foreign-investments" }
+pallet-investments = { path = "../../pallets/investments" }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools" }
 pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway" }
 pallet-loans = { path = "../../pallets/loans" }
