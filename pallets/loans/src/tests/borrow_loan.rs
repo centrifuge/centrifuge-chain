@@ -333,10 +333,10 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		);
 
 		// Suddenty, the oracle set a value
-		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
+		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME.as_secs())));
 
 		assert_eq!(
-			(QUANTITY).saturating_mul_int(PRICE_VALUE),
+			(QUANTITY).saturating_mul_int(PRICE_VALUE * 8),
 			util::current_loan_pv(loan_id)
 		);
 	});
