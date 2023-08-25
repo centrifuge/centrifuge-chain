@@ -11,10 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::StatusNotificationHook;
-use cfg_types::investments::{
-	CollectedAmount, ForeignInvestmentInfo,
+use cfg_traits::{
+	investments::{Investment, InvestmentCollector},
+	StatusNotificationHook,
 };
+use cfg_types::investments::{CollectedAmount, ForeignInvestmentInfo};
 use frame_support::transactional;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
@@ -53,6 +54,19 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 
 		match reason {
 			TokenSwapReason::Investment => {
+				// If the investment requires to be collected, the transition of the
+				// `InvestState` would fail. By implicitly collecting here, we defend against
+				// that and ensure that the swap order fulfillment won't be reverted (since this
+				// function is `transactional`).
+
+				// NOTE: We only collect the tranche tokens, but do not transfer them back. This
+				// updates the unprocessed investment amount such that transitioning the
+				// `InvestState` is not blocked. The user still has to do that manually by
+				// sending `CollectInvest`.
+				if T::Investment::investment_requires_collect(&info.owner, info.id) {
+					T::Investment::collect_investment(info.owner.clone(), info.id)?;
+				}
+
 				let pre_state = InvestmentState::<T>::get(&info.owner, info.id);
 				let post_state = pre_state
 					.transition(InvestTransition::FulfillSwapOrder(status))
@@ -64,6 +78,20 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 				Pallet::<T>::apply_invest_state_transition(&info.owner, info.id, post_state)
 			}
 			TokenSwapReason::Redemption => {
+				// If the investment requires to be collected, the transition of the
+				// `RedeemState` would fail. By implicitly collecting here, we defend against
+				// that and ensure that the swap order fulfillment won't be reverted (since this
+				// function is `transactional`).
+
+				// NOTE: We only collect the pool currency, but do neither transfer them to the
+				// investor nor initiate the swap back into foreign currency. This updates the
+				// unprocessed investment amount such that transitioning the `RedeemState` is
+				// not blocked. The user still has to do that manually by
+				// sending `CollectInvest`.
+				if T::Investment::redemption_requires_collect(&info.owner, info.id) {
+					T::Investment::collect_redemption(info.owner.clone(), info.id)?;
+				}
+
 				let pre_state = RedemptionState::<T>::get(&info.owner, info.id);
 				let post_state = pre_state
 					.transition(RedeemTransition::FulfillSwapOrder(status))
