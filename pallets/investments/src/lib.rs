@@ -30,6 +30,7 @@ use cfg_types::{
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
@@ -657,101 +658,113 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		InvestOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
-			// Exit early if order does not exist
-			let order = if let Some(order) = maybe_order.as_mut() {
-				order
-			} else {
-				Self::deposit_event(Event::<T>::InvestCollectedWithoutActivePosition {
-					who: who.clone(),
-					investment_id,
-				});
-				// TODO: Return correct weight
-				//       - Accountant::info() + Storage::read() + Storage::write()
-				return Ok(().into());
-			};
-
-			let mut collection = InvestCollection::<T::Amount>::from_order(order);
-			let mut collected_ids = Vec::new();
-			let cur_order_id = InvestOrderId::<T>::get(investment_id);
-			let last_processed_order_id = min(
-				order
-					.submitted_at()
-					.saturating_add(T::MaxOutstandingCollects::get()),
-				cur_order_id,
-			);
-
-			// Exit early if the current order is not in processing
-			if order.submitted_at() == cur_order_id {
-				Self::deposit_event(Event::<T>::InvestCollectedForNonClearedOrderId {
-					who: who.clone(),
-					investment_id,
-				});
-				// TODO: Return correct weight
-				//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-				return Ok(().into());
-			}
-
-			let mut amount_payment = T::Amount::zero();
-			for order_id in order.submitted_at()..last_processed_order_id {
-				let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
-					.map_err(|_| Error::<T>::OrderNotCleared)?;
-
-				let currency_payout =
-					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
-				Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment)?;
-				collected_ids.push(order_id);
-
-				amount_payment.ensure_add_assign(
-					fulfillment
-						.price
-						.checked_mul_int_floor(currency_payout)
-						.ok_or(ArithmeticError::Overflow)?,
-				)?;
-			}
-
-			order.update_after_collect(
-				collection.remaining_investment_invest,
-				last_processed_order_id,
-			);
-
-			T::Accountant::transfer(
-				info.id(),
-				&InvestmentAccount { investment_id }.into_account_truncating(),
-				&who,
-				collection.payout_investment_invest,
-			)?;
-
-			let amount = order.amount();
-			Self::rm_empty(
-				amount,
-				maybe_order,
-				Event::InvestOrderUpdated {
-					investment_id,
-					submitted_at: last_processed_order_id,
-					who: who.clone(),
-					amount,
-				},
-			);
-
-			let collected_investment = CollectedAmount {
-				amount_collected: collection.payout_investment_invest,
-				amount_payment,
-			};
-
-			Self::deposit_event(Event::InvestOrdersCollected {
-				investment_id,
-				who: who.clone(),
-				processed_orders: collected_ids,
-				collection,
-				outcome: if last_processed_order_id == cur_order_id {
-					CollectOutcome::FullyCollected
+		let (collected_investment, post_dispatch_info) = InvestOrders::<T>::try_mutate(
+			&who,
+			investment_id,
+			|maybe_order| -> Result<
+				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				DispatchErrorWithPostInfo,
+			> {
+				// Exit early if order does not exist
+				let order = if let Some(order) = maybe_order.as_mut() {
+					order
 				} else {
-					CollectOutcome::PartiallyCollected
-				},
-			});
+					Self::deposit_event(Event::<T>::InvestCollectedWithoutActivePosition {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + Storage::read() + Storage::write()
+					return Ok((Default::default(), ().into()));
+				};
 
-			// NOOP if investment is not foreign
+				let mut collection = InvestCollection::<T::Amount>::from_order(order);
+				let mut collected_ids = Vec::new();
+				let cur_order_id = InvestOrderId::<T>::get(investment_id);
+				let last_processed_order_id = min(
+					order
+						.submitted_at()
+						.saturating_add(T::MaxOutstandingCollects::get()),
+					cur_order_id,
+				);
+
+				// Exit early if the current order is not in processing
+				if order.submitted_at() == cur_order_id {
+					Self::deposit_event(Event::<T>::InvestCollectedForNonClearedOrderId {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					return Ok((Default::default(), ().into()));
+				}
+
+				let mut amount_payment = T::Amount::zero();
+				for order_id in order.submitted_at()..last_processed_order_id {
+					let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
+
+					let currency_payout =
+						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
+					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment)?;
+					collected_ids.push(order_id);
+
+					amount_payment.ensure_add_assign(
+						fulfillment
+							.price
+							.checked_mul_int_floor(currency_payout)
+							.ok_or(ArithmeticError::Overflow)?,
+					)?;
+				}
+
+				order.update_after_collect(
+					collection.remaining_investment_invest,
+					last_processed_order_id,
+				);
+
+				T::Accountant::transfer(
+					info.id(),
+					&InvestmentAccount { investment_id }.into_account_truncating(),
+					&who,
+					collection.payout_investment_invest,
+				)?;
+
+				let amount = order.amount();
+				Self::rm_empty(
+					amount,
+					maybe_order,
+					Event::InvestOrderUpdated {
+						investment_id,
+						submitted_at: last_processed_order_id,
+						who: who.clone(),
+						amount,
+					},
+				);
+
+				let collected_investment = CollectedAmount {
+					amount_collected: collection.payout_investment_invest,
+					amount_payment,
+				};
+
+				Self::deposit_event(Event::InvestOrdersCollected {
+					investment_id,
+					who: who.clone(),
+					processed_orders: collected_ids,
+					collection,
+					outcome: if last_processed_order_id == cur_order_id {
+						CollectOutcome::FullyCollected
+					} else {
+						CollectOutcome::PartiallyCollected
+					},
+				});
+
+				// TODO: Actually weight with amount of collects here
+				Ok((collected_investment, ().into()))
+			},
+		)?;
+
+		if collected_investment != Default::default() {
+			// Assumption: NOOP if investment is not foreign
 			T::CollectedInvestmentHook::notify_status_change(
 				ForeignInvestmentInfo {
 					owner: who.clone(),
@@ -760,10 +773,9 @@ where
 				},
 				collected_investment,
 			)?;
+		}
 
-			// TODO: Actually weight with amount of collects here
-			Ok(().into())
-		})
+		Ok(post_dispatch_info)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -772,109 +784,122 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		RedeemOrders::<T>::try_mutate(&who, investment_id, |maybe_order| {
-			// Exit early if order does not exist
-			let order = if let Some(order) = maybe_order.as_mut() {
-				order
-			} else {
-				// Trigger event
-				Self::deposit_event(Event::<T>::RedeemCollectedWithoutActivePosition {
-					who: who.clone(),
-					investment_id,
-				});
-				// TODO: Return correct weight
-				//       - Accountant::info() + Storage::read() + Storage::write()
-				return Ok(().into());
-			};
-
-			let mut collection = RedeemCollection::<T::Amount>::from_order(order);
-			let mut collected_ids = Vec::new();
-			let cur_order_id = RedeemOrderId::<T>::get(investment_id);
-			let last_processed_order_id = min(
-				order
-					.submitted_at()
-					.saturating_add(T::MaxOutstandingCollects::get()),
-				cur_order_id,
-			);
-
-			// Exit early if the current order is not in processing
-			if order.submitted_at() == cur_order_id {
-				Self::deposit_event(Event::<T>::RedeemCollectedForNonClearedOrderId {
-					who: who.clone(),
-					investment_id,
-				});
-				// TODO: Return correct weight
-				//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-				return Ok(().into());
-			}
-
-			let mut amount_payment = T::Amount::zero();
-			for order_id in order.submitted_at()..last_processed_order_id {
-				let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
-					.map_err(|_| Error::<T>::OrderNotCleared)?;
-				let payout_tranche_tokens =
-					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
-				Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment)?;
-				collected_ids.push(order_id);
-
-				// TODO(@mustermeiszer): We actually want the reciprocal without rounding, is
-				// this sufficient or should we use something like
-				// `reciprocal_with_rounding(SignedRounding::NearestPrefMajor)`
-				amount_payment.ensure_add_assign(
-					fulfillment
-						.price
-						.reciprocal_floor()
-						.ok_or(Error::<T>::ZeroPricedInvestment)?
-						.checked_mul_int_floor(payout_tranche_tokens)
-						.ok_or(ArithmeticError::Overflow)?,
-				)?;
-			}
-
-			order.update_after_collect(
-				collection.remaining_investment_redeem,
-				last_processed_order_id,
-			);
-
-			// Transfer collected amounts from investment and redemption
-			let investment_account = InvestmentAccount { investment_id }.into_account_truncating();
-			T::Tokens::transfer(
-				info.payment_currency(),
-				&investment_account,
-				&who,
-				collection.payout_investment_redeem,
-				false,
-			)?;
-
-			let amount = order.amount();
-			Self::rm_empty(
-				amount,
-				maybe_order,
-				Event::RedeemOrderUpdated {
-					investment_id,
-					submitted_at: last_processed_order_id,
-					who: who.clone(),
-					amount,
-				},
-			);
-
-			let collected_redemption = CollectedAmount {
-				amount_collected: collection.payout_investment_redeem,
-				amount_payment,
-			};
-
-			Self::deposit_event(Event::RedeemOrdersCollected {
-				investment_id,
-				who: who.clone(),
-				processed_orders: collected_ids,
-				collection,
-				outcome: if last_processed_order_id == cur_order_id {
-					CollectOutcome::FullyCollected
+		let (collected_redemption, post_dispatch_info) = RedeemOrders::<T>::try_mutate(
+			&who,
+			investment_id,
+			|maybe_order| -> Result<
+				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				DispatchErrorWithPostInfo,
+			> {
+				// Exit early if order does not exist
+				let order = if let Some(order) = maybe_order.as_mut() {
+					order
 				} else {
-					CollectOutcome::PartiallyCollected
-				},
-			});
+					// Trigger event
+					Self::deposit_event(Event::<T>::RedeemCollectedWithoutActivePosition {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + Storage::read() + Storage::write()
+					return Ok((Default::default(), ().into()));
+				};
 
-			// NOOP if investment is not foreign
+				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
+				let mut collected_ids = Vec::new();
+				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
+				let last_processed_order_id = min(
+					order
+						.submitted_at()
+						.saturating_add(T::MaxOutstandingCollects::get()),
+					cur_order_id,
+				);
+
+				// Exit early if the current order is not in processing
+				if order.submitted_at() == cur_order_id {
+					Self::deposit_event(Event::<T>::RedeemCollectedForNonClearedOrderId {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					return Ok((Default::default(), ().into()));
+				}
+
+				let mut amount_payment = T::Amount::zero();
+				for order_id in order.submitted_at()..last_processed_order_id {
+					let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
+					let payout_tranche_tokens =
+						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
+					Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment)?;
+					collected_ids.push(order_id);
+
+					// TODO(@mustermeiszer): We actually want the reciprocal without rounding, is
+					// this sufficient or should we use something like
+					// `reciprocal_with_rounding(SignedRounding::NearestPrefMajor)`
+					amount_payment.ensure_add_assign(
+						fulfillment
+							.price
+							.reciprocal_floor()
+							.ok_or(Error::<T>::ZeroPricedInvestment)?
+							.checked_mul_int_floor(payout_tranche_tokens)
+							.ok_or(ArithmeticError::Overflow)?,
+					)?;
+				}
+
+				order.update_after_collect(
+					collection.remaining_investment_redeem,
+					last_processed_order_id,
+				);
+
+				// Transfer collected amounts from investment and redemption
+				let investment_account =
+					InvestmentAccount { investment_id }.into_account_truncating();
+				T::Tokens::transfer(
+					info.payment_currency(),
+					&investment_account,
+					&who,
+					collection.payout_investment_redeem,
+					false,
+				)?;
+
+				let amount = order.amount();
+				Self::rm_empty(
+					amount,
+					maybe_order,
+					Event::RedeemOrderUpdated {
+						investment_id,
+						submitted_at: last_processed_order_id,
+						who: who.clone(),
+						amount,
+					},
+				);
+
+				let collected_redemption = CollectedAmount {
+					amount_collected: collection.payout_investment_redeem,
+					amount_payment,
+				};
+
+				Self::deposit_event(Event::RedeemOrdersCollected {
+					investment_id,
+					who: who.clone(),
+					processed_orders: collected_ids,
+					collection,
+					outcome: if last_processed_order_id == cur_order_id {
+						CollectOutcome::FullyCollected
+					} else {
+						CollectOutcome::PartiallyCollected
+					},
+				});
+
+				// TODO: Actually weight this with collected_ids
+				Ok((collected_redemption, ().into()))
+			},
+		)?;
+
+		if collected_redemption != Default::default() {
+			// Assumption: NOOP if investment is not foreign
 			T::CollectedRedemptionHook::notify_status_change(
 				ForeignInvestmentInfo {
 					owner: who.clone(),
@@ -883,10 +908,9 @@ where
 				},
 				collected_redemption,
 			)?;
+		}
 
-			// TODO: Actually weight this with collected_ids
-			Ok(().into())
-		})
+		Ok(post_dispatch_info)
 	}
 
 	pub(crate) fn do_update_invest_order(

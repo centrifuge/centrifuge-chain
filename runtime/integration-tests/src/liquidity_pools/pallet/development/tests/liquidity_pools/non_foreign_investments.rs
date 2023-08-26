@@ -371,6 +371,11 @@ fn inbound_collect_invest_order() {
 				.into()
 		}));
 
+		// Foreign CollectedInvestment should be killed
+		assert!(!pallet_foreign_investments::CollectedInvestment::<
+			DevelopmentRuntime,
+		>::contains_key(investor.clone(), default_investment_id()));
+
 		// Foreign InvestmentState should be killed
 		assert!(!pallet_foreign_investments::InvestmentState::<
 			DevelopmentRuntime,

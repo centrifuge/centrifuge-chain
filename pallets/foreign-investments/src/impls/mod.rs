@@ -1033,7 +1033,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		let collected = CollectedInvestment::<T>::take(who, investment_id);
 		ensure!(
-			collected.amount_payment.is_zero(),
+			!collected.amount_payment.is_zero(),
 			Error::<T>::InvestError(InvestError::NothingCollected)
 		);
 
