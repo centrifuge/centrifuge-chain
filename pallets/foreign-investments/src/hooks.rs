@@ -46,8 +46,13 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 		id: T::TokenSwapOrderId,
 		status: SwapOf<T>,
 	) -> Result<(), DispatchError> {
-		let info =
-			ForeignInvestmentInfoStorage::<T>::get(id).ok_or(Error::<T>::InvestmentInfoNotFound)?;
+		let maybe_info = ForeignInvestmentInfoStorage::<T>::get(id);
+
+		if maybe_info.is_none() {
+			return Ok(());
+		}
+		let info = maybe_info.expect("Cannot be None");
+
 		let reason = info
 			.last_swap_reason
 			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
