@@ -100,7 +100,6 @@ async fn set_router() {
 		ethereum_xcm_transact_call_index: bounded_vec![0],
 		contract_address: H160::from_low_u64_be(3),
 		max_gas_limit: 10,
-		max_pov_size: 100,
 		transact_info: XcmTransactInfo {
 			transact_extra_weight: 1.into(),
 			max_weight: 100_000_000_000.into(),

@@ -194,7 +194,6 @@ mod xcm_router {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
@@ -307,7 +306,10 @@ mod xcm_router {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let weight_limit = Weight::from_parts(
+					test_data.xcm_domain.max_gas_limit * 25_000,
+					DEFAULT_PROOF_SIZE,
+				);
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
@@ -323,14 +325,7 @@ mod xcm_router {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
 						fun: ::xcm::v3::Fungibility::Fungible(1),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(weight_limit),
 				}));
 
 				let expected_call = get_encoded_ethereum_xcm_call::<Runtime>(
@@ -341,7 +336,7 @@ mod xcm_router {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: weight_limit,
 					call: expected_call.into(),
 				}));
 			});
@@ -631,7 +626,6 @@ mod axelar_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
@@ -738,7 +732,10 @@ mod axelar_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let weight_limit = Weight::from_parts(
+					test_data.xcm_domain.max_gas_limit * 25_000,
+					DEFAULT_PROOF_SIZE,
+				);
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
@@ -754,14 +751,9 @@ mod axelar_xcm {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
 						fun: ::xcm::v3::Fungibility::Fungible(1),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(
+						weight_limit + test_data.xcm_domain.transact_info.transact_extra_weight
+					),
 				}));
 
 				let contract_call = get_axelar_encoded_msg(
@@ -779,7 +771,7 @@ mod axelar_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: weight_limit,
 					call: expected_call.into(),
 				}));
 			});
@@ -884,7 +876,6 @@ mod ethereum_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				max_pov_size: 100,
 				transact_info: XcmTransactInfo {
 					transact_extra_weight: 1.into(),
 					max_weight: 100_000_000_000.into(),
@@ -987,7 +978,8 @@ mod ethereum_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let weight_limit =
+					Weight::from_parts(test_data.xcm_domain.max_gas_limit, DEFAULT_PROOF_SIZE);
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
@@ -1003,14 +995,7 @@ mod ethereum_xcm {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
 						fun: ::xcm::v3::Fungibility::Fungible(1),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(weight_limit),
 				}));
 
 				let contract_call = get_encoded_contract_call(test_data.msg.serialize()).unwrap();
@@ -1022,7 +1007,7 @@ mod ethereum_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: weight_limit,
 					call: expected_call.into(),
 				}));
 			});
