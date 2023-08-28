@@ -58,12 +58,12 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
-			Balances: pallet_balances,
-			Fees: pallet_mock_fees,
-			System: frame_system,
+		  Balances: pallet_balances,
+		  Fees: pallet_mock_fees,
+		  System: frame_system,
 		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
-			Tokens: pallet_restricted_tokens,
+		  Tokens: pallet_restricted_tokens,
 	  }
 );
 
@@ -198,7 +198,6 @@ impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
@@ -208,6 +207,45 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
+	let mut e = new_test_ext_no_pair();
+
+	e.execute_with(|| {
+		order_book::TradingPairInOut::<Runtime>::insert(
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			MIN_DEV_AUSD_ORDER,
+		);
+		order_book::TradingPairOutIn::<Runtime>::insert(
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			(),
+		);
+		order_book::TradingPairInOut::<Runtime>::insert(
+			DEV_USDT_CURRENCY_ID,
+			DEV_AUSD_CURRENCY_ID,
+			MIN_DEV_USDT_ORDER,
+		);
+		order_book::TradingPairOutIn::<Runtime>::insert(
+			DEV_USDT_CURRENCY_ID,
+			DEV_AUSD_CURRENCY_ID,
+			(),
+		);
+		order_book::TradingPairInOut::<Runtime>::insert(
+			CurrencyId::Native,
+			DEV_AUSD_CURRENCY_ID,
+			MIN_DEV_USDT_ORDER,
+		);
+		order_book::TradingPairOutIn::<Runtime>::insert(
+			CurrencyId::Native,
+			DEV_AUSD_CURRENCY_ID,
+			(),
+		);
+	});
+
+	e
+}
+
+pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();

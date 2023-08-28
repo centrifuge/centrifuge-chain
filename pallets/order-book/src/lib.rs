@@ -38,6 +38,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
 	use core::fmt::Debug;
+	use std::cmp::Ordering;
 
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_types::tokens::CustomMetadata;
@@ -51,10 +52,7 @@ pub mod pallet {
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use orml_traits::{
-		asset_registry::{self, Inspect as _},
-		GetByKey,
-	};
+	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
@@ -147,13 +145,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
 			+ MaxEncodedLen;
-
-		/// Minimum order amount, this allows us to stop spammers
-		/// From making large number of small orders
-		type MinimumOrderAmount: GetByKey<
-			(Self::AssetCurrencyId, Self::AssetCurrencyId),
-			Option<Self::Balance>,
-		>;
 
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
@@ -268,17 +259,6 @@ pub mod pallet {
 		T::AssetCurrencyId,
 		(),
 		ResultQuery<Error<T>::InvalidTradingPair>,
-	>;
-
-	/// Storage of minimum order amounts for valid trading pairs.
-	#[pallet::storage]
-	pub type MinOrderAmount<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		T::Balance,
 	>;
 
 	#[pallet::event]
@@ -587,10 +567,10 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 		) -> DispatchResult {
-			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
-				Some(amount) if amount <= buy_amount => Ok(()),
-				None => Err(Error::<T>::InvalidTradingPair)?,
-				_ => Err(Error::<T>::InsufficientOrderSize)?,
+			let min_amount = TradingPairInOut::<T>::get(&currency_in, &currency_out)?;
+			match buy_amount.cmp(&min_amount) {
+				Ordering::Less => Err(Error::<T>::InsufficientOrderSize.into()),
+				Ordering::Equal | Ordering::Greater => Ok(()),
 			}
 		}
 
