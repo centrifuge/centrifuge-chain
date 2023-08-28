@@ -17,6 +17,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU128, ConstU32, GenesisBuild},
 };
+use frame_system::EnsureRoot;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use sp_core::H256;
 use sp_runtime::{
@@ -193,6 +194,7 @@ parameter_type_with_key! {
 }
 
 impl order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<MockAccountId>;
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
