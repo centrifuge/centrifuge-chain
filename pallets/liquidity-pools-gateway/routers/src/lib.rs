@@ -210,19 +210,7 @@ where
 	/// Sets the weight information for the provided XCM domain location, and
 	/// the fee per second for the provided fee asset location.
 	pub fn do_init(&self) -> DispatchResult {
-		pallet_xcm_transactor::Pallet::<T>::set_transact_info(
-			<T as frame_system::Config>::RuntimeOrigin::root(),
-			self.xcm_domain.location.clone(),
-			self.xcm_domain.transact_info.transact_extra_weight,
-			self.xcm_domain.transact_info.max_weight,
-			self.xcm_domain.transact_info.transact_extra_weight_signed,
-		)?;
-
-		pallet_xcm_transactor::Pallet::<T>::set_fee_per_second(
-			<T as frame_system::Config>::RuntimeOrigin::root(),
-			self.xcm_domain.fee_asset_location.clone(),
-			self.xcm_domain.fee_per_second,
-		)
+		Ok(())
 	}
 
 	/// Encodes the message to the required format and executes the
@@ -329,10 +317,6 @@ pub struct XcmDomain<CurrencyId> {
 
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
-
-	/// The XCM transact info that will be stored in the
-	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
-	pub transact_info: XcmTransactInfo,
 
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
