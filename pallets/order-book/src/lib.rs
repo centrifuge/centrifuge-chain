@@ -38,7 +38,6 @@ pub use weights::WeightInfo;
 pub mod pallet {
 
 	use core::fmt::Debug;
-	use std::cmp::Ordering;
 
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_types::tokens::CustomMetadata;
@@ -62,6 +61,7 @@ pub mod pallet {
 		},
 		FixedPointNumber, FixedPointOperand,
 	};
+	use sp_std::cmp::Ordering;
 
 	use super::*;
 
