@@ -8,6 +8,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
 		type Balance;
+		type SellRatio;
 		type OrderId;
 	}
 
@@ -30,7 +31,7 @@ pub mod pallet {
 					T::CurrencyId,
 					T::CurrencyId,
 					T::Balance,
-					T::Balance,
+					T::SellRatio,
 					T::Balance,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
@@ -39,7 +40,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::Balance, T::Balance) -> DispatchResult
+			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::SellRatio, T::Balance) -> DispatchResult
 				+ 'static,
 		) {
 			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
@@ -58,13 +59,14 @@ pub mod pallet {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
 		type OrderId = T::OrderId;
+		type SellRatio = T::SellRatio;
 
 		fn place_order(
 			a: T::AccountId,
 			b: Self::CurrencyId,
 			c: Self::CurrencyId,
 			d: Self::Balance,
-			e: Self::Balance,
+			e: Self::SellRatio,
 			f: Self::Balance,
 		) -> Result<Self::OrderId, DispatchError> {
 			execute_call!((a, b, c, d, e, f))
@@ -74,7 +76,7 @@ pub mod pallet {
 			a: T::AccountId,
 			b: Self::OrderId,
 			c: Self::Balance,
-			d: Self::Balance,
+			d: Self::SellRatio,
 			e: Self::Balance,
 		) -> DispatchResult {
 			execute_call!((a, b, c, d, e))
@@ -86,6 +88,14 @@ pub mod pallet {
 
 		fn is_active(a: Self::OrderId) -> bool {
 			execute_call!(a)
+		}
+
+		fn order_pair_exists(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
+			execute_call!((a, b))
+		}
+
+		fn counter_order_pair_exists(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
+			execute_call!((a, b))
 		}
 	}
 }

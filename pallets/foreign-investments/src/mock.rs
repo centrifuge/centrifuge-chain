@@ -1,18 +1,26 @@
 use cfg_mocks::{
-	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_status_notification,
-	pallet_mock_token_swaps,
+	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_pools,
+	pallet_mock_status_notification, pallet_mock_token_swaps,
 };
+use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
 	ExecutedForeignCollectRedeem, ExecutedForeignDecrease, ForeignInvestmentInfo,
 };
-use frame_support::traits::{ConstU128, ConstU16, ConstU32, ConstU64};
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	FixedU128,
 };
 
 use crate::pallet as pallet_foreign_investments;
+
+// =============
+//     Types
+// =============
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -23,10 +31,32 @@ pub type TrancheId = u32;
 pub type PoolId = u64;
 pub type OrderId = u64;
 pub type CurrencyId = u8;
-pub type InvestmentId = u16;
+pub type Rate = FixedU128;
 
-pub const SELL_PRICE_LIMIT: Balance = 5;
-pub const MIN_FULFILLMENT: Balance = 1;
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct InvestmentId(pub PoolId, pub TrancheId);
+
+impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		Self(pool_id, tranche_id)
+	}
+
+	fn of_pool(&self) -> PoolId {
+		self.0
+	}
+
+	fn of_tranche(&self) -> TrancheId {
+		self.1
+	}
+}
+
+frame_support::parameter_types! {
+	pub DefaultTokenSellRate: Rate = FixedU128::from_float(1.5);
+}
+
+// ======================
+//     Runtime config
+// ======================
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -40,6 +70,7 @@ frame_support::construct_runtime!(
 		MockDecreaseInvestHook: pallet_mock_status_notification::<Instance1>,
 		MockCollectRedeemHook: pallet_mock_status_notification::<Instance2>,
 		MockCurrencyConversion: pallet_mock_currency_conversion,
+		MockPools: pallet_mock_pools,
 		ForeignInvestment: pallet_foreign_investments,
 	}
 );
@@ -81,6 +112,7 @@ impl pallet_mock_token_swaps::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type OrderId = OrderId;
+	type SellRatio = FixedU128;
 }
 
 type Hook1 = pallet_mock_status_notification::Instance1;
@@ -100,17 +132,26 @@ impl pallet_mock_currency_conversion::Config for Runtime {
 	type CurrencyId = CurrencyId;
 }
 
+impl pallet_mock_pools::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+}
+
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
 	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
-	type DefaultTokenMinFulfillmentAmount = ConstU128<MIN_FULFILLMENT>;
-	type DefaultTokenSwapSellPriceLimit = ConstU128<SELL_PRICE_LIMIT>;
-	type ExecutedCollectRedeemHook = MockCollectRedeemHook;
-	type ExecutedDecreaseInvestHook = MockDecreaseInvestHook;
+	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
+	type DefaultTokenSellRate = DefaultTokenSellRate;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
 	type PoolId = PoolId;
+	type PoolInspect = MockPools;
+	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = OrderId;
 	type TokenSwaps = MockTokenSwaps;

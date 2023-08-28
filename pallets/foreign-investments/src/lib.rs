@@ -70,7 +70,7 @@ pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentI
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment as InvestmentT, InvestmentCollector},
+		investments::{Investment as InvestmentT, InvestmentCollector, TrancheCurrency},
 		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
@@ -121,7 +121,12 @@ pub mod pallet {
 		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The investment identifying type required for the investment type
-		type InvestmentId: Clone + Member + Parameter + Copy + MaxEncodedLen;
+		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
+			+ Clone
+			+ Member
+			+ Parameter
+			+ Copy
+			+ MaxEncodedLen;
 
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet

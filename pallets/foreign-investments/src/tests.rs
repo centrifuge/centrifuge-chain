@@ -3,13 +3,14 @@ use cfg_types::investments::ForeignInvestmentInfo as ForeignInvestmentInfoS;
 use frame_support::assert_ok;
 
 use crate::{
+	hooks::FulfilledSwapOrderHook,
 	mock::*,
 	types::{InvestState, TokenSwapReason},
 	*,
 };
 
 const USER: AccountId = 1;
-const INVESTMENT_ID: InvestmentId = 23;
+const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
 const USER_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 const ORDER_ID: OrderId = 1;
@@ -18,6 +19,7 @@ mod util {
 	use super::*;
 
 	pub fn new_invest(order_id: OrderId, amount: Balance) {
+		MockInvestment::mock_investment_requires_collect(|_, _| false);
 		MockInvestment::mock_investment(|_, _| Ok(0));
 		MockTokenSwaps::mock_place_order(move |_, _, _, _, _, _| Ok(order_id));
 		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
@@ -31,17 +33,19 @@ mod util {
 		)
 		.unwrap();
 
+		MockInvestment::mock_investment_requires_collect(|_, _| unimplemented!("no mock"));
 		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
 		MockTokenSwaps::mock_place_order(|_, _, _, _, _, _| unimplemented!("no mock"));
 		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
 	}
 
 	pub fn notify_swaped(order_id: OrderId, amount: Balance) {
+		MockInvestment::mock_investment_requires_collect(|_, _| false);
 		MockInvestment::mock_investment(|_, _| Ok(0));
 		MockTokenSwaps::mock_cancel_order(|_| Ok(()));
 		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
 
-		ForeignInvestment::notify_status_change(
+		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 			order_id,
 			Swap {
 				currency_out: USER_CURR,
@@ -51,6 +55,7 @@ mod util {
 		)
 		.unwrap();
 
+		MockInvestment::mock_investment_requires_collect(|_, _| unimplemented!("no mock"));
 		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
 		MockTokenSwaps::mock_cancel_order(|_| unimplemented!("no mock"));
 		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
@@ -65,6 +70,11 @@ mod use_case {
 		const AMOUNT: Balance = 100;
 
 		new_test_ext().execute_with(|| {
+			MockInvestment::mock_investment_requires_collect(|account_id, investment_id| {
+				assert_eq!(account_id, &USER);
+				assert_eq!(investment_id, INVESTMENT_ID);
+				false
+			});
 			MockInvestment::mock_investment(|account_id, investment_id| {
 				assert_eq!(account_id, &USER);
 				assert_eq!(investment_id, INVESTMENT_ID);
@@ -76,8 +86,8 @@ mod use_case {
 					assert_eq!(curr_out, USER_CURR);
 					assert_eq!(curr_in, POOL_CURR);
 					assert_eq!(amount, AMOUNT);
-					assert_eq!(limit, SELL_PRICE_LIMIT);
-					assert_eq!(min, MIN_FULFILLMENT);
+					assert_eq!(limit, DefaultTokenSellRate::get());
+					assert_eq!(min, AMOUNT);
 					Ok(ORDER_ID)
 				},
 			);
@@ -128,6 +138,7 @@ mod use_case {
 		new_test_ext().execute_with(|| {
 			util::new_invest(ORDER_ID, AMOUNT);
 
+			MockInvestment::mock_investment_requires_collect(|_, _| false);
 			MockInvestment::mock_investment(|account_id, investment_id| {
 				assert_eq!(account_id, &USER);
 				assert_eq!(investment_id, INVESTMENT_ID);
@@ -144,7 +155,7 @@ mod use_case {
 				Ok(())
 			});
 
-			assert_ok!(ForeignInvestment::notify_status_change(
+			assert_ok!(FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 				ORDER_ID,
 				Swap {
 					currency_out: USER_CURR,
@@ -172,6 +183,11 @@ mod use_case {
 		new_test_ext().execute_with(|| {
 			util::new_invest(ORDER_ID, INITIAL_AMOUNT);
 
+			MockInvestment::mock_investment_requires_collect(|account_id, investment_id| {
+				assert_eq!(account_id, &USER);
+				assert_eq!(investment_id, INVESTMENT_ID);
+				false
+			});
 			MockInvestment::mock_investment(|_, _| Ok(0));
 			MockTokenSwaps::mock_is_active(|order_id| {
 				assert_eq!(order_id, ORDER_ID);
@@ -181,8 +197,8 @@ mod use_case {
 				assert_eq!(account_id, USER);
 				assert_eq!(order_id, ORDER_ID);
 				assert_eq!(amount, INITIAL_AMOUNT + INCREASE_AMOUNT);
-				assert_eq!(limit, SELL_PRICE_LIMIT);
-				assert_eq!(min, MIN_FULFILLMENT);
+				assert_eq!(limit, DefaultTokenSellRate::get());
+				assert_eq!(min, INITIAL_AMOUNT + INCREASE_AMOUNT);
 				Ok(())
 			});
 			MockInvestment::mock_update_investment(|_, _, amount| {
@@ -220,6 +236,7 @@ mod use_case {
 			util::new_invest(ORDER_ID, INITIAL_AMOUNT);
 			util::notify_swaped(ORDER_ID, INITIAL_AMOUNT);
 
+			MockInvestment::mock_investment_requires_collect(|_, _| false);
 			MockInvestment::mock_investment(|_, _| Ok(INITIAL_AMOUNT));
 			MockTokenSwaps::mock_is_active(|order_id| {
 				assert_eq!(order_id, ORDER_ID);
@@ -231,8 +248,8 @@ mod use_case {
 					assert_eq!(curr_out, USER_CURR);
 					assert_eq!(curr_in, POOL_CURR);
 					assert_eq!(amount, INCREASE_AMOUNT);
-					assert_eq!(limit, SELL_PRICE_LIMIT);
-					assert_eq!(min, MIN_FULFILLMENT);
+					assert_eq!(limit, DefaultTokenSellRate::get());
+					assert_eq!(min, INCREASE_AMOUNT);
 					Ok(ORDER_ID)
 				},
 			);

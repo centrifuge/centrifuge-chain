@@ -1,7 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::investments::{Investment, InvestmentCollector};
-	use cfg_types::investments::CollectedAmount;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -62,21 +61,25 @@ pub mod pallet {
 		}
 
 		pub fn mock_collect_investment(
-			f: impl Fn(
-					T::AccountId,
-					T::InvestmentId,
-				) -> Result<CollectedAmount<T::Amount>, DispatchError>
-				+ 'static,
+			f: impl Fn(T::AccountId, T::InvestmentId) -> Result<(), DispatchError> + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_collect_redemption(
-			f: impl Fn(
-					T::AccountId,
-					T::InvestmentId,
-				) -> Result<CollectedAmount<T::Amount>, DispatchError>
-				+ 'static,
+			f: impl Fn(T::AccountId, T::InvestmentId) -> Result<(), DispatchError> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_investment_requires_collect(
+			f: impl Fn(&T::AccountId, T::InvestmentId) -> bool + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_redemption_requires_collect(
+			f: impl Fn(&T::AccountId, T::InvestmentId) -> bool + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
@@ -125,12 +128,20 @@ pub mod pallet {
 		) -> Result<Self::Amount, Self::Error> {
 			execute_call!((a, b))
 		}
+
+		fn investment_requires_collect(a: &T::AccountId, b: T::InvestmentId) -> bool {
+			execute_call!((a, b))
+		}
+
+		fn redemption_requires_collect(a: &T::AccountId, b: T::InvestmentId) -> bool {
+			execute_call!((a, b))
+		}
 	}
 
 	impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T> {
 		type Error = DispatchError;
 		type InvestmentId = T::InvestmentId;
-		type Result = CollectedAmount<T::Amount>;
+		type Result = ();
 
 		fn collect_investment(
 			a: T::AccountId,
