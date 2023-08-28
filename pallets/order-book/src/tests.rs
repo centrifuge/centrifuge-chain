@@ -11,13 +11,161 @@
 // GNU General Public License for more details.
 
 use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
-use frame_support::{assert_err, assert_ok};
-use sp_runtime::{traits::Zero, FixedPointNumber};
+use frame_support::{assert_err, assert_noop, assert_ok, dispatch::RawOrigin};
+use sp_runtime::{traits::Zero, DispatchError, FixedPointNumber};
 
 use super::*;
 use crate::mock::*;
 
 // Extrinsics tests
+#[test]
+fn adding_trading_pair_works() {
+	new_test_ext_no_pair().execute_with(|| {
+		assert_ok!(OrderBook::add_trading_pair(
+			RawOrigin::Root.into(),
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			100 * CURRENCY_AUSD_DECIMALS,
+		));
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			100 * CURRENCY_AUSD_DECIMALS
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
+			()
+		);
+	})
+}
+
+#[test]
+fn adding_trading_pair_fails() {
+	new_test_ext_no_pair().execute_with(|| {
+		assert_noop!(
+			OrderBook::add_trading_pair(
+				RuntimeOrigin::signed(ACCOUNT_0),
+				DEV_AUSD_CURRENCY_ID,
+				DEV_USDT_CURRENCY_ID,
+				100 * CURRENCY_AUSD_DECIMALS,
+			),
+			DispatchError::BadOrigin
+		);
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			Err(Error::<Runtime>::InvalidTradingPair)
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
+			Err(Error::<Runtime>::InvalidTradingPair)
+		);
+	})
+}
+
+#[test]
+fn removing_trading_pair_works() {
+	new_test_ext_no_pair().execute_with(|| {
+		assert_ok!(OrderBook::rm_trading_pair(
+			RawOrigin::Root.into(),
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+		));
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			Err(Error::<Runtime>::InvalidTradingPair)
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
+			Err(Error::<Runtime>::InvalidTradingPair)
+		);
+	})
+}
+
+#[test]
+fn removing_trading_pair_fails() {
+	new_test_ext_no_pair().execute_with(|| {
+		assert_noop!(
+			OrderBook::rm_trading_pair(
+				RuntimeOrigin::signed(ACCOUNT_0),
+				DEV_AUSD_CURRENCY_ID,
+				DEV_USDT_CURRENCY_ID,
+			),
+			DispatchError::BadOrigin
+		);
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			100 * CURRENCY_AUSD_DECIMALS
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
+			()
+		);
+	})
+}
+
+#[test]
+fn updating_min_order_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::update_min_order(
+			RawOrigin::Root.into(),
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			1
+		));
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			1
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
+			()
+		);
+	})
+}
+
+#[test]
+fn updating_min_order_fails() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			OrderBook::rm_trading_pair(
+				RuntimeOrigin::signed(ACCOUNT_0),
+				DEV_AUSD_CURRENCY_ID,
+				DEV_USDT_CURRENCY_ID,
+			),
+			DispatchError::BadOrigin
+		);
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			100 * CURRENCY_AUSD_DECIMALS
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
+			()
+		);
+	})
+}
+
+#[test]
+fn updating_min_order_fails_if_not_set() {
+	new_test_ext_no_pair().execute_with(|| {
+		assert_noop!(
+			OrderBook::rm_trading_pair(
+				RawOrigin::Root.into(),
+				DEV_AUSD_CURRENCY_ID,
+				DEV_USDT_CURRENCY_ID,
+			),
+			Error::<Runtime>::InvalidTradingPair
+		);
+		assert_eq!(
+			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			100 * CURRENCY_AUSD_DECIMALS
+		);
+		assert_eq!(
+			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
+			()
+		);
+	})
+}
+
 #[test]
 fn create_order_works() {
 	new_test_ext().execute_with(|| {
