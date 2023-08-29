@@ -663,6 +663,7 @@ fn centrifuge_genesis(
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
+		liquidity_rewards_base: Default::default(),
 	}
 }
 

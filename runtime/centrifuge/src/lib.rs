@@ -1182,13 +1182,13 @@ impl pallet_collator_selection::Config for Runtime {
 
 // Block Rewards
 
-frame_support::parameter_types! {
+parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
+	pub const BlockRewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
 }
 
@@ -1196,7 +1196,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
-	type PalletId = RewardsPalletId;
+	type PalletId = BlockRewardsPalletId;
 	type RewardCurrency = RewardCurrency;
 	// Must not change this to ensure block rewards are minted
 	type RewardIssuance =
@@ -1210,7 +1210,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(StakingCurrency::BlockRewards);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1233,6 +1233,52 @@ impl pallet_block_rewards::Config for Runtime {
 	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
+}
+
+// Liquidity rewards
+
+parameter_types! {
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	pub const LiquidityRewardsPalletId: PalletId = cfg_types::ids::LIQUIDITY_REWARDS_PALLET_ID;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+}
+
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type Balance = Balance;
+	type DistributionId = u32;
+	type IBalance = IBalance;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = weights::pallet_liquidity_rewards::WeightInfo<Runtime>;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type PalletId = LiquidityRewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = GapRewardMechanism;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 // Pool config parameters
@@ -1775,6 +1821,9 @@ construct_runtime!(
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 102,
 		// RESERVED 103 index for LiquidityPools
 		// LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 103,
+		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 104,
+		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 105,
+		GapRewardMechanism: pallet_rewards::mechanism::gap = 106,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
