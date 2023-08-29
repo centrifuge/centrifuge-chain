@@ -73,4 +73,4 @@ do
 done
 
 # Run all tests all
-cargo test -workspace -F runtime-benchmarks,try-runtime
+cargo test --workspace -F runtime-benchmarks,try-runtime
