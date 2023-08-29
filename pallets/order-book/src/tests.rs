@@ -885,16 +885,7 @@ fn order_pair_exists() {
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		assert!(OrderBook::order_pair_exists(currency_in, currency_out));
-		assert!(OrderBook::counter_order_pair_exists(
-			currency_out,
-			currency_in
-		));
-
 		assert!(!OrderBook::order_pair_exists(currency_out, currency_in));
-		assert!(!OrderBook::counter_order_pair_exists(
-			currency_in,
-			currency_out
-		));
 	})
 }
 

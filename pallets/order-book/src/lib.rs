@@ -471,6 +471,11 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 		) -> DispatchResult {
+			#[cfg(feature = "std")]
+			{
+				dbg!(T::MinimumOrderAmount::get(&(currency_in, currency_out)));
+				dbg!(buy_amount);
+			}
 			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
 				Some(amount) if amount <= buy_amount => Ok(()),
 				None => Err(Error::<T>::InvalidTradingPair)?,
@@ -491,6 +496,14 @@ pub mod pallet {
 			let to_decimals = T::AssetRegistry::metadata(&currency_to)
 				.ok_or(Error::<T>::InvalidAssetId)?
 				.decimals;
+
+			#[cfg(feature = "std")]
+			{
+				dbg!(from_decimals);
+				dbg!(to_decimals);
+			}
+			// FIXME: Maybe. This equals 10^(to - from) * to_amount when it should be
+			// multiplied with from_amount? Or
 			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
 				.map_err(DispatchError::from)
 		}
@@ -548,7 +561,27 @@ pub mod pallet {
 			let max_sell_amount =
 				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
+			#[cfg(feature = "std")]
+			{
+				dbg!(T::TradeableAsset::balance(currency_out, &account));
+				dbg!(T::TradeableAsset::balance(currency_in, &account));
+				dbg!(&buy_amount, &max_sell_amount, sell_rate_limit);
+			}
+
+			#[cfg(feature = "std")]
+			{
+				dbg!(
+					"before holding",
+					T::TradeableAsset::balance(currency_out, &account) > max_sell_amount
+				);
+			}
+
 			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
+
+			#[cfg(feature = "std")]
+			{
+				println!("after holding",);
+			}
 
 			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {
@@ -568,6 +601,16 @@ pub mod pallet {
 					.try_push(order_id)
 					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
 			})?;
+
+			#[cfg(feature = "std")]
+			{
+				dbg!(
+					"create order",
+					currency_in,
+					currency_out,
+					AssetPairOrders::<T>::get(currency_in, currency_out)
+				);
+			}
 
 			<Orders<T>>::insert(order_id, new_order.clone());
 			<UserOrders<T>>::insert(&account, order_id, new_order);
@@ -712,15 +755,7 @@ pub mod pallet {
 				.is_zero()
 		}
 
-		/// Check whether there already exist counter orders for the given
-		/// trading pair against which could be traded.
-		fn counter_order_pair_exists(
-			currency_in: Self::CurrencyId,
-			currency_out: Self::CurrencyId,
-		) -> bool {
-			!AssetPairOrders::<T>::get(currency_out, currency_in)
-				.len()
-				.is_zero()
-		}
+		// TODO: Either expose conversion here or move to runtime_common
+		// fn
 	}
 }

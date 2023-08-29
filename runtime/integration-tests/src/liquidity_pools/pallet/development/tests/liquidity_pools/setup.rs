@@ -322,7 +322,7 @@ pub(crate) mod investments {
 	use cfg_primitives::AccountId;
 	use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 	use cfg_types::investments::InvestmentAccount;
-	use development_runtime::PoolSystem;
+	use development_runtime::{OrderBook, PoolSystem};
 	use pallet_pool_system::tranches::TrancheLoc;
 
 	use super::*;

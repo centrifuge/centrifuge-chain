@@ -951,8 +951,15 @@ mod should_fail {
 	}
 
 	mod mismatching_currencies {
+		use cfg_traits::SimpleCurrencyConversion;
+		use development_runtime::{DefaultTokenSellRate, OrderBook, StableToStableRate};
+		use runtime_common::foreign_investments::SimpleStableCurrencyConverter;
+
 		use super::*;
-		use crate::utils::GLMR_CURRENCY_ID;
+		use crate::{
+			liquidity_pools::pallet::development::tests::register_usdt,
+			utils::{GLMR_CURRENCY_ID, USDT_CURRENCY_ID},
+		};
 
 		#[test]
 		fn invest_increase_another_currency() {
@@ -960,49 +967,71 @@ mod should_fail {
 			Development::execute_with(|| {
 				setup_pre_requirements();
 				let pool_id = DEFAULT_POOL_ID;
-				let invest_amount: u128 = 100_000_000;
 				let investor: AccountId = BOB.into();
 				let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-				let foreign_currency: CurrencyId = GLMR_CURRENCY_ID;
+				let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 				let pool_currency_decimals = currency_decimals::AUSD;
+				let invest_amount_pool_currency: u128 = 5_000_000_000_000;
 				create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 				do_initial_increase_investment(
 					pool_id,
-					invest_amount,
+					invest_amount_pool_currency,
 					investor.clone(),
 					pool_currency,
 				);
-				enable_liquidity_pool_transferability(pool_currency);
 
-				// Should fail to increase in another currency
+				// USDT investment preparations
+				register_usdt();
+				let invest_amount_foreign_currency: u128 = SimpleStableCurrencyConverter::<
+					OrmlAssetRegistry,
+					StableToStableRate,
+				>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_currency,
+				)
+				.unwrap();
+				assert_ok!(OrmlTokens::mint_into(
+					pool_currency,
+					&ALICE.into(),
+					invest_amount_pool_currency
+				));
+
+				// Should fail to increase to an invalid payment currency
 				let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
 					pool_id,
 					tranche_id: default_tranche_id(pool_id),
 					investor: investor.clone().into(),
 					currency: general_currency_index(foreign_currency),
-					amount: 1,
+					amount: invest_amount_foreign_currency,
 				};
 				assert_noop!(
 					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg.clone()),
 					pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 				);
 
-				// TODO: Add foreign currency to accepted payment
-
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-						InvestError::Increase
-					)
-				);
+				// Create counter order (pool to foreign) such that foreign_currency is accepted
+				// as payment
+				assert_ok!(OrderBook::create_order(
+					RuntimeOrigin::signed(ALICE.into()),
+					foreign_currency,
+					pool_currency,
+					invest_amount_foreign_currency,
+					DefaultTokenSellRate::get()
+				));
+				assert_ok!(LiquidityPools::submit(
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+					increase_msg
+				),);
 
 				// Should fail to decrease in another currency
+				enable_liquidity_pool_transferability(foreign_currency);
 				let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
 					pool_id,
 					tranche_id: default_tranche_id(pool_id),
 					investor: investor.clone().into(),
 					currency: general_currency_index(foreign_currency),
-					amount: 1,
+					amount: invest_amount_foreign_currency,
 				};
 				assert_noop!(
 					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),

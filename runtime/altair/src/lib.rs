@@ -1388,15 +1388,17 @@ impl pallet_xcm_transactor::Config for Runtime {
 
 parameter_types! {
 	pub DefaultTokenSellRate: Rate = Rate::one();
-	pub ConversionRate: Rate = Rate::one();
+	pub StableToStableRate: Rate = Rate::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter =
-		runtime_common::foreign_investments::SimpleStableCurrencyConverter<ConversionRate>;
+	type CurrencyConverter = runtime_common::foreign_investments::SimpleStableCurrencyConverter<
+		OrmlAssetRegistry,
+		StableToStableRate,
+	>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;

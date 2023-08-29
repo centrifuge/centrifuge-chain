@@ -508,8 +508,8 @@ pub trait TokenSwaps<Account> {
 	/// FOREIGN_ASSET_1_DECIMALS }
 	fn place_order(
 		account: Account,
-		currency_out: Self::CurrencyId,
 		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
 		min_fulfillment_amount: Self::Balance,
@@ -562,14 +562,10 @@ pub trait TokenSwaps<Account> {
 	fn is_active(order: Self::OrderId) -> bool;
 
 	/// Check whether there already exist orders for the given trading pair.
+	///
+	/// NOTE: By checking existence for (currency_out, currency_in), we know
+	/// that counter orders exist against which could be traded.
 	fn order_pair_exists(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
-
-	/// Check whether there already exist counter orders for the given trading
-	/// pair against which could be traded.
-	fn counter_order_pair_exists(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-	) -> bool;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
@@ -590,15 +586,17 @@ pub trait StatusNotificationHook {
 /// Trait to synchronously provide a currency conversion estimation for foreign
 /// currencies into/from pool currencies.
 pub trait SimpleCurrencyConversion {
-	type Currency;
 	type Balance;
+	type Currency;
 	type Error;
 
 	/// Estimate the worth of an outgoing currency amount in the incoming
 	/// currency.
+	///
+	/// NOTE: At least applies decimal conversion if both currencies mismatch.
 	fn stable_to_stable(
+		currency_in: Self::Currency,
 		currency_out: Self::Currency,
 		amount_out: Self::Balance,
-		currency_in: Self::Currency,
 	) -> Result<Self::Balance, Self::Error>;
 }

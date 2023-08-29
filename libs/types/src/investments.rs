@@ -194,10 +194,11 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 {
 	/// Ensures that the ingoing and outgoing currencies of two swaps...
 	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
-	///   the same for both swaps, i.e. (pool, pool) or (foreign, foreign)
+	///   the same for both swaps, i.e. (into pool, into pool) or (into foreign,
+	///   into foreign)
 	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
-	///   if the swap direction is opposite, i.e. (pool, foreign) or (foreign,
-	///   pool)
+	///   if the swap direction is opposite, i.e. (into pool, into foreign) or
+	///   (into foreign, into pool)
 	pub fn ensure_currencies_match(
 		&self,
 		other: &Self,

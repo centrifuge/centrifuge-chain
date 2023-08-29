@@ -28,10 +28,6 @@ use crate::{pallet::Config, Message, MessageOf, Pallet};
 /// The hook struct which acts upon a finalized investment decrement.
 pub struct DecreasedForeignInvestOrderHook<T>(PhantomData<T>);
 
-/// The hook struct which acts upon a finalized redemption collection.
-
-pub struct CollectedForeignRedemptionHook<T>(PhantomData<T>);
-
 impl<T: Config> StatusNotificationHook for DecreasedForeignInvestOrderHook<T>
 where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
@@ -68,6 +64,10 @@ where
 		Ok(())
 	}
 }
+
+/// The hook struct which acts upon a finalized redemption collection.
+
+pub struct CollectedForeignRedemptionHook<T>(PhantomData<T>);
 
 impl<T: Config> StatusNotificationHook for CollectedForeignRedemptionHook<T>
 where

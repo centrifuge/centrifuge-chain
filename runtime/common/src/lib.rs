@@ -485,14 +485,15 @@ pub mod xcm_transactor {
 }
 
 pub mod foreign_investments {
-	use cfg_primitives::Balance;
+	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
 	use cfg_traits::SimpleCurrencyConversion;
-	use cfg_types::{
-		fixed_point::{FixedPointNumberExtension, Rate},
-		tokens::CurrencyId,
-	};
+	use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
 	use frame_support::pallet_prelude::PhantomData;
-	use sp_runtime::{traits::Get, DispatchError};
+	use orml_traits::asset_registry::Inspect;
+	use sp_runtime::{
+		traits::{EnsureFixedPointNumber, Get},
+		DispatchError,
+	};
 
 	/// Simple stable coin amount converter from one stable to another. Provides
 	/// a synchronous estimation of the amount of one stable currency in
@@ -504,32 +505,48 @@ pub mod foreign_investments {
 	/// NOTE: Should be deprecated ASAP!
 	// TODO(@review): Can we determine whether a ForeignAsset is a stable coin at
 	// this point of time?
-	pub struct SimpleStableCurrencyConverter<RateForeignToPool>(PhantomData<RateForeignToPool>);
+	pub struct SimpleStableCurrencyConverter<AssetRegistry, StableToStableRate>(
+		PhantomData<(AssetRegistry, StableToStableRate)>,
+	);
 
-	impl<RateForeignToPool> SimpleCurrencyConversion
-		for SimpleStableCurrencyConverter<RateForeignToPool>
+	impl<AssetRegistry, StableToStableRate> SimpleCurrencyConversion
+		for SimpleStableCurrencyConverter<AssetRegistry, StableToStableRate>
 	where
-		RateForeignToPool: Get<Rate>,
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+		StableToStableRate: Get<Rate>,
 	{
 		type Balance = Balance;
 		type Currency = CurrencyId;
 		type Error = DispatchError;
 
 		fn stable_to_stable(
+			currency_in: Self::Currency,
 			currency_out: Self::Currency,
 			amount_out: Self::Balance,
-			currency_in: Self::Currency,
 		) -> Result<Self::Balance, Self::Error> {
 			match (currency_out, currency_in) {
-				(out, inc) if out == inc => Ok(amount_out),
-				// TODO(future): Conversion must be limited to asset ids which reflect stable coins
-				(CurrencyId::ForeignAsset(_out_id), CurrencyId::ForeignAsset(_in_id)) => {
-					// NOTE: Rounding down to favor system side
-					RateForeignToPool::get()
-						.checked_mul_int_floor(amount_out)
-						.ok_or(DispatchError::Arithmetic(
-							sp_arithmetic::ArithmeticError::Overflow,
-						))
+				(from, to) if from == to => Ok(amount_out),
+				(CurrencyId::ForeignAsset(_), CurrencyId::ForeignAsset(_)) => {
+					let from_metadata = AssetRegistry::metadata(&currency_out)
+						.ok_or(DispatchError::CannotLookup)?;
+					let to_metadata =
+						AssetRegistry::metadata(&currency_in).ok_or(DispatchError::CannotLookup)?;
+					frame_support::ensure!(
+						from_metadata.additional.pool_currency
+							|| to_metadata.additional.pool_currency,
+						DispatchError::Token(sp_runtime::TokenError::Unsupported)
+					);
+
+					convert_balance_decimals(
+						from_metadata.decimals,
+						to_metadata.decimals,
+						StableToStableRate::get().ensure_mul_int(amount_out)?,
+					)
+					.map_err(|e| DispatchError::from(e))
 				}
 				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
 			}
