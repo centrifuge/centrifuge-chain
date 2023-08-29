@@ -25,7 +25,10 @@ pub type UpgradeCentrifuge1020 = (
 mod asset_registry {
 	use cfg_types::{
 		tokens as v1,
-		tokens::{lp_eth_usdc_metadata, CustomMetadata, ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID},
+		tokens::{
+			lp_eth_usdc_metadata, CustomMetadata, ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC,
+			LP_ETH_USDC_CURRENCY_ID,
+		},
 	};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
@@ -188,8 +191,7 @@ mod asset_registry {
 				Some(LP_ETH_USDC_CURRENCY_ID),
 				lp_eth_usdc_metadata(
 					LiquidityPoolsPalletIndex::get(),
-					// Ethereum mainnet chain id
-					1,
+					ETHEREUM_MAINNET_CHAIN_ID,
 					ETHEREUM_USDC,
 				),
 			)
@@ -216,7 +218,7 @@ mod asset_registry {
 				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID)
 					== Some(lp_eth_usdc_metadata(
 						LiquidityPoolsPalletIndex::get(),
-						1,
+						ETHEREUM_MAINNET_CHAIN_ID,
 						ETHEREUM_USDC
 					)),
 				"The LpEthUSDC's token metadata does NOT match what we expected it to be"

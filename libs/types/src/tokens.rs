@@ -318,6 +318,9 @@ pub enum LiquidityPoolsWrappedToken {
 
 pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
 
+pub const ETHEREUM_MAINNET_CHAIN_ID: EVMChainId = 1;
+pub const GOERLI_CHAIN_ID: EVMChainId = 5;
+
 pub const ETHEREUM_USDC: [u8; 20] = hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
 pub const GOERLI_USDC: [u8; 20] = hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
 
