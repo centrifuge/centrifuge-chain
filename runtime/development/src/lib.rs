@@ -1572,6 +1572,10 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
+}
+
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime>;
 	type AdminOrigin = EnsureRoot<AccountId>;

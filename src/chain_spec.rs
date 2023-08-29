@@ -26,7 +26,10 @@ use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{
+		lp_eth_usdc_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		GOERLI_CHAIN_ID, GOERLI_USDC, LP_ETH_USDC_CURRENCY_ID,
+	},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
@@ -981,6 +984,15 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
+			.encode(),
+		),
+		(
+			LP_ETH_USDC_CURRENCY_ID,
+			lp_eth_usdc_metadata(
+				development_runtime::LiquidityPoolsPalletIndex::get(),
+				GOERLI_CHAIN_ID,
+				GOERLI_USDC,
+			)
 			.encode(),
 		),
 	]
