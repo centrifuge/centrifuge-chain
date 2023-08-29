@@ -453,7 +453,7 @@ pub mod pallet {
 
 		/// Adds a valid trading pair.
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::add_trading_pair())]
 		pub fn add_trading_pair(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
@@ -481,7 +481,7 @@ pub mod pallet {
 		//       Existing orders will just fade out by by being canceled
 		//       or fulfilled.
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::rm_trading_pair())]
 		pub fn rm_trading_pair(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,
@@ -506,7 +506,7 @@ pub mod pallet {
 		// NOTE: We do not need to update any existing orders as fulfillment does
 		//       not verify the validity of the order that is to be fulfilled.
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::Weights::create_order())]
+		#[pallet::weight(T::Weights::update_min_order())]
 		pub fn update_min_order(
 			origin: OriginFor<T>,
 			asset_in: T::AssetCurrencyId,

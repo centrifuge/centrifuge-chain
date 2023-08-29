@@ -60,6 +60,19 @@ benchmarks! {
 		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
 
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
+
+	add_trading_pair {
+		}:add_trading_pair(RawOrigin::Root, asset_0, asset_1)
+
+	rm_trading_pair {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		}:rm_trading_pair(RawOrigin::Root, asset_0, asset_1)
+
+	update_min_order {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		}:update_min_order(RawOrigin::Root, asset_0, asset_1, 1 * CURRENCY_0)
+
+
 }
 
 fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, Balance = u128>>() -> Result<
