@@ -325,9 +325,6 @@ pub struct XcmDomain<CurrencyId> {
 	/// the overall weight of the call to define the fees on the
 	/// chain that will execute the call.
 	pub fee_per_second: u128,
-
-	/// The location of the asset used for paying XCM fees.
-	pub fee_asset_location: Box<VersionedMultiLocation>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]

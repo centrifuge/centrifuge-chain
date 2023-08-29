@@ -102,7 +102,6 @@ async fn set_router() {
 		max_gas_limit: 10,
 		fee_currency: currency_id,
 		fee_per_second: 1u128,
-		fee_asset_location: Box::new(currency_location.clone().into_versioned()),
 	};
 
 	let ethereum_xcm_router = EthereumXCMRouter::<Runtime> {

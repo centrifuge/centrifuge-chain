@@ -1745,7 +1745,6 @@ mod utils {
 		evm_chain_id: u64,
 		xcm_domain_location: VersionedMultiLocation,
 		currency_id: CurrencyId,
-		fee_location: VersionedMultiLocation,
 	) {
 		let ethereum_xcm_router = EthereumXCMRouter::<DevelopmentRuntime> {
 			router: XCMRouter {
@@ -1756,7 +1755,6 @@ mod utils {
 					max_gas_limit: 700_000,
 					fee_currency: currency_id,
 					fee_per_second: default_per_second(18),
-					fee_asset_location: Box::new(fee_location),
 				},
 				_marker: Default::default(),
 			},
@@ -1789,7 +1787,6 @@ mod utils {
 			MOONBEAM_EVM_CHAIN_ID,
 			DEFAULT_MOONBEAM_LOCATION.into(),
 			GLIMMER_CURRENCY_ID,
-			get_default_moonbeam_native_token_location().into(),
 		);
 
 		/// Register Moonbeam's native token

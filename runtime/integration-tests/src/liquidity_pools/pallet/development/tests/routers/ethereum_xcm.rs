@@ -87,16 +87,11 @@ fn submit_test_fn(router_creation_fn: RouterCreationFn) {
 	});
 }
 
-type RouterCreationFn = Box<
-	dyn Fn(VersionedMultiLocation, CurrencyId, VersionedMultiLocation) -> DomainRouter<Runtime>,
->;
+type RouterCreationFn = Box<dyn Fn(VersionedMultiLocation, CurrencyId) -> DomainRouter<Runtime>>;
 
 fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 	Box::new(
-		|location: VersionedMultiLocation,
-		 currency_id: CurrencyId,
-		 asset_location: VersionedMultiLocation|
-		 -> DomainRouter<Runtime> {
+		|location: VersionedMultiLocation, currency_id: CurrencyId| -> DomainRouter<Runtime> {
 			let router = AxelarXCMRouter::<Runtime> {
 				router: XCMRouter {
 					xcm_domain: XcmDomain {
@@ -106,11 +101,6 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 						max_gas_limit: 700_000,
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
-						fee_asset_location: Box::new(
-							asset_location
-								.try_into()
-								.expect("Bad xcm fee asset location"),
-						),
 					},
 					_marker: Default::default(),
 				},
@@ -126,10 +116,7 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 
 fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 	Box::new(
-		|location: VersionedMultiLocation,
-		 currency_id: CurrencyId,
-		 asset_location: VersionedMultiLocation|
-		 -> DomainRouter<Runtime> {
+		|location: VersionedMultiLocation, currency_id: CurrencyId| -> DomainRouter<Runtime> {
 			let router = EthereumXCMRouter::<Runtime> {
 				router: XCMRouter {
 					xcm_domain: XcmDomain {
@@ -139,11 +126,6 @@ fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 						max_gas_limit: 700_000,
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
-						fee_asset_location: Box::new(
-							asset_location
-								.try_into()
-								.expect("Bad xcm fee asset location"),
-						),
 					},
 					_marker: Default::default(),
 				},
@@ -179,11 +161,7 @@ fn setup(router_creation_fn: RouterCreationFn) {
 		},
 	};
 
-	let domain_router = router_creation_fn(
-		moonbeam_location.into(),
-		glmr_currency_id,
-		moonbeam_native_token.into(),
-	);
+	let domain_router = router_creation_fn(moonbeam_location.into(), glmr_currency_id);
 
 	assert_ok!(LiquidityPoolsGateway::set_domain_router(
 		RuntimeOrigin::root(),

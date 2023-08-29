@@ -195,7 +195,6 @@ mod xcm_router {
 				max_gas_limit: 10,
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 
 			let sender: AccountId32 = [0; 32].into();
@@ -543,7 +542,6 @@ mod axelar_xcm {
 				max_gas_limit: 10,
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 			let axelar_target_chain = EVMChain::Ethereum;
 			let axelar_target_contract = H160::from_low_u64_be(1);
@@ -725,7 +723,6 @@ mod ethereum_xcm {
 				max_gas_limit: 10,
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 			let axelar_target_chain = EVMChain::Ethereum;
 			let axelar_target_contract = H160::from_low_u64_be(1);
