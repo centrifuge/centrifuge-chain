@@ -60,6 +60,21 @@ benchmarks! {
 		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
 
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
+
+	add_trading_pair {
+		let asset_0 = CurrencyId::ForeignAsset(1);
+		let asset_1 = CurrencyId::ForeignAsset(2);
+		}:add_trading_pair(RawOrigin::Root, asset_0, asset_1, 100 * CURRENCY_0)
+
+	rm_trading_pair {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		}:rm_trading_pair(RawOrigin::Root, asset_0, asset_1)
+
+	update_min_order {
+		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		}:update_min_order(RawOrigin::Root, asset_0, asset_1, 1 * CURRENCY_0)
+
+
 }
 
 fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, Balance = u128>>() -> Result<
@@ -83,6 +98,7 @@ where
 	T::TradeableAsset::mint_into(asset_1, &account_0, 1_000 * CURRENCY_1)?;
 	T::TradeableAsset::mint_into(asset_0, &account_1, 1_000 * CURRENCY_0)?;
 	T::TradeableAsset::mint_into(asset_1, &account_1, 1_000 * CURRENCY_1)?;
+	TradingPair::<T>::insert(asset_0, asset_1, 1 * CURRENCY_0);
 	Ok((account_0, account_1, asset_0, asset_1))
 }
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

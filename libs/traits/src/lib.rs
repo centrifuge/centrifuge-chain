@@ -704,6 +704,7 @@ pub trait TokenSwaps<Account> {
 	type Balance;
 	type SellRatio;
 	type OrderId;
+
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
 	/// `currency_out` tokens. The implementator of this method should know
 	/// the current market rate between those two currencies.
@@ -784,6 +785,11 @@ pub trait TokenSwaps<Account> {
 		sell_rate_limit: Self::SellRatio,
 		min_fullfillment_amount: Self::Balance,
 	) -> DispatchResult;
+
+	/// A sanity check that can be used for validating that a trading pair
+	/// is supported. Will also be checked when placing an order but might be
+	/// cheaper.
+	fn valid_pair(currency_out: Self::CurrencyId, currency_in: Self::CurrencyId) -> bool;
 
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
