@@ -246,7 +246,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		InvestState<T::Balance, T::CurrencyId>,
+		InvestState<T>,
 		ValueQuery,
 	>;
 
@@ -363,7 +363,7 @@ pub mod pallet {
 		ForeignInvestmentUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: InvestState<T::Balance, T::CurrencyId>,
+			state: InvestState<T>,
 		},
 		ForeignInvestmentCleared {
 			investor: T::AccountId,

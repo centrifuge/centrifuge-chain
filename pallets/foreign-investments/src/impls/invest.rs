@@ -13,19 +13,20 @@
 
 use core::cmp::Ordering;
 
+use cfg_traits::SimpleCurrencyConversion;
 use cfg_types::investments::Swap;
-use frame_support::dispatch::fmt::Debug;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureSub},
+	traits::{EnsureAdd, EnsureSub, Zero},
 	ArithmeticError, DispatchError,
 };
 
 use crate::types::{InvestState, InvestTransition};
 
-impl<Balance, Currency> InvestState<Balance, Currency>
-where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	Currency: Clone + Copy + PartialEq + Debug,
+impl<T: crate::Config> InvestState<T>
+// impl<Balance, Currency> InvestState<Balance, Currency>
+// where
+// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+// 	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see <https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram>.
@@ -34,8 +35,12 @@ where
 	/// actually mutate storage.
 	pub fn transition(
 		&self,
-		transition: InvestTransition<Balance, Currency>,
+		transition: InvestTransition<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
+		#[cfg(feature = "std")]
+		{
+			dbg!(&transition);
+		}
 		match transition {
 			InvestTransition::IncreaseInvestOrder(swap) => Self::handle_increase(self, swap),
 			InvestTransition::DecreaseInvestOrder(swap) => Self::handle_decrease(self, swap),
@@ -53,7 +58,7 @@ where
 	/// * If the state includes `ActiveSwapInto{Pool, Return}Currency`, it
 	///   returns `Some(swap)`.
 	/// * Else, it returns `None`.
-	pub(crate) fn get_active_swap(&self) -> Option<Swap<Balance, Currency>> {
+	pub(crate) fn get_active_swap(&self) -> Option<Swap<T::Balance, T::CurrencyId>> {
 		match *self {
 			InvestState::NoState => None,
 			InvestState::InvestmentOngoing { .. } => None,
@@ -75,7 +80,7 @@ where
 	}
 
 	/// Returns the `invest_amount` if existent, else zero.
-	pub(crate) fn get_investing_amount(&self) -> Balance {
+	pub(crate) fn get_investing_amount(&self) -> T::Balance {
 		match *self {
 			InvestState::InvestmentOngoing { invest_amount}  |
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { invest_amount, .. } |
@@ -83,16 +88,17 @@ where
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } |
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } |
 			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } => invest_amount,
-			_ => Balance::zero()
+			_ => T::Balance::zero()
 		}
 	}
 }
 
 // Actual impl of transition
-impl<Balance, Currency> InvestState<Balance, Currency>
-where
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	Currency: Clone + Copy + PartialEq + Debug,
+impl<T: crate::Config> InvestState<T>
+// impl<Balance, Currency> InvestState<Balance, Currency>
+// where
+// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+// 	Currency: Clone + Copy + PartialEq + Debug,
 {
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
 	/// invest state diagram:
@@ -137,9 +143,18 @@ where
 	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
-	fn handle_increase(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
+	fn handle_increase(
+		&self,
+		swap: Swap<T::Balance, T::CurrencyId>,
+	) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_increase_non_foreign(self, swap);
+		}
+		#[cfg(feature = "std")]
+		{
+			println!("inside handle increase");
+			// dbg!(&self);
+			dbg!(&swap);
 		}
 
 		match &self {
@@ -394,9 +409,20 @@ where
 	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
-	fn handle_decrease(&self, swap: Swap<Balance, Currency>) -> Result<Self, DispatchError> {
+	// FIXME: Currency conversion off
+	fn handle_decrease(
+		&self,
+		swap: Swap<T::Balance, T::CurrencyId>,
+	) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_decrease_non_foreign(self, swap);
+		}
+
+		#[cfg(feature = "std")]
+		{
+			println!("handle_decrease");
+			// dbg!(&self);
+			dbg!(&swap);
 		}
 
 		match &self {
@@ -411,7 +437,10 @@ where
 				match swap.amount.cmp(invest_amount) {
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap,
+							swap: Swap {
+								amount: T::CurrencyConverter::stable_to_stable(swap.currency_in, swap.currency_out, swap.amount)?,
+								..swap
+							},
 							invest_amount: *invest_amount - swap.amount,
 						})
 					},
@@ -457,6 +486,10 @@ where
 				let done_amount = swap.amount.min(pool_swap.amount);
 				let invest_amount = invest_amount.ensure_sub(done_amount)?;
 				let max_decrease_amount = pool_swap.amount.ensure_add(invest_amount)?;
+
+				#[cfg(feature = "std")]{
+					dbg!(&swap.amount, pool_swap.amount, &max_decrease_amount);
+				}
 
 				if swap.amount < pool_swap.amount {
 					Ok(
@@ -596,7 +629,7 @@ where
 	// the `CurrencyConverter` is decoupled from the `TokenSwaps` trait.
 	fn handle_fulfilled_swap_order(
 		&self,
-		swap: Swap<Balance, Currency>,
+		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		match &self {
 			InvestState::NoState | InvestState::InvestmentOngoing { .. } => Err(DispatchError::Other(
@@ -805,7 +838,7 @@ where
 	/// this can never occur!
 	fn handle_increase_non_foreign(
 		&self,
-		swap: Swap<Balance, Currency>,
+		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		match &self {
 			Self::NoState => Ok(Self::InvestmentOngoing {
@@ -846,7 +879,7 @@ where
 	/// this can never occur!
 	fn handle_decrease_non_foreign(
 		&self,
-		swap: Swap<Balance, Currency>,
+		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		if let Self::InvestmentOngoing { invest_amount } = &self {
 			if swap.amount < *invest_amount {
@@ -872,8 +905,8 @@ where
 	///   invested amount.
 	/// * Else the unprocessed amount should be zero. If it is not, state is
 	///   corrupted as this reflects the investment was increased improperly.
-	fn handle_collect(&self, unprocessed_amount: Balance) -> Result<Self, DispatchError> {
-		match *self {
+	fn handle_collect(&self, unprocessed_amount: T::Balance) -> Result<Self, DispatchError> {
+		match self.clone() {
 			Self::InvestmentOngoing { .. } => {
 				if unprocessed_amount.is_zero() {
 					Ok(Self::NoState)

@@ -13,7 +13,7 @@
 
 use cfg_types::investments::Swap;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::fmt::Debug;
+use frame_support::{dispatch::fmt::Debug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub};
 
@@ -33,48 +33,54 @@ pub enum TokenSwapReason {
 /// fully processed.
 #[derive(
 	Clone,
-	Default,
 	PartialOrd,
 	Ord,
 	Copy,
 	PartialEq,
 	Eq,
-	Debug,
+	RuntimeDebugNoBound,
 	Encode,
 	Decode,
 	TypeInfo,
 	MaxEncodedLen,
 )]
+// #[cfg_attr(feature = "std", derive(Debug))]
+#[scale_info(skip_type_params(T))]
+// #[codec(mel_bound())]
 pub enum InvestState<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	Currency: Clone + Copy + PartialEq + Debug,
+	// Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	// Currency: Clone + Copy + PartialEq + Debug,
+	T: crate::Config,
 > {
-	#[default]
 	/// Placeholder state for initialization which will never be stored on
 	/// chain.
 	NoState,
 	/// The investment is waiting to be processed.
-	InvestmentOngoing { invest_amount: Balance },
+	InvestmentOngoing { invest_amount: T::Balance },
 	/// The investment is currently swapped into the required pool currency.
-	ActiveSwapIntoPoolCurrency { swap: Swap<Balance, Currency> },
+	ActiveSwapIntoPoolCurrency {
+		swap: Swap<T::Balance, T::CurrencyId>,
+	},
 	/// The unprocessed investment was fully decreased and is currently swapped
 	/// back into the corresponding foreign currency.
-	ActiveSwapIntoForeignCurrency { swap: Swap<Balance, Currency> },
+	ActiveSwapIntoForeignCurrency {
+		swap: Swap<T::Balance, T::CurrencyId>,
+	},
 	/// The investment is not fully swapped into pool currency and thus split
 	/// into two parts:
 	/// * One part is still being swapped.
 	/// * The remainder is already waiting to be processed as investment.
 	ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-		swap: Swap<Balance, Currency>,
-		invest_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		invest_amount: T::Balance,
 	},
 	/// The investment is split into two parts:
 	/// * One part is waiting to be processed as investment.
 	/// * The remainder is swapped back into the foreign currency as a result of
 	///   decreasing the invested amount before being processed.
 	ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-		swap: Swap<Balance, Currency>,
-		invest_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		invest_amount: T::Balance,
 	},
 	/// The investment is split into two parts:
 	/// * The one part is swapping into pool currency.
@@ -85,14 +91,14 @@ pub enum InvestState<
 	/// by applying the corresponding trigger to handle the foreign return
 	/// amount.
 	ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		done_amount: T::Balance,
 	},
 	/// The investment is swapped back into the foreign currency and was already
 	/// partially fulfilled.
 	ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		done_amount: T::Balance,
 	},
 	/// The investment is split into three parts:
 	/// * One part is currently swapping into the pool currency.
@@ -104,9 +110,9 @@ pub enum InvestState<
 	/// `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` by applying the
 	/// corresponding trigger to handle the foreign return amount.
 	ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
-		invest_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		done_amount: T::Balance,
+		invest_amount: T::Balance,
 	},
 	/// The investment is split into three parts:
 	/// * One is waiting to be processed as investment.
@@ -117,15 +123,17 @@ pub enum InvestState<
 	/// NOTE: This state should not be transitioned by applying the trigger for
 	/// the done part but wait until the active swap is fulfilled.
 	ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
-		invest_amount: Balance,
+		swap: Swap<T::Balance, T::CurrencyId>,
+		done_amount: T::Balance,
+		invest_amount: T::Balance,
 	},
 	/// The unprocessed investment was swapped back into foreign currency.
 	///
 	/// NOTE: This state can be killed by applying the corresponding trigger to
 	/// handle the foreign return amount.
-	SwapIntoForeignDone { done_swap: Swap<Balance, Currency> },
+	SwapIntoForeignDone {
+		done_swap: Swap<T::Balance, T::CurrencyId>,
+	},
 	/// The investment is split into two parts:
 	/// * One part is waiting to be processed as an investment
 	/// * The swapped back into the foreign currency as a result of decreasing
@@ -134,9 +142,15 @@ pub enum InvestState<
 	/// NOTE: This state can be transitioned into `InvestmentOngoing` by
 	/// applying the corresponding trigger to handle the foreign return amount.
 	SwapIntoForeignDoneAndInvestmentOngoing {
-		done_swap: Swap<Balance, Currency>,
-		invest_amount: Balance,
+		done_swap: Swap<T::Balance, T::CurrencyId>,
+		invest_amount: T::Balance,
 	},
+}
+
+impl<T: crate::Config> Default for InvestState<T> {
+	fn default() -> Self {
+		Self::NoState
+	}
 }
 
 /// Reflects all state transitions of an `InvestmentState` which can be
@@ -328,3 +342,5 @@ pub enum RedeemTransition<
 	FulfillSwapOrder(Swap<Balance, Currency>),
 	CollectRedemption(Balance, Swap<Balance, Currency>),
 }
+
+// impl<T: crate::Config> InvestState<T> {}

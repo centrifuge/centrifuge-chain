@@ -55,6 +55,9 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		// Translate amount from foreign to pool_currency
+		let amount =
+			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
@@ -74,7 +77,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				Error::<T>::from(InvestError::Increase)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
-
 		Ok(())
 	}
 
@@ -86,6 +88,9 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		// Translate amount from foreign to pool_currency
+		let amount =
+			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
@@ -101,14 +106,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 		let post_state = pre_state
 			.transition(InvestTransition::DecreaseInvestOrder(Swap {
-				currency_in: pool_currency,
-				currency_out: foreign_currency,
+				currency_in: foreign_currency,
+				currency_out: pool_currency,
 				amount,
 			}))
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("InvestState transition error: {:?}", e);
-				Error::<T>::from(InvestError::Decrease)
+				Error::<T>::from(InvestError::Increase)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
@@ -267,10 +272,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			true
 		} else {
 			T::PoolInspect::currency_for(investment_id.of_pool())
-				.map(|pool_currency| {
-					// TODO(@review): Or just `order_pair_exists`?
-					T::TokenSwaps::counter_order_pair_exists(currency, pool_currency)
-				})
+				.map(|pool_currency| T::TokenSwaps::order_pair_exists(currency, pool_currency))
 				.unwrap_or(false)
 		}
 	}
@@ -325,7 +327,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn apply_invest_state_transition(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		state: InvestState<T::Balance, T::CurrencyId>,
+		state: InvestState<T>,
 	) -> DispatchResult {
 		// Must not send executed decrease notification before updating redemption
 		let mut maybe_executed_decrease: Option<(T::CurrencyId, T::Balance)> = None;
@@ -338,7 +340,7 @@ impl<T: Config> Pallet<T> {
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
 			InvestState::InvestmentOngoing { invest_amount } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
 
 				Ok((state, None, invest_amount))
 			},
@@ -346,21 +348,21 @@ impl<T: Config> Pallet<T> {
 			InvestState::ActiveSwapIntoForeignCurrency { swap } |
 			// We don't care about `done_amount` until swap into foreign is fulfilled
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
 				Ok((state, Some(swap), Zero::zero()))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, invest_amount } |
 			// We don't care about `done_amount` until swap into foreign is fulfilled
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap,invest_amount, .. } => {
-				InvestmentState::<T>::insert(who, investment_id, state);
+				InvestmentState::<T>::insert(who, investment_id, state.clone());
 				Ok((state, Some(swap), invest_amount))
 			},
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrency { swap };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
 				Ok((new_state, Some(swap), Zero::zero()))
 			},
@@ -368,7 +370,7 @@ impl<T: Config> Pallet<T> {
 				maybe_executed_decrease = Some((swap.currency_out, done_amount));
 
 				let new_state = InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
 				Ok((new_state, Some(swap), invest_amount))
 			},
@@ -383,14 +385,13 @@ impl<T: Config> Pallet<T> {
 				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				let new_state = InvestState::InvestmentOngoing { invest_amount };
-				InvestmentState::<T>::insert(who, investment_id, new_state);
+				InvestmentState::<T>::insert(who, investment_id, new_state.clone());
 
 				Ok((new_state, None, invest_amount))
 			},
 		}
 		.map(|(invest_state, maybe_swap, invest_amount)| {
 			let (maybe_invest_state_prio, maybe_new_redeem_state) = Self::handle_swap_order(who, investment_id, maybe_swap,  TokenSwapReason::Investment)?;
-
 			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
 			if let Some(invest_state_prio) = maybe_invest_state_prio {
 				Self::deposit_investment_event(who, investment_id, Some(invest_state_prio));
@@ -528,7 +529,7 @@ impl<T: Config> Pallet<T> {
 	fn deposit_investment_event(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		maybe_state: Option<InvestState<T::Balance, T::CurrencyId>>,
+		maybe_state: Option<InvestState<T>>,
 	) {
 		match maybe_state {
 			Some(state) if state == InvestState::NoState => {
@@ -680,7 +681,7 @@ impl<T: Config> Pallet<T> {
 		reason: TokenSwapReason,
 	) -> Result<
 		(
-			Option<InvestState<T::Balance, T::CurrencyId>>,
+			Option<InvestState<T>>,
 			Option<RedeemState<T::Balance, T::CurrencyId>>,
 		),
 		DispatchError,
@@ -703,8 +704,8 @@ impl<T: Config> Pallet<T> {
 			// Update invest and redeem states if necessary
 			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
 				// Should never occur but let's be safe
-				if let Some(state) = maybe_invest_state {
-					*current_invest_state = state;
+				if let Some(state) = &maybe_invest_state {
+					*current_invest_state = state.clone();
 				}
 			});
 
@@ -800,8 +801,8 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				let swap_order_id = T::TokenSwaps::place_order(
 					who.clone(),
-					swap.currency_out,
 					swap.currency_in,
+					swap.currency_out,
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
 					T::DefaultTokenSellRate::get(),
@@ -858,7 +859,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<
 		(
 			Option<Swap<T::Balance, T::CurrencyId>>,
-			Option<InvestState<T::Balance, T::CurrencyId>>,
+			Option<InvestState<T>>,
 			Option<RedeemState<T::Balance, T::CurrencyId>>,
 		),
 		DispatchError,
@@ -1040,9 +1041,9 @@ impl<T: Config> Pallet<T> {
 		// Determine payout amount in foreign currency instead of current pool currency
 		// denomination
 		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
+			foreign_payout_currency,
 			pool_currency,
 			collected.amount_payment,
-			foreign_payout_currency,
 		)?;
 
 		Ok(ExecutedForeignCollectInvest {
