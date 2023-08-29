@@ -87,16 +87,11 @@ fn submit_test_fn(router_creation_fn: RouterCreationFn) {
 	});
 }
 
-type RouterCreationFn = Box<
-	dyn Fn(VersionedMultiLocation, CurrencyId, VersionedMultiLocation) -> DomainRouter<Runtime>,
->;
+type RouterCreationFn = Box<dyn Fn(VersionedMultiLocation, CurrencyId) -> DomainRouter<Runtime>>;
 
 fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 	Box::new(
-		|location: VersionedMultiLocation,
-		 currency_id: CurrencyId,
-		 asset_location: VersionedMultiLocation|
-		 -> DomainRouter<Runtime> {
+		|location: VersionedMultiLocation, currency_id: CurrencyId| -> DomainRouter<Runtime> {
 			let router = AxelarXCMRouter::<Runtime> {
 				router: XCMRouter {
 					xcm_domain: XcmDomain {
@@ -104,18 +99,8 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
-						transact_info: XcmTransactInfo {
-							transact_extra_weight: 1.into(),
-							max_weight: 8_000_000_000_000_000.into(),
-							transact_extra_weight_signed: Some(3.into()),
-						},
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
-						fee_asset_location: Box::new(
-							asset_location
-								.try_into()
-								.expect("Bad xcm fee asset location"),
-						),
 					},
 					_marker: Default::default(),
 				},
@@ -131,10 +116,7 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 
 fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 	Box::new(
-		|location: VersionedMultiLocation,
-		 currency_id: CurrencyId,
-		 asset_location: VersionedMultiLocation|
-		 -> DomainRouter<Runtime> {
+		|location: VersionedMultiLocation, currency_id: CurrencyId| -> DomainRouter<Runtime> {
 			let router = EthereumXCMRouter::<Runtime> {
 				router: XCMRouter {
 					xcm_domain: XcmDomain {
@@ -142,18 +124,8 @@ fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
-						transact_info: XcmTransactInfo {
-							transact_extra_weight: 1.into(),
-							max_weight: 8_000_000_000_000_000.into(),
-							transact_extra_weight_signed: Some(3.into()),
-						},
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
-						fee_asset_location: Box::new(
-							asset_location
-								.try_into()
-								.expect("Bad xcm fee asset location"),
-						),
 					},
 					_marker: Default::default(),
 				},
@@ -189,11 +161,7 @@ fn setup(router_creation_fn: RouterCreationFn) {
 		},
 	};
 
-	let domain_router = router_creation_fn(
-		moonbeam_location.into(),
-		glmr_currency_id,
-		moonbeam_native_token.into(),
-	);
+	let domain_router = router_creation_fn(moonbeam_location.into(), glmr_currency_id);
 
 	assert_ok!(LiquidityPoolsGateway::set_domain_router(
 		RuntimeOrigin::root(),
@@ -208,8 +176,16 @@ fn setup(router_creation_fn: RouterCreationFn) {
 	));
 
 	// Give Alice and BOB enough glimmer to pay for fees
-	OrmlTokens::deposit(glmr_currency_id, &ALICE.into(), 10 * dollar(18));
-	OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
+	OrmlTokens::deposit(
+		glmr_currency_id,
+		&ALICE.into(),
+		1_000_000_000_000 * dollar(18),
+	);
+	OrmlTokens::deposit(
+		glmr_currency_id,
+		&BOB.into(),
+		1_000_000_000_000 * dollar(18),
+	);
 
 	// We first need to register AUSD in the asset registry
 	let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
