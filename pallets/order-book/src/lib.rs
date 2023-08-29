@@ -462,7 +462,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just overwrite as this is an admin action.
-			TradingPair::<T>::insert(asset_in.clone(), asset_out.clone(), min_order);
+			TradingPair::<T>::insert(asset_in, asset_out, min_order);
 
 			Self::deposit_event(Event::<T>::TradingPairAdded {
 				asset_in,
@@ -483,7 +483,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just remove as this is an admin action.
-			TradingPair::<T>::remove(asset_in.clone(), asset_out.clone());
+			TradingPair::<T>::remove(asset_in, asset_out);
 
 			Self::deposit_event(Event::<T>::TradingPairRemoved {
 				asset_in,
