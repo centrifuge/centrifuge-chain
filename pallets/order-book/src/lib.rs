@@ -451,6 +451,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Adds a valid trading pair.
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::Weights::create_order())]
 		pub fn add_trading_pair(
@@ -473,6 +474,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Removes a valid trading pair
+		//
+		// NOTE: We do not need to remove existing order as
+		//       fulfilling orders is not checking for a valid trading pair.
+		//       Existing orders will just fade out by by being canceled
+		//       or fulfilled.
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::Weights::create_order())]
 		pub fn rm_trading_pair(
@@ -495,6 +502,9 @@ pub mod pallet {
 
 		/// Sets the minimum order amount for a given trading pair.
 		/// If the trading pair is not yet added this errors out.
+		//
+		// NOTE: We do not need to update any existing orders as fulfillment does
+		//       not verify the validity of the order that is to be fulfilled.
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::Weights::create_order())]
 		pub fn update_min_order(
