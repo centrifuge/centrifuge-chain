@@ -171,38 +171,38 @@ where
 		match self {
 			Self::NoState => Self::NoState,
 			Self::InvestmentOngoing { invest_amount } => Self::InvestmentOngoing {
-				invest_amount: invest_amount.clone(),
+				invest_amount: *invest_amount,
 			},
 			Self::ActiveSwapIntoPoolCurrency { swap } => {
-				Self::ActiveSwapIntoPoolCurrency { swap: swap.clone() }
+				Self::ActiveSwapIntoPoolCurrency { swap: *swap }
 			}
 			Self::ActiveSwapIntoForeignCurrency { swap } => {
-				Self::ActiveSwapIntoForeignCurrency { swap: swap.clone() }
+				Self::ActiveSwapIntoForeignCurrency { swap: *swap }
 			}
 			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 				swap,
 				invest_amount,
 			} => Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-				swap: swap.clone(),
-				invest_amount: invest_amount.clone(),
+				swap: *swap,
+				invest_amount: *invest_amount,
 			},
 			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
 				swap,
 				invest_amount,
 			} => Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-				swap: swap.clone(),
-				invest_amount: invest_amount.clone(),
+				swap: *swap,
+				invest_amount: *invest_amount,
 			},
 			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
-					swap: swap.clone(),
-					done_amount: done_amount.clone(),
+					swap: *swap,
+					done_amount: *done_amount,
 				}
 			}
 			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
 				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-					swap: swap.clone(),
-					done_amount: done_amount.clone(),
+					swap: *swap,
+					done_amount: *done_amount,
 				}
 			}
 			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
@@ -210,28 +210,28 @@ where
 				done_amount,
 				invest_amount,
 			} => Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-				swap: swap.clone(),
-				done_amount: done_amount.clone(),
-				invest_amount: invest_amount.clone(),
+				swap: *swap,
+				done_amount: *done_amount,
+				invest_amount: *invest_amount,
 			},
 			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap,
 				done_amount,
 				invest_amount,
 			} => Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-				swap: swap.clone(),
-				done_amount: done_amount.clone(),
-				invest_amount: invest_amount.clone(),
+				swap: *swap,
+				done_amount: *done_amount,
+				invest_amount: *invest_amount,
 			},
 			Self::SwapIntoForeignDone { done_swap } => Self::SwapIntoForeignDone {
-				done_swap: done_swap.clone(),
+				done_swap: *done_swap,
 			},
 			Self::SwapIntoForeignDoneAndInvestmentOngoing {
 				done_swap,
 				invest_amount,
 			} => Self::SwapIntoForeignDoneAndInvestmentOngoing {
-				done_swap: done_swap.clone(),
-				invest_amount: invest_amount.clone(),
+				done_swap: *done_swap,
+				invest_amount: *invest_amount,
 			},
 		}
 	}

@@ -543,7 +543,7 @@ pub mod foreign_investments {
 						to_metadata.decimals,
 						StableToStableRate::get().ensure_mul_int(amount_out)?,
 					)
-					.map_err(|e| DispatchError::from(e))
+					.map_err(DispatchError::from)
 				}
 				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
 			}
