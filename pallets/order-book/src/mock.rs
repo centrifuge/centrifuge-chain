@@ -210,35 +210,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut e = new_test_ext_no_pair();
 
 	e.execute_with(|| {
-		order_book::TradingPairInOut::<Runtime>::insert(
+		order_book::TradingPair::<Runtime>::insert(
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			MIN_DEV_AUSD_ORDER,
 		);
-		order_book::TradingPairOutIn::<Runtime>::insert(
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			(),
-		);
-		order_book::TradingPairInOut::<Runtime>::insert(
+		order_book::TradingPair::<Runtime>::insert(
 			DEV_USDT_CURRENCY_ID,
 			DEV_AUSD_CURRENCY_ID,
 			MIN_DEV_USDT_ORDER,
 		);
-		order_book::TradingPairOutIn::<Runtime>::insert(
-			DEV_USDT_CURRENCY_ID,
-			DEV_AUSD_CURRENCY_ID,
-			(),
-		);
-		order_book::TradingPairInOut::<Runtime>::insert(
+		order_book::TradingPair::<Runtime>::insert(
 			CurrencyId::Native,
 			DEV_AUSD_CURRENCY_ID,
 			MIN_DEV_USDT_ORDER,
-		);
-		order_book::TradingPairOutIn::<Runtime>::insert(
-			CurrencyId::Native,
-			DEV_AUSD_CURRENCY_ID,
-			(),
 		);
 	});
 

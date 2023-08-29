@@ -28,12 +28,8 @@ fn adding_trading_pair_works() {
 			100 * CURRENCY_AUSD_DECIMALS,
 		));
 		assert_eq!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
-		);
-		assert_eq!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
-			()
 		);
 	})
 }
@@ -51,11 +47,7 @@ fn adding_trading_pair_fails() {
 			DispatchError::BadOrigin
 		);
 		assert_noop!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			Error::<Runtime>::InvalidTradingPair
-		);
-		assert_noop!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
 			Error::<Runtime>::InvalidTradingPair
 		);
 	})
@@ -70,11 +62,7 @@ fn removing_trading_pair_works() {
 			DEV_USDT_CURRENCY_ID,
 		));
 		assert_noop!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			Error::<Runtime>::InvalidTradingPair
-		);
-		assert_noop!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
 			Error::<Runtime>::InvalidTradingPair
 		);
 	})
@@ -92,12 +80,8 @@ fn removing_trading_pair_fails() {
 			DispatchError::BadOrigin
 		);
 		assert_eq!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
-		);
-		assert_eq!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
-			()
 		);
 	})
 }
@@ -112,12 +96,8 @@ fn updating_min_order_works() {
 			1
 		));
 		assert_eq!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
 			1
-		);
-		assert_eq!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
-			()
 		);
 	})
 }
@@ -134,12 +114,8 @@ fn updating_min_order_fails() {
 			DispatchError::BadOrigin
 		);
 		assert_eq!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
-		);
-		assert_eq!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
-			()
 		);
 	})
 }
@@ -156,12 +132,8 @@ fn updating_min_order_fails_if_not_set() {
 			Error::<Runtime>::InvalidTradingPair
 		);
 		assert_eq!(
-			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
-		);
-		assert_eq!(
-			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID).unwrap(),
-			()
 		);
 	})
 }

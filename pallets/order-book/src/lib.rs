@@ -235,29 +235,13 @@ pub mod pallet {
 	/// Stores the minimum `buy_amount` of `asset_in` when buying
 	/// with `asset_out`
 	#[pallet::storage]
-	pub type TradingPairInOut<T: Config> = StorageDoubleMap<
+	pub type TradingPair<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
 		T::AssetCurrencyId,
 		Twox64Concat,
 		T::AssetCurrencyId,
 		T::Balance,
-		ResultQuery<Error<T>::InvalidTradingPair>,
-	>;
-
-	/// Storage of valid order pairs.
-	/// Stores:
-	///  - key1 -> AssetOut
-	///  - key2 -> AssetIn
-	// NOTE: Mirror storage for easier querability.
-	#[pallet::storage]
-	pub type TradingPairOutIn<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		Twox64Concat,
-		T::AssetCurrencyId,
-		(),
 		ResultQuery<Error<T>::InvalidTradingPair>,
 	>;
 
@@ -478,8 +462,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just overwrite as this is an admin action.
-			TradingPairInOut::<T>::insert(asset_in.clone(), asset_out.clone(), min_order);
-			TradingPairOutIn::<T>::insert(asset_out.clone(), asset_in.clone(), ());
+			TradingPair::<T>::insert(asset_in.clone(), asset_out.clone(), min_order);
 
 			Self::deposit_event(Event::<T>::TradingPairAdded {
 				asset_in,
@@ -500,8 +483,7 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			// We do not check, we just remove as this is an admin action.
-			TradingPairInOut::<T>::remove(asset_in.clone(), asset_out.clone());
-			TradingPairOutIn::<T>::remove(asset_out.clone(), asset_in.clone());
+			TradingPair::<T>::remove(asset_in.clone(), asset_out.clone());
 
 			Self::deposit_event(Event::<T>::TradingPairRemoved {
 				asset_in,
@@ -525,8 +507,8 @@ pub mod pallet {
 
 			// try_mutate is a pain with the direct error return. But we do want to only
 			// update if the pair exists.
-			let _old_min_order = TradingPairInOut::<T>::get(&asset_in, &asset_out)?;
-			TradingPairInOut::<T>::insert(&asset_in, &asset_out, min_order);
+			let _old_min_order = TradingPair::<T>::get(&asset_in, &asset_out)?;
+			TradingPair::<T>::insert(&asset_in, &asset_out, min_order);
 
 			Self::deposit_event(Event::<T>::MinOrderUpdated {
 				asset_in,
@@ -567,7 +549,7 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 		) -> DispatchResult {
-			let min_amount = TradingPairInOut::<T>::get(&currency_in, &currency_out)?;
+			let min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
 			match buy_amount.cmp(&min_amount) {
 				Ordering::Less => Err(Error::<T>::InsufficientOrderSize.into()),
 				Ordering::Equal | Ordering::Greater => Ok(()),
@@ -799,7 +781,7 @@ pub mod pallet {
 		}
 
 		fn valid_pair(currency_out: Self::CurrencyId, currency_in: Self::CurrencyId) -> bool {
-			TradingPairInOut::<T>::get(currency_in, currency_out).is_ok()
+			TradingPair::<T>::get(currency_in, currency_out).is_ok()
 		}
 	}
 }
