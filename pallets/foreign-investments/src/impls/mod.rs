@@ -475,20 +475,14 @@ impl<T: Config> Pallet<T> {
 			}
 			RedeemState::InvestedAnd { inner, .. } | RedeemState::NotInvestedAnd { inner } => {
 				match inner {
-					InnerRedeemState::Redeeming { .. } |
-					InnerRedeemState::RedeemingAndCollectableRedemption { .. } |
-					InnerRedeemState::CollectableRedemption => {
+					InnerRedeemState::Redeeming { .. } => {
 						RedemptionState::<T>::insert(who, investment_id, state);
 						Ok((Some(state), None))
 					},
 					InnerRedeemState::RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } |
 					InnerRedeemState::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
-					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
-					InnerRedeemState::RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
 					InnerRedeemState::ActiveSwapIntoForeignCurrency { swap, .. } |
-					InnerRedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } |
-					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap, .. } |
-					InnerRedeemState::CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
+					InnerRedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
 						RedemptionState::<T>::insert(who, investment_id, state);
 						Ok((Some(state), Some(swap)))
 					},
@@ -508,7 +502,8 @@ impl<T: Config> Pallet<T> {
 				TokenSwapReason::Redemption,
 			)?;
 
-			// Dispatch transition event, post swap state has priority if it exists as it is the result of the latest update
+			// Dispatch transition event, post swap state has priority if it exists as it is
+			// the result of the latest update
 			if let Some(redeem_state_post_swap) = maybe_new_state_prio {
 				Self::deposit_redemption_event(who, investment_id, Some(redeem_state_post_swap));
 			} else {
@@ -608,12 +603,7 @@ impl<T: Config> Pallet<T> {
 		// includes `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency`
 		match inner_redeem_state {
 			InnerRedeemState::SwapIntoForeignDone { done_swap, .. }
-			| InnerRedeemState::RedeemingAndSwapIntoForeignDone { done_swap, .. }
-			| InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
-				done_swap,
-				..
-			}
-			| InnerRedeemState::CollectableRedemptionAndSwapIntoForeignDone { done_swap, .. } => {
+			| InnerRedeemState::RedeemingAndSwapIntoForeignDone { done_swap, .. } => {
 				Self::notify_executed_collect_redeem(
 					who,
 					investment_id,
@@ -640,22 +630,6 @@ impl<T: Config> Pallet<T> {
 			InnerRedeemState::RedeemingAndSwapIntoForeignDone { redeem_amount, .. } => {
 				let new_state =
 					state.swap_inner_state(InnerRedeemState::Redeeming { redeem_amount });
-				RedemptionState::<T>::insert(who, investment_id, new_state);
-				Ok(Some(new_state))
-			}
-			InnerRedeemState::RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
-				redeem_amount,
-				..
-			} => {
-				let new_state =
-					state.swap_inner_state(InnerRedeemState::RedeemingAndCollectableRedemption {
-						redeem_amount,
-					});
-				RedemptionState::<T>::insert(who, investment_id, new_state);
-				Ok(Some(new_state))
-			}
-			InnerRedeemState::CollectableRedemptionAndSwapIntoForeignDone { .. } => {
-				let new_state = state.swap_inner_state(InnerRedeemState::CollectableRedemption);
 				RedemptionState::<T>::insert(who, investment_id, new_state);
 				Ok(Some(new_state))
 			}

@@ -316,12 +316,6 @@ pub enum InnerRedeemState<
 > {
 	/// The redemption is pending until it is processed during epoch execution.
 	Redeeming { redeem_amount: Balance },
-	/// The redemption was fully processed and must be collected before it can
-	/// be transferred back.
-	CollectableRedemption,
-	/// The redemption was partially processed and is split into a pending
-	/// redemption and a collectable amount.
-	RedeemingAndCollectableRedemption { redeem_amount: Balance },
 	/// The redemption was fully processed and collected and is currently
 	/// swapping into the foreign currency.
 	ActiveSwapIntoForeignCurrency { swap: Swap<Balance, Currency> },
@@ -363,54 +357,6 @@ pub enum InnerRedeemState<
 	/// * The remainder was already swapped back.
 	RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 		redeem_amount: Balance,
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
-	},
-	/// The redemption is split into three parts:
-	/// * One part is waiting to be processed as redemption.
-	/// * The second is waiting to be collected.
-	/// * The remainder is swapping back into the foreign currency as a result
-	///   of processing and collecting beforehand.
-	RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrency {
-		redeem_amount: Balance,
-		swap: Swap<Balance, Currency>,
-	},
-	/// The redemption is split into three parts:
-	/// * One part is waiting to be processed as redemption.
-	/// * The second is waiting to be collected.
-	/// * The remainder was successfully swapped back into the foreign currency
-	///   as a result of processing and collecting beforehand.
-	RedeemingAndCollectableRedemptionAndSwapIntoForeignDone {
-		redeem_amount: Balance,
-		done_swap: Swap<Balance, Currency>,
-	},
-	/// The redemption is split into four parts:
-	/// * One part is waiting to be processed as redemption.
-	/// * The second is waiting to be collected.
-	/// * The third part is swapping back into the foreign currency as a result
-	///   of processing and collecting beforehand
-	/// * The remainder was already swapped back.
-	RedeemingAndCollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-		redeem_amount: Balance,
-		swap: Swap<Balance, Currency>,
-		done_amount: Balance,
-	},
-	/// The redemption is split into two parts:
-	/// * One part is waiting to be collected.
-	/// * The remainder is swapping back into the foreign currency as a result
-	///   of processing and collecting beforehand.
-	CollectableRedemptionAndActiveSwapIntoForeignCurrency { swap: Swap<Balance, Currency> },
-	/// The redemption is split into two parts:
-	/// * One part is waiting to be collected.
-	/// * The remainder was successfully swapped back into the foreign currency
-	///   as a result of processing and collecting beforehand.
-	CollectableRedemptionAndSwapIntoForeignDone { done_swap: Swap<Balance, Currency> },
-	/// The redemption is split into three parts:
-	/// * One part is waiting to be collected.
-	/// * The second is swapping back into the foreign currency as a result of
-	///   processing and collecting beforehand
-	/// * The remainder was already swapped back.
-	CollectableRedemptionAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 		swap: Swap<Balance, Currency>,
 		done_amount: Balance,
 	},
