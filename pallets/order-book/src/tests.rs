@@ -126,7 +126,7 @@ fn updating_min_order_works() {
 fn updating_min_order_fails() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			OrderBook::rm_trading_pair(
+			OrderBook::update_min_order(
 				RuntimeOrigin::signed(ACCOUNT_0),
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
@@ -148,7 +148,7 @@ fn updating_min_order_fails() {
 fn updating_min_order_fails_if_not_set() {
 	new_test_ext_no_pair().execute_with(|| {
 		assert_noop!(
-			OrderBook::rm_trading_pair(
+			OrderBook::update_min_order(
 				RawOrigin::Root.into(),
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
