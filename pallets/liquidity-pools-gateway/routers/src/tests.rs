@@ -9,7 +9,6 @@ use cfg_traits::liquidity_pools::{Codec, Router};
 use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
 use pallet_evm::AddressMapping;
-use pallet_xcm_transactor::RemoteTransactInfoWithMaxWeight;
 use sp_core::{bounded_vec, crypto::AccountId32, H160, H256, U256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, Hash},
@@ -194,14 +193,8 @@ mod xcm_router {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				transact_info: XcmTransactInfo {
-					transact_extra_weight: 1.into(),
-					max_weight: 100_000_000_000.into(),
-					transact_extra_weight_signed: None,
-				},
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 
 			let sender: AccountId32 = [0; 32].into();
@@ -232,34 +225,6 @@ mod xcm_router {
 				};
 
 				assert_ok!(router.do_init());
-
-				let res = pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::get(
-					test_data.dest.clone(),
-				)
-				.unwrap();
-
-				assert_eq!(
-					res.transact_extra_weight,
-					test_data.xcm_domain.transact_info.transact_extra_weight
-				);
-				assert_eq!(
-					res.max_weight,
-					test_data.xcm_domain.transact_info.max_weight
-				);
-				assert_eq!(
-					res.transact_extra_weight_signed,
-					test_data
-						.xcm_domain
-						.transact_info
-						.transact_extra_weight_signed
-				);
-
-				assert_eq!(
-					pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::get(
-						test_data.dest
-					),
-					Some(test_data.xcm_domain.fee_per_second),
-				);
 			});
 		}
 	}
@@ -277,42 +242,29 @@ mod xcm_router {
 					_marker: Default::default(),
 				};
 
-				// Manually insert the transact weight info in the `TransactInfoWithWeightLimit`
-				// storage.
-
-				pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::insert(
-					test_data.dest.clone(),
-					RemoteTransactInfoWithMaxWeight {
-						transact_extra_weight: test_data
-							.xcm_domain
-							.transact_info
-							.transact_extra_weight
-							.clone(),
-						max_weight: test_data.xcm_domain.transact_info.max_weight.clone(),
-						transact_extra_weight_signed: None,
-					},
-				);
-
-				// Manually insert the fee per second in the `DestinationAssetFeePerSecond`
-				// storage.
-
-				pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::insert(
-					test_data.dest,
-					test_data.xcm_domain.fee_per_second.clone(),
-				);
-
 				assert_ok!(router.do_send(test_data.sender, test_data.msg.clone()));
 
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let transact_weight = Weight::from_parts(
+					test_data.xcm_domain.max_gas_limit * 25_000,
+					DEFAULT_PROOF_SIZE.saturating_div(2),
+				);
+
+				let overall_weight = Weight::from_parts(
+					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
+					DEFAULT_PROOF_SIZE,
+				);
+
+				let fees = Into::<u128>::into(overall_weight.ref_time())
+					* test_data.xcm_domain.fee_per_second;
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					})
 					.into()
 				)));
@@ -320,16 +272,9 @@ mod xcm_router {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(overall_weight),
 				}));
 
 				let expected_call = get_encoded_ethereum_xcm_call::<Runtime>(
@@ -340,7 +285,7 @@ mod xcm_router {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: transact_weight,
 					call: expected_call.into(),
 				}));
 			});
@@ -380,43 +325,8 @@ mod xcm_router {
 					test_data.xcm_domain.fee_per_second.clone(),
 				);
 
-				assert_noop!(
-					router.do_send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::TransactorInfoNotSet,
-				);
-			});
-		}
-
-		#[test]
-		fn fee_per_second_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let router = XCMRouter::<Runtime> {
-					xcm_domain: test_data.xcm_domain.clone(),
-					_marker: Default::default(),
-				};
-
-				// Manually insert the transact weight info in the `TransactInfoWithWeightLimit`
-				// storage.
-
-				pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::insert(
-					test_data.dest.clone(),
-					RemoteTransactInfoWithMaxWeight {
-						transact_extra_weight: test_data
-							.xcm_domain
-							.transact_info
-							.transact_extra_weight
-							.clone(),
-						max_weight: test_data.xcm_domain.transact_info.max_weight.clone(),
-						transact_extra_weight_signed: None,
-					},
-				);
-
-				assert_noop!(
-					router.do_send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::FeePerSecondNotSet,
-				);
+				// We ensure we can send although no `TransactInfo is set`
+				assert_ok!(router.do_send(test_data.sender, test_data.msg),);
 			});
 		}
 	}
@@ -630,14 +540,8 @@ mod axelar_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				transact_info: XcmTransactInfo {
-					transact_extra_weight: 1.into(),
-					max_weight: 100_000_000_000.into(),
-					transact_extra_weight_signed: None,
-				},
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 			let axelar_target_chain = EVMChain::Ethereum;
 			let axelar_target_contract = H160::from_low_u64_be(1);
@@ -678,34 +582,6 @@ mod axelar_xcm {
 					});
 
 				assert_ok!(domain_router.init());
-
-				let res = pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::get(
-					test_data.dest.clone(),
-				)
-				.unwrap();
-
-				assert_eq!(
-					res.transact_extra_weight,
-					test_data.xcm_domain.transact_info.transact_extra_weight
-				);
-				assert_eq!(
-					res.max_weight,
-					test_data.xcm_domain.transact_info.max_weight
-				);
-				assert_eq!(
-					res.transact_extra_weight_signed,
-					test_data
-						.xcm_domain
-						.transact_info
-						.transact_extra_weight_signed
-				);
-
-				assert_eq!(
-					pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::get(
-						test_data.dest
-					),
-					Some(test_data.xcm_domain.fee_per_second),
-				);
 			});
 		}
 	}
@@ -736,13 +612,24 @@ mod axelar_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let transact_weight = Weight::from_parts(
+					test_data.xcm_domain.max_gas_limit * 25_000,
+					DEFAULT_PROOF_SIZE.saturating_div(2),
+				);
+
+				let overall_weight = Weight::from_parts(
+					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
+					DEFAULT_PROOF_SIZE,
+				);
+
+				let fees = Into::<u128>::into(overall_weight.ref_time())
+					* test_data.xcm_domain.fee_per_second;
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					})
 					.into()
 				)));
@@ -750,16 +637,9 @@ mod axelar_xcm {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(overall_weight),
 				}));
 
 				let contract_call = get_axelar_encoded_msg(
@@ -777,7 +657,7 @@ mod axelar_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: transact_weight,
 					call: expected_call.into(),
 				}));
 			});
@@ -807,49 +687,8 @@ mod axelar_xcm {
 					test_data.xcm_domain.fee_per_second.clone(),
 				);
 
-				assert_noop!(
-					domain_router.send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::TransactorInfoNotSet,
-				);
-			});
-		}
-
-		#[test]
-		fn fee_per_second_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let domain_router =
-					DomainRouter::<Runtime>::AxelarXCM(AxelarXCMRouter::<Runtime> {
-						router: XCMRouter {
-							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
-						},
-						axelar_target_chain: test_data.axelar_target_chain,
-						axelar_target_contract: test_data.axelar_target_contract,
-						_marker: Default::default(),
-					});
-
-				// Manually insert the transact weight info in the `TransactInfoWithWeightLimit`
-				// storage.
-
-				pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::insert(
-					test_data.dest.clone(),
-					RemoteTransactInfoWithMaxWeight {
-						transact_extra_weight: test_data
-							.xcm_domain
-							.transact_info
-							.transact_extra_weight
-							.clone(),
-						max_weight: test_data.xcm_domain.transact_info.max_weight.clone(),
-						transact_extra_weight_signed: None,
-					},
-				);
-
-				assert_noop!(
-					domain_router.send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::FeePerSecondNotSet,
-				);
+				// We ensure we can send although no `TransactInfo is set`
+				assert_ok!(domain_router.send(test_data.sender, test_data.msg),);
 			});
 		}
 	}
@@ -882,14 +721,8 @@ mod ethereum_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
-				transact_info: XcmTransactInfo {
-					transact_extra_weight: 1.into(),
-					max_weight: 100_000_000_000.into(),
-					transact_extra_weight_signed: None,
-				},
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
-				fee_asset_location: Box::new(dest.clone().into_versioned()),
 			};
 			let axelar_target_chain = EVMChain::Ethereum;
 			let axelar_target_contract = H160::from_low_u64_be(1);
@@ -928,34 +761,6 @@ mod ethereum_xcm {
 					});
 
 				assert_ok!(domain_router.init());
-
-				let res = pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::get(
-					test_data.dest.clone(),
-				)
-				.unwrap();
-
-				assert_eq!(
-					res.transact_extra_weight,
-					test_data.xcm_domain.transact_info.transact_extra_weight
-				);
-				assert_eq!(
-					res.max_weight,
-					test_data.xcm_domain.transact_info.max_weight
-				);
-				assert_eq!(
-					res.transact_extra_weight_signed,
-					test_data
-						.xcm_domain
-						.transact_info
-						.transact_extra_weight_signed
-				);
-
-				assert_eq!(
-					pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::get(
-						test_data.dest
-					),
-					Some(test_data.xcm_domain.fee_per_second),
-				);
 			});
 		}
 	}
@@ -984,13 +789,24 @@ mod ethereum_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let weight_limit = test_data.xcm_domain.max_gas_limit * 25_000 + 100_000_000;
+				let transact_weight = Weight::from_parts(
+					test_data.xcm_domain.max_gas_limit * 25_000,
+					DEFAULT_PROOF_SIZE.saturating_div(2),
+				);
+
+				let overall_weight = Weight::from_parts(
+					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
+					DEFAULT_PROOF_SIZE,
+				);
+
+				let fees = Into::<u128>::into(overall_weight.ref_time())
+					* test_data.xcm_domain.fee_per_second;
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					})
 					.into()
 				)));
@@ -998,16 +814,9 @@ mod ethereum_xcm {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(1),
+						fun: ::xcm::v3::Fungibility::Fungible(fees),
 					},
-					weight_limit: WeightLimit::Limited(Weight::from_all(
-						weight_limit
-							+ test_data
-								.xcm_domain
-								.transact_info
-								.transact_extra_weight
-								.ref_time()
-					)),
+					weight_limit: WeightLimit::Limited(overall_weight),
 				}));
 
 				let contract_call = get_encoded_contract_call(test_data.msg.serialize()).unwrap();
@@ -1019,7 +828,7 @@ mod ethereum_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: Weight::from_parts(weight_limit, weight_limit),
+					require_weight_at_most: transact_weight,
 					call: expected_call.into(),
 				}));
 			});
@@ -1047,47 +856,8 @@ mod ethereum_xcm {
 					test_data.xcm_domain.fee_per_second.clone(),
 				);
 
-				assert_noop!(
-					domain_router.send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::TransactorInfoNotSet,
-				);
-			});
-		}
-
-		#[test]
-		fn fee_per_second_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let domain_router =
-					DomainRouter::<Runtime>::EthereumXCM(EthereumXCMRouter::<Runtime> {
-						router: XCMRouter {
-							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
-						},
-						_marker: Default::default(),
-					});
-
-				// Manually insert the transact weight info in the `TransactInfoWithWeightLimit`
-				// storage.
-
-				pallet_xcm_transactor::TransactInfoWithWeightLimit::<Runtime>::insert(
-					test_data.dest.clone(),
-					RemoteTransactInfoWithMaxWeight {
-						transact_extra_weight: test_data
-							.xcm_domain
-							.transact_info
-							.transact_extra_weight
-							.clone(),
-						max_weight: test_data.xcm_domain.transact_info.max_weight.clone(),
-						transact_extra_weight_signed: None,
-					},
-				);
-
-				assert_noop!(
-					domain_router.send(test_data.sender, test_data.msg),
-					pallet_xcm_transactor::Error::<Runtime>::FeePerSecondNotSet,
-				);
+				// We ensure we can send although no `TransactInfo is set`
+				assert_ok!(domain_router.send(test_data.sender, test_data.msg),);
 			});
 		}
 	}
