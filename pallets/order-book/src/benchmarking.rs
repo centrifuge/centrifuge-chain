@@ -83,6 +83,7 @@ where
 	T::TradeableAsset::mint_into(asset_1, &account_0, 1_000 * CURRENCY_1)?;
 	T::TradeableAsset::mint_into(asset_0, &account_1, 1_000 * CURRENCY_0)?;
 	T::TradeableAsset::mint_into(asset_1, &account_1, 1_000 * CURRENCY_1)?;
+	TradingPair::<T>::insert(asset_0, asset_1, 1 * CURRENCY_0);
 	Ok((account_0, account_1, asset_0, asset_1))
 }
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
