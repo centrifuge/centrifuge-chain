@@ -105,4 +105,17 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
+
+
+	fn add_trading_pair() -> Weight {
+		Weight::zero()
+	}
+
+	fn rm_trading_pair() -> Weight {
+		Weight::zero()
+	}
+
+	fn update_min_order() -> Weight {
+		Weight::zero()
+	}
 }

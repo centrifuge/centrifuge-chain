@@ -62,7 +62,9 @@ benchmarks! {
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 
 	add_trading_pair {
-		}:add_trading_pair(RawOrigin::Root, asset_0, asset_1)
+		let asset_0 = CurrencyId::ForeignAsset(1);
+		let asset_1 = CurrencyId::ForeignAsset(2);
+		}:add_trading_pair(RawOrigin::Root, asset_0, asset_1, 100 * CURRENCY_0)
 
 	rm_trading_pair {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
