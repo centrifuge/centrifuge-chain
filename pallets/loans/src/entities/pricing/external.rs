@@ -97,6 +97,9 @@ pub struct ExternalActivePricing<T: Config> {
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
+
+	/// Settlement price used in the most recent borrow or repay transaction.
+	latest_settlement_price: T::Balance,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -104,12 +107,20 @@ impl<T: Config> ExternalActivePricing<T> {
 		info: ExternalPricing<T>,
 		interest_rate: InterestRate<T::Rate>,
 		pool_id: T::PoolId,
+		amount: ExternalAmount<T>,
+		price_required: bool,
 	) -> Result<Self, DispatchError> {
-		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
+		let result = T::PriceRegistry::register_id(&info.price_id, &pool_id);
+		if price_required {
+			// Only if the price is required, we treat the error as an error.
+			result?;
+		}
+
 		Ok(Self {
 			info,
 			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
+			latest_settlement_price: amount.settlement_price,
 		})
 	}
 
@@ -126,7 +137,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	}
 
 	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
+		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -147,7 +161,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	where
 		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
-		let price = cache.get(&self.info.price_id)?.0;
+		let price = match cache.get(&self.info.price_id) {
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
@@ -156,23 +173,28 @@ impl<T: Config> ExternalActivePricing<T> {
 		amount: &ExternalAmount<T>,
 		pool_id: T::PoolId,
 	) -> Result<(), DispatchError> {
-		let price = T::PriceRegistry::get(&self.info.price_id, &pool_id)?.0;
-		let delta = if amount.settlement_price > price {
-			amount.settlement_price.ensure_sub(price)?
-		} else {
-			price.ensure_sub(amount.settlement_price)?
-		};
-		let variation =
-			T::Rate::checked_from_rational(delta, price).ok_or(ArithmeticError::Overflow)?;
+		match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => {
+				let price = data.0;
+				let delta = if amount.settlement_price > price {
+					amount.settlement_price.ensure_sub(price)?
+				} else {
+					price.ensure_sub(amount.settlement_price)?
+				};
+				let variation = T::Rate::checked_from_rational(delta, price)
+					.ok_or(ArithmeticError::Overflow)?;
 
-		// We bypass any price if quantity is zero,
-		// because it does not take effect in the computation.
-		ensure!(
-			variation <= self.info.max_price_variation || amount.quantity.is_zero(),
-			Error::<T>::SettlementPriceExceedsVariation
-		);
+				// We bypass any price if quantity is zero,
+				// because it does not take effect in the computation.
+				ensure!(
+					variation <= self.info.max_price_variation || amount.quantity.is_zero(),
+					Error::<T>::SettlementPriceExceedsVariation
+				);
 
-		Ok(())
+				Ok(())
+			}
+			Err(_) => Ok(()),
+		}
 	}
 
 	pub fn max_borrow_amount(
@@ -205,18 +227,23 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn adjust(
 		&mut self,
-		quantity_adj: Adjustment<T::Quantity>,
+		amount_adj: Adjustment<ExternalAmount<T>>,
 		interest: T::Balance,
 	) -> DispatchResult {
-		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
+		self.outstanding_quantity = amount_adj
+			.clone()
+			.map(|amount| amount.quantity)
+			.ensure_add(self.outstanding_quantity)?;
 
-		let interest_adj = quantity_adj.try_map(|quantity| {
-			quantity
+		let interest_adj = amount_adj.clone().try_map(|amount| {
+			amount
+				.quantity
 				.ensure_mul_int(self.info.notional)?
 				.ensure_add(interest)
 		})?;
 
 		self.interest.adjust_debt(interest_adj)?;
+		self.latest_settlement_price = amount_adj.abs().settlement_price;
 
 		Ok(())
 	}

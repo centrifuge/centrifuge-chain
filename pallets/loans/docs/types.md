@@ -30,6 +30,7 @@ RepaymentSchedule *----> InterestPayments
 enum BorrowRestrictions {
     NoWrittenOff
     FullOnce
+    OraclePriceRequired
 }
 
 enum RepayRestrictions {
@@ -165,6 +166,7 @@ package pricing {
             info: ExternalPricing
             outstanding_quantity: Rate,
             interest: ActiveInterestRate
+            latest_settlement_price: Balance,
         }
 
         ExternalActivePricing *-r-> ActiveInterestRate
