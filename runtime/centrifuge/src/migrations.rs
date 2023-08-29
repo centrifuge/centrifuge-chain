@@ -196,7 +196,7 @@ mod asset_registry {
 			.map_err(|_| log::error!("Failed to register LpEthUSDC"))
 			.ok();
 
-			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: success!");
+			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: completed!");
 			RocksDbWeight::get().reads_writes(1, 1)
 		}
 
