@@ -1346,6 +1346,7 @@ dependencies = [
  "cfg-utils",
  "frame-support",
  "hex",
+ "hex-literal 0.3.4",
  "orml-asset-registry",
  "parity-scale-codec 3.6.4",
  "scale-info",
