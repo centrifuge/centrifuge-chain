@@ -1181,7 +1181,7 @@ fn schedule_upgrade() {
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
 			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR,
+			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
 
 		// Now it finally works
@@ -1692,7 +1692,7 @@ mod utils {
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	};
 
-	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
+	pub const DEFAULT_BALANCE_GLMR: Balance = 1_000_000_000_000;
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 	pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
@@ -1754,11 +1754,6 @@ mod utils {
 					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 					contract_address: H160::from(utils::DEFAULT_EVM_ADDRESS_MOONBEAM),
 					max_gas_limit: 700_000,
-					transact_info: XcmTransactInfo {
-						transact_extra_weight: 1.into(),
-						max_weight: 8_000_000_000_000_000.into(),
-						transact_extra_weight_signed: Some(3.into()),
-					},
 					fee_currency: currency_id,
 					fee_per_second: default_per_second(18),
 					fee_asset_location: Box::new(fee_location),
@@ -1814,8 +1809,16 @@ mod utils {
 		));
 
 		// Give Alice and BOB enough glimmer to pay for fees
-		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
-		OrmlTokens::deposit(GLIMMER_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
+		OrmlTokens::deposit(
+			GLIMMER_CURRENCY_ID,
+			&ALICE.into(),
+			DEFAULT_BALANCE_GLMR * dollar(18),
+		);
+		OrmlTokens::deposit(
+			GLIMMER_CURRENCY_ID,
+			&BOB.into(),
+			DEFAULT_BALANCE_GLMR * dollar(18),
+		);
 
 		// Register AUSD in the asset registry which is the default pool currency in
 		// `create_pool`

@@ -100,11 +100,6 @@ async fn set_router() {
 		ethereum_xcm_transact_call_index: bounded_vec![0],
 		contract_address: H160::from_low_u64_be(3),
 		max_gas_limit: 10,
-		transact_info: XcmTransactInfo {
-			transact_extra_weight: 1.into(),
-			max_weight: 100_000_000_000.into(),
-			transact_extra_weight_signed: None,
-		},
 		fee_currency: currency_id,
 		fee_per_second: 1u128,
 		fee_asset_location: Box::new(currency_location.clone().into_versioned()),

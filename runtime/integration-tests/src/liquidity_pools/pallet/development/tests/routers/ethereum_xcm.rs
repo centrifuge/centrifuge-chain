@@ -104,11 +104,6 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
-						transact_info: XcmTransactInfo {
-							transact_extra_weight: 1.into(),
-							max_weight: 8_000_000_000_000_000.into(),
-							transact_extra_weight_signed: Some(3.into()),
-						},
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
 						fee_asset_location: Box::new(
@@ -142,11 +137,6 @@ fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 						ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 						contract_address: H160::from_low_u64_be(11),
 						max_gas_limit: 700_000,
-						transact_info: XcmTransactInfo {
-							transact_extra_weight: 1.into(),
-							max_weight: 8_000_000_000_000_000.into(),
-							transact_extra_weight_signed: Some(3.into()),
-						},
 						fee_currency: currency_id,
 						fee_per_second: default_per_second(18),
 						fee_asset_location: Box::new(
@@ -208,8 +198,16 @@ fn setup(router_creation_fn: RouterCreationFn) {
 	));
 
 	// Give Alice and BOB enough glimmer to pay for fees
-	OrmlTokens::deposit(glmr_currency_id, &ALICE.into(), 10 * dollar(18));
-	OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
+	OrmlTokens::deposit(
+		glmr_currency_id,
+		&ALICE.into(),
+		1_000_000_000_000 * dollar(18),
+	);
+	OrmlTokens::deposit(
+		glmr_currency_id,
+		&BOB.into(),
+		1_000_000_000_000 * dollar(18),
+	);
 
 	// We first need to register AUSD in the asset registry
 	let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
