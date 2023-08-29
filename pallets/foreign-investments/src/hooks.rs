@@ -136,7 +136,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		let pre_state = InvestmentState::<T>::get(&investor, investment_id);
 
 		// Exit early if there is no foreign investment
-		if pre_state == InvestState::NoState {
+		if pre_state == InvestState::<T>::NoState {
 			return Ok(());
 		}
 

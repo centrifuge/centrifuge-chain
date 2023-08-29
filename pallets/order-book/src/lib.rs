@@ -471,11 +471,6 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 		) -> DispatchResult {
-			#[cfg(feature = "std")]
-			{
-				dbg!(T::MinimumOrderAmount::get(&(currency_in, currency_out)));
-				dbg!(buy_amount);
-			}
 			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
 				Some(amount) if amount <= buy_amount => Ok(()),
 				None => Err(Error::<T>::InvalidTradingPair)?,
@@ -497,11 +492,6 @@ pub mod pallet {
 				.ok_or(Error::<T>::InvalidAssetId)?
 				.decimals;
 
-			#[cfg(feature = "std")]
-			{
-				dbg!(from_decimals);
-				dbg!(to_decimals);
-			}
 			// FIXME: Maybe. This equals 10^(to - from) * to_amount when it should be
 			// multiplied with from_amount? Or
 			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
@@ -561,27 +551,7 @@ pub mod pallet {
 			let max_sell_amount =
 				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
-			#[cfg(feature = "std")]
-			{
-				dbg!(T::TradeableAsset::balance(currency_out, &account));
-				dbg!(T::TradeableAsset::balance(currency_in, &account));
-				dbg!(&buy_amount, &max_sell_amount, sell_rate_limit);
-			}
-
-			#[cfg(feature = "std")]
-			{
-				dbg!(
-					"before holding",
-					T::TradeableAsset::balance(currency_out, &account) > max_sell_amount
-				);
-			}
-
 			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
-
-			#[cfg(feature = "std")]
-			{
-				println!("after holding",);
-			}
 
 			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {
@@ -601,16 +571,6 @@ pub mod pallet {
 					.try_push(order_id)
 					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
 			})?;
-
-			#[cfg(feature = "std")]
-			{
-				dbg!(
-					"create order",
-					currency_in,
-					currency_out,
-					AssetPairOrders::<T>::get(currency_in, currency_out)
-				);
-			}
 
 			<Orders<T>>::insert(order_id, new_order.clone());
 			<UserOrders<T>>::insert(&account, order_id, new_order);

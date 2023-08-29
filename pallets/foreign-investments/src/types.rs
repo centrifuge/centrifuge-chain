@@ -11,11 +11,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::SimpleCurrencyConversion;
 use cfg_types::investments::Swap;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
-use sp_runtime::traits::{EnsureAdd, EnsureSub};
+use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
+
+use crate::Config;
 
 /// Reflects the reason for the last token swap update such that it can be
 /// updated accordingly if the last and current reason mismatch.
@@ -27,31 +30,32 @@ pub enum TokenSwapReason {
 	Redemption,
 }
 
+// TODO: Docs
+pub trait InvestStateConfig {
+	type Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug + Zero;
+	type CurrencyId: Clone + Copy + PartialEq + Debug;
+	type CurrencyConverter: SimpleCurrencyConversion<
+		Balance = Self::Balance,
+		Currency = Self::CurrencyId,
+		Error = sp_runtime::DispatchError,
+	>;
+}
+
+impl<T: Config> InvestStateConfig for T {
+	type Balance = T::Balance;
+	type CurrencyConverter = T::CurrencyConverter;
+	type CurrencyId = T::CurrencyId;
+}
+
 /// Reflects all states a foreign investment can have until it is processed as
 /// an investment via `<T as Config>::Investment`. This includes swapping it
 /// into a pool currency or back, if the investment is decreased before it is
 /// fully processed.
 #[derive(
-	Clone,
-	PartialOrd,
-	Ord,
-	Copy,
-	PartialEq,
-	Eq,
-	RuntimeDebugNoBound,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-// #[cfg_attr(feature = "std", derive(Debug))]
 #[scale_info(skip_type_params(T))]
-// #[codec(mel_bound())]
-pub enum InvestState<
-	// Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	// Currency: Clone + Copy + PartialEq + Debug,
-	T: crate::Config,
-> {
+pub enum InvestState<T: InvestStateConfig> {
 	/// Placeholder state for initialization which will never be stored on
 	/// chain.
 	NoState,
@@ -146,10 +150,89 @@ pub enum InvestState<
 		invest_amount: T::Balance,
 	},
 }
-
-impl<T: crate::Config> Default for InvestState<T> {
+// NOTE: Needed because `T` of `InvestState<T>` cannot be restricted to impl
+// Default
+impl<T: InvestStateConfig> Default for InvestState<T> {
 	fn default() -> Self {
 		Self::NoState
+	}
+}
+
+// NOTE: Needed because `T` of `InvestState<T>` cannot be restricted to impl
+// Copy
+impl<T: InvestStateConfig> Clone for InvestState<T>
+where
+	T::Balance: Clone,
+	T::CurrencyId: Clone,
+	Swap<T::Balance, T::CurrencyId>: Clone,
+{
+	fn clone(&self) -> Self {
+		match self {
+			Self::NoState => Self::NoState,
+			Self::InvestmentOngoing { invest_amount } => Self::InvestmentOngoing {
+				invest_amount: invest_amount.clone(),
+			},
+			Self::ActiveSwapIntoPoolCurrency { swap } => {
+				Self::ActiveSwapIntoPoolCurrency { swap: swap.clone() }
+			}
+			Self::ActiveSwapIntoForeignCurrency { swap } => {
+				Self::ActiveSwapIntoForeignCurrency { swap: swap.clone() }
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap,
+				invest_amount,
+			} => Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: swap.clone(),
+				invest_amount: invest_amount.clone(),
+			},
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+				swap,
+				invest_amount,
+			} => Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+				swap: swap.clone(),
+				invest_amount: invest_amount.clone(),
+			},
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
+				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
+					swap: swap.clone(),
+					done_amount: done_amount.clone(),
+				}
+			}
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, done_amount } => {
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					swap: swap.clone(),
+					done_amount: done_amount.clone(),
+				}
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				done_amount,
+				invest_amount,
+			} => Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: swap.clone(),
+				done_amount: done_amount.clone(),
+				invest_amount: invest_amount.clone(),
+			},
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				done_amount,
+				invest_amount,
+			} => Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: swap.clone(),
+				done_amount: done_amount.clone(),
+				invest_amount: invest_amount.clone(),
+			},
+			Self::SwapIntoForeignDone { done_swap } => Self::SwapIntoForeignDone {
+				done_swap: done_swap.clone(),
+			},
+			Self::SwapIntoForeignDoneAndInvestmentOngoing {
+				done_swap,
+				invest_amount,
+			} => Self::SwapIntoForeignDoneAndInvestmentOngoing {
+				done_swap: done_swap.clone(),
+				invest_amount: invest_amount.clone(),
+			},
+		}
 	}
 }
 
@@ -161,9 +244,11 @@ pub enum InvestTransition<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
 	Currency: Clone + Copy + PartialEq + Debug,
 > {
-	/// Assumes `swap.currency_in` is pool currency as we increase here.
+	/// Assumes `swap.amount` to be denominated in pool currency and
+	/// `swap.currency_in` to be pool currency as we increase here.
 	IncreaseInvestOrder(Swap<Balance, Currency>),
-	/// Assumes `swap.currency_in` is foreign currency as we decrease here.
+	/// Assumes `swap.amount` to be denominated in foreign currency and
+	/// `swap.currency_in` to be foreign currency as we increase here.
 	DecreaseInvestOrder(Swap<Balance, Currency>),
 	/// Implicitly derives `swap.currency_in` and `swap.currency_out` from
 	/// previous state:

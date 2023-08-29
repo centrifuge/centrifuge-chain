@@ -24,7 +24,6 @@
 
 mod add_allow_upgrade;
 mod foreign_investments;
-mod non_foreign_investments;
 mod setup;
 mod transfers;
 

@@ -20,13 +20,15 @@ use sp_runtime::{
 	ArithmeticError, DispatchError,
 };
 
-use crate::types::{InvestState, InvestTransition};
+use crate::types::{InvestState, InvestStateConfig, InvestTransition};
 
-impl<T: crate::Config> InvestState<T>
-// impl<Balance, Currency> InvestState<Balance, Currency>
-// where
-// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-// 	Currency: Clone + Copy + PartialEq + Debug,
+impl<T> InvestState<T>
+where
+	T: InvestStateConfig,
+	/* impl<Balance, Currency> InvestState<Balance, Currency>
+	 * where
+	 * 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	 * 	Currency: Clone + Copy + PartialEq + Debug, */
 {
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see <https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram>.
@@ -37,10 +39,6 @@ impl<T: crate::Config> InvestState<T>
 		&self,
 		transition: InvestTransition<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
-		#[cfg(feature = "std")]
-		{
-			dbg!(&transition);
-		}
 		match transition {
 			InvestTransition::IncreaseInvestOrder(swap) => Self::handle_increase(self, swap),
 			InvestTransition::DecreaseInvestOrder(swap) => Self::handle_decrease(self, swap),
@@ -94,11 +92,13 @@ impl<T: crate::Config> InvestState<T>
 }
 
 // Actual impl of transition
-impl<T: crate::Config> InvestState<T>
-// impl<Balance, Currency> InvestState<Balance, Currency>
-// where
-// 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-// 	Currency: Clone + Copy + PartialEq + Debug,
+impl<T> InvestState<T>
+where
+	T: InvestStateConfig,
+	/* impl<Balance, Currency> InvestState<Balance, Currency>
+	 * where
+	 * 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
+	 * 	Currency: Clone + Copy + PartialEq + Debug, */
 {
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
 	/// invest state diagram:
@@ -137,24 +137,22 @@ impl<T: crate::Config> InvestState<T>
 	///   by 500. The resulting state is
 	/// `(done_amount = 1500, pool_swap.amount = 100, investing = 500)`.
 	///
-	/// NOTE: We can ignore handling all states which include
-	/// `*SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency*` as we
-	/// consume the done amount and transition in the post transition phase.
-	/// To be safe and to not make any unhandled assumptions, we throw
-	/// `DispatchError::Other` for these states though we need to make sure
-	/// this can never occur!
+	/// NOTES:
+	/// * We can never directly compare `swap.amount` and `invest_amount` with
+	///   `foreign_swap.amount` and `done_amount` if the currencies mismatch as
+	///   the former pair is denominated in pool currency and the latter one in
+	///   foreign currency.
+	/// * We can ignore handling all states which include `*SwapIntoForeignDone`
+	///   without `ActiveSwapIntoForeignCurrency*` as we consume the done amount
+	///   and transition in the post transition phase. To be safe and to not
+	///   make any unhandled assumptions, we throw `DispatchError::Other` for
+	///   these states though we need to make sure this can never occur!
 	fn handle_increase(
 		&self,
 		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_increase_non_foreign(self, swap);
-		}
-		#[cfg(feature = "std")]
-		{
-			println!("inside handle increase");
-			// dbg!(&self);
-			dbg!(&swap);
 		}
 
 		match &self {
@@ -180,40 +178,47 @@ impl<T: crate::Config> InvestState<T>
 			// well adding foreign_done amount by the minimum of active swap amounts
 			Self::ActiveSwapIntoForeignCurrency { swap: foreign_swap } => {
 				swap.ensure_currencies_match(foreign_swap, false)?;
-				let invest_amount = swap.amount.min(foreign_swap.amount);
-				let done_amount = swap.amount.min(foreign_swap.amount);
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_in,
+					swap.currency_out,
+					foreign_swap.amount,
+				)?;
+				let pool_amount_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
 
-				match swap.amount.cmp(&foreign_swap.amount) {
-					// pool swap amount is immediately invested and done amount increased equally
-					Ordering::Equal => {
-						Ok(
-							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-								swap: Swap {
-									// safe since swap.amount < foreign_swap.amount
-									amount: foreign_swap.amount - swap.amount,
-									..*foreign_swap
-								},
-								done_amount,
-								invest_amount,
+				match swap.amount.cmp(&foreign_amount_pool_denominated) {
+					// Pool swap amount is immediately fulfilled, i.e. invested and marked as done into foreign
+					Ordering::Less => {
+						Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+							swap: Swap {
+								amount: foreign_swap
+									.amount
+									.ensure_sub(pool_amount_foreign_denominated)?,
+								..*foreign_swap
 							},
-						)
+							done_amount: pool_amount_foreign_denominated,
+							invest_amount: swap.amount,
+						})
 					}
-					// swap amount is immediately invested and done amount increased equally
-					Ordering::Less => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
+					// Both opposite swaps are immediately fulfilled, i.e. invested and marked as done
+					Ordering::Equal => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 						done_swap: *foreign_swap,
-						invest_amount,
+						invest_amount: swap.amount,
 					}),
-					// foreign swap amount is immediately invested and done amount increased equally
+					// Foreign swap amount is immediately fulfilled, i.e. invested and marked as done
 					Ordering::Greater => {
 						Ok(
 							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe since swap.amount > foreign_swap.amount
-									amount: swap.amount - foreign_swap.amount,
+									// safe since amount_in_foreign > foreign_swap.amount
+									amount: swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 									..swap
 								},
-								done_amount,
-								invest_amount,
+								done_amount: foreign_swap.amount,
+								invest_amount: swap.amount,
 							},
 						)
 					}
@@ -241,18 +246,29 @@ impl<T: crate::Config> InvestState<T>
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, false)?;
-				let invest_amount =
-					invest_amount.ensure_add(swap.amount.min(foreign_swap.amount))?;
-				let done_amount = swap.amount.min(foreign_swap.amount);
 
-				match swap.amount.cmp(&foreign_swap.amount) {
-					// pool swap amount is immediately invested and done amount increased equally
-					Ordering::Equal => {
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_in,
+					swap.currency_out,
+					foreign_swap.amount,
+				)?;
+				let pool_amount_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+				let invest_amount =
+					invest_amount.ensure_add(swap.amount.min(foreign_amount_pool_denominated))?;
+				let done_amount = pool_amount_foreign_denominated.min(foreign_swap.amount);
+
+				match swap.amount.cmp(&foreign_amount_pool_denominated) {
+					// Pool swap amount is immediately fulfilled, i.e. invested and marked as done
+					// into foreign
+					Ordering::Less => {
 						Ok(
 							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe since swap.amount < foreign_swap.amount
-									amount: foreign_swap.amount - swap.amount,
+									amount: foreign_swap.amount.ensure_sub(pool_amount_foreign_denominated)?,
 									..*foreign_swap
 								},
 								done_amount,
@@ -260,18 +276,17 @@ impl<T: crate::Config> InvestState<T>
 							},
 						)
 					}
-					// swap amount is immediately invested and done amount increased equally
-					Ordering::Less => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
+					// Both opposite swaps are immediately fulfilled, i.e. invested and marked as done
+					Ordering::Equal => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 						done_swap: *foreign_swap,
 						invest_amount,
 					}),
-					// foreign swap amount is immediately invested and done amount increased equally
+					// Foreign swap amount is immediately fulfilled, i.e. invested and marked as done
 					Ordering::Greater => {
 						Ok(
 							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe since swap.amount > foreign_swap.amount
-									amount: swap.amount - foreign_swap.amount,
+									amount: swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 									..swap
 								},
 								done_amount,
@@ -288,25 +303,30 @@ impl<T: crate::Config> InvestState<T>
 				done_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, false)?;
-				let invest_amount = swap.amount.min(foreign_swap.amount);
-				let done_amount = invest_amount.ensure_add(*done_amount)?;
 
-				// pool swap amount is immediately invested and done amount increased equally
-				match swap.amount.cmp(&foreign_swap.amount) {
-					Ordering::Equal => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
-						done_swap: Swap {
-							amount: done_amount,
-							..*foreign_swap
-						},
-						invest_amount,
-					}),
-					// swap amount is immediately invested and done amount increased equally
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_in,
+					swap.currency_out,
+					foreign_swap.amount,
+				)?;
+				let pool_amount_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+				let invest_amount = swap.amount.min(foreign_amount_pool_denominated);
+				let done_amount = pool_amount_foreign_denominated
+					.min(foreign_swap.amount)
+					.ensure_add(*done_amount)?;
+
+				match swap.amount.cmp(&foreign_amount_pool_denominated) {
+					// Pool swap amount is immediately fulfilled, i.e. invested and marked as done
+					// into foreign
 					Ordering::Less => {
 						Ok(
 							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe since swap.amount < foreign_swap.amount
-									amount: foreign_swap.amount - swap.amount,
+									amount: foreign_swap.amount.ensure_sub(pool_amount_foreign_denominated)?,
 									..*foreign_swap
 								},
 								done_amount,
@@ -314,13 +334,22 @@ impl<T: crate::Config> InvestState<T>
 							},
 						)
 					}
-					// foreign swap amount is immediately invested and done amount increased equally
+					// Both opposite swaps are immediately fulfilled, i.e. invested and marked as
+					// done
+					Ordering::Equal => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
+						done_swap: Swap {
+							amount: done_amount,
+							..*foreign_swap
+						},
+						invest_amount,
+					}),
+					// Foreign swap amount is immediately fulfilled, i.e. invested and marked as
+					// done
 					Ordering::Greater => {
 						Ok(
 							Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe since swap.amount > foreign_swap.amount
-									amount: swap.amount - foreign_swap.amount,
+									amount: swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 									..swap
 								},
 								done_amount,
@@ -338,15 +367,36 @@ impl<T: crate::Config> InvestState<T>
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, false)?;
+
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_in,
+					swap.currency_out,
+					foreign_swap.amount,
+				)?;
+				let pool_amount_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
 				let invest_amount =
-					invest_amount.ensure_add(swap.amount.min(foreign_swap.amount))?;
-				let done_amount = swap
-					.amount
+					invest_amount.ensure_add(swap.amount.min(foreign_amount_pool_denominated))?;
+				let done_amount = pool_amount_foreign_denominated
 					.min(foreign_swap.amount)
 					.ensure_add(*done_amount)?;
 
-				match swap.amount.cmp(&foreign_swap.amount) {
-					// pool swap amount is immediately invested and done amount increased equally
+				match swap.amount.cmp(&foreign_amount_pool_denominated) {
+					// Pool swap amount is immediately fulfilled, i.e. invested and marked as done into foreign
+					Ordering::Less => Ok(
+						Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+							swap: Swap {
+								amount: foreign_swap.amount.ensure_sub(pool_amount_foreign_denominated)?,
+								..*foreign_swap
+							},
+							done_amount,
+							invest_amount,
+						},
+					),
+					// Both opposite swaps are immediately fulfilled, i.e. invested and marked as done
 					Ordering::Equal => Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 						done_swap: Swap {
 							amount: done_amount,
@@ -354,24 +404,11 @@ impl<T: crate::Config> InvestState<T>
 						},
 						invest_amount,
 					}),
-					// swap amount is immediately invested and done amount increased equally
-					Ordering::Less => Ok(
-						Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-							swap: Swap {
-								// safe since swap.amount < foreign_swap.amount
-								amount: foreign_swap.amount - swap.amount,
-								..*foreign_swap
-							},
-							done_amount,
-							invest_amount,
-						},
-					),
-					// foreign swap amount is immediately invested and done amount increased equally
+					// Foreign swap amount is immediately fulfilled, i.e. invested and marked as done
 					Ordering::Greater => Ok(
 						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 							swap: Swap {
-								// safe since swap.amount > foreign_swap.amount
-								amount: swap.amount - foreign_swap.amount,
+								amount: swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 								..swap
 							},
 							done_amount,
@@ -409,20 +446,12 @@ impl<T: crate::Config> InvestState<T>
 	/// To be safe and to not make any unhandled assumptions, we throw
 	/// `DispatchError::Other` for these states though we need to make sure
 	/// this can never occur!
-	// FIXME: Currency conversion off
 	fn handle_decrease(
 		&self,
 		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		if swap.currency_in == swap.currency_out {
 			return Self::handle_decrease_non_foreign(self, swap);
-		}
-
-		#[cfg(feature = "std")]
-		{
-			println!("handle_decrease");
-			// dbg!(&self);
-			dbg!(&swap);
 		}
 
 		match &self {
@@ -434,14 +463,17 @@ impl<T: crate::Config> InvestState<T>
 			},
 			// Increment foreign swap amount up to ongoing investment
 			InvestState::InvestmentOngoing { invest_amount } => {
-				match swap.amount.cmp(invest_amount) {
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+
+				match foreign_amount_pool_denominated.cmp(invest_amount) {
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: T::CurrencyConverter::stable_to_stable(swap.currency_in, swap.currency_out, swap.amount)?,
-								..swap
-							},
-							invest_amount: *invest_amount - swap.amount,
+							swap,
+							invest_amount: invest_amount.ensure_sub(foreign_amount_pool_denominated)?,
 						})
 					},
 					Ordering::Equal => {
@@ -457,20 +489,25 @@ impl<T: crate::Config> InvestState<T>
 			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, false)?;
 
-				match swap.amount.cmp(&pool_swap.amount) {
-					Ordering::Equal => {
-						Ok(Self::SwapIntoForeignDone { done_swap: swap })
-					},
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+
+				match foreign_amount_pool_denominated.cmp(&pool_swap.amount) {
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
-								// safe because swap.amount < pool_swap.amount
-								amount: pool_swap.amount - swap.amount,
+								amount: pool_swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 								..*pool_swap
 							},
 							done_amount: swap.amount,
 						})
 					}
+					Ordering::Equal => {
+						Ok(Self::SwapIntoForeignDone { done_swap: swap })
+					},
 					// should never occur but let's be safe here
 					Ordering::Greater => {
 						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
@@ -483,51 +520,61 @@ impl<T: crate::Config> InvestState<T>
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(pool_swap, false)?;
-				let done_amount = swap.amount.min(pool_swap.amount);
-				let invest_amount = invest_amount.ensure_sub(done_amount)?;
-				let max_decrease_amount = pool_swap.amount.ensure_add(invest_amount)?;
 
-				#[cfg(feature = "std")]{
-					dbg!(&swap.amount, pool_swap.amount, &max_decrease_amount);
-				}
+				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+				let pool_amount_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_in,
+					swap.currency_out,
+					pool_swap.amount,
+				)?;
+				let max_decrease_amount_pool_denominated = pool_swap.amount.ensure_add(*invest_amount)?;
 
-				if swap.amount < pool_swap.amount {
+				// Decrease swap into pool
+				if foreign_amount_pool_denominated < pool_swap.amount {
 					Ok(
 						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 							swap: Swap {
-								// safe because done_amount is min
-								amount: pool_swap.amount - done_amount,
+								amount: pool_swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
 								..*pool_swap
 							},
-							done_amount,
-							invest_amount,
+							done_amount: swap.amount,
+							invest_amount: *invest_amount,
 						},
 					)
-				} else if swap.amount == pool_swap.amount {
+				}
+				// Active swaps cancel out each other
+				else if foreign_amount_pool_denominated == pool_swap.amount {
 					Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 						done_swap: swap,
-						invest_amount,
+						invest_amount: *invest_amount,
 					})
-				} else if swap.amount < max_decrease_amount {
+				}
+				// Decrement exceeds swap into pool and partially ongoing investment
+				else if foreign_amount_pool_denominated < max_decrease_amount_pool_denominated {
 					Ok(
 						Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 							swap: Swap {
-								// safe because done_amount is min
-								amount: swap.amount - done_amount,
+								amount: swap.amount.ensure_sub(pool_amount_foreign_denominated)?,
 								..swap
 							},
-							done_amount,
-							invest_amount,
+							done_amount: pool_amount_foreign_denominated,
+							// Foreign swap amount is larger than pool swap amount
+							invest_amount: max_decrease_amount_pool_denominated.ensure_sub(foreign_amount_pool_denominated)?,
 						},
 					)
-				} else if swap.amount == max_decrease_amount {
+				}
+				// Decrement cancels entire swap into pool and ongoing investment
+				else if swap.amount == max_decrease_amount_pool_denominated {
 					Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 						swap: Swap {
-							// safe because done_amount is min
-							amount: swap.amount - done_amount,
+							amount: swap.amount.ensure_sub(pool_amount_foreign_denominated)?,
 							..swap
 						},
-						done_amount,
+						done_amount: pool_amount_foreign_denominated,
 					})
 				}
 				// should never occur but let's be safe here
@@ -541,14 +588,19 @@ impl<T: crate::Config> InvestState<T>
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, true)?;
-				let amount = foreign_swap.amount.ensure_add(swap.amount)?;
 
-				match swap.amount.cmp(invest_amount) {
+				let amount = foreign_swap.amount.ensure_add(swap.amount)?;
+				let swap_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+
+				match swap_amount_pool_denominated.cmp(invest_amount) {
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
 							swap: Swap { amount, ..swap },
-							// safe because invest_amount > swap_amount
-							invest_amount: *invest_amount - swap.amount,
+							invest_amount: invest_amount.ensure_sub(swap_amount_pool_denominated)?,
 						})
 					},
 					Ordering::Equal => {
@@ -568,16 +620,21 @@ impl<T: crate::Config> InvestState<T>
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, true)?;
-				let amount = foreign_swap.amount.ensure_add(swap.amount)?;
 
-				match swap.amount.cmp(invest_amount) {
+				let amount = foreign_swap.amount.ensure_add(swap.amount)?;
+				let swap_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+
+				match swap_amount_pool_denominated.cmp(invest_amount) {
 					Ordering::Less => {
 						Ok(
 							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap { amount, ..swap },
 								done_amount: *done_amount,
-								// safe because swap.amount < invest_amount
-								invest_amount: *invest_amount - swap.amount,
+								invest_amount: invest_amount.ensure_sub(swap_amount_pool_denominated)?,
 							},
 						)
 					},
@@ -613,20 +670,18 @@ impl<T: crate::Config> InvestState<T>
 	/// This transition should always increase the active ongoing
 	/// investment.
 	///
-	/// NOTE: We can ignore handling all states which include
-	/// `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency` as we
-	/// consume the done amount and transition in the post transition phase.
-	/// Moreover, we can ignore handling all states which do not include
-	/// `ActiveSwapInto{Pool, Return}Currency` as else there cannot be an active
-	/// token swap for investments.
-	/// To be safe and to not make any unhandled assumptions, we throw
-	/// `DispatchError::Other` for these states though we need to make sure
-	/// this can never occur!
-
-	// FIXME(@review): This handler assumes partial fulfillments and 1-to-1
-	// conversion of amounts, i.e., 100 `foreign_currency` equals 100
-	// `pool_currency`. If we use the CurrencyConverter, the amounts could be off as
-	// the `CurrencyConverter` is decoupled from the `TokenSwaps` trait.
+	/// NOTES:
+	/// * The fulfilled swap will always match the current state (i.e. IntoPool
+	///   or IntoForeign) and we do not need to denominate amounts into the
+	///   opposite currency.
+	/// * We can ignore handling all states which include `SwapIntoForeignDone`
+	///   without `ActiveSwapIntoForeignCurrency` as we consume the done amount
+	///   and transition in the post transition phase. Moreover, we can ignore
+	///   handling all states which do not include `ActiveSwapInto{Pool,
+	///   Return}Currency` as else there cannot be an active token swap for
+	///   investments. To be safe and to not make any unhandled assumptions, we
+	///   throw `DispatchError::Other` for these states though we need to make
+	///   sure this can never occur!
 	fn handle_fulfilled_swap_order(
 		&self,
 		swap: Swap<T::Balance, T::CurrencyId>,
@@ -649,8 +704,7 @@ impl<T: crate::Config> InvestState<T>
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
-								// safe because pool_swap.amount > swap.amount
-								amount: pool_swap.amount - swap.amount,
+								amount: pool_swap.amount.ensure_sub(swap.amount)?,
 								..swap
 							},
 							invest_amount: swap.amount,
@@ -673,8 +727,7 @@ impl<T: crate::Config> InvestState<T>
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
-								// safe because foreign_swap.amount > swap.amount
-								amount: foreign_swap.amount - swap.amount,
+								amount: foreign_swap.amount.ensure_sub(swap.amount)?,
 								..swap
 							},
 							done_amount: swap.amount,
@@ -701,8 +754,7 @@ impl<T: crate::Config> InvestState<T>
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
-								// safe because pool_swap.amount > swap.amount
-								amount: pool_swap.amount - swap.amount,
+								amount: pool_swap.amount.ensure_sub(swap.amount)?,
 								..swap
 							},
 							invest_amount,
@@ -732,8 +784,7 @@ impl<T: crate::Config> InvestState<T>
 						Ok(
 							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe because foreign_swap.amount > swap.amount
-									amount: foreign_swap.amount - swap.amount,
+									amount: foreign_swap.amount.ensure_sub(swap.amount)?,
 									..swap
 								},
 								done_amount: swap.amount,
@@ -767,8 +818,7 @@ impl<T: crate::Config> InvestState<T>
 					Ordering::Less => {
 						Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 							swap: Swap {
-								// safe because foreign_swap.amount > swap.amount
-								amount: foreign_swap.amount - swap.amount,
+								amount: foreign_swap.amount.ensure_sub(swap.amount)?,
 								..swap
 							},
 							done_amount,
@@ -803,8 +853,7 @@ impl<T: crate::Config> InvestState<T>
 						Ok(
 							Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 								swap: Swap {
-									// safe because foreign_swap.amount > swap.amount
-									amount: foreign_swap.amount - swap.amount,
+									amount: foreign_swap.amount.ensure_sub(swap.amount)?,
 									..swap
 								},
 								done_amount,
@@ -868,15 +917,19 @@ impl<T: crate::Config> InvestState<T>
 	/// Handle decrease transitions for the same incoming and outgoing
 	/// currencies.
 	///
-	/// NOTE: We can ignore handling all states which include
-	/// `SwapIntoForeignDone` without `ActiveSwapIntoForeignCurrency` as we
-	/// consume the done amount and transition in the post transition phase.
-	/// Moreover, we can ignore any state which involves an active swap, i.e.
-	/// `ActiveSwapInto{Pool, Return}Currency`, as these must not exist if the
-	/// in and out currency is the same.
-	/// To be safe and to not make any unhandled assumptions, we throw
-	/// `DispatchError::Other` for these states though we need to make sure
-	/// this can never occur!
+	/// NOTES:
+	/// * We can never directly compare `swap.amount` or `done_amount` with
+	///   `pool_swap.amount` and `invest_amount` if the currencies mismatch as
+	///   the former pair is denominated in foreign currency and the latter pair
+	///   in pool currency.
+	/// * We can ignore handling all states which include `SwapIntoForeignDone`
+	///   without `ActiveSwapIntoForeignCurrency` as we consume the done amount
+	///   and transition in the post transition phase. Moreover, we can ignore
+	///   any state which involves an active swap, i.e. `ActiveSwapInto{Pool,
+	///   Return}Currency`, as these must not exist if the in and out currency
+	///   is the same. To be safe and to not make any unhandled assumptions, we
+	///   throw `DispatchError::Other` for these states though we need to make
+	///   sure this can never occur!
 	fn handle_decrease_non_foreign(
 		&self,
 		swap: Swap<T::Balance, T::CurrencyId>,
@@ -906,7 +959,7 @@ impl<T: crate::Config> InvestState<T>
 	/// * Else the unprocessed amount should be zero. If it is not, state is
 	///   corrupted as this reflects the investment was increased improperly.
 	fn handle_collect(&self, unprocessed_amount: T::Balance) -> Result<Self, DispatchError> {
-		match self.clone() {
+		match self {
 			Self::InvestmentOngoing { .. } => {
 				if unprocessed_amount.is_zero() {
 					Ok(Self::NoState)
@@ -918,20 +971,20 @@ impl<T: crate::Config> InvestState<T>
 			}
 			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => {
 				if unprocessed_amount.is_zero() {
-					Ok(Self::ActiveSwapIntoPoolCurrency { swap })
+					Ok(Self::ActiveSwapIntoPoolCurrency { swap: *swap })
 				} else {
 					Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-						swap,
+						swap: *swap,
 						invest_amount: unprocessed_amount,
 					})
 				}
 			}
 			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => {
 				if unprocessed_amount.is_zero() {
-					Ok(Self::ActiveSwapIntoForeignCurrency { swap })
+					Ok(Self::ActiveSwapIntoForeignCurrency { swap: *swap })
 				} else {
 					Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-						swap,
+						swap: *swap,
 						invest_amount: unprocessed_amount,
 					})
 				}
@@ -942,17 +995,15 @@ impl<T: crate::Config> InvestState<T>
 				..
 			} => {
 				if unprocessed_amount.is_zero() {
-					Ok(
-						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
-							swap,
-							done_amount,
-						},
-					)
+					Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
+						swap: *swap,
+						done_amount: *done_amount,
+					})
 				} else {
 					Ok(
 						Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-							swap,
-							done_amount,
+							swap: *swap,
+							done_amount: *done_amount,
 							invest_amount: unprocessed_amount,
 						},
 					)
@@ -960,10 +1011,12 @@ impl<T: crate::Config> InvestState<T>
 			}
 			Self::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, .. } => {
 				if unprocessed_amount.is_zero() {
-					Ok(Self::SwapIntoForeignDone { done_swap })
+					Ok(Self::SwapIntoForeignDone {
+						done_swap: *done_swap,
+					})
 				} else {
 					Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
-						done_swap,
+						done_swap: *done_swap,
 						invest_amount: unprocessed_amount,
 					})
 				}
@@ -975,20 +1028,20 @@ impl<T: crate::Config> InvestState<T>
 			} => {
 				if unprocessed_amount.is_zero() {
 					Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-						swap,
-						done_amount,
+						swap: *swap,
+						done_amount: *done_amount,
 					})
 				} else {
 					Ok(Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-						swap,
-						done_amount,
+						swap: *swap,
+						done_amount: *done_amount,
 						invest_amount: unprocessed_amount,
 					})
 				}
 			}
 			state => {
 				if unprocessed_amount.is_zero() {
-					Ok(state)
+					Ok(state.clone())
 				} else {
 					Err(DispatchError::Other(
 						"Invalid invest state when transitioning epoch execution",

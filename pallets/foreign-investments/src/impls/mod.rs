@@ -55,21 +55,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		// Translate amount from foreign to pool_currency
-		let amount =
-			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
+		let amount_pool_denominated =
+			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		let post_state = pre_state
 			.transition(InvestTransition::IncreaseInvestOrder(Swap {
 				currency_in: pool_currency,
 				currency_out: foreign_currency,
-				amount,
+				amount: amount_pool_denominated,
 			}))
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
@@ -88,17 +87,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		// Translate amount from foreign to pool_currency
-		let amount =
-			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		// TODO(future): Add implicit collection or error handling (i.e. message to
 		// source domain)
 		ensure!(
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
-		let pre_state = InvestmentState::<T>::get(who, investment_id);
 
+		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		ensure!(
 			pre_state.get_investing_amount() >= amount,
 			Error::<T>::InvestError(InvestError::Decrease)
@@ -113,7 +109,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("InvestState transition error: {:?}", e);
-				Error::<T>::from(InvestError::Increase)
+				Error::<T>::from(InvestError::Decrease)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
 
@@ -391,6 +387,13 @@ impl<T: Config> Pallet<T> {
 			},
 		}
 		.map(|(invest_state, maybe_swap, invest_amount)| {
+			// Must update investment amount before handling swap as in case of decrease, 
+			// updating the swap transfers the currency from the investment account to the 
+			// investor which is required for placing the swap order
+			if T::Investment::investment(who, investment_id)? != invest_amount {
+				T::Investment::update_investment(who, investment_id, invest_amount)?;
+			}
+
 			let (maybe_invest_state_prio, maybe_new_redeem_state) = Self::handle_swap_order(who, investment_id, maybe_swap,  TokenSwapReason::Investment)?;
 			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
 			if let Some(invest_state_prio) = maybe_invest_state_prio {
@@ -399,11 +402,6 @@ impl<T: Config> Pallet<T> {
 				Self::deposit_investment_event(who, investment_id, Some(invest_state));
 			}
 			Self::deposit_redemption_event(who, investment_id, maybe_new_redeem_state);
-
-			if T::Investment::investment(who, investment_id)? != invest_amount {
-				// Finally, update investment after all states have been updated
-				T::Investment::update_investment(who, investment_id, invest_amount)?;
-			}
 
 			// Send notification after updating invest as else funds are still locked in investment account
 			if let Some((foreign_currency, decreased_amount)) = maybe_executed_decrease {

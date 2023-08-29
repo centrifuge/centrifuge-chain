@@ -1891,10 +1891,6 @@ const MIN_DEV_NATIVE_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * CFG;
 
 parameter_type_with_key! {
 		pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
-			#[cfg(feature = "std")]{
-				dbg!(&pair);
-				dbg!(MIN_DEV_AUSD_ORDER);
-			}
 				match pair {
 						(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
 						(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
