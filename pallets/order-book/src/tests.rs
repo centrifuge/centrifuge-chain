@@ -70,7 +70,7 @@ fn removing_trading_pair_works() {
 
 #[test]
 fn removing_trading_pair_fails() {
-	new_test_ext_no_pair().execute_with(|| {
+	new_test_ext().execute_with(|| {
 		assert_noop!(
 			OrderBook::rm_trading_pair(
 				RuntimeOrigin::signed(ACCOUNT_0),
@@ -81,7 +81,7 @@ fn removing_trading_pair_fails() {
 		);
 		assert_eq!(
 			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			100 * CURRENCY_AUSD_DECIMALS
+			5 * CURRENCY_AUSD_DECIMALS
 		);
 	})
 }
@@ -110,12 +110,13 @@ fn updating_min_order_fails() {
 				RuntimeOrigin::signed(ACCOUNT_0),
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
+				1 * CURRENCY_AUSD_DECIMALS
 			),
 			DispatchError::BadOrigin
 		);
 		assert_eq!(
 			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			100 * CURRENCY_AUSD_DECIMALS
+			5 * CURRENCY_AUSD_DECIMALS
 		);
 	})
 }
@@ -128,12 +129,9 @@ fn updating_min_order_fails_if_not_set() {
 				RawOrigin::Root.into(),
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
+				1 * CURRENCY_AUSD_DECIMALS
 			),
 			Error::<Runtime>::InvalidTradingPair
-		);
-		assert_eq!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			100 * CURRENCY_AUSD_DECIMALS
 		);
 	})
 }
