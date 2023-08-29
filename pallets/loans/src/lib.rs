@@ -471,7 +471,7 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(pool_id)?;
+					let mut active_loan = created_loan.activate(pool_id, amount.clone())?;
 					active_loan.borrow(&amount, pool_id)?;
 
 					Self::insert_active_loan(pool_id, loan_id, active_loan)?

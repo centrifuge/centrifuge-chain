@@ -52,10 +52,7 @@ pub mod pallet {
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use orml_traits::{
-		asset_registry::{self, Inspect as _},
-		GetByKey,
-	};
+	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::BaseArithmetic;
 	use sp_runtime::{
@@ -65,6 +62,7 @@ pub mod pallet {
 		},
 		FixedPointNumber, FixedPointOperand,
 	};
+	use sp_std::cmp::Ordering;
 
 	use super::*;
 
@@ -149,13 +147,6 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// Minimum order amount, this allows us to stop spammers
-		/// From making large number of small orders
-		type MinimumOrderAmount: GetByKey<
-			(Self::AssetCurrencyId, Self::AssetCurrencyId),
-			Option<Self::Balance>,
-		>;
-
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
 		type OrderPairVecSize: Get<u32>;
@@ -166,6 +157,9 @@ pub mod pallet {
 			Status = Swap<Self::Balance, Self::AssetCurrencyId>,
 			Error = DispatchError,
 		>;
+
+		/// The admin origin of this pallet
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Type for pallet weights
 		type Weights: WeightInfo;
@@ -243,6 +237,24 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Storage of valid order pairs.
+	/// Stores:
+	///  - key1 -> AssetIn
+	///  - key2 -> AssetOut
+	///
+	/// Stores the minimum `buy_amount` of `asset_in` when buying
+	/// with `asset_out`
+	#[pallet::storage]
+	pub type TradingPair<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		T::AssetCurrencyId,
+		Twox64Concat,
+		T::AssetCurrencyId,
+		T::Balance,
+		ResultQuery<Error<T>::InvalidTradingPair>,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -282,6 +294,24 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			sell_rate_limit: T::SellRatio,
+		},
+		/// Event emitted when a valid trading pair is added.
+		TradingPairAdded {
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+			min_order: T::Balance,
+		},
+		/// Event emitted when a valid trading pair is removed.
+		TradingPairRemoved {
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+		},
+		/// Event emitted when a minimum order amount for a trading pair is
+		/// updated.
+		MinOrderUpdated {
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+			min_order: T::Balance,
 		},
 	}
 
@@ -440,6 +470,84 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Adds a valid trading pair.
+		#[pallet::call_index(4)]
+		#[pallet::weight(T::Weights::add_trading_pair())]
+		pub fn add_trading_pair(
+			origin: OriginFor<T>,
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+			min_order: T::Balance,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			// We do not check, we just overwrite as this is an admin action.
+			TradingPair::<T>::insert(asset_in, asset_out, min_order);
+
+			Self::deposit_event(Event::<T>::TradingPairAdded {
+				asset_in,
+				asset_out,
+				min_order,
+			});
+
+			Ok(())
+		}
+
+		/// Removes a valid trading pair
+		//
+		// NOTE: We do not need to remove existing order as
+		//       fulfilling orders is not checking for a valid trading pair.
+		//       Existing orders will just fade out by by being canceled
+		//       or fulfilled.
+		#[pallet::call_index(5)]
+		#[pallet::weight(T::Weights::rm_trading_pair())]
+		pub fn rm_trading_pair(
+			origin: OriginFor<T>,
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			// We do not check, we just remove as this is an admin action.
+			TradingPair::<T>::remove(asset_in, asset_out);
+
+			Self::deposit_event(Event::<T>::TradingPairRemoved {
+				asset_in,
+				asset_out,
+			});
+
+			Ok(())
+		}
+
+		/// Sets the minimum order amount for a given trading pair.
+		/// If the trading pair is not yet added this errors out.
+		//
+		// NOTE: We do not need to update any existing orders as fulfillment does
+		//       not verify the validity of the order that is to be fulfilled.
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::Weights::update_min_order())]
+		pub fn update_min_order(
+			origin: OriginFor<T>,
+			asset_in: T::AssetCurrencyId,
+			asset_out: T::AssetCurrencyId,
+			min_order: T::Balance,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			// try_mutate is a pain with the direct error return. But we do want to only
+			// update if the pair exists.
+			let _old_min_order = TradingPair::<T>::get(&asset_in, &asset_out)?;
+			TradingPair::<T>::insert(&asset_in, &asset_out, min_order);
+
+			Self::deposit_event(Event::<T>::MinOrderUpdated {
+				asset_in,
+				asset_out,
+				min_order,
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -471,10 +579,10 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 		) -> DispatchResult {
-			match T::MinimumOrderAmount::get(&(currency_in, currency_out)) {
-				Some(amount) if amount <= buy_amount => Ok(()),
-				None => Err(Error::<T>::InvalidTradingPair)?,
-				_ => Err(Error::<T>::InsufficientOrderSize)?,
+			let min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
+			match buy_amount.cmp(&min_amount) {
+				Ordering::Less => Err(Error::<T>::InsufficientOrderSize.into()),
+				Ordering::Equal | Ordering::Greater => Ok(()),
 			}
 		}
 
@@ -705,17 +813,8 @@ pub mod pallet {
 			<Orders<T>>::contains_key(order)
 		}
 
-		/// Check whether there already exist orders for the given trading pair.
-		fn order_pair_exists(
-			currency_in: Self::CurrencyId,
-			currency_out: Self::CurrencyId,
-		) -> bool {
-			!AssetPairOrders::<T>::get(currency_in, currency_out)
-				.len()
-				.is_zero()
+		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
+			TradingPair::<T>::get(currency_in, currency_out).is_ok()
 		}
-
-		// TODO: Either expose conversion here or move to runtime_common
-		// fn
 	}
 }

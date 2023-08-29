@@ -62,7 +62,6 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
-use pallet_foreign_investments::hooks::FulfilledSwapOrderHook;
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -1768,39 +1767,12 @@ parameter_types! {
 	pub const OrderPairVecSize: u32 = 1_000_000u32;
 }
 
-// FIXME: Do not merge before discussing this!
-// Minimum order amounts for orderbook orders v1 implementation.
-// This will be replaced by runtime specifiable minimum,
-// which will likely be set by governance.
-const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
-const DEV_USDT_DECIMALS: u128 = 1_000_000;
-const DEV_AUSD_DECIMALS: u128 = 1_000_000_000_000;
-const DEFAULT_DEV_MIN_ORDER: u128 = 5;
-const MIN_DEV_USDT_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * DEV_USDT_DECIMALS;
-const MIN_DEV_AUSD_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * DEV_AUSD_DECIMALS;
-const MIN_DEV_NATIVE_ORDER: u128 = DEFAULT_DEV_MIN_ORDER * CFG;
-
-parameter_type_with_key! {
-	pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
-			match pair {
-					(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-					(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
-					(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-					(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
-					(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
-					(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
-					_ => None
-			}
-	};
-}
-
 impl pallet_order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type FulfilledOrderHook = FulfilledSwapOrderHook<Runtime>;
-	type MinimumOrderAmount = MinimumOrderAmount;
+	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;

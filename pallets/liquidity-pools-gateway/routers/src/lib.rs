@@ -11,6 +11,19 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+// polkadot/blob/19f6665a6162e68cd2651f5fe3615d6676821f90/xcm/src/v3/mod.rs#
+// L1193 Defensively we increase this value to allow UMP fragments through
+// xcm-transactor to prepare our runtime for a relay upgrade where the xcm
+// instruction weights are not ZERO hardcoded. If that happens stuff will break
+// in our side. Rationale behind the value: e.g. staking unbond will go above
+// 64kb and thus required_weight_at_most must be below overall weight but still
+// above whatever value we decide to set. For this reason we set here a value
+// that makes sense for the overall weight.
+pub const DEFAULT_PROOF_SIZE: u64 = 256 * 1024;
+
+// See moonbeam docs: https://docs.moonbeam.network/builders/interoperability/xcm/fees/#:~:text=As%20previously%20mentioned%2C%20Polkadot%20currently,1%2C000%2C000%2C000%20weight%20units%20per%20instruction
+pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
+
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -197,19 +210,7 @@ where
 	/// Sets the weight information for the provided XCM domain location, and
 	/// the fee per second for the provided fee asset location.
 	pub fn do_init(&self) -> DispatchResult {
-		pallet_xcm_transactor::Pallet::<T>::set_transact_info(
-			<T as frame_system::Config>::RuntimeOrigin::root(),
-			self.xcm_domain.location.clone(),
-			self.xcm_domain.transact_info.transact_extra_weight,
-			self.xcm_domain.transact_info.max_weight,
-			self.xcm_domain.transact_info.transact_extra_weight_signed,
-		)?;
-
-		pallet_xcm_transactor::Pallet::<T>::set_fee_per_second(
-			<T as frame_system::Config>::RuntimeOrigin::root(),
-			self.xcm_domain.fee_asset_location.clone(),
-			self.xcm_domain.fee_per_second,
-		)
+		Ok(())
 	}
 
 	/// Encodes the message to the required format and executes the
@@ -217,6 +218,27 @@ where
 	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResult {
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
+
+		// Note: We are using moonbeams calculation for the ref time here and their
+		//       estimate for the PoV.
+		//
+		// 	       - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
+		//           limited fixed)
+		let transact_required_weight_at_most =
+			Weight::from_ref_time(self.xcm_domain.max_gas_limit * 25_000)
+				.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
+
+		// NOTE: We are choosing an overall weight here to have full control over
+		//       the actual weight usage.
+		//
+		// 	     - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
+		//         limited fixed)
+		//       - Weight for XCM instructions: Fixed weight * 3 (as we have 3
+		//         instructions)
+		let overall_weight = Weight::from_ref_time(
+			transact_required_weight_at_most.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
+		)
+		.set_proof_size(DEFAULT_PROOF_SIZE);
 
 		pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
@@ -227,18 +249,16 @@ where
 			// The currency in which we want to pay fees.
 			CurrencyPayment {
 				currency: Currency::AsCurrencyId(self.xcm_domain.fee_currency.clone()),
-				fee_amount: None,
+				fee_amount: Some(
+					self.xcm_domain.fee_per_second * Into::<u128>::into(overall_weight.ref_time()),
+				),
 			},
 			// The call to be executed in the destination chain.
 			ethereum_xcm_call,
 			OriginKind::SovereignAccount,
 			TransactWeights {
-				// Convert the max gas_limit into a max transact weight following
-				// Moonbeam's formula.
-				transact_required_weight_at_most: Weight::from_all(
-					self.xcm_domain.max_gas_limit * 25_000 + 100_000_000,
-				),
-				overall_weight: None,
+				transact_required_weight_at_most,
+				overall_weight: Some(overall_weight),
 			},
 		)?;
 
@@ -298,19 +318,13 @@ pub struct XcmDomain<CurrencyId> {
 	/// The max gas_limit we want to propose for a remote evm execution
 	pub max_gas_limit: u64,
 
-	/// The XCM transact info that will be stored in the
-	/// `TransactInfoWithWeightLimit` storage of the XCM transactor pallet.
-	pub transact_info: XcmTransactInfo,
-
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
 
-	/// The fee per second that will be stored in the
-	/// `DestinationAssetFeePerSecond` storage of the XCM transactor pallet.
+	/// The fee per second that will be multiplied with
+	/// the overall weight of the call to define the fees on the
+	/// chain that will execute the call.
 	pub fee_per_second: u128,
-
-	/// The location of the asset used for paying XCM fees.
-	pub fee_asset_location: Box<VersionedMultiLocation>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]

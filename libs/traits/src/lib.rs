@@ -474,6 +474,7 @@ pub trait TokenSwaps<Account> {
 	type Balance;
 	type SellRatio;
 	type OrderId;
+
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
 	/// `currency_out` tokens. The implementer of this method should know
 	/// the current market rate between those two currencies.
@@ -555,17 +556,16 @@ pub trait TokenSwaps<Account> {
 		min_fulfillment_amount: Self::Balance,
 	) -> DispatchResult;
 
+	/// A sanity check that can be used for validating that a trading pair
+	/// is supported. Will also be checked when placing an order but might be
+	/// cheaper.
+	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
-
-	/// Check whether there already exist orders for the given trading pair.
-	///
-	/// NOTE: By checking existence for (currency_out, currency_in), we know
-	/// that counter orders exist against which could be traded.
-	fn order_pair_exists(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

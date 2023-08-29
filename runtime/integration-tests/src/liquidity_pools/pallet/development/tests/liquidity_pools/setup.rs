@@ -73,7 +73,7 @@ use crate::{
 	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 };
 
-pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
+pub const DEFAULT_BALANCE_GLMR: Balance = 1_000_000_000_000;
 pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
@@ -100,7 +100,6 @@ pub fn set_test_domain_router(
 	evm_chain_id: u64,
 	xcm_domain_location: VersionedMultiLocation,
 	currency_id: CurrencyId,
-	fee_location: VersionedMultiLocation,
 ) {
 	let ethereum_xcm_router = EthereumXCMRouter::<DevelopmentRuntime> {
 		router: XCMRouter {
@@ -109,14 +108,8 @@ pub fn set_test_domain_router(
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(DEFAULT_EVM_ADDRESS_MOONBEAM),
 				max_gas_limit: 700_000,
-				transact_info: XcmTransactInfo {
-					transact_extra_weight: 1.into(),
-					max_weight: 8_000_000_000_000_000.into(),
-					transact_extra_weight_signed: Some(3.into()),
-				},
 				fee_currency: currency_id,
 				fee_per_second: default_per_second(18),
-				fee_asset_location: Box::new(fee_location),
 			},
 			_marker: Default::default(),
 		},
@@ -136,7 +129,7 @@ pub fn set_test_domain_router(
 /// Initializes universally required storage for liquidityPools tests:
 /// * Set the EthereumXCM router which in turn sets:
 ///     * transact info and domain router for Moonbeam `MultiLocation`,
-///     * fee for GLMR (`GLIMMER_CURRENCY_ID`),
+///     * fee for GLMR (`GLMR_CURRENCY_ID`),
 /// * Register GLMR and AUSD in `OrmlAssetRegistry`,
 /// * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice, Bob and the Treasury.
 ///
@@ -149,7 +142,6 @@ pub fn setup_pre_requirements() {
 		MOONBEAM_EVM_CHAIN_ID,
 		DEFAULT_MOONBEAM_LOCATION.into(),
 		GLMR_CURRENCY_ID,
-		get_default_moonbeam_native_token_location().into(),
 	);
 
 	/// Register Moonbeam's native token
@@ -169,13 +161,21 @@ pub fn setup_pre_requirements() {
 	));
 
 	// Give Alice, Bob and Treasury enough glimmer to pay for fees
-	OrmlTokens::deposit(GLMR_CURRENCY_ID, &ALICE.into(), DEFAULT_BALANCE_GLMR);
-	OrmlTokens::deposit(GLMR_CURRENCY_ID, &BOB.into(), DEFAULT_BALANCE_GLMR);
+	OrmlTokens::deposit(
+		GLMR_CURRENCY_ID,
+		&ALICE.into(),
+		DEFAULT_BALANCE_GLMR * dollar(18),
+	);
+	OrmlTokens::deposit(
+		GLMR_CURRENCY_ID,
+		&BOB.into(),
+		DEFAULT_BALANCE_GLMR * dollar(18),
+	);
 	// Treasury pays for `Executed*` messages
 	OrmlTokens::deposit(
 		GLMR_CURRENCY_ID,
 		&TreasuryPalletId::get().into_account_truncating(),
-		DEFAULT_BALANCE_GLMR,
+		DEFAULT_BALANCE_GLMR * dollar(18),
 	);
 
 	// Register AUSD in the asset registry which is the default pool currency in

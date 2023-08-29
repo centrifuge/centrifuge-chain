@@ -172,6 +172,10 @@ pub enum BorrowRestrictions {
 
 	/// You only can borrow the full loan value once.
 	FullOnce,
+
+	/// The externally priced loan can only be borrowed
+	/// once an oracle price exists.
+	OraclePriceRequired,
 }
 
 /// Specify how offer a loan can be repaid

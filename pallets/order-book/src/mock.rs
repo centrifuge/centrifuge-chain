@@ -22,6 +22,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU128, ConstU32, GenesisBuild},
 };
+use frame_system::EnsureRoot;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use sp_core::H256;
 use sp_runtime::{
@@ -62,12 +63,12 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
-			Balances: pallet_balances,
-			Fees: pallet_mock_fees,
-			System: frame_system,
+		  Balances: pallet_balances,
+		  Fees: pallet_mock_fees,
+		  System: frame_system,
 		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
-			Tokens: pallet_restricted_tokens,
+		  Tokens: pallet_restricted_tokens,
 	  }
 );
 
@@ -209,11 +210,11 @@ parameter_type_with_key! {
 }
 
 impl order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<MockAccountId>;
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type FulfilledOrderHook = DummyHook;
-	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
@@ -223,6 +224,30 @@ impl order_book::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
+	let mut e = new_test_ext_no_pair();
+
+	e.execute_with(|| {
+		order_book::TradingPair::<Runtime>::insert(
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			MIN_DEV_AUSD_ORDER,
+		);
+		order_book::TradingPair::<Runtime>::insert(
+			DEV_USDT_CURRENCY_ID,
+			DEV_AUSD_CURRENCY_ID,
+			MIN_DEV_USDT_ORDER,
+		);
+		order_book::TradingPair::<Runtime>::insert(
+			CurrencyId::Native,
+			DEV_AUSD_CURRENCY_ID,
+			MIN_DEV_USDT_ORDER,
+		);
+	});
+
+	e
+}
+
+pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
 		.unwrap();

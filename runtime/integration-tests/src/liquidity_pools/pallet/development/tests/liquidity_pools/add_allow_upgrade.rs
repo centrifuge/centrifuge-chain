@@ -612,13 +612,14 @@ fn schedule_upgrade() {
 			BadOrigin
 		);
 
-		// Failing because the treasury has no funds
-		// Treasury pays for `Executed*` messages
+		// Need to burn default minted balance from Treasury
 		OrmlTokens::burn_from(
 			GLMR_CURRENCY_ID,
 			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR,
+			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
+
+		// Failing because the treasury has no funds
 		assert_noop!(
 			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
 			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
@@ -629,7 +630,7 @@ fn schedule_upgrade() {
 		OrmlTokens::deposit(
 			GLMR_CURRENCY_ID,
 			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR,
+			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
 
 		// Now it finally works

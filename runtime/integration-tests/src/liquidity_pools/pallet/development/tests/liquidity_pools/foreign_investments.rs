@@ -1014,19 +1014,17 @@ mod mismatching_currencies {
 				pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 			);
 
-			// Create counter order (pool to foreign) such that foreign_currency is accepted
-			// as payment
-			assert_ok!(OrmlTokens::mint_into(
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
 				pool_currency,
-				&ALICE.into(),
-				invest_amount_pool_denominated
+				foreign_currency,
+				1
 			));
-			assert_ok!(OrderBook::create_order(
-				RuntimeOrigin::signed(ALICE.into()),
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
 				foreign_currency,
 				pool_currency,
-				invest_amount_foreign_denominated,
-				DefaultTokenSellRate::get()
+				1
 			));
 
 			// Should be able to invest since InvestmentState does not have an active swap,

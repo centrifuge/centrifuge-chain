@@ -17,7 +17,7 @@ use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 use sp_std::vec::Vec;
 
-use crate::Runtime;
+use crate::{RocksDbWeight, Runtime};
 
 /// The migration set for Altair 1030 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain, which includes migrations that have
@@ -27,8 +27,8 @@ pub type UpgradeAltair1030 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	orml_tokens_migration::CurrencyIdRefactorMigration,
 	pool_system::MigrateAUSDPools,
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -42,8 +42,8 @@ pub type UpgradeAltair1030 = (
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
 pub type UpgradeAltair1030 = (
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -117,8 +117,6 @@ mod asset_registry {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
-			use crate::OrmlAssetRegistry;
-
 			let old_state = sp_std::vec::Vec::<(
 				CurrencyId,
 				AssetMetadata<Balance, v0::CustomMetadata>,
@@ -126,7 +124,7 @@ mod asset_registry {
 			.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			for (asset_id, old_metadata) in old_state {
-				let new_metadata = OrmlAssetRegistry::metadata(asset_id)
+				let new_metadata = crate::OrmlAssetRegistry::metadata(asset_id)
 					.ok_or_else(|| "New state lost the metadata of an asset")?;
 
 				match asset_id {

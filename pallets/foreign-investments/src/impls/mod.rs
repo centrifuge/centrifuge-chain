@@ -268,13 +268,19 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			true
 		} else {
 			T::PoolInspect::currency_for(investment_id.of_pool())
-				.map(|pool_currency| T::TokenSwaps::order_pair_exists(currency, pool_currency))
+				.map(|pool_currency| T::TokenSwaps::valid_pair(pool_currency, currency))
 				.unwrap_or(false)
 		}
 	}
 
 	fn accepted_payout_currency(investment_id: T::InvestmentId, currency: T::CurrencyId) -> bool {
-		Self::accepted_payment_currency(investment_id, currency)
+		if T::Investment::accepted_payout_currency(investment_id, currency) {
+			true
+		} else {
+			T::PoolInspect::currency_for(investment_id.of_pool())
+				.map(|pool_currency| T::TokenSwaps::valid_pair(currency, pool_currency))
+				.unwrap_or(false)
+		}
 	}
 }
 

@@ -1,8 +1,6 @@
 use super::*;
 
 /// Used where the error comes from other pallet impl. unknown from the tests
-const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
-
 fn config_mocks(withdraw_amount: Balance) {
 	MockPools::mock_withdraw(move |pool_id, to, amount| {
 		assert_eq!(to, BORROWER);
@@ -258,13 +256,17 @@ fn with_correct_amount_internal_pricing() {
 }
 
 #[test]
-fn with_unregister_price_id() {
+fn with_unregister_price_id_and_oracle_required() {
 	new_test_ext().execute_with(|| {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
 				..util::base_external_pricing()
 			}),
+			restrictions: LoanRestrictions {
+				borrows: BorrowRestrictions::OraclePriceRequired,
+				repayments: RepayRestrictions::None,
+			},
 			..util::base_external_loan()
 		};
 
@@ -281,6 +283,61 @@ fn with_unregister_price_id() {
 				PricingAmount::External(amount)
 			),
 			PRICE_ID_NO_FOUND
+		);
+	});
+}
+
+#[test]
+fn with_unregister_price_id_and_oracle_not_required() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		// Borrow half
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE * 2);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			(QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE * 2),
+			util::current_loan_pv(loan_id)
+		);
+
+		// Borrow half, price changed
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE * 4);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			(QUANTITY).saturating_mul_int(PRICE_VALUE * 4),
+			util::current_loan_pv(loan_id)
+		);
+
+		// Suddenty, the oracle set a value
+		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME.as_secs())));
+
+		assert_eq!(
+			(QUANTITY).saturating_mul_int(PRICE_VALUE * 8),
+			util::current_loan_pv(loan_id)
 		);
 	});
 }

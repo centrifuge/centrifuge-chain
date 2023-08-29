@@ -13,16 +13,23 @@ use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
-use crate::Runtime;
+use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
 
 pub type UpgradeCentrifuge1020 = (
 	asset_registry::CrossChainTransferabilityMigration,
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	asset_registry::RegisterLpEthUSDC,
 );
 
 mod asset_registry {
-	use cfg_types::{tokens as v1, tokens::CustomMetadata};
+	use cfg_types::{
+		tokens as v1,
+		tokens::{
+			lp_eth_usdc_metadata, CustomMetadata, ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC,
+			LP_ETH_USDC_CURRENCY_ID,
+		},
+	};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
@@ -90,8 +97,6 @@ mod asset_registry {
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
 			use codec::Decode;
-
-			use crate::OrmlAssetRegistry;
 
 			let old_state = sp_std::vec::Vec::<(
 				CurrencyId,
@@ -167,6 +172,60 @@ mod asset_registry {
 				pool_currency: old.additional.pool_currency,
 				transferability,
 			},
+		}
+	}
+
+	/// Register the LiquidityPools Wrapped Ethereum USDC
+	pub struct RegisterLpEthUSDC;
+
+	impl OnRuntimeUpgrade for RegisterLpEthUSDC {
+		fn on_runtime_upgrade() -> Weight {
+			use orml_traits::asset_registry::Mutate;
+
+			if OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_some() {
+				log::info!("LpEthUSDC is already registered");
+				return RocksDbWeight::get().reads(1);
+			}
+
+			<OrmlAssetRegistry as Mutate>::register_asset(
+				Some(LP_ETH_USDC_CURRENCY_ID),
+				lp_eth_usdc_metadata(
+					LiquidityPoolsPalletIndex::get(),
+					ETHEREUM_MAINNET_CHAIN_ID,
+					ETHEREUM_USDC,
+				),
+			)
+			.map_err(|_| log::error!("Failed to register LpEthUSDC"))
+			.ok();
+
+			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: completed!");
+			RocksDbWeight::get().reads_writes(1, 1)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			frame_support::ensure!(
+				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_none(),
+				"LpEthUSDC is already registered; this migration will NOT need to be executed"
+			);
+
+			Ok(Default::default())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			frame_support::ensure!(
+				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID)
+					== Some(lp_eth_usdc_metadata(
+						LiquidityPoolsPalletIndex::get(),
+						ETHEREUM_MAINNET_CHAIN_ID,
+						ETHEREUM_USDC
+					)),
+				"The LpEthUSDC's token metadata does NOT match what we expected it to be"
+			);
+
+			log::info!("RegisterLpEthUSDC: post_upgrade: the token metadata looks correct!");
+			Ok(())
 		}
 	}
 }

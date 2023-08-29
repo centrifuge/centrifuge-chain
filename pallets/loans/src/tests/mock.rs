@@ -30,7 +30,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128,
+	DispatchError, FixedU128,
 };
 
 use crate::{pallet as pallet_loans, ChangeOf};
@@ -73,6 +73,8 @@ pub const NOTIONAL: Balance = 1000;
 pub const QUANTITY: Quantity = Quantity::from_rational(12, 1);
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 pub const MAX_PRICE_VARIATION: Rate = Rate::from_rational(1, 100);
+
+pub const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

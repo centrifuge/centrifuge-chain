@@ -12,7 +12,10 @@
 
 use core::marker::PhantomData;
 
-use cfg_primitives::types::{PoolId, TrancheId};
+use cfg_primitives::{
+	types::{PoolId, TrancheId},
+	Balance, PalletIndex,
+};
 use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
@@ -20,6 +23,11 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
+use xcm::{
+	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
+	v3::{MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 
 use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
@@ -313,6 +321,48 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 		match token {
 			LiquidityPoolsWrappedToken::EVM { chain_id, address } => Self::EVM(chain_id, address),
 		}
+	}
+}
+
+pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
+
+pub const ETHEREUM_MAINNET_CHAIN_ID: EVMChainId = 1;
+pub const GOERLI_CHAIN_ID: EVMChainId = 5;
+
+pub const ETHEREUM_USDC: [u8; 20] = hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+pub const GOERLI_USDC: [u8; 20] = hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
+
+/// The metadata for the LpEthUSDC token
+// TODO(nuno): once used in the Centrifuge migration registering it,
+// move it directly to the `chain_spec` > development genesis where it is also
+// used.
+pub fn lp_eth_usdc_metadata(
+	pallet_index: PalletIndex,
+	chain_id: EVMChainId,
+	usdc_contract: [u8; 20],
+) -> AssetMetadata<Balance, CustomMetadata> {
+	AssetMetadata {
+		decimals: 6,
+		name: "LP Ethereum Wrapped USDC".as_bytes().to_vec(),
+		symbol: "LpEthUSDC".as_bytes().to_vec(),
+		existential_deposit: 1000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation {
+			parents: 0,
+			interior: xcm::v3::Junctions::X3(
+				PalletInstance(pallet_index),
+				GlobalConsensus(NetworkId::Ethereum { chain_id }),
+				AccountKey20 {
+					network: None,
+					key: usdc_contract,
+				},
+			),
+		})),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::LiquidityPools,
+			mintable: false,
+			permissioned: false,
+			pool_currency: true,
+		},
 	}
 }
 
