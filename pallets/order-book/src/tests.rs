@@ -50,13 +50,13 @@ fn adding_trading_pair_fails() {
 			),
 			DispatchError::BadOrigin
 		);
-		assert_eq!(
+		assert_noop!(
 			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			Err(Error::<Runtime>::InvalidTradingPair)
+			Error::<Runtime>::InvalidTradingPair
 		);
-		assert_eq!(
+		assert_noop!(
 			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
-			Err(Error::<Runtime>::InvalidTradingPair)
+			Error::<Runtime>::InvalidTradingPair
 		);
 	})
 }
@@ -69,13 +69,13 @@ fn removing_trading_pair_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 		));
-		assert_eq!(
+		assert_noop!(
 			TradingPairInOut::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			Err(Error::<Runtime>::InvalidTradingPair)
+			Error::<Runtime>::InvalidTradingPair
 		);
-		assert_eq!(
+		assert_noop!(
 			TradingPairOutIn::<Runtime>::get(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID),
-			Err(Error::<Runtime>::InvalidTradingPair)
+			Error::<Runtime>::InvalidTradingPair
 		);
 	})
 }
