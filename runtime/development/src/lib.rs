@@ -1874,10 +1874,10 @@ parameter_type_with_key! {
 }
 
 impl pallet_order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type MinimumOrderAmount = MinimumOrderAmount;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
