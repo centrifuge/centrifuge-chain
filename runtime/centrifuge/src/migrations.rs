@@ -20,6 +20,12 @@ pub type UpgradeCentrifuge1020 = (
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
 	asset_registry::RegisterLpEthUSDC,
+	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
+		crate::Runtime,
+		pallet_rewards::Instance2,
+		crate::NativeToken,
+		crate::ExistentialDeposit,
+	>,
 );
 
 mod asset_registry {

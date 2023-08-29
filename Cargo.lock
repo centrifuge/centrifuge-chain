@@ -1192,6 +1192,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
+ "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",

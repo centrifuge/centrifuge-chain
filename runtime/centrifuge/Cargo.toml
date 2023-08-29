@@ -116,6 +116,7 @@ pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
@@ -190,6 +191,7 @@ std = [
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
+  "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-keystore/std",
   "pallet-migration-manager/std",
@@ -271,6 +273,7 @@ runtime-benchmarks = [
   "pallet-identity/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
+  "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
@@ -343,6 +346,7 @@ try-runtime = [
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
+  "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-keystore/try-runtime",
   "pallet-migration-manager/try-runtime",
