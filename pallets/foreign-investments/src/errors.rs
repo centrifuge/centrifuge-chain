@@ -39,6 +39,13 @@ pub enum RedeemError {
 	Increase,
 	/// Failed to collect the redemption.
 	Collect,
+	/// Failed to retrieve the foreign payout currency for a collected
+	/// redemption.
+	///
+	/// NOTE: This error can only occur, if a user tries to collect before
+	/// having increased their redemption as this would store the payout
+	/// currency.
+	CollectPayoutCurrencyNotFound,
 	/// Failed to decrease the unprocessed redemption.
 	Decrease,
 	/// Failed to transition after fulfilled swap order.

@@ -767,7 +767,7 @@ where
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedInvestmentHook::notify_status_change(
 				ForeignInvestmentInfo {
-					owner: who.clone(),
+					owner: who,
 					id: investment_id,
 					last_swap_reason: None,
 				},
@@ -902,7 +902,7 @@ where
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedRedemptionHook::notify_status_change(
 				ForeignInvestmentInfo {
-					owner: who.clone(),
+					owner: who,
 					id: investment_id,
 					last_swap_reason: None,
 				},

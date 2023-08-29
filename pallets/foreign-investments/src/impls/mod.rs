@@ -22,7 +22,7 @@ use cfg_types::investments::{
 };
 use frame_support::{ensure, traits::Get, transactional};
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureAddAssign, Zero},
+	traits::{EnsureAdd, EnsureAddAssign, EnsureSub, Zero},
 	DispatchError, DispatchResult,
 };
 
@@ -873,40 +873,56 @@ impl<T: Config> Pallet<T> {
 			return Ok((None, None, None));
 		}
 
-		// Read states from storage and determine amounts
+		// Read states from storage and determine amounts in possible denominations
 		let invest_state = InvestmentState::<T>::get(who, investment_id);
 		let redeem_state = RedemptionState::<T>::get(who, investment_id);
-		let invest_swap_amount = invest_state
+		let invest_swap_amount_pool_deno =
+			invest_state.get_active_swap_amount_pool_denominated()?;
+		let invest_swap_amount_foreign_deno =
+			invest_state.get_active_swap_amount_foreign_denominated()?;
+		let (redeem_swap_amount_foreign_deno, redeem_swap_amount_pool_deno) = redeem_state
 			.get_active_swap()
-			.map(|s| s.amount)
+			.map(|swap| {
+				// Redemptions can only swap into foreign
+				let amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?;
+				Ok::<(T::Balance, T::Balance), DispatchError>((
+					swap.amount,
+					amount_pool_denominated,
+				))
+			})
+			.transpose()?
 			.unwrap_or_default();
-		let redeem_swap_amount = redeem_state
-			.get_active_swap()
-			.map(|s| s.amount)
-			.unwrap_or_default();
-		let resolved_amount = invest_swap_amount.min(redeem_swap_amount);
-		// safe because max >= min, equals zero if both amounts equal
-		let swap_amount_opposite_direction =
-			invest_swap_amount.max(redeem_swap_amount) - resolved_amount;
+		let resolved_amount_pool_deno =
+			invest_swap_amount_pool_deno.min(redeem_swap_amount_pool_deno);
+		let swap_amount_opposite_direction_pool_deno = invest_swap_amount_pool_deno
+			.max(redeem_swap_amount_pool_deno)
+			.ensure_sub(resolved_amount_pool_deno)?;
+		let swap_amount_opposite_direction_foreign_deno = invest_swap_amount_foreign_deno
+			.max(redeem_swap_amount_foreign_deno)
+			.ensure_sub(invest_swap_amount_foreign_deno.min(redeem_swap_amount_foreign_deno))?;
 
 		// Determine new invest state
 		let new_invest_state = match invest_state {
 			// As redeem swap can only be into foreign currency, we need to delta on the opposite
 			// swap directions
 			InvestState::ActiveSwapIntoPoolCurrency { swap } => {
-				if invest_swap_amount > redeem_swap_amount {
+				if invest_swap_amount_pool_deno > redeem_swap_amount_pool_deno {
 					Some(
 						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
-								amount: swap_amount_opposite_direction,
+								amount: swap_amount_opposite_direction_pool_deno,
 								..swap
 							},
-							invest_amount: resolved_amount,
+							invest_amount: resolved_amount_pool_deno,
 						},
 					)
 				} else {
 					Some(InvestState::InvestmentOngoing {
-						invest_amount: resolved_amount,
+						invest_amount: resolved_amount_pool_deno,
 					})
 				}
 			}
@@ -915,19 +931,19 @@ impl<T: Config> Pallet<T> {
 				swap: invest_swap,
 				invest_amount,
 			} => {
-				if invest_swap_amount > redeem_swap_amount {
+				if invest_swap_amount_pool_deno > redeem_swap_amount_pool_deno {
 					Some(
 						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 							swap: Swap {
-								amount: swap_amount_opposite_direction,
+								amount: swap_amount_opposite_direction_pool_deno,
 								..invest_swap
 							},
-							invest_amount: invest_amount.ensure_add(resolved_amount)?,
+							invest_amount: invest_amount.ensure_add(resolved_amount_pool_deno)?,
 						},
 					)
 				} else {
 					Some(InvestState::InvestmentOngoing {
-						invest_amount: invest_amount.ensure_add(resolved_amount)?,
+						invest_amount: invest_amount.ensure_add(resolved_amount_pool_deno)?,
 					})
 				}
 			}
@@ -936,52 +952,64 @@ impl<T: Config> Pallet<T> {
 		};
 
 		// Determine final swap amount and new redeem state
-		let (final_swap_amount, new_redeem_state) = match invest_state {
+		let (final_swap_amount_foreign_deno, new_redeem_state) = match invest_state {
 			// Opposite swaps cancel out at least one (or if equal amounts) both swaps
 			InvestState::ActiveSwapIntoPoolCurrency { .. }
 			| InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { .. } => {
 				let new_state = redeem_state
 					.fulfill_active_swap_amount(
-						redeem_swap_amount.min(swap_amount_opposite_direction),
+						redeem_swap_amount_foreign_deno
+							.min(swap_amount_opposite_direction_foreign_deno),
 					)
 					.unwrap_or(redeem_state);
 
-				Ok((swap_amount_opposite_direction, new_state))
+				Ok((swap_amount_opposite_direction_foreign_deno, new_state))
 			}
 			// All leftover combinations either do not involve any active swaps or both
 			// swaps have the same direction, i.e. into foreign currency. Thus, we can
 			// leave states untouched and just add up the potential swap amount.
 			_ => Ok((
-				invest_swap_amount.ensure_add(redeem_swap_amount)?,
+				invest_swap_amount_foreign_deno.ensure_add(redeem_swap_amount_foreign_deno)?,
 				redeem_state,
 			)),
 		}
-		.map(|(token_swap_amount, maybe_new_redeem_state)| {
+		.map(|(token_swap_amount_foreign_deno, maybe_new_redeem_state)| {
 			// If old state match new state, no need to return it as this could cause a
 			// follow-up transition trigger
 			if redeem_state == maybe_new_redeem_state {
-				(token_swap_amount, None)
+				(token_swap_amount_foreign_deno, None)
 			} else {
-				(token_swap_amount, Some(maybe_new_redeem_state))
+				(token_swap_amount_foreign_deno, Some(maybe_new_redeem_state))
 			}
 		})
 		.map_err(|e: DispatchError| e)?;
 
 		// Determine token swap from amount
-		let token_swap = if invest_swap_amount > redeem_swap_amount {
-			invest_state.get_active_swap().map(|invest_swap| Swap {
-				amount: final_swap_amount,
-				..invest_swap
+		let token_swap = redeem_state
+			.get_active_swap()
+			.map(|swap| {
+				if invest_swap_amount_foreign_deno > redeem_swap_amount_foreign_deno {
+					Ok(Swap {
+						amount: T::CurrencyConverter::stable_to_stable(
+							swap.currency_out,
+							swap.currency_in,
+							final_swap_amount_foreign_deno,
+						)?,
+						currency_in: swap.currency_out,
+						currency_out: swap.currency_in,
+					})
+				}
+				// handle redeem_swap_amount >= invest_swap_amount as well as all cases, in which
+				// neither states include an active swap
+				else {
+					Ok(Swap {
+						amount: final_swap_amount_foreign_deno,
+						..swap
+					})
+				}
 			})
-		}
-		// handle redeem_swap_amount >= invest_swap_amount as well as all cases, in which neither
-		// states include an active swap
-		else {
-			redeem_state.get_active_swap().map(|redeem_swap| Swap {
-				amount: final_swap_amount,
-				..redeem_swap
-			})
-		};
+			.transpose()
+			.map_err(|e: DispatchError| e)?;
 
 		Ok((token_swap, new_invest_state, new_redeem_state))
 	}
@@ -1061,8 +1089,10 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		let foreign_payout_currency =
-			RedemptionPayoutCurrency::<T>::get(who, investment_id).expect("Foreign redemption payout currency is set by initial increment before collecting is possible");
+		let foreign_payout_currency = RedemptionPayoutCurrency::<T>::get(who, investment_id)
+			.ok_or(Error::<T>::RedeemError(
+				RedeemError::CollectPayoutCurrencyNotFound,
+			))?;
 		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
 			.expect("Impossible to collect redemption for non existing pool at this point");
 
@@ -1080,11 +1110,18 @@ impl<T: Config> Pallet<T> {
 		// Transition state to initiate swap from pool to foreign currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id);
 		let amount_unprocessed_redemption = T::Investment::redemption(who, investment_id)?;
+		// Amount needs to be denominated in foreign currency as it will be swapped into
+		// foreign currency such that the swap order amount is in the incoming currency
+		let amount_collected_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+			foreign_payout_currency,
+			pool_currency,
+			collected.amount_collected,
+		)?;
 		let post_state = pre_state
 			.transition(RedeemTransition::CollectRedemption(
 				amount_unprocessed_redemption,
 				SwapOf::<T> {
-					amount: collected.amount_collected,
+					amount: amount_collected_foreign_denominated,
 					currency_in: foreign_payout_currency,
 					currency_out: pool_currency,
 				},

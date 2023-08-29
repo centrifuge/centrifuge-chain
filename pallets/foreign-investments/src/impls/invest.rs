@@ -51,29 +51,63 @@ where
 		}
 	}
 
-	/// Returns the potentially existing active swap into either pool or return
+	/// Returns the potentially existing active swap amount denominated in pool
 	/// currency:
-	/// * If the state includes `ActiveSwapInto{Pool, Return}Currency`, it
-	///   returns `Some(swap)`.
+	/// * If the state includes `ActiveSwapIntoPoolCurrency`, it returns
+	///   `Some(swap.amount)`.
+	/// * If the state includes `ActiveSwapIntoForeignCurrency`, it returns
+	///   `Some(swap.amount)` converted into pool currency denomination.
 	/// * Else, it returns `None`.
-	pub(crate) fn get_active_swap(&self) -> Option<Swap<T::Balance, T::CurrencyId>> {
+	pub(crate) fn get_active_swap_amount_pool_denominated(
+		&self,
+	) -> Result<T::Balance, DispatchError> {
 		match *self {
-			InvestState::NoState => None,
-			InvestState::InvestmentOngoing { .. } => None,
-			InvestState::ActiveSwapIntoPoolCurrency { swap } => Some(swap),
-			InvestState::ActiveSwapIntoForeignCurrency { swap } => Some(swap),
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Some(swap),
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Some(swap),
+			InvestState::NoState => Ok(T::Balance::zero()),
+			InvestState::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			InvestState::ActiveSwapIntoPoolCurrency { swap } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoForeignCurrency { swap } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
 			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
-				Some(swap)
+				Ok(swap.amount)
 			},
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
-				Some(swap)
+				Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?)
 			},
-			InvestState::SwapIntoForeignDone { .. } => None,
-			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { .. } => None,
+			InvestState::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
+			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
+		}
+	}
+
+	/// Returns the potentially existing active swap amount denominated in
+	/// foreign currency:
+	/// * If the state includes `ActiveSwapIntoPoolCurrency`, it returns
+	///   `Some(swap.amount)` converted into foreign currency denomination.
+	/// * If the state includes `ActiveSwapIntoForeignCurrency`, it returns
+	///   `Some(swap.amount)`.
+	/// * Else, it returns `None`.
+	pub(crate) fn get_active_swap_amount_foreign_denominated(
+		&self,
+	) -> Result<T::Balance, DispatchError> {
+		match *self {
+			InvestState::NoState => Ok(T::Balance::zero()),
+			InvestState::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			InvestState::ActiveSwapIntoPoolCurrency { swap } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
+			InvestState::ActiveSwapIntoForeignCurrency { swap } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
+			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(swap.amount),
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
+				Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?)
+			},
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
+				Ok(swap.amount)
+			},
+			InvestState::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
+			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
 		}
 	}
 
@@ -121,7 +155,7 @@ where
 	///
 	/// Example:
 	/// * Say before my pre invest state has `foreign_done = 1000` and
-	/// `foreign_swap.amount = 500`. Now we look at three scenarios in which we
+	/// `foreign_swap.amount = 500`. Now we  look at three scenarios in which we
 	/// increase below, exactly at and above the `foreign_swap.amount`:
 	/// * a) If we increase by 500, we can reduce the `foreign_swap.amount`
 	///   fully, which we denote by adding the 500 to the `foreign_done` amount.

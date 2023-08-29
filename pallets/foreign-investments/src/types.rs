@@ -56,8 +56,9 @@ impl<T: Config> InvestStateConfig for T {
 )]
 #[scale_info(skip_type_params(T))]
 pub enum InvestState<T: InvestStateConfig> {
-	/// Placeholder state for initialization which will never be stored on
-	/// chain.
+	/// Default state for initialization which will never be actively put into
+	/// chain state, i.e. if this state is the result of applying transition(s),
+	/// then the corresponding `InvestmentState` will be cleared.
 	NoState,
 	/// The investment is waiting to be processed.
 	InvestmentOngoing { invest_amount: T::Balance },
@@ -284,8 +285,9 @@ pub enum RedeemState<
 	Currency: Clone + Copy + PartialEq + Debug,
 > {
 	#[default]
-	/// Placeholder state for initialization which will never be stored on
-	/// chain.
+	/// Default state for initialization which will never be actively put into
+	/// chain state, i.e. if this state is the result of applying transition(s),
+	/// then the corresponding `RedemptionState` will be cleared.
 	NoState,
 	/// There is no pending redemption process at this point. The investment can
 	/// be redeemed up to the invested amount (after fulfillment).
