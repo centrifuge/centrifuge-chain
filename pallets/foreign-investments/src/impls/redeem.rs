@@ -671,14 +671,15 @@ where
 				invest_amount,
 				inner,
 			} => {
+				let redeeming_amount = self.get_redeeming_amount().ensure_add(amount)?;
 				if &amount == invest_amount {
 					Ok(Self::NotInvestedAnd {
-						inner: inner.set_redeem_amount(amount)?,
+						inner: inner.set_redeem_amount(redeeming_amount)?,
 					})
 				} else {
 					Ok(Self::InvestedAnd {
 						invest_amount: invest_amount.ensure_sub(amount)?,
-						inner: inner.set_redeem_amount(amount)?,
+						inner: inner.set_redeem_amount(redeeming_amount)?,
 					})
 				}
 			}
