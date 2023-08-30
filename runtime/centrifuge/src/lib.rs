@@ -1353,7 +1353,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		CurrencyId,
 		TrancheCurrency,
 		u32,
-		Balance,
+		Rate,
 		Quantity,
 		TrancheWeight,
 		TrancheId,
@@ -1361,7 +1361,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		MaxTranches,
 	>;
 	type ScheduledUpdateDetails = ScheduledUpdateDetails<
-		Quantity,
+		Rate,
 		MaxTrancheNameLengthBytes,
 		MaxTrancheSymbolLengthBytes,
 		MaxTranches,
