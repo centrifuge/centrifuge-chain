@@ -78,7 +78,7 @@ pub mod weights;
 #[allow(dead_code)]
 pub type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
 	<T as Config>::Balance,
-	<T as Config>::Rate,
+	<T as Config>::BalanceRatio,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
 >;
@@ -87,7 +87,7 @@ pub type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
 /// Type alias for EpochExecutionTranches
 pub type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
 	<T as Config>::Balance,
-	<T as Config>::Rate,
+	<T as Config>::BalanceRatio,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::MaxTranches,
@@ -129,7 +129,7 @@ pub type PoolDetailsOf<T> = PoolDetails<
 /// Type alias for `struct EpochExecutionInfo`
 type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::Balance,
-	<T as Config>::Rate,
+	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
@@ -211,6 +211,15 @@ pub mod pallet {
 			+ Copy
 			+ Convert<Self::TrancheWeight, Self::Balance>
 			+ From<u128>;
+
+		/// A fixed-point number that represent a price with decimals
+		type BalanceRatio: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ TypeInfo
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		/// A fixed-point number which represents a Self::Balance
 		/// in terms of this fixed-point representation.
@@ -301,7 +310,7 @@ pub mod pallet {
 			Error = DispatchError,
 			InvestmentId = Self::TrancheCurrency,
 			Orders = TotalOrder<Self::Balance>,
-			Fulfillment = FulfillmentWithPrice<Self::Rate>,
+			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
 		>;
 
 		type Time: UnixTime;
@@ -603,7 +612,7 @@ pub mod pallet {
 
 				let epoch_tranche_prices = pool
 					.tranches
-					.calculate_prices::<T::Rate, T::Tokens, _>(total_assets, now)?;
+					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -874,7 +883,7 @@ pub mod pallet {
 
 		fn summarize_orders(
 			tranches: &TranchesOf<T>,
-			prices: &[T::Rate],
+			prices: &[T::BalanceRatio],
 		) -> Result<SummarizedOrders<T::Balance>, DispatchError> {
 			let mut acc_invest_orders = T::Balance::zero();
 			let mut acc_redeem_orders = T::Balance::zero();

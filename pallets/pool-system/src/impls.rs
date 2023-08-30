@@ -55,13 +55,13 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type Moment = Moment;
 	type PoolId = T::PoolId;
-	type Rate = T::Rate;
+	type Rate = T::BalanceRatio;
 	type TrancheId = T::TrancheId;
 
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
+	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
 		let now = Self::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
@@ -77,7 +77,7 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.ok()?;
 		let prices = pool
 			.tranches
-			.calculate_prices::<T::Rate, T::Tokens, _>(total_assets, now)
+			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
 			.ok()?;
 
 		let base = pool
