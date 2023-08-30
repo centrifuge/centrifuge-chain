@@ -53,6 +53,12 @@ pub mod pallet {
 		pub fn mock_is_active(f: impl Fn(T::OrderId) -> bool + 'static) {
 			register_call!(f);
 		}
+
+		pub fn mock_valid_pair(
+			f: impl Fn(T::CurrencyId, T::CurrencyId) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
@@ -90,11 +96,7 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn order_pair_exists(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
-			execute_call!((a, b))
-		}
-
-		fn counter_order_pair_exists(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
+		fn valid_pair(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
 			execute_call!((a, b))
 		}
 	}

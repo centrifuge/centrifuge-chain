@@ -24,7 +24,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_stable_to_stable(
-			f: impl Fn(T::CurrencyId, T::Balance, T::CurrencyId) -> Result<T::Balance, DispatchError>
+			f: impl Fn(T::CurrencyId, T::CurrencyId, T::Balance) -> Result<T::Balance, DispatchError>
 				+ 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
@@ -38,8 +38,8 @@ pub mod pallet {
 
 		fn stable_to_stable(
 			a: Self::Currency,
-			b: Self::Balance,
-			c: Self::Currency,
+			b: Self::Currency,
+			c: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
 			execute_call!((a, b, c))
 		}
