@@ -26,7 +26,7 @@ pub use cfg_primitives::{
 };
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _, TrancheTokenPrice,
+	TrancheCurrency as _,
 };
 use cfg_types::{
 	consts::pools::*,
