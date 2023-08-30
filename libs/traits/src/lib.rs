@@ -124,7 +124,6 @@ pub trait PoolNAV<PoolId, Amount> {
 pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId;
 	type TrancheId;
-	type Rate;
 	type Moment;
 
 	/// check if the pool exists

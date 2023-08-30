@@ -30,7 +30,6 @@ use crate::{
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type Moment = Moment;
 	type PoolId = T::PoolId;
-	type Rate = T::Rate;
 	type TrancheId = T::TrancheId;
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
