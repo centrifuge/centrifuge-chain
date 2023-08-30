@@ -24,13 +24,13 @@
 
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId, CFG};
 use cfg_traits::{
-	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
+	investments::{Investment, OrderManager, TrancheCurrency as TrancheCurrencyT},
 	liquidity_pools::InboundQueue,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::Rate,
-	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
+	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection, Swap},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
 	pools::TrancheMetadata,
@@ -48,12 +48,15 @@ use frame_support::{
 	traits::{fungible::Mutate as _, fungibles::Mutate, Get, PalletInfo},
 };
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use pallet_foreign_investments::types::{InnerRedeemState, InvestState, RedeemState};
+use pallet_foreign_investments::{
+	types::{InnerRedeemState, InvestState, RedeemState},
+	CollectedRedemption, RedemptionState,
+};
 use pallet_investments::CollectOutcome;
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
-	BoundedVec, DispatchError, Perquintill, SaturatedConversion, WeakBoundedVec,
+	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
 
@@ -81,415 +84,416 @@ use crate::{
 };
 
 mod same_currencies {
+	use pallet_foreign_investments::{CollectedInvestment, InvestmentState};
+
 	use super::*;
-}
 
-#[test]
-fn inbound_increase_invest_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
+	#[test]
+	fn increase_invest_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial investment
-		do_initial_increase_investment(pool_id, amount, investor, currency_id);
+			// Set permissions and execute initial investment
+			do_initial_increase_investment(pool_id, amount, investor, currency_id);
 
-		// Verify the order was updated to the amount
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
-				default_investment_id(),
-			)
-			.amount,
-			amount
-		);
-	});
-}
+			// Verify the order was updated to the amount
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				amount
+			);
+		});
+	}
 
-#[test]
-fn inbound_decrease_invest_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let invest_amount: u128 = 100_000_000;
-		let decrease_amount = invest_amount / 3;
-		let final_amount = invest_amount - decrease_amount;
-		let investor: AccountId = BOB.into();
-		let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
+	#[test]
+	fn decrease_invest_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let invest_amount: u128 = 100_000_000;
+			let decrease_amount = invest_amount / 3;
+			let final_amount = invest_amount - decrease_amount;
+			let investor: AccountId = BOB.into();
+			let currency_id: CurrencyId = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial investment
-		do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			// Set permissions and execute initial investment
+			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
 
-		// Mock incoming decrease message
-		let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-			amount: decrease_amount,
-		};
+			// Mock incoming decrease message
+			let msg = LiquidityPoolMessage::DecreaseInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount: decrease_amount,
+			};
 
-		// Expect failure if transferability is disabled since this is required for
-		// preparing the `ExecutedDecreaseInvest` message.
-		assert_noop!(
+			// Expect failure if transferability is disabled since this is required for
+			// preparing the `ExecutedDecreaseInvest` message.
+			assert_noop!(
 			LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
 		);
-		enable_liquidity_pool_transferability(currency_id);
+			enable_liquidity_pool_transferability(currency_id);
 
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Verify investment was decreased into investment account
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &default_investment_account()),
-			final_amount
-		);
-		// Since the investment was done in the pool currency, the decrement happens
-		// synchronously and thus it must be burned from investor's holdings
-		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
-		assert!(System::events().iter().any(|e| e.event
-			== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
-				investment_id: default_investment_id(),
-				submitted_at: 0,
-				who: investor.clone(),
-				amount: final_amount
-			}
-			.into()));
-		assert!(System::events().iter().any(|e| e.event
-			== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
-				currency_id,
-				who: investor.clone(),
-				amount: decrease_amount
-			}
-			.into()));
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
-				default_investment_id(),
-			)
-			.amount,
-			final_amount
-		);
-	});
-}
+			// Verify investment was decreased into investment account
+			assert_eq!(
+				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				final_amount
+			);
+			// Since the investment was done in the pool currency, the decrement happens
+			// synchronously and thus it must be burned from investor's holdings
+			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert!(System::events().iter().any(|e| e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+					investment_id: default_investment_id(),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: final_amount
+				}
+				.into()));
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount: decrease_amount
+				}
+				.into()));
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				final_amount
+			);
+		});
+	}
 
-#[test]
-fn inbound_cancel_invest_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let invest_amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
+	#[test]
+	fn cancel_invest_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let invest_amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial investment
-		do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			// Set permissions and execute initial investment
+			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
 
-		// Verify investment account holds funds before cancelling
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &default_investment_account()),
-			invest_amount
-		);
+			// Verify investment account holds funds before cancelling
+			assert_eq!(
+				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				invest_amount
+			);
 
-		// Mock incoming cancel message
-		let msg = LiquidityPoolMessage::CancelInvestOrder {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-		};
+			// Mock incoming cancel message
+			let msg = LiquidityPoolMessage::CancelInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
 
-		// Expect failure if transferability is disabled since this is required for
-		// preparing the `ExecutedDecreaseInvest` message.
-		assert_noop!(
+			// Expect failure if transferability is disabled since this is required for
+			// preparing the `ExecutedDecreaseInvest` message.
+			assert_noop!(
 			LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
 		);
-		enable_liquidity_pool_transferability(currency_id);
+			enable_liquidity_pool_transferability(currency_id);
 
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Foreign InvestmentState should be cleared
-		assert!(!pallet_foreign_investments::InvestmentState::<
-			DevelopmentRuntime,
-		>::contains_key(&investor, default_investment_id()));
-		assert!(System::events().iter().any(|e| {
-			e.event == pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+			// Foreign InvestmentState should be cleared
+			assert!(!pallet_foreign_investments::InvestmentState::<
+				DevelopmentRuntime,
+			>::contains_key(&investor, default_investment_id()));
+			assert!(System::events().iter().any(|e| {
+				e.event == pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 				}
 				.into()
-		}));
+			}));
 
-		// Verify investment was entirely drained from investment account
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &default_investment_account()),
-			0
-		);
-		// Since the investment was done in the pool currency, the decrement happens
-		// synchronously and thus it must be burned from investor's holdings
-		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
-		assert!(System::events().iter().any(|e| e.event
-			== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
-				investment_id: default_investment_id(),
-				submitted_at: 0,
-				who: investor.clone(),
-				amount: 0
-			}
-			.into()));
-		assert!(System::events().iter().any(|e| e.event
-			== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
-				currency_id,
-				who: investor.clone(),
-				amount: invest_amount
-			}
-			.into()));
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+			// Verify investment was entirely drained from investment account
+			assert_eq!(
+				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				0
+			);
+			// Since the investment was done in the pool currency, the decrement happens
+			// synchronously and thus it must be burned from investor's holdings
+			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert!(System::events().iter().any(|e| e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+					investment_id: default_investment_id(),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: 0
+				}
+				.into()));
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount: invest_amount
+				}
+				.into()));
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+		});
+	}
+
+	#[test]
+	fn collect_invest_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			let investment_currency_id: CurrencyId = default_investment_id().into();
+
+			// Set permissions and execute initial investment
+			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
+			let events_before_collect = System::events();
+
+			// Process and fulfill order
+			// NOTE: Without this step, the order id is not cleared and
+			// `Event::InvestCollectedForNonClearedOrderId` be dispatched
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+
+			// Tranche tokens will be minted upon fulfillment
+			assert_eq!(OrmlTokens::total_issuance(investment_currency_id), 0);
+			assert_ok!(Investments::invest_fulfillment(
 				default_investment_id(),
-			)
-			.amount,
-			0
-		);
-	});
-}
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::one(),
+					price: Rate::one(),
+				}
+			));
+			assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
 
-#[test]
-fn inbound_collect_invest_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
-		let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+			// Mock collection message msg
+			let msg = LiquidityPoolMessage::CollectInvest {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
-		let investment_currency_id: CurrencyId = default_investment_id().into();
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Set permissions and execute initial investment
-		do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
-		let events_before_collect = System::events();
+			// Remove events before collect execution
+			let events_since_collect: Vec<_> = System::events()
+				.into_iter()
+				.filter(|e| !events_before_collect.contains(e))
+				.collect();
 
-		// Process and fulfill order
-		// NOTE: Without this step, the order id is not cleared and
-		// `Event::InvestCollectedForNonClearedOrderId` be dispatched
-		assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			// Verify investment was transferred to the domain locator
+			assert_eq!(
+				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				amount
+			);
 
-		// Tranche tokens will be minted upon fulfillment
-		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), 0);
-		assert_ok!(Investments::invest_fulfillment(
-			default_investment_id(),
-			FulfillmentWithPrice::<Rate> {
-				of_amount: Perquintill::one(),
-				price: Rate::one(),
-			}
-		));
-		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
-
-		// Mock collection message msg
-		let msg = LiquidityPoolMessage::CollectInvest {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-		};
-
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
-
-		// Remove events before collect execution
-		let events_since_collect: Vec<_> = System::events()
-			.into_iter()
-			.filter(|e| !events_before_collect.contains(e))
-			.collect();
-
-		// Verify investment was transferred to the domain locator
-		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
-			amount
-		);
-
-		// Order should have been cleared by fulfilling investment
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
-				default_investment_id(),
-			)
-			.amount,
-			0
-		);
-		assert!(!events_since_collect.iter().any(|e| {
-			e.event
+			// Order should have been cleared by fulfilling investment
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+			assert!(!events_since_collect.iter().any(|e| {
+				e.event
 				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
 				.into()
-		}));
+			}));
 
-		// Order should not have been updated since everything is collected
-		assert!(!events_since_collect.iter().any(|e| {
-			e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
-					investment_id: default_investment_id(),
-					submitted_at: 0,
-					who: investor.clone(),
-					amount: 0,
-				}
-				.into()
-		}));
+			// Order should not have been updated since everything is collected
+			assert!(!events_since_collect.iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+						investment_id: default_investment_id(),
+						submitted_at: 0,
+						who: investor.clone(),
+						amount: 0,
+					}
+					.into()
+			}));
 
-		// Order should have been fully collected
-		assert!(events_since_collect.iter().any(|e| {
-			e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
-					investment_id: default_investment_id(),
-					processed_orders: vec![0],
-					who: investor.clone(),
-					collection: InvestCollection::<Balance> {
-						payout_investment_invest: amount,
-						remaining_investment_invest: 0,
-					},
-					outcome: CollectOutcome::FullyCollected,
-				}
-				.into()
-		}));
+			// Order should have been fully collected
+			assert!(events_since_collect.iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![0],
+						who: investor.clone(),
+						collection: InvestCollection::<Balance> {
+							payout_investment_invest: amount,
+							remaining_investment_invest: 0,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
 
-		// Foreign CollectedInvestment should be killed
-		assert!(!pallet_foreign_investments::CollectedInvestment::<
-			DevelopmentRuntime,
-		>::contains_key(investor.clone(), default_investment_id()));
+			// Foreign CollectedInvestment should be killed
+			assert!(!pallet_foreign_investments::CollectedInvestment::<
+				DevelopmentRuntime,
+			>::contains_key(investor.clone(), default_investment_id()));
 
-		// Foreign InvestmentState should be killed
-		assert!(!pallet_foreign_investments::InvestmentState::<
-			DevelopmentRuntime,
-		>::contains_key(investor.clone(), default_investment_id()));
+			// Foreign InvestmentState should be killed
+			assert!(!pallet_foreign_investments::InvestmentState::<
+				DevelopmentRuntime,
+			>::contains_key(investor.clone(), default_investment_id()));
 
-		// Clearing of foreign InvestState should be dispatched
-		assert!(events_since_collect.iter().any(|e| {
-			e.event
+			// Clearing of foreign InvestState should be dispatched
+			assert!(events_since_collect.iter().any(|e| {
+				e.event
 				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 				}
 				.into()
-		}));
-	});
-}
+			}));
+		});
+	}
 
-#[test]
-fn inbound_increase_redeem_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
+	#[test]
+	fn increase_redeem_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial redemption
-		do_initial_increase_redemption(pool_id, amount, investor, currency_id);
+			// Set permissions and execute initial redemption
+			do_initial_increase_redemption(pool_id, amount, investor, currency_id);
 
-		// Verify amount was noted in the corresponding order
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
-				default_investment_id(),
-			)
-			.amount,
-			amount
-		);
+			// Verify amount was noted in the corresponding order
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+					default_investment_id(),
+				)
+				.amount,
+				amount
+			);
 
-		// increase again, state should be SwapIntoForeignDone
-	});
-}
+			// increase again, state should be SwapIntoForeignDone
+		});
+	}
 
-#[test]
-fn inbound_decrease_redeem_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let redeem_amount = 100_000_000;
-		let decrease_amount = redeem_amount / 3;
-		let final_amount = redeem_amount - decrease_amount;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
-		let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+	#[test]
+	fn decrease_redeem_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let redeem_amount = 100_000_000;
+			let decrease_amount = redeem_amount / 3;
+			let final_amount = redeem_amount - decrease_amount;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial redemption
-		do_initial_increase_redemption(pool_id, redeem_amount, investor.clone(), currency_id);
+			// Set permissions and execute initial redemption
+			do_initial_increase_redemption(pool_id, redeem_amount, investor.clone(), currency_id);
 
-		// Verify the corresponding redemption order id is 0
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::invest_order_id(investment_id(
+			// Verify the corresponding redemption order id is 0
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::invest_order_id(investment_id(
+					pool_id,
+					default_tranche_id(pool_id)
+				)),
+				0
+			);
+
+			// Mock incoming decrease message
+			let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
 				pool_id,
-				default_tranche_id(pool_id)
-			)),
-			0
-		);
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount: decrease_amount,
+			};
 
-		// Mock incoming decrease message
-		let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-			amount: decrease_amount,
-		};
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			// Verify investment was decreased into investment account
+			assert_eq!(
+				OrmlTokens::free_balance(
+					default_investment_id().into(),
+					&default_investment_account(),
+				),
+				final_amount
+			);
+			// Tokens should have been transferred from investor's wallet to domain's
+			// sovereign account
+			assert_eq!(
+				OrmlTokens::free_balance(default_investment_id().into(), &investor),
+				0
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				decrease_amount
+			);
 
-		// Verify investment was decreased into investment account
-		assert_eq!(
-			OrmlTokens::free_balance(
-				default_investment_id().into(),
-				&default_investment_account(),
-			),
-			final_amount
-		);
-		// Tokens should have been transferred from investor's wallet to domain's
-		// sovereign account
-		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &investor),
-			0
-		);
-		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
-			decrease_amount
-		);
-
-		// Foreign RedemptionState should be updated
-		assert!(System::events().iter().any(|e| {
-			e.event
+			// Foreign RedemptionState should be updated
+			assert!(System::events().iter().any(|e| {
+				e.event
 				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
@@ -501,456 +505,840 @@ fn inbound_decrease_redeem_order() {
 					}
 				}
 			.into()
-		}));
+			}));
 
-		// Order should have been updated
-		assert!(System::events().iter().any(|e| e.event
-			== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
-				investment_id: default_investment_id(),
-				submitted_at: 0,
-				who: investor.clone(),
-				amount: final_amount
-			}
-			.into()));
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
-				default_investment_id(),
-			)
-			.amount,
-			final_amount
-		);
-	});
-}
+			// Order should have been updated
+			assert!(System::events().iter().any(|e| e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+					investment_id: default_investment_id(),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: final_amount
+				}
+				.into()));
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+					default_investment_id(),
+				)
+				.amount,
+				final_amount
+			);
+		});
+	}
 
-#[test]
-fn inbound_cancel_redeem_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let redeem_amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
-		let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+	#[test]
+	fn cancel_redeem_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let redeem_amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
-		// Set permissions and execute initial redemption
-		do_initial_increase_redemption(pool_id, redeem_amount, investor.clone(), currency_id);
+			// Set permissions and execute initial redemption
+			do_initial_increase_redemption(pool_id, redeem_amount, investor.clone(), currency_id);
 
-		// Verify the corresponding redemption order id is 0
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::invest_order_id(investment_id(
+			// Verify the corresponding redemption order id is 0
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::invest_order_id(investment_id(
+					pool_id,
+					default_tranche_id(pool_id)
+				)),
+				0
+			);
+
+			// Mock incoming decrease message
+			let msg = LiquidityPoolMessage::CancelRedeemOrder {
 				pool_id,
-				default_tranche_id(pool_id)
-			)),
-			0
-		);
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
 
-		// Mock incoming decrease message
-		let msg = LiquidityPoolMessage::CancelRedeemOrder {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-		};
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			// Verify investment was decreased into investment account
+			assert_eq!(
+				OrmlTokens::free_balance(
+					default_investment_id().into(),
+					&default_investment_account(),
+				),
+				0
+			);
+			// Tokens should have been transferred from investor's wallet to domain's
+			// sovereign account
+			assert_eq!(
+				OrmlTokens::free_balance(default_investment_id().into(), &investor),
+				0
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				redeem_amount
+			);
 
-		// Verify investment was decreased into investment account
-		assert_eq!(
-			OrmlTokens::free_balance(
-				default_investment_id().into(),
-				&default_investment_account(),
-			),
-			0
-		);
-		// Tokens should have been transferred from investor's wallet to domain's
-		// sovereign account
-		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &investor),
-			0
-		);
-		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
-			redeem_amount
-		);
-
-		// Foreign RedemptionState should be updated
-		assert!(System::events().iter().any(|e| {
-			e.event
+			// Foreign RedemptionState should be updated
+			assert!(System::events().iter().any(|e| {
+				e.event
 				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 					state: RedeemState::Invested { invest_amount: redeem_amount },
 				}
 				.into()
-		}));
+			}));
 
-		// Order should have been updated
-		assert!(System::events().iter().any(|e| e.event
-			== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
-				investment_id: default_investment_id(),
-				submitted_at: 0,
-				who: investor.clone(),
-				amount: 0
-			}
-			.into()));
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+			// Order should have been updated
+			assert!(System::events().iter().any(|e| e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+					investment_id: default_investment_id(),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: 0
+				}
+				.into()));
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+		});
+	}
+
+	#[test]
+	fn fully_collect_redeem_order() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let pool_account =
+				pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+
+			// Create new pool
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+			// Set permissions and execute initial investment
+			do_initial_increase_redemption(pool_id, amount, investor.clone(), currency_id);
+			let events_before_collect = System::events();
+
+			// Fund the pool account with sufficient pool currency, else redemption cannot
+			// swap tranche tokens against pool currency
+			assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+
+			// Process and fulfill order
+			// NOTE: Without this step, the order id is not cleared and
+			// `Event::RedeemCollectedForNonClearedOrderId` be dispatched
+			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-			)
-			.amount,
-			0
-		);
-	});
-}
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::one(),
+					price: Rate::one(),
+				}
+			));
 
-#[test]
-fn inbound_collect_redeem_order() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let pool_id = DEFAULT_POOL_ID;
-		let amount = 100_000_000;
-		let investor: AccountId = BOB.into();
-		let currency_id = AUSD_CURRENCY_ID;
-		let currency_decimals = currency_decimals::AUSD;
-		let pool_account =
-			pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+			// Enable liquidity pool transferability
+			enable_liquidity_pool_transferability(currency_id);
 
-		// Create new pool
-		create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			// Mock collection message msg
+			let msg = LiquidityPoolMessage::CollectRedeem {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
 
-		// Set permissions and execute initial investment
-		do_initial_increase_redemption(pool_id, amount, investor.clone(), currency_id);
-		let events_before_collect = System::events();
+			// Execute byte message
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
-		// Fund the pool account with sufficient pool currency, else redemption cannot
-		// swap tranche tokens against pool currency
-		assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+			// Remove events before collect execution
+			let events_since_collect: Vec<_> = System::events()
+				.into_iter()
+				.filter(|e| !events_before_collect.contains(e))
+				.collect();
 
-		// Process and fulfill order
-		// NOTE: Without this step, the order id is not cleared and
-		// `Event::RedeemCollectedForNonClearedOrderId` be dispatched
-		assert_ok!(Investments::process_redeem_orders(default_investment_id()));
-		assert_ok!(Investments::redeem_fulfillment(
-			default_investment_id(),
-			FulfillmentWithPrice::<Rate> {
-				of_amount: Perquintill::one(),
-				price: Rate::one(),
-			}
-		));
+			// Verify collected redemption was burned from investor
+			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount
+				}
+				.into()));
 
-		// Enable liquidity pool transferability
-		enable_liquidity_pool_transferability(currency_id);
-
-		// Mock collection message msg
-		let msg = LiquidityPoolMessage::CollectRedeem {
-			pool_id,
-			tranche_id: default_tranche_id(pool_id),
-			investor: investor.clone().into(),
-			currency: general_currency_index(currency_id),
-		};
-
-		// Execute byte message
-		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
-
-		// Remove events before collect execution
-		let events_since_collect: Vec<_> = System::events()
-			.into_iter()
-			.filter(|e| !events_before_collect.contains(e))
-			.collect();
-
-		// Verify collected redemption was burned from investor
-		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
-		assert!(System::events().iter().any(|e| e.event
-			== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
-				currency_id,
-				who: investor.clone(),
-				amount
-			}
-			.into()));
-
-		// Order should have been cleared by fulfilling redemption
-		assert_eq!(
-			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
-				default_investment_id(),
-			)
-			.amount,
-			0
-		);
-		assert!(!events_since_collect.iter().any(|e| {
-			e.event
+			// Order should have been cleared by fulfilling redemption
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+			assert!(!events_since_collect.iter().any(|e| {
+				e.event
 				== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
 				.into()
-		}));
+			}));
 
-		// Order should not have been updated since everything is collected
-		assert!(!events_since_collect.iter().any(|e| {
-			e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
-					investment_id: default_investment_id(),
-					submitted_at: 0,
-					who: investor.clone(),
-					amount: 0,
-				}
-				.into()
-		}));
+			// Order should not have been updated since everything is collected
+			assert!(!events_since_collect.iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+						investment_id: default_investment_id(),
+						submitted_at: 0,
+						who: investor.clone(),
+						amount: 0,
+					}
+					.into()
+			}));
 
-		// Order should have been fully collected
-		assert!(events_since_collect.iter().any(|e| {
-			e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrdersCollected {
-					investment_id: default_investment_id(),
-					processed_orders: vec![0],
-					who: investor.clone(),
-					collection: RedeemCollection::<Balance> {
-						payout_investment_redeem: amount,
-						remaining_investment_redeem: 0,
-					},
-					outcome: CollectOutcome::FullyCollected,
-				}
-				.into()
-		}));
+			// Order should have been fully collected
+			assert!(events_since_collect.iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![0],
+						who: investor.clone(),
+						collection: RedeemCollection::<Balance> {
+							payout_investment_redeem: amount,
+							remaining_investment_redeem: 0,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
 
-		// Foreign CollectedRedemptionTrancheTokens should be killed
-		assert!(!pallet_foreign_investments::CollectedRedemption::<
-			DevelopmentRuntime,
-		>::contains_key(investor.clone(), default_investment_id(),));
+			// Foreign CollectedRedemptionTrancheTokens should be killed
+			assert!(!pallet_foreign_investments::CollectedRedemption::<
+				DevelopmentRuntime,
+			>::contains_key(investor.clone(), default_investment_id(),));
 
-		// Foreign RedemptionState should be killed
-		assert!(!pallet_foreign_investments::RedemptionState::<
-			DevelopmentRuntime,
-		>::contains_key(investor.clone(), default_investment_id()));
+			// Foreign RedemptionState should be killed
+			assert!(!pallet_foreign_investments::RedemptionState::<
+				DevelopmentRuntime,
+			>::contains_key(investor.clone(), default_investment_id()));
 
-		// Clearing of foreign RedeemState should be dispatched
-		assert!(events_since_collect.iter().any(|e| {
-			e.event
+			// Clearing of foreign RedeemState should be dispatched
+			assert!(events_since_collect.iter().any(|e| {
+				e.event
 					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
 						investor: investor.clone(),
 						investment_id: default_investment_id(),
 					}
 					.into()
-		}));
-	});
-}
-
-mod should_fail {
-	use pallet_foreign_investments::errors::{InvestError, RedeemError};
-
-	use super::*;
-
-	mod decrease_should_underflow {
-		use super::*;
-
-		#[test]
-		fn invest_decrease_underflow() {
-			TestNet::reset();
-			Development::execute_with(|| {
-				setup_pre_requirements();
-				let pool_id = DEFAULT_POOL_ID;
-				let invest_amount: u128 = 100_000_000;
-				let decrease_amount = invest_amount + 1;
-				let investor: AccountId = BOB.into();
-				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				create_currency_pool(pool_id, currency_id, currency_decimals.into());
-				do_initial_increase_investment(
-					pool_id,
-					invest_amount,
-					investor.clone(),
-					currency_id,
-				);
-				enable_liquidity_pool_transferability(currency_id);
-
-				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: decrease_amount,
-				};
-
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-						InvestError::Decrease
-					)
-				);
-			});
-		}
-
-		#[test]
-		fn redeem_decrease_underflow() {
-			TestNet::reset();
-			Development::execute_with(|| {
-				setup_pre_requirements();
-				let pool_id = DEFAULT_POOL_ID;
-				let redeem_amount: u128 = 100_000_000;
-				let decrease_amount = redeem_amount + 1;
-				let investor: AccountId = BOB.into();
-				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				create_currency_pool(pool_id, currency_id, currency_decimals.into());
-				do_initial_increase_redemption(
-					pool_id,
-					redeem_amount,
-					investor.clone(),
-					currency_id,
-				);
-
-				// Mock incoming decrease message
-				let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: decrease_amount,
-				};
-
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
-						RedeemError::Decrease
-					)
-				);
-			});
-		}
+			}));
+		});
 	}
 
-	mod should_throw_requires_collect {
-		use super::*;
-		#[test]
-		fn invest_requires_collect() {
-			TestNet::reset();
-			Development::execute_with(|| {
-				setup_pre_requirements();
-				let pool_id = DEFAULT_POOL_ID;
-				let amount: u128 = 100_000_000;
-				let investor: AccountId = BOB.into();
-				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				create_currency_pool(pool_id, currency_id, currency_decimals.into());
-				do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
-				enable_liquidity_pool_transferability(currency_id);
+	#[test]
+	fn partially_collect_redemption_for_through_investments() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let redeem_amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let pool_account =
+				pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			do_initial_increase_redemption(pool_id, redeem_amount, investor.clone(), currency_id);
+			enable_liquidity_pool_transferability(currency_id);
 
-				// Prepare collection
-				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-					.into_account_truncating();
-				assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
-				assert_ok!(Investments::process_invest_orders(default_investment_id()));
-				assert_ok!(Investments::invest_fulfillment(
-					default_investment_id(),
-					FulfillmentWithPrice::<Rate> {
-						of_amount: Perquintill::one(),
-						price: Rate::one(),
+			// Fund the pool account with sufficient pool currency, else redemption cannot
+			// swap tranche tokens against pool currency
+			assert_ok!(OrmlTokens::mint_into(
+				currency_id,
+				&pool_account,
+				redeem_amount
+			));
+			assert!(!Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+
+			// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
+			// tokens
+			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+			assert_ok!(Investments::redeem_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::from_percent(50),
+					price: Rate::checked_from_rational(1, 4).unwrap(),
+				}
+			));
+
+			// Pre collect assertions
+			assert!(Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert!(CollectedRedemption::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				RedeemState::NotInvestedAnd {
+					inner: InnerRedeemState::Redeeming { redeem_amount }
+				}
+			);
+
+			// Collecting through investments should denote amounts and transition
+			// state
+			assert_ok!(Investments::collect_redemptions_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![0],
+						who: investor.clone(),
+						collection: RedeemCollection::<Balance> {
+							payout_investment_redeem: redeem_amount / 8,
+							remaining_investment_redeem: redeem_amount / 2,
+						},
+						outcome: CollectOutcome::FullyCollected,
 					}
-				));
+					.into()
+			}));
+			assert!(!Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			// Since foreign currency is pool currency, the swap is immediately fulfilled
+			// and ExecutedCollectRedeem dispatched
+			assert!(!CollectedRedemption::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			),);
+			assert_eq!(
+				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				RedeemState::NotInvestedAnd {
+					inner: InnerRedeemState::Redeeming {
+						redeem_amount: redeem_amount / 2,
+					}
+				}
+			);
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount: redeem_amount / 8
+				}
+				.into()));
 
-				// Should fail to increase
-				let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: 1,
-				};
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-						InvestError::CollectRequired
-					)
-				);
+			// Process rest of redemption at 50% rate
+			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+			assert_ok!(Investments::redeem_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::one(),
+					price: Rate::checked_from_rational(1, 2).unwrap(),
+				}
+			));
+			// Order should have been cleared by fulfilling redemption
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
 
-				// Should fail to decrease
-				let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: 1,
-				};
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-						InvestError::CollectRequired
-					)
-				);
-			});
+			// Collect remainder through Investments
+			assert_ok!(Investments::collect_redemptions_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+			assert!(!Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert!(!CollectedRedemption::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert!(!RedemptionState::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert!(!System::events().iter().any(|e| {
+				e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
+					investment_id: default_investment_id(),
+					who: investor.clone(),
+				}
+				.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![1],
+						who: investor.clone(),
+						collection: RedeemCollection::<Balance> {
+							payout_investment_redeem: redeem_amount / 4,
+							remaining_investment_redeem: 0,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			// Verify collected redemption was burned from investor
+			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert!(System::events().iter().any(|e| e.event
+				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
+					currency_id,
+					who: investor.clone(),
+					amount: redeem_amount / 4
+				}
+				.into()));
+			// Clearing of foreign RedeemState should have been dispatched exactly once
+			assert_eq!(
+				System::events()
+					.iter()
+					.filter(|e| {
+						e.event
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
+						investor: investor.clone(),
+						investment_id: default_investment_id(),
+					}
+					.into()
+					})
+					.count(),
+				1
+			);
+		});
+	}
+
+	#[test]
+	fn partially_collect_investment_for_through_investments() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let invest_amount = 100_000_000;
+			let investor: AccountId = BOB.into();
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			enable_liquidity_pool_transferability(currency_id);
+			let investment_currency_id: CurrencyId = default_investment_id().into();
+
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+
+			// Process 50% of investment at 400% rate, i.e. 1 tranche token = 4 pool
+			// currency
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			assert_ok!(Investments::invest_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::from_percent(50),
+					price: Rate::checked_from_rational(4, 1).unwrap(),
+				}
+			));
+			// assert_eq!(
+			// 	OrmlTokens::total_issuance(investment_currency_id),
+			// 	invest_amount / 8
+			//  invest_amount
+			// );
+
+			// Pre collect assertions
+			assert!(Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::<DevelopmentRuntime>::InvestmentOngoing { invest_amount }
+			);
+
+			// Collecting through Investments should denote amounts and transition
+			// state
+			assert_ok!(Investments::collect_investments_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			// The collected amount is only transferred to the user if they send a
+			// `CollectInvest` message
+			assert_eq!(
+				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				CollectedAmount {
+					amount_collected: invest_amount / 8,
+					amount_payment: invest_amount / 4,
+				}
+			);
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::<DevelopmentRuntime>::InvestmentOngoing {
+					invest_amount: invest_amount / 2
+				}
+			);
+			// Tokens should be still owned by investor
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &investor),
+				invest_amount / 8
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				0
+			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![0],
+						who: investor.clone(),
+						collection: InvestCollection::<Balance> {
+							payout_investment_invest: invest_amount / 8,
+							remaining_investment_invest: invest_amount / 2,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+
+			// Process rest of investment at 50% rate
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			assert_ok!(Investments::invest_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::one(),
+					price: Rate::checked_from_rational(1, 2).unwrap(),
+				}
+			));
+			// Order should have been cleared by fulfilling investment
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+			assert_eq!(
+				OrmlTokens::total_issuance(investment_currency_id),
+				invest_amount / 4 + invest_amount / 8
+			);
+
+			// Collect remainder through Investments
+			assert_ok!(Investments::collect_investments_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				CollectedAmount {
+					amount_collected: invest_amount / 4 + invest_amount / 8,
+					amount_payment: invest_amount,
+				}
+			);
+			assert!(!InvestmentState::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			// Tokens should still be investor's walled
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &investor),
+				invest_amount / 4 + invest_amount / 8
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				0
+			);
+			assert!(!System::events().iter().any(|e| {
+				e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: default_investment_id(),
+					who: investor.clone(),
+				}
+				.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![1],
+						who: investor.clone(),
+						collection: InvestCollection::<Balance> {
+							payout_investment_invest: invest_amount / 4,
+							remaining_investment_invest: 0,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			// Clearing of foreign InvestState should have been dispatched exactly once
+			assert_eq!(
+				System::events()
+					.iter()
+					.filter(|e| {
+						e.event
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+						investor: investor.clone(),
+						investment_id: default_investment_id(),
+					}
+					.into()
+					})
+					.count(),
+				1
+			);
+
+			// User collects
+		});
+	}
+
+	mod should_fail {
+		use pallet_foreign_investments::errors::{InvestError, RedeemError};
+
+		use super::*;
+
+		mod decrease_should_underflow {
+			use super::*;
+
+			#[test]
+			fn invest_decrease_underflow() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let invest_amount: u128 = 100_000_000;
+					let decrease_amount = invest_amount + 1;
+					let investor: AccountId = BOB.into();
+					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					create_currency_pool(pool_id, currency_id, currency_decimals.into());
+					do_initial_increase_investment(
+						pool_id,
+						invest_amount,
+						investor.clone(),
+						currency_id,
+					);
+					enable_liquidity_pool_transferability(currency_id);
+
+					// Mock incoming decrease message
+					let msg = LiquidityPoolMessage::DecreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: decrease_amount,
+					};
+
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::Decrease
+						)
+					);
+				});
+			}
+
+			#[test]
+			fn redeem_decrease_underflow() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let redeem_amount: u128 = 100_000_000;
+					let decrease_amount = redeem_amount + 1;
+					let investor: AccountId = BOB.into();
+					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					create_currency_pool(pool_id, currency_id, currency_decimals.into());
+					do_initial_increase_redemption(
+						pool_id,
+						redeem_amount,
+						investor.clone(),
+						currency_id,
+					);
+
+					// Mock incoming decrease message
+					let msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: decrease_amount,
+					};
+
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::Decrease
+						)
+					);
+				});
+			}
 		}
 
-		#[test]
-		fn redeem_requires_collect() {
-			TestNet::reset();
-			Development::execute_with(|| {
-				setup_pre_requirements();
-				let pool_id = DEFAULT_POOL_ID;
-				let amount: u128 = 100_000_000;
-				let investor: AccountId = BOB.into();
-				let currency_id: CurrencyId = AUSD_CURRENCY_ID;
-				let currency_decimals = currency_decimals::AUSD;
-				create_currency_pool(pool_id, currency_id, currency_decimals.into());
-				do_initial_increase_redemption(pool_id, amount, investor.clone(), currency_id);
-				enable_liquidity_pool_transferability(currency_id);
+		mod should_throw_requires_collect {
+			use super::*;
+			#[test]
+			fn invest_requires_collect() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let amount: u128 = 100_000_000;
+					let investor: AccountId = BOB.into();
+					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					create_currency_pool(pool_id, currency_id, currency_decimals.into());
+					do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
+					enable_liquidity_pool_transferability(currency_id);
 
-				// Mint more into DomainLocator required for subsequent invest attempt
-				assert_ok!(OrmlTokens::mint_into(
-					default_investment_id().into(),
-					&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
-					1,
-				));
+					// Prepare collection
+					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
+						.into_account_truncating();
+					assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+					assert_ok!(Investments::process_invest_orders(default_investment_id()));
+					assert_ok!(Investments::invest_fulfillment(
+						default_investment_id(),
+						FulfillmentWithPrice::<Rate> {
+							of_amount: Perquintill::one(),
+							price: Rate::one(),
+						}
+					));
 
-				// Prepare collection
-				let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-					.into_account_truncating();
-				assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
-				assert_ok!(Investments::process_redeem_orders(default_investment_id()));
-				assert_ok!(Investments::redeem_fulfillment(
-					default_investment_id(),
-					FulfillmentWithPrice::<Rate> {
-						of_amount: Perquintill::one(),
-						price: Rate::one(),
-					}
-				));
+					// Should fail to increase
+					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::CollectRequired
+						)
+					);
 
-				// Should fail to increase
-				let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: 1,
-				};
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
-						RedeemError::CollectRequired
-					)
-				);
+					// Should fail to decrease
+					let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::CollectRequired
+						)
+					);
+				});
+			}
 
-				// Should fail to decrease
-				let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
-					pool_id,
-					tranche_id: default_tranche_id(pool_id),
-					investor: investor.clone().into(),
-					currency: general_currency_index(currency_id),
-					amount: 1,
-				};
-				assert_noop!(
-					LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
-					pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
-						RedeemError::CollectRequired
-					)
-				);
-			});
+			#[test]
+			fn redeem_requires_collect() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let amount: u128 = 100_000_000;
+					let investor: AccountId = BOB.into();
+					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					create_currency_pool(pool_id, currency_id, currency_decimals.into());
+					do_initial_increase_redemption(pool_id, amount, investor.clone(), currency_id);
+					enable_liquidity_pool_transferability(currency_id);
+
+					// Mint more into DomainLocator required for subsequent invest attempt
+					assert_ok!(OrmlTokens::mint_into(
+						default_investment_id().into(),
+						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+						1,
+					));
+
+					// Prepare collection
+					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
+						.into_account_truncating();
+					assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+					assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+					assert_ok!(Investments::redeem_fulfillment(
+						default_investment_id(),
+						FulfillmentWithPrice::<Rate> {
+							of_amount: Perquintill::one(),
+							price: Rate::one(),
+						}
+					));
+
+					// Should fail to increase
+					let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::CollectRequired
+						)
+					);
+
+					// Should fail to decrease
+					let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(currency_id),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::CollectRequired
+						)
+					);
+				});
+			}
 		}
 	}
 }
