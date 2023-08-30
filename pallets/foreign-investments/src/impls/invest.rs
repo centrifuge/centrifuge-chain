@@ -1117,3 +1117,66 @@ where
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use cfg_traits::SimpleCurrencyConversion;
+	use frame_support::assert_ok;
+
+	use super::*;
+
+	#[derive(Clone, Copy, PartialEq, Debug)]
+	enum CurrencyId {
+		User,
+		Pool,
+	}
+
+	struct DoubleCurrencyConverter;
+
+	impl SimpleCurrencyConversion for DoubleCurrencyConverter {
+		type Balance = u128;
+		type Currency = CurrencyId;
+		type Error = DispatchError;
+
+		fn stable_to_stable(
+			currency_in: Self::Currency,
+			currency_out: Self::Currency,
+			amount_out: Self::Balance,
+		) -> Result<Self::Balance, Self::Error> {
+			assert_eq!(currency_out, CurrencyId::User);
+			assert_eq!(currency_in, CurrencyId::Pool);
+			Ok(amount_out * 2)
+		}
+	}
+
+	#[derive(PartialEq)]
+	struct TestConfig;
+
+	impl InvestStateConfig for TestConfig {
+		type Balance = u128;
+		type CurrencyConverter = DoubleCurrencyConverter;
+		type CurrencyId = CurrencyId;
+	}
+
+	type InvestState = super::InvestState<TestConfig>;
+
+	#[test]
+	fn increase() {
+		assert_ok!(
+			InvestState::NoState.transition(InvestTransition::IncreaseInvestOrder(Swap {
+				currency_in: CurrencyId::Pool,
+				currency_out: CurrencyId::User,
+				amount: 100,
+			})),
+			InvestState::ActiveSwapIntoPoolCurrency {
+				swap: Swap {
+					currency_in: CurrencyId::Pool,
+					currency_out: CurrencyId::User,
+					amount: 100,
+				}
+			}
+		)
+
+		// All states here
+	}
+}

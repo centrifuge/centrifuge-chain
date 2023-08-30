@@ -79,7 +79,7 @@ pub mod pallet {
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::{InvestState, RedeemState};
+	use types::{InvestState, InvestStateConfig, RedeemState};
 
 	use super::*;
 
@@ -231,6 +231,16 @@ pub mod pallet {
 		>;
 	}
 
+	/// Aux type for configurations that inherents from `Config`
+	#[derive(PartialEq)]
+	pub struct Of<T: Config>(PhantomData<T>);
+
+	impl<T: Config> InvestStateConfig for Of<T> {
+		type Balance = T::Balance;
+		type CurrencyConverter = T::CurrencyConverter;
+		type CurrencyId = T::CurrencyId;
+	}
+
 	/// Maps an investor and their `InvestmentId` to the corresponding
 	/// `InvestState`.
 	///
@@ -245,7 +255,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		InvestState<T>,
+		InvestState<Of<T>>,
 		ValueQuery,
 	>;
 
@@ -366,7 +376,7 @@ pub mod pallet {
 		ForeignInvestmentUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: InvestState<T>,
+			state: InvestState<Of<T>>,
 		},
 		ForeignInvestmentCleared {
 			investor: T::AccountId,

@@ -26,8 +26,8 @@ use sp_std::marker::PhantomData;
 use crate::{
 	errors::{InvestError, RedeemError},
 	types::{InvestState, InvestTransition, RedeemState, RedeemTransition, TokenSwapReason},
-	Config, Error, ForeignInvestmentInfo as ForeignInvestmentInfoStorage, InvestmentState, Pallet,
-	RedemptionState, SwapOf,
+	Config, Error, ForeignInvestmentInfo as ForeignInvestmentInfoStorage, InvestmentState, Of,
+	Pallet, RedemptionState, SwapOf,
 };
 
 /// The hook struct which acts upon a fulfilled swap order. Depending on the
@@ -201,7 +201,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		let pre_state = InvestmentState::<T>::get(&investor, investment_id);
 
 		// Exit early if there is no foreign investment
-		if pre_state == InvestState::<T>::NoState {
+		if pre_state == InvestState::<Of<T>>::NoState {
 			return Ok(());
 		}
 

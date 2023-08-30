@@ -30,8 +30,8 @@ use crate::{
 	errors::{InvestError, RedeemError},
 	types::{InvestState, InvestTransition, RedeemState, RedeemTransition, TokenSwapReason},
 	CollectedInvestment, CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo,
-	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionPayoutCurrency, RedemptionState,
-	SwapOf, TokenSwapOrderIds,
+	ForeignInvestmentInfoOf, InvestmentState, Of, Pallet, RedemptionPayoutCurrency,
+	RedemptionState, SwapOf, TokenSwapOrderIds,
 };
 
 mod invest;
@@ -315,7 +315,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn apply_invest_state_transition(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		state: InvestState<T>,
+		state: InvestState<Of<T>>,
 		update_swap_order: bool,
 	) -> DispatchResult {
 		// Must not send executed decrease notification before updating redemption
@@ -380,8 +380,8 @@ impl<T: Config> Pallet<T> {
 			},
 		}
 		.map(|(invest_state, maybe_swap, invest_amount)| {
-			// Must update investment amount before handling swap as in case of decrease, 
-			// updating the swap transfers the currency from the investment account to the 
+			// Must update investment amount before handling swap as in case of decrease,
+			// updating the swap transfers the currency from the investment account to the
 			// investor which is required for placing the swap order
 			if T::Investment::investment(who, investment_id)? != invest_amount {
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
@@ -514,7 +514,7 @@ impl<T: Config> Pallet<T> {
 	fn deposit_investment_event(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		maybe_state: Option<InvestState<T>>,
+		maybe_state: Option<InvestState<Of<T>>>,
 	) {
 		match maybe_state {
 			Some(state) if state == InvestState::NoState => {
@@ -643,7 +643,7 @@ impl<T: Config> Pallet<T> {
 		reason: TokenSwapReason,
 	) -> Result<
 		(
-			Option<InvestState<T>>,
+			Option<InvestState<Of<T>>>,
 			Option<RedeemState<T::Balance, T::CurrencyId>>,
 		),
 		DispatchError,
@@ -847,7 +847,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<
 		(
 			Option<Swap<T::Balance, T::CurrencyId>>,
-			Option<InvestState<T>>,
+			Option<InvestState<Of<T>>>,
 			Option<RedeemState<T::Balance, T::CurrencyId>>,
 			Option<TokenSwapReason>,
 		),
