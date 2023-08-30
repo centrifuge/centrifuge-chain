@@ -1427,7 +1427,6 @@ impl pallet_pool_registry::Config for Runtime {
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;

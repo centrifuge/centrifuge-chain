@@ -69,7 +69,7 @@ pub type MessageOf<T> = Message<
 	<T as Config>::PoolId,
 	<T as Config>::TrancheId,
 	<T as Config>::Balance,
-	<T as Config>::Rate,
+	<T as Config>::BalanceRatio,
 >;
 
 pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
@@ -138,7 +138,11 @@ pub mod pallet {
 			+ From<[u8; 16]>;
 
 		/// The fixed point number representation for higher precision.
-		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+		type BalanceRatio: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ FixedPointNumber
+			+ TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling
 		/// `set_domain_router`.
@@ -157,7 +161,7 @@ pub mod pallet {
 		type TrancheTokenPrice: TrancheTokenPrice<
 			Self::AccountId,
 			CurrencyIdOf<Self>,
-			Rate = Self::Rate,
+			BalanceRatio = Self::BalanceRatio,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
 		>;

@@ -52,9 +52,9 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 }
 
 impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
+	type BalanceRatio = T::BalanceRatio;
 	type Moment = Moment;
 	type PoolId = T::PoolId;
-	type Rate = T::BalanceRatio;
 	type TrancheId = T::TrancheId;
 
 	fn get(
@@ -104,7 +104,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
 	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
-	type Rate = T::Rate;
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(

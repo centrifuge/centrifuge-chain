@@ -210,7 +210,6 @@ impl<
 		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
-	type Rate = <T as pallet_pool_registry::Config>::Rate;
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
@@ -270,7 +269,6 @@ impl Config for Test {
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
