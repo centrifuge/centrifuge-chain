@@ -34,7 +34,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	investments::InvestmentAccount,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
@@ -1336,9 +1336,9 @@ fn inbound_collect_invest_order() {
 		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), 0);
 		assert_ok!(Investments::invest_fulfillment(
 			investment_id(pool_id, default_tranche_id(pool_id)),
-			FulfillmentWithPrice::<Rate> {
+			FulfillmentWithPrice {
 				of_amount: Perquintill::one(),
-				price: Rate::one(),
+				price: Quantity::one(),
 			}
 		));
 		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
@@ -1574,9 +1574,9 @@ fn inbound_collect_redeem_order() {
 		)));
 		assert_ok!(Investments::redeem_fulfillment(
 			investment_id(pool_id, default_tranche_id(pool_id)),
-			FulfillmentWithPrice::<Rate> {
+			FulfillmentWithPrice {
 				of_amount: Perquintill::one(),
-				price: Rate::one(),
+				price: Quantity::one(),
 			}
 		));
 
@@ -1705,7 +1705,7 @@ mod utils {
 		parents: 1,
 		interior: X1(Parachain(PARA_ID_MOONBEAM)),
 	};
-	pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
 	pub fn get_default_moonbeam_native_token_location() -> MultiLocation {
 		MultiLocation {
