@@ -58,7 +58,7 @@ pub mod pallet {
 		/// local context i.e. a different pallet.
 		type LocalEVMOrigin: EnsureOrigin<
 			<Self as frame_system::Config>::RuntimeOrigin,
-			Success = DomainAddress,
+			Success = GatewayOrigin,
 		>;
 
 		/// The AdminOrigin ensures that some calls can only be performed by
@@ -218,25 +218,53 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let domain_address = T::LocalEVMOrigin::ensure_origin(origin)?;
-
-			match domain_address {
-				DomainAddress::EVM(_, _) => {
-					ensure!(
-						Allowlist::<T>::contains_key(
-							domain_address.domain(),
-							domain_address.clone()
-						),
-						Error::<T>::UnknownInstance,
-					);
-
-					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
-						.map_err(|_| Error::<T>::MessageDecodingFailed)?;
-
-					T::InboundQueue::submit(domain_address, incoming_msg)
+			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
+				GatewayOrigin::Domain(domain_address) => {
+					Pallet::<T>::validate(domain_address, msg)?
 				}
-				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
-			}
+				GatewayOrigin::AxelarRelay(domain_address) => {
+					// Every axelar relay address has a separate storage
+
+					// Every axelar relay will prepend the (sourceChain,
+					// sourceAddress) from actual origination chain to the
+					// message bytes, with a length identifier
+					let slice = msg.as_slice();
+					let len_source_chain = slice[0..4];
+					let source_chain =
+					let origin_domain = T::OriginRecovery::try_convert()
+						.map_err(|_| Error::<T>::InvalidMessageOrigin)?;
+
+					Pallet::<T>::validate(origin_domain, origin_msg)
+				}
+			};
+
+			T::InboundQueue::submit(domain_address, incoming_msg)
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn try_range<D>() -> Result<D, DispatchError> {
+
+		}
+
+		fn validate(
+			address: DomainAddress,
+			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
+		) -> Result<(DomainAddress, T::Message), DispatchError> {
+			ensure!(
+				Allowlist::<T>::contains_key(domain_address.domain(), domain_address.clone()),
+				Error::<T>::UnknownInstance,
+			);
+
+			ensure!(
+				domain_address != DomainAddress::Centrifuge(_),
+				Error::<T>::InvalidMessageOrigin
+			);
+
+			let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
+				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
+
+			Ok((domain_address, incoming_msg))
 		}
 	}
 

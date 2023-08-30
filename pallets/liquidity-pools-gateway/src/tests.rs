@@ -287,7 +287,7 @@ mod process_msg {
 			});
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
-				GatewayOrigin::Local(domain_address).into(),
+				GatewayOrigin::Domain(domain_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
 		});
@@ -316,7 +316,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::InvalidMessageOrigin,
@@ -333,7 +333,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::UnknownInstance,
@@ -356,7 +356,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::MessageDecodingFailed,
@@ -390,7 +390,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,

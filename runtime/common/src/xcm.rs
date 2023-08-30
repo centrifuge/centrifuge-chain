@@ -76,10 +76,10 @@ where
 	}
 }
 
-pub struct LpGatewayInstance<ParaAsEvmChain, Runtime>(PhantomData<(ParaAsEvmChain, Runtime)>);
+pub struct LpInstanceRelayer<ParaAsEvmChain, Runtime>(PhantomData<(ParaAsEvmChain, Runtime)>);
 impl<ParaAsEvmChain, Runtime>
 	xcm_executor::traits::ConvertOrigin<<Runtime as frame_system::Config>::RuntimeOrigin>
-	for LpGatewayInstance<ParaAsEvmChain, Runtime>
+	for LpInstanceRelayer<ParaAsEvmChain, Runtime>
 where
 	ParaAsEvmChain: TryConvert<ParaId, EVMChainId>,
 	Runtime: pallet_liquidity_pools_gateway::Config,
@@ -106,10 +106,10 @@ where
 					)
 					.is_some()
 					{
-						Ok(
-							pallet_liquidity_pools_gateway::GatewayOrigin::Local(domain_address)
-								.into(),
+						Ok(pallet_liquidity_pools_gateway::GatewayOrigin::AxelarRelay(
+							domain_address,
 						)
+						.into())
 					} else {
 						Err(location)
 					}

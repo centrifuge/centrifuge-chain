@@ -266,7 +266,7 @@ where
 				.ok_or(Error::<T>::AccountBytesMismatchForDomain)?;
 
 			pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
-				pallet_liquidity_pools_gateway::GatewayOrigin::Local(domain_address).into(),
+				pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
 				msg,
 			)
 		})

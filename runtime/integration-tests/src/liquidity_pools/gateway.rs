@@ -249,7 +249,7 @@ async fn process_msg() {
 	env.with_state(Chain::Para(PARA_ID), || {
 		assert_noop!(
 			pallet_liquidity_pools_gateway::Pallet::<Runtime>::process_msg(
-				GatewayOrigin::Local(test_instance).into(),
+				GatewayOrigin::Domain(test_instance).into(),
 				gateway_msg,
 			),
 			pallet_liquidity_pools::Error::<Runtime>::InvalidIncomingMessage,
