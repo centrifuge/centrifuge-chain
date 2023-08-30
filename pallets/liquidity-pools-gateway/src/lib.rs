@@ -115,15 +115,9 @@ pub mod pallet {
 	///
 	/// This can only be modified by an admin.
 	#[pallet::storage]
-	pub(crate) type Allowlist<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		Domain,
-		Blake2_128Concat,
-		DomainAddress,
-		(),
-		ValueQuery,
-	>;
+	#[pallet::getter(fn allowlist)]
+	pub(crate) type Allowlist<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {

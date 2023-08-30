@@ -26,10 +26,11 @@ use frame_support::{sp_std::marker::PhantomData, traits::fungibles};
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
+use pallet_uniques::mock::RuntimeOrigin;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
-	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
+	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider, LpGatewayInstance},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 use sp_core::ConstU32;
@@ -327,6 +328,8 @@ pub type XcmRouter = (
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
 /// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
+	// A matcher that catches all Moonbeam relaying contracts to generate the right Origin
+	LpGatewayInstance<RuntimeOrigin>,
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.

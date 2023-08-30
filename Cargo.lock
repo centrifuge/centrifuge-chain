@@ -11007,6 +11007,7 @@ dependencies = [
  "pallet-evm-precompile-simple",
  "pallet-investments",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
@@ -11021,6 +11022,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
  "xcm-primitives",
 ]
 

@@ -817,3 +817,11 @@ pub trait InvestmentsPortfolio<Account> {
 		who: &Account,
 	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
 }
+
+/// A trait for trying to convert between two types.
+// TODO: Remove usage for the one on Polkadot once we are on the same version
+pub trait TryConvert<A, B> {
+	/// Attempt to make conversion. If returning [Result::Err], the inner must
+	/// always be `a`.
+	fn try_convert(a: A) -> Result<B, A>;
+}

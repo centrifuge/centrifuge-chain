@@ -28,6 +28,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 # Polkadot dependencies
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # ORML dependencies
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
@@ -63,6 +64,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
