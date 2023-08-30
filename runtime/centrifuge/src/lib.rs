@@ -1459,7 +1459,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
-	type Rate = Rate;
+	type Rate = Quantity;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;

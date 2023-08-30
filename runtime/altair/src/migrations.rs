@@ -29,6 +29,7 @@ pub type UpgradeAltair1030 = (
 	pool_system::MigrateAUSDPools,
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Pools, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -44,6 +45,7 @@ pub type UpgradeAltair1030 = (
 pub type UpgradeAltair1030 = (
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Pools, RocksDbWeight, 0>,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -57,7 +59,10 @@ const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
-	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
+	use frame_support::{
+		pallet_prelude::{OptionQuery, StorageVersion},
+		storage_alias, Twox64Concat,
+	};
 	use orml_traits::asset_registry::AssetMetadata;
 
 	use super::*;

@@ -354,8 +354,11 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
@@ -380,10 +383,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn pool_deposits)]
 	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn storage_version)]
-	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::storage]
 	pub type NotedChange<T: Config> = StorageDoubleMap<
