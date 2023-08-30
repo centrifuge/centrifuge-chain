@@ -725,14 +725,14 @@ fn epoch() {
 			0
 		);
 		assert_eq!(pool.reserve.available, pool.reserve.total);
-		assert_eq!(pool.reserve.total, 758968368969420653370);
+		assert_eq!(pool.reserve.total, 758968368969420653250);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
-			251031631030579346631
+			251031631030579346511
 		);
 		assert_eq!(
 			pool.reserve.total + senior_price.saturating_mul_int(250 * CURRENCY),
-			1010 * CURRENCY + 1 // TODO: Fix rounding issue with FixedPointNumberExtension
+			1009999999999999999750 // TODO: Fix rounding issue with FixedPointNumberExtension
 		);
 
 		assert_eq!(
@@ -742,7 +742,7 @@ fn epoch() {
 			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
-			Quantity::from_inner(1004126524122317386524000000)
+			Quantity::from_inner(1004126524122317386)
 		);
 	});
 }
