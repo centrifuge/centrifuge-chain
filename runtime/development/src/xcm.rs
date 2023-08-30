@@ -28,7 +28,6 @@ use frame_support::{sp_std::marker::PhantomData, traits::fungibles};
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
-use pallet_uniques::mock::RuntimeOrigin;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{

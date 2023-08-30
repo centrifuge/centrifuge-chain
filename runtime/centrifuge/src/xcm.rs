@@ -31,7 +31,7 @@ use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
-	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider, LpGatewayInstance},
+	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, native_per_second},
 };
 use sp_core::ConstU32;
@@ -311,9 +311,9 @@ pub type XcmRouter = (
 	XcmpQueue,
 );
 
-const MOONBASE_ALPHA_PARA_ID: u32 = 2004;
+const MOONBEAM_PARA_ID: u32 = 2004;
 /// https://chainlist.org/chain/1284
-const MOONBASE_ALPHA_EVM_ID: u64 = 1284;
+const MOONBEAM_EVM_ID: u64 = 1284;
 
 /// A constant way of mapping parachain IDs to EVM-chain IDs
 pub struct ParaToEvm;
@@ -321,7 +321,7 @@ impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
 	fn try_convert(a: cfg_types::ParaId) -> Result<EVMChainId, cfg_types::ParaId> {
 		// NOTE: Currently only supported moonbeam
 		match a {
-			MOONBASE_ALPHA_PARA_ID => Ok(MOONBASE_ALPHA_EVM_ID),
+			MOONBEAM_PARA_ID => Ok(MOONBEAM_EVM_ID),
 			_ => Err(a),
 		}
 	}
@@ -332,8 +332,9 @@ impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
 /// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
+	// TODO: Activate once gateway is in here.
 	// A matcher that catches all Moonbeam relaying contracts to generate the right Origin
-	LpGatewayInstance<ParaToEvm, Runtime>,
+	// LpGatewayInstance<ParaToEvm, Runtime>,
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.
