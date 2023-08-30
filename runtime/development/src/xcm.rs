@@ -15,7 +15,9 @@ use cfg_primitives::{
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
+use cfg_traits::TryConvert;
 pub use cfg_types::tokens::CurrencyId;
+use cfg_types::EVMChainId;
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
 	parameter_types,
@@ -323,13 +325,29 @@ pub type XcmRouter = (
 	XcmpQueue,
 );
 
+const MOONBASE_ALPHA_PARA_ID: u32 = 1000;
+/// https://chainlist.org/chain/1287
+const MOONBASE_ALPHA_EVM_ID: u64 = 1282;
+
+/// A constant way of mapping parachain IDs to EVM-chain IDs
+pub struct ParaToEvm;
+impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
+	fn try_convert(a: cfg_types::ParaId) -> Result<EVMChainId, cfg_types::ParaId> {
+		// NOTE: Currently only supported moonbeam
+		match a {
+			MOONBASE_ALPHA_PARA_ID => Ok(MOONBASE_ALPHA_EVM_ID),
+			_ => Err(a),
+		}
+	}
+}
+
 /// This is the type we use to convert an (incoming) XCM origin into a local
 /// `Origin` instance, ready for dispatching a transaction with Xcm's
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
 /// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
 	// A matcher that catches all Moonbeam relaying contracts to generate the right Origin
-	LpGatewayInstance<RuntimeOrigin>,
+	LpGatewayInstance<ParaToEvm, Runtime>,
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.
