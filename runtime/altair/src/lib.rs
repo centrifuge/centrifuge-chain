@@ -29,7 +29,7 @@ pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
@@ -1397,7 +1397,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Rate;
+	type Rate = Quantity;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1417,7 +1417,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
@@ -1590,14 +1590,14 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheCurrency,
 		u32,
 		Balance,
-		Rate,
+		Quantity,
 		TrancheWeight,
 		TrancheId,
 		PoolId,
 		MaxTranches,
 	>;
 	type ScheduledUpdateDetails = ScheduledUpdateDetails<
-		Rate,
+		Quantity,
 		MaxTrancheNameLengthBytes,
 		MaxTrancheSymbolLengthBytes,
 		MaxTranches,
@@ -1655,7 +1655,7 @@ parameter_types! {
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Ratio;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;

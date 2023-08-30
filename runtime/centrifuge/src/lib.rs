@@ -27,7 +27,7 @@ use cfg_traits::{
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{
@@ -1354,14 +1354,14 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheCurrency,
 		u32,
 		Balance,
-		Rate,
+		Quantity,
 		TrancheWeight,
 		TrancheId,
 		PoolId,
 		MaxTranches,
 	>;
 	type ScheduledUpdateDetails = ScheduledUpdateDetails<
-		Rate,
+		Quantity,
 		MaxTrancheNameLengthBytes,
 		MaxTrancheSymbolLengthBytes,
 		MaxTranches,
@@ -1597,7 +1597,7 @@ impl<
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Ratio;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
