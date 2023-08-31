@@ -47,8 +47,8 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
-	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount, XcmpQueue,
+	AccountId, Balance, OrmlAssetRegistry, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 /// The main XCM config
@@ -140,7 +140,7 @@ impl TakeRevenue for ToTreasury {
 			if let Ok(currency_id) =
 				<CurrencyIdConvert as Convert<MultiLocation, CurrencyId>>::convert(location)
 			{
-				let _ = OrmlTokens::deposit(currency_id, &TreasuryAccount::get(), amount);
+				let _ = Tokens::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}
 		}
 	}
