@@ -425,15 +425,40 @@ mod process_msg_axelar_relay {
 	fn unknown_instance() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-			let domain_address = DomainAddress::EVM(0, address.into());
-			let encoded_msg = MessageMock::First.serialize();
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
-					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+					GatewayOrigin::AxelarRelay(relayer_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
-				Error::<Runtime>::UnknownInstance,
+				Error::<Runtime>::UnknownInstance
 			);
 		});
 	}
@@ -442,14 +467,37 @@ mod process_msg_axelar_relay {
 	fn message_decode() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-			let domain_address = DomainAddress::EVM(0, address.into());
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
 
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
 			let encoded_msg: Vec<u8> = vec![11];
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&encoded_msg);
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
@@ -465,22 +513,44 @@ mod process_msg_axelar_relay {
 	fn liquidity_pools_error() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-			let domain_address = DomainAddress::EVM(0, address.into());
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
 
 			assert_ok!(LiquidityPoolsGateway::add_instance(
 				RuntimeOrigin::root(),
 				domain_address.clone(),
 			));
 
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
 			let expected_msg = MessageMock::First;
-			let encoded_msg = expected_msg.serialize();
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
 
 			let expected_domain_address = domain_address.clone();
 
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
 			let err = sp_runtime::DispatchError::from("liquidity_pools error");
+			let expected_domain_address = domain_address.clone();
 
 			MockLiquidityPools::mock_submit(move |domain, message| {
-				assert_eq!(domain, expected_domain_address);
+				assert_eq!(domain, expected_domain_address.clone());
 				assert_eq!(message, expected_msg);
 				Err(err)
 			});
@@ -488,7 +558,7 @@ mod process_msg_axelar_relay {
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
 					GatewayOrigin::Domain(domain_address).into(),
-					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
 				err,
 			);
