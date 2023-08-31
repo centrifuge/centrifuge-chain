@@ -24,6 +24,9 @@ pub const DEFAULT_PROOF_SIZE: u64 = 256 * 1024;
 // See moonbeam docs: https://docs.moonbeam.network/builders/interoperability/xcm/fees/#:~:text=As%20previously%20mentioned%2C%20Polkadot%20currently,1%2C000%2C000%2C000%20weight%20units%20per%20instruction
 pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
 
+/// Multiplier for converting a unit of gas into a unit of Substrate weight
+pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
+
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -34,7 +37,7 @@ use frame_support::{
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::traits::{BlakeTwo256, Hash};
+use sp_runtime::traits::{BlakeTwo256, EnsureMul, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
 use xcm::{
 	latest::{MultiLocation, OriginKind},
@@ -224,9 +227,12 @@ where
 		//
 		// 	       - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
 		//           limited fixed)
-		let transact_required_weight_at_most =
-			Weight::from_ref_time(self.xcm_domain.max_gas_limit * 25_000)
-				.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
+		let transact_required_weight_at_most = Weight::from_ref_time(
+			self.xcm_domain
+				.max_gas_limit
+				.ensure_mul(GAS_TO_WEIGHT_MULTIPLIER)?,
+		)
+		.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
 
 		// NOTE: We are choosing an overall weight here to have full control over
 		//       the actual weight usage.

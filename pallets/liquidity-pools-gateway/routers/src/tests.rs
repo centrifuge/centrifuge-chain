@@ -248,7 +248,7 @@ mod xcm_router {
 				assert_eq!(sent_messages.len(), 1);
 
 				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * 25_000,
+					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
 					DEFAULT_PROOF_SIZE.saturating_div(2),
 				);
 
@@ -613,7 +613,7 @@ mod axelar_xcm {
 				assert_eq!(sent_messages.len(), 1);
 
 				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * 25_000,
+					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
 					DEFAULT_PROOF_SIZE.saturating_div(2),
 				);
 
@@ -790,7 +790,7 @@ mod ethereum_xcm {
 				assert_eq!(sent_messages.len(), 1);
 
 				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * 25_000,
+					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
 					DEFAULT_PROOF_SIZE.saturating_div(2),
 				);
 
