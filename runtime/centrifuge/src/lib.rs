@@ -441,7 +441,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
-	type OutboundQueue = LiquidityPoolsGateway;
+	type OutboundQueue = WrapperOutboundQueue;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -456,6 +456,36 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type WeightInfo = ();
 }
 
+type LiquidityPoolsMessage =
+	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+
+/// The WrapperOutboundQueue serves as a filter for outbound LP messages that we
+/// want to allow initially.
+pub struct WrapperOutboundQueue;
+
+impl OutboundQueue for WrapperOutboundQueue {
+	type Destination = Domain;
+	type Message = LiquidityPoolsMessage;
+	type Sender = AccountId;
+
+	fn submit(
+		sender: Self::Sender,
+		destination: Self::Destination,
+		msg: Self::Message,
+	) -> DispatchResult {
+		match msg {
+			LiquidityPoolsMessage::AddCurrency { .. }
+			| LiquidityPoolsMessage::UpdateMember { .. }
+			| LiquidityPoolsMessage::AddPool { .. }
+			| LiquidityPoolsMessage::AddTranche { .. }
+			| LiquidityPoolsMessage::UpdateTrancheTokenPrice { .. } => {
+				<LiquidityPoolsGateway as OutboundQueue>::submit(sender, destination, msg)
+			}
+			_ => Err(DispatchError::Other("unsupported outbound message")),
+		}
+	}
+}
+
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
 }
@@ -465,13 +495,15 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = DummyInboundQueue;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	type Message = LiquidityPoolsMessage;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();
 }
 
+/// DummyInboundQueue will be used in the first phase of testing in order to
+/// ensure that no incoming messages will be processed.
 pub struct DummyInboundQueue;
 
 impl InboundQueue for DummyInboundQueue {
@@ -479,7 +511,7 @@ impl InboundQueue for DummyInboundQueue {
 	type Sender = DomainAddress;
 
 	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
-		Err(DispatchError::Other("no supported yet"))
+		Err(DispatchError::Other("not supported yet"))
 	}
 }
 
@@ -2018,6 +2050,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use cfg_traits::liquidity_pools::OutboundQueue;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
