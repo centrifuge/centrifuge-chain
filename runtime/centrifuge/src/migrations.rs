@@ -33,6 +33,12 @@ pub type UpgradeCentrifuge1020 = (
 		crate::ExistentialDeposit,
 	>,
 	asset_registry::AssetRegistryMultilocationToXCMV3<crate::Runtime>
+	// Low weight, mainly bumps storage version to latest (v1 to v2)
+	crate::DmpQueue,
+	// Low weight, mainly bumps storage version to latest (v2 to v3)
+	crate::XcmpQueue,
+	// Low weight, bumps uninitialized storage version from v0 to v1
+	pallet_xcm::migration::v1::MigrateToV1<crate::Runtime>,
 );
 
 mod asset_registry {
