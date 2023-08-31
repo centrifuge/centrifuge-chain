@@ -1131,6 +1131,16 @@ mod tests {
 		Pool,
 	}
 
+	const CONVERSION_RATE: u128 = 3; // 300%
+
+	fn to_pool(amount: u128) -> u128 {
+		amount * CONVERSION_RATE
+	}
+
+	fn to_foreign(amount: u128) -> u128 {
+		amount / CONVERSION_RATE
+	}
+
 	struct TestCurrencyConverter;
 
 	impl SimpleCurrencyConversion for TestCurrencyConverter {
@@ -1141,11 +1151,11 @@ mod tests {
 		fn stable_to_stable(
 			currency_in: Self::Currency,
 			currency_out: Self::Currency,
-			amount_out: Self::Balance,
+			amount: Self::Balance,
 		) -> Result<Self::Balance, Self::Error> {
 			match (currency_out, currency_in) {
-				(CurrencyId::Foreign, CurrencyId::Pool) => Ok(amount_out * 3),
-				(CurrencyId::Pool, CurrencyId::Foreign) => Ok(amount_out / 3),
+				(CurrencyId::Foreign, CurrencyId::Pool) => Ok(to_pool(amount)),
+				(CurrencyId::Pool, CurrencyId::Foreign) => Ok(to_foreign(amount)),
 				_ => panic!("Same currency"),
 			}
 		}
@@ -1207,7 +1217,7 @@ mod tests {
 				.transition(increase.clone()),
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap: Swap {
-					amount: 200,
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
 				done_amount: 40,
@@ -1238,7 +1248,7 @@ mod tests {
 			.transition(increase.clone()),
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap: Swap {
-					amount: 200,
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
 				done_amount: 40,
@@ -1266,11 +1276,28 @@ mod tests {
 			.transition(increase.clone()),
 			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap: Swap {
-					amount: 200,
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
 				done_amount: 100,
 				invest_amount: pool_swap.amount
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: foreign_swap,
+				done_amount,
+				invest_amount,
+			}
+			.transition(increase.clone()),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: Swap {
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
+					..foreign_swap
+				},
+				done_amount: 100,
+				invest_amount: invest_amount + pool_swap.amount
 			}
 		);
 	}
