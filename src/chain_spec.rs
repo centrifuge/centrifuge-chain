@@ -52,6 +52,9 @@ pub type CentrifugeChainSpec =
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
 
+/// The default XCM version to set in genesis config.
+const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
+
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{seed}"), None)
@@ -658,12 +661,15 @@ fn centrifuge_genesis(
 		},
 		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: centrifuge_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -767,12 +773,15 @@ fn altair_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: altair_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -932,6 +941,9 @@ fn development_genesis(
 		evm: Default::default(),
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: development_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 

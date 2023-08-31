@@ -35,6 +35,12 @@ pub type UpgradeAltair1030 = (
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
+	// Low weight, mainly bumps storage version to latest (v1 to v2)
+	crate::DmpQueue,
+	// Low weight, mainly bumps storage version to latest (v2 to v3)
+	crate::XcmpQueue,
+	// Low weight, bumps uninitialized storage version from v0 to v1
+	pallet_xcm::migration::v1::MigrateToV1<crate::Runtime>,
 );
 
 /// The Upgrade set for Algol - it excludes the migrations already executed in

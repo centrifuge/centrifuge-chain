@@ -34,6 +34,7 @@ use runtime_common::{
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
+pub use xcm::v3::{MultiAsset, MultiLocation};
 use xcm::{latest::Weight as XcmWeight, prelude::*};
 use xcm_builder::{
 	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -271,7 +272,7 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type SovereignAccountOf = ();
+	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;

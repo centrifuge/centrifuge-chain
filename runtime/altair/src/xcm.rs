@@ -34,6 +34,7 @@ use runtime_common::{
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
+pub use xcm::v3::{MultiAsset, MultiLocation};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -265,7 +266,7 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type SovereignAccountOf = ();
+	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -313,9 +314,9 @@ pub type XcmRouter = (
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local
-/// `Origin` instance, ready for dispatching a transaction with Xcm's
+/// `RuntimeOrigin` instance, ready for dispatching a transaction with Xcm's
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
-/// `Origin` it will become.
+/// `RuntimeOrigin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
