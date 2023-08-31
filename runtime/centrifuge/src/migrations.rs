@@ -11,7 +11,10 @@
 // GNU General Public License for more details.
 use cfg_primitives::Balance;
 use cfg_types::{
-	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{
+		lp_eth_usdc_metadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID,
+	},
 	xcm::XcmMetadata,
 };
 use frame_support::{
@@ -27,7 +30,6 @@ pub type UpgradeCentrifuge1020 = (
 	asset_registry::CrossChainTransferabilityMigration,
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
-	asset_registry::RegisterLpEthUSDC,
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -44,13 +46,7 @@ pub type UpgradeCentrifuge1020 = (
 );
 
 mod asset_registry {
-	use cfg_types::{
-		tokens as v1,
-		tokens::{
-			lp_eth_usdc_metadata, CustomMetadata, ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC,
-			LP_ETH_USDC_CURRENCY_ID,
-		},
-	};
+	use cfg_types::{tokens as v1, tokens::CustomMetadata};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
@@ -197,60 +193,6 @@ mod asset_registry {
 		}
 	}
 
-	/// Register the LiquidityPools Wrapped Ethereum USDC
-	pub struct RegisterLpEthUSDC;
-
-	impl OnRuntimeUpgrade for RegisterLpEthUSDC {
-		fn on_runtime_upgrade() -> Weight {
-			use orml_traits::asset_registry::Mutate;
-
-			if OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_some() {
-				log::info!("LpEthUSDC is already registered");
-				return RocksDbWeight::get().reads(1);
-			}
-
-			<OrmlAssetRegistry as Mutate>::register_asset(
-				Some(LP_ETH_USDC_CURRENCY_ID),
-				lp_eth_usdc_metadata(
-					LiquidityPoolsPalletIndex::get(),
-					ETHEREUM_MAINNET_CHAIN_ID,
-					ETHEREUM_USDC,
-				),
-			)
-			.map_err(|_| log::error!("Failed to register LpEthUSDC"))
-			.ok();
-
-			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: completed!");
-			RocksDbWeight::get().reads_writes(1, 1)
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			frame_support::ensure!(
-				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID).is_none(),
-				"LpEthUSDC is already registered; this migration will NOT need to be executed"
-			);
-
-			Ok(Default::default())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-			frame_support::ensure!(
-				OrmlAssetRegistry::metadata(&LP_ETH_USDC_CURRENCY_ID)
-					== Some(lp_eth_usdc_metadata(
-						LiquidityPoolsPalletIndex::get(),
-						ETHEREUM_MAINNET_CHAIN_ID,
-						ETHEREUM_USDC
-					)),
-				"The LpEthUSDC's token metadata does NOT match what we expected it to be"
-			);
-
-			log::info!("RegisterLpEthUSDC: post_upgrade: the token metadata looks correct!");
-			Ok(())
-		}
-	}
-
 	pub struct AssetRegistryMultilocationToXCMV3<T>(PhantomData<T>);
 
 	impl<T: orml_asset_registry::Config> OnRuntimeUpgrade for AssetRegistryMultilocationToXCMV3<T>
@@ -269,7 +211,7 @@ mod asset_registry {
 			}
 
 			let mut meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
-			let is_centrifuge = meta_count == 7;
+			let is_centrifuge = meta_count == 6;
 
 			let result = orml_asset_registry::LocationToAssetId::<T>::clear(100, None);
 			match result.maybe_cursor {
@@ -340,13 +282,13 @@ mod asset_registry {
 			log::info!("Found {} LocationToAssetId keys ", loc_count);
 			log::info!("Found {} Metadata keys ", meta_count);
 
-			let is_centrifuge = meta_count == 7;
+			let is_centrifuge = meta_count == 6;
 
-			let mut expected_loc_count = 6;
-			let mut expected_meta_count = 7;
+			let mut expected_loc_count = 5;
+			let mut expected_meta_count = 6;
 			if !is_centrifuge {
-				expected_loc_count = 3;
-				expected_meta_count = 4;
+				expected_loc_count = 2;
+				expected_meta_count = 3;
 			}
 			frame_support::ensure!(
 				loc_count == expected_loc_count,
@@ -369,10 +311,10 @@ mod asset_registry {
 			log::info!("Found {} LocationToAssetId keys ", loc_count);
 			log::info!("Found {} Metadata keys ", meta_count);
 
-			let is_centrifuge = meta_count == 6;
+			let is_centrifuge = meta_count == 7;
 
-			let mut expected_loc_count = 5;
-			let mut expected_meta_count = 6;
+			let mut expected_loc_count = 6;
+			let mut expected_meta_count = 7;
 			if !is_centrifuge {
 				expected_loc_count = 2;
 				expected_meta_count = 3;
@@ -394,7 +336,6 @@ mod asset_registry {
 	}
 }
 /// Returns the count of all keys sharing the same storage prefix
-/// it includes the parent as an extra entry
 pub fn count_storage_keys(prefix: &[u8]) -> u32 {
 	let mut count = 0;
 	let mut next_key = prefix.to_vec();
@@ -650,6 +591,15 @@ pub fn get_centrifuge_assets() -> Vec<(
 				}
 				.into(),
 			},
+		),
+		// Adding LP USDC here
+		(
+			LP_ETH_USDC_CURRENCY_ID,
+			lp_eth_usdc_metadata(
+				LiquidityPoolsPalletIndex::get(),
+				ETHEREUM_MAINNET_CHAIN_ID,
+				ETHEREUM_USDC,
+			),
 		),
 	]
 }
