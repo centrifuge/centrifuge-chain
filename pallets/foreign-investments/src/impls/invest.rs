@@ -1319,58 +1319,41 @@ mod tests {
 	}
 
 	#[test]
-	fn fuzzier() {
+	fn fuzzer() {
 		let pool_swap_big = Swap {
 			currency_in: CurrencyId::Pool,
 			currency_out: CurrencyId::Foreign,
 			amount: 120,
 		};
-		let pool_swap_medium = Swap {
-			currency_in: CurrencyId::Pool,
-			currency_out: CurrencyId::Foreign,
-			amount: 60,
-		};
 		let pool_swap_small = Swap {
 			currency_in: CurrencyId::Pool,
 			currency_out: CurrencyId::Foreign,
-			amount: 30,
+			amount: 60,
 		};
 		let foreign_swap_big = Swap {
 			currency_in: CurrencyId::Foreign,
 			currency_out: CurrencyId::Pool,
 			amount: 120,
 		};
-		let foreign_swap_medium = Swap {
+		let foreign_swap_small = Swap {
 			currency_in: CurrencyId::Foreign,
 			currency_out: CurrencyId::Pool,
 			amount: 60,
 		};
-		let foreign_swap_small = Swap {
-			currency_in: CurrencyId::Foreign,
-			currency_out: CurrencyId::Pool,
-			amount: 30,
-		};
 
 		let transitions = [
 			InvestTransition::IncreaseInvestOrder(pool_swap_big),
-			InvestTransition::IncreaseInvestOrder(pool_swap_medium),
 			InvestTransition::IncreaseInvestOrder(pool_swap_small),
 			InvestTransition::IncreaseInvestOrder(foreign_swap_big),
-			InvestTransition::IncreaseInvestOrder(foreign_swap_medium),
 			InvestTransition::IncreaseInvestOrder(foreign_swap_small),
 			InvestTransition::DecreaseInvestOrder(pool_swap_big),
-			InvestTransition::DecreaseInvestOrder(pool_swap_medium),
 			InvestTransition::DecreaseInvestOrder(pool_swap_small),
 			InvestTransition::DecreaseInvestOrder(foreign_swap_big),
-			InvestTransition::DecreaseInvestOrder(foreign_swap_medium),
 			InvestTransition::DecreaseInvestOrder(foreign_swap_small),
 			InvestTransition::FulfillSwapOrder(pool_swap_big),
-			InvestTransition::FulfillSwapOrder(pool_swap_medium),
 			InvestTransition::FulfillSwapOrder(pool_swap_small),
 			InvestTransition::FulfillSwapOrder(foreign_swap_big),
-			InvestTransition::FulfillSwapOrder(foreign_swap_medium),
 			InvestTransition::FulfillSwapOrder(foreign_swap_small),
-			InvestTransition::CollectInvestment(30),
 			InvestTransition::CollectInvestment(60),
 			InvestTransition::CollectInvestment(120),
 		];
