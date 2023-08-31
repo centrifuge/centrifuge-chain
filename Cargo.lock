@@ -7528,6 +7528,7 @@ dependencies = [
  "frame-system",
  "log",
  "parity-scale-codec 3.6.4",
+ "rand 0.8.5",
  "scale-info",
  "sp-core",
  "sp-io",

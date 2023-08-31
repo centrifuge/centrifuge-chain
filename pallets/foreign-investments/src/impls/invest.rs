@@ -1122,6 +1122,7 @@ where
 mod tests {
 	use cfg_traits::SimpleCurrencyConversion;
 	use frame_support::{assert_err, assert_ok};
+	use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
 
 	use super::*;
 
@@ -1171,6 +1172,7 @@ mod tests {
 	}
 
 	type InvestState = super::InvestState<TestConfig>;
+	type InvestTransition = super::InvestTransition<u128, CurrencyId>;
 
 	#[test]
 	fn increase_with_pool_swap() {
@@ -1300,5 +1302,94 @@ mod tests {
 				invest_amount: invest_amount + pool_swap.amount
 			}
 		);
+	}
+
+	struct Checker; // TODO: add a checker interal state
+
+	impl Checker {
+		fn feed_with_step(&mut self, transition: &InvestTransition) {
+			// TODO: mutate checker state to track the happen transition into
+			// something with meaning for the invariant computation
+		}
+
+		fn check_invariant(&self, state: &InvestState) {
+			// TODO: evaluate the invariant for the current state and check with
+			// an assert
+		}
+	}
+
+	#[test]
+	fn fuzzier() {
+		let pool_swap_big = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 120,
+		};
+		let pool_swap_medium = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 60,
+		};
+		let pool_swap_small = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 30,
+		};
+		let foreign_swap_big = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 120,
+		};
+		let foreign_swap_medium = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 60,
+		};
+		let foreign_swap_small = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 30,
+		};
+
+		let transitions = [
+			InvestTransition::IncreaseInvestOrder(pool_swap_big),
+			InvestTransition::IncreaseInvestOrder(pool_swap_medium),
+			InvestTransition::IncreaseInvestOrder(pool_swap_small),
+			InvestTransition::IncreaseInvestOrder(foreign_swap_big),
+			InvestTransition::IncreaseInvestOrder(foreign_swap_medium),
+			InvestTransition::IncreaseInvestOrder(foreign_swap_small),
+			InvestTransition::DecreaseInvestOrder(pool_swap_big),
+			InvestTransition::DecreaseInvestOrder(pool_swap_medium),
+			InvestTransition::DecreaseInvestOrder(pool_swap_small),
+			InvestTransition::DecreaseInvestOrder(foreign_swap_big),
+			InvestTransition::DecreaseInvestOrder(foreign_swap_medium),
+			InvestTransition::DecreaseInvestOrder(foreign_swap_small),
+			InvestTransition::FulfillSwapOrder(pool_swap_big),
+			InvestTransition::FulfillSwapOrder(pool_swap_medium),
+			InvestTransition::FulfillSwapOrder(pool_swap_small),
+			InvestTransition::FulfillSwapOrder(foreign_swap_big),
+			InvestTransition::FulfillSwapOrder(foreign_swap_medium),
+			InvestTransition::FulfillSwapOrder(foreign_swap_small),
+			InvestTransition::CollectInvestment(30),
+			InvestTransition::CollectInvestment(60),
+			InvestTransition::CollectInvestment(120),
+		];
+
+		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
+
+		for _ in 0..10000 {
+			let use_case = transitions.clone().into_iter().choose_multiple(&mut rng, 8);
+
+			let mut checker = Checker {};
+			let mut state = InvestState::NoState;
+
+			for transition in use_case {
+				checker.feed_with_step(&transition);
+
+				state = state.transition(transition).unwrap_or(state.clone());
+
+				checker.check_invariant(&state);
+			}
+		}
 	}
 }
