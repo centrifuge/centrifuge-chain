@@ -81,7 +81,6 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 impl pallet_mock_routers::Config for Runtime {}
 
 pub struct MockOriginRecovery;
-
 impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
 	type Error = DispatchError;
 

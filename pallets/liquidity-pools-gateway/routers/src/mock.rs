@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use codec::{Decode, Encode};
 use cumulus_primitives_core::{
@@ -23,7 +24,7 @@ use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	ConsensusEngineId,
+	ConsensusEngineId, DispatchError,
 };
 use sp_std::{cell::RefCell, marker::PhantomData};
 use xcm::{
@@ -119,12 +120,22 @@ impl pallet_ethereum_transaction::Config for Runtime {
 
 impl pallet_mock_routers::Config for Runtime {}
 
+pub struct MockOriginRecovery;
+impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
+	type Error = DispatchError;
+
+	fn try_convert(_: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
+		Err(DispatchError::Other("Unimplemented"))
+	}
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
+	type OriginRecovery = MockOriginRecovery;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
