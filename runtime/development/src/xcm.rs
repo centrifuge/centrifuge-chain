@@ -331,6 +331,8 @@ const MOONBASE_ALPHA_EVM_ID: u64 = 1282;
 /// A constant way of mapping parachain IDs to EVM-chain IDs
 pub struct ParaToEvm;
 impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
+	type Error = cfg_types::ParaId;
+
 	fn try_convert(a: cfg_types::ParaId) -> Result<EVMChainId, cfg_types::ParaId> {
 		// NOTE: Currently only supported moonbeam
 		match a {

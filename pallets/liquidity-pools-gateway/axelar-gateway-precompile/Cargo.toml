@@ -23,6 +23,7 @@ pallet-evm = { git = "https://github.com/PureStake/frontier", default-features =
 precompile-utils = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 cfg-types = { path = "../../../libs/types", default-features = false }
+cfg-traits = { path = "../../../libs/traits", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
 
 [features]
@@ -41,12 +42,14 @@ std = [
   "pallet-evm/std",
   "pallet-liquidity-pools-gateway/std",
   "cfg-types/std",
+  "cfg-traits/std",
   "ethabi/std",
   "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
@@ -58,6 +61,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-liquidity-pools-gateway/try-runtime",
   "cfg-types/try-runtime",
+  "cfg-traits/try-runtime",
   "pallet-evm/try-runtime",
   "sp-runtime/try-runtime",
 ]

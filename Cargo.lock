@@ -603,6 +603,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "axelar-gateway-precompile"
 version = "0.1.0"
 dependencies = [
+ "cfg-traits",
  "cfg-types",
  "ethabi 18.0.0",
  "fp-evm",
