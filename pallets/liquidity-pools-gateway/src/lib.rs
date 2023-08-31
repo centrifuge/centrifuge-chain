@@ -173,9 +173,12 @@ pub mod pallet {
 		/// Router not found.
 		RouterNotFound,
 
-		/// Failure to recover a domain address from the
-		/// given byte slices
-		OriginRecoveryFailed,
+		/// Relayer messages need to prepend the with
+		/// the original source chain and source address
+		/// that triggered the message.
+		/// Decoding that is essential and this error
+		/// signals malforming of the wrapping information.
+		RelayerMessageDecodingFailed,
 	}
 
 	#[pallet::call]
@@ -344,22 +347,18 @@ pub mod pallet {
 							Ok(source_chain.to_vec())
 						})?;
 
-					let origin_msg = Pallet::<T>::try_range(
-						slice_ref,
-						BYTES_U32 + BYTES_U32 + length_source_chain + length_source_address,
-						|source_chain| Ok(source_chain.to_vec()),
-					)?;
+					let origin_msg = Pallet::<T>::try_range(slice_ref, slice_ref.len(), |msg| {
+						Ok(BoundedVec::try_from(msg.to_vec()).map_err(|_| {
+							DispatchError::Other(
+								"Remaining bytes smaller vector in the first place. qed.",
+							)
+						})?)
+					})?;
 
 					let origin_domain =
-						T::OriginRecovery::try_convert((source_chain, source_address))
-							.map_err(|_| Error::<T>::OriginRecoveryFailed)?;
+						T::OriginRecovery::try_convert((source_chain, source_address))?;
 
-					Pallet::<T>::validate(
-						origin_domain,
-						origin_msg
-							.try_into()
-							.expect("Remaining bytes can never be more than original. Qed."),
-					)?
+					Pallet::<T>::validate(origin_domain, origin_msg)?
 				}
 			};
 
@@ -368,12 +367,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn try_range<D>(
-			slice: &mut &[u8],
+		pub(crate) fn try_range<'a, D, F>(
+			slice: &mut &'a [u8],
 			next_steps: usize,
-			transformer: impl FnOnce(&[u8]) -> Result<D, DispatchError>,
-		) -> Result<D, DispatchError> {
-			ensure!(slice.len() >= next_steps, Error::<T>::MessageDecodingFailed);
+			transformer: F,
+		) -> Result<D, DispatchError>
+		where
+			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
+		{
+			ensure!(
+				slice.len() >= next_steps,
+				Error::<T>::RelayerMessageDecodingFailed
+			);
 
 			let (input, new_slice) = slice.split_at(next_steps);
 			let res = transformer(&input)?;

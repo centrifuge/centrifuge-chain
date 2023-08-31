@@ -16,6 +16,13 @@ pub type Balance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const LENGTH_SOURCE_CHAIN: usize = 8;
+pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum";
+pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
+
+pub const LENGTH_SOURCE_ADDRESS: usize = 20;
+pub const SOURCE_ADDRESS: [u8; LENGTH_SOURCE_ADDRESS] = [0u8; LENGTH_SOURCE_ADDRESS];
+
 frame_support::construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -84,8 +91,14 @@ pub struct MockOriginRecovery;
 impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
 	type Error = DispatchError;
 
-	fn try_convert(_: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
-		Err(DispatchError::Other("Unimplemented"))
+	fn try_convert(origin: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
+		let (source_chain, source_address) = origin;
+
+		if source_chain == SOURCE_CHAIN.to_vec() && source_address == SOURCE_ADDRESS.to_vec() {
+			Ok(DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS))
+		} else {
+			Err(DispatchError::Other("OriginRecoveryError"))
+		}
 	}
 }
 
