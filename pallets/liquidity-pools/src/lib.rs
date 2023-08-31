@@ -252,7 +252,10 @@ pub mod pallet {
 			+ CurrencyInspect<CurrencyId = CurrencyIdOf<Self>>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId.
-		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
+		type DomainAddressToAccountId: Convert<DomainAddress, Self::AccountId>;
+
+		/// The converter from a Domain 32 byte array to Substrate AccountId.
+		type DomainAccountToAccountId: Convert<(Domain, [u8; 32]), Self::AccountId>;
 
 		/// The type for processing outgoing messages.
 		type OutboundQueue: OutboundQueue<
@@ -517,7 +520,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					T::AccountConverter::convert(domain_address.clone()),
+					T::DomainAddressToAccountId::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
 				),
 				Error::<T>::InvestorDomainAddressNotAMember
@@ -558,7 +561,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					T::AccountConverter::convert(domain_address.clone()),
+					T::DomainAddressToAccountId::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
@@ -884,7 +887,11 @@ pub mod pallet {
 					receiver,
 					amount,
 					..
-				} => Self::handle_transfer(currency.into(), receiver.into(), amount),
+				} => Self::handle_transfer(
+					currency.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), receiver)),
+					amount,
+				),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -894,8 +901,8 @@ pub mod pallet {
 				} => Self::handle_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
-					sender,
-					receiver.into(),
+					sender.clone(),
+					T::DomainAccountToAccountId::convert((sender.domain(), receiver)),
 					amount,
 				),
 				Message::IncreaseInvestOrder {
@@ -907,7 +914,7 @@ pub mod pallet {
 				} => Self::handle_increase_invest_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 					amount,
 				),
@@ -920,7 +927,7 @@ pub mod pallet {
 				} => Self::handle_decrease_invest_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 					amount,
 				),
@@ -933,7 +940,7 @@ pub mod pallet {
 				} => Self::handle_increase_redeem_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					amount,
 					currency.into(),
 					sender,
@@ -947,7 +954,7 @@ pub mod pallet {
 				} => Self::handle_decrease_redeem_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					amount,
 					currency.into(),
 					sender,
@@ -960,7 +967,7 @@ pub mod pallet {
 				} => Self::handle_collect_investment(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 					sender,
 				),
@@ -972,7 +979,7 @@ pub mod pallet {
 				} => Self::handle_collect_redemption(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 				),
 				Message::CancelInvestOrder {
@@ -983,7 +990,7 @@ pub mod pallet {
 				} => Self::handle_cancel_invest_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 				),
 				Message::CancelRedeemOrder {
@@ -994,7 +1001,7 @@ pub mod pallet {
 				} => Self::handle_cancel_redeem_order(
 					pool_id,
 					tranche_id,
-					investor.into(),
+					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
 					sender,
 				),
