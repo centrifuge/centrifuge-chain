@@ -373,21 +373,27 @@ pub mod pallet {
 			next_steps: usize,
 			transformer: impl FnOnce(&[u8]) -> Result<D, DispatchError>,
 		) -> Result<D, DispatchError> {
-			todo!()
+			ensure!(slice.len() >= next_steps, Error::<T>::MessageDecodingFailed);
+
+			let (input, new_slice) = slice.split_at(next_steps);
+			let res = transformer(&input)?;
+			*slice = &mut &new_slice;
+
+			Ok(res)
 		}
 
 		fn validate(
 			address: DomainAddress,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> Result<(DomainAddress, T::Message), DispatchError> {
+			if let DomainAddress::Centrifuge(_) = address {
+				return Err(Error::<T>::InvalidMessageOrigin.into());
+			}
+
 			ensure!(
 				Allowlist::<T>::contains_key(address.domain(), address.clone()),
 				Error::<T>::UnknownInstance,
 			);
-
-			if let DomainAddress::Centrifuge(_) = address {
-				return Err(Error::<T>::InvalidMessageOrigin.into());
-			}
 
 			let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 				.map_err(|_| Error::<T>::MessageDecodingFailed)?;

@@ -1,10 +1,12 @@
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	DispatchError,
 };
 
 use crate::{pallet as pallet_liquidity_pools_gateway, EnsureLocal};
@@ -78,12 +80,23 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 
 impl pallet_mock_routers::Config for Runtime {}
 
+pub struct MockOriginRecovery;
+
+impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
+	type Error = DispatchError;
+
+	fn try_convert(_: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
+		Err(DispatchError::Other("Unimplemented"))
+	}
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockLiquidityPools;
 	type LocalEVMOrigin = EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
+	type OriginRecovery = MockOriginRecovery;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
