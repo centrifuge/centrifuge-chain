@@ -10,8 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+use orml_traits::asset_registry::AssetMetadata;
+use xcm::v3::prelude::*;
+use xcm::VersionedMultiLocation;
+use cfg_types::xcm::XcmMetadata;
 
 use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
 
@@ -26,9 +30,11 @@ pub type UpgradeCentrifuge1020 = (
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
+	asset_registry::AssetRegistryMultilocationToXCMV3<crate::Runtime>
 );
 
 mod asset_registry {
+	use sp_std::marker::PhantomData;
 	use cfg_types::{
 		tokens as v1,
 		tokens::{
@@ -38,10 +44,18 @@ mod asset_registry {
 	};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
-	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
+	use frame_support::{pallet_prelude::OptionQuery, storage, storage_alias, Twox64Concat};
+	use frame_support::storage::storage_prefix;
+	use frame_support::traits::StorageVersion;
 	use orml_traits::asset_registry::AssetMetadata;
+	use sp_core::bounded::WeakBoundedVec;
+	use sp_core::ConstU32;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
+	use xcm::v3::prelude::*;
+	use xcm::VersionedMultiLocation;
+	use cfg_types::tokens::{CrossChainTransferability, GeneralCurrencyIndex};
+	use cfg_types::xcm::XcmMetadata;
 
 	use super::*;
 	use crate::VERSION;
@@ -108,7 +122,7 @@ mod asset_registry {
 				CurrencyId,
 				AssetMetadata<Balance, v0::CustomMetadata>,
 			)>::decode(&mut old_state_encoded.as_ref())
-			.map_err(|_| "Error decoding pre-upgrade state")?;
+				.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			for (asset_id, old_metadata) in old_state {
 				let new_metadata = OrmlAssetRegistry::metadata(asset_id)
@@ -141,18 +155,18 @@ mod asset_registry {
 		// field and prior to removing the `xcm` field.
 		#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 		#[derive(
-			Clone,
-			Copy,
-			Default,
-			PartialOrd,
-			Ord,
-			PartialEq,
-			Eq,
-			Debug,
-			Encode,
-			Decode,
-			TypeInfo,
-			MaxEncodedLen,
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
 		)]
 		pub struct CustomMetadata {
 			pub xcm: XcmMetadata,
@@ -201,8 +215,8 @@ mod asset_registry {
 					ETHEREUM_USDC,
 				),
 			)
-			.map_err(|_| log::error!("Failed to register LpEthUSDC"))
-			.ok();
+				.map_err(|_| log::error!("Failed to register LpEthUSDC"))
+				.ok();
 
 			log::info!("RegisterLpEthUSDC: on_runtime_upgrade: completed!");
 			RocksDbWeight::get().reads_writes(1, 1)
@@ -234,4 +248,243 @@ mod asset_registry {
 			Ok(())
 		}
 	}
+
+	pub struct AssetRegistryMultilocationToXCMV3<T>(PhantomData<T>);
+
+	impl<T: orml_asset_registry::Config> OnRuntimeUpgrade for AssetRegistryMultilocationToXCMV3<T>
+		where
+			<T as orml_asset_registry::Config>::Balance: From<u128>,
+			<T as orml_asset_registry::Config>::CustomMetadata: From<cfg_types::tokens::CustomMetadata>,
+			<T as orml_asset_registry::Config>::AssetId: From<cfg_types::tokens::CurrencyId>
+	{
+		fn on_runtime_upgrade() -> Weight {
+			use orml_traits::asset_registry::Mutate;
+			use xcm::v3::prelude::*;
+			use frame_support::storage::StoragePrefixedMap;
+
+			let result = orml_asset_registry::LocationToAssetId::<T>::clear(100, None);
+			match result.maybe_cursor {
+				None => log::info!("Cleared all LocationToAssetId entries successfully"),
+				Some(_) => {
+					log::error!("LocationToAssetId not fully cleared")
+				}
+			}
+
+			let result_meta = orml_asset_registry::Metadata::<T>::clear(100, None);
+			match result_meta.maybe_cursor {
+				None => log::info!("Cleared all Metadata entries successfully"),
+				Some(_) => log::error!("Metadata not fully cleared")
+			}
+
+			let mut loc_count = orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
+			let mut meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
+
+			log::info!("Found {} LocationToAssetId keys ", loc_count);
+			log::info!("Found {} Metadata keys ", meta_count);
+
+			let mut gk = [0u8; 32];
+			gk[1] = 1;
+
+			// Insert hardcoded entries
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: b"Centrifuge".to_vec(),
+					symbol: b"CFG".to_vec(),
+					existential_deposit: 1_000_000_000_000u128.into(),
+					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+						0,
+						Junctions::X1(GeneralKey { length: 2, data: gk})
+					))),
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: false,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata{fee_per_second: None}),
+					}.into(),
+				},
+				CurrencyId::Native.into()
+			);
+
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 6,
+					name: b"Tether USDT".to_vec(),
+					symbol: b"USDT".to_vec(),
+					existential_deposit: 10_000u128.into(),
+					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+						1,
+						Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984))
+					))),
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: true,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata { fee_per_second: None }),
+					}.into(),
+				},
+				CurrencyId::ForeignAsset(1).into()
+			);
+
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 6,
+					name: b"Axelar USDC".to_vec(),
+					symbol: b"xcUSDC".to_vec(),
+					existential_deposit: 10_000u128.into(),
+					location: None,
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: true,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata { fee_per_second: None }),
+					}.into(),
+				},
+				CurrencyId::ForeignAsset(2).into()
+			);
+
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 12,
+					name: b"Acala Dollar".to_vec(),
+					symbol: b"aUSD".to_vec(),
+					existential_deposit: 10_000_000_000u128.into(),
+					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+						1,
+						Junctions::X2(Parachain(2000), GeneralKey { length: 2, data: gk })
+					))),
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: true,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata { fee_per_second: None }),
+					}.into(),
+				},
+				CurrencyId::ForeignAsset(3).into()
+			);
+
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: b"Glimmer".to_vec(),
+					symbol: b"GLMR".to_vec(),
+					existential_deposit: 1_000_000_000_000_000u128.into(),
+					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+						1,
+						Junctions::X2(Parachain(2004), PalletInstance(10))
+					))),
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: false,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata { fee_per_second: None }),
+					}.into(),
+				},
+				CurrencyId::ForeignAsset(4).into()
+			);
+
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				orml_asset_registry::AssetMetadata {
+					decimals: 10,
+					name: b"DOT".to_vec(),
+					symbol: b"DOT".to_vec(),
+					existential_deposit: 100_000u128.into(),
+					location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+						1,
+						Junctions::Here
+					))),
+					additional: CustomMetadata {
+						mintable: false,
+						permissioned: false,
+						pool_currency: false,
+						transferability: CrossChainTransferability::Xcm(XcmMetadata { fee_per_second: None }),
+					}.into(),
+				},
+				CurrencyId::ForeignAsset(5).into()
+			);
+
+			loc_count = orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
+			meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
+
+			log::info!("After Found {} LocationToAssetId keys ", loc_count);
+			log::info!("After Found {} Metadata keys ", meta_count);
+
+			log::info!("AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: completed!");
+			RocksDbWeight::get().reads_writes(22, 8)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			use xcm::v3::prelude::*;
+			use frame_support::storage::StoragePrefixedMap;
+
+			let loc_module_prefix = orml_asset_registry::LocationToAssetId::<T>::module_prefix();
+			let loc_storage_prefix = orml_asset_registry::LocationToAssetId::<T>::storage_prefix();
+			let loc_target_prefix = frame_support::storage::storage_prefix(loc_module_prefix, loc_storage_prefix);
+
+			let meta_module_prefix = orml_asset_registry::Metadata::<T>::module_prefix();
+			let meta_storage_prefix = orml_asset_registry::Metadata::<T>::storage_prefix();
+			let meta_target_prefix = frame_support::storage::storage_prefix(meta_module_prefix, meta_storage_prefix);
+
+			let loc_count = count_storage_keys(&loc_target_prefix);
+			let meta_count = count_storage_keys(&meta_target_prefix);
+
+			log::info!("Found {} LocationToAssetId keys ", loc_count);
+			log::info!("Found {} Metadata keys ", meta_count);
+
+			frame_support::ensure!(
+				loc_count == 6,
+				"Pre: LocationToAssetId Unexpected storage state"
+			);
+
+			frame_support::ensure!(
+				meta_count == 7,
+				"Pre: Metadata Unexpected storage state"
+			);
+
+			Ok(Default::default())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+
+			let loc_count = orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
+			let meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
+
+			log::info!("Found {} LocationToAssetId keys ", loc_count);
+			log::info!("Found {} Metadata keys ", meta_count);
+
+			frame_support::ensure!(
+				loc_count == 5,
+				"Post: LocationToAssetId Unexpected storage state"
+			);
+
+			frame_support::ensure!(
+				meta_count == 6,
+				"Post: Metadata Unexpected storage state"
+			);
+
+			log::info!("AssetRegistryMultilocationToXCMV3: post_upgrade: storage was updated!");
+			Ok(())
+		}
+	}
 }
+	/// Returns the count of all keys sharing the same storage prefix
+	/// it includes the parent as an extra entry
+	pub fn count_storage_keys(prefix: &[u8]) -> u32 {
+		let mut count = 0;
+		let mut next_key = prefix.to_vec();
+		loop {
+			match sp_io::storage::next_key(&next_key) {
+				Some(key) if !key.starts_with(&prefix) => break count,
+				Some(key) => {
+					next_key = key;
+					count+=1;
+				},
+				None => {
+					break count;
+				}
+			}
+		}
+	}
+
