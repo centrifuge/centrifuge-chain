@@ -1,5 +1,7 @@
-use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
-use cfg_traits::TryConvert;
+use cfg_mocks::{
+	pallet_mock_liquidity_pools, pallet_mock_routers, pallet_mock_try_convert, MessageMock,
+	RouterMock,
+};
 use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256};
@@ -33,6 +35,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		MockLiquidityPools: pallet_mock_liquidity_pools,
 		MockRouters: pallet_mock_routers,
+		MockOriginRecovery: pallet_mock_try_convert,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway,
 	}
 );
@@ -87,19 +90,10 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 
 impl pallet_mock_routers::Config for Runtime {}
 
-pub struct MockOriginRecovery;
-impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
+impl pallet_mock_try_convert::Config for Runtime {
 	type Error = DispatchError;
-
-	fn try_convert(origin: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, Self::Error> {
-		let (source_chain, source_address) = origin;
-
-		if source_chain == SOURCE_CHAIN.to_vec() && source_address == SOURCE_ADDRESS.to_vec() {
-			Ok(DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS))
-		} else {
-			Err(DispatchError::Other("OriginRecoveryError"))
-		}
-	}
+	type From = (Vec<u8>, Vec<u8>);
+	type To = DomainAddress;
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {

@@ -364,6 +364,17 @@ mod process_msg_axelar_relay {
 				Ok(())
 			});
 
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
@@ -372,30 +383,38 @@ mod process_msg_axelar_relay {
 	}
 
 	#[test]
-	fn bad_origin() {
-		new_test_ext().execute_with(|| {
-			let encoded_msg = MessageMock::First.serialize();
-
-			assert_noop!(
-				LiquidityPoolsGateway::process_msg(
-					RuntimeOrigin::root(),
-					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
-				),
-				BadOrigin,
-			);
-		});
-	}
-
-	#[test]
 	fn invalid_message_origin() {
 		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
 			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
-			let encoded_msg = MessageMock::First.serialize();
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+
+			let mut msg = Vec::new();
+			// Need to prepend length signaler
+			msg.extend_from_slice(&(0 as u32).to_be_bytes());
+			msg.extend_from_slice(&(0 as u32).to_be_bytes());
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert!(source_chain.is_empty());
+				assert!(source_address.is_empty());
+
+				Ok(domain_address.clone())
+			});
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Domain(domain_address).into(),
-					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+					GatewayOrigin::AxelarRelay(relayer_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
 				Error::<Runtime>::InvalidMessageOrigin,
 			);

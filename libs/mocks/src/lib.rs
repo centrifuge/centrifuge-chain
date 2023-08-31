@@ -7,6 +7,7 @@ mod permissions;
 mod pools;
 mod rewards;
 mod time;
+mod try_convert;
 mod write_off_policy;
 
 pub use change_guard::pallet_mock_change_guard;
@@ -18,6 +19,7 @@ pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
 pub use rewards::pallet as pallet_mock_rewards;
 pub use time::pallet as pallet_mock_time;
+pub use try_convert::pallet as pallet_mock_try_convert;
 pub use write_off_policy::pallet as pallet_mock_write_off_policy;
 
 #[cfg(test)]
