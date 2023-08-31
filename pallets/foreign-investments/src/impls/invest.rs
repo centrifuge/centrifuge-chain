@@ -252,7 +252,7 @@ where
 									..swap
 								},
 								done_amount: foreign_swap.amount,
-								invest_amount: swap.amount,
+								invest_amount: foreign_amount_pool_denominated,
 							},
 						)
 					}
