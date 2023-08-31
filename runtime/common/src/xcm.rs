@@ -100,7 +100,7 @@ where
 					let evm_id = ParaAsEvmChain::try_convert(para).map_err(|_| location)?;
 					let domain_address = DomainAddress::EVM(evm_id, key);
 
-					if pallet_liquidity_pools_gateway::Pallet::<Runtime>::allowlist(
+					if pallet_liquidity_pools_gateway::Pallet::<Runtime>::relayer(
 						Domain::EVM(evm_id),
 						&domain_address,
 					)
