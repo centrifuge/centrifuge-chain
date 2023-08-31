@@ -22,8 +22,8 @@ fp-evm = { git = "https://github.com/PureStake/frontier", default-features = fal
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 precompile-utils = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
-cfg-types = { path = "../../../libs/types", default-features = false }
 cfg-traits = { path = "../../../libs/traits", default-features = false }
+cfg-types = { path = "../../../libs/types", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
 
 [features]
