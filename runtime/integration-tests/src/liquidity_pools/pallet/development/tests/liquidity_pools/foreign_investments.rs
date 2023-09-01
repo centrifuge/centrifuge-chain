@@ -26,6 +26,7 @@ use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, 
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency as TrancheCurrencyT},
 	liquidity_pools::InboundQueue,
+	PoolInspect,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -41,7 +42,7 @@ use cfg_types::{
 };
 use development_runtime::{
 	Balances, ForeignInvestments, Investments, LiquidityPools, OrmlAssetRegistry, OrmlTokens,
-	Permissions, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
+	Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -50,7 +51,7 @@ use frame_support::{
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_foreign_investments::{
 	types::{InnerRedeemState, InvestState, RedeemState},
-	CollectedRedemption, RedemptionState,
+	CollectedRedemption, InvestmentState, RedemptionState,
 };
 use pallet_investments::CollectOutcome;
 use runtime_common::account_conversion::AccountConverter;
@@ -104,7 +105,7 @@ mod same_currencies {
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
 			// Set permissions and execute initial investment
-			do_initial_increase_investment(pool_id, amount, investor, currency_id);
+			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
 
 			// Verify the order was updated to the amount
 			assert_eq!(
@@ -113,6 +114,22 @@ mod same_currencies {
 				)
 				.amount,
 				amount
+			);
+
+			// Increasing again should just bump invest_amount
+			let msg = LiquidityPoolMessage::IncreaseInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount,
+			};
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::InvestmentOngoing {
+					invest_amount: amount * 2
+				}
 			);
 		});
 	}
@@ -421,7 +438,7 @@ mod same_currencies {
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
 			// Set permissions and execute initial redemption
-			do_initial_increase_redemption(pool_id, amount, investor, currency_id);
+			do_initial_increase_redemption(pool_id, amount, investor.clone(), currency_id);
 
 			// Verify amount was noted in the corresponding order
 			assert_eq!(
@@ -432,7 +449,28 @@ mod same_currencies {
 				amount
 			);
 
-			// increase again, state should be SwapIntoForeignDone
+			// Increasing again should just bump redeeming amount
+			assert_ok!(OrmlTokens::mint_into(
+				default_investment_id().into(),
+				&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+				amount
+			));
+			let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount,
+			};
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			assert_eq!(
+				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				RedeemState::NotInvestedAnd {
+					inner: InnerRedeemState::Redeeming {
+						redeem_amount: amount * 2,
+					}
+				}
+			);
 		});
 	}
 
@@ -991,7 +1029,7 @@ mod same_currencies {
 			));
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::<DevelopmentRuntime>::InvestmentOngoing { invest_amount }
+				InvestState::InvestmentOngoing { invest_amount }
 			);
 
 			// Collecting through Investments should denote amounts and transition
@@ -1017,7 +1055,7 @@ mod same_currencies {
 			);
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::<DevelopmentRuntime>::InvestmentOngoing {
+				InvestState::InvestmentOngoing {
 					invest_amount: invest_amount / 2
 				}
 			);
@@ -1490,21 +1528,21 @@ mod mismatching_currencies {
 			// Entire swap amount into pool currency should be nullified
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::<DevelopmentRuntime>::InvestmentOngoing {
+				InvestState::InvestmentOngoing {
 					invest_amount: invest_amount_pool_denominated
 				}
 			);
-			// assert!(System::events().iter().any(|e| {
-			// 	e.event ==
-			// pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			// { 		investor: investor.clone(),
-			// 		investment_id: default_investment_id(),
-			// 		state: InvestState::InvestmentOngoing {
-			// 			invest_amount: invest_amount_foreign_denominated
-			// 		},
-			// 	}
-			// 	.into()
-			// }));
+			assert!(System::events().iter().any(|e| {
+				e.event ==
+			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+			{ 		investor: investor.clone(),
+					investment_id: default_investment_id(),
+					state: InvestState::InvestmentOngoing {
+						invest_amount: invest_amount_pool_denominated
+					},
+				}
+				.into()
+			}));
 
 			// Decrease partial investing amount
 			enable_liquidity_pool_transferability(foreign_currency);
@@ -1520,64 +1558,53 @@ mod mismatching_currencies {
 				decrease_msg_partial_invest_amount.clone()
 			));
 			// Decreased amount should be taken from investing amount
+			let expected_state = InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+				swap: Swap {
+					amount: invest_amount_foreign_denominated / 2,
+					currency_in: foreign_currency,
+					currency_out: pool_currency,
+				},
+				invest_amount: invest_amount_pool_denominated / 2,
+			};
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::<DevelopmentRuntime>::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-					swap: Swap {
-						amount: invest_amount_foreign_denominated / 2,
-						currency_in: foreign_currency,
-						currency_out: pool_currency,
-					},
-					invest_amount: invest_amount_pool_denominated / 2
-				}
+				expected_state.clone()
 			);
-			// assert!(System::events().iter().any(|e| {
-			// 	e.event ==
-			// pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			// { 		investor: investor.clone(),
-			// 		investment_id: default_investment_id(),
-			// 		state: InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-			// 			swap: Swap {
-			// 				amount: invest_amount_foreign_denominated / 2,
-			// 				currency_in: foreign_currency,
-			// 				currency_out: pool_currency,
-			// 			},
-			// 			invest_amount: invest_amount_foreign_denominated / 2
-			// 		},
-			// 	}
-			// 	.into()
-			// }));
+			assert!(System::events().iter().any(|e| {
+				e.event ==
+			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+			{ 		investor: investor.clone(),
+					investment_id: default_investment_id(),
+					state: expected_state.clone()
+				}
+				.into()
+			}));
 
 			/// Consume entire investing amount by sending same message
 			assert_ok!(LiquidityPools::submit(
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				decrease_msg_partial_invest_amount.clone()
 			));
+			let expected_state = InvestState::ActiveSwapIntoForeignCurrency {
+				swap: Swap {
+					amount: invest_amount_foreign_denominated,
+					currency_in: foreign_currency,
+					currency_out: pool_currency,
+				},
+			};
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::<DevelopmentRuntime>::ActiveSwapIntoForeignCurrency {
-					swap: Swap {
-						amount: invest_amount_foreign_denominated,
-						currency_in: foreign_currency,
-						currency_out: pool_currency,
-					},
-				}
+				expected_state.clone()
 			);
-			// assert!(System::events().iter().any(|e| {
-			// 	e.event ==
-			// pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			// { 		investor: investor.clone(),
-			// 		investment_id: default_investment_id(),
-			// 		state: InvestState::ActiveSwapIntoForeignCurrency {
-			// 			swap: Swap {
-			// 				amount: invest_amount_foreign_denominated,
-			// 				currency_in: foreign_currency,
-			// 				currency_out: pool_currency,
-			// 			}
-			// 		},
-			// 	}
-			// 	.into()
-			// }));
+			assert!(System::events().iter().any(|e| {
+				e.event ==
+			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+			{ 		investor: investor.clone(),
+					investment_id: default_investment_id(),
+					state: expected_state.clone()
+				}
+				.into()
+			}));
 		});
 	}
 
@@ -1639,6 +1666,28 @@ mod setup {
 		// Execute byte message
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
+		let pool_currency: CurrencyId =
+			PoolSystem::currency_for(pool_id).expect("Pool existence checked already");
+		dbg!(pool_currency, currency_id);
+		if currency_id == pool_currency {
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::InvestmentOngoing {
+					invest_amount: amount
+				}
+			);
+		} else {
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::ActiveSwapIntoPoolCurrency {
+					swap: Swap {
+						currency_in: pool_currency,
+						currency_out: currency_id,
+						amount
+					}
+				}
+			);
+		}
 		// Verify investment was transferred into investment account
 		assert_eq!(
 			OrmlTokens::free_balance(currency_id, &default_investment_account()),
@@ -1733,6 +1782,14 @@ mod setup {
 
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
+		assert_eq!(
+			RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+			RedeemState::NotInvestedAnd {
+				inner: InnerRedeemState::Redeeming {
+					redeem_amount: amount
+				}
+			}
+		);
 		// Verify redemption was transferred into investment account
 		assert_eq!(
 			OrmlTokens::free_balance(
