@@ -22,9 +22,12 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use frame_support::{sp_std::marker::PhantomData, traits::fungibles};
+use frame_support::{
+	sp_std::marker::PhantomData,
+	traits::{fungibles, fungibles::Mutate},
+};
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -140,7 +143,7 @@ impl TakeRevenue for ToTreasury {
 			if let Ok(currency_id) =
 				<CurrencyIdConvert as Convert<MultiLocation, CurrencyId>>::convert(location)
 			{
-				let _ = Tokens::deposit(currency_id, &TreasuryAccount::get(), amount);
+				let _ = Tokens::mint_into(currency_id, &TreasuryAccount::get(), amount);
 			}
 		}
 	}
