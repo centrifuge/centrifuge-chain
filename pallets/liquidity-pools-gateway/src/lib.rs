@@ -302,10 +302,7 @@ pub mod pallet {
 				GatewayOrigin::AxelarRelay(domain_address) => {
 					// Every axelar relay address has a separate storage
 					ensure!(
-						RelayerList::<T>::contains_key(
-							domain_address.domain(),
-							domain_address.clone()
-						),
+						RelayerList::<T>::contains_key(domain_address.domain(), domain_address),
 						Error::<T>::UnknownRelayer
 					);
 
@@ -318,7 +315,7 @@ pub mod pallet {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
 							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(&be_bytes_u32);
+							bytes.copy_from_slice(be_bytes_u32);
 
 							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
@@ -335,7 +332,7 @@ pub mod pallet {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
 							// bytes have the right length. I.e. 4 in this case
-							bytes.copy_from_slice(&be_bytes_u32);
+							bytes.copy_from_slice(be_bytes_u32);
 
 							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
@@ -381,8 +378,8 @@ pub mod pallet {
 			);
 
 			let (input, new_slice) = slice.split_at(next_steps);
-			let res = transformer(&input)?;
-			*slice = &mut &new_slice;
+			let res = transformer(input)?;
+			*slice = new_slice;
 
 			Ok(res)
 		}

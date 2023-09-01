@@ -28,11 +28,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
-# Need that here for feature flags
-cfg-mocks = { path = "../../libs/mocks", optional = true }
-
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { path = "../../libs/mocks" , features = ["runtime-benchmarks", "std"] }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
@@ -59,7 +56,6 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "sp-runtime/try-runtime",
-  "cfg-mocks/try-runtime",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -68,5 +64,4 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
 ]

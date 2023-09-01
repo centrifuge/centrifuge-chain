@@ -72,11 +72,8 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 log = "0.4"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-# Need that here for feature flags
-cfg-mocks = { path = "../../libs/mocks", optional = true }
-
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks" }
+cfg-mocks = { path = "../../libs/mocks" , features = ["runtime-benchmarks", "std"] }
 hex-literal = "0.2.1"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
@@ -152,7 +149,6 @@ runtime-benchmarks = [
   "axelar-gateway-precompile/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -184,5 +180,4 @@ try-runtime = [
   "fp-self-contained/try-runtime",
   "axelar-gateway-precompile/try-runtime",
   "pallet-investments/try-runtime",
-  "cfg-mocks/try-runtime",
 ]
