@@ -19,8 +19,6 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-// TODO(cdamian): Use V3?
-use ::xcm::latest::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	liquidity_pools::{InboundQueue, OutboundQueue},
@@ -104,7 +102,7 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use crate::xcm::{MultiAsset, MultiLocation, XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod evm;
 mod migrations;
@@ -431,6 +429,7 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
+	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
 	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
 }
 
@@ -1282,9 +1281,8 @@ impl pallet_collator_selection::Config for Runtime {
 pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 
 parameter_types! {
-	// TODO(cdamian): is this correct?
-	// 1 DOT should be enough to cover for fees opening/accepting hrmp channels
-	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+	// 1 DOT, which has 10 decimals, should be enough to cover for fees opening/accepting hrmp channels.
+	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 10_000_000_000u128).into();
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
@@ -1295,7 +1293,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRootOr<HalfOfCouncil>;
-	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type HrmpEncoder = moonbeam_relay_encoder::polkadot::PolkadotEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
 	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
 	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
