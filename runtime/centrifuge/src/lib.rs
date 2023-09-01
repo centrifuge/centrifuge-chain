@@ -23,8 +23,9 @@
 use ::xcm::latest::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	liquidity_pools::InboundQueue, OrderManager, Permissions as PermissionsT, PoolNAV,
-	PoolUpdateGuard, PreConditions, TrancheCurrency as _,
+	liquidity_pools::{InboundQueue, OutboundQueue},
+	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as _,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
@@ -2050,7 +2051,6 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_traits::liquidity_pools::OutboundQueue;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
