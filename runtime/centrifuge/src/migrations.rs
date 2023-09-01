@@ -24,7 +24,7 @@ use frame_support::{
 use sp_std::{vec, vec::Vec};
 use xcm::{v3::prelude::*, VersionedMultiLocation};
 
-use crate::{LiquidityPoolsPalletIndex, OrmlAssetRegistry, RocksDbWeight, Runtime};
+use crate::{LiquidityPoolsPalletIndex, RocksDbWeight, Runtime};
 
 pub type UpgradeCentrifuge1020 = (
 	asset_registry::CrossChainTransferabilityMigration,
@@ -234,12 +234,11 @@ mod asset_registry {
 			log::info!("Found {} LocationToAssetId keys ", loc_count);
 			log::info!("Found {} Metadata keys ", meta_count);
 
-			let assets_to_migrate;
-			if is_centrifuge {
-				assets_to_migrate = get_centrifuge_assets();
+			let assets_to_migrate = if is_centrifuge {
+				get_centrifuge_assets()
 			} else {
-				assets_to_migrate = get_catalyst_assets();
-			}
+				get_catalyst_assets()
+			};
 
 			assets_to_migrate
 				.iter()
@@ -336,12 +335,13 @@ mod asset_registry {
 	}
 }
 /// Returns the count of all keys sharing the same storage prefix
+#[allow(dead_code)]
 pub fn count_storage_keys(prefix: &[u8]) -> u32 {
 	let mut count = 0;
 	let mut next_key = prefix.to_vec();
 	loop {
 		match sp_io::storage::next_key(&next_key) {
-			Some(key) if !key.starts_with(&prefix) => break count,
+			Some(key) if !key.starts_with(prefix) => break count,
 			Some(key) => {
 				next_key = key;
 				count += 1;
@@ -380,7 +380,7 @@ pub fn get_catalyst_assets() -> Vec<(
 				decimals: 6,
 				name: b"Wormhole USDC".to_vec(),
 				symbol: b"USDC".to_vec(),
-				existential_deposit: 10_000u128.into(),
+				existential_deposit: 10_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X2(
@@ -398,8 +398,7 @@ pub fn get_catalyst_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -408,7 +407,7 @@ pub fn get_catalyst_assets() -> Vec<(
 				decimals: 6,
 				name: b"Rococo USDT".to_vec(),
 				symbol: b"USDR".to_vec(),
-				existential_deposit: 100u128.into(),
+				existential_deposit: 100u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
@@ -420,17 +419,16 @@ pub fn get_catalyst_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3041110957, tranche_id.into()),
+			CurrencyId::Tranche(3041110957, tranche_id),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"New Pool Junior".to_vec(),
 				symbol: b"NPJUN".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
@@ -439,8 +437,7 @@ pub fn get_catalyst_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 	]
@@ -460,7 +457,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 18,
 				name: b"Centrifuge".to_vec(),
 				symbol: b"CFG".to_vec(),
-				existential_deposit: 1_000_000_000_000u128.into(),
+				existential_deposit: 1_000_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					0,
 					Junctions::X1(GeneralKey {
@@ -475,8 +472,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -485,7 +481,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 6,
 				name: b"Tether USDT".to_vec(),
 				symbol: b"USDT".to_vec(),
-				existential_deposit: 10_000u128.into(),
+				existential_deposit: 10_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
@@ -497,8 +493,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -507,7 +502,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 6,
 				name: b"Axelar USDC".to_vec(),
 				symbol: b"xcUSDC".to_vec(),
-				existential_deposit: 10_000u128.into(),
+				existential_deposit: 10_000u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
@@ -516,8 +511,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -526,7 +520,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 12,
 				name: b"Acala Dollar".to_vec(),
 				symbol: b"aUSD".to_vec(),
-				existential_deposit: 10_000_000_000u128.into(),
+				existential_deposit: 10_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X2(
@@ -544,8 +538,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -554,7 +547,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 18,
 				name: b"Glimmer".to_vec(),
 				symbol: b"GLMR".to_vec(),
-				existential_deposit: 1_000_000_000_000_000u128.into(),
+				existential_deposit: 1_000_000_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X2(Parachain(2004), PalletInstance(10)),
@@ -566,8 +559,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -576,7 +568,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 				decimals: 10,
 				name: b"DOT".to_vec(),
 				symbol: b"DOT".to_vec(),
-				existential_deposit: 100_000u128.into(),
+				existential_deposit: 100_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::Here,
@@ -588,8 +580,7 @@ pub fn get_centrifuge_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		// Adding LP USDC here

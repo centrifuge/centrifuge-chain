@@ -73,7 +73,7 @@ mod asset_registry {
 	use cfg_types::{tokens as v1, tokens::CustomMetadata};
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
-	use sp_std::{marker::PhantomData, vec::Vec};
+	use sp_std::marker::PhantomData;
 
 	use super::*;
 	use crate::VERSION;
@@ -250,12 +250,11 @@ mod asset_registry {
 			log::info!("Found {} LocationToAssetId keys ", loc_count);
 			log::info!("Found {} Metadata keys ", meta_count);
 
-			let assets_to_migrate;
-			if is_altair {
-				assets_to_migrate = get_altair_assets();
+			let assets_to_migrate = if is_altair {
+				get_altair_assets()
 			} else {
-				assets_to_migrate = get_algol_assets();
-			}
+				get_algol_assets()
+			};
 
 			assets_to_migrate
 				.iter()
@@ -428,122 +427,115 @@ pub fn get_algol_assets() -> Vec<(
 
 	vec![
 		(
-			CurrencyId::Tranche(3151673055, polka_jr.into()),
+			CurrencyId::Tranche(3151673055, polka_jr),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Polka Pool Junior".to_vec(),
 				symbol: b"PP1J".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3151673055, polka_mezz_1.into()),
+			CurrencyId::Tranche(3151673055, polka_mezz_1),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Polka Pool Mezz 1".to_vec(),
 				symbol: b"PP1M1".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3151673055, polka_mezz_2.into()),
+			CurrencyId::Tranche(3151673055, polka_mezz_2),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Polka Pool Mezz 2".to_vec(),
 				symbol: b"PP1M2".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3151673055, polka_mezz_3.into()),
+			CurrencyId::Tranche(3151673055, polka_mezz_3),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Polka Pool Mezz 3".to_vec(),
 				symbol: b"PP1M3".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3151673055, polka_senior.into()),
+			CurrencyId::Tranche(3151673055, polka_senior),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Polka Pool Senior".to_vec(),
 				symbol: b"PP1S".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3581766799, just_jr.into()),
+			CurrencyId::Tranche(3581766799, just_jr),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Just Logistics Series 3 Junior".to_vec(),
 				symbol: b"JL3JR".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
-			CurrencyId::Tranche(3581766799, just_sr.into()),
+			CurrencyId::Tranche(3581766799, just_sr),
 			orml_asset_registry::AssetMetadata {
 				decimals: 6,
 				name: b"Just Logistics Series 3 Senior".to_vec(),
 				symbol: b"JL3SR".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -552,7 +544,7 @@ pub fn get_algol_assets() -> Vec<(
 				decimals: 6,
 				name: b"Tether USD".to_vec(),
 				symbol: b"USDT".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
@@ -564,8 +556,7 @@ pub fn get_algol_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -574,7 +565,7 @@ pub fn get_algol_assets() -> Vec<(
 				decimals: 6,
 				name: b"LP Ethereum Wrapped USDC".to_vec(),
 				symbol: b"LpEthUSDC".to_vec(),
-				existential_deposit: 1_000u128.into(),
+				existential_deposit: 1_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					0,
 					Junctions::X3(
@@ -591,8 +582,7 @@ pub fn get_algol_assets() -> Vec<(
 					permissioned: false,
 					pool_currency: true,
 					transferability: CrossChainTransferability::LiquidityPools,
-				}
-				.into(),
+				},
 			},
 		),
 	]
@@ -618,7 +608,7 @@ pub fn get_altair_assets() -> Vec<(
 				decimals: 18,
 				name: b"Altair".to_vec(),
 				symbol: b"AIR".to_vec(),
-				existential_deposit: 1_000_000_000_000u128.into(),
+				existential_deposit: 1_000_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					0,
 					Junctions::X1(GeneralKey {
@@ -633,8 +623,7 @@ pub fn get_altair_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -643,7 +632,7 @@ pub fn get_altair_assets() -> Vec<(
 				decimals: 6,
 				name: b"Tether USDT".to_vec(),
 				symbol: b"USDT".to_vec(),
-				existential_deposit: 10_000u128.into(),
+				existential_deposit: 10_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
@@ -655,8 +644,7 @@ pub fn get_altair_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -665,7 +653,7 @@ pub fn get_altair_assets() -> Vec<(
 				decimals: 12,
 				name: b"Acala Dollar".to_vec(),
 				symbol: b"aUSD".to_vec(),
-				existential_deposit: 10_000_000_000u128.into(),
+				existential_deposit: 10_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::X2(
@@ -683,8 +671,7 @@ pub fn get_altair_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 		(
@@ -693,7 +680,7 @@ pub fn get_altair_assets() -> Vec<(
 				decimals: 12,
 				name: b"Kusama".to_vec(),
 				symbol: b"KSM".to_vec(),
-				existential_deposit: 10_000_000_000u128.into(),
+				existential_deposit: 10_000_000_000u128,
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					Junctions::Here,
@@ -705,20 +692,20 @@ pub fn get_altair_assets() -> Vec<(
 					transferability: CrossChainTransferability::Xcm(XcmMetadata {
 						fee_per_second: None,
 					}),
-				}
-				.into(),
+				},
 			},
 		),
 	]
 }
 
 // Returns the count of all keys sharing the same storage prefix
+#[allow(dead_code)]
 pub fn count_storage_keys(prefix: &[u8]) -> u32 {
 	let mut count = 0;
 	let mut next_key = prefix.to_vec();
 	loop {
 		match sp_io::storage::next_key(&next_key) {
-			Some(key) if !key.starts_with(&prefix) => break count,
+			Some(key) if !key.starts_with(prefix) => break count,
 			Some(key) => {
 				next_key = key;
 				count += 1;
