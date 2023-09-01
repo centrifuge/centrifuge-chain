@@ -29,7 +29,7 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
 # Need that here for feature flags
-cfg-mocks = { path = "../../libs/mocks" , optional = true}
+cfg-mocks = { path = "../../libs/mocks", optional = true }
 
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks" }
