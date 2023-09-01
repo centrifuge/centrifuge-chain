@@ -10981,6 +10981,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "axelar-gateway-precompile",
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
