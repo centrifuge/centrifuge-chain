@@ -101,10 +101,10 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Our pallets and modules
-liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
+liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
@@ -132,8 +132,8 @@ pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # LiquidityPools 3rd-party dependencies
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 # bridge pallets
