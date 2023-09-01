@@ -402,6 +402,8 @@ pub mod pallet {
 		Rebalanced { pool_id: T::PoolId },
 		/// The max reserve was updated.
 		MaxReserveSet { pool_id: T::PoolId },
+		/// The pool currency was updated.
+		PoolCurrencySet { pool_id: T::PoolId, new_currency: T::CurrencyId },
 		/// An epoch was closed.
 		EpochClosed {
 			pool_id: T::PoolId,
@@ -515,6 +517,12 @@ pub mod pallet {
 		ChangeNotFound,
 		/// The external change was found for is not ready yet to be released.
 		ChangeNotReady,
+		/// Decimals of the new pool currency need to match the decimals of the old pool currency
+		MismatchingCurrencyDecimals,
+		/// Reserve needs to be empty
+		ReserveNotEmpty,
+		/// There cannot be any outstanding orders
+		SomeOrdersAreOutstanding,
 	}
 
 	#[pallet::call]
@@ -862,6 +870,52 @@ pub mod pallet {
 				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
 			})
 		}
+
+		/// Sets the maximum reserve for a pool
+		///
+		/// The caller must have the `PoolAdmin` role in
+		/// order to invoke this extrinsic.
+		#[pallet::weight(T::WeightInfo::set_max_reserve())]
+		#[pallet::weight(100_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn set_pool_currency(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			new_currency: T::CurrencyId,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who,
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				BadOrigin
+			);
+
+			// Ensure reserve is empty
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			ensure!(pool.reerve.total == 0, ReserveNotEmpty);
+
+			// Ensure decimals match
+			let old_currency_metadata = T::AssetRegistry::metadata(&pool.currency.into())
+				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
+
+			let new_currency_metadata = T::AssetRegistry::metadata(&new_currency.into())
+				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
+
+			ensure!(old_currency_metadata.decimals == new_currency_metadata, MismatchingCurrencyDecimals);
+
+			// Ensure there are no outstanding orders
+			
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.currency = new_currency;
+				Self::deposit_event(Event::PoolCurrencySet { pool_id, new_currency });
+				Ok(())
+			})
+		}
+
 	}
 
 	impl<T: Config> Pallet<T> {
