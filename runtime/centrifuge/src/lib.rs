@@ -511,7 +511,7 @@ impl InboundQueue for DummyInboundQueue {
 	type Sender = DomainAddress;
 
 	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
-		Err(DispatchError::Other("not supported yet"))
+		Err(DispatchError::Other("InboundQueue not supported yet"))
 	}
 }
 
