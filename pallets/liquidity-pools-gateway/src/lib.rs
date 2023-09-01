@@ -228,7 +228,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Remove a instance from a specific domain.
+		/// Remove an instance from a specific domain.
 		#[pallet::weight(T::WeightInfo::remove_instance())]
 		#[pallet::call_index(2)]
 		pub fn remove_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
@@ -270,7 +270,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Remove a instance from a specific domain.
+		/// Remove an instance from a specific domain.
 		#[pallet::weight(T::WeightInfo::remove_relayer())]
 		#[pallet::call_index(4)]
 		pub fn remove_relayer(origin: OriginFor<T>, relayer: DomainAddress) -> DispatchResult {
@@ -317,7 +317,7 @@ pub mod pallet {
 						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case/
+							// bytes have the right length. I.e. 4 in this case
 							bytes.copy_from_slice(&be_bytes_u32);
 
 							Ok(u32::from_be_bytes(bytes).try_into().map_err(|_| {
@@ -334,7 +334,7 @@ pub mod pallet {
 						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
-							// bytes have the right length. I.e. 4 in this case/
+							// bytes have the right length. I.e. 4 in this case
 							bytes.copy_from_slice(&be_bytes_u32);
 
 							Ok(u32::from_be_bytes(bytes).try_into().map_err(|_| {
