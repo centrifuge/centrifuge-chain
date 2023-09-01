@@ -10,8 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{AccountId, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
+use frame_system::EnsureRoot;
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
@@ -86,5 +87,10 @@ impl pallet_ethereum::Config for crate::Runtime {
 }
 
 impl pallet_ethereum_transaction::Config for crate::Runtime {
+	type RuntimeEvent = crate::RuntimeEvent;
+}
+
+impl axelar_gateway_precompile::Config for crate::Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = crate::RuntimeEvent;
 }

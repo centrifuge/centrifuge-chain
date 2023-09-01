@@ -101,6 +101,7 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Our pallets and modules
+axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -253,6 +254,7 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
+  "axelar-gateway-precompile/std",
 ]
 
 runtime-benchmarks = [
@@ -323,6 +325,7 @@ runtime-benchmarks = [
   "xcm-primitives/runtime-benchmarks",
   "pallet-claims/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -401,6 +404,7 @@ try-runtime = [
   "polkadot-runtime-common/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

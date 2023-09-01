@@ -1136,6 +1136,7 @@ dependencies = [
 name = "centrifuge-runtime"
 version = "0.10.20"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
