@@ -27,7 +27,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		pub fn mock_try_convert(f: impl Fn(T::From) -> Result<T::To, T::Error> + 'static) {
-			register_call_instance!(move |from| f(from));
+			register_call_instance!(f);
 		}
 	}
 
