@@ -29,7 +29,7 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks" , features = ["runtime-benchmarks", "std"] }
+cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
