@@ -320,9 +320,9 @@ pub mod pallet {
 							// bytes have the right length. I.e. 4 in this case
 							bytes.copy_from_slice(&be_bytes_u32);
 
-							Ok(u32::from_be_bytes(bytes).try_into().map_err(|_| {
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})?)
+							})
 						})?;
 
 					let source_chain =
@@ -337,9 +337,9 @@ pub mod pallet {
 							// bytes have the right length. I.e. 4 in this case
 							bytes.copy_from_slice(&be_bytes_u32);
 
-							Ok(u32::from_be_bytes(bytes).try_into().map_err(|_| {
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
-							})?)
+							})
 						})?;
 
 					let source_address =
@@ -348,11 +348,11 @@ pub mod pallet {
 						})?;
 
 					let origin_msg = Pallet::<T>::try_range(slice_ref, slice_ref.len(), |msg| {
-						Ok(BoundedVec::try_from(msg.to_vec()).map_err(|_| {
+						BoundedVec::try_from(msg.to_vec()).map_err(|_| {
 							DispatchError::Other(
 								"Remaining bytes smaller vector in the first place. qed.",
 							)
-						})?)
+						})
 					})?;
 
 					let origin_domain =
