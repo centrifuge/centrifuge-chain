@@ -887,11 +887,7 @@ pub mod pallet {
 					receiver,
 					amount,
 					..
-				} => Self::handle_transfer(
-					currency.into(),
-					T::DomainAccountToAccountId::convert((sender.domain(), receiver)),
-					amount,
-				),
+				} => Self::handle_transfer(currency.into(), receiver.into(), amount),
 				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
@@ -902,7 +898,7 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					sender.clone(),
-					T::DomainAccountToAccountId::convert((sender.domain(), receiver)),
+					receiver.into(),
 					amount,
 				),
 				Message::IncreaseInvestOrder {
