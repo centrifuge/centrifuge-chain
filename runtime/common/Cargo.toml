@@ -73,9 +73,9 @@ log = "0.4"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
+cfg-mocks = { path = "../../libs/mocks" }
 hex-literal = "0.2.1"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
-cfg-mocks = { path = "../../libs/mocks" }
 
 [features]
 default = ["std"]
@@ -125,7 +125,7 @@ std = [
   "pallet-evm-precompile-sha3fips/std",
   "pallet-evm-precompile-simple/std",
   "pallet-investments/std",
-  "xcm-executor/std"
+  "xcm-executor/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -148,7 +148,7 @@ runtime-benchmarks = [
   "xcm-primitives/runtime-benchmarks",
   "axelar-gateway-precompile/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks"
+  "xcm-executor/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
