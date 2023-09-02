@@ -15,10 +15,11 @@ use cfg_types::domain_address::{Domain, DomainAddress};
 use codec::alloc::string::ToString;
 use ethabi::Token;
 use fp_evm::PrecompileHandle;
+use frame_support::{Blake2_256, StorageHasher};
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::vec::Vec;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
@@ -191,6 +192,22 @@ pub mod pallet {
 	}
 }
 
+impl<T: Config> cfg_traits::TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for Pallet<T> {
+	type Error = DispatchError;
+
+	fn try_convert(origin: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, DispatchError> {
+		let (source_chain, source_address) = origin;
+
+		let domain_converter =
+			SourceConversion::<T>::get(H256::from(Blake2_256::hash(&source_chain)))
+				.ok_or(Error::<T>::NoConverterForSource)?;
+
+		domain_converter
+			.try_convert(&source_address)
+			.ok_or(Error::<T>::AccountBytesMismatchForDomain.into())
+	}
+}
+
 #[precompile_utils::precompile]
 impl<T: Config> Pallet<T>
 where
@@ -256,17 +273,16 @@ where
 		})?;
 
 		Self::execute_call(key, || {
-			let domain_converter = SourceConversion::<T>::get(H256::from(
-				sp_io::hashing::blake2_256(source_chain.as_bytes()),
-			))
-			.ok_or(Error::<T>::NoConverterForSource)?;
+			let domain_converter =
+				SourceConversion::<T>::get(H256::from(Blake2_256::hash(source_chain.as_bytes())))
+					.ok_or(Error::<T>::NoConverterForSource)?;
 
 			let domain_address = domain_converter
 				.try_convert(source_address.as_bytes())
 				.ok_or(Error::<T>::AccountBytesMismatchForDomain)?;
 
 			pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
-				pallet_liquidity_pools_gateway::GatewayOrigin::Local(domain_address).into(),
+				pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
 				msg,
 			)
 		})

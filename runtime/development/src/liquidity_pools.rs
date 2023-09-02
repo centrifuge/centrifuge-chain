@@ -27,6 +27,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

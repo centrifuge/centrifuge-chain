@@ -20,23 +20,22 @@ use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub enum GatewayOrigin {
-	Local(DomainAddress),
+	Domain(DomainAddress),
+	AxelarRelay(DomainAddress),
 }
 
 pub struct EnsureLocal;
 
 impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> for EnsureLocal {
-	type Success = DomainAddress;
+	type Success = GatewayOrigin;
 
 	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().map(|o| match o {
-			GatewayOrigin::Local(domain_address) => domain_address,
-		})
+		o.into()
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
-		Ok(O::from(GatewayOrigin::Local(DomainAddress::EVM(
+		Ok(O::from(GatewayOrigin::Domain(DomainAddress::EVM(
 			1,
 			H160::from_low_u64_be(1).into(),
 		))))

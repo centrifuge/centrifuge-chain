@@ -603,6 +603,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "axelar-gateway-precompile"
 version = "0.1.0"
 dependencies = [
+ "cfg-traits",
  "cfg-types",
  "ethabi 18.0.0",
  "fp-evm",
@@ -10980,6 +10981,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "axelar-gateway-precompile",
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -11007,6 +11009,7 @@ dependencies = [
  "pallet-evm-precompile-simple",
  "pallet-investments",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
@@ -11021,6 +11024,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
  "xcm-primitives",
 ]
 

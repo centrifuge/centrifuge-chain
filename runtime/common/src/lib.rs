@@ -23,6 +23,7 @@ pub mod apis;
 pub mod evm;
 pub mod migrations;
 pub mod oracle;
+pub mod xcm;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -223,68 +224,6 @@ pub mod asset_registry {
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
 			Err(())
-		}
-	}
-}
-
-pub mod xcm {
-	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
-	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::traits::Convert;
-	use xcm::{
-		latest::{Junction::GeneralKey, MultiLocation},
-		prelude::{AccountId32, X1},
-	};
-
-	use crate::xcm_fees::default_per_second;
-
-	/// Our FixedConversionRateProvider, used to charge XCM-related fees for
-	/// tokens registered in the asset registry that were not already handled by
-	/// native Trader rules.
-	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
-
-	impl<
-			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
-				AssetId = CurrencyId,
-				Balance = Balance,
-				CustomMetadata = CustomMetadata,
-			>,
-		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
-	{
-		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			match metadata.additional.transferability {
-				CrossChainTransferability::Xcm(xcm_metadata)
-				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
-					.fee_per_second
-					.or_else(|| Some(default_per_second(metadata.decimals))),
-				_ => None,
-			}
-		}
-	}
-
-	/// A utils function to un-bloat and simplify the instantiation of
-	/// `GeneralKey` values
-	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
-		GeneralKey {
-			length: data.len().min(32) as u8,
-			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
-		}
-	}
-
-	/// How we convert an `[AccountId]` into an XCM MultiLocation
-	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
-	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
-	where
-		AccountId: Into<[u8; 32]>,
-	{
-		fn convert(account: AccountId) -> MultiLocation {
-			X1(AccountId32 {
-				network: None,
-				id: account.into(),
-			})
-			.into()
 		}
 	}
 }
