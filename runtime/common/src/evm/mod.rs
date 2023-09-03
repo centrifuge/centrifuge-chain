@@ -14,6 +14,7 @@ use frame_support::weights::constants::WEIGHT_REF_TIME_PER_SECOND;
 use pallet_ethereum::{Transaction, TransactionAction};
 use sp_runtime::Permill;
 
+pub mod fees;
 pub mod precompile;
 
 // From Moonbeam:
