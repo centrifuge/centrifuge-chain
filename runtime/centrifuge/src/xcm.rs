@@ -376,9 +376,8 @@ impl TryConvert<cfg_types::ParaId, EVMChainId> for ParaToEvm {
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
 /// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
-	// TODO: Activate once gateway is in here.
 	// A matcher that catches all Moonbeam relaying contracts to generate the right Origin
-	// LpGatewayInstance<ParaToEvm, Runtime>,
+	LpGatewayInstance<ParaToEvm, Runtime>,
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
 	// foreign chains who want to have a local sovereign account on this chain which they control.
