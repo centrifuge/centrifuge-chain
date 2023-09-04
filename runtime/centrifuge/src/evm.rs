@@ -22,7 +22,7 @@ use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
 
-use crate::Aura;
+use crate::{Aura, LocationToAccountId};
 
 // To create valid Ethereum-compatible blocks, we need a 20-byte
 // "author" for the block. Since that author is purely informational,
@@ -48,7 +48,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for crate::Runtime {
-	type AddressMapping = AccountConverter<crate::Runtime>;
+	type AddressMapping = AccountConverter<crate::Runtime, LocationToAccountId>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<crate::AccountId>;

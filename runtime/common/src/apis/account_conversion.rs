@@ -9,18 +9,15 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_traits::TryConvert;
 use codec::Codec;
-use pallet_anchors::AnchorData;
 use sp_api::decl_runtime_apis;
 use xcm::v3::MultiLocation;
 
 decl_runtime_apis! {
 	/// Runtime Api for the pallet-anchors, to be implemented
 	/// by and for a specific runtime that uses that pallet.
-	pub trait AccountConversionApi<Converter, AccountId>
+	pub trait AccountConversionApi<AccountId>
 	where
-		Converter: TryConvert<MultiLocation, AccountId> + Codec,
 		AccountId: Codec
 	{
 		fn conversion_of(location: MultiLocation) -> Option<AccountId>;

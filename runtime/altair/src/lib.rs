@@ -19,10 +19,11 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+use ::xcm::v3::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	TrancheCurrency as _, TryConvert,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -72,8 +73,11 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	account_conversion::AccountConverter,
+	fees::{DealWithFees, WeightToFee},
+};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
@@ -1385,7 +1389,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AccountConverter = AccountConverter<Runtime>;
+	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1972,7 +1976,7 @@ mod __runtime_api_use {
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
 use cfg_types::domain_address::Domain;
-use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
+use runtime_common::xcm::AccountIdToMultiLocation;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2184,6 +2188,11 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+		}
+	}
 
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
