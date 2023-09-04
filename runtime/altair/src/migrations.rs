@@ -895,7 +895,7 @@ mod pool_system {
 
 mod xcm_v2_to_v3 {
 	use super::*;
-	use crate::{PolkadotXcm, RuntimeOrigin, VERSION};
+	use crate::{PolkadotXcm, RuntimeOrigin};
 
 	pub struct SetSafeXcmVersion;
 
