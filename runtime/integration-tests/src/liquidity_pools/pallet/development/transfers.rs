@@ -41,17 +41,13 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 
-use crate::{
-	liquidity_pools::pallet::{
-		development::{
-			setup::{
-				centrifuge_account, cfg, moonbeam_account, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM,
-			},
-			test_net::{Development, Moonbeam, RelayChain, TestNet},
-			tests::register_ausd,
-		},
-		xcm_metadata,
+use crate::liquidity_pools::pallet::{
+	development::{
+		setup::{centrifuge_account, cfg, moonbeam_account, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM},
+		test_net::{Development, Moonbeam, RelayChain, TestNet},
+		tests::register_ausd,
 	},
+	xcm_metadata,
 };
 
 /*
