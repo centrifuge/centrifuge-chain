@@ -38,7 +38,13 @@ use runtime_common::{
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit};
+use xcm_builder::{
+	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+};
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
@@ -198,7 +204,9 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior,
 			} => MultiLocation {
 				parents: 1,
-				interior: interior.pushed_front_with(Parachain(u32::from(ParachainInfo::get()))).map_err(|_| location)?,
+				interior: interior
+					.pushed_front_with(Parachain(u32::from(ParachainInfo::get())))
+					.map_err(|_| location)?,
 			},
 			x => x,
 		};

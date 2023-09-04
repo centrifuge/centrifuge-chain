@@ -33,7 +33,7 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider, LpInstanceRelayer},
-	xcm_fees::{native_per_second},
+	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
@@ -206,7 +206,9 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior,
 			} => MultiLocation {
 				parents: 1,
-				interior: interior.pushed_front_with(Parachain(u32::from(ParachainInfo::get()))).map_err(|_| location)?,
+				interior: interior
+					.pushed_front_with(Parachain(u32::from(ParachainInfo::get())))
+					.map_err(|_| location)?,
 			},
 			x => x,
 		};
