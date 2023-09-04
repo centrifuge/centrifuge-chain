@@ -22,7 +22,7 @@
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	TrancheCurrency as _, TryConvert,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
@@ -1922,6 +1922,7 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 #[cfg(not(feature = "disable-runtime-api"))]
 mod __runtime_api_use {
 	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+	pub use runtime_common::account_conversion::AccountConverter;
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2134,6 +2135,12 @@ impl_runtime_apis! {
 	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
 		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
 			runtime_common::investment_portfolios::get_portfolios::<Runtime, AccountId, TrancheId, Investments, TrancheCurrency, CurrencyId, PoolId, Balance>(account_id)
+		}
+	}
+
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: ::xcm::v3::MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
 		}
 	}
 
