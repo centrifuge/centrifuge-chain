@@ -71,27 +71,17 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 	fn contains(call: &RuntimeCall) -> bool {
 		matches!(
 			call,
-			RuntimeCall::System(
-				frame_system::Call::kill_prefix { .. } | frame_system::Call::set_heap_pages { .. },
-			) | RuntimeCall::Timestamp(..)
+			RuntimeCall::Timestamp(..)
 				| RuntimeCall::Balances(..)
-				| RuntimeCall::Session(pallet_session::Call::purge_keys { .. })
-				| RuntimeCall::Treasury(..)
 				| RuntimeCall::Utility(pallet_utility::Call::as_derivative { .. })
-				| RuntimeCall::Vesting(..)
 				| RuntimeCall::PolkadotXcm(
 					pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				) | RuntimeCall::CollatorSelection(
-				pallet_collator_selection::Call::set_desired_candidates { .. }
-					| pallet_collator_selection::Call::set_candidacy_bond { .. }
-					| pallet_collator_selection::Call::register_as_candidate { .. }
-					| pallet_collator_selection::Call::leave_intent { .. },
-			) | RuntimeCall::XcmpQueue(..)
+				) | RuntimeCall::XcmpQueue(..)
 				| RuntimeCall::DmpQueue(..)
 				| RuntimeCall::Proxy(..)
 				| RuntimeCall::LiquidityPoolsGateway(
 					pallet_liquidity_pools_gateway::Call::process_msg { .. }
-				)
+				) | RuntimeCall::OrderBook(..)
 		)
 	}
 }
