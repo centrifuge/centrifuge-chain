@@ -28,6 +28,73 @@ mod utils {
 
 use utils::*;
 
+mod pallet_internals {
+
+	use super::*;
+
+	#[test]
+	fn try_range_fails_if_slice_to_short() {
+		new_test_ext().execute_with(|| {
+			let three_bytes = [0u8; 3];
+			let steps = 4usize;
+
+			assert_noop!(
+				Pallet::<Runtime>::try_range(&mut three_bytes.as_slice(), steps, |_| Ok(())),
+				Error::<Runtime>::RelayerMessageDecodingFailed
+			);
+		})
+	}
+
+	#[test]
+	fn try_range_updates_slice_ref_correctly() {
+		new_test_ext().execute_with(|| {
+			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
+			let slice = &mut bytes.as_slice();
+			let steps = 4;
+			let first_section =
+				Pallet::<Runtime>::try_range(slice, steps, |first_section| Ok(first_section))
+					.expect("Slice is long enough");
+
+			assert_eq!(first_section, &[1, 2, 3, 4]);
+
+			let steps = 2;
+			let second_section =
+				Pallet::<Runtime>::try_range(slice, steps, |second_section| Ok(second_section))
+					.expect("Slice is long enough");
+
+			assert_eq!(&second_section, &[5, 6]);
+
+			let steps = 1;
+			let third_section =
+				Pallet::<Runtime>::try_range(slice, steps, |third_section| Ok(third_section))
+					.expect("Slice is long enough");
+
+			assert_eq!(&third_section, &[7]);
+		})
+	}
+
+	#[test]
+	fn try_range_does_not_update_slice_if_transformer_errors() {
+		new_test_ext().execute_with(|| {
+			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
+			let slice = &mut bytes.as_slice();
+			let steps = 4;
+			let first_section =
+				Pallet::<Runtime>::try_range(slice, steps, |first_section| Ok(first_section))
+					.expect("Slice is long enough");
+
+			assert_eq!(first_section, &[1, 2, 3, 4]);
+
+			let steps = 1;
+			assert!(Pallet::<Runtime>::try_range(slice, steps, |_| Err::<(), _>(
+				DispatchError::Corruption
+			))
+			.is_err());
+			assert_eq!(slice, &[5, 6, 7]);
+		})
+	}
+}
+
 mod set_domain_router {
 	use super::*;
 
@@ -259,7 +326,247 @@ mod remove_instance {
 	}
 }
 
-mod process_msg {
+mod process_msg_axelar_relay {
+	use sp_core::bounded::BoundedVec;
+
+	use super::*;
+
+	#[test]
+	fn success() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+			let expected_domain_address = domain_address.clone();
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			MockLiquidityPools::mock_submit(move |domain, message| {
+				assert_eq!(domain, expected_domain_address);
+				assert_eq!(message, expected_msg);
+				Ok(())
+			});
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			assert_ok!(LiquidityPoolsGateway::process_msg(
+				GatewayOrigin::AxelarRelay(relayer_address).into(),
+				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+			));
+		});
+	}
+
+	#[test]
+	fn invalid_message_origin() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::Centrifuge(get_test_account_id().into());
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+
+			let mut msg = Vec::new();
+			// Need to prepend length signaler
+			msg.extend_from_slice(&(0 as u32).to_be_bytes());
+			msg.extend_from_slice(&(0 as u32).to_be_bytes());
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert!(source_chain.is_empty());
+				assert!(source_address.is_empty());
+
+				Ok(domain_address.clone())
+			});
+
+			assert_noop!(
+				LiquidityPoolsGateway::process_msg(
+					GatewayOrigin::AxelarRelay(relayer_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+				),
+				Error::<Runtime>::InvalidMessageOrigin,
+			);
+		});
+	}
+
+	#[test]
+	fn unknown_instance() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			assert_noop!(
+				LiquidityPoolsGateway::process_msg(
+					GatewayOrigin::AxelarRelay(relayer_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+				),
+				Error::<Runtime>::UnknownInstance
+			);
+		});
+	}
+
+	#[test]
+	fn message_decode() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let encoded_msg: Vec<u8> = vec![11];
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&encoded_msg);
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			assert_noop!(
+				LiquidityPoolsGateway::process_msg(
+					GatewayOrigin::Domain(domain_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
+				),
+				Error::<Runtime>::MessageDecodingFailed,
+			);
+		});
+	}
+
+	#[test]
+	fn liquidity_pools_error() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, SOURCE_ADDRESS);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+			let expected_msg = MessageMock::First;
+
+			let mut msg = Vec::new();
+			msg.extend_from_slice(&(LENGTH_SOURCE_CHAIN as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_CHAIN);
+			msg.extend_from_slice(&(LENGTH_SOURCE_ADDRESS as u32).to_be_bytes());
+			msg.extend_from_slice(&SOURCE_ADDRESS);
+			msg.extend_from_slice(&expected_msg.serialize());
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, SOURCE_ADDRESS.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			let err = sp_runtime::DispatchError::from("liquidity_pools error");
+			let expected_domain_address = domain_address.clone();
+
+			MockLiquidityPools::mock_submit(move |domain, message| {
+				assert_eq!(domain, expected_domain_address.clone());
+				assert_eq!(message, expected_msg);
+				Err(err)
+			});
+
+			assert_noop!(
+				LiquidityPoolsGateway::process_msg(
+					GatewayOrigin::Domain(domain_address).into(),
+					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
+				),
+				err,
+			);
+		});
+	}
+}
+
+mod process_msg_domain {
 	use sp_core::bounded::BoundedVec;
 
 	use super::*;
@@ -287,7 +594,7 @@ mod process_msg {
 			});
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
-				GatewayOrigin::Local(domain_address).into(),
+				GatewayOrigin::Domain(domain_address).into(),
 				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 			));
 		});
@@ -316,7 +623,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::InvalidMessageOrigin,
@@ -333,7 +640,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::UnknownInstance,
@@ -356,7 +663,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				Error::<Runtime>::MessageDecodingFailed,
@@ -390,7 +697,7 @@ mod process_msg {
 
 			assert_noop!(
 				LiquidityPoolsGateway::process_msg(
-					GatewayOrigin::Local(domain_address).into(),
+					GatewayOrigin::Domain(domain_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(encoded_msg).unwrap()
 				),
 				err,

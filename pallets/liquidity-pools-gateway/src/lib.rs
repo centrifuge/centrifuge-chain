@@ -19,7 +19,7 @@ use codec::{EncodeLike, FullCodec};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
-use sp_std::convert::TryInto;
+use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
 
@@ -36,6 +36,10 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	const BYTES_U32: usize = 4;
+
+	use cfg_traits::TryConvert;
+
 	use super::*;
 
 	#[pallet::pallet]
@@ -58,7 +62,7 @@ pub mod pallet {
 		/// local context i.e. a different pallet.
 		type LocalEVMOrigin: EnsureOrigin<
 			<Self as frame_system::Config>::RuntimeOrigin,
-			Success = DomainAddress,
+			Success = GatewayOrigin,
 		>;
 
 		/// The AdminOrigin ensures that some calls can only be performed by
@@ -84,6 +88,9 @@ pub mod pallet {
 		/// The type that processes incoming messages.
 		type InboundQueue: InboundQueue<Sender = DomainAddress, Message = Self::Message>;
 
+		/// A way to recover a domain address from two byte slices
+		type OriginRecovery: TryConvert<(Vec<u8>, Vec<u8>), DomainAddress, Error = DispatchError>;
+
 		type WeightInfo: WeightInfo;
 
 		/// Maximum size of an incoming message.
@@ -102,6 +109,12 @@ pub mod pallet {
 
 		/// An instance was removed from a domain.
 		InstanceRemoved { instance: DomainAddress },
+
+		/// A relayer was added.
+		RelayerAdded { relayer: DomainAddress },
+
+		/// A relayer was removed.
+		RelayerRemoved { relayer: DomainAddress },
 	}
 
 	/// Storage for domain routers.
@@ -115,15 +128,18 @@ pub mod pallet {
 	///
 	/// This can only be modified by an admin.
 	#[pallet::storage]
-	pub(crate) type Allowlist<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		Domain,
-		Blake2_128Concat,
-		DomainAddress,
-		(),
-		ValueQuery,
-	>;
+	#[pallet::getter(fn allowlist)]
+	pub(crate) type Allowlist<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
+
+	/// Storage that contains a limited number of whitelisted instances of
+	/// deployed liquidity pools for a particular domain.
+	///
+	/// This can only be modified by an admin.
+	#[pallet::storage]
+	#[pallet::getter(fn relayer)]
+	pub(crate) type RelayerList<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -142,14 +158,27 @@ pub mod pallet {
 		/// Instance was already added to the domain.
 		InstanceAlreadyAdded,
 
+		/// Relayer was already added to the domain
+		RelayerAlreadyAdded,
+
 		/// Maximum number of instances for a domain was reached.
 		MaxDomainInstances,
 
 		/// Unknown instance.
 		UnknownInstance,
 
+		/// Unknown relayer
+		UnknownRelayer,
+
 		/// Router not found.
 		RouterNotFound,
+
+		/// Relayer messages need to prepend the with
+		/// the original source chain and source address
+		/// that triggered the message.
+		/// Decoding that is essential and this error
+		/// signals malforming of the wrapping information.
+		RelayerMessageDecodingFailed,
 	}
 
 	#[pallet::call]
@@ -199,7 +228,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Remove a instance from a specific domain.
+		/// Remove an instance from a specific domain.
 		#[pallet::weight(T::WeightInfo::remove_instance())]
 		#[pallet::call_index(2)]
 		pub fn remove_instance(origin: OriginFor<T>, instance: DomainAddress) -> DispatchResult {
@@ -217,32 +246,161 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Add a known instance of a deployed liquidity pools integration for a
+		/// specific domain.
+		#[pallet::weight(T::WeightInfo::add_relayer())]
+		#[pallet::call_index(3)]
+		pub fn add_relayer(origin: OriginFor<T>, relayer: DomainAddress) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			ensure!(
+				relayer.domain() != Domain::Centrifuge,
+				Error::<T>::DomainNotSupported
+			);
+
+			ensure!(
+				!RelayerList::<T>::contains_key(relayer.domain(), relayer.clone()),
+				Error::<T>::RelayerAlreadyAdded,
+			);
+
+			RelayerList::<T>::insert(relayer.domain(), relayer.clone(), ());
+
+			Self::deposit_event(Event::RelayerAdded { relayer });
+
+			Ok(())
+		}
+
+		/// Remove an instance from a specific domain.
+		#[pallet::weight(T::WeightInfo::remove_relayer())]
+		#[pallet::call_index(4)]
+		pub fn remove_relayer(origin: OriginFor<T>, relayer: DomainAddress) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin.clone())?;
+
+			ensure!(
+				RelayerList::<T>::contains_key(relayer.domain(), relayer.clone()),
+				Error::<T>::UnknownRelayer,
+			);
+
+			RelayerList::<T>::remove(relayer.domain(), relayer.clone());
+
+			Self::deposit_event(Event::RelayerRemoved { relayer });
+
+			Ok(())
+		}
+
 		/// Process an incoming message.
 		#[pallet::weight(0)]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(5)]
 		pub fn process_msg(
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let domain_address = T::LocalEVMOrigin::ensure_origin(origin)?;
-
-			match domain_address {
-				DomainAddress::EVM(_, _) => {
+			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
+				GatewayOrigin::Domain(domain_address) => {
+					Pallet::<T>::validate(domain_address, msg)?
+				}
+				GatewayOrigin::AxelarRelay(domain_address) => {
+					// Every axelar relay address has a separate storage
 					ensure!(
-						Allowlist::<T>::contains_key(
-							domain_address.domain(),
-							domain_address.clone()
-						),
-						Error::<T>::UnknownInstance,
+						RelayerList::<T>::contains_key(domain_address.domain(), domain_address),
+						Error::<T>::UnknownRelayer
 					);
 
-					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
-						.map_err(|_| Error::<T>::MessageDecodingFailed)?;
+					// Every axelar relay will prepend the (sourceChain,
+					// sourceAddress) from actual origination chain to the
+					// message bytes, with a length identifier
+					let slice_ref = &mut msg.as_slice();
+					let length_source_chain: usize =
+						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
+							let mut bytes = [0u8; BYTES_U32];
+							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
+							// bytes have the right length. I.e. 4 in this case
+							bytes.copy_from_slice(be_bytes_u32);
 
-					T::InboundQueue::submit(domain_address, incoming_msg)
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
+								DispatchError::Other("Expect: usize in wasm is always ge u32")
+							})
+						})?;
+
+					let source_chain =
+						Pallet::<T>::try_range(slice_ref, length_source_chain, |source_chain| {
+							Ok(source_chain.to_vec())
+						})?;
+
+					let length_source_address: usize =
+						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
+							let mut bytes = [0u8; BYTES_U32];
+							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
+							// bytes have the right length. I.e. 4 in this case
+							bytes.copy_from_slice(be_bytes_u32);
+
+							u32::from_be_bytes(bytes).try_into().map_err(|_| {
+								DispatchError::Other("Expect: usize in wasm is always ge u32")
+							})
+						})?;
+
+					let source_address =
+						Pallet::<T>::try_range(slice_ref, length_source_address, |source_chain| {
+							Ok(source_chain.to_vec())
+						})?;
+
+					let origin_msg = Pallet::<T>::try_range(slice_ref, slice_ref.len(), |msg| {
+						BoundedVec::try_from(msg.to_vec()).map_err(|_| {
+							DispatchError::Other(
+								"Remaining bytes smaller vector in the first place. qed.",
+							)
+						})
+					})?;
+
+					let origin_domain =
+						T::OriginRecovery::try_convert((source_chain, source_address))?;
+
+					Pallet::<T>::validate(origin_domain, origin_msg)?
 				}
-				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
+			};
+
+			T::InboundQueue::submit(domain_address, incoming_msg)
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn try_range<'a, D, F>(
+			slice: &mut &'a [u8],
+			next_steps: usize,
+			transformer: F,
+		) -> Result<D, DispatchError>
+		where
+			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
+		{
+			ensure!(
+				slice.len() >= next_steps,
+				Error::<T>::RelayerMessageDecodingFailed
+			);
+
+			let (input, new_slice) = slice.split_at(next_steps);
+			let res = transformer(input)?;
+			*slice = new_slice;
+
+			Ok(res)
+		}
+
+		fn validate(
+			address: DomainAddress,
+			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
+		) -> Result<(DomainAddress, T::Message), DispatchError> {
+			if let DomainAddress::Centrifuge(_) = address {
+				return Err(Error::<T>::InvalidMessageOrigin.into());
 			}
+
+			ensure!(
+				Allowlist::<T>::contains_key(address.domain(), address.clone()),
+				Error::<T>::UnknownInstance,
+			);
+
+			let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
+				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
+
+			Ok((address, incoming_msg))
 		}
 	}
 

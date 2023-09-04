@@ -2065,7 +2065,7 @@ impl_runtime_apis! {
 			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
 			let prices = pool
 				.tranches
-				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
+				.calculate_prices::<_, Tokens, _>(total_assets, now)
 				.ok()?;
 			prices.get(index).cloned()
 		}
@@ -2077,7 +2077,7 @@ impl_runtime_apis! {
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
-				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
+				.calculate_prices::<Rate, Tokens, AccountId>(total_assets, now)
 				.ok()
 		}
 

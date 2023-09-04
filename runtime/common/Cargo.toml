@@ -28,6 +28,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 # Polkadot dependencies
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # ORML dependencies
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
@@ -63,6 +64,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
@@ -71,6 +73,7 @@ log = "0.4"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
+cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
 hex-literal = "0.2.1"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
@@ -89,6 +92,7 @@ std = [
   "pallet-evm-chain-id/std",
   "pallet-evm-precompile-dispatch/std",
   "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
   "pallet-treasury/std",
   "sp-core/std",
   "sp-api/std",
@@ -121,6 +125,7 @@ std = [
   "pallet-evm-precompile-sha3fips/std",
   "pallet-evm-precompile-simple/std",
   "pallet-investments/std",
+  "xcm-executor/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -132,6 +137,7 @@ runtime-benchmarks = [
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
@@ -142,6 +148,7 @@ runtime-benchmarks = [
   "xcm-primitives/runtime-benchmarks",
   "axelar-gateway-precompile/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -159,6 +166,7 @@ try-runtime = [
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-data-collector/try-runtime",

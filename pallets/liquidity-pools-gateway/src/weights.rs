@@ -16,6 +16,8 @@ pub trait WeightInfo {
 	fn set_domain_router() -> Weight;
 	fn add_instance() -> Weight;
 	fn remove_instance() -> Weight;
+	fn add_relayer() -> Weight;
+	fn remove_relayer() -> Weight;
 	fn process_msg() -> Weight;
 }
 
@@ -29,6 +31,14 @@ impl WeightInfo for () {
 	}
 
 	fn remove_instance() -> Weight {
+		Weight::from_ref_time(10_000_000)
+	}
+
+	fn add_relayer() -> Weight {
+		Weight::from_ref_time(10_000_000)
+	}
+
+	fn remove_relayer() -> Weight {
 		Weight::from_ref_time(10_000_000)
 	}
 
