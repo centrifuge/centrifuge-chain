@@ -441,7 +441,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
-	type OutboundQueue = WrapperOutboundQueue;
+	type OutboundQueue = FilteredOutboundQueue;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
@@ -459,11 +459,11 @@ impl pallet_liquidity_pools::Config for Runtime {
 type LiquidityPoolsMessage =
 	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
-/// The WrapperOutboundQueue serves as a filter for outbound LP messages that we
-/// want to allow initially.
-pub struct WrapperOutboundQueue;
+/// The FilteredOutboundQueue serves as a filter for outbound LP messages that
+/// we want to allow initially.
+pub struct FilteredOutboundQueue;
 
-impl OutboundQueue for WrapperOutboundQueue {
+impl OutboundQueue for FilteredOutboundQueue {
 	type Destination = Domain;
 	type Message = LiquidityPoolsMessage;
 	type Sender = AccountId;

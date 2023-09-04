@@ -123,7 +123,7 @@ mod asset_registry {
 			.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			for (asset_id, old_metadata) in old_state {
-				let new_metadata = OrmlAssetRegistry::metadata(asset_id)
+				let new_metadata = crate::OrmlAssetRegistry::metadata(asset_id)
 					.ok_or_else(|| "New state lost the metadata of an asset")?;
 
 				match asset_id {
