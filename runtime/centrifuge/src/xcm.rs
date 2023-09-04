@@ -39,6 +39,7 @@ use runtime_common::{
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
+pub use xcm::v3::{MultiAsset, MultiLocation};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
