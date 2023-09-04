@@ -52,7 +52,6 @@ use crate::{
 		},
 		xcm_metadata,
 	},
-	utils::AUSD_CURRENCY_ID,
 };
 
 /*
