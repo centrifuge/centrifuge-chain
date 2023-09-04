@@ -196,9 +196,9 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_mock_pools::Config for Runtime {
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type TrancheId = TrancheId;
 }
 

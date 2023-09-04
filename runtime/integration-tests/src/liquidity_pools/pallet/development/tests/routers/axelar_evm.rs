@@ -12,7 +12,7 @@
 
 use cfg_primitives::{Balance, PoolId, TrancheId, CFG};
 use cfg_traits::liquidity_pools::OutboundQueue;
-use cfg_types::{domain_address::Domain, fixed_point::Rate};
+use cfg_types::{domain_address::Domain, fixed_point::Quantity};
 use frame_support::{assert_ok, dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
 use liquidity_pools_gateway_routers::{
@@ -125,7 +125,7 @@ async fn submit() {
 	mint_balance_into_derived_account(&mut env, axelar_contract_address, 1_000_000_000 * CFG);
 	mint_balance_into_derived_account(&mut env, sender_h160, 1_000_000 * CFG);
 
-	let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+	let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 		currency: 0,
 		sender: Keyring::Alice.to_account_id().into(),
 		receiver: Keyring::Bob.to_account_id().into(),

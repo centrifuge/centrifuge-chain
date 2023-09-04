@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
-use cfg_types::{domain_address::Domain, fixed_point::Rate};
+use cfg_types::{domain_address::Domain, fixed_point::Quantity};
 use frame_support::parameter_types;
 use frame_system::EnsureRoot;
 
@@ -26,7 +26,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type InboundQueue = crate::LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
