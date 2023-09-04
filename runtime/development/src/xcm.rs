@@ -201,44 +201,39 @@ where
 /// This type implements conversions from our `CurrencyId` type into
 /// `MultiLocation` and vice-versa. A currency locally is identified with a
 /// `CurrencyId` variant but in the network it is identified in the form of a
-/// `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
+/// `MultiLocation`.
 pub struct CurrencyIdConvert;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// Other chains need to know how this conversion takes place in order to
-/// handle it on their side.
+/// We use the `OrmlAssetRegistry` to lookup the associated `MultiLocation` for
+/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		match id {
-			CurrencyId::Tranche(_, _) => None,
-			_ => OrmlAssetRegistry::multilocation(&id).ok()?,
-		}
+		OrmlAssetRegistry::metadata(id)
+			.filter(|m| m.additional.transferability.includes_xcm())
+			.and_then(|m| m.location)
+			.and_then(|l| l.try_into().ok())
 	}
 }
 
-/// Convert an incoming `MultiLocation` into a `CurrencyId` if possible.
-/// Here we need to know the canonical representation of all the tokens we
-/// handle in order to correctly convert their `MultiLocation` representation
-/// into our internal `CurrencyId` type.
+/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// reverse-lookup using the OrmlAssetRegistry. In the registry, we register CFG
+/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// input location for Centrifuge-native assets for that to work.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		match location {
+		let unanchored_location = match location {
 			MultiLocation {
+				parents: 0,
+				interior: X1(x),
+			} => MultiLocation {
 				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
-			} => match para_id {
-				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
-				// and can't therefore match specifically on the Tranche tokens' multilocation;
-				// However, we can preemptively assume that any Centrifuge X3-based asset refers
-				// to a Tranche token and explicitly fail its conversion to avoid Tranche tokens
-				// from being transferred through XCM without permission checks. This is fine since
-				// we don't have any other native token represented as an X3 neither do we plan to.
-				id if id == u32::from(ParachainInfo::get()) => Err(location),
-				// Still support X3-based MultiLocations native to other chains
-				_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
+				interior: X2(Parachain(u32::from(ParachainInfo::get())), x),
 			},
-			_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
-		}
+			x => x,
+		};
+
+		OrmlAssetRegistry::location_to_asset_id(unanchored_location).ok_or(location)
 	}
 }
 

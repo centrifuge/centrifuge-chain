@@ -205,7 +205,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
-		// Confirm that Bobs's balance is initial balance - amount transferred
+		// Confirm that Charlie's balance is initial balance - amount transferred
 		assert_eq!(
 			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
 			bob_initial_balance - transfer_amount
@@ -213,7 +213,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 	});
 
 	Development::execute_with(|| {
-		// Verify that ALICE now has initial balance + amount transferred - fee
+		// Verify that Charlie's balance equals the amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&CHARLIE.into()),
 			transfer_amount - cfg_fee(),
