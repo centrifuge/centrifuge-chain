@@ -12,8 +12,8 @@
 use cfg_primitives::Balance;
 use cfg_types::{
 	tokens::{
-		lp_eth_usdc_metadata, CrossChainTransferability, CurrencyId, CustomMetadata,
-		ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID,
+		lp_eth_usdc_metadata, CrossChainTransferability, CurrencyId, ETHEREUM_MAINNET_CHAIN_ID,
+		ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID,
 	},
 	xcm::XcmMetadata,
 };
@@ -21,12 +21,20 @@ use frame_support::{
 	traits::{Len, OnRuntimeUpgrade},
 	weights::Weight,
 };
-use sp_std::{vec, vec::Vec};
+use sp_std::vec;
 use xcm::{v3::prelude::*, VersionedMultiLocation};
 
 use crate::{LiquidityPoolsPalletIndex, RocksDbWeight, Runtime};
 
 pub type UpgradeCentrifuge1020 = (
+	runtime_common::migrations::asset_registry_xcmv3::Migration<
+		crate::Runtime,
+		asset_registry::CentrifugeAssets,
+		6,
+		8,
+		2,
+		3,
+	>,
 	asset_registry::CrossChainTransferabilityMigration,
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
@@ -38,7 +46,6 @@ pub type UpgradeCentrifuge1020 = (
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
-	asset_registry::AssetRegistryMultilocationToXCMV3<crate::Runtime>,
 	// Low weight, mainly bumps storage version to latest (v1 to v2)
 	crate::DmpQueue,
 	// Low weight, mainly bumps storage version to latest (v2 to v3)
@@ -55,12 +62,16 @@ mod asset_registry {
 	use frame_support::ensure;
 	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
 	use orml_traits::asset_registry::AssetMetadata;
-	use sp_std::marker::PhantomData;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
 	use super::*;
 	use crate::VERSION;
+
+	pub const CENTRIFUGE_ASSET_LOC_COUNT: u32 = 4;
+	pub const CENTRIFUGE_ASSET_METADATA_COUNT: u32 = 8;
+	pub const CATALYST_ASSET_LOC_COUNT: u32 = 1;
+	pub const CATALYST_ASSET_METADATA_COUNT: u32 = 3;
 
 	/// Migrate all the registered asset's metadata to the new version of
 	/// `CustomMetadata` which contains a `CrossChainTransferability` property.
@@ -197,406 +208,297 @@ mod asset_registry {
 		}
 	}
 
-	pub struct AssetRegistryMultilocationToXCMV3<T>(PhantomData<T>);
-
-	impl<T: orml_asset_registry::Config> OnRuntimeUpgrade for AssetRegistryMultilocationToXCMV3<T>
-	where
-		<T as orml_asset_registry::Config>::Balance: From<u128>,
-		<T as orml_asset_registry::Config>::CustomMetadata: From<cfg_types::tokens::CustomMetadata>,
-		<T as orml_asset_registry::Config>::AssetId: From<cfg_types::tokens::CurrencyId>,
-		AssetMetadata<
-			<T as orml_asset_registry::Config>::Balance,
-			<T as orml_asset_registry::Config>::CustomMetadata,
-		>: From<AssetMetadata<u128, cfg_types::tokens::CustomMetadata>>,
-	{
-		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1020 {
-				return Weight::zero();
-			}
-
-			let mut meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
-			let is_centrifuge = meta_count == 6;
-
-			let result = orml_asset_registry::LocationToAssetId::<T>::clear(100, None);
-			match result.maybe_cursor {
-				None => log::info!("Cleared all LocationToAssetId entries successfully"),
-				Some(_) => {
-					log::error!("LocationToAssetId not fully cleared")
+	pub struct CentrifugeAssets;
+	impl runtime_common::migrations::asset_registry_xcmv3::AssetsToMigrate for CentrifugeAssets {
+		fn get_assets_to_migrate(
+			loc_count: u32,
+			meta_count: u32,
+		) -> Vec<(
+			CurrencyId,
+			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+		)> {
+			match (loc_count, meta_count) {
+				(loc, meta)
+					if (loc, meta)
+						== (CENTRIFUGE_ASSET_LOC_COUNT, CENTRIFUGE_ASSET_METADATA_COUNT) =>
+				{
+					Self::get_centrifuge_assets()
 				}
-			}
-
-			let result_meta = orml_asset_registry::Metadata::<T>::clear(100, None);
-			match result_meta.maybe_cursor {
-				None => log::info!("Cleared all Metadata entries successfully"),
-				Some(_) => log::error!("Metadata not fully cleared"),
-			}
-
-			let mut loc_count =
-				orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
-			meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
-
-			log::info!("Found {} LocationToAssetId keys ", loc_count);
-			log::info!("Found {} Metadata keys ", meta_count);
-
-			let assets_to_migrate = if is_centrifuge {
-				get_centrifuge_assets()
-			} else {
-				get_catalyst_assets()
-			};
-
-			assets_to_migrate
-				.iter()
-				.for_each(|(asset_id, asset_metadata)| {
-					orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
-						(*asset_metadata).clone().into(),
-						(*asset_id).into(),
-					)
-					.map_err(|e| log::error!("Failed to register asset: {:?}", e))
-					.ok();
-				});
-
-			loc_count = orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
-			meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
-
-			log::info!("After Found {} LocationToAssetId keys ", loc_count);
-			log::info!("After Found {} Metadata keys ", meta_count);
-
-			log::info!("AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: completed!");
-			RocksDbWeight::get().reads_writes((meta_count * 2) as u64, (2 + meta_count) as u64)
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			use frame_support::storage::StoragePrefixedMap;
-
-			let loc_module_prefix = orml_asset_registry::LocationToAssetId::<T>::module_prefix();
-			let loc_storage_prefix = orml_asset_registry::LocationToAssetId::<T>::storage_prefix();
-			let loc_target_prefix =
-				frame_support::storage::storage_prefix(loc_module_prefix, loc_storage_prefix);
-
-			let meta_module_prefix = orml_asset_registry::Metadata::<T>::module_prefix();
-			let meta_storage_prefix = orml_asset_registry::Metadata::<T>::storage_prefix();
-			let meta_target_prefix =
-				frame_support::storage::storage_prefix(meta_module_prefix, meta_storage_prefix);
-
-			let loc_count = count_storage_keys(&loc_target_prefix);
-			let meta_count = count_storage_keys(&meta_target_prefix);
-
-			log::info!("Found {} LocationToAssetId keys ", loc_count);
-			log::info!("Found {} Metadata keys ", meta_count);
-
-			let is_centrifuge = meta_count == 6;
-
-			let mut expected_loc_count = 5;
-			let mut expected_meta_count = 6;
-			if !is_centrifuge {
-				expected_loc_count = 2;
-				expected_meta_count = 3;
-			}
-			frame_support::ensure!(
-				loc_count == expected_loc_count,
-				"Pre: LocationToAssetId Unexpected storage state"
-			);
-
-			frame_support::ensure!(
-				meta_count == expected_meta_count,
-				"Pre: Metadata Unexpected storage state"
-			);
-
-			Ok(Default::default())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-			let loc_count = orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
-			let meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as u32;
-
-			log::info!("Found {} LocationToAssetId keys ", loc_count);
-			log::info!("Found {} Metadata keys ", meta_count);
-
-			let is_centrifuge = meta_count == 7;
-
-			let mut expected_loc_count = 6;
-			let mut expected_meta_count = 7;
-			if !is_centrifuge {
-				expected_loc_count = 2;
-				expected_meta_count = 3;
-			}
-
-			frame_support::ensure!(
-				loc_count == expected_loc_count,
-				"Post: LocationToAssetId Unexpected storage state"
-			);
-
-			frame_support::ensure!(
-				meta_count == expected_meta_count,
-				"Post: Metadata Unexpected storage state"
-			);
-
-			log::info!("AssetRegistryMultilocationToXCMV3: post_upgrade: storage was updated!");
-			Ok(())
-		}
-	}
-}
-/// Returns the count of all keys sharing the same storage prefix
-#[allow(dead_code)]
-pub fn count_storage_keys(prefix: &[u8]) -> u32 {
-	let mut count = 0;
-	let mut next_key = prefix.to_vec();
-	loop {
-		match sp_io::storage::next_key(&next_key) {
-			Some(key) if !key.starts_with(prefix) => break count,
-			Some(key) => {
-				next_key = key;
-				count += 1;
-			}
-			None => {
-				break count;
+				(loc, meta)
+					if (loc, meta) == (CATALYST_ASSET_LOC_COUNT, CATALYST_ASSET_METADATA_COUNT) =>
+				{
+					Self::get_catalyst_assets()
+				}
+				_ => vec![],
 			}
 		}
 	}
-}
 
-pub fn get_catalyst_assets() -> Vec<(
-	CurrencyId,
-	orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-)> {
-	// 02f3a00dd12f644daec907013b16eb6d14bf1c4cb4
-	let gk_bytes: &[u8] = &[
-		2u8, 243u8, 160u8, 13u8, 209u8, 47u8, 100u8, 77u8, 174u8, 201u8, 7u8, 1u8, 59u8, 22u8,
-		235u8, 109u8, 20u8, 191u8, 28u8, 76u8, 180u8,
-	];
-	let mut gk = [0u8; 32];
-	gk[..gk_bytes.len()].copy_from_slice(gk_bytes);
+	impl CentrifugeAssets {
+		fn get_centrifuge_assets() -> Vec<(
+			CurrencyId,
+			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+		)> {
+			let mut gk = [0u8; 32];
+			gk[..2].copy_from_slice(b"01");
 
-	// 35fd988a3d77251b19d5d379a4775321
-	let tranche_id_bytes = &[
-		53u8, 253u8, 152u8, 138u8, 61u8, 119u8, 37u8, 27u8, 25u8, 213u8, 211u8, 121u8, 164u8,
-		119u8, 83u8, 33u8,
-	];
-	let mut tranche_id = [0u8; 16];
-	tranche_id[..tranche_id_bytes.len()].copy_from_slice(tranche_id_bytes);
-
-	vec![
-		(
-			CurrencyId::ForeignAsset(41),
-			orml_asset_registry::AssetMetadata {
-				decimals: 6,
-				name: b"Wormhole USDC".to_vec(),
-				symbol: b"USDC".to_vec(),
-				existential_deposit: 10_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::X2(
-						Parachain(2000),
-						GeneralKey {
-							length: 20,
-							data: gk,
+			vec![
+				(
+					CurrencyId::Native,
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: b"Centrifuge".to_vec(),
+						symbol: b"CFG".to_vec(),
+						existential_deposit: 1_000_000_000_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							0,
+							Junctions::X1(GeneralKey {
+								length: 2,
+								data: gk,
+							}),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
 						},
-					),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(1984),
-			orml_asset_registry::AssetMetadata {
-				decimals: 6,
-				name: b"Rococo USDT".to_vec(),
-				symbol: b"USDR".to_vec(),
-				existential_deposit: 100u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::Tranche(3041110957, tranche_id),
-			orml_asset_registry::AssetMetadata {
-				decimals: 6,
-				name: b"New Pool Junior".to_vec(),
-				symbol: b"NPJUN".to_vec(),
-				existential_deposit: 0u128,
-				location: None,
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: true,
-					pool_currency: false,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-	]
-}
-
-pub fn get_centrifuge_assets() -> Vec<(
-	CurrencyId,
-	orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-)> {
-	let mut gk = [0u8; 32];
-	gk[..2].copy_from_slice(b"01");
-
-	vec![
-		(
-			CurrencyId::Native,
-			orml_asset_registry::AssetMetadata {
-				decimals: 18,
-				name: b"Centrifuge".to_vec(),
-				symbol: b"CFG".to_vec(),
-				existential_deposit: 1_000_000_000_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					0,
-					Junctions::X1(GeneralKey {
-						length: 2,
-						data: gk,
-					}),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: false,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(1),
-			orml_asset_registry::AssetMetadata {
-				decimals: 6,
-				name: b"Tether USDT".to_vec(),
-				symbol: b"USDT".to_vec(),
-				existential_deposit: 10_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(2),
-			orml_asset_registry::AssetMetadata {
-				decimals: 6,
-				name: b"Axelar USDC".to_vec(),
-				symbol: b"xcUSDC".to_vec(),
-				existential_deposit: 10_000u128,
-				location: None,
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(3),
-			orml_asset_registry::AssetMetadata {
-				decimals: 12,
-				name: b"Acala Dollar".to_vec(),
-				symbol: b"aUSD".to_vec(),
-				existential_deposit: 10_000_000_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::X2(
-						Parachain(2000),
-						GeneralKey {
-							length: 2,
-							data: gk,
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(1),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"Tether USDT".to_vec(),
+						symbol: b"USDT".to_vec(),
+						existential_deposit: 10_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
 						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(2),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"Axelar USDC".to_vec(),
+						symbol: b"xcUSDC".to_vec(),
+						existential_deposit: 10_000u128,
+						location: None,
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(3),
+					orml_asset_registry::AssetMetadata {
+						decimals: 12,
+						name: b"Acala Dollar".to_vec(),
+						symbol: b"aUSD".to_vec(),
+						existential_deposit: 10_000_000_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X2(
+								Parachain(2000),
+								GeneralKey {
+									length: 2,
+									data: gk,
+								},
+							),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(4),
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: b"Glimmer".to_vec(),
+						symbol: b"GLMR".to_vec(),
+						existential_deposit: 1_000_000_000_000_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X2(Parachain(2004), PalletInstance(10)),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(5),
+					orml_asset_registry::AssetMetadata {
+						decimals: 10,
+						name: b"DOT".to_vec(),
+						symbol: b"DOT".to_vec(),
+						existential_deposit: 100_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::Here,
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(6),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"USD Coin".to_vec(),
+						symbol: b"USDC".to_vec(),
+						existential_deposit: 1000_u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							X3(Parachain(1000), PalletInstance(50), GeneralIndex(1337)),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							// TODO(@review): Should probably be LiquidityPoolsTransferability?
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				// Adding LP USDC here
+				(
+					LP_ETH_USDC_CURRENCY_ID,
+					lp_eth_usdc_metadata(
+						LiquidityPoolsPalletIndex::get(),
+						ETHEREUM_MAINNET_CHAIN_ID,
+						ETHEREUM_USDC,
 					),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(4),
-			orml_asset_registry::AssetMetadata {
-				decimals: 18,
-				name: b"Glimmer".to_vec(),
-				symbol: b"GLMR".to_vec(),
-				existential_deposit: 1_000_000_000_000_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::X2(Parachain(2004), PalletInstance(10)),
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: false,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		(
-			CurrencyId::ForeignAsset(5),
-			orml_asset_registry::AssetMetadata {
-				decimals: 10,
-				name: b"DOT".to_vec(),
-				symbol: b"DOT".to_vec(),
-				existential_deposit: 100_000u128,
-				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-					1,
-					Junctions::Here,
-				))),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: false,
-					transferability: CrossChainTransferability::Xcm(XcmMetadata {
-						fee_per_second: None,
-					}),
-				},
-			},
-		),
-		// Adding LP USDC here
-		(
-			LP_ETH_USDC_CURRENCY_ID,
-			lp_eth_usdc_metadata(
-				LiquidityPoolsPalletIndex::get(),
-				ETHEREUM_MAINNET_CHAIN_ID,
-				ETHEREUM_USDC,
-			),
-		),
-	]
+				),
+			]
+		}
+
+		fn get_catalyst_assets() -> Vec<(
+			CurrencyId,
+			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+		)> {
+			// 02f3a00dd12f644daec907013b16eb6d14bf1c4cb4
+			let gk_bytes: &[u8] = &[
+				2u8, 243u8, 160u8, 13u8, 209u8, 47u8, 100u8, 77u8, 174u8, 201u8, 7u8, 1u8, 59u8,
+				22u8, 235u8, 109u8, 20u8, 191u8, 28u8, 76u8, 180u8,
+			];
+			let mut gk = [0u8; 32];
+			gk[..gk_bytes.len()].copy_from_slice(gk_bytes);
+
+			// 35fd988a3d77251b19d5d379a4775321
+			let tranche_id_bytes = &[
+				53u8, 253u8, 152u8, 138u8, 61u8, 119u8, 37u8, 27u8, 25u8, 213u8, 211u8, 121u8,
+				164u8, 119u8, 83u8, 33u8,
+			];
+			let mut tranche_id = [0u8; 16];
+			tranche_id[..tranche_id_bytes.len()].copy_from_slice(tranche_id_bytes);
+
+			vec![
+				(
+					CurrencyId::ForeignAsset(41),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"Wormhole USDC".to_vec(),
+						symbol: b"USDC".to_vec(),
+						existential_deposit: 10_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X2(
+								Parachain(2000),
+								GeneralKey {
+									length: 20,
+									data: gk,
+								},
+							),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::ForeignAsset(1984),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"Rococo USDT".to_vec(),
+						symbol: b"USDR".to_vec(),
+						existential_deposit: 100u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: true,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+				(
+					CurrencyId::Tranche(3041110957, tranche_id),
+					orml_asset_registry::AssetMetadata {
+						decimals: 6,
+						name: b"New Pool Junior".to_vec(),
+						symbol: b"NPJUN".to_vec(),
+						existential_deposit: 0u128,
+						location: None,
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: true,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
+			]
+		}
+	}
 }
 
 mod xcm_v2_to_v3 {

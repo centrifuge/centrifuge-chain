@@ -31,6 +31,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # ORML dependencies
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
@@ -107,6 +108,7 @@ std = [
   "frame-system/std",
   "cfg-primitives/std",
   "cfg-utils/std",
+  "orml-asset-registry/std",
   "orml-traits/std",
   "cfg-traits/std",
   "pallet-loans/std",
@@ -149,6 +151,7 @@ runtime-benchmarks = [
   "axelar-gateway-precompile/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -180,4 +183,5 @@ try-runtime = [
   "fp-self-contained/try-runtime",
   "axelar-gateway-precompile/try-runtime",
   "pallet-investments/try-runtime",
+  "orml-asset-registry/try-runtime",
 ]

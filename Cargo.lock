@@ -11000,6 +11000,7 @@ dependencies = [
  "frame-system",
  "hex-literal 0.2.2",
  "log",
+ "orml-asset-registry",
  "orml-oracle",
  "orml-traits",
  "pallet-anchors",
