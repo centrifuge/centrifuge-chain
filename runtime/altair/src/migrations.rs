@@ -49,6 +49,8 @@ pub type UpgradeAltair1031 = (
 	crate::XcmpQueue,
 	// Low weight, bumps uninitialized storage version from v0 to v1
 	pallet_xcm::migration::v1::MigrateToV1<crate::Runtime>,
+	// Sets currently unset safe XCM version to v2
+	xcm_v2_to_v3::SetSafeXcmVersion,
 );
 
 /// The Upgrade set for Algol - it excludes the migrations already executed in
@@ -887,6 +889,30 @@ mod pool_system {
 			}
 
 			Ok(())
+		}
+	}
+}
+
+mod xcm_v2_to_v3 {
+	use super::*;
+	use crate::{PolkadotXcm, RuntimeOrigin, VERSION};
+
+	pub struct SetSafeXcmVersion;
+
+	impl OnRuntimeUpgrade for SetSafeXcmVersion {
+		fn on_runtime_upgrade() -> Weight {
+			if VERSION.spec_version > 1030 {
+				return Weight::zero();
+			}
+
+			// Unfortunately, SafeXcmVersion storage is not leaked to runtime
+			PolkadotXcm::force_default_xcm_version(
+				RuntimeOrigin::root(),
+				Some(cfg_primitives::SAFE_XCM_VERSION),
+			)
+			.unwrap_or_else(|_| log::error!("Failed to set safe XCM version on runtime upgrade, requires manual call via governance"));
+
+			RocksDbWeight::get().reads_writes(1, 1)
 		}
 	}
 }

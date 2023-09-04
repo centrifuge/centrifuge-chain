@@ -23,7 +23,9 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
+use cfg_primitives::{
+	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
+};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
@@ -51,9 +53,6 @@ pub type CentrifugeChainSpec =
 	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
 pub type DevelopmentChainSpec =
 	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
-
-/// The default XCM version to set in genesis config.
-const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
