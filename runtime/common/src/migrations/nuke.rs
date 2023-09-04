@@ -96,7 +96,7 @@ where
 				+ DbWeight::get().reads_writes(1, 1) // Version read & writen
 		} else {
 			log::warn!(
-				"Nuke-{}: pallet on-chain version is not {:?}. This upgrade can be removed.",
+				"Nuke-{}: pallet on-chain version is not less than {:?}. This upgrade can be removed.",
 				Pallet::name(),
 				Pallet::current_storage_version()
 			);

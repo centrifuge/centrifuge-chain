@@ -25,8 +25,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _, TrancheTokenPrice,
+	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -1032,6 +1032,7 @@ parameter_types! {
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -1080,7 +1081,6 @@ impl pallet_pool_registry::Config for Runtime {
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
@@ -1163,33 +1163,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		true
-	}
-}
-
-pub struct CurrencyPriceSource;
-impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
-	type Moment = Moment;
-	type Rate = Rate;
-
-	fn get_latest(
-		base: CurrencyId,
-		quote: Option<CurrencyId>,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
-		match base {
-			CurrencyId::Tranche(pool_id, tranche_id) => {
-				match <pallet_pool_system::Pallet<Runtime> as TrancheTokenPrice<
-					AccountId,
-					CurrencyId,
-				>>::get(pool_id, tranche_id)
-				{
-					// If a specific quote is requested, this needs to match the actual quote.
-					Some(price) if Some(price.pair.quote) != quote => None,
-					Some(price) => Some(price),
-					None => None,
-				}
-			}
-			_ => None,
-		}
 	}
 }
 
@@ -1581,6 +1554,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
@@ -1588,7 +1562,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1675,7 +1648,7 @@ parameter_types! {
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;

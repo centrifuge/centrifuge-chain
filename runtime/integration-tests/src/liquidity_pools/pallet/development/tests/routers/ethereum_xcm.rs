@@ -19,7 +19,7 @@ use cfg_primitives::{PoolId, TrancheId};
 use cfg_traits::liquidity_pools::OutboundQueue;
 use cfg_types::{
 	domain_address::Domain,
-	fixed_point::Rate,
+	fixed_point::Quantity,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use frame_support::{assert_noop, assert_ok};
@@ -58,7 +58,7 @@ fn submit_test_fn(router_creation_fn: RouterCreationFn) {
 	Development::execute_with(|| {
 		setup(router_creation_fn);
 
-		let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+		let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 			currency: 0,
 			sender: ALICE.into(),
 			receiver: BOB.into(),

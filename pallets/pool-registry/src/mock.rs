@@ -15,7 +15,7 @@ use cfg_mocks::pallet_mock_write_off_policy;
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -138,6 +138,7 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 impl pallet_pool_system::Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -209,7 +210,6 @@ impl<
 		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
-	type Rate = <T as pallet_pool_registry::Config>::Rate;
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
@@ -269,7 +269,6 @@ impl Config for Test {
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
@@ -307,7 +306,7 @@ parameter_types! {
 impl pallet_investments::Config for Test {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
