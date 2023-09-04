@@ -22,12 +22,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use development_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
+use development_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
@@ -45,17 +45,15 @@ use crate::{
 	liquidity_pools::pallet::{
 		development::{
 			setup::{
-				moonbeam_account, centrifuge_account, cfg, ALICE,
-				BOB, PARA_ID_MOONBEAM,
+				centrifuge_account, cfg, moonbeam_account, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM,
 			},
-			test_net::{Development, RelayChain, Moonbeam, TestNet},
+			test_net::{Development, Moonbeam, RelayChain, TestNet},
 			tests::register_ausd,
 		},
 		xcm_metadata,
 	},
 	utils::AUSD_CURRENCY_ID,
 };
-use crate::liquidity_pools::pallet::development::setup::CHARLIE;
 
 /*
 
