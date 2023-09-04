@@ -438,6 +438,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
 	type ForeignInvestment = Investments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
@@ -445,7 +446,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -457,7 +457,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 }
 
 type LiquidityPoolsMessage =
-	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
 /// The FilteredOutboundQueue serves as a filter for outbound LP messages that
 /// we want to allow initially.
@@ -496,6 +496,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
+	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
@@ -507,7 +508,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 pub struct DummyInboundQueue;
 
 impl InboundQueue for DummyInboundQueue {
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	type Message = LiquidityPoolsMessage;
 	type Sender = DomainAddress;
 
 	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
