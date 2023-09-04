@@ -81,7 +81,7 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 				| RuntimeCall::Proxy(..)
 				| RuntimeCall::LiquidityPoolsGateway(
 					pallet_liquidity_pools_gateway::Call::process_msg { .. }
-				// TODO: Add OrderBook after it has been added to runtime
+				) // TODO: Enable later: | RuntimeCall::OrderBook(..)
 		)
 	}
 }
