@@ -38,13 +38,7 @@ use runtime_common::{
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
-};
+use xcm_builder::{Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit};
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
@@ -106,28 +100,6 @@ parameter_types! {
 		native_per_second(),
 		0,
 	);
-
-	pub AirPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), general_key(parachains::kusama::altair::AIR_KEY)),
-		).into(),
-		native_per_second(),
-	);
-
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-
-	pub AUSDPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::kusama::karura::ID),
-				general_key(parachains::kusama::karura::AUSD_KEY)
-			)
-		).into(),
-		default_per_second(currency_decimals::AUSD)
-	);
-
 }
 
 pub struct ToTreasury;
@@ -223,10 +195,10 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 		let unanchored_location = match location {
 			MultiLocation {
 				parents: 0,
-				interior: X1(x),
+				interior,
 			} => MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(u32::from(ParachainInfo::get())), x),
+				interior: interior.pushed_front_with(Parachain(u32::from(ParachainInfo::get()))).map_err(|_| location)?,
 			},
 			x => x,
 		};
@@ -283,7 +255,6 @@ impl pallet_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub const KsmLocation: MultiLocation = MultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
@@ -301,6 +272,9 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// A wildcard MultiLocation to AccountId conversion for all the other MultiLocations
+	// within the same Relay network.
+	Account32Hash<RelayNetwork, AccountId>,
 );
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
