@@ -434,7 +434,7 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AccountConverter = AccountConverter<Runtime>;
+	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
