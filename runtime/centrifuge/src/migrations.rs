@@ -607,18 +607,15 @@ mod xcm_v2_to_v3 {
 
 	impl OnRuntimeUpgrade for SetSafeXcmVersion {
 		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1020 {
-				return Weight::zero();
-			}
-
-			// Unfortunately, SafeXcmVersion storage is not leaked to runtime
+			// Unfortunately, SafeXcmVersion storage is not leaked to runtime, so we can't
+			// do any pre- or post-upgrade checks
 			PolkadotXcm::force_default_xcm_version(
 				RuntimeOrigin::root(),
 				Some(cfg_primitives::SAFE_XCM_VERSION),
 			)
 			.unwrap_or_else(|_| log::error!("Failed to set safe XCM version on runtime upgrade, requires manual call via governance"));
 
-			RocksDbWeight::get().reads_writes(1, 1)
+			RocksDbWeight::get().writes(1)
 		}
 	}
 }
