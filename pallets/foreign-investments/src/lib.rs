@@ -412,6 +412,4 @@ pub mod pallet {
 			Error::<T>::RedeemError(error)
 		}
 	}
-
-	// TODO: Add call to allow payment currency
 }

@@ -50,7 +50,7 @@ use frame_support::{
 };
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_foreign_investments::{
-	types::{InnerRedeemState, InvestState, RedeemState},
+	types::{InvestState, RedeemState},
 	CollectedRedemption, InvestmentState, RedemptionState,
 };
 use pallet_investments::CollectOutcome;
@@ -465,10 +465,8 @@ mod same_currencies {
 			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				RedeemState::NotInvestedAnd {
-					inner: InnerRedeemState::Redeeming {
-						redeem_amount: amount * 2,
-					}
+				RedeemState::Redeeming {
+					redeem_amount: amount * 2,
 				}
 			);
 		});
@@ -541,11 +539,8 @@ mod same_currencies {
 				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
-					state: RedeemState::InvestedAnd {
-						invest_amount: decrease_amount,
-						inner: InnerRedeemState::Redeeming {
+					state: RedeemState::Redeeming {
 							redeem_amount: final_amount
-						}
 					}
 				}
 			.into()
@@ -631,10 +626,9 @@ mod same_currencies {
 			// Foreign RedemptionState should be updated
 			assert!(System::events().iter().any(|e| {
 				e.event
-				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
+				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
-					state: RedeemState::Invested { invest_amount: redeem_amount },
 				}
 				.into()
 			}));
@@ -843,11 +837,8 @@ mod same_currencies {
 			));
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				RedeemState::NotInvestedAnd {
-					inner: InnerRedeemState::Redeeming { redeem_amount }
-				}
+				RedeemState::Redeeming { redeem_amount }
 			);
-
 			// Collecting through investments should denote amounts and transition
 			// state
 			assert_ok!(Investments::collect_redemptions_for(
@@ -881,10 +872,8 @@ mod same_currencies {
 			),);
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				RedeemState::NotInvestedAnd {
-					inner: InnerRedeemState::Redeeming {
-						redeem_amount: redeem_amount / 2,
-					}
+				RedeemState::Redeeming {
+					redeem_amount: redeem_amount / 2,
 				}
 			);
 			assert!(System::events().iter().any(|e| e.event
@@ -1784,10 +1773,8 @@ mod setup {
 
 		assert_eq!(
 			RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-			RedeemState::NotInvestedAnd {
-				inner: InnerRedeemState::Redeeming {
-					redeem_amount: amount
-				}
+			RedeemState::Redeeming {
+				redeem_amount: amount
 			}
 		);
 		// Verify redemption was transferred into investment account
@@ -1814,11 +1801,9 @@ mod setup {
 			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
 				investor: investor.clone(),
 				investment_id: default_investment_id(),
-				state: RedeemState::NotInvestedAnd {
-					inner: InnerRedeemState::Redeeming {
-						redeem_amount: amount
-					}
-				},
+				state: RedeemState::Redeeming {
+					redeem_amount: amount
+				}
 			}
 			.into()
 		);

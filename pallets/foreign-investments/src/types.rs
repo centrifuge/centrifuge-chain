@@ -30,7 +30,8 @@ pub enum TokenSwapReason {
 	Redemption,
 }
 
-// TODO: Docs
+/// Restriction of `pallet_foreign_investments::Config` trait to support
+/// currency conversion in the `InvestState`.
 pub trait InvestStateConfig {
 	type Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug + Zero;
 	type CurrencyId: Clone + Copy + PartialEq + Debug;
@@ -289,31 +290,6 @@ pub enum RedeemState<
 	/// chain state, i.e. if this state is the result of applying transition(s),
 	/// then the corresponding `RedemptionState` will be cleared.
 	NoState,
-	/// There is no pending redemption process at this point. The investment can
-	/// be redeemed up to the invested amount (after fulfillment).
-	Invested { invest_amount: Balance },
-	/// There is no remaining investment such that the redemption cannot be
-	/// increased at this point.
-	NotInvestedAnd {
-		inner: InnerRedeemState<Balance, Currency>,
-	},
-	/// There is a remaining invested amount such that the redemption can be
-	/// increased up to the remaining invested amount (after fulfillment).
-	InvestedAnd {
-		invest_amount: Balance,
-		inner: InnerRedeemState<Balance, Currency>,
-	},
-}
-
-/// Reflects all possible redeem states independent of whether an investment is
-/// still active or not in the actual `RedeemState`.
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub enum InnerRedeemState<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	Currency: Clone + Copy + PartialEq + Debug,
-> {
 	/// The redemption is pending until it is processed during epoch execution.
 	Redeeming { redeem_amount: Balance },
 	/// The redemption was fully processed and collected and is currently
@@ -376,4 +352,3 @@ pub enum RedeemTransition<
 	CollectRedemption(Balance, Swap<Balance, Currency>),
 }
 
-// impl<T: crate::Config> InvestState<T> {}
