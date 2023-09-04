@@ -27,8 +27,11 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-# cumuluse primitives dependencies
+# cumulus primitives dependencies
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.38" }
+
+# XCM primitives dependencies
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -51,6 +54,7 @@ std = [
   "pallet-collective/std",
   "sp-consensus-aura/std",
   "cumulus-primitives-core/std",
+  "xcm/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",

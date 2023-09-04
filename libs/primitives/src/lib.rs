@@ -269,6 +269,9 @@ pub mod constants {
 	/// Transaction pallet. As per:
 	/// <https://github.com/PureStake/moonbeam/blob/fb63014a5e487f17e31283776e4f6b0befd009a2/primitives/xcm/src/ethereum_xcm.rs#L167>
 	pub const TRANSACTION_RECOVERY_ID: u64 = 42;
+
+	/// The safe XCM version of pallet-xcm, same as on relay chain
+	pub const SAFE_XCM_VERSION: u32 = xcm::opaque::v2::VERSION;
 }
 
 /// Listing of parachains we integrate with.
