@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{
-	constants::currency_decimals,
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
@@ -33,7 +32,7 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
-	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
+	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
