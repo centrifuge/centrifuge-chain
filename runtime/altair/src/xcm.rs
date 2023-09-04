@@ -87,6 +87,9 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 			) | RuntimeCall::XcmpQueue(..)
 				| RuntimeCall::DmpQueue(..)
 				| RuntimeCall::Proxy(..)
+				| RuntimeCall::LiquidityPoolsGateway(
+					pallet_liquidity_pools_gateway::Call::process_msg { .. }
+				)
 		)
 	}
 }

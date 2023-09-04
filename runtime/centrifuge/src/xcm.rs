@@ -88,7 +88,8 @@ impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
 					| pallet_collator_selection::Call::leave_intent { .. },
 			) | RuntimeCall::XcmpQueue(..)
 				| RuntimeCall::DmpQueue(..)
-				| RuntimeCall::Proxy(..)
+				| RuntimeCall::Proxy(..) /* TODO: Enable after merging 1523
+			                          * | RuntimeCall::pallet_liquidity_pools_gateway::process_msg */
 		)
 	}
 }
