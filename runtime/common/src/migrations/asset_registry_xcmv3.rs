@@ -21,6 +21,7 @@ use frame_support::{
 	StoragePrefixedMap,
 };
 use orml_traits::asset_registry::AssetMetadata;
+#[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::Zero;
 use sp_std::vec::Vec;
 
@@ -188,10 +189,10 @@ impl<
 		// let meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as
 		// u32;
 		let loc_count = Self::count_storage_keys(
-			&orml_asset_registry::LocationToAssetId::<T>::final_prefix().to_vec(),
+			orml_asset_registry::LocationToAssetId::<T>::final_prefix().as_ref(),
 		);
 		let meta_count =
-			Self::count_storage_keys(&orml_asset_registry::Metadata::<T>::final_prefix().to_vec());
+			Self::count_storage_keys(orml_asset_registry::Metadata::<T>::final_prefix().as_ref());
 
 		log::info!(
 			"💎 AssetRegistryMultilocationToXCMV3: Found {} LocationToAssetId keys ",

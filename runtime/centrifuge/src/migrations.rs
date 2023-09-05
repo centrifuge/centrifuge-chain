@@ -9,22 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::Balance;
-use cfg_types::{
-	tokens::{
-		lp_eth_usdc_metadata, CrossChainTransferability, CurrencyId, ETHEREUM_MAINNET_CHAIN_ID,
-		ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID,
-	},
-	xcm::XcmMetadata,
-};
-use frame_support::{
-	traits::{Len, OnRuntimeUpgrade},
-	weights::Weight,
-};
-use sp_std::vec;
-use xcm::{v3::prelude::*, VersionedMultiLocation};
-
-use crate::{LiquidityPoolsPalletIndex, RocksDbWeight, Runtime};
+use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
 pub type UpgradeCentrifuge1020 = (
 	// Removes metadata containing xcm_v1 locations of registered assets and sets to hardcoded ones
@@ -38,13 +23,13 @@ pub type UpgradeCentrifuge1020 = (
 		3,
 	>,
 	// At minimum, bumps storage version from 1 to 2
-	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
 	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
@@ -63,10 +48,17 @@ pub type UpgradeCentrifuge1020 = (
 );
 
 mod asset_registry {
-	use cfg_types::tokens::CustomMetadata;
-	use frame_support::inherent::Vec;
+	use cfg_primitives::Balance;
+	use cfg_types::{
+		tokens::{
+			lp_eth_usdc_metadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+			ETHEREUM_MAINNET_CHAIN_ID, ETHEREUM_USDC, LP_ETH_USDC_CURRENCY_ID,
+		},
+		xcm::XcmMetadata,
+	};
+	use sp_std::{vec, vec::Vec};
+	use xcm::{v3::prelude::*, VersionedMultiLocation};
 
-	use super::*;
 	use crate::ParachainInfo;
 
 	pub const CENTRIFUGE_ASSET_LOC_COUNT: u32 = 6;
@@ -93,10 +85,7 @@ mod asset_registry {
 				(loc, meta)
 					if (loc, meta) == (CATALYST_ASSET_LOC_COUNT, CATALYST_ASSET_METADATA_COUNT) =>
 				{
-					Self::get_centrifuge_assets()
-						.into_iter()
-						.chain(Self::get_catalyst_assets().into_iter())
-						.collect()
+					Self::get_catalyst_assets()
 				}
 				_ => vec![],
 			}
@@ -272,7 +261,7 @@ mod asset_registry {
 				(
 					LP_ETH_USDC_CURRENCY_ID,
 					lp_eth_usdc_metadata(
-						LiquidityPoolsPalletIndex::get(),
+						crate::LiquidityPoolsPalletIndex::get(),
 						ETHEREUM_MAINNET_CHAIN_ID,
 						ETHEREUM_USDC,
 					),
@@ -301,6 +290,33 @@ mod asset_registry {
 			tranche_id[..tranche_id_bytes.len()].copy_from_slice(tranche_id_bytes);
 
 			vec![
+				(
+					CurrencyId::Native,
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: b"Centrifuge".to_vec(),
+						symbol: b"CFG".to_vec(),
+						existential_deposit: 1_000_000_000_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X2(
+								Parachain(ParachainInfo::parachain_id().into()),
+								GeneralKey {
+									length: 2,
+									data: gk,
+								},
+							),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
 				(
 					CurrencyId::ForeignAsset(41),
 					orml_asset_registry::AssetMetadata {
@@ -388,7 +404,7 @@ mod xcm_v2_to_v3 {
 			)
 			.unwrap_or_else(|_| log::error!("Failed to set safe XCM version on runtime upgrade, requires manual call via governance"));
 
-			RocksDbWeight::get().writes(1)
+			crate::RocksDbWeight::get().writes(1)
 		}
 	}
 }

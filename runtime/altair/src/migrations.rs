@@ -9,19 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::Balance;
-use cfg_types::{
-	tokens::{CrossChainTransferability, CurrencyId},
-	xcm::XcmMetadata,
-};
-use codec::{Decode, Encode};
-#[cfg(feature = "try-runtime")]
-use frame_support::ensure;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-use sp_std::{vec, vec::Vec};
-use xcm::{v3::prelude::*, VersionedMultiLocation};
-
-use crate::{RocksDbWeight, Runtime};
 
 /// The migration set for Altair 1031 @ Kusama. It includes all the migrations
 /// that have to be applied on that chain, which includes migrations that have
@@ -31,13 +19,13 @@ pub type UpgradeAltair1031 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
 	// At minimum, bumps storage version from 1 to 2
-	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
 	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
@@ -71,9 +59,9 @@ pub type UpgradeAltair1031 = (
 #[cfg(feature = "testnet-runtime")]
 pub type UpgradeAltair1031 = (
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bump storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
 	runtime_common::migrations::asset_registry_xcmv3::Migration<
 		crate::Runtime,
 		asset_registry::metadata_xcmv3::AltairAssets,
@@ -88,13 +76,14 @@ pub type UpgradeAltair1031 = (
 	xcm_v2_to_v3::SetSafeXcmVersion,
 );
 
-const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
-const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
-
 mod asset_registry {
-	use cfg_types::tokens::CustomMetadata;
-
-	use super::*;
+	use cfg_primitives::Balance;
+	use cfg_types::{
+		tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
+		xcm::XcmMetadata,
+	};
+	use sp_std::{vec, vec::Vec};
+	use xcm::{v3::prelude::*, VersionedMultiLocation};
 
 	pub const ALTAIR_ASSET_LOC_COUNT: u32 = 5;
 	pub const ALTAIR_ASSET_METADATA_COUNT: u32 = 5;
@@ -477,10 +466,19 @@ mod asset_registry {
 }
 
 mod orml_tokens_migration {
-	use cfg_primitives::AccountId;
+	use cfg_primitives::{AccountId, Balance};
+	use cfg_types::tokens::CurrencyId;
+	use codec::{Decode, Encode};
+	#[cfg(feature = "try-runtime")]
+	use frame_support::ensure;
 	use orml_tokens::AccountData;
+	use sp_std::vec::Vec;
 
 	use super::*;
+	use crate::Runtime;
+
+	const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
+	const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 	/// As we dropped `CurrencyId::KSM` and `CurrencyId::AUSD`, we need to
 	/// migrate the balances under the dropped variants in favour of the new,
@@ -609,7 +607,7 @@ mod xcm_v2_to_v3 {
 			)
 			.unwrap_or_else(|_| log::error!("Failed to set safe XCM version on runtime upgrade, requires manual call via governance"));
 
-			RocksDbWeight::get().writes(1)
+			crate::RocksDbWeight::get().writes(1)
 		}
 	}
 }
