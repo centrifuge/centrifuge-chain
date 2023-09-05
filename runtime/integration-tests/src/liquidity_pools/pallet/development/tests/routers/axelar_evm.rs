@@ -15,13 +15,16 @@ use cfg_traits::liquidity_pools::OutboundQueue;
 use cfg_types::{domain_address::Domain, fixed_point::Quantity};
 use frame_support::{assert_ok, dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
+use lazy_static::lazy_static;
 use liquidity_pools_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, DomainRouter, EVMChain, EVMDomain, EVMRouter, FeeValues,
+	axelar_evm::AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_EVM_CHAIN_SIZE,
 };
 use pallet_evm::FeeCalculator;
 use pallet_liquidity_pools::Message;
 use runtime_common::account_conversion::AccountConverter;
-use sp_core::{crypto::AccountId32, storage::Storage, Get, H160, U256};
+use sp_core::{
+	bounded::BoundedVec, crypto::AccountId32, storage::Storage, ConstU32, Get, H160, U256,
+};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use tokio::runtime::Handle;
 
@@ -41,6 +44,12 @@ use crate::{
 		liquidity_pools_gateway::set_domain_router_call,
 	},
 };
+
+lazy_static! {
+	pub(crate) static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>> =
+		BoundedVec::<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>::try_from("ethereum".as_bytes().to_vec())
+			.unwrap();
+}
 
 #[tokio::test]
 async fn submit() {
@@ -84,7 +93,7 @@ async fn submit() {
 			evm_domain,
 			_marker: Default::default(),
 		},
-		evm_chain: EVMChain::Ethereum,
+		evm_chain: TEST_EVM_CHAIN.clone(),
 		_marker: Default::default(),
 		liquidity_pools_contract_address,
 	};

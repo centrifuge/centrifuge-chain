@@ -24,8 +24,8 @@ use frame_support::{
 };
 use fudge::primitives::Chain;
 use liquidity_pools_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMChain,
-	EVMDomain, FeeValues, XCMRouter, XcmDomain, XcmTransactInfo,
+	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMDomain,
+	FeeValues, XCMRouter, XcmDomain, XcmTransactInfo,
 };
 use orml_traits::asset_registry::AssetMetadata;
 use pallet_democracy::{AccountVote, Conviction, ReferendumIndex, Vote, VoteThreshold};

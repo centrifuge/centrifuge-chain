@@ -60,6 +60,9 @@ type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_liquidity_pools_gateway::Config>::Message;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+/// Maximum size allowed for a byte representation of an EVM chain string.
+pub const MAX_EVM_CHAIN_SIZE: u32 = 16;
+
 const FUNCTION_NAME: &str = "handle";
 const MESSAGE_PARAM: &str = "message";
 
