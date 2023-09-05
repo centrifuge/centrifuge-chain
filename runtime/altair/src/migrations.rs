@@ -64,7 +64,7 @@ pub type UpgradeAltair1031 = (
 	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
 	runtime_common::migrations::asset_registry_xcmv3::Migration<
 		crate::Runtime,
-		asset_registry::metadata_xcmv3::AltairAssets,
+		asset_registry::AltairAssets,
 		5,
 		5,
 		2,
@@ -140,7 +140,7 @@ mod asset_registry {
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 							1,
 							Junctions::X2(
-								Parachain(ParachainInfo::parachain_id().into()),
+								Parachain(crate::ParachainInfo::parachain_id().into()),
 								GeneralKey {
 									length: 2,
 									data: gk,
@@ -314,7 +314,7 @@ mod asset_registry {
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 							1,
 							Junctions::X2(
-								Parachain(ParachainInfo::parachain_id().into()),
+								Parachain(crate::ParachainInfo::parachain_id().into()),
 								GeneralKey {
 									length: 2,
 									data: gk,
