@@ -10,8 +10,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-use frame_support::weights::Weight;
+use frame_support::weights::{constants::RocksDbWeight, Weight};
 
 pub trait WeightInfo {
 	fn add_pool() -> Weight;
@@ -22,28 +21,75 @@ pub trait WeightInfo {
 	fn set_domain_router() -> Weight;
 }
 
+// NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
+//       extrinsic. N denotes the number of tranches. 4 is quite heavy and
+//       should be enough.
+const N: u64 = 4;
+
 impl WeightInfo for () {
 	fn set_domain_router() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 
 	fn add_pool() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 
 	fn add_tranche() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 
 	fn update_token_price() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 
 	fn update_member() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 
 	fn transfer() -> Weight {
-		Weight::zero()
+		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		Weight::from_parts(78_019_565, 19974)
+			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(RocksDbWeight::get().reads(8))
+			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
+			.saturating_add(RocksDbWeight::get().writes(8))
+			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
+			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
 	}
 }

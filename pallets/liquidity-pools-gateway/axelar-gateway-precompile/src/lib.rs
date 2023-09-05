@@ -22,6 +22,8 @@ use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::vec::Vec;
 
+pub use crate::weights::WeightInfo;
+
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
 pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
@@ -32,6 +34,8 @@ pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
 
 pub use pallet::*;
+
+pub mod weights;
 
 #[derive(
 	PartialEq,
@@ -90,6 +94,7 @@ pub mod pallet {
 	use sp_core::{H160, H256};
 
 	use super::SourceConverter;
+	use crate::weights::WeightInfo;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
@@ -106,6 +111,8 @@ pub mod pallet {
 		/// The origin that is allowed to set the gateway address we accept
 		/// messageas from
 		type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -162,7 +169,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_gateway())]
 		#[pallet::call_index(0)]
 		pub fn set_gateway(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
@@ -174,7 +181,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_converter())]
 		#[pallet::call_index(1)]
 		pub fn set_converter(
 			origin: OriginFor<T>,
