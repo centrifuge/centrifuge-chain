@@ -138,11 +138,14 @@ mod asset_registry {
 						symbol: b"AIR".to_vec(),
 						existential_deposit: 1_000_000_000_000u128,
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-							0,
-							Junctions::X1(GeneralKey {
-								length: 2,
-								data: gk,
-							}),
+							1,
+							Junctions::X2(
+								Parachain(ParachainInfo::parachain_id().into()),
+								GeneralKey {
+									length: 2,
+									data: gk,
+								},
+							),
 						))),
 						additional: CustomMetadata {
 							mintable: false,
@@ -301,6 +304,33 @@ mod asset_registry {
 			];
 
 			vec![
+				(
+					CurrencyId::Native,
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: b"Altair".to_vec(),
+						symbol: b"AIR".to_vec(),
+						existential_deposit: 1_000_000_000_000u128,
+						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+							1,
+							Junctions::X2(
+								Parachain(ParachainInfo::parachain_id().into()),
+								GeneralKey {
+									length: 2,
+									data: gk,
+								},
+							),
+						))),
+						additional: CustomMetadata {
+							mintable: false,
+							permissioned: false,
+							pool_currency: false,
+							transferability: CrossChainTransferability::Xcm(XcmMetadata {
+								fee_per_second: None,
+							}),
+						},
+					},
+				),
 				(
 					CurrencyId::Tranche(3151673055, polka_jr),
 					orml_asset_registry::AssetMetadata {
