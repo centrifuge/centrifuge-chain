@@ -51,10 +51,13 @@ where
 			"Pallet is already updated"
 		);
 
-		ensure!(
-			unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()),
-			"Pallet prefix doesn't exists"
-		);
+		// NOTE: We still want to be able to bump StorageVersion
+		if !unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()) {
+			log::info!(
+				"Nuke-{}: Pallet prefix doesn't exist, storage is empty already",
+				Pallet::name(),
+			)
+		}
 
 		Ok(Vec::new())
 	}
