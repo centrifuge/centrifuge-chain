@@ -308,8 +308,8 @@ mod asset_registry {
 					CurrencyId::Native,
 					orml_asset_registry::AssetMetadata {
 						decimals: 18,
-						name: b"Altair".to_vec(),
-						symbol: b"AIR".to_vec(),
+						name: b"Algol".to_vec(),
+						symbol: b"ALGL".to_vec(),
 						existential_deposit: 1_000_000_000_000u128,
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 							1,
