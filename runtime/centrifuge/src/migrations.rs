@@ -251,8 +251,10 @@ mod asset_registry {
 						symbol: b"CFG".to_vec(),
 						existential_deposit: 1_000_000_000_000u128,
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-							0,
-							Junctions::X1(GeneralKey {
+							1,
+							Junctions::X2(
+							    Parachain(ParachainInfo::parachain_id().into()),
+							    GeneralKey {
 								length: 2,
 								data: gk,
 							}),
