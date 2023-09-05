@@ -28,19 +28,25 @@ use crate::{RocksDbWeight, Runtime};
 /// already been executed on Algol (1028 & 1029).
 #[cfg(not(feature = "testnet-runtime"))]
 pub type UpgradeAltair1031 = (
-	// TODO: This migration errors out against Altair
+	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
+	// At minimum, bumps storage version from 1 to 2
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	// At minimum, bumps storage version from 0 to 3
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	// At minimum, bumps storage version from 0 to 1
 	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
-	// TODO: This migration errors out against Altair
+	// FIXME: Pre-upgrade fails as no storage exists, but version bump from 0 to 1 is required
 	// runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
+	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
 		crate::NativeToken,
 		crate::ExistentialDeposit,
 	>,
+	// Removes metadata containing xcm_v1 locations of registered assets and sets to hardcoded ones
+	// containing xcm_v3 locations
 	runtime_common::migrations::asset_registry_xcmv3::Migration<
 		crate::Runtime,
 		asset_registry::metadata_xcmv3::AltairAssets,
@@ -49,8 +55,6 @@ pub type UpgradeAltair1031 = (
 		2,
 		9,
 	>,
-	asset_registry::CrossChainTransferabilityMigration,
-	pool_system::MigrateAUSDPools,
 	// Low weight, mainly bumps storage version to latest (v1 to v2)
 	crate::DmpQueue,
 	// Low weight, mainly bumps storage version to latest (v2 to v3)
@@ -66,17 +70,10 @@ pub type UpgradeAltair1031 = (
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
 pub type UpgradeAltair1031 = (
-	// TODO: Verify that these ones can be removed from Algol upgrade, since the first 2 fail
-	// runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
-	// runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
-	// runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
-	// runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
-	// pallet_rewards::migrations::new_instance::FundExistentialDeposit<
-	// 	crate::Runtime,
-	// 	pallet_rewards::Instance2,
-	// 	crate::NativeToken,
-	// 	crate::ExistentialDeposit,
-	// >,
+	// At minimum, bumps storage version from 0 to 1
+	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
+	// At minimum, bump storage version from 0 to 1
+	runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
 	runtime_common::migrations::asset_registry_xcmv3::Migration<
 		crate::Runtime,
 		asset_registry::metadata_xcmv3::AltairAssets,
@@ -95,143 +92,9 @@ const DEPRECATED_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::AUSD;
 const NEW_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 mod asset_registry {
-	use cfg_types::{tokens as v1, tokens::CustomMetadata};
-	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
-	use orml_traits::asset_registry::AssetMetadata;
+	use cfg_types::tokens::CustomMetadata;
 
 	use super::*;
-	use crate::VERSION;
-
-	/// Migrate all the registered asset's metadata to the new version of
-	/// `CustomMetadata` which contains a `CrossChainTransferability` property.
-	/// At this point in time, the `transferability` of Tranche tokens should be
-	/// set to `CrossChainTransferability::Xcm` and for all other tokens to
-	/// `CrossChainTransferability::Xcm`, with the exception of
-	/// `Currency::Staking` tokens which are not registered in the first place.
-	pub struct CrossChainTransferabilityMigration;
-
-	// The old orml_asset_registry Metadata storage using v0::CustomMetadata
-	#[storage_alias]
-	type Metadata<T: orml_asset_registry::Config> = StorageMap<
-		orml_asset_registry::Pallet<T>,
-		Twox64Concat,
-		CurrencyId,
-		AssetMetadata<Balance, v0::CustomMetadata>,
-		OptionQuery,
-	>;
-
-	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
-		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version > 1031 {
-				return Weight::zero();
-			}
-
-			orml_asset_registry::Metadata::<Runtime>::translate(
-				|asset_id: CurrencyId, old_metadata: AssetMetadata<Balance, v0::CustomMetadata>| {
-					match asset_id {
-						CurrencyId::Staking(_) => None,
-						CurrencyId::Tranche(_, _) => Some(to_metadata_v1(
-							old_metadata,
-							v1::CrossChainTransferability::LiquidityPools,
-						)),
-						_ => Some(to_metadata_v1(
-							old_metadata.clone(),
-							v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
-						)),
-					}
-				},
-			);
-
-			let n = orml_asset_registry::Metadata::<Runtime>::iter().count() as u64;
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			let old_state: Vec<(CurrencyId, AssetMetadata<Balance, v0::CustomMetadata>)> =
-				Metadata::<Runtime>::iter().collect::<Vec<_>>();
-
-			Ok(old_state.encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
-			let old_state = sp_std::vec::Vec::<(
-				CurrencyId,
-				AssetMetadata<Balance, v0::CustomMetadata>,
-			)>::decode(&mut old_state_encoded.as_ref())
-			.map_err(|_| "Error decoding pre-upgrade state")?;
-
-			for (asset_id, old_metadata) in old_state {
-				let new_metadata = crate::OrmlAssetRegistry::metadata(asset_id)
-					.ok_or_else(|| "New state lost the metadata of an asset")?;
-
-				match asset_id {
-                    CurrencyId::Tranche(_, _) => ensure!(new_metadata == to_metadata_v1(
-						old_metadata,
-						v1::CrossChainTransferability::LiquidityPools,
-					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `LiquidityPools `"),
-                    _ => ensure!(new_metadata == to_metadata_v1(
-						old_metadata.clone(),
-						v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
-					), "The metadata of a NON tranche token wasn't just updated by setting `transferability` to `Xcm`"),
-                }
-			}
-
-			Ok(())
-		}
-	}
-
-	mod v0 {
-		use cfg_types::xcm::XcmMetadata;
-		use codec::{Decode, Encode, MaxEncodedLen};
-		use scale_info::TypeInfo;
-		#[cfg(feature = "std")]
-		use serde::{Deserialize, Serialize};
-
-		// The `CustomMetadata` type as it was prior to adding the `transferability`
-		// field and prior to removing the `xcm` field.
-		#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-		#[derive(
-			Clone,
-			Copy,
-			Default,
-			PartialOrd,
-			Ord,
-			PartialEq,
-			Eq,
-			Debug,
-			Encode,
-			Decode,
-			TypeInfo,
-			MaxEncodedLen,
-		)]
-		pub struct CustomMetadata {
-			pub xcm: XcmMetadata,
-			pub mintable: bool,
-			pub permissioned: bool,
-			pub pool_currency: bool,
-		}
-	}
-
-	fn to_metadata_v1(
-		old: AssetMetadata<Balance, v0::CustomMetadata>,
-		transferability: v1::CrossChainTransferability,
-	) -> AssetMetadata<Balance, v1::CustomMetadata> {
-		AssetMetadata {
-			decimals: old.decimals,
-			name: old.name,
-			symbol: old.symbol,
-			existential_deposit: old.existential_deposit,
-			location: old.location,
-			additional: CustomMetadata {
-				mintable: old.additional.mintable,
-				permissioned: old.additional.permissioned,
-				pool_currency: old.additional.pool_currency,
-				transferability,
-			},
-		}
-	}
 
 	pub mod metadata_xcmv3 {
 		use super::*;
@@ -691,7 +554,7 @@ mod orml_tokens_migration {
 		fn on_runtime_upgrade() -> Weight {
 			use frame_support::traits::tokens::fungibles::Mutate;
 
-			let mut migrated_entries = 0;
+			let mut migrated_entries: u64 = 0;
 
 			// Burn all AUSD tokens under the old CurrencyId and mint them under the new one
 			orml_tokens::Accounts::<Runtime>::iter()
@@ -734,63 +597,10 @@ mod orml_tokens_migration {
 
 			// Approximate weight given for every entry migration there are two calls being
 			// made, so counting the reads and writes for each call.
-			<Runtime as frame_system::Config>::DbWeight::get()
-				.reads_writes(migrated_entries * 5, migrated_entries * 4)
-		}
-	}
-}
-
-mod pool_system {
-	#[cfg(feature = "try-runtime")]
-	use cfg_primitives::PoolId;
-	use pallet_pool_system::pool_types::PoolDetails;
-
-	use super::*;
-
-	pub struct MigrateAUSDPools;
-
-	impl OnRuntimeUpgrade for MigrateAUSDPools {
-		fn on_runtime_upgrade() -> Weight {
-			pallet_pool_system::Pool::<Runtime>::translate(
-				|_, mut details: PoolDetails<CurrencyId, _, _, _, _, _, _, _, _>| {
-					if details.currency == DEPRECATED_AUSD_CURRENCY_ID {
-						details.currency = NEW_AUSD_CURRENCY_ID;
-					}
-
-					Some(details)
-				},
-			);
-
-			let n = pallet_pool_system::Pool::<Runtime>::iter().count() as u64;
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			let ausd_pools: Vec<PoolId> = pallet_pool_system::Pool::<Runtime>::iter()
-				.filter(|(_, details)| details.currency == DEPRECATED_AUSD_CURRENCY_ID)
-				.map(|(pool_id, _)| pool_id)
-				.collect::<_>();
-
-			Ok(ausd_pools.encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
-			let ausd_pools = sp_std::vec::Vec::<PoolId>::decode(&mut state.as_ref())
-				.map_err(|_| "Error decoding pre-upgrade state")?;
-
-			for pool_id in ausd_pools {
-				let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)
-					.expect("AUSD Pool should exist after the migration was executed");
-
-				ensure!(
-					pool.currency == NEW_AUSD_CURRENCY_ID,
-					"A AUSD pool was NOT migrated to the new AUSD CurrencyId (ForeignAsset(2))",
-				)
-			}
-
-			Ok(())
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(
+				migrated_entries.saturating_mul(5),
+				migrated_entries.saturating_mul(4),
+			)
 		}
 	}
 }

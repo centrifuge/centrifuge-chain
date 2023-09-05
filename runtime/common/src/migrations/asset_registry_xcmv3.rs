@@ -14,7 +14,7 @@
 use cfg_primitives::Balance;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 #[cfg(feature = "try-runtime")]
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_support::{
 	traits::OnRuntimeUpgrade,
 	weights::{constants::RocksDbWeight, Weight},
@@ -148,11 +148,9 @@ impl<
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(old_counts: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_old_counts: Vec<u8>) -> Result<(), &'static str> {
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: post-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
-		let (pre_loc_count, pre_meta_count): (u32, u32) =
-			Decode::decode(&mut &old_counts[..]).expect("pre_upgrade provides a valid state; qed");
 
 		// Should not check for strict equality as at least the location count is
 		// expected to have increased
