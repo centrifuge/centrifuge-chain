@@ -19,6 +19,7 @@ serde = { version = "1.0.119" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
@@ -32,6 +33,7 @@ cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", defau
 
 # XCM primitives dependencies
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -40,10 +42,12 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
 ]
 std = [
   "serde/std",
   "codec/std",
+  "sp-io/std",
   "sp-std/std",
   "scale-info/std",
   "sp-core/std",
@@ -55,6 +59,7 @@ std = [
   "sp-consensus-aura/std",
   "cumulus-primitives-core/std",
   "xcm/std",
+  "xcm-executor/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",

@@ -490,6 +490,7 @@ impl OutboundQueue for FilteredOutboundQueue {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 parameter_types! {
@@ -518,6 +519,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
 	type WeightInfo = ();
 }
 
@@ -2070,7 +2072,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::origin::EnsureAccountOrRootOr;
+use runtime_common::{gateway::GatewayAccountProvider, origin::EnsureAccountOrRootOr};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

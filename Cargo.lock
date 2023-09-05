@@ -1308,9 +1308,11 @@ dependencies = [
  "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -5803,6 +5805,7 @@ dependencies = [
  "ethabi 16.0.0",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "orml-traits",
  "pallet-balances",
  "pallet-ethereum",
@@ -10975,6 +10978,7 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "log",
+ "orml-asset-registry",
  "orml-oracle",
  "orml-traits",
  "pallet-anchors",
@@ -10998,7 +11002,9 @@ dependencies = [
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
+ "parachain-info",
  "parity-scale-codec 3.6.4",
+ "polkadot-parachain",
  "scale-info",
  "serde",
  "smallvec",

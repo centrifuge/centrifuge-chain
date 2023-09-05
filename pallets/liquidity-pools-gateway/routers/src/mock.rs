@@ -129,6 +129,10 @@ impl TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for MockOriginRecovery {
 	}
 }
 
+parameter_types! {
+	pub Sender: AccountId32 = AccountId32::from(H256::from_low_u64_be(1).to_fixed_bytes());
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
 	type InboundQueue = MockLiquidityPools;
@@ -139,6 +143,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
 	type WeightInfo = ();
 }
 

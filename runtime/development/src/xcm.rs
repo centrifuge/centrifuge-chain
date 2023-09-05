@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_primitives::{
-	constants::currency_decimals,
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
@@ -34,14 +33,14 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider, LpInstanceRelayer},
-	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
+	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 pub use xcm::v3::{MultiAsset, MultiLocation};
 use xcm::{latest::Weight as XcmWeight, prelude::*};
 use xcm_builder::{
-	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
@@ -107,27 +106,6 @@ parameter_types! {
 		).into(),
 		native_per_second(),
 		0,
-	);
-
-	pub NativePerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), general_key(parachains::kusama::altair::AIR_KEY)),
-		).into(),
-		native_per_second(),
-	);
-
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-
-	pub AUSDPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::kusama::karura::ID),
-				general_key(parachains::kusama::karura::AUSD_KEY)
-			)
-		).into(),
-		default_per_second(currency_decimals::AUSD)
 	);
 
 }
@@ -202,44 +180,41 @@ where
 /// This type implements conversions from our `CurrencyId` type into
 /// `MultiLocation` and vice-versa. A currency locally is identified with a
 /// `CurrencyId` variant but in the network it is identified in the form of a
-/// `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
+/// `MultiLocation`.
 pub struct CurrencyIdConvert;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
-/// Other chains need to know how this conversion takes place in order to
-/// handle it on their side.
+/// We use the `OrmlAssetRegistry` to lookup the associated `MultiLocation` for
+/// any given `CurrencyId`, while blocking tokens that are not Xcm-transferable.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		match id {
-			CurrencyId::Tranche(_, _) => None,
-			_ => OrmlAssetRegistry::multilocation(&id).ok()?,
-		}
+		OrmlAssetRegistry::metadata(id)
+			.filter(|m| m.additional.transferability.includes_xcm())
+			.and_then(|m| m.location)
+			.and_then(|l| l.try_into().ok())
 	}
 }
 
-/// Convert an incoming `MultiLocation` into a `CurrencyId` if possible.
-/// Here we need to know the canonical representation of all the tokens we
-/// handle in order to correctly convert their `MultiLocation` representation
-/// into our internal `CurrencyId` type.
+/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// reverse-lookup using the OrmlAssetRegistry. In the registry, we register CFG
+/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// input location for Centrifuge-native assets for that to work.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		match location {
+		let unanchored_location = match location {
 			MultiLocation {
+				parents: 0,
+				interior,
+			} => MultiLocation {
 				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
-			} => match para_id {
-				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
-				// and can't therefore match specifically on the Tranche tokens' multilocation;
-				// However, we can preemptively assume that any Centrifuge X3-based asset refers
-				// to a Tranche token and explicitly fail its conversion to avoid Tranche tokens
-				// from being transferred through XCM without permission checks. This is fine since
-				// we don't have any other native token represented as an X3 neither do we plan to.
-				id if id == u32::from(ParachainInfo::get()) => Err(location),
-				// Still support X3-based MultiLocations native to other chains
-				_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
+				interior: interior
+					.pushed_front_with(Parachain(u32::from(ParachainInfo::get())))
+					.map_err(|_| location)?,
 			},
-			_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
-		}
+			x => x,
+		};
+
+		OrmlAssetRegistry::location_to_asset_id(unanchored_location).ok_or(location)
 	}
 }
 
@@ -291,8 +266,7 @@ impl pallet_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub const KsmLocation: MultiLocation = MultiLocation::parent();
-	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
+	pub const RelayNetwork: NetworkId = NetworkId::Rococo;
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
@@ -310,9 +284,8 @@ pub type LocationToAccountId = (
 	// If we receive a MultiLocation of type AccountId32 that is within Centrifuge,
 	// just alias it to a local [AccountId].
 	AccountId32Aliases<RelayNetwork, AccountId>,
-	// A wildcard MultiLocation to AccountId conversion for all the other MultiLocations
-	// within the same Relay network.
-	Account32Hash<RelayNetwork, AccountId>,
+	// Generate remote accounts according to polkadot standards
+	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
 );
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
