@@ -40,7 +40,7 @@ use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
-	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
@@ -281,9 +281,8 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
-	// A wildcard MultiLocation to AccountId conversion for all the other MultiLocations
-	// within the same Relay network.
-	Account32Hash<RelayNetwork, AccountId>,
+	// Generate remote accounts according to polkadot standards
+	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
 );
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
