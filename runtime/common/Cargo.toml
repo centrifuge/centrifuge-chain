@@ -77,8 +77,8 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
 hex-literal = "0.3.4"
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
 [features]
 default = ["std"]
