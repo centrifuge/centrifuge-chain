@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{
-	constants::currency_decimals,
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
@@ -35,7 +34,7 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
-	xcm_fees::{default_per_second, native_per_second},
+	xcm_fees::native_per_second,
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
@@ -108,26 +107,6 @@ parameter_types! {
 		native_per_second(),
 		0,
 	);
-
-	pub CfgPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), general_key(parachains::polkadot::centrifuge::CFG_KEY)),
-		).into(),
-		native_per_second(),
-	);
-
-	pub AUSDPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::polkadot::acala::ID),
-				general_key(parachains::polkadot::acala::AUSD_KEY)
-			)
-		).into(),
-		default_per_second(currency_decimals::AUSD)
-	);
-
 }
 
 pub struct ToTreasury;
@@ -223,10 +202,12 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 		let unanchored_location = match location {
 			MultiLocation {
 				parents: 0,
-				interior: X1(x),
+				interior,
 			} => MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(u32::from(ParachainInfo::get())), x),
+				interior: interior
+					.pushed_front_with(Parachain(u32::from(ParachainInfo::get())))
+					.map_err(|_| location)?,
 			},
 			x => x,
 		};
@@ -300,6 +281,8 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// Generate remote accounts according to polkadot standards
+	cfg_primitives::xcm::HashedDescriptionDescribeFamilyAllTerminal<AccountId>,
 );
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
