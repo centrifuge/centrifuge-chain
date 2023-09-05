@@ -27,6 +27,8 @@ use xcm::{v3::prelude::*, VersionedMultiLocation};
 use crate::{LiquidityPoolsPalletIndex, RocksDbWeight, Runtime};
 
 pub type UpgradeCentrifuge1020 = (
+	// Removes metadata containing xcm_v1 locations of registered assets and sets to hardcoded ones
+	// containing xcm_v3 locations
 	runtime_common::migrations::asset_registry_xcmv3::Migration<
 		crate::Runtime,
 		asset_registry::CentrifugeAssets,
@@ -35,11 +37,15 @@ pub type UpgradeCentrifuge1020 = (
 		2,
 		3,
 	>,
-	asset_registry::CrossChainTransferabilityMigration,
+	// At minimum, bumps storage version from 1 to 2
 	runtime_common::migrations::nuke::Migration<crate::Loans, RocksDbWeight, 1>,
+	// At minimum, bumps storage version from 0 to 3
 	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, RocksDbWeight, 0>,
+	// At minimum, bumps storage version from 0 to 1
 	runtime_common::migrations::nuke::Migration<crate::PoolSystem, RocksDbWeight, 0>,
+	// At minimum, bumps storage version from 0 to 1
 	runtime_common::migrations::nuke::Migration<crate::Investments, RocksDbWeight, 0>,
+	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
 		pallet_rewards::Instance2,
@@ -57,156 +63,16 @@ pub type UpgradeCentrifuge1020 = (
 );
 
 mod asset_registry {
-	use cfg_types::{tokens as v1, tokens::CustomMetadata};
-	#[cfg(feature = "try-runtime")]
-	use frame_support::ensure;
-	use frame_support::{pallet_prelude::OptionQuery, storage_alias, Twox64Concat};
-	use orml_traits::asset_registry::AssetMetadata;
-	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
+	use cfg_types::tokens::CustomMetadata;
+	use frame_support::inherent::Vec;
 
 	use super::*;
-	use crate::VERSION;
+	use crate::ParachainInfo;
 
-	pub const CENTRIFUGE_ASSET_LOC_COUNT: u32 = 4;
+	pub const CENTRIFUGE_ASSET_LOC_COUNT: u32 = 6;
 	pub const CENTRIFUGE_ASSET_METADATA_COUNT: u32 = 8;
-	pub const CATALYST_ASSET_LOC_COUNT: u32 = 1;
+	pub const CATALYST_ASSET_LOC_COUNT: u32 = 2;
 	pub const CATALYST_ASSET_METADATA_COUNT: u32 = 3;
-
-	/// Migrate all the registered asset's metadata to the new version of
-	/// `CustomMetadata` which contains a `CrossChainTransferability` property.
-	/// At this point in time, the `transferability` of Tranche tokens should be
-	/// set to `CrossChainTransferability::Xcm` and for all other tokens to
-	/// `CrossChainTransferability::Xcm`, with the exception of
-	/// `Currency::Staking` tokens which are not registered in the first place.
-	pub struct CrossChainTransferabilityMigration;
-
-	// The old orml_asset_registry Metadata storage using v0::CustomMetadata
-	#[storage_alias]
-	type Metadata<T: orml_asset_registry::Config> = StorageMap<
-		orml_asset_registry::Pallet<T>,
-		Twox64Concat,
-		CurrencyId,
-		AssetMetadata<Balance, v0::CustomMetadata>,
-		OptionQuery,
-	>;
-
-	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
-		fn on_runtime_upgrade() -> Weight {
-			if VERSION.spec_version != 1020 {
-				return Weight::zero();
-			}
-
-			orml_asset_registry::Metadata::<Runtime>::translate(
-				|asset_id: CurrencyId, old_metadata: AssetMetadata<Balance, v0::CustomMetadata>| {
-					match asset_id {
-						CurrencyId::Staking(_) => None,
-						CurrencyId::Tranche(_, _) => Some(to_metadata_v1(
-							old_metadata,
-							v1::CrossChainTransferability::LiquidityPools,
-						)),
-						_ => Some(to_metadata_v1(
-							old_metadata.clone(),
-							v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
-						)),
-					}
-				},
-			);
-
-			let n = orml_asset_registry::Metadata::<Runtime>::iter().count() as u64;
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(n, n)
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-			use codec::Encode;
-
-			let old_state: Vec<(CurrencyId, AssetMetadata<Balance, v0::CustomMetadata>)> =
-				Metadata::<Runtime>::iter().collect::<Vec<_>>();
-
-			Ok(old_state.encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(old_state_encoded: Vec<u8>) -> Result<(), &'static str> {
-			use codec::Decode;
-
-			let old_state = sp_std::vec::Vec::<(
-				CurrencyId,
-				AssetMetadata<Balance, v0::CustomMetadata>,
-			)>::decode(&mut old_state_encoded.as_ref())
-			.map_err(|_| "Error decoding pre-upgrade state")?;
-
-			for (asset_id, old_metadata) in old_state {
-				let new_metadata = crate::OrmlAssetRegistry::metadata(asset_id)
-					.ok_or_else(|| "New state lost the metadata of an asset")?;
-
-				match asset_id {
-					CurrencyId::Tranche(_, _) => ensure!(new_metadata == to_metadata_v1(
-						old_metadata,
-						v1::CrossChainTransferability::LiquidityPools,
-					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `LiquidityPools `"),
-					_ => ensure!(new_metadata == to_metadata_v1(
-						old_metadata.clone(),
-						v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
-					), "The metadata of a NON tranche token wasn't just updated by setting `transferability` to `Xcm`"),
-				}
-			}
-
-			Ok(())
-		}
-	}
-
-	mod v0 {
-		use cfg_types::xcm::XcmMetadata;
-		use codec::{Decode, Encode, MaxEncodedLen};
-		use scale_info::TypeInfo;
-		#[cfg(feature = "std")]
-		use serde::{Deserialize, Serialize};
-
-		// The `CustomMetadata` type as it was prior to adding the `transferability`
-		// field and prior to removing the `xcm` field.
-		#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-		#[derive(
-			Clone,
-			Copy,
-			Default,
-			PartialOrd,
-			Ord,
-			PartialEq,
-			Eq,
-			Debug,
-			Encode,
-			Decode,
-			TypeInfo,
-			MaxEncodedLen,
-		)]
-		pub struct CustomMetadata {
-			pub xcm: XcmMetadata,
-			pub mintable: bool,
-			pub permissioned: bool,
-			pub pool_currency: bool,
-		}
-	}
-
-	fn to_metadata_v1(
-		old: AssetMetadata<Balance, v0::CustomMetadata>,
-		transferability: v1::CrossChainTransferability,
-	) -> AssetMetadata<Balance, v1::CustomMetadata> {
-		AssetMetadata {
-			decimals: old.decimals,
-			name: old.name,
-			symbol: old.symbol,
-			existential_deposit: old.existential_deposit,
-			location: old.location,
-			additional: CustomMetadata {
-				mintable: old.additional.mintable,
-				permissioned: old.additional.permissioned,
-				pool_currency: old.additional.pool_currency,
-				transferability,
-			},
-		}
-	}
 
 	pub struct CentrifugeAssets;
 	impl runtime_common::migrations::asset_registry_xcmv3::AssetsToMigrate for CentrifugeAssets {
