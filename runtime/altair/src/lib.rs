@@ -1416,7 +1416,7 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;

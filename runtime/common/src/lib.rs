@@ -431,6 +431,9 @@ pub mod origin {
 	use frame_system::EnsureRoot;
 	use sp_core::Get;
 
+	type EnsureAccountOrRoot<Account> =
+		EitherOfDiverse<EnsureAccount<Account>, EnsureRoot<AccountId>>;
+
 	type EnsureAccountOrRootOr<Account, O> =
 		EitherOfDiverse<EitherOfDiverse<EnsureAccount<Account>, EnsureRoot<AccountId>>, O>;
 
