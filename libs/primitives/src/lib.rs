@@ -349,8 +349,7 @@ pub mod xcm {
 	/// NOTE: Copied from <https://github.com/moonbeam-foundation/polkadot/blob/d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc/xcm/xcm-builder/src/location_conversion.rs#L25C1-L68C2>
 	///
 	/// temporary struct that mimics the behavior of the upstream type that we
-	/// will move to once we update this repository to Polkadot 0.9.43+:
-	/// HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>
+	/// will move to once we update this repository to Polkadot 0.9.43+.
 	pub struct HashedDescriptionDescribeFamilyAllTerminal<AccountId>(PhantomData<AccountId>);
 	impl<AccountId: From<[u8; 32]> + Clone> HashedDescriptionDescribeFamilyAllTerminal<AccountId> {
 		fn describe_location_suffix(l: &MultiLocation) -> Result<Vec<u8>, ()> {
