@@ -435,6 +435,8 @@ parameter_types! {
 
 impl pallet_liquidity_pools::Config for Runtime {
 	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
+	// NOTE: No need to adapt that. The Router is an artifact and will be removed
+	// with FI PR
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -490,8 +492,24 @@ parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
 }
 
+parameter_types! {
+	// A temporary admin account for the LP logic
+	// This is a multi-sig controlled pure proxy on mainnet
+	// - address: "4eEqmbQMbFfNUg6bQnqi9zgUvQvSpNbUgstEM64Xq9FW58Xv" (on Centrifuge)
+	//             (pub key 0x80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57)
+	//
+	// This account is besides Root and 2/3-council able to
+	// - add valid relayer contracts
+	// - rm valid relayer contracts
+	// - add valid LP instance contracts
+	// - rm valid LP instance contracts
+	// - add conversions from Axelar `sourceChain` strings to `DomainAddress`
+	// - set the Axelar gateway contract in the Axelar gateway precompile
+	pub LpAdminAccount: AccountId = AccountId::new(hex_literal::hex!("80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57"));
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type InboundQueue = DummyInboundQueue;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
@@ -2052,6 +2070,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use runtime_common::origin::EnsureAccountOrRootOr;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

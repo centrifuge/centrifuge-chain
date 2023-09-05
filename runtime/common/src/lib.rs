@@ -421,54 +421,34 @@ pub mod xcm_transactor {
 }
 
 pub mod origin {
-	use std::marker::PhantomData;
-
 	use cfg_primitives::AccountId;
-	use frame_support::{
-		dispatch::RawOrigin,
-		traits::{EitherOfDiverse, EnsureOrigin},
-	};
-	use frame_system::EnsureRoot;
+	use frame_support::traits::{EitherOfDiverse, SortedMembers};
+	use frame_system::{EnsureRoot, EnsureSignedBy};
 	use sp_core::Get;
 
-	type EnsureAccountOrRoot<Account> =
-		EitherOfDiverse<EnsureAccount<Account>, EnsureRoot<AccountId>>;
+	pub type EnsureAccountOrRoot<Account> =
+		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>;
 
-	type EnsureAccountOrRootOr<Account, O> =
-		EitherOfDiverse<EitherOfDiverse<EnsureAccount<Account>, EnsureRoot<AccountId>>, O>;
+	pub type EnsureAccountOrRootOr<Account, O> = EitherOfDiverse<
+		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>,
+		O,
+	>;
 
-	pub struct EnsureAccount<Account>(PhantomData<Account>);
+	pub struct AdminOnly<Account>(sp_std::marker::PhantomData<Account>);
 
-	impl<OuterOrigin, Account> EnsureOrigin<OuterOrigin> for EnsureAccount<Account>
+	impl<Account> SortedMembers<AccountId> for AdminOnly<Account>
 	where
-		OuterOrigin:
-			Into<Result<RawOrigin<AccountId>, OuterOrigin>> + From<RawOrigin<AccountId>> + Clone,
 		Account: Get<AccountId>,
 	{
-		type Success = ();
-
-		fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-			o.into().and_then(|raw| match raw {
-				RawOrigin::Root | RawOrigin::None => Err(OuterOrigin::from(raw)),
-				RawOrigin::Signed(ref signer) => {
-					if signer == &Account::get() {
-						Ok(())
-					} else {
-						Err(OuterOrigin::from(raw))
-					}
-				}
-			})
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn try_successful_origin() -> Result<OuterOrigin, ()> {
-			Ok(RawOrigin::Signed(Account::get()).into())
+		fn sorted_members() -> sp_std::vec::Vec<AccountId> {
+			sp_std::vec![Account::get()]
 		}
 	}
 
 	#[cfg(test)]
 	mod test {
 		use cfg_primitives::HalfOfCouncil;
+		use frame_support::traits::EnsureOrigin;
 		use sp_core::{crypto::AccountId32, parameter_types};
 
 		use super::*;
@@ -531,53 +511,110 @@ pub mod origin {
 			}
 		}
 
-		#[test]
-		fn works_with_account() {
-			let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
+		mod ensure_account_or_root_or {
+			use super::*;
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(5, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_less_than_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(4, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(RawOrigin::Root);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(RawOrigin::None);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
 		}
 
-		#[test]
-		fn fails_with_non_admin_account() {
-			let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
+		mod ensure_account_or_root {
+			use super::*;
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
-		}
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
 
-		#[test]
-		fn works_with_half_of_council() {
-			let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(5, 9));
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
-		}
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
 
-		#[test]
-		fn fails_with_less_than_half_of_council() {
-			let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(4, 9));
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
-		}
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(RawOrigin::Root);
 
-		#[test]
-		fn works_with_root() {
-			let origin = OuterOrigin::Raw(RawOrigin::Root);
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
-		}
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(RawOrigin::None);
 
-		#[test]
-		fn fails_with_none() {
-			let origin = OuterOrigin::Raw(RawOrigin::None);
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
 
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
-		}
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
 
-		#[test]
-		fn fails_with_dummy() {
-			let origin = OuterOrigin::Dummy;
-
-			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
 		}
 	}
 }
