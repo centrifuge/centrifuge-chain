@@ -1308,9 +1308,11 @@ dependencies = [
  "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
