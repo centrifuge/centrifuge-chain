@@ -227,7 +227,10 @@ mod asset_registry {
 				(loc, meta)
 					if (loc, meta) == (CATALYST_ASSET_LOC_COUNT, CATALYST_ASSET_METADATA_COUNT) =>
 				{
-					Self::get_catalyst_assets()
+					Self::get_centrifuge_assets()
+						.into_iter()
+						.chain(Self::get_catalyst_assets().into_iter())
+						.collect()
 				}
 				_ => vec![],
 			}
@@ -253,11 +256,12 @@ mod asset_registry {
 						location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 							1,
 							Junctions::X2(
-							    Parachain(ParachainInfo::parachain_id().into()),
-							    GeneralKey {
-								length: 2,
-								data: gk,
-							}),
+								Parachain(ParachainInfo::parachain_id().into()),
+								GeneralKey {
+									length: 2,
+									data: gk,
+								},
+							),
 						))),
 						additional: CustomMetadata {
 							mintable: false,
@@ -392,7 +396,6 @@ mod asset_registry {
 							mintable: false,
 							permissioned: false,
 							pool_currency: true,
-							// TODO(@review): Should probably be LiquidityPoolsTransferability?
 							transferability: CrossChainTransferability::Xcm(XcmMetadata {
 								fee_per_second: None,
 							}),
