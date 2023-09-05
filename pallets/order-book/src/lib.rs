@@ -704,7 +704,7 @@ pub mod pallet {
 					order.min_fullfillment_amount = min_fullfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 
-					validate(&order)?;
+					validate(order)?;
 
 					Ok(max_sell_amount)
 				},
