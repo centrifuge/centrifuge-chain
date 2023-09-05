@@ -339,7 +339,7 @@ pub mod liquidity_pools {
 
 pub mod xcm {
 	use codec::{Compact, Encode};
-	use sp_core::blake2_256;
+	use sp_io::hashing::blake2_256;
 	use sp_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
 	use xcm::prelude::{
 		AccountId32, AccountKey20, Here, MultiLocation, PalletInstance, Parachain, X1,
@@ -361,7 +361,7 @@ pub mod xcm {
 				}
 				(0, X1(AccountId32 { id, .. })) => Ok((b"AccountId32", id).encode()),
 				(0, X1(AccountKey20 { key, .. })) => Ok((b"AccountKey20", key).encode()),
-				_ => return Err(()),
+				_ => Err(()),
 			}
 		}
 	}
