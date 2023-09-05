@@ -23,7 +23,7 @@ use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Ve
 use crate::{
 	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
 	AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM, AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM,
-	FUNCTION_NAME, MAX_EVM_CHAIN_SIZE, MESSAGE_PARAM,
+	FUNCTION_NAME, MAX_AXELAR_EVM_CHAIN_SIZE, MESSAGE_PARAM,
 };
 
 /// The router used for executing the LiquidityPools contract via Axelar.
@@ -36,7 +36,7 @@ where
 		+ pallet_evm::Config,
 {
 	pub router: EVMRouter<T>,
-	pub evm_chain: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>,
+	pub evm_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub liquidity_pools_contract_address: H160,
 	pub _marker: PhantomData<T>,
 }

@@ -17,10 +17,11 @@ use frame_system::EnsureRoot;
 use runtime_common::gateway::GatewayAccountProvider;
 
 use super::{Runtime, RuntimeEvent, RuntimeOrigin};
+use crate::LocationToAccountId;
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime>::get_gateway_account();
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {

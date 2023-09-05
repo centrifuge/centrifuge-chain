@@ -488,7 +488,7 @@ impl OutboundQueue for FilteredOutboundQueue {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime>::get_gateway_account();
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {

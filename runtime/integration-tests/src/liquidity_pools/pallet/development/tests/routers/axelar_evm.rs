@@ -17,7 +17,8 @@ use frame_support::{assert_ok, dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
 use lazy_static::lazy_static;
 use liquidity_pools_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues, MAX_EVM_CHAIN_SIZE,
+	axelar_evm::AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues,
+	MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 use pallet_evm::FeeCalculator;
 use pallet_liquidity_pools::Message;
@@ -46,9 +47,11 @@ use crate::{
 };
 
 lazy_static! {
-	pub(crate) static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>> =
-		BoundedVec::<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>::try_from("ethereum".as_bytes().to_vec())
-			.unwrap();
+	pub(crate) static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			"ethereum".as_bytes().to_vec()
+		)
+		.unwrap();
 }
 
 #[tokio::test]

@@ -20,9 +20,11 @@ use super::mock::*;
 use crate::*;
 
 lazy_static! {
-	static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>> =
-		BoundedVec::<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>::try_from("ethereum".as_bytes().to_vec())
-			.unwrap();
+	static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			"ethereum".as_bytes().to_vec()
+		)
+		.unwrap();
 }
 
 mod evm_router {
@@ -532,7 +534,7 @@ mod axelar_xcm {
 			pub currency_id: CurrencyId,
 			pub dest: MultiLocation,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
-			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>,
+			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
 			pub msg: MessageMock,
@@ -713,7 +715,7 @@ mod ethereum_xcm {
 			pub currency_id: CurrencyId,
 			pub dest: MultiLocation,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
-			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>,
+			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
 			pub msg: MessageMock,

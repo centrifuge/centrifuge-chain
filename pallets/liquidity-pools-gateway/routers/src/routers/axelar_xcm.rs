@@ -20,7 +20,7 @@ use sp_std::marker::PhantomData;
 
 use crate::{
 	axelar_evm::get_axelar_encoded_msg, AccountIdOf, CurrencyIdOf, MessageOf, XCMRouter, XcmDomain,
-	MAX_EVM_CHAIN_SIZE,
+	MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 
 pub type AxelarXcmDomain<T> = XcmDomain<CurrencyIdOf<T>>;
@@ -35,7 +35,7 @@ where
 		+ pallet_liquidity_pools_gateway::Config,
 {
 	pub router: XCMRouter<T>,
-	pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_EVM_CHAIN_SIZE>>,
+	pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub axelar_target_contract: H160,
 	pub _marker: PhantomData<T>,
 }

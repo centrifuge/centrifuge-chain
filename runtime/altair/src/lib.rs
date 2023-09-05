@@ -1413,7 +1413,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime>::get_gateway_account();
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -1978,7 +1978,7 @@ mod __runtime_api_use {
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
 use cfg_types::domain_address::Domain;
-use runtime_common::xcm::AccountIdToMultiLocation;
+use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
