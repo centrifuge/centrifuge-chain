@@ -336,3 +336,58 @@ pub mod liquidity_pools {
 		}
 	}
 }
+
+pub mod xcm {
+	use sp_std::{borrow::Borrow, vec::Vec, marker::PhantomData};
+	use codec::{Encode, Compact};
+	use xcm::prelude::{PalletInstance, X1, MultiLocation, AccountId32, AccountKey20, Parachain, Here};
+	use sp_core::blake2_256;
+	use xcm_executor::traits::Convert;
+
+	/// NOTE: Copied from https://github.com/moonbeam-foundation/polkadot/blob/d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc/xcm/xcm-builder/src/location_conversion.rs#L25C1-L68C2
+	///
+	/// temporary struct that mimics the behavior of the upstream type that we will move to once we update
+	/// this repository to Polkadot 0.9.43+:
+	/// HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>
+	pub struct HashedDescriptionDescribeFamilyAllTerminal<AccountId>(PhantomData<AccountId>);
+	impl<AccountId: From<[u8; 32]> + Clone> HashedDescriptionDescribeFamilyAllTerminal<AccountId> {
+		fn describe_location_suffix(l: &MultiLocation) -> Result<Vec<u8>, ()> {
+			match (l.parents, &l.interior) {
+				(0, Here) => Ok(Vec::new()),
+				(0, X1(PalletInstance(i))) => Ok((b"Pallet", Compact::<u32>::from(*i as u32)).encode()),
+				(0, X1(AccountId32 { id, .. })) => Ok((b"AccountId32", id).encode()),
+				(0, X1(AccountKey20 { key, .. })) => Ok((b"AccountKey20", key).encode()),
+				_ => return Err(()),
+			}
+		}
+	}
+
+	impl<AccountId: From<[u8; 32]> + Clone> Convert<MultiLocation, AccountId>
+	for HashedDescriptionDescribeFamilyAllTerminal<AccountId> {
+		fn convert_ref(location: impl Borrow<MultiLocation>) -> Result<AccountId, ()> {
+			let l = location.borrow();
+			let to_hash = match (l.parents, l.interior.first()) {
+				(0, Some(Parachain(index))) => {
+					let tail = l.interior.split_first().0;
+					let interior = Self::describe_location_suffix(&tail.into())?;
+					(b"ChildChain", Compact::<u32>::from(*index), interior).encode()
+				},
+				(1, Some(Parachain(index))) => {
+					let tail = l.interior.split_first().0;
+					let interior = Self::describe_location_suffix(&tail.into())?;
+					(b"SiblingChain", Compact::<u32>::from(*index), interior).encode()
+				},
+				(1, _) => {
+					let tail = l.interior.into();
+					let interior = Self::describe_location_suffix(&tail)?;
+					(b"ParentChain", interior).encode()
+				},
+				_ => return Err(()),
+			};
+			Ok(blake2_256(&to_hash).into())
+		}
+		fn reverse_ref(_: impl Borrow<AccountId>) -> Result<MultiLocation, ()> {
+			Err(())
+		}
+	}
+}
