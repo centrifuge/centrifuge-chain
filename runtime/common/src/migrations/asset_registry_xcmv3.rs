@@ -21,6 +21,7 @@ use frame_support::{
 	StoragePrefixedMap,
 };
 use orml_traits::asset_registry::AssetMetadata;
+use sp_arithmetic::traits::Zero;
 use sp_std::vec::Vec;
 
 pub struct Migration<
@@ -59,49 +60,47 @@ impl<
 	Assets: AssetsToMigrate,
 {
 	fn on_runtime_upgrade() -> Weight {
-		log::info!("AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: started");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: started");
 		// Complexity: 2 reads
 		let (loc_count, meta_count) = Self::get_key_counts();
 
 		// Complexity: O(loc_count) writes
-		let result =
-			orml_asset_registry::LocationToAssetId::<T>::clear(loc_count.saturating_add(2), None);
+		let result = orml_asset_registry::LocationToAssetId::<T>::clear(loc_count, None);
 		match result.maybe_cursor {
-			None => log::info!("Cleared all LocationToAssetId entries successfully"),
+			None => log::info!("💎 AssetRegistryMultilocationToXCMV3: Cleared all LocationToAssetId entries successfully"),
 			Some(_) => {
 				log::error!(
-					"LocationToAssetId not fully cleared: {:?} remaining",
+					"💎 AssetRegistryMultilocationToXCMV3: LocationToAssetId not fully cleared: {:?} remaining",
 					orml_asset_registry::LocationToAssetId::<T>::iter_keys().count()
 				)
 			}
 		}
 		log::info!(
-            "AssetRegistryMultilocationToXCMV3: LocationToAssetId clearing iteration result. backend: {} unique: {} loops: {}",
+            "💎 AssetRegistryMultilocationToXCMV3: LocationToAssetId clearing iteration result. backend: {} unique: {} loops: {}",
             result.backend,
             result.unique,
             result.loops,
         );
 
 		// Complexity: O(meta_count) writes
-		let result = orml_asset_registry::Metadata::<T>::clear(meta_count.saturating_add(1), None);
+		let result = orml_asset_registry::Metadata::<T>::clear(meta_count, None);
 		match result.maybe_cursor {
 			None => log::info!("Cleared all Metadata entries successfully"),
 			Some(_) => log::error!("Metadata not fully cleared"),
 		}
 		log::info!(
-            "AssetRegistryMultilocationToXCMV3: Metadata clearing iteration result. backend: {} unique: {} loops: {}",
+            "💎 AssetRegistryMultilocationToXCMV3: Metadata clearing iteration result. backend: {} unique: {} loops: {}",
             result.backend,
             result.unique,
             result.loops,
         );
 
 		log::info!(
-			"AssetRegistryMultilocationToXCMV3: Migrating {:?} assets",
+			"💎 AssetRegistryMultilocationToXCMV3: Starting migration of {:?} assets",
 			Assets::get_assets_to_migrate(loc_count, meta_count)
 				.iter()
 				.len()
 		);
-
 		// Complexity: O(meta_count + loc_count) writes
 		Assets::get_assets_to_migrate(loc_count, meta_count)
 			.into_iter()
@@ -115,7 +114,7 @@ impl<
 				.ok();
 			});
 
-		log::info!("AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: completed!");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: completed!");
 		RocksDbWeight::get().reads_writes(
 			2,
 			loc_count
@@ -127,7 +126,7 @@ impl<
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		log::info!("AssetRegistryMultilocationToXCMV3: pre-upgrade: started");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: pre-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
 
 		match (loc_count, meta_count) {
@@ -141,24 +140,29 @@ impl<
 			{
 				Ok(())
 			}
-			_ => Err("AssetRegistryMultilocationToXCMV3: Unexpected counters"),
+			_ => Err("💎 AssetRegistryMultilocationToXCMV3: Unexpected counters"),
 		}?;
 
-		log::info!("AssetRegistryMultilocationToXCMV3: pre-upgrade: done");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: pre-upgrade: done");
 		Ok((loc_count, meta_count).encode())
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(old_counts: Vec<u8>) -> Result<(), &'static str> {
-		log::info!("AssetRegistryMultilocationToXCMV3: post-upgrade: started");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: post-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
 		let (pre_loc_count, pre_meta_count): (u32, u32) =
 			Decode::decode(&mut &old_counts[..]).expect("pre_upgrade provides a valid state; qed");
 
-		assert_eq!(loc_count, pre_loc_count);
-		assert_eq!(meta_count, pre_meta_count);
+		// Should not check for strict equality as at least the location count is
+		// expected to have increased
+		// * For Centrifuge we can check post_upgrade >= pre_upgrade
+		// * For Altair, we remove one of the two AUSD variants and thus have less
+		// registered currencies
+		assert!(!loc_count.is_zero());
+		assert!(!meta_count.is_zero());
 
-		log::info!("AssetRegistryMultilocationToXCMV3: post_upgrade: storage was updated!");
+		log::info!("💎 AssetRegistryMultilocationToXCMV3: post_upgrade: storage was updated!");
 		Ok(())
 	}
 }
@@ -192,11 +196,11 @@ impl<
 			Self::count_storage_keys(&orml_asset_registry::Metadata::<T>::final_prefix().to_vec());
 
 		log::info!(
-			"AssetRegistryMultilocationToXCMV3: Found {} LocationToAssetId keys ",
+			"💎 AssetRegistryMultilocationToXCMV3: Found {} LocationToAssetId keys ",
 			loc_count
 		);
 		log::info!(
-			"AssetRegistryMultilocationToXCMV3: Found {} Metadata keys ",
+			"💎 AssetRegistryMultilocationToXCMV3: Found {} Metadata keys ",
 			meta_count
 		);
 
