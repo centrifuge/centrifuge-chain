@@ -96,6 +96,11 @@ pub mod pallet {
 		/// Maximum size of an incoming message.
 		#[pallet::constant]
 		type MaxIncomingMessageSize: Get<u32>;
+
+		/// The sender account that will be used in the OutboundQueue
+		/// implementation.
+		#[pallet::constant]
+		type Sender: Get<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -406,13 +411,17 @@ pub mod pallet {
 
 	/// This pallet will be the `OutboundQueue` used by other pallets to send
 	/// outgoing messages.
+	///
+	/// NOTE - the sender provided as an argument is not used at the moment, we
+	/// are using the sender specified in the pallet config so that we can
+	/// ensure that the account is funded.
 	impl<T: Config> OutboundQueue for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;
 		type Sender = T::AccountId;
 
 		fn submit(
-			sender: Self::Sender,
+			_sender: Self::Sender,
 			destination: Self::Destination,
 			msg: Self::Message,
 		) -> DispatchResult {
@@ -423,7 +432,7 @@ pub mod pallet {
 
 			let router = DomainRouters::<T>::get(destination).ok_or(Error::<T>::RouterNotFound)?;
 
-			router.send(sender, msg)
+			router.send(T::Sender::get(), msg)
 		}
 	}
 }

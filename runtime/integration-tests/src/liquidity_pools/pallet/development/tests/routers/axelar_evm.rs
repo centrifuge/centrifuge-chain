@@ -127,12 +127,19 @@ async fn submit() {
 	);
 
 	let sender = Keyring::Alice.to_account_id();
-	let sender_h160: H160 =
-		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
+	let gateway_sender = env
+		.with_state(Chain::Para(PARA_ID), || {
+			<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+		})
+		.unwrap();
 
-	// Note how both the target address and the sender need to have some balance.
+	let gateway_sender_h160: H160 =
+		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&gateway_sender)[0..20]);
+
+	// Note how both the target address and the gateway sender need to have some
+	// balance.
 	mint_balance_into_derived_account(&mut env, axelar_contract_address, 1_000_000_000 * CFG);
-	mint_balance_into_derived_account(&mut env, sender_h160, 1_000_000 * CFG);
+	mint_balance_into_derived_account(&mut env, gateway_sender_h160, 1_000_000 * CFG);
 
 	let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 		currency: 0,

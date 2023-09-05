@@ -14,11 +14,13 @@ use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
 use cfg_types::{domain_address::Domain, fixed_point::Quantity};
 use frame_support::parameter_types;
 use frame_system::EnsureRoot;
+use runtime_common::gateway::GatewayAccountProvider;
 
 use super::{Runtime, RuntimeEvent, RuntimeOrigin};
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -31,5 +33,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
 	type WeightInfo = ();
 }

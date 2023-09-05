@@ -222,6 +222,7 @@ mod test {
 		type Router = RouterMock<Runtime>;
 		type RuntimeEvent = RuntimeEvent;
 		type RuntimeOrigin = RuntimeOrigin;
+		type Sender = ConstU64<11>;
 		type WeightInfo = ();
 	}
 

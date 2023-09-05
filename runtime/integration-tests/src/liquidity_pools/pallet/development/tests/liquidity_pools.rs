@@ -1180,20 +1180,6 @@ fn schedule_upgrade() {
 			BadOrigin
 		);
 
-		// Failing because the treasury has no funds
-		assert_noop!(
-			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
-			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
-		);
-
-		// The treasury needs GLRM to cover the fees of sending
-		// this message
-		OrmlTokens::deposit(
-			GLIMMER_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-
 		// Now it finally works
 		assert_ok!(LiquidityPools::schedule_upgrade(
 			RuntimeOrigin::root(),
@@ -1815,15 +1801,10 @@ mod utils {
 			Some(GLIMMER_CURRENCY_ID)
 		));
 
-		// Give Alice and BOB enough glimmer to pay for fees
+		// Fund the gateway sender account with enough glimmer to pay for fees
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
-			&ALICE.into(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-		OrmlTokens::deposit(
-			GLIMMER_CURRENCY_ID,
-			&BOB.into(),
+			&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
 

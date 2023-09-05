@@ -47,9 +47,12 @@ use crate::{
 };
 
 #[test]
-fn submit() {
+fn submit_ethereum_xcm() {
 	submit_test_fn(get_ethereum_xcm_router_fn());
+}
 
+#[test]
+fn submit_axelar_xcm() {
 	submit_test_fn(get_axelar_xcm_router_fn());
 }
 
@@ -79,11 +82,6 @@ fn submit_test_fn(router_creation_fn: RouterCreationFn) {
 				msg.clone(),
 			),
 			pallet_liquidity_pools_gateway::Error::<Runtime>::RouterNotFound,
-		);
-
-		assert_noop!(
-			<LiquidityPoolsGateway as OutboundQueue>::submit(CHARLIE.into(), TEST_DOMAIN, msg),
-			pallet_xcm_transactor::Error::<Runtime>::UnableToWithdrawAsset,
 		);
 	});
 }
@@ -176,15 +174,10 @@ fn setup(router_creation_fn: RouterCreationFn) {
 		Some(glmr_currency_id)
 	));
 
-	// Give Alice and BOB enough glimmer to pay for fees
+	// Fund the gateway sender account with enough glimmer to pay for fees
 	OrmlTokens::deposit(
 		glmr_currency_id,
-		&ALICE.into(),
-		1_000_000_000_000 * dollar(18),
-	);
-	OrmlTokens::deposit(
-		glmr_currency_id,
-		&BOB.into(),
+		&<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 		1_000_000_000_000 * dollar(18),
 	);
 

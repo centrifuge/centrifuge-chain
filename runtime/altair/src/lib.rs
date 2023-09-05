@@ -75,8 +75,8 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 pub use runtime_common::*;
 use runtime_common::{
-	account_conversion::AccountConverter,
 	fees::{DealWithFees, WeightToFee},
+	gateway::GatewayAccountProvider,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1413,6 +1413,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
@@ -1425,6 +1426,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
 	type WeightInfo = ();
 }
 

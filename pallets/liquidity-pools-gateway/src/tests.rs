@@ -10,6 +10,7 @@ use super::{
 	origin::*,
 	pallet::*,
 };
+use crate::pallet;
 
 mod utils {
 	use super::*;
@@ -726,11 +727,10 @@ mod outbound_queue_impl {
 			let msg = MessageMock::First;
 
 			router.mock_send({
-				let sender = sender.clone();
 				let msg = msg.clone();
 
 				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
+					assert_eq!(<Runtime as pallet::Config>::Sender::get(), mock_sender);
 					assert_eq!(msg, mock_msg);
 
 					Ok(())
@@ -759,11 +759,10 @@ mod outbound_queue_impl {
 			let expected_error = DispatchError::Other("router error");
 
 			router.mock_send({
-				let sender = sender.clone();
 				let msg = msg.clone();
 
 				move |mock_sender, mock_msg| {
-					assert_eq!(sender, mock_sender);
+					assert_eq!(<Runtime as pallet::Config>::Sender::get(), mock_sender);
 					assert_eq!(msg, mock_msg);
 
 					Err(expected_error)
