@@ -13,7 +13,10 @@
 
 use core::fmt::Debug;
 
-use cfg_traits::liquidity_pools::{Codec, InboundQueue, OutboundQueue, Router as DomainRouter};
+use cfg_traits::{
+	liquidity_pools::{Codec, InboundQueue, OutboundQueue, Router as DomainRouter},
+	TryConvert,
+};
 use cfg_types::domain_address::{Domain, DomainAddress};
 use codec::{EncodeLike, FullCodec};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
@@ -37,8 +40,6 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	const BYTES_U32: usize = 4;
-
-	use cfg_traits::TryConvert;
 
 	use super::*;
 
@@ -73,7 +74,7 @@ pub mod pallet {
 		///
 		/// NOTE - this `Codec` trait is the Centrifuge trait for liquidity
 		/// pools' messages.
-		type Message: Codec;
+		type Message: Codec + Clone;
 
 		/// The message router type that is stored for each domain.
 		type Router: DomainRouter<Sender = Self::AccountId, Message = Self::Message>
@@ -96,6 +97,11 @@ pub mod pallet {
 		/// Maximum size of an incoming message.
 		#[pallet::constant]
 		type MaxIncomingMessageSize: Get<u32>;
+
+		/// The sender account that will be used in the OutboundQueue
+		/// implementation.
+		#[pallet::constant]
+		type Sender: Get<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -115,6 +121,13 @@ pub mod pallet {
 
 		/// A relayer was removed.
 		RelayerRemoved { relayer: DomainAddress },
+
+		/// An outbound message has been submitted.
+		OutboundMessageSubmitted {
+			sender: T::AccountId,
+			message: Vec<u8>,
+			domain: Domain,
+		},
 	}
 
 	/// Storage for domain routers.
@@ -406,6 +419,10 @@ pub mod pallet {
 
 	/// This pallet will be the `OutboundQueue` used by other pallets to send
 	/// outgoing messages.
+	///
+	/// NOTE - the sender provided as an argument is not used at the moment, we
+	/// are using the sender specified in the pallet config so that we can
+	/// ensure that the account is funded.
 	impl<T: Config> OutboundQueue for Pallet<T> {
 		type Destination = Domain;
 		type Message = T::Message;
@@ -421,9 +438,18 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			let router = DomainRouters::<T>::get(destination).ok_or(Error::<T>::RouterNotFound)?;
+			let router =
+				DomainRouters::<T>::get(destination.clone()).ok_or(Error::<T>::RouterNotFound)?;
 
-			router.send(sender, msg)
+			router.send(T::Sender::get(), msg.clone())?;
+
+			Self::deposit_event(Event::OutboundMessageSubmitted {
+				sender,
+				message: msg.serialize(),
+				domain: destination,
+			});
+
+			Ok(())
 		}
 	}
 }

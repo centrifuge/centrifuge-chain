@@ -60,6 +60,12 @@ type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_liquidity_pools_gateway::Config>::Message;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+/// Maximum size allowed for a byte representation of an Axelar EVM chain
+/// string, as found below:
+/// <https://docs.axelar.dev/dev/reference/mainnet-chain-names>
+/// <https://docs.axelar.dev/dev/reference/testnet-chain-names>
+pub const MAX_AXELAR_EVM_CHAIN_SIZE: u32 = 16;
+
 const FUNCTION_NAME: &str = "handle";
 const MESSAGE_PARAM: &str = "message";
 

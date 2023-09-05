@@ -21,6 +21,7 @@ mod tests;
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod gateway;
 pub mod migrations;
 pub mod oracle;
 pub mod xcm;

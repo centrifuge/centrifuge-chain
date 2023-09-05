@@ -8,6 +8,7 @@ use cfg_primitives::CFG;
 use cfg_traits::liquidity_pools::{Codec, Router};
 use cumulus_primitives_core::MultiLocation;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate};
+use lazy_static::lazy_static;
 use pallet_evm::AddressMapping;
 use sp_core::{bounded_vec, crypto::AccountId32, H160, H256, U256};
 use sp_runtime::{
@@ -17,6 +18,14 @@ use sp_runtime::{
 
 use super::mock::*;
 use crate::*;
+
+lazy_static! {
+	static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			"ethereum".as_bytes().to_vec()
+		)
+		.unwrap();
+}
 
 mod evm_router {
 	use util::*;
@@ -408,7 +417,7 @@ mod axelar_evm {
 							evm_domain: test_data.evm_domain,
 							_marker: Default::default(),
 						},
-						evm_chain: EVMChain::Ethereum,
+						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
 						_marker: Default::default(),
@@ -429,7 +438,7 @@ mod axelar_evm {
 							evm_domain: test_data.evm_domain,
 							_marker: Default::default(),
 						},
-						evm_chain: EVMChain::Ethereum,
+						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
 						_marker: Default::default(),
@@ -475,7 +484,7 @@ mod axelar_evm {
 							evm_domain: test_data.evm_domain,
 							_marker: Default::default(),
 						},
-						evm_chain: EVMChain::Ethereum,
+						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
 						_marker: Default::default(),
@@ -496,7 +505,7 @@ mod axelar_evm {
 							evm_domain: test_data.evm_domain,
 							_marker: Default::default(),
 						},
-						evm_chain: EVMChain::Ethereum,
+						evm_chain: TEST_EVM_CHAIN.clone(),
 						liquidity_pools_contract_address: test_data
 							.liquidity_pools_contract_address,
 						_marker: Default::default(),
@@ -525,7 +534,7 @@ mod axelar_xcm {
 			pub currency_id: CurrencyId,
 			pub dest: MultiLocation,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
-			pub axelar_target_chain: EVMChain,
+			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
 			pub msg: MessageMock,
@@ -543,7 +552,7 @@ mod axelar_xcm {
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
 			};
-			let axelar_target_chain = EVMChain::Ethereum;
+			let axelar_target_chain = TEST_EVM_CHAIN.clone();
 			let axelar_target_contract = H160::from_low_u64_be(1);
 
 			let sender: AccountId32 = [0; 32].into();
@@ -644,7 +653,7 @@ mod axelar_xcm {
 
 				let contract_call = get_axelar_encoded_msg(
 					test_data.msg.serialize(),
-					test_data.axelar_target_chain.clone(),
+					test_data.axelar_target_chain.clone().into_inner(),
 					test_data.axelar_target_contract,
 				)
 				.unwrap();
@@ -706,7 +715,7 @@ mod ethereum_xcm {
 			pub currency_id: CurrencyId,
 			pub dest: MultiLocation,
 			pub xcm_domain: XcmDomain<<Runtime as pallet_xcm_transactor::Config>::CurrencyId>,
-			pub axelar_target_chain: EVMChain,
+			pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 			pub axelar_target_contract: H160,
 			pub sender: AccountId32,
 			pub msg: MessageMock,
@@ -724,7 +733,7 @@ mod ethereum_xcm {
 				fee_currency: currency_id.clone(),
 				fee_per_second: 1u128,
 			};
-			let axelar_target_chain = EVMChain::Ethereum;
+			let axelar_target_chain = TEST_EVM_CHAIN.clone();
 			let axelar_target_contract = H160::from_low_u64_be(1);
 
 			let sender: AccountId32 = [0; 32].into();
