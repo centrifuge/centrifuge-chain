@@ -41,6 +41,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
 ]
 std = [
   "serde/std",
