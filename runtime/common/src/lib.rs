@@ -419,3 +419,162 @@ pub mod xcm_transactor {
 		}
 	}
 }
+
+pub mod origin {
+	use std::marker::PhantomData;
+
+	use cfg_primitives::AccountId;
+	use frame_support::{
+		dispatch::RawOrigin,
+		traits::{EitherOfDiverse, EnsureOrigin},
+	};
+	use frame_system::EnsureRoot;
+	use sp_core::Get;
+
+	type EnsureAccountOrRootOr<Account, O> =
+		EitherOfDiverse<EitherOfDiverse<EnsureAccount<Account>, EnsureRoot<AccountId>>, O>;
+
+	pub struct EnsureAccount<Account>(PhantomData<Account>);
+
+	impl<OuterOrigin, Account> EnsureOrigin<OuterOrigin> for EnsureAccount<Account>
+	where
+		OuterOrigin:
+			Into<Result<RawOrigin<AccountId>, OuterOrigin>> + From<RawOrigin<AccountId>> + Clone,
+		Account: Get<AccountId>,
+	{
+		type Success = ();
+
+		fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
+			o.into().and_then(|raw| match raw {
+				RawOrigin::Root | RawOrigin::None => Err(OuterOrigin::from(raw)),
+				RawOrigin::Signed(ref signer) => {
+					if signer == &Account::get() {
+						Ok(())
+					} else {
+						Err(OuterOrigin::from(raw))
+					}
+				}
+			})
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn try_successful_origin() -> Result<OuterOrigin, ()> {
+			Ok(RawOrigin::Signed(Account::get()).into())
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use cfg_primitives::HalfOfCouncil;
+		use sp_core::{crypto::AccountId32, parameter_types};
+
+		use super::*;
+
+		parameter_types! {
+			pub Admin: AccountId = AccountId::new([0u8;32]);
+		}
+
+		#[derive(Clone)]
+		enum OuterOrigin {
+			Raw(RawOrigin<AccountId>),
+			Council(pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>),
+			Dummy,
+		}
+
+		impl Into<Result<RawOrigin<AccountId>, OuterOrigin>> for OuterOrigin {
+			fn into(self) -> Result<RawOrigin<AccountId>, OuterOrigin> {
+				match self {
+					Self::Raw(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl
+			Into<
+				Result<
+					pallet_collective::RawOrigin<
+						sp_runtime::AccountId32,
+						pallet_collective::Instance1,
+					>,
+					OuterOrigin,
+				>,
+			> for OuterOrigin
+		{
+			fn into(
+				self,
+			) -> Result<
+				pallet_collective::RawOrigin<AccountId32, pallet_collective::Instance1>,
+				OuterOrigin,
+			> {
+				match self {
+					Self::Council(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl From<RawOrigin<AccountId>> for OuterOrigin {
+			fn from(value: RawOrigin<AccountId>) -> Self {
+				Self::Raw(value)
+			}
+		}
+
+		impl From<pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>> for OuterOrigin {
+			fn from(
+				value: pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>,
+			) -> Self {
+				Self::Council(value)
+			}
+		}
+
+		#[test]
+		fn works_with_account() {
+			let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
+		}
+
+		#[test]
+		fn fails_with_non_admin_account() {
+			let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
+		}
+
+		#[test]
+		fn works_with_half_of_council() {
+			let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(5, 9));
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
+		}
+
+		#[test]
+		fn fails_with_less_than_half_of_council() {
+			let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(4, 9));
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
+		}
+
+		#[test]
+		fn works_with_root() {
+			let origin = OuterOrigin::Raw(RawOrigin::Root);
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok())
+		}
+
+		#[test]
+		fn fails_with_none() {
+			let origin = OuterOrigin::Raw(RawOrigin::None);
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
+		}
+
+		#[test]
+		fn fails_with_dummy() {
+			let origin = OuterOrigin::Dummy;
+
+			assert!(EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err())
+		}
+	}
+}
