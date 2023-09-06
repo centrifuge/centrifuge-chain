@@ -72,7 +72,6 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 		decimals: u8,
-		price: Rate,
 	},
 	/// Update the price of a tranche token on the target domain.
 	///
@@ -80,6 +79,7 @@ where
 	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
+		currency: u128,
 		price: Rate,
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on
@@ -322,6 +322,35 @@ where
 		/// The EVM contract address
 		contract: [u8; 20],
 	},
+	/// Cancel the scheduled process for an EVM address to become rely-able by
+	/// the gateway. Intended to be used via governance to execute EVM spells.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	CancelUpgrade {
+		/// The EVM contract address
+		contract: [u8; 20],
+	},
+	/// Updates the name and symbol of a tranche token.
+	///
+	/// NOTE: We do not allow updating the decimals as this would require
+	/// migrating all associated balances.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	UpdateTrancheTokenMetadata {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		token_name: [u8; TOKEN_NAME_SIZE],
+		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+	},
+	/// Update the investment limit of the specified tranche token. Disables
+	/// investment if the amount is set to zero.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	UpdateTrancheInvestmentLimit {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		amount: Balance,
+	},
 }
 
 impl<
@@ -362,6 +391,9 @@ impl<
 			Self::CancelInvestOrder { .. } => 19,
 			Self::CancelRedeemOrder { .. } => 20,
 			Self::ScheduleUpgrade { .. } => 21,
+			Self::CancelUpgrade { .. } => 22,
+			Self::UpdateTrancheTokenMetadata { .. } => 23,
+			Self::UpdateTrancheInvestmentLimit { .. } => 24,
 		}
 	}
 }
@@ -397,7 +429,6 @@ impl<
 				token_name,
 				token_symbol,
 				decimals,
-				price,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -406,16 +437,21 @@ impl<
 					token_name.encode(),
 					token_symbol.encode(),
 					decimals.encode(),
-					encode_be(price),
 				],
 			),
 			Message::UpdateTrancheTokenPrice {
 				pool_id,
 				tranche_id,
+				currency,
 				price,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					encode_be(currency),
+					encode_be(price),
+				],
 			),
 			Message::UpdateMember {
 				pool_id,
@@ -654,6 +690,31 @@ impl<
 			Message::ScheduleUpgrade { contract } => {
 				encoded_message(self.call_type(), vec![contract.to_vec()])
 			}
+			Message::CancelUpgrade { contract } => {
+				encoded_message(self.call_type(), vec![contract.to_vec()])
+			}
+			Message::UpdateTrancheTokenMetadata {
+				pool_id,
+				tranche_id,
+				token_name,
+				token_symbol,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					token_name.encode(),
+					token_symbol.encode(),
+				],
+			),
+			Message::UpdateTrancheInvestmentLimit {
+				pool_id,
+				tranche_id,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), tranche_id.encode(), encode_be(amount)],
+			),
 		}
 	}
 
@@ -679,11 +740,11 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				decimals: decode::<1, _, _>(input)?,
-				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			5 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			6 => Ok(Self::UpdateMember {
@@ -790,6 +851,20 @@ impl<
 			}),
 			21 => Ok(Self::ScheduleUpgrade {
 				contract: decode::<20, _, _>(input)?,
+			}),
+			22 => Ok(Self::CancelUpgrade {
+				contract: decode::<20, _, _>(input)?,
+			}),
+			23 => Ok(Self::UpdateTrancheTokenMetadata {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
+				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+			}),
+			24 => Ok(Self::UpdateTrancheInvestmentLimit {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -933,9 +1008,8 @@ mod tests {
 				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 				decimals: 15,
-				price: Rate::one(),
 			},
-			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f00000000033b2e3c9fd0803ce8000000",
+			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f",
 		)
 	}
 
@@ -945,9 +1019,10 @@ mod tests {
 			LiquidityPoolsMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
+				currency: TOKEN_ID,
 				price: Rate::one(),
 			},
-			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000033b2e3c9fd0803ce8000000",
 		)
 	}
 
@@ -1195,6 +1270,41 @@ mod tests {
 				contract: default_address_20(),
 			},
 			"151231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
+	fn cancel_upgrade() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelUpgrade {
+				contract: default_address_20(),
+			},
+			"161231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
+	fn update_tranche_token_metadata() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::UpdateTrancheTokenMetadata {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+			},
+			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
+		)
+	}
+
+	#[test]
+	fn update_tranche_investment_limit() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::UpdateTrancheInvestmentLimit {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				amount: AMOUNT,
+			},
+			"180000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 

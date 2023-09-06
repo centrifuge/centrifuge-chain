@@ -436,14 +436,11 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id = Self::derive_invest_id(pool_id, tranche_id)?;
-			let metadata = T::AssetRegistry::metadata(&currency_id.into())
+			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?
-				.price;
 
 			// Send the message to the domain
 			T::OutboundQueue::submit(
@@ -455,34 +452,54 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
-					price,
 				},
 			)?;
 
 			Ok(())
 		}
 
-		/// Update the price of a tranche token
+		/// Update the price of a tranche token.
+		///
+		/// By ensuring that registered currency location matches the specified
+		/// domain, this call origin can be permissionless.
+		///
+		/// The `currency_id` parameter is necessary for the EVM side.
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
 		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			domain: Domain,
+			currency_id: CurrencyIdOf<T>,
+			destination: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
+			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
+			// currencies, this price must be first converted into the currency_id and then
+			// re-denominated to 18 decimals (i.e. `BalanceRatio` precision)
 			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;
 
+			// Check that the registered asset location matches the destination
+			match Self::try_get_wrapped_token(&currency_id)? {
+				LiquidityPoolsWrappedToken::EVM { chain_id, .. } => {
+					ensure!(
+						Domain::EVM(chain_id) == destination,
+						Error::<T>::InvalidDomain
+					);
+				}
+			}
+			let currency = Self::try_get_general_index(currency_id)?;
+
 			T::OutboundQueue::submit(
 				who,
-				domain,
+				destination,
 				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
+					currency,
 					price,
 				},
 			)?;
@@ -695,7 +712,7 @@ pub mod pallet {
 			tranche_id: T::TrancheId,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
-			// TODO(subsequent PR): In the future, should be permissioned by trait which
+			// TODO(future): In the future, should be permissioned by trait which
 			// does not exist yet.
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
@@ -746,6 +763,75 @@ pub mod pallet {
 				Message::ScheduleUpgrade { contract },
 			)
 		}
+
+		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(11)]
+		pub fn cancel_upgrade(
+			origin: OriginFor<T>,
+			evm_chain_id: EVMChainId,
+			contract: [u8; 20],
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			T::OutboundQueue::submit(
+				T::TreasuryAccount::get(),
+				Domain::EVM(evm_chain_id),
+				Message::CancelUpgrade { contract },
+			)
+		}
+
+		/// Update the tranche token name and symbol on the specified domain
+		///
+		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
+		/// the pool admin to have updated the tranche tokens metadata there
+		/// beforehand.
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(12)]
+		pub fn update_tranche_token_metadata(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			domain: Domain,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			let metadata = T::AssetRegistry::metadata(&investment_id.into())
+				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
+			#[cfg(feature = "std")]
+			{
+				dbg!(&metadata);
+			}
+			let token_name = vec_to_fixed_array(metadata.name);
+			let token_symbol = vec_to_fixed_array(metadata.symbol);
+
+			T::OutboundQueue::submit(
+				T::TreasuryAccount::get(),
+				domain,
+				Message::UpdateTrancheTokenMetadata {
+					pool_id,
+					tranche_id,
+					token_name,
+					token_symbol,
+				},
+			)
+		}
+
+		// TODO(@future): pub fn update_tranche_investment_limit
 	}
 
 	impl<T: Config> Pallet<T> {

@@ -88,7 +88,7 @@ fn add_pool() {
 			LiquidityPools::add_pool(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				Domain::EVM(1284),
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::PoolNotFound
 		);
@@ -101,7 +101,7 @@ fn add_pool() {
 			LiquidityPools::add_pool(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				Domain::EVM(1284),
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::NotPoolAdmin
 		);
@@ -110,7 +110,7 @@ fn add_pool() {
 		assert_ok!(LiquidityPools::add_pool(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
-			Domain::EVM(1284),
+			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 		));
 	});
 }
@@ -140,7 +140,7 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
 				nonexistent_tranche,
-				Domain::EVM(1284),
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::TrancheNotFound
 		);
@@ -152,7 +152,7 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
 				tranche_id,
-				Domain::EVM(1284),
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::NotPoolAdmin
 		);
@@ -163,8 +163,21 @@ fn add_tranche() {
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
 			tranche_id,
-			Domain::EVM(1284),
+			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 		));
+
+		// Edge case: Should throw if tranche exists but metadata does not exist
+		let tranche_currency_id = CurrencyId::Tranche(pool_id, tranche_id);
+		orml_asset_registry::Metadata::<DevelopmentRuntime>::remove(tranche_currency_id);
+		assert_noop!(
+			LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				tranche_id,
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
+			),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::TrancheMetadataNotFound
+		);
 	});
 }
 
@@ -181,7 +194,7 @@ fn update_member() {
 
 		// Finally, verify we can call LiquidityPools::add_tranche successfully
 		// when given a valid pool + tranche id pair.
-		let new_member = DomainAddress::EVM(1284, [3; 20]);
+		let new_member = DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [3; 20]);
 		let valid_until = DEFAULT_VALIDITY;
 
 		// Make ALICE the MembersListAdmin of this Pool
@@ -240,7 +253,7 @@ fn update_member() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
 				tranche_id,
-				DomainAddress::EVM(1284, [9; 20]),
+				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [9; 20]),
 				valid_until,
 			),
 			pallet_liquidity_pools::Error::<development_runtime::Runtime>::InvestorDomainAddressNotAMember,
@@ -254,17 +267,17 @@ fn update_token_price() {
 	Development::execute_with(|| {
 		setup_pre_requirements();
 		let decimals: u8 = 15;
-
-		// Now create the pool
+		let currency_id = AUSD_CURRENCY_ID;
 		let pool_id = DEFAULT_POOL_ID;
 		create_ausd_pool(pool_id);
+		enable_liquidity_pool_transferability(currency_id);
 
-		// Verify it now works
 		assert_ok!(LiquidityPools::update_token_price(
-			RuntimeOrigin::signed(ALICE.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
 			default_tranche_id(pool_id),
-			Domain::EVM(1284),
+			currency_id,
+			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 		));
 	});
 }
@@ -639,5 +652,108 @@ fn schedule_upgrade() {
 			MOONBEAM_EVM_CHAIN_ID,
 			[7; 20]
 		));
+	});
+}
+
+#[test]
+fn cancel_upgrade_upgrade() {
+	TestNet::reset();
+	Development::execute_with(|| {
+		setup_pre_requirements();
+
+		// Only Root can call `schedule_upgrade`
+		assert_noop!(
+			LiquidityPools::cancel_upgrade(
+				RuntimeOrigin::signed(BOB.into()),
+				MOONBEAM_EVM_CHAIN_ID,
+				[7; 20]
+			),
+			BadOrigin
+		);
+
+		// Need to burn default minted balance from Treasury
+		OrmlTokens::burn_from(
+			GLMR_CURRENCY_ID,
+			&TreasuryAccount::get(),
+			DEFAULT_BALANCE_GLMR * dollar(18),
+		);
+
+		// Failing because the treasury has no funds
+		assert_noop!(
+			LiquidityPools::cancel_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
+			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
+		);
+
+		// The treasury needs GLRM to cover the fees of sending
+		// this message
+		OrmlTokens::deposit(
+			GLMR_CURRENCY_ID,
+			&TreasuryAccount::get(),
+			DEFAULT_BALANCE_GLMR * dollar(18),
+		);
+
+		// Now it finally works (even though nothing was scheduled which we don't check
+		// on the local domain)
+		assert_ok!(LiquidityPools::cancel_upgrade(
+			RuntimeOrigin::root(),
+			MOONBEAM_EVM_CHAIN_ID,
+			[7; 20]
+		));
+	});
+}
+
+#[test]
+fn update_tranche_token_metadata() {
+	TestNet::reset();
+	Development::execute_with(|| {
+		setup_pre_requirements();
+		let decimals: u8 = 15;
+		let pool_id = DEFAULT_POOL_ID;
+		// NOTE: Default pool admin is BOB
+		create_ausd_pool(pool_id);
+
+		// Missing tranche token should throw
+		let nonexistent_tranche = [71u8; 16];
+		assert_noop!(
+			LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id,
+				nonexistent_tranche,
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
+			),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::TrancheNotFound
+		);
+		let tranche_id = default_tranche_id(pool_id);
+
+		// Should throw if called by anything but `PoolAdmin`
+		assert_noop!(
+			LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id,
+				tranche_id,
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
+			),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::NotPoolAdmin
+		);
+
+		assert_ok!(LiquidityPools::update_tranche_token_metadata(
+			RuntimeOrigin::signed(BOB.into()),
+			pool_id,
+			tranche_id,
+			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
+		));
+
+		// Edge case: Should throw if tranche exists but metadata does not exist
+		let tranche_currency_id = CurrencyId::Tranche(pool_id, tranche_id);
+		orml_asset_registry::Metadata::<DevelopmentRuntime>::remove(tranche_currency_id);
+		assert_noop!(
+			LiquidityPools::update_tranche_token_metadata(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				tranche_id,
+				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
+			),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::TrancheMetadataNotFound
+		);
 	});
 }
