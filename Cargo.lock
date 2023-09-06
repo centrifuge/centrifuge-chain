@@ -214,7 +214,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "liquidity-pools-gateway-routers",
  "log",
  "moonbeam-relay-encoder",
@@ -1078,7 +1078,7 @@ dependencies = [
  "frame-system",
  "futures",
  "getrandom 0.2.10",
- "hex-literal 0.2.2",
+ "hex-literal",
  "jsonrpsee",
  "log",
  "pallet-anchors",
@@ -1160,7 +1160,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "liquidity-pools-gateway-routers",
  "log",
  "moonbeam-relay-encoder",
@@ -1359,7 +1359,7 @@ dependencies = [
  "cfg-utils",
  "frame-support",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "orml-asset-registry",
  "parity-scale-codec 3.6.4",
  "scale-info",
@@ -2681,7 +2681,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.20"
+version = "0.10.21"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2708,7 +2708,7 @@ dependencies = [
  "frame-try-runtime",
  "getrandom 0.2.10",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "liquidity-pools-gateway-routers",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
@@ -4455,28 +4455,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hex-literal"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70693199b3cf4552f3fa720b54163927a3ebed2aef240efaf556033ab336a11"
-dependencies = [
- "hex-literal-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "hex-literal"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hex-literal-impl"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59448fc2f82a5fb6907f78c3d69d843e82ff5b051923313cc4438cb0c7b745a8"
-dependencies = [
- "proc-macro-hack",
-]
 
 [[package]]
 name = "hkdf"
@@ -5066,7 +5047,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "kusama-runtime-constants",
  "log",
  "pallet-authority-discovery",
@@ -9671,7 +9652,7 @@ version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=097ffd245c42aeff28cf80f8a3568e1bee2e7da7#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "bitvec 1.0.1",
- "hex-literal 0.3.4",
+ "hex-literal",
  "parity-scale-codec 3.6.4",
  "polkadot-core-primitives",
  "polkadot-parachain",
@@ -9737,7 +9718,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -9941,7 +9922,7 @@ dependencies = [
  "frame-support",
  "frame-system-rpc-runtime-api",
  "futures",
- "hex-literal 0.3.4",
+ "hex-literal",
  "kusama-runtime",
  "kvdb",
  "kvdb-rocksdb",
@@ -10279,12 +10260,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -10840,7 +10815,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -11001,7 +10976,7 @@ dependencies = [
  "fp-self-contained",
  "frame-support",
  "frame-system",
- "hex-literal 0.2.2",
+ "hex-literal",
  "log",
  "orml-asset-registry",
  "orml-oracle",
@@ -11010,6 +10985,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-collective",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
@@ -15429,7 +15405,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
