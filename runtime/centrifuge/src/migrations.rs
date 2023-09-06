@@ -98,7 +98,7 @@ mod asset_registry {
 			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 		)> {
 			let mut gk = [0u8; 32];
-			gk[..2].copy_from_slice(b"01");
+			gk[1] = 1;
 
 			vec![
 				(
@@ -281,6 +281,9 @@ mod asset_registry {
 			let mut gk = [0u8; 32];
 			gk[..gk_bytes.len()].copy_from_slice(gk_bytes);
 
+			let mut gk_native = [0u8; 32];
+			gk_native[1] = 1;
+
 			// 35fd988a3d77251b19d5d379a4775321
 			let tranche_id_bytes = &[
 				53u8, 253u8, 152u8, 138u8, 61u8, 119u8, 37u8, 27u8, 25u8, 213u8, 211u8, 121u8,
@@ -303,7 +306,7 @@ mod asset_registry {
 								Parachain(ParachainInfo::parachain_id().into()),
 								GeneralKey {
 									length: 2,
-									data: gk,
+									data: gk_native,
 								},
 							),
 						))),

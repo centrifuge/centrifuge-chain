@@ -121,7 +121,7 @@ mod asset_registry {
 			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 		)> {
 			let mut gk = [0u8; 32];
-			gk[..2].copy_from_slice(b"01");
+			gk[1] = 1;
 
 			// 0x0081
 			let mut gk_acala = [0u8; 32];
