@@ -430,10 +430,7 @@ pub mod origin {
 	pub type EnsureAccountOrRoot<Account> =
 		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>;
 
-	pub type EnsureAccountOrRootOr<Account, O> = EitherOfDiverse<
-		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>,
-		O,
-	>;
+	pub type EnsureAccountOrRootOr<Account, O> = EitherOfDiverse<EnsureAccountOrRoot<Account>, O>;
 
 	pub struct AdminOnly<Account>(sp_std::marker::PhantomData<Account>);
 
@@ -460,13 +457,13 @@ pub mod origin {
 
 		#[derive(Clone)]
 		enum OuterOrigin {
-			Raw(RawOrigin<AccountId>),
+			Raw(frame_system::RawOrigin<AccountId>),
 			Council(pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>),
 			Dummy,
 		}
 
-		impl Into<Result<RawOrigin<AccountId>, OuterOrigin>> for OuterOrigin {
-			fn into(self) -> Result<RawOrigin<AccountId>, OuterOrigin> {
+		impl Into<Result<frame_system::RawOrigin<AccountId>, OuterOrigin>> for OuterOrigin {
+			fn into(self) -> Result<frame_system::RawOrigin<AccountId>, OuterOrigin> {
 				match self {
 					Self::Raw(raw) => Ok(raw),
 					_ => Err(self),
@@ -498,8 +495,8 @@ pub mod origin {
 			}
 		}
 
-		impl From<RawOrigin<AccountId>> for OuterOrigin {
-			fn from(value: RawOrigin<AccountId>) -> Self {
+		impl From<frame_system::RawOrigin<AccountId>> for OuterOrigin {
+			fn from(value: frame_system::RawOrigin<AccountId>) -> Self {
 				Self::Raw(value)
 			}
 		}
@@ -517,7 +514,7 @@ pub mod origin {
 
 			#[test]
 			fn works_with_account() {
-				let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
 
 				assert!(
 					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
@@ -526,7 +523,8 @@ pub mod origin {
 
 			#[test]
 			fn fails_with_non_admin_account() {
-				let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
 
 				assert!(
 					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
@@ -553,7 +551,7 @@ pub mod origin {
 
 			#[test]
 			fn works_with_root() {
-				let origin = OuterOrigin::Raw(RawOrigin::Root);
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
 
 				assert!(
 					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
@@ -562,7 +560,7 @@ pub mod origin {
 
 			#[test]
 			fn fails_with_none() {
-				let origin = OuterOrigin::Raw(RawOrigin::None);
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
 
 				assert!(
 					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
@@ -584,28 +582,29 @@ pub mod origin {
 
 			#[test]
 			fn works_with_account() {
-				let origin = OuterOrigin::Raw(RawOrigin::Signed(Admin::get()));
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
 			}
 
 			#[test]
 			fn fails_with_non_admin_account() {
-				let origin = OuterOrigin::Raw(RawOrigin::Signed(AccountId::from([1u8; 32])));
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
 
 			#[test]
 			fn works_with_root() {
-				let origin = OuterOrigin::Raw(RawOrigin::Root);
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
 			}
 
 			#[test]
 			fn fails_with_none() {
-				let origin = OuterOrigin::Raw(RawOrigin::None);
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
