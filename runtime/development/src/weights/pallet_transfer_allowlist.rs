@@ -94,6 +94,14 @@ impl<T: frame_system::Config> pallet_transfer_allowlist::WeightInfo for WeightIn
 	}
 	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
 	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	fn remove_transfer_allowance_missing_allowance() -> Weight {
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
 	fn remove_transfer_allowance_delay_present() -> Weight {
 		// Minimum execution time: 26_000 nanoseconds.
 		Weight::from_ref_time(27_000_000)
