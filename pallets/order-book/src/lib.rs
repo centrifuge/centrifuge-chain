@@ -362,9 +362,27 @@ pub mod pallet {
 			price: T::SellRatio,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			Self::place_order(
-				account_id, asset_in, asset_out, buy_amount, price, buy_amount,
+
+			Self::inner_place_order(
+				account_id,
+				asset_in,
+				asset_out,
+				buy_amount,
+				price,
+				buy_amount,
+				|order| {
+					let min_amount = TradingPair::<T>::get(&asset_in, &asset_out)?;
+					Self::is_valid_order(
+						order.asset_in_id,
+						order.asset_out_id,
+						order.buy_amount,
+						order.max_sell_rate,
+						order.min_fullfillment_amount,
+						min_amount,
+					)
+				},
 			)?;
+
 			Ok(())
 		}
 
@@ -378,13 +396,29 @@ pub mod pallet {
 			price: T::SellRatio,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			let order = <Orders<T>>::get(order_id)?;
-			ensure!(
-				account_id == order.placing_account,
-				Error::<T>::Unauthorised
-			);
-			<Self as TokenSwaps<T::AccountId>>::update_order(
-				account_id, order_id, buy_amount, price, buy_amount,
+			Self::inner_update_order(
+				account_id.clone(),
+				order_id,
+				buy_amount,
+				price,
+				buy_amount,
+				|order| {
+					ensure!(
+						account_id == order.placing_account,
+						Error::<T>::Unauthorised
+					);
+
+					let min_amount =
+						TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
+					Self::is_valid_order(
+						order.asset_in_id,
+						order.asset_out_id,
+						order.buy_amount,
+						order.max_sell_rate,
+						order.min_fullfillment_amount,
+						min_amount,
+					)
+				},
 			)
 		}
 
@@ -584,27 +618,15 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
-		type Balance = T::Balance;
-		type CurrencyId = T::AssetCurrencyId;
-		type OrderId = T::OrderIdNonce;
-		type SellRatio = T::SellRatio;
-
-		/// Creates an order.
-		/// Verify funds available in, and reserve for  both chains fee currency
-		/// for storage fee, and amount of outgoing currency as determined by
-		/// the buy amount and price.
-		fn place_order(
-			account: T::AccountId,
+	impl<T: Config> Pallet<T> {
+		fn is_valid_order(
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 			min_fullfillment_amount: T::Balance,
-		) -> Result<Self::OrderId, DispatchError> {
+			min_order_amount: T::Balance,
+		) -> DispatchResult {
 			ensure!(currency_in != currency_out, Error::<T>::ConflictingAssetIds);
 
 			ensure!(
@@ -621,107 +643,31 @@ pub mod pallet {
 				Error::<T>::InvalidMaxPrice
 			);
 
-			<OrderIdNonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::OrderIdNonce::one())?;
-				Ok::<_, DispatchError>(())
-			})?;
-
 			ensure!(
 				buy_amount >= min_fullfillment_amount,
 				Error::<T>::InvalidBuyAmount
 			);
 
-			Self::is_valid_min_order(currency_in, currency_out, buy_amount)?;
-
-			let max_sell_amount =
-				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
-
-			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
-
-			let order_id = <OrderIdNonceStore<T>>::get();
-			let new_order = Order {
-				order_id,
-				placing_account: account.clone(),
-				asset_in_id: currency_in,
-				asset_out_id: currency_out,
-				buy_amount,
-				max_sell_rate: sell_rate_limit,
-				initial_buy_amount: buy_amount,
-				min_fullfillment_amount,
-				max_sell_amount,
-			};
-
-			<AssetPairOrders<T>>::try_mutate(currency_in, currency_out, |orders| {
-				orders
-					.try_push(order_id)
-					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
-			})?;
-
-			<Orders<T>>::insert(order_id, new_order.clone());
-			<UserOrders<T>>::insert(&account, order_id, new_order);
-			Self::deposit_event(Event::OrderCreated {
-				creator_account: account,
-				sell_rate_limit,
-				order_id,
-				buy_amount,
-				currency_in,
-				currency_out,
-				min_fullfillment_amount,
-			});
-			Ok(order_id)
-		}
-
-		/// Cancel an existing order.
-		/// Unreserve currency reserved for trade as well storage fee.
-		fn cancel_order(order: Self::OrderId) -> DispatchResult {
-			let order = <Orders<T>>::get(order)?;
-			let account_id = order.placing_account.clone();
-
-			Self::unreserve_order(&order)?;
-			Self::remove_order(order.order_id)?;
-			Self::deposit_event(Event::OrderCancelled {
-				account: account_id,
-				order_id: order.order_id,
-			});
+			ensure!(
+				buy_amount >= min_order_amount,
+				Error::<T>::InsufficientOrderSize
+			);
 
 			Ok(())
 		}
 
-		/// Update an existing order.
-		/// Update outgoing asset currency reserved to match new amount or price
-		/// if either have changed.
-		fn update_order(
+		fn inner_update_order(
 			account: T::AccountId,
-			order_id: Self::OrderId,
+			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 			min_fullfillment_amount: T::Balance,
+			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
 		) -> DispatchResult {
-			ensure!(
-				buy_amount != T::Balance::zero(),
-				Error::<T>::InvalidBuyAmount
-			);
-
-			ensure!(
-				sell_rate_limit != T::SellRatio::zero(),
-				Error::<T>::InvalidMaxPrice
-			);
-
-			ensure!(
-				min_fullfillment_amount != <T::Balance>::zero(),
-				Error::<T>::InvalidMinimumFulfillment
-			);
-
-			ensure!(
-				buy_amount >= min_fullfillment_amount,
-				Error::<T>::InvalidBuyAmount
-			);
-
 			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
 				|maybe_order| -> Result<T::Balance, DispatchError> {
 					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
-					Self::is_valid_min_order(order.asset_in_id, order.asset_out_id, buy_amount)?;
 
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,
@@ -758,6 +704,8 @@ pub mod pallet {
 					order.min_fullfillment_amount = min_fullfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 
+					validate(order)?;
+
 					Ok(max_sell_amount)
 				},
 			)?;
@@ -783,6 +731,155 @@ pub mod pallet {
 			});
 
 			Ok(())
+		}
+
+		fn inner_place_order(
+			account: T::AccountId,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
+			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
+		) -> Result<T::OrderIdNonce, DispatchError> {
+			<OrderIdNonceStore<T>>::try_mutate(|n| {
+				*n = n.ensure_add(T::OrderIdNonce::one())?;
+				Ok::<_, DispatchError>(())
+			})?;
+
+			let max_sell_amount =
+				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
+
+			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
+
+			let order_id = <OrderIdNonceStore<T>>::get();
+			let new_order = Order {
+				order_id,
+				placing_account: account.clone(),
+				asset_in_id: currency_in,
+				asset_out_id: currency_out,
+				buy_amount,
+				max_sell_rate: sell_rate_limit,
+				initial_buy_amount: buy_amount,
+				min_fullfillment_amount,
+				max_sell_amount,
+			};
+
+			validate(&new_order)?;
+
+			<AssetPairOrders<T>>::try_mutate(currency_in, currency_out, |orders| {
+				orders
+					.try_push(order_id)
+					.map_err(|_| Error::<T>::AssetPairOrdersOverflow)
+			})?;
+
+			<Orders<T>>::insert(order_id, new_order.clone());
+			<UserOrders<T>>::insert(&account, order_id, new_order);
+			Self::deposit_event(Event::OrderCreated {
+				creator_account: account,
+				sell_rate_limit,
+				order_id,
+				buy_amount,
+				currency_in,
+				currency_out,
+				min_fullfillment_amount,
+			});
+
+			Ok(order_id)
+		}
+	}
+
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
+	where
+		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
+	{
+		type Balance = T::Balance;
+		type CurrencyId = T::AssetCurrencyId;
+		type OrderId = T::OrderIdNonce;
+		type SellRatio = T::SellRatio;
+
+		/// Creates an order.
+		/// Verify funds available in, and reserve for  both chains fee currency
+		/// for storage fee, and amount of outgoing currency as determined by
+		/// the buy amount and price.
+		fn place_order(
+			account: T::AccountId,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
+		) -> Result<Self::OrderId, DispatchError> {
+			Self::inner_place_order(
+				account,
+				currency_in,
+				currency_out,
+				buy_amount,
+				sell_rate_limit,
+				min_fullfillment_amount,
+				|order| {
+					// We only check if the trading pair exists not if the minimum amount is
+					// reached.
+					let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
+					Self::is_valid_order(
+						order.asset_in_id,
+						order.asset_out_id,
+						order.buy_amount,
+						order.max_sell_rate,
+						order.min_fullfillment_amount,
+						T::Balance::zero(),
+					)
+				},
+			)
+		}
+
+		/// Cancel an existing order.
+		/// Unreserve currency reserved for trade as well storage fee.
+		fn cancel_order(order: Self::OrderId) -> DispatchResult {
+			let order = <Orders<T>>::get(order)?;
+			let account_id = order.placing_account.clone();
+
+			Self::unreserve_order(&order)?;
+			Self::remove_order(order.order_id)?;
+			Self::deposit_event(Event::OrderCancelled {
+				account: account_id,
+				order_id: order.order_id,
+			});
+
+			Ok(())
+		}
+
+		/// Update an existing order.
+		/// Update outgoing asset currency reserved to match new amount or price
+		/// if either have changed.
+		fn update_order(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+			min_fullfillment_amount: T::Balance,
+		) -> DispatchResult {
+			Self::inner_update_order(
+				account,
+				order_id,
+				buy_amount,
+				sell_rate_limit,
+				min_fullfillment_amount,
+				|order| {
+					// We only check if the trading pair exists not if the minimum amount is
+					// reached.
+					let _min_amount =
+						TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
+					Self::is_valid_order(
+						order.asset_in_id,
+						order.asset_out_id,
+						order.buy_amount,
+						order.max_sell_rate,
+						order.min_fullfillment_amount,
+						T::Balance::zero(),
+					)
+				},
+			)
 		}
 
 		/// Check whether an order is active.

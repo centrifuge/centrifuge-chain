@@ -14,13 +14,13 @@ use cfg_traits::liquidity_pools::Codec;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchResult;
 use scale_info::TypeInfo;
-use sp_core::H160;
+use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
 
 use crate::{
-	axelar_evm::get_axelar_encoded_msg, AccountIdOf, CurrencyIdOf, EVMChain, MessageOf, XCMRouter,
-	XcmDomain,
+	axelar_evm::get_axelar_encoded_msg, AccountIdOf, CurrencyIdOf, MessageOf, XCMRouter, XcmDomain,
+	MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 
 pub type AxelarXcmDomain<T> = XcmDomain<CurrencyIdOf<T>>;
@@ -35,7 +35,7 @@ where
 		+ pallet_liquidity_pools_gateway::Config,
 {
 	pub router: XCMRouter<T>,
-	pub axelar_target_chain: EVMChain,
+	pub axelar_target_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub axelar_target_contract: H160,
 	pub _marker: PhantomData<T>,
 }
@@ -56,7 +56,7 @@ where
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let contract_call = get_axelar_encoded_msg(
 			msg.serialize(),
-			self.axelar_target_chain.clone(),
+			self.axelar_target_chain.clone().into_inner(),
 			self.axelar_target_contract,
 		)
 		.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;

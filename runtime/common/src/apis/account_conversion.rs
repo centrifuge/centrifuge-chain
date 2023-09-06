@@ -9,18 +9,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use codec::Codec;
+use sp_api::decl_runtime_apis;
+use xcm::v3::MultiLocation;
 
-//! Runtime apis useful in the Centrifuge ecosystem
-pub use account_conversion::*;
-pub use anchors::*;
-pub use investments::*;
-pub use loans::*;
-pub use pools::*;
-pub use rewards::*;
-
-mod account_conversion;
-mod anchors;
-mod investments;
-mod loans;
-mod pools;
-mod rewards;
+decl_runtime_apis! {
+	/// Runtime Api for the pallet-anchors, to be implemented
+	/// by and for a specific runtime that uses that pallet.
+	pub trait AccountConversionApi<AccountId>
+	where
+		AccountId: Codec
+	{
+		fn conversion_of(location: MultiLocation) -> Option<AccountId>;
+	}
+}

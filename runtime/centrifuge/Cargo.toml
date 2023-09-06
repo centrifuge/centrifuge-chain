@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.19"
+version = "0.10.20"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -11,7 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.3.4", optional = true }
+hex-literal = { version = "0.3.4", default-features = false }
 log = { version = "0.4.17", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119", optional = true }
@@ -55,7 +55,7 @@ sp-version = { git = "https://github.com/paritytech/substrate", default-features
 # frame dependencies
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = ["tuples-96"], branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -101,9 +101,11 @@ pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-f
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 # Our pallets and modules
+axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
+liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
@@ -112,10 +114,13 @@ pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
@@ -126,6 +131,11 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 runtime-common = { path = "../common", default-features = false }
+
+# LiquidityPools 3rd-party dependencies
+moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 # bridge pallets
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
@@ -160,6 +170,8 @@ std = [
   "frame-system-rpc-runtime-api/std",
   "frame-system/std",
   "frame-try-runtime/std",
+  "liquidity-pools-gateway-routers/std",
+  "moonbeam-relay-encoder/std",
   "orml-asset-registry/std",
   "orml-tokens/std",
   "orml-traits/std",
@@ -184,6 +196,7 @@ std = [
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
+  "pallet-ethereum-transaction/std",
   "pallet-evm/std",
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
@@ -191,6 +204,8 @@ std = [
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
+  "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-keystore/std",
@@ -216,6 +231,7 @@ std = [
   "pallet-utility/std",
   "pallet-vesting/std",
   "pallet-xcm/std",
+  "pallet-xcm-transactor/std",
   "parachain-info/std",
   "polkadot-parachain/std",
   "polkadot-runtime-common/std",
@@ -236,7 +252,9 @@ std = [
   "sp-version/std",
   "xcm-builder/std",
   "xcm-executor/std",
+  "xcm-primitives/std",
   "xcm/std",
+  "axelar-gateway-precompile/std",
 ]
 
 runtime-benchmarks = [
@@ -251,7 +269,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "hex-literal",
+  "liquidity-pools-gateway-routers/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
@@ -268,11 +286,14 @@ runtime-benchmarks = [
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
+  "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
@@ -293,14 +314,17 @@ runtime-benchmarks = [
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
   "polkadot-runtime-common/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm-builder/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
   "pallet-claims/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
+  "axelar-gateway-precompile/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -318,6 +342,7 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "frame-try-runtime",
+  "liquidity-pools-gateway-routers/try-runtime",
   "orml-asset-registry/try-runtime",
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
@@ -340,12 +365,15 @@ try-runtime = [
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
   "pallet-evm/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
+  "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-keystore/try-runtime",
@@ -370,10 +398,12 @@ try-runtime = [
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
   "parachain-info/try-runtime",
   "polkadot-runtime-common/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
