@@ -149,12 +149,6 @@ pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
 	/// * If investment: Payment currency
 	/// * If redemption: Tranche tokens
 	pub amount_payment: Balance,
-
-	/// The amount which has not been processed as well plus the processed part
-	/// which has not been claimed yet.
-	/// * If investment: Payment currency
-	/// * If redemption: Tranche tokens
-	pub amount_remaining: Balance,
 }
 
 /// A representation of an investment identifier and the corresponding owner.

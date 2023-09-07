@@ -423,6 +423,225 @@ mod same_currencies {
 	}
 
 	#[test]
+	fn partially_collect_investment_for_through_investments() {
+		TestNet::reset();
+		Development::execute_with(|| {
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let invest_amount = 100_000_000;
+			let investor: AccountId =
+				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+			let currency_id = AUSD_CURRENCY_ID;
+			let currency_decimals = currency_decimals::AUSD;
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+			create_currency_pool(pool_id, currency_id, currency_decimals.into());
+			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			enable_liquidity_pool_transferability(currency_id);
+			let investment_currency_id: CurrencyId = default_investment_id().into();
+
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+
+			// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
+			// tokens
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			assert_ok!(Investments::invest_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::from_percent(50),
+					price: Rate::checked_from_rational(1, 4).unwrap(),
+				}
+			));
+			// assert_eq!(
+			// 	OrmlTokens::total_issuance(investment_currency_id),
+			// 	invest_amount / 8
+			//  invest_amount
+			// );
+
+			// Pre collect assertions
+			assert!(Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::InvestmentOngoing { invest_amount }
+			);
+
+			// Collecting through Investments should denote amounts and transition
+			// state
+			assert_ok!(Investments::collect_investments_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			// The collected amount is only transferred to the user if they send a
+			// `CollectInvest` message
+			assert_eq!(
+				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				CollectedAmount {
+					amount_collected: invest_amount / 2 * 4,
+					amount_payment: invest_amount / 2,
+				}
+			);
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::InvestmentOngoing {
+					invest_amount: invest_amount / 2
+				}
+			);
+			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
+			// domain)
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &investor),
+				invest_amount * 2
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				0
+			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![0],
+						who: investor.clone(),
+						collection: InvestCollection::<Balance> {
+							payout_investment_invest: invest_amount * 2,
+							remaining_investment_invest: invest_amount / 2,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+
+			// Process rest of investment at 50% rate (1 pool currency = 2 tranche tokens)
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			assert_ok!(Investments::invest_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice::<Rate> {
+					of_amount: Perquintill::one(),
+					price: Rate::checked_from_rational(1, 2).unwrap(),
+				}
+			));
+			// Order should have been cleared by fulfilling investment
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+					default_investment_id(),
+				)
+				.amount,
+				0
+			);
+			assert_eq!(
+				OrmlTokens::total_issuance(investment_currency_id),
+				invest_amount * 3
+			);
+
+			// Collect remainder through Investments
+			assert_ok!(Investments::collect_investments_for(
+				RuntimeOrigin::signed(ALICE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				CollectedAmount {
+					amount_collected: invest_amount * 3,
+					amount_payment: invest_amount,
+				}
+			);
+			assert!(!InvestmentState::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
+			// domain)
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &investor),
+				invest_amount * 3
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				0
+			);
+			assert!(!System::events().iter().any(|e| {
+				e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: default_investment_id(),
+					who: investor.clone(),
+				}
+				.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+						investment_id: default_investment_id(),
+						processed_orders: vec![1],
+						who: investor.clone(),
+						collection: InvestCollection::<Balance> {
+							payout_investment_invest: invest_amount,
+							remaining_investment_invest: 0,
+						},
+						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			// Clearing of foreign InvestState should have been dispatched exactly once
+			assert_eq!(
+				System::events()
+					.iter()
+					.filter(|e| {
+						e.event
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+						investor: investor.clone(),
+						investment_id: default_investment_id(),
+					}
+					.into()
+					})
+					.count(),
+				1
+			);
+
+			// User collects through foreign investments
+			let msg = LiquidityPoolMessage::CollectInvest {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+			};
+			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
+			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				OrmlTokens::total_issuance(investment_currency_id),
+				invest_amount * 3
+			);
+			assert!(OrmlTokens::free_balance(investment_currency_id, &investor).is_zero());
+			assert_eq!(
+				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				invest_amount * 3
+			);
+		});
+	}
+
+	#[test]
 	fn increase_redeem_order() {
 		TestNet::reset();
 		Development::execute_with(|| {
@@ -866,14 +1085,10 @@ mod same_currencies {
 			));
 			// Since foreign currency is pool currency, the swap is immediately fulfilled
 			// and ExecutedCollectRedeem dispatched
-			assert_eq!(
-				CollectedRedemption::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				CollectedAmount {
-					amount_collected: 0,
-					amount_payment: 0,
-					amount_remaining: redeem_amount / 2,
-				}
-			);
+			assert!(!CollectedRedemption::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			),);
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
 				RedeemState::Redeeming {
@@ -969,227 +1184,6 @@ mod same_currencies {
 					})
 					.count(),
 				1
-			);
-		});
-	}
-
-	#[test]
-	fn partially_collect_investment_for_through_investments() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
-			let pool_id = DEFAULT_POOL_ID;
-			let invest_amount = 100_000_000;
-			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
-			let currency_id = AUSD_CURRENCY_ID;
-			let currency_decimals = currency_decimals::AUSD;
-			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
-			create_currency_pool(pool_id, currency_id, currency_decimals.into());
-			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
-			enable_liquidity_pool_transferability(currency_id);
-			let investment_currency_id: CurrencyId = default_investment_id().into();
-
-			assert!(!Investments::investment_requires_collect(
-				&investor,
-				default_investment_id()
-			));
-
-			// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
-			// tokens
-			assert_ok!(Investments::process_invest_orders(default_investment_id()));
-			assert_ok!(Investments::invest_fulfillment(
-				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
-					of_amount: Perquintill::from_percent(50),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
-				}
-			));
-			// assert_eq!(
-			// 	OrmlTokens::total_issuance(investment_currency_id),
-			// 	invest_amount / 8
-			//  invest_amount
-			// );
-
-			// Pre collect assertions
-			assert!(Investments::investment_requires_collect(
-				&investor,
-				default_investment_id()
-			));
-			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
-				&investor,
-				default_investment_id()
-			));
-			assert_eq!(
-				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::InvestmentOngoing { invest_amount }
-			);
-
-			// Collecting through Investments should denote amounts and transition
-			// state
-			assert_ok!(Investments::collect_investments_for(
-				RuntimeOrigin::signed(ALICE.into()),
-				investor.clone(),
-				default_investment_id()
-			));
-
-			assert!(!Investments::investment_requires_collect(
-				&investor,
-				default_investment_id()
-			));
-			// The collected amount is only transferred to the user if they send a
-			// `CollectInvest` message
-			assert_eq!(
-				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				CollectedAmount {
-					amount_collected: invest_amount / 2 * 4,
-					amount_payment: invest_amount / 2,
-					amount_remaining: invest_amount / 2,
-				}
-			);
-			assert_eq!(
-				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				InvestState::InvestmentOngoing {
-					invest_amount: invest_amount / 2
-				}
-			);
-			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
-			// domain)
-			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &investor),
-				invest_amount * 2
-			);
-			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
-				0
-			);
-			assert!(System::events().iter().any(|e| {
-				e.event
-					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
-						investment_id: default_investment_id(),
-						processed_orders: vec![0],
-						who: investor.clone(),
-						collection: InvestCollection::<Balance> {
-							payout_investment_invest: invest_amount * 2,
-							remaining_investment_invest: invest_amount / 2,
-						},
-						outcome: CollectOutcome::FullyCollected,
-					}
-					.into()
-			}));
-
-			// Process rest of investment at 50% rate (1 pool currency = 2 tranche tokens)
-			assert_ok!(Investments::process_invest_orders(default_investment_id()));
-			assert_ok!(Investments::invest_fulfillment(
-				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
-					of_amount: Perquintill::one(),
-					price: Rate::checked_from_rational(1, 2).unwrap(),
-				}
-			));
-			// Order should have been cleared by fulfilling investment
-			assert_eq!(
-				pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
-					default_investment_id(),
-				)
-				.amount,
-				0
-			);
-			assert_eq!(
-				OrmlTokens::total_issuance(investment_currency_id),
-				invest_amount * 3
-			);
-
-			// Collect remainder through Investments
-			assert_ok!(Investments::collect_investments_for(
-				RuntimeOrigin::signed(ALICE.into()),
-				investor.clone(),
-				default_investment_id()
-			));
-			assert!(!Investments::investment_requires_collect(
-				&investor,
-				default_investment_id()
-			));
-			assert_eq!(
-				CollectedInvestment::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-				CollectedAmount {
-					amount_collected: invest_amount * 3,
-					amount_payment: invest_amount,
-					amount_remaining: 0,
-				}
-			);
-			assert!(!InvestmentState::<DevelopmentRuntime>::contains_key(
-				&investor,
-				default_investment_id()
-			));
-			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
-			// domain)
-			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &investor),
-				invest_amount * 3
-			);
-			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
-				0
-			);
-			assert!(!System::events().iter().any(|e| {
-				e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
-					investment_id: default_investment_id(),
-					who: investor.clone(),
-				}
-				.into()
-			}));
-			assert!(System::events().iter().any(|e| {
-				e.event
-					== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
-						investment_id: default_investment_id(),
-						processed_orders: vec![1],
-						who: investor.clone(),
-						collection: InvestCollection::<Balance> {
-							payout_investment_invest: invest_amount,
-							remaining_investment_invest: 0,
-						},
-						outcome: CollectOutcome::FullyCollected,
-					}
-					.into()
-			}));
-			// Clearing of foreign InvestState should have been dispatched exactly once
-			assert_eq!(
-				System::events()
-					.iter()
-					.filter(|e| {
-						e.event
-					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
-						investor: investor.clone(),
-						investment_id: default_investment_id(),
-					}
-					.into()
-					})
-					.count(),
-				1
-			);
-
-			// User collects through foreign investments
-			let msg = LiquidityPoolMessage::CollectInvest {
-				pool_id,
-				tranche_id: default_tranche_id(pool_id),
-				investor: investor.clone().into(),
-				currency: general_currency_index(currency_id),
-			};
-			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
-			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
-				&investor,
-				default_investment_id()
-			));
-			assert_eq!(
-				OrmlTokens::total_issuance(investment_currency_id),
-				invest_amount * 3
-			);
-			assert!(OrmlTokens::free_balance(investment_currency_id, &investor).is_zero());
-			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
-				invest_amount * 3
 			);
 		});
 	}

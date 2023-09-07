@@ -744,7 +744,6 @@ where
 				let collected_investment = CollectedAmount {
 					amount_collected: collection.payout_investment_invest,
 					amount_payment,
-					amount_remaining: collection.remaining_investment_invest,
 				};
 
 				Self::deposit_event(Event::InvestOrdersCollected {
@@ -880,7 +879,6 @@ where
 				let collected_redemption = CollectedAmount {
 					amount_collected: collection.payout_investment_redeem,
 					amount_payment,
-					amount_remaining: collection.remaining_investment_redeem,
 				};
 
 				Self::deposit_event(Event::RedeemOrdersCollected {

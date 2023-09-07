@@ -189,11 +189,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
-		let remaining_unprocessed_amount = T::Investment::redemption(who, investment_id)?;
-		let remaining_processed_amount =
-			CollectedRedemption::<T>::get(who, investment_id).amount_remaining;
-		let remaining_amount =
-			remaining_unprocessed_amount.ensure_add(remaining_processed_amount)?;
+		let remaining_amount = T::Investment::redemption(who, investment_id)?;
 
 		Ok((amount, remaining_amount))
 	}
@@ -594,7 +590,6 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Option<RedeemState<T::Balance, T::CurrencyId>>, DispatchError> {
 		let CollectedAmount::<T::Balance> {
 			amount_payment: amount_payment_tranche_tokens,
-			amount_remaining,
 			..
 		} = CollectedRedemption::<T>::get(who, investment_id);
 
@@ -610,21 +605,9 @@ impl<T: Config> Pallet<T> {
 					CollectedAmount {
 						amount_collected: done_swap.amount,
 						amount_payment: amount_payment_tranche_tokens,
-						amount_remaining,
 					},
 				)?;
-				CollectedRedemption::<T>::mutate_exists(who, investment_id, |collected| {
-					// Must only kill if remaining amount exists
-					match collected {
-						Some(c) if !c.amount_remaining.is_zero() => {
-							c.amount_collected = T::Balance::zero();
-							c.amount_payment = T::Balance::zero();
-						}
-						_ => {
-							*collected = None;
-						}
-					}
-				});
+				CollectedRedemption::<T>::remove(who, investment_id);
 				Ok(())
 			}
 			_ => Ok(()),
@@ -1009,9 +992,6 @@ impl<T: Config> Pallet<T> {
 			collected_before
 				.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
-			// Remaining amount must not be incremented but overwritten to signal its
-			// exhaustion
-			collected_before.amount_remaining = collected.amount_remaining;
 			Ok::<(), DispatchError>(())
 		})?;
 
@@ -1038,22 +1018,7 @@ impl<T: Config> Pallet<T> {
 		foreign_payout_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
-		let collected = CollectedInvestment::<T>::mutate_exists(who, investment_id, |collected| {
-			let collected_before = collected.clone().unwrap_or_default();
-
-			// Must only kill if remaining amount does not exist
-			match collected {
-				Some(c) if !c.amount_remaining.is_zero() => {
-					c.amount_collected = T::Balance::zero();
-					c.amount_payment = T::Balance::zero();
-				}
-				c => {
-					*c = None;
-				}
-			}
-
-			collected_before
-		});
+		let collected = CollectedInvestment::<T>::take(who, investment_id);
 		ensure!(
 			!collected.amount_payment.is_zero(),
 			Error::<T>::InvestError(InvestError::NothingCollected)
@@ -1066,10 +1031,7 @@ impl<T: Config> Pallet<T> {
 			pool_currency,
 			collected.amount_payment,
 		)?;
-		let remaining_unprocessed_amount = T::Investment::investment(who, investment_id)?;
-		let remaining_amount_pool_denominated = collected
-			.amount_remaining
-			.ensure_add(remaining_unprocessed_amount)?;
+		let remaining_amount_pool_denominated = T::Investment::investment(who, investment_id)?;
 		let amount_remaining_invest_foreign_denominated = T::CurrencyConverter::stable_to_stable(
 			foreign_payout_currency,
 			pool_currency,
@@ -1109,9 +1071,6 @@ impl<T: Config> Pallet<T> {
 			collected_before
 				.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
-			// Remaining amount must not be incremented but overwritten to signal its
-			// exhaustion
-			collected_before.amount_remaining = collected.amount_remaining;
 			Ok::<CollectedAmount<T::Balance>, DispatchError>(collected_before.clone())
 		})?;
 
@@ -1157,11 +1116,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
 			.expect("Pool must exist if decrease was executed; qed.");
-		let amount_remaining_processed =
-			CollectedInvestment::<T>::get(who, investment_id).amount_remaining;
-		let amount_remaining_unprocessed = T::Investment::investment(who, investment_id)?;
-		let amount_remaining_pool_denominated =
-			amount_remaining_processed.ensure_add(amount_remaining_unprocessed)?;
+		let amount_remaining_pool_denominated = T::Investment::investment(who, investment_id)?;
 		let amount_remaining_foreign_denominated = T::CurrencyConverter::stable_to_stable(
 			foreign_currency,
 			pool_currency,
@@ -1193,11 +1148,6 @@ impl<T: Config> Pallet<T> {
 		currency: T::CurrencyId,
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		let remaining_unprocessed_amount = T::Investment::redemption(who, investment_id)?;
-		let amount_remaining_redeem = collected
-			.amount_remaining
-			.ensure_add(remaining_unprocessed_amount)?;
-
 		T::CollectedForeignRedemptionHook::notify_status_change(
 			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
 				owner: who.clone(),
@@ -1209,7 +1159,7 @@ impl<T: Config> Pallet<T> {
 				currency,
 				amount_currency_payout: collected.amount_collected,
 				amount_tranche_tokens_payout: collected.amount_payment,
-				amount_remaining_redeem,
+				amount_remaining_redeem: T::Investment::redemption(who, investment_id)?,
 			},
 		)
 	}
