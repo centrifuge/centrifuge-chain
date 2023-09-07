@@ -34,7 +34,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
 };
-use sp_std::{convert::TryInto, vec, vec::Vec};
+use sp_std::{convert::TryInto, vec};
 use xcm::{
 	latest::NetworkId,
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
@@ -106,9 +106,6 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -246,21 +243,6 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
-	}
-
-	#[pallet::event]
-	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		/// A message was sent to a domain
-		MessageSent {
-			message: MessageOf<T>,
-			domain: Domain,
-		},
-
-		IncomingMessage {
-			sender: T::AccountId,
-			message: Vec<u8>,
-		},
 	}
 
 	#[pallet::error]
