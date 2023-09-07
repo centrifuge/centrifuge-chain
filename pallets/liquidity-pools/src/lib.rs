@@ -257,21 +257,11 @@ pub mod pallet {
 			domain: Domain,
 		},
 
-		/// The Router for a given domain was set
-		SetDomainRouter {
-			domain: Domain,
-			router: Router<CurrencyIdOf<T>>,
-		},
-
 		IncomingMessage {
 			sender: T::AccountId,
 			message: Vec<u8>,
 		},
 	}
-
-	#[pallet::storage]
-	pub(crate) type DomainRouter<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -333,22 +323,6 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
 	{
-		/// Set a Domain's router
-		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
-		#[pallet::call_index(0)]
-		pub fn set_domain_router(
-			origin: OriginFor<T>,
-			domain: Domain,
-			router: Router<CurrencyIdOf<T>>,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
-
-			<DomainRouter<T>>::insert(domain.clone(), router.clone());
-			Self::deposit_event(Event::SetDomainRouter { domain, router });
-
-			Ok(())
-		}
-
 		/// Add a pool to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
