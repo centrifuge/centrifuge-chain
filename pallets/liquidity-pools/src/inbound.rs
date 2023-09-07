@@ -234,14 +234,13 @@ where
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
-		// TODO(@review): This is exactly `amount` as we can only decrement up to the
-		// unprocessed redemption
-		let tranche_tokens_payout = T::ForeignInvestment::decrease_foreign_redemption(
-			&investor,
-			invest_id.clone(),
-			amount,
-			payout_currency,
-		)?;
+		let (tranche_tokens_payout, remaining_redeem_amount) =
+			T::ForeignInvestment::decrease_foreign_redemption(
+				&investor,
+				invest_id.clone(),
+				amount,
+				payout_currency,
+			)?;
 
 		T::Tokens::transfer(
 			invest_id.into(),
@@ -257,6 +256,7 @@ where
 			investor: investor.into(),
 			currency: currency_u128,
 			tranche_tokens_payout,
+			remaining_redeem_amount,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
@@ -316,6 +316,7 @@ where
 		let ExecutedForeignCollectInvest::<T::Balance> {
 			amount_currency_payout,
 			amount_tranche_tokens_payout,
+			amount_remaining_invest,
 		} = T::ForeignInvestment::collect_foreign_investment(
 			&investor,
 			invest_id.clone(),
@@ -338,6 +339,7 @@ where
 			currency: currency_index_u128,
 			currency_payout: amount_currency_payout,
 			tranche_tokens_payout: amount_tranche_tokens_payout,
+			remaining_invest_amount: amount_remaining_invest,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

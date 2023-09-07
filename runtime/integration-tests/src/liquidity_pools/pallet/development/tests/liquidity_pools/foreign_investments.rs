@@ -866,10 +866,14 @@ mod same_currencies {
 			));
 			// Since foreign currency is pool currency, the swap is immediately fulfilled
 			// and ExecutedCollectRedeem dispatched
-			assert!(!CollectedRedemption::<DevelopmentRuntime>::contains_key(
-				&investor,
-				default_investment_id()
-			),);
+			assert_eq!(
+				CollectedRedemption::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				CollectedAmount {
+					amount_collected: 0,
+					amount_payment: 0,
+					amount_remaining: redeem_amount / 2,
+				}
+			);
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
 				RedeemState::Redeeming {
@@ -1040,6 +1044,7 @@ mod same_currencies {
 				CollectedAmount {
 					amount_collected: invest_amount / 2 * 4,
 					amount_payment: invest_amount / 2,
+					amount_remaining: invest_amount / 2,
 				}
 			);
 			assert_eq!(
@@ -1110,6 +1115,7 @@ mod same_currencies {
 				CollectedAmount {
 					amount_collected: invest_amount * 3,
 					amount_payment: invest_amount,
+					amount_remaining: 0,
 				}
 			);
 			assert!(!InvestmentState::<DevelopmentRuntime>::contains_key(
@@ -1657,7 +1663,6 @@ mod setup {
 
 		let pool_currency: CurrencyId =
 			PoolSystem::currency_for(pool_id).expect("Pool existence checked already");
-		dbg!(pool_currency, currency_id);
 		if currency_id == pool_currency {
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),

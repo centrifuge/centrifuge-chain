@@ -139,16 +139,22 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 /// The collected investment/redemption amount for an account
 #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
-	/// The amount which was was collected
+	/// The amount which was collected
 	/// * If investment: Tranche tokens
 	/// * If redemption: Payment currency
 	pub amount_collected: Balance,
 
-	/// The amount which invested and converted during processing based on the
+	/// The amount which was converted during processing based on the
 	/// fulfillment price(s)
 	/// * If investment: Payment currency
 	/// * If redemption: Tranche tokens
 	pub amount_payment: Balance,
+
+	/// The amount which has not been processed as well plus the processed part
+	/// which has not been claimed yet.
+	/// * If investment: Payment currency
+	/// * If redemption: Tranche tokens
+	pub amount_remaining: Balance,
 }
 
 /// A representation of an investment identifier and the corresponding owner.
@@ -225,13 +231,16 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 /// A representation of an executed investment decrement.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedForeignDecrease<Balance, Currency> {
+pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 	/// The currency in which `DecreaseInvestOrder` was realised
 	pub foreign_currency: Currency,
 	/// The amount of `currency` that was actually executed in the original
 	/// `DecreaseInvestOrder` message, i.e., the amount by which the
 	/// investment order was actually decreased by.
 	pub amount_decreased: Balance,
+	/// The unprocessed plus processed but not yet collected investment amount
+	/// denominated in `foreign` payment currency
+	pub amount_remaining: Balance,
 }
 
 /// A representation of an executed collected investment.
@@ -242,6 +251,9 @@ pub struct ExecutedForeignCollectInvest<Balance> {
 	pub amount_currency_payout: Balance,
 	/// The amount of tranche tokens received for the investment made
 	pub amount_tranche_tokens_payout: Balance,
+	/// The unprocessed plus processed but not yet collected investment amount
+	/// denominated in foreign currency
+	pub amount_remaining_invest: Balance,
 }
 
 /// A representation of an executed collected redemption.
@@ -254,4 +266,7 @@ pub struct ExecutedForeignCollectRedeem<Balance, Currency> {
 	pub amount_currency_payout: Balance,
 	/// How many tranche tokens were actually redeemed
 	pub amount_tranche_tokens_payout: Balance,
+	/// The unprocessed plus processed but not yet collected redemption amount
+	/// of tranche tokens
+	pub amount_remaining_redeem: Balance,
 }

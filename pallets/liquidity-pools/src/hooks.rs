@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::DomainAddress,
-	investments::{ExecutedForeignDecrease, ForeignInvestmentInfo},
+	investments::{ExecutedForeignDecreaseInvest, ForeignInvestmentInfo},
 };
 use frame_support::{traits::fungibles::Mutate, transactional};
 use sp_core::Get;
@@ -34,12 +34,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
-	type Status = ExecutedForeignDecrease<T::Balance, T::CurrencyId>;
+	type Status = ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
-		status: ExecutedForeignDecrease<T::Balance, T::CurrencyId>,
+		status: ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
@@ -58,6 +58,7 @@ where
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_decreased,
+			remaining_invest_amount: status.amount_remaining,
 		};
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
 
@@ -93,13 +94,14 @@ where
 
 		T::Tokens::burn_from(status.currency, &investor, status.amount_currency_payout)?;
 
-		let message: MessageOf<T> = Message::ExecutedCollectInvest {
+		let message: MessageOf<T> = Message::ExecutedCollectRedeem {
 			pool_id: investment_id.of_pool(),
 			tranche_id: investment_id.of_tranche(),
 			investor: investor.into(),
 			currency,
 			currency_payout: status.amount_currency_payout,
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
+			remaining_redeem_amount: status.amount_remaining_redeem,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;

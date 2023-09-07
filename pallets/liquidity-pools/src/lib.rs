@@ -804,7 +804,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
+					who,
 					Role::PoolRole(PoolRole::PoolAdmin)
 				),
 				Error::<T>::NotPoolAdmin
@@ -983,7 +983,7 @@ pub mod pallet {
 				} => Self::handle_tranche_tokens_transfer(
 					pool_id,
 					tranche_id,
-					sender.clone(),
+					sender,
 					receiver.into(),
 					amount,
 				),

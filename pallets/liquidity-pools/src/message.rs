@@ -220,6 +220,10 @@ where
 		/// `DecreaseInvestOrder` message, i.e., the amount by which the
 		/// investment order was actually decreased by.
 		currency_payout: Balance,
+		/// The remaining investment amount denominated in the `foreign` payment
+		/// currency. It reflects the sum of the unprocessed as well as the
+		/// processed but not yet collected amounts.
+		remaining_invest_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `DecreaseRedeemOrder`
 	/// message was received, ensuring the correct state update on said domain
@@ -239,6 +243,10 @@ where
 		/// original `DecreaseRedeemOrder` message, i.e., the amount by which
 		/// the redeem order was actually decreased by.
 		tranche_tokens_payout: Balance,
+		/// The remaining redemption amount. It reflects the sum of the
+		/// unprocessed as well as the processed but not yet collected amount of
+		/// tranche tokens.
+		remaining_redeem_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectInvest` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -258,6 +266,10 @@ where
 		currency_payout: Balance,
 		/// The amount of tranche tokens received for the investment made
 		tranche_tokens_payout: Balance,
+		/// The remaining investment amount denominated in the `foreign` payment
+		/// currency. It reflects the sum of the unprocessed as well as the
+		/// processed but not yet collected amounts.
+		remaining_invest_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectRedeem` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -277,6 +289,10 @@ where
 		currency_payout: Balance,
 		/// How many tranche tokens were actually redeemed
 		tranche_tokens_payout: Balance,
+		/// The remaining redemption amount. It reflects the sum of the
+		/// unprocessed as well as the processed but not yet collected amount of
+		/// tranche tokens.
+		remaining_redeem_amount: Balance,
 	},
 	/// Cancel an unprocessed invest order for the specified pair of pool and
 	/// tranche token.
@@ -597,6 +613,7 @@ impl<
 				investor,
 				currency,
 				currency_payout,
+				remaining_invest_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -605,6 +622,7 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(currency_payout),
+					encode_be(remaining_invest_amount),
 				],
 			),
 			Message::ExecutedDecreaseRedeemOrder {
@@ -613,6 +631,7 @@ impl<
 				investor,
 				currency,
 				tranche_tokens_payout,
+				remaining_redeem_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -621,6 +640,7 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(tranche_tokens_payout),
+					encode_be(remaining_redeem_amount),
 				],
 			),
 			Message::ExecutedCollectInvest {
@@ -630,6 +650,7 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
+				remaining_invest_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -639,6 +660,7 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
+					encode_be(remaining_invest_amount),
 				],
 			),
 			Message::ExecutedCollectRedeem {
@@ -648,6 +670,7 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
+				remaining_redeem_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -657,6 +680,7 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
+					encode_be(remaining_redeem_amount),
 				],
 			),
 			Message::CancelInvestOrder {
@@ -813,6 +837,7 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			16 => Ok(Self::ExecutedDecreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -820,6 +845,7 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			17 => Ok(Self::ExecutedCollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -828,6 +854,7 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			18 => Ok(Self::ExecutedCollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -836,6 +863,7 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			19 => Ok(Self::CancelInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -1214,6 +1242,7 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT / 2,
+				remaining_invest_amount: AMOUNT / 4,
 			},
 			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
 		)
@@ -1228,6 +1257,7 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
+				remaining_redeem_amount: AMOUNT / 4,
 			},
 			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000",
 		)
@@ -1243,6 +1273,7 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
+				remaining_invest_amount: AMOUNT / 4,
 			},
 			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)
@@ -1258,6 +1289,7 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
+				remaining_redeem_amount: AMOUNT / 4,
 			},
 			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000",
 		)

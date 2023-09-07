@@ -68,7 +68,7 @@ pub mod pallet {
 		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
-		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecrease,
+		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
 	};
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
@@ -199,7 +199,7 @@ pub mod pallet {
 				Self::InvestmentId,
 				(),
 			>,
-			Status = ExecutedForeignDecrease<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignDecreaseInvest<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 

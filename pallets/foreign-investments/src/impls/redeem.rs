@@ -548,13 +548,13 @@ where
 	/// Increments the unprocessed redeeming amount or adds `Redeeming*` to the
 	/// state with the provided amount.
 	fn handle_increase(&self, amount: Balance) -> Result<Self, DispatchError> {
-		Self::set_redeem_amount(&self, Self::get_redeeming_amount(&self).ensure_add(amount)?)
+		Self::set_redeem_amount(self, Self::get_redeeming_amount(self).ensure_add(amount)?)
 	}
 
 	/// Decrement the unprocessed redeeming amount. I.e., if the state includes
 	/// `Redeeming*`, decreases the redeeming amount.
 	fn handle_decrease(&self, amount: Balance) -> Result<Self, DispatchError> {
-		Self::set_redeem_amount(&self, Self::get_redeeming_amount(&self).ensure_sub(amount)?)
+		Self::set_redeem_amount(self, Self::get_redeeming_amount(self).ensure_sub(amount)?)
 	}
 
 	/// Update the state if it includes `ActiveSwapIntoForeignCurrency`.
