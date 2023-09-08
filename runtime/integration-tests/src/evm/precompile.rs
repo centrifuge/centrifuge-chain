@@ -54,6 +54,8 @@ async fn axelar_precompile_execute() {
 
 	env.evolve().unwrap();
 
+	let currency_id = CurrencyId::ForeignAsset(123456);
+
 	let sender_address = H160::from_low_u64_be(1_000_002);
 
 	mint_balance_into_derived_account(&mut env, sender_address, 1_000_000 * CFG);
@@ -66,20 +68,23 @@ async fn axelar_precompile_execute() {
 
 	let receiver_address = H160::from_low_u64_be(1_000_003);
 
-	// mint_balance_into_derived_account(&mut env, receiver_address, 1_000_000 *
-	// CFG);
-
 	let derived_receiver_account = env
 		.with_state(Chain::Para(PARA_ID), || {
 			<Runtime as pallet_evm::Config>::AddressMapping::into_account_id(receiver_address)
 		})
 		.unwrap();
 
+	env.with_state(Chain::Para(PARA_ID), || {
+		let derived_receiver_balance =
+			orml_tokens::Pallet::<Runtime>::free_balance(currency_id, &derived_receiver_account);
+
+		assert_eq!(derived_receiver_balance, 0)
+	})
+	.unwrap();
+
 	let source_address = H160::from_low_u64_be(1111);
 	let evm_chain_name = String::from("Ethereum");
 	let evm_chain_id = 0;
-
-	let currency_id = CurrencyId::ForeignAsset(123456);
 
 	let currency_metadata = AssetMetadata {
 		decimals: 18,
@@ -118,11 +123,12 @@ async fn axelar_precompile_execute() {
 		})
 		.unwrap();
 
+	let transfer_amount = 100;
 	let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 		currency: general_currency_id,
 		sender: derived_sender_account.clone().into(),
-		receiver: derived_receiver_account.into(),
-		amount: 100,
+		receiver: derived_receiver_account.clone().into(),
+		amount: transfer_amount,
 	};
 
 	env.with_mut_state(Chain::Para(PARA_ID), || {
@@ -200,9 +206,9 @@ async fn axelar_precompile_execute() {
 	.map_err(|_| "cannot encode input for test contract function")
 	.unwrap();
 
-	env.with_state(Chain::Para(PARA_ID), || {
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		assert_ok!(pallet_evm::Pallet::<Runtime>::call(
-			RawOrigin::Signed(derived_sender_account).into(),
+			RawOrigin::Signed(derived_sender_account.clone()).into(),
 			sender_address,
 			LP_AXELAR_GATEWAY.into(),
 			test_input.to_vec(),
@@ -213,6 +219,14 @@ async fn axelar_precompile_execute() {
 			Some(U256::from(0)),
 			Vec::new(),
 		));
+	})
+	.unwrap();
+
+	env.with_state(Chain::Para(PARA_ID), || {
+		let derived_receiver_balance =
+			orml_tokens::Pallet::<Runtime>::free_balance(currency_id, &derived_receiver_account);
+
+		assert_eq!(derived_receiver_balance, transfer_amount)
 	})
 	.unwrap();
 }
