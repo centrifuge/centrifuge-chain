@@ -33,11 +33,12 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult, Weight},
 	ensure,
 	traits::OriginTrait,
+	weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::traits::{BlakeTwo256, EnsureMul, Hash};
+use sp_runtime::traits::{BlakeTwo256, EnsureAdd, EnsureMul, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
 use xcm::{
 	latest::{MultiLocation, OriginKind},
@@ -228,15 +229,18 @@ where
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
-		// Note: We are using moonbeams calculation for the ref time here and their
-		//       estimate for the PoV.
+		// NOTE: We are using Moonbeam's calculation for the ref time and their estimate
+		// for the PoV.
 		//
-		// 	       - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
-		//           limited fixed)
+		// ref_time:
+		// 	GAS_TO_WEIGHT_MULTIPLIER * MAX_GAS_LIMIT + EthereumXcm.transact's Weight + a
+		// bit extra
 		let transact_required_weight_at_most = Weight::from_ref_time(
 			self.xcm_domain
 				.max_gas_limit
-				.ensure_mul(GAS_TO_WEIGHT_MULTIPLIER)?,
+				.ensure_mul(GAS_TO_WEIGHT_MULTIPLIER)?
+				.ensure_add(25_000_000)?
+				.ensure_add(5_000_000)?,
 		)
 		.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
 
@@ -261,9 +265,10 @@ where
 			// The currency in which we want to pay fees.
 			CurrencyPayment {
 				currency: Currency::AsCurrencyId(self.xcm_domain.fee_currency.clone()),
-				fee_amount: Some(
-					self.xcm_domain.fee_per_second * Into::<u128>::into(overall_weight.ref_time()),
-				),
+				fee_amount: Some(calculate_fee_amount(
+					overall_weight.ref_time(),
+					self.xcm_domain.fee_per_second,
+				)),
 			},
 			// The call to be executed in the destination chain.
 			ethereum_xcm_call,
@@ -276,6 +281,15 @@ where
 
 		Ok(())
 	}
+}
+
+/// Calculate the fee to be charged for the complete XCM message execution on
+/// the destination chain
+pub fn calculate_fee_amount(overall_weight_ref_time: u64, fee_per_second: u128) -> u128 {
+	fee_per_second
+		.saturating_mul(overall_weight_ref_time as u128)
+		.saturating_add(WEIGHT_REF_TIME_PER_SECOND as u128 - 1)
+		.saturating_div(WEIGHT_REF_TIME_PER_SECOND as u128)
 }
 
 pub(crate) fn get_encoded_ethereum_xcm_call<T>(

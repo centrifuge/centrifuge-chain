@@ -783,6 +783,15 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 }
 
 #[test]
+fn expected_fee_amount() {
+	// Roughly 0.15 GLMR
+	assert_eq!(
+		liquidity_pools_gateway_routers::calculate_fee_amount(15530000000, default_per_second(18)),
+		155548480000000000
+	)
+}
+
+#[test]
 fn add_currency() {
 	TestNet::reset();
 
@@ -814,10 +823,27 @@ fn add_currency() {
 			})
 		));
 
+		assert_eq!(
+			OrmlTokens::free_balance(
+				GLIMMER_CURRENCY_ID,
+				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+			),
+			DEFAULT_BALANCE_GLMR
+		);
+
 		assert_ok!(LiquidityPools::add_currency(
 			RuntimeOrigin::signed(BOB.into()),
 			currency_id
 		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(
+				GLIMMER_CURRENCY_ID,
+				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+			),
+			/// Ensure it only charged roughly 0.15 GLMR for fees
+			DEFAULT_BALANCE_GLMR - 155548480000000000
+		);
 	});
 }
 
@@ -1681,6 +1707,8 @@ mod utils {
 	use liquidity_pools_gateway_routers::{
 		ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmTransactInfo,
 	};
+	use runtime_common::xcm_fees::native_per_second;
+	use sp_runtime::traits::{EnsureDiv, EnsureMul};
 
 	use super::*;
 	use crate::{
@@ -1688,7 +1716,8 @@ mod utils {
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	};
 
-	pub const DEFAULT_BALANCE_GLMR: Balance = 1_000_000_000_000;
+	// 10 GLMR (18 decimals)
+	pub const DEFAULT_BALANCE_GLMR: Balance = 10000000000000000000;
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 	pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
@@ -1748,7 +1777,7 @@ mod utils {
 					location: Box::new(xcm_domain_location),
 					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 					contract_address: H160::from(utils::DEFAULT_EVM_ADDRESS_MOONBEAM),
-					max_gas_limit: 700_000,
+					max_gas_limit: 500_000,
 					fee_currency: currency_id,
 					fee_per_second: default_per_second(18),
 				},
@@ -1805,7 +1834,7 @@ mod utils {
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
 			&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
+			DEFAULT_BALANCE_GLMR,
 		);
 
 		// Register AUSD in the asset registry which is the default pool currency in
