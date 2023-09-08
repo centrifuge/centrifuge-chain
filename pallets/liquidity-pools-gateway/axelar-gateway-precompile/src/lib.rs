@@ -12,16 +12,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
-use codec::alloc::string::ToString;
-use ethabi::Token;
 use fp_evm::PrecompileHandle;
-use frame_support::StorageHasher;
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
-use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
+use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
-	DispatchError, DispatchResult,
+	DispatchError,
 };
 use sp_std::vec::Vec;
 

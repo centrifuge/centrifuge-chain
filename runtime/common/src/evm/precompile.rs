@@ -46,7 +46,7 @@ const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
 /// Liquidity-Pool logic on centrifuge.
 ///
 /// The precompile implements
-const LP_AXELAR_GATEWAY: Addr = addr(2048);
+pub const LP_AXELAR_GATEWAY: Addr = addr(2048);
 
 pub struct CentrifugePrecompiles<R>(PhantomData<R>);
 
