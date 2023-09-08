@@ -783,15 +783,6 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 }
 
 #[test]
-fn expected_fee_amount() {
-	// Roughly 0.15 GLMR
-	assert_eq!(
-		liquidity_pools_gateway_routers::calculate_fee_amount(15530000000, default_per_second(18)),
-		155548480000000000
-	)
-}
-
-#[test]
 fn add_currency() {
 	TestNet::reset();
 
@@ -841,8 +832,9 @@ fn add_currency() {
 				GLIMMER_CURRENCY_ID,
 				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
 			),
-			/// Ensure it only charged roughly 0.15 GLMR for fees
-			DEFAULT_BALANCE_GLMR - 155548480000000000
+			/// Ensure it only charged the 0.2 GLMR of fee
+			DEFAULT_BALANCE_GLMR
+				- dollar(18).saturating_div(5)
 		);
 	});
 }
@@ -1706,6 +1698,7 @@ mod utils {
 	use cfg_types::tokens::CrossChainTransferability;
 	use liquidity_pools_gateway_routers::{
 		ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmTransactInfo,
+		DEFAULT_PROOF_SIZE,
 	};
 	use runtime_common::xcm_fees::native_per_second;
 	use sp_runtime::traits::{EnsureDiv, EnsureMul};
@@ -1778,8 +1771,14 @@ mod utils {
 					ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 					contract_address: H160::from(utils::DEFAULT_EVM_ADDRESS_MOONBEAM),
 					max_gas_limit: 500_000,
+					transact_required_weight_at_most: Weight::from_parts(
+						12530000000,
+						DEFAULT_PROOF_SIZE.saturating_div(2),
+					),
+					overall_weight: Weight::from_parts(15530000000, DEFAULT_PROOF_SIZE),
 					fee_currency: currency_id,
-					fee_per_second: default_per_second(18),
+					// 0.2 token
+					fee_amount: 200000000000000000,
 				},
 				_marker: Default::default(),
 			},

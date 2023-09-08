@@ -100,8 +100,10 @@ async fn set_router() {
 		ethereum_xcm_transact_call_index: bounded_vec![0],
 		contract_address: H160::from_low_u64_be(3),
 		max_gas_limit: 10,
+		transact_required_weight_at_most: Default::default(),
+		overall_weight: Default::default(),
 		fee_currency: currency_id,
-		fee_per_second: 1u128,
+		fee_amount: 0,
 	};
 
 	let ethereum_xcm_router = EthereumXCMRouter::<Runtime> {
