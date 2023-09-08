@@ -91,6 +91,7 @@ use crate::{
 	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	*,
 };
+use crate::liquidity_pools::pallet::development::tests::liquidity_pools::utils::DEFAULT_BALANCE_CFG;
 
 /// NOTE: We can't actually verify that the messages hits the
 /// LiquidityPoolsXcmRouter contract on Moonbeam since that would require a
@@ -828,12 +829,11 @@ fn add_currency() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(
-				GLIMMER_CURRENCY_ID,
+			Balances::free_balance(
 				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
 			),
-			/// Ensure it only charged the 0.2 GLMR of fee
-			DEFAULT_BALANCE_GLMR
+			/// Ensure it only charged the 0.2 CFG of fee
+			DEFAULT_BALANCE_CFG
 				- dollar(18).saturating_div(5)
 		);
 	});
@@ -1709,6 +1709,8 @@ mod utils {
 		utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	};
 
+	// 10 CFG (18 decimals)
+	pub const DEFAULT_BALANCE_CFG: Balance = 10000000000000000000;
 	// 10 GLMR (18 decimals)
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10000000000000000000;
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
@@ -1810,7 +1812,7 @@ mod utils {
 		set_test_domain_router(
 			MOONBEAM_EVM_CHAIN_ID,
 			DEFAULT_MOONBEAM_LOCATION.into(),
-			GLIMMER_CURRENCY_ID,
+			CurrencyId::Native,
 		);
 
 		/// Register Moonbeam's native token
@@ -1829,11 +1831,39 @@ mod utils {
 			Some(GLIMMER_CURRENCY_ID)
 		));
 
+		/// Register CFG
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			utils::asset_metadata(
+				"CFG".into(),
+				"CFG".into(),
+				18,
+				false,
+				Some(VersionedMultiLocation::V3(MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::polkadot::centrifuge::ID),
+						general_key(parachains::polkadot::centrifuge::CFG_KEY)
+					),
+				))),
+				CrossChainTransferability::Xcm(Default::default()),
+			),
+			Some(CurrencyId::Native)
+		));
+
 		// Fund the gateway sender account with enough glimmer to pay for fees
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
 			&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 			DEFAULT_BALANCE_GLMR,
+		);
+
+		use frame_support::traits::fungible::Mutate;
+
+		// Fund the gateway sender account with enough glimmer to pay for fees
+		Balances::mint_into(
+			&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+			DEFAULT_BALANCE_CFG,
 		);
 
 		// Register AUSD in the asset registry which is the default pool currency in
