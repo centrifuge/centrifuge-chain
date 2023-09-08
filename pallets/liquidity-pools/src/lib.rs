@@ -254,7 +254,7 @@ pub mod pallet {
 		/// detected and is further processed
 		IncomingMessage {
 			sender: DomainAddress,
-			msg: MessageOf<T>,
+			message: MessageOf<T>,
 		},
 	}
 
@@ -804,11 +804,10 @@ pub mod pallet {
 
 		#[transactional]
 		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
-			Self::deposit_event(Event::<T>::IncomingMessage { sender, msg });
-
-			/*
-
-			TODO: Enable this again with the foreign-investments PR
+			Self::deposit_event(Event::<T>::IncomingMessage {
+				sender: sender.clone(),
+				message: msg.clone(),
+			});
 
 			match msg {
 				Message::Transfer {
@@ -895,7 +894,6 @@ pub mod pallet {
 				} => Self::handle_collect_redemption(pool_id, tranche_id, investor.into()),
 				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
 			}?;
-			 */
 
 			Ok(())
 		}

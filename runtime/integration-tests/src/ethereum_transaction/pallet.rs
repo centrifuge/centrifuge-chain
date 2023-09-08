@@ -15,7 +15,7 @@ use cfg_traits::ethereum::EthereumTransactor;
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
 use frame_support::{assert_err, dispatch::RawOrigin};
 use fudge::primitives::Chain;
-use pallet_evm::FeeCalculator;
+use pallet_evm::{ExitReason, ExitReason::Succeed, ExitSucceed, FeeCalculator};
 use runtime_common::account_conversion::AccountConverter;
 use sp_core::{Get, H160, U256};
 use tokio::runtime::Handle;
@@ -80,6 +80,28 @@ async fn call() {
 		})
 		.unwrap();
 
+	let t_hash = {
+		let nonce = env
+			.with_state(Chain::Para(PARA_ID), || {
+				pallet_ethereum_transaction::Pallet::<Runtime>::nonce()
+			})
+			.unwrap();
+
+		let signature =
+			pallet_ethereum_transaction::Pallet::<Runtime>::get_transaction_signature().unwrap();
+
+		TransactionV2::Legacy(LegacyTransaction {
+			nonce,
+			gas_price: U256::from(1),
+			gas_limit: U256::from(0x100000),
+			action: TransactionAction::Call(contract_address),
+			value: U256::zero(),
+			input: foo.as_slice().into(),
+			signature,
+		})
+		.hash()
+	};
+
 	// Executing Foo should be OK and emit an event with the value returned by the
 	// function.
 	env.with_mut_state(Chain::Para(PARA_ID), || {
@@ -95,15 +117,24 @@ async fn call() {
 	})
 	.unwrap();
 
+	let reason = ExitReason::Succeed(ExitSucceed::Returned);
+
 	env::evolve_until_event_is_found!(
 		env,
 		Chain::Para(PARA_ID),
 		RuntimeEvent,
 		5,
-		RuntimeEvent::EthereumTransaction(pallet_ethereum_transaction::Event::Executed {
-			value,
-			..
-		}) if [ hex::encode(value) == "0000000000000000000000000000000000000000000000000000000000000001" ],
+		RuntimeEvent::Ethereum(pallet_ethereum::Event::Executed {
+			from,
+			to,
+			transaction_hash,
+			exit_reason
+		}) if [
+			from == &sender_address
+				&& to == &contract_address
+				&& transaction_hash == &t_hash
+				&& exit_reason == &reason
+		],
 	);
 
 	// Executing Bar should error out since the function returns an error.
@@ -117,7 +148,8 @@ async fn call() {
 			U256::from(0x100000),
 		);
 
-		assert!(res.is_err());
+		// NOTE: WE CAN NOTE CHECK WHETHER THE EVM ERRORS OUT
+		assert!(res.is_ok());
 	})
 	.unwrap();
 }

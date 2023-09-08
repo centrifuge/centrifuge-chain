@@ -47,6 +47,7 @@ pub mod pallet {
 
 	/// Storage for nonce.
 	#[pallet::storage]
+	#[pallet::getter(fn nonce)]
 	pub(crate) type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
 	impl<T: Config> Pallet<T>
@@ -54,7 +55,7 @@ pub mod pallet {
 		OriginFor<T>:
 			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 	{
-		fn get_transaction_signature() -> Option<TransactionSignature> {
+		pub fn get_transaction_signature() -> Option<TransactionSignature> {
 			TransactionSignature::new(
 				TRANSACTION_RECOVERY_ID,
 				H256::from_low_u64_be(2u64),
