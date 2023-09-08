@@ -105,10 +105,30 @@ pub mod pallet {
 			});
 
 			Nonce::<T>::put(nonce.saturating_add(U256::one()));
+
 			pallet_ethereum::Pallet::<T>::transact(
 				pallet_ethereum::Origin::EthereumTransaction(from).into(),
 				transaction,
 			)
+			.map_err(|e| {
+				let weight = e.post_info.actual_weight.map_or(Weight::zero(), |w| w);
+
+				DispatchErrorWithPostInfo {
+					post_info: PostDispatchInfo {
+						actual_weight: Some(weight.saturating_add(read_weight)),
+						pays_fee: Pays::Yes,
+					},
+					error: e.error,
+				}
+			})
+			.map(|dispatch_info| PostDispatchInfo {
+				pays_fee: Pays::Yes,
+				actual_weight: dispatch_info
+					.actual_weight
+					.map_or(Some(read_weight), |weight| {
+						Some(weight.saturating_add(read_weight))
+					}),
+			})
 		}
 	}
 }
