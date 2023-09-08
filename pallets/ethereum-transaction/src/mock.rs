@@ -183,9 +183,7 @@ impl pallet_ethereum::Config for Runtime {
 	type StateRoot = IntermediateStateRoot<Self>;
 }
 
-impl pallet_ethereum_transaction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
+impl pallet_ethereum_transaction::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let storage = frame_system::GenesisConfig::default()
