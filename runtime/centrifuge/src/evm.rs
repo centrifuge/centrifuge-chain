@@ -84,8 +84,6 @@ impl pallet_ethereum::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
-<<<<<<< Updated upstream
-=======
 
 impl pallet_ethereum_transaction::Config for crate::Runtime {}
 
@@ -94,4 +92,3 @@ impl axelar_gateway_precompile::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
 	type WeightInfo = ();
 }
->>>>>>> Stashed changes
