@@ -11024,6 +11024,7 @@ name = "runtime-integration-tests"
 version = "0.1.0"
 dependencies = [
  "altair-runtime",
+ "axelar-gateway-precompile",
  "centrifuge-runtime",
  "cfg-primitives",
  "cfg-traits",
@@ -11031,6 +11032,7 @@ dependencies = [
  "cfg-utils",
  "cumulus-primitives-core",
  "development-runtime",
+ "ethabi 16.0.0",
  "ethereum",
  "frame-benchmarking",
  "frame-support",

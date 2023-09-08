@@ -89,11 +89,13 @@ cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
 
 ethereum = { version = "0.14.0", default-features = false }
+ethabi = { version = "16.0", default-features = false }
 
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
+axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile" }
 liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers" }
 pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction" }
@@ -166,6 +168,7 @@ std = [
   "pallet-collective/std",
   "pallet-democracy/std",
   "pallet-preimage/std",
+  "ethabi/std",
 ]
 
 runtime-benchmarks = [
