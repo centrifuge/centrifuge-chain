@@ -243,6 +243,20 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
+
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[allow(clippy::large_enum_variant)]
+	pub enum Event<T: Config> {
+		/// An incoming LP message was
+		/// detected and is further processed
+		IncomingMessage {
+			sender: DomainAddress,
+			message: MessageOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -791,6 +805,11 @@ pub mod pallet {
 
 		#[transactional]
 		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
+			Self::deposit_event(Event::<T>::IncomingMessage {
+				sender: sender.clone(),
+				message: msg.clone(),
+			});
+
 			match msg {
 				Message::Transfer {
 					currency,

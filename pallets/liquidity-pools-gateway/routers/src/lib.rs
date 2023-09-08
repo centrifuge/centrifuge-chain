@@ -34,6 +34,7 @@ use frame_support::{
 	ensure,
 	traits::OriginTrait,
 };
+use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
@@ -84,6 +85,8 @@ where
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	EthereumXCM(EthereumXCMRouter<T>),
 	AxelarEVM(AxelarEVMRouter<T>),
@@ -98,6 +101,8 @@ where
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
@@ -124,6 +129,8 @@ where
 pub struct EVMRouter<T>
 where
 	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	pub evm_domain: EVMDomain,
 	pub _marker: PhantomData<T>,
@@ -133,6 +140,8 @@ impl<T> EVMRouter<T>
 where
 	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	/// Performs an extra check to ensure that the actual contract is deployed
 	/// at the provided address and that the contract code hash matches.

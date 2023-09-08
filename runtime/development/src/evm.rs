@@ -86,9 +86,7 @@ impl pallet_ethereum::Config for Runtime {
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
 
-impl pallet_ethereum_transaction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
+impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl axelar_gateway_precompile::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;

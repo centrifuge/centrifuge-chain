@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1031,
+	spec_version: 1032,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1401,6 +1401,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -1415,9 +1416,37 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
+/// A
+pub struct StumbInboundQueue;
+impl InboundQueue for StumbInboundQueue {
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+	type Sender = DomainAddress;
+
+	fn submit(sender: Self::Sender, message: Self::Message) -> DispatchResult {
+		let event = {
+			let event =
+				pallet_liquidity_pools::Event::<Runtime>::IncomingMessage { sender, message };
+
+			// Mirror deposit_event logic here as it is private
+			let event = <<Runtime as pallet_liquidity_pools::Config>::RuntimeEvent as From<
+				pallet_liquidity_pools::Event<Runtime>,
+			>>::from(event);
+
+			<<Runtime as pallet_liquidity_pools::Config>::RuntimeEvent as Into<
+				<Runtime as frame_system::Config>::RuntimeEvent,
+			>>::into(event)
+		};
+
+		// Triggering only the event for error resolution
+		System::deposit_event(event);
+
+		Ok(())
+	}
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
+	type InboundQueue = StumbInboundQueue;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
@@ -1795,7 +1824,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
-		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage} = 108,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
 		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
@@ -1821,7 +1850,7 @@ construct_runtime!(
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
-		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
@@ -1976,7 +2005,8 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::domain_address::Domain;
+use cfg_traits::liquidity_pools::InboundQueue;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 
 #[cfg(not(feature = "disable-runtime-api"))]
