@@ -15,13 +15,17 @@ use cfg_traits::liquidity_pools::OutboundQueue;
 use cfg_types::{domain_address::Domain, fixed_point::Quantity};
 use frame_support::{assert_ok, dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
+use lazy_static::lazy_static;
 use liquidity_pools_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, DomainRouter, EVMChain, EVMDomain, EVMRouter, FeeValues,
+	axelar_evm::AxelarEVMRouter, DomainRouter, EVMDomain, EVMRouter, FeeValues,
+	MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 use pallet_evm::FeeCalculator;
 use pallet_liquidity_pools::Message;
 use runtime_common::account_conversion::AccountConverter;
-use sp_core::{crypto::AccountId32, storage::Storage, Get, H160, U256};
+use sp_core::{
+	bounded::BoundedVec, crypto::AccountId32, storage::Storage, ConstU32, Get, H160, U256,
+};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use tokio::runtime::Handle;
 
@@ -41,6 +45,14 @@ use crate::{
 		liquidity_pools_gateway::set_domain_router_call,
 	},
 };
+
+lazy_static! {
+	pub(crate) static ref TEST_EVM_CHAIN: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>> =
+		BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+			"ethereum".as_bytes().to_vec()
+		)
+		.unwrap();
+}
 
 #[tokio::test]
 async fn submit() {
@@ -84,7 +96,7 @@ async fn submit() {
 			evm_domain,
 			_marker: Default::default(),
 		},
-		evm_chain: EVMChain::Ethereum,
+		evm_chain: TEST_EVM_CHAIN.clone(),
 		_marker: Default::default(),
 		liquidity_pools_contract_address,
 	};
@@ -118,12 +130,19 @@ async fn submit() {
 	);
 
 	let sender = Keyring::Alice.to_account_id();
-	let sender_h160: H160 =
-		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&sender)[0..20]);
+	let gateway_sender = env
+		.with_state(Chain::Para(PARA_ID), || {
+			<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+		})
+		.unwrap();
 
-	// Note how both the target address and the sender need to have some balance.
+	let gateway_sender_h160: H160 =
+		H160::from_slice(&<AccountId32 as AsRef<[u8; 32]>>::as_ref(&gateway_sender)[0..20]);
+
+	// Note how both the target address and the gateway sender need to have some
+	// balance.
 	mint_balance_into_derived_account(&mut env, axelar_contract_address, 1_000_000_000 * CFG);
-	mint_balance_into_derived_account(&mut env, sender_h160, 1_000_000 * CFG);
+	mint_balance_into_derived_account(&mut env, gateway_sender_h160, 1_000_000 * CFG);
 
 	let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 		currency: 0,

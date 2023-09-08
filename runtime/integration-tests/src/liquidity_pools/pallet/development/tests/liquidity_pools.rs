@@ -47,9 +47,9 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, Loans, OrmlAssetRegistry,
-	OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
-	TreasuryAccount, XTokens, XcmTransactor,
+	Balances, Investments, LiquidityPools, LiquidityPoolsGateway, Loans, LocationToAccountId,
+	OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
+	RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -252,7 +252,9 @@ fn update_member() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(ALICE.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				new_member.clone()
+			),
 			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				default_tranche_id(pool_id),
@@ -263,7 +265,9 @@ fn update_member() {
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
 			PermissionScope::Pool(pool_id),
-			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				new_member.clone()
+			),
 			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 		));
 
@@ -550,7 +554,9 @@ fn transfer_tranche_tokens_from_local() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(receiver.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				default_tranche_id(pool_id),
@@ -738,14 +744,18 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(invalid_pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(valid_pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
 		));
@@ -1168,20 +1178,6 @@ fn schedule_upgrade() {
 				[7; 20]
 			),
 			BadOrigin
-		);
-
-		// Failing because the treasury has no funds
-		assert_noop!(
-			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
-			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
-		);
-
-		// The treasury needs GLRM to cover the fees of sending
-		// this message
-		OrmlTokens::deposit(
-			GLIMMER_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
 
 		// Now it finally works
@@ -1805,15 +1801,10 @@ mod utils {
 			Some(GLIMMER_CURRENCY_ID)
 		));
 
-		// Give Alice and BOB enough glimmer to pay for fees
+		// Fund the gateway sender account with enough glimmer to pay for fees
 		OrmlTokens::deposit(
 			GLIMMER_CURRENCY_ID,
-			&ALICE.into(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-		OrmlTokens::deposit(
-			GLIMMER_CURRENCY_ID,
-			&BOB.into(),
+			&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 			DEFAULT_BALANCE_GLMR * dollar(18),
 		);
 
@@ -2129,7 +2120,9 @@ mod utils {
 			assert_eq!(
 				OrmlTokens::free_balance(
 					investment_id(pool_id, default_tranche_id(pool_id)).into(),
-					&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
+					&AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+						DEFAULT_OTHER_DOMAIN_ADDRESS
+					)
 				),
 				0
 			);

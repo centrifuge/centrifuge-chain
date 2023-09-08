@@ -36,6 +36,7 @@ use runtime_common::{
 };
 use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
+pub use xcm::v3::{MultiAsset, MultiLocation};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -50,6 +51,37 @@ use super::{
 	AccountId, Balance, OrmlAssetRegistry, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
 	RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount, XcmpQueue,
 };
+
+/// A call filter for the XCM Transact instruction. This is a temporary
+/// measure until we properly account for proof size weights.
+///
+/// Calls that are allowed through this filter must:
+/// 1. Have a fixed weight;
+/// 2. Cannot lead to another call being made;
+/// 3. Have a defined proof size weight, e.g. no unbounded vecs in call
+/// parameters.
+///
+/// NOTE: Defensive configuration for now, inspired by filter of
+/// SystemParachains and Polkadot, can be extended if desired.
+pub struct SafeCallFilter;
+impl frame_support::traits::Contains<RuntimeCall> for SafeCallFilter {
+	fn contains(call: &RuntimeCall) -> bool {
+		matches!(
+			call,
+			RuntimeCall::Timestamp(..)
+				| RuntimeCall::Balances(..)
+				| RuntimeCall::Utility(pallet_utility::Call::as_derivative { .. })
+				| RuntimeCall::PolkadotXcm(
+					pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				) | RuntimeCall::XcmpQueue(..)
+				| RuntimeCall::DmpQueue(..)
+				| RuntimeCall::Proxy(..)
+				| RuntimeCall::LiquidityPoolsGateway(
+					pallet_liquidity_pools_gateway::Call::process_msg { .. }
+				) // TODO: Enable later: | RuntimeCall::OrderBook(..)
+		)
+	}
+}
 
 /// The main XCM config
 /// This is where we configure the core of our XCM integrations: how tokens are
@@ -74,7 +106,7 @@ impl xcm_executor::Config for XcmConfig {
 	type PalletInstancesInfo = crate::AllPalletsWithSystem;
 	type ResponseHandler = PolkadotXcm;
 	type RuntimeCall = RuntimeCall;
-	type SafeCallFilter = Everything;
+	type SafeCallFilter = SafeCallFilter;
 	type SubscriptionService = PolkadotXcm;
 	type Trader = Trader;
 	type UniversalAliases = Nothing;
@@ -247,7 +279,7 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type SovereignAccountOf = ();
+	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
@@ -296,9 +328,9 @@ pub type XcmRouter = (
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local
-/// `Origin` instance, ready for dispatching a transaction with Xcm's
+/// `RuntimeOrigin` instance, ready for dispatching a transaction with Xcm's
 /// `Transact`. There is an `OriginKind` which can biases the kind of local
-/// `Origin` it will become.
+/// `RuntimeOrigin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for

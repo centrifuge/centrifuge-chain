@@ -10,9 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{EnsureRootOr, HalfOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
-use frame_system::EnsureRoot;
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
@@ -22,7 +21,7 @@ use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
 
-use crate::{Aura, Runtime, RuntimeEvent};
+use crate::{Aura, LocationToAccountId, Runtime, RuntimeEvent};
 
 /// To create valid Ethereum-compatible blocks, we need a 20-byte
 /// "author" for the block. Since that author is purely informational,
@@ -48,7 +47,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for Runtime {
-	type AddressMapping = AccountConverter<Runtime>;
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<crate::AccountId>;
@@ -89,6 +88,7 @@ impl pallet_ethereum::Config for Runtime {
 impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl axelar_gateway_precompile::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }

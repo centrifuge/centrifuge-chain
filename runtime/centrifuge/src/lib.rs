@@ -21,11 +21,13 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
+	liquidity_pools::{InboundQueue, OutboundQueue},
 	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	TrancheCurrency as _, TryConvert,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
+	domain_address::{Domain, DomainAddress},
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -62,7 +64,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::Transaction as EthereumTransaction;
+use pallet_ethereum::Transaction as EthTransaction;
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -77,6 +79,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
+use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
@@ -99,7 +102,7 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use crate::xcm::{MultiAsset, MultiLocation, XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod evm;
 mod migrations;
@@ -129,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1019,
+	spec_version: 1020,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -258,7 +261,14 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
-			RuntimeCall::EVM(_) => false, // Disable allnon-root EVM access
+			// Disable all non-root EVM access
+			RuntimeCall::EVM(_) => false,
+			// We block this call since it includes Moonbeam trait implementations such
+			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
+			// arbitrary users calling it.
+			RuntimeCall::XcmTransactor(
+				pallet_xcm_transactor::Call::transact_through_derivative { .. },
+			) => false,
 			_ => true,
 		}
 	}
@@ -416,6 +426,113 @@ impl orml_asset_registry::Config for Runtime {
 	//       calls are only callable by `AuthorityOrigin`. In our
 	//       case, pallet-pools and democracy
 	type WeightInfo = ();
+}
+
+parameter_types! {
+	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
+	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
+}
+
+impl pallet_liquidity_pools::Config for Runtime {
+	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
+	// NOTE: No need to adapt that. The Router is an artifact and will be removed
+	// with FI PR
+	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Quantity;
+	type CurrencyId = CurrencyId;
+	type ForeignInvestment = Investments;
+	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
+	type OutboundQueue = FilteredOutboundQueue;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+type LiquidityPoolsMessage =
+	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+
+/// The FilteredOutboundQueue serves as a filter for outbound LP messages that
+/// we want to allow initially.
+pub struct FilteredOutboundQueue;
+
+impl OutboundQueue for FilteredOutboundQueue {
+	type Destination = Domain;
+	type Message = LiquidityPoolsMessage;
+	type Sender = AccountId;
+
+	fn submit(
+		sender: Self::Sender,
+		destination: Self::Destination,
+		msg: Self::Message,
+	) -> DispatchResult {
+		match msg {
+			LiquidityPoolsMessage::AddCurrency { .. }
+			| LiquidityPoolsMessage::UpdateMember { .. }
+			| LiquidityPoolsMessage::AddPool { .. }
+			| LiquidityPoolsMessage::AddTranche { .. }
+			| LiquidityPoolsMessage::UpdateTrancheTokenPrice { .. } => {
+				<LiquidityPoolsGateway as OutboundQueue>::submit(sender, destination, msg)
+			}
+			_ => Err(DispatchError::Other("unsupported outbound message")),
+		}
+	}
+}
+
+parameter_types! {
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+}
+
+parameter_types! {
+	// A temporary admin account for the LP logic
+	// This is a multi-sig controlled pure proxy on mainnet
+	// - address: "4eEqmbQMbFfNUg6bQnqi9zgUvQvSpNbUgstEM64Xq9FW58Xv" (on Centrifuge)
+	//             (pub key 0x80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57)
+	//
+	// This account is besides Root and 2/3-council able to
+	// - add valid relayer contracts
+	// - rm valid relayer contracts
+	// - add valid LP instance contracts
+	// - rm valid LP instance contracts
+	// - add conversions from Axelar `sourceChain` strings to `DomainAddress`
+	// - set the Axelar gateway contract in the Axelar gateway precompile
+	pub LpAdminAccount: AccountId = AccountId::new(hex_literal::hex!("80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57"));
+}
+
+impl pallet_liquidity_pools_gateway::Config for Runtime {
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
+	type InboundQueue = DummyInboundQueue;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Message = LiquidityPoolsMessage;
+	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
+}
+
+/// DummyInboundQueue will be used in the first phase of testing in order to
+/// ensure that no incoming messages will be processed.
+pub struct DummyInboundQueue;
+
+impl InboundQueue for DummyInboundQueue {
+	type Message = LiquidityPoolsMessage;
+	type Sender = DomainAddress;
+
+	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
+		Err(DispatchError::Other("InboundQueue not supported yet"))
+	}
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -1180,6 +1297,36 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Self>;
 }
 
+/// Xcm Weigher shared between multiple Xcm-related configs.
+pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+
+parameter_types! {
+	// 1 DOT, which has 10 decimals, should be enough to cover for fees opening/accepting hrmp channels.
+	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 10_000_000_000u128).into();
+}
+
+impl pallet_xcm_transactor::Config for Runtime {
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AssetTransactor = FungiblesTransactor;
+	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type DerivativeAddressRegistrationOrigin = EnsureRootOr<HalfOfCouncil>;
+	type HrmpEncoder = moonbeam_relay_encoder::polkadot::PolkadotEncoder;
+	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type RuntimeEvent = RuntimeEvent;
+	type SelfLocation = SelfLocation;
+	type SovereignAccountDispatcherOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Transactor = xcm_transactor::NullTransactor;
+	type UniversalLocation = UniversalLocation;
+	type Weigher = XcmWeigher;
+	type WeightInfo = ();
+	type XcmSender = XcmRouter;
+}
+
 // Block Rewards
 
 parameter_types! {
@@ -1670,12 +1817,6 @@ impl pallet_data_collector::Config for Runtime {
 	type Moment = Moment;
 }
 
-parameter_types! {
-	// todo(nuno): make it `pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;`
-	// once we have LiquidityPools
-	pub const LiquidityPoolsPalletIndex: PalletIndex = 103;
-}
-
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	// TODO: This is a stopgap value until we can calculate it correctly with
@@ -1819,18 +1960,19 @@ construct_runtime!(
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 100,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 102,
-		// RESERVED 103 index for LiquidityPools
-		// LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 103,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage} = 103,
 		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 104,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 105,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 106,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 107,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
@@ -1894,7 +2036,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1020,
+	migrations::UpgradeCentrifuge1021,
 >;
 
 pub struct TransactionConverter;
@@ -1924,10 +2066,12 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 #[cfg(not(feature = "disable-runtime-api"))]
 mod __runtime_api_use {
 	pub use pallet_loans::entities::loans::ActiveLoanInfo;
+	pub use runtime_common::account_conversion::AccountConverter;
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use runtime_common::{gateway::GatewayAccountProvider, origin::EnsureAccountOrRootOr};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2139,6 +2283,12 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: ::xcm::v3::MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
@@ -2265,11 +2415,11 @@ impl_runtime_apis! {
 
 		fn extrinsic_filter(
 			xts: Vec<<Block as BlockT>::Extrinsic>,
-		) -> Vec<EthereumTransaction> {
+		) -> Vec<EthTransaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
 				RuntimeCall::Ethereum(pallet_ethereum::Call::transact { transaction }) => Some(transaction),
 				_ => None
-			}).collect::<Vec<EthereumTransaction>>()
+			}).collect::<Vec<EthTransaction>>()
 		}
 
 		fn elasticity() -> Option<Permill> {
@@ -2280,7 +2430,7 @@ impl_runtime_apis! {
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
-		fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
+		fn convert_transaction(transaction: EthTransaction) -> <Block as BlockT>::Extrinsic {
 			UncheckedExtrinsic::new_unsigned(
 				pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
 			)

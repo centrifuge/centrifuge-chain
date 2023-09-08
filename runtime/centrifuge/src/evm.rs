@@ -10,18 +10,19 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{TwoThirdOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
+	origin::EnsureAccountOrRootOr,
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
 
-use crate::Aura;
+use crate::{Aura, LocationToAccountId};
 
 // To create valid Ethereum-compatible blocks, we need a 20-byte
 // "author" for the block. Since that author is purely informational,
@@ -47,7 +48,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for crate::Runtime {
-	type AddressMapping = AccountConverter<crate::Runtime>;
+	type AddressMapping = AccountConverter<crate::Runtime, LocationToAccountId>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<crate::AccountId>;

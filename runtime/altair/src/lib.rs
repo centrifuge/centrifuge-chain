@@ -19,11 +19,11 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::latest::{MultiAsset, MultiLocation};
+use ::xcm::v3::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	TrancheCurrency as _, TryConvert,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -73,8 +73,11 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	fees::{DealWithFees, WeightToFee},
+	gateway::GatewayAccountProvider,
+};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
@@ -124,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1030,
+	spec_version: 1031,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1386,7 +1389,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AccountConverter = AccountConverter<Runtime>;
+	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1398,7 +1401,6 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -1410,10 +1412,11 @@ impl pallet_liquidity_pools::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
@@ -1422,6 +1425,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
 	type WeightInfo = ();
 }
 
@@ -1791,7 +1795,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
-		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage} = 108,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
 		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
@@ -1799,7 +1803,7 @@ construct_runtime!(
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
@@ -1858,7 +1862,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1030,
+	migrations::UpgradeAltair1032,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -2185,6 +2189,11 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+		}
+	}
 
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {

@@ -25,7 +25,7 @@ use cfg_types::{
 use frame_support::{assert_noop, assert_ok};
 use hex::FromHex;
 use liquidity_pools_gateway_routers::{
-	ethereum_xcm::EthereumXCMRouter, AxelarXCMRouter, DomainRouter, EVMChain, EVMDomain, FeeValues,
+	ethereum_xcm::EthereumXCMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, FeeValues,
 	XCMRouter, XcmDomain, XcmTransactInfo,
 };
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
@@ -41,14 +41,18 @@ use crate::{
 	liquidity_pools::pallet::development::{
 		setup::{dollar, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM, TEST_DOMAIN},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
+		tests::routers::axelar_evm::TEST_EVM_CHAIN,
 	},
 	utils::accounts::Keyring,
 };
 
 #[test]
-fn submit() {
+fn submit_ethereum_xcm() {
 	submit_test_fn(get_ethereum_xcm_router_fn());
+}
 
+#[test]
+fn submit_axelar_xcm() {
 	submit_test_fn(get_axelar_xcm_router_fn());
 }
 
@@ -79,11 +83,6 @@ fn submit_test_fn(router_creation_fn: RouterCreationFn) {
 			),
 			pallet_liquidity_pools_gateway::Error::<Runtime>::RouterNotFound,
 		);
-
-		assert_noop!(
-			<LiquidityPoolsGateway as OutboundQueue>::submit(CHARLIE.into(), TEST_DOMAIN, msg),
-			pallet_xcm_transactor::Error::<Runtime>::UnableToWithdrawAsset,
-		);
 	});
 }
 
@@ -104,7 +103,7 @@ fn get_axelar_xcm_router_fn() -> RouterCreationFn {
 					},
 					_marker: Default::default(),
 				},
-				axelar_target_chain: EVMChain::Ethereum,
+				axelar_target_chain: TEST_EVM_CHAIN.clone(),
 				axelar_target_contract: H160::from_low_u64_be(111),
 				_marker: Default::default(),
 			};
@@ -175,15 +174,10 @@ fn setup(router_creation_fn: RouterCreationFn) {
 		Some(glmr_currency_id)
 	));
 
-	// Give Alice and BOB enough glimmer to pay for fees
+	// Fund the gateway sender account with enough glimmer to pay for fees
 	OrmlTokens::deposit(
 		glmr_currency_id,
-		&ALICE.into(),
-		1_000_000_000_000 * dollar(18),
-	);
-	OrmlTokens::deposit(
-		glmr_currency_id,
-		&BOB.into(),
+		&<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 		1_000_000_000_000 * dollar(18),
 	);
 

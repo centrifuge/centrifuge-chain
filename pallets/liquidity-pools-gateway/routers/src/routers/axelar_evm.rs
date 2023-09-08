@@ -18,32 +18,14 @@ use scale_info::{
 	prelude::string::{String, ToString},
 	TypeInfo,
 };
-use sp_core::H160;
+use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Vec};
 
 use crate::{
 	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
 	AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM, AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM,
-	FUNCTION_NAME, MESSAGE_PARAM,
+	FUNCTION_NAME, MAX_AXELAR_EVM_CHAIN_SIZE, MESSAGE_PARAM,
 };
-
-/// EVMChain holds all supported EVM chains.
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub enum EVMChain {
-	Ethereum,
-	Goerli,
-}
-
-/// Required due to the naming convention defined by Axelar here:
-/// <https://docs.axelar.dev/dev/reference/mainnet-chain-names>
-impl ToString for EVMChain {
-	fn to_string(&self) -> String {
-		match self {
-			EVMChain::Ethereum => "Ethereum".to_string(),
-			EVMChain::Goerli => "ethereum-2".to_string(),
-		}
-	}
-}
 
 /// The router used for executing the LiquidityPools contract via Axelar.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -57,7 +39,7 @@ where
 		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	pub router: EVMRouter<T>,
-	pub evm_chain: EVMChain,
+	pub evm_chain: BoundedVec<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>,
 	pub liquidity_pools_contract_address: H160,
 	pub _marker: PhantomData<T>,
 }
@@ -82,7 +64,7 @@ where
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let eth_msg = get_axelar_encoded_msg(
 			msg.serialize(),
-			self.evm_chain.clone(),
+			self.evm_chain.clone().into_inner(),
 			self.liquidity_pools_contract_address,
 		)
 		.map_err(DispatchError::Other)?;
@@ -102,9 +84,12 @@ where
 /// <https://github.com/centrifuge/liquidity-pools/blob/383d279f809a01ab979faf45f31bf9dc3ce6a74a/src/routers/Gateway.sol#L276>
 pub(crate) fn get_axelar_encoded_msg(
 	serialized_msg: Vec<u8>,
-	target_chain: EVMChain,
+	target_chain: Vec<u8>,
 	target_contract: H160,
 ) -> Result<Vec<u8>, &'static str> {
+	let target_chain_string =
+		String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?;
+
 	#[allow(deprecated)]
 	let encoded_liquidity_pools_contract = Contract {
 		constructor: None,
@@ -169,7 +154,7 @@ pub(crate) fn get_axelar_encoded_msg(
 	.function(AXELAR_FUNCTION_NAME)
 	.map_err(|_| "cannot retrieve Axelar contract function")?
 	.encode_input(&[
-		Token::String(target_chain.to_string()),
+		Token::String(target_chain_string),
 		Token::String(target_contract.to_string()),
 		Token::Bytes(encoded_liquidity_pools_contract),
 	])
