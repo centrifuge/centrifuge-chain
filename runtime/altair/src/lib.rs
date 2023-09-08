@@ -1446,7 +1446,7 @@ impl InboundQueue for StumbInboundQueue {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
+	type InboundQueue = StumbInboundQueue;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
