@@ -282,38 +282,6 @@ where
 	Ok(encoded)
 }
 
-// OLD XcmDomain with max_gas_limit and fee_per_second
-// /// XcmDomain gathers all the required fields to build and send remote
-// /// calls to a specific XCM-based Domain.
-// #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
-// pub struct XcmDomain<CurrencyId> {
-// 	/// The XCM multilocation of the domain.
-// 	pub location: Box<VersionedMultiLocation>,
-//
-// 	/// The ethereum_xcm::Call::transact call index on a given domain.
-// 	/// It should contain the pallet index + the `transact` call index, to which
-// 	/// we will append the eth_tx param.
-// 	///
-// 	/// You can obtain this value by building an ethereum_xcm::transact call
-// 	/// with Polkadot JS on the target chain.
-// 	pub ethereum_xcm_transact_call_index:
-// 		BoundedVec<u8, ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>>,
-//
-// 	/// The target contract address on a given domain.
-// 	pub contract_address: H160,
-//
-// 	/// The max gas_limit we want to propose for a remote evm execution
-// 	pub max_gas_limit: u64,
-//
-// 	/// The currency in which execution fees will be paid on
-// 	pub fee_currency: CurrencyId,
-//
-// 	/// The fee per second that will be multiplied with
-// 	/// the overall weight of the call to define the fees on the
-// 	/// chain that will execute the call.
-// 	pub fee_per_second: u128,
-// }
-
 /// XcmDomain gathers all the required fields to build and send remote
 /// calls to a specific XCM-based Domain.
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
