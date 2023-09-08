@@ -41,12 +41,15 @@ use cfg_types::{
 	},
 };
 use development_runtime::{
-	Balances, ForeignInvestments, Investments, LiquidityPools, OrmlAssetRegistry, OrmlTokens,
-	Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System,
+	Balances, ForeignInvestments, Investments, LiquidityPools, OrmlAssetRegistry, Permissions,
+	PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System, Tokens,
 };
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{fungible::Mutate as _, fungibles::Mutate, Get, PalletInfo},
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		Get, PalletInfo,
+	},
 };
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_foreign_investments::{
@@ -176,12 +179,12 @@ mod same_currencies {
 
 			// Verify investment was decreased into investment account
 			assert_eq!(
-				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				Tokens::balance(currency_id, &default_investment_account()),
 				final_amount
 			);
 			// Since the investment was done in the pool currency, the decrement happens
 			// synchronously and thus it must be burned from investor's holdings
-			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert_eq!(Tokens::balance(currency_id, &investor), 0);
 			assert!(System::events().iter().any(|e| e.event
 				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
 					investment_id: default_investment_id(),
@@ -227,7 +230,7 @@ mod same_currencies {
 
 			// Verify investment account holds funds before cancelling
 			assert_eq!(
-				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				Tokens::balance(currency_id, &default_investment_account()),
 				invest_amount
 			);
 
@@ -264,12 +267,12 @@ mod same_currencies {
 
 			// Verify investment was entirely drained from investment account
 			assert_eq!(
-				OrmlTokens::free_balance(currency_id, &default_investment_account()),
+				Tokens::balance(currency_id, &default_investment_account()),
 				0
 			);
 			// Since the investment was done in the pool currency, the decrement happens
 			// synchronously and thus it must be burned from investor's holdings
-			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert_eq!(Tokens::balance(currency_id, &investor), 0);
 			assert!(System::events().iter().any(|e| e.event
 				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
 					investment_id: default_investment_id(),
@@ -322,7 +325,7 @@ mod same_currencies {
 			assert_ok!(Investments::process_invest_orders(default_investment_id()));
 
 			// Tranche tokens will be minted upon fulfillment
-			assert_eq!(OrmlTokens::total_issuance(investment_currency_id), 0);
+			assert_eq!(Tokens::total_issuance(investment_currency_id), 0);
 			assert_ok!(Investments::invest_fulfillment(
 				default_investment_id(),
 				FulfillmentWithPrice::<Rate> {
@@ -330,7 +333,7 @@ mod same_currencies {
 					price: Rate::one(),
 				}
 			));
-			assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
+			assert_eq!(Tokens::total_issuance(investment_currency_id), amount);
 
 			// Mock collection message msg
 			let msg = LiquidityPoolMessage::CollectInvest {
@@ -351,7 +354,7 @@ mod same_currencies {
 
 			// Verify investment was transferred to the domain locator
 			assert_eq!(
-				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				Tokens::balance(default_investment_id().into(), &sending_domain_locator),
 				amount
 			);
 
@@ -454,11 +457,6 @@ mod same_currencies {
 					price: Rate::checked_from_rational(1, 4).unwrap(),
 				}
 			));
-			// assert_eq!(
-			// 	OrmlTokens::total_issuance(investment_currency_id),
-			// 	invest_amount / 8
-			//  invest_amount
-			// );
 
 			// Pre collect assertions
 			assert!(Investments::investment_requires_collect(
@@ -504,11 +502,11 @@ mod same_currencies {
 			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
 			// domain)
 			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &investor),
+				Tokens::balance(investment_currency_id, &investor),
 				invest_amount * 2
 			);
 			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				Tokens::balance(investment_currency_id, &sending_domain_locator),
 				0
 			);
 			assert!(System::events().iter().any(|e| {
@@ -544,7 +542,7 @@ mod same_currencies {
 				0
 			);
 			assert_eq!(
-				OrmlTokens::total_issuance(investment_currency_id),
+				Tokens::total_issuance(investment_currency_id),
 				invest_amount * 3
 			);
 
@@ -572,11 +570,11 @@ mod same_currencies {
 			// Tranche Tokens should still be investor's wallet (i.e. not be collected to
 			// domain)
 			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &investor),
+				Tokens::balance(investment_currency_id, &investor),
 				invest_amount * 3
 			);
 			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				Tokens::balance(investment_currency_id, &sending_domain_locator),
 				0
 			);
 			assert!(!System::events().iter().any(|e| {
@@ -630,12 +628,12 @@ mod same_currencies {
 				default_investment_id()
 			));
 			assert_eq!(
-				OrmlTokens::total_issuance(investment_currency_id),
+				Tokens::total_issuance(investment_currency_id),
 				invest_amount * 3
 			);
-			assert!(OrmlTokens::free_balance(investment_currency_id, &investor).is_zero());
+			assert!(Tokens::balance(investment_currency_id, &investor).is_zero());
 			assert_eq!(
-				OrmlTokens::free_balance(investment_currency_id, &sending_domain_locator),
+				Tokens::balance(investment_currency_id, &sending_domain_locator),
 				invest_amount * 3
 			);
 		});
@@ -669,7 +667,7 @@ mod same_currencies {
 			);
 
 			// Increasing again should just bump redeeming amount
-			assert_ok!(OrmlTokens::mint_into(
+			assert_ok!(Tokens::mint_into(
 				default_investment_id().into(),
 				&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
 				amount
@@ -735,7 +733,7 @@ mod same_currencies {
 
 			// Verify investment was decreased into investment account
 			assert_eq!(
-				OrmlTokens::free_balance(
+				Tokens::balance(
 					default_investment_id().into(),
 					&default_investment_account(),
 				),
@@ -744,11 +742,11 @@ mod same_currencies {
 			// Tokens should have been transferred from investor's wallet to domain's
 			// sovereign account
 			assert_eq!(
-				OrmlTokens::free_balance(default_investment_id().into(), &investor),
+				Tokens::balance(default_investment_id().into(), &investor),
 				0
 			);
 			assert_eq!(
-				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				Tokens::balance(default_investment_id().into(), &sending_domain_locator),
 				decrease_amount
 			);
 
@@ -825,7 +823,7 @@ mod same_currencies {
 
 			// Verify investment was decreased into investment account
 			assert_eq!(
-				OrmlTokens::free_balance(
+				Tokens::balance(
 					default_investment_id().into(),
 					&default_investment_account(),
 				),
@@ -834,11 +832,11 @@ mod same_currencies {
 			// Tokens should have been transferred from investor's wallet to domain's
 			// sovereign account
 			assert_eq!(
-				OrmlTokens::free_balance(default_investment_id().into(), &investor),
+				Tokens::balance(default_investment_id().into(), &investor),
 				0
 			);
 			assert_eq!(
-				OrmlTokens::free_balance(default_investment_id().into(), &sending_domain_locator),
+				Tokens::balance(default_investment_id().into(), &sending_domain_locator),
 				redeem_amount
 			);
 
@@ -894,7 +892,7 @@ mod same_currencies {
 
 			// Fund the pool account with sufficient pool currency, else redemption cannot
 			// swap tranche tokens against pool currency
-			assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+			assert_ok!(Tokens::mint_into(currency_id, &pool_account, amount));
 
 			// Process and fulfill order
 			// NOTE: Without this step, the order id is not cleared and
@@ -929,7 +927,7 @@ mod same_currencies {
 				.collect();
 
 			// Verify collected redemption was burned from investor
-			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert_eq!(Tokens::balance(currency_id, &investor), 0);
 			assert!(System::events().iter().any(|e| e.event
 				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
 					currency_id,
@@ -1024,11 +1022,7 @@ mod same_currencies {
 
 			// Fund the pool account with sufficient pool currency, else redemption cannot
 			// swap tranche tokens against pool currency
-			assert_ok!(OrmlTokens::mint_into(
-				currency_id,
-				&pool_account,
-				redeem_amount
-			));
+			assert_ok!(Tokens::mint_into(currency_id, &pool_account, redeem_amount));
 			assert!(!Investments::redemption_requires_collect(
 				&investor,
 				default_investment_id()
@@ -1162,7 +1156,7 @@ mod same_currencies {
 					.into()
 			}));
 			// Verify collected redemption was burned from investor
-			assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+			assert_eq!(Tokens::balance(currency_id, &investor), 0);
 			assert!(System::events().iter().any(|e| e.event
 				== orml_tokens::Event::<DevelopmentRuntime>::Withdrawn {
 					currency_id,
@@ -1294,7 +1288,7 @@ mod same_currencies {
 					// Prepare collection
 					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
 						.into_account_truncating();
-					assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+					assert_ok!(Tokens::mint_into(currency_id, &pool_account, amount));
 					assert_ok!(Investments::process_invest_orders(default_investment_id()));
 					assert_ok!(Investments::invest_fulfillment(
 						default_investment_id(),
@@ -1352,7 +1346,7 @@ mod same_currencies {
 					enable_liquidity_pool_transferability(currency_id);
 
 					// Mint more into DomainLocator required for subsequent invest attempt
-					assert_ok!(OrmlTokens::mint_into(
+					assert_ok!(Tokens::mint_into(
 						default_investment_id().into(),
 						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
 						1,
@@ -1361,7 +1355,7 @@ mod same_currencies {
 					// Prepare collection
 					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
 						.into_account_truncating();
-					assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+					assert_ok!(Tokens::mint_into(currency_id, &pool_account, amount));
 					assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 					assert_ok!(Investments::redeem_fulfillment(
 						default_investment_id(),
@@ -1454,6 +1448,7 @@ mod mismatching_currencies {
 			.unwrap();
 
 			// Should fail to increase to an invalid payment currency
+			// assert!(!ForeignInvestments::accepted_payment_currency(foreign_currency));
 			let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),
@@ -1466,12 +1461,15 @@ mod mismatching_currencies {
 				pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
 			);
 
+			// TODO: Accepted payment currency assertions
 			assert_ok!(OrderBook::add_trading_pair(
 				RuntimeOrigin::root(),
 				pool_currency,
 				foreign_currency,
 				1
 			));
+			// assert!(ForeignInvestments::accepted_payment_currency(foreign_currency));
+			// assert!(ForeignInvestments::accepted_payout_currency(foreign_currency));
 			assert_ok!(OrderBook::add_trading_pair(
 				RuntimeOrigin::root(),
 				foreign_currency,
@@ -1597,7 +1595,31 @@ mod mismatching_currencies {
 		});
 	}
 
-	// TODO: Similar tests for decreasing investments, increase/decrease and
+	fn invest_with_swaps_happy_path() {
+		todo!()
+	}
+
+	fn redeem_with_swaps_happy_path() {
+		todo!()
+	}
+
+	fn concurrent_swap_orders_same_direction() {
+		todo!()
+	}
+
+	fn concurrent_swap_orders_opposite_direction() {
+		todo!()
+	}
+
+	fn fulfill_invest_swap_order_requires_collect() {
+		todo!()
+	}
+
+	fn fulfill_redeem_swap_order_requires_collect() {
+		todo!()
+	}
+
+	// TODO: Similar tests for decreasing, increase/decrease and
 	// collect redemption
 }
 
@@ -1647,7 +1669,7 @@ mod setup {
 			)),
 		));
 
-		let amount_before = OrmlTokens::free_balance(currency_id, &default_investment_account());
+		let amount_before = Tokens::balance(currency_id, &default_investment_account());
 		let final_amount = amount_before
 			.ensure_add(amount)
 			.expect("Should not overflow when incrementing amount");
@@ -1678,7 +1700,7 @@ mod setup {
 		}
 		// Verify investment was transferred into investment account
 		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &default_investment_account()),
+			Tokens::balance(currency_id, &default_investment_account()),
 			final_amount
 		);
 		assert!(System::events().iter().any(|e| {
@@ -1722,7 +1744,7 @@ mod setup {
 
 		// Fund `DomainLocator` account of origination domain as redeemed tranche tokens
 		// are transferred from this account instead of minting
-		assert_ok!(OrmlTokens::mint_into(
+		assert_ok!(Tokens::mint_into(
 			default_investment_id().into(),
 			&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
 			amount
@@ -1730,14 +1752,14 @@ mod setup {
 
 		// Verify redemption has not been made yet
 		assert_eq!(
-			OrmlTokens::free_balance(
+			Tokens::balance(
 				default_investment_id().into(),
 				&default_investment_account(),
 			),
 			0
 		);
 		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &investor),
+			Tokens::balance(default_investment_id().into(), &investor),
 			0
 		);
 
@@ -1778,18 +1800,18 @@ mod setup {
 		);
 		// Verify redemption was transferred into investment account
 		assert_eq!(
-			OrmlTokens::free_balance(
+			Tokens::balance(
 				default_investment_id().into(),
 				&default_investment_account(),
 			),
 			amount
 		);
 		assert_eq!(
-			OrmlTokens::free_balance(default_investment_id().into(), &investor),
+			Tokens::balance(default_investment_id().into(), &investor),
 			0
 		);
 		assert_eq!(
-			OrmlTokens::free_balance(
+			Tokens::balance(
 				default_investment_id().into(),
 				&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
 			),
