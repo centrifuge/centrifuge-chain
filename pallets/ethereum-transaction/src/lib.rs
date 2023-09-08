@@ -14,15 +14,12 @@
 use cfg_primitives::TRANSACTION_RECOVERY_ID;
 use cfg_traits::ethereum::EthereumTransactor;
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
-use fp_evm::CallOrCreateInfo;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use pallet_evm::{ExitError, ExitFatal, ExitReason};
 use sp_core::{H160, H256, U256};
-use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -32,6 +29,8 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_system::pallet_prelude::OriginFor;
+
 	use super::*;
 
 	#[pallet::pallet]
@@ -39,99 +38,36 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_ethereum::Config {
-		/// The event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+	pub trait Config: frame_system::Config + pallet_ethereum::Config
+	where
+		OriginFor<Self>:
+			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<Self>>>,
+	{
 	}
 
 	/// Storage for nonce.
 	#[pallet::storage]
 	pub(crate) type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
-	#[pallet::event]
-	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		/// A call was executed.
-		Executed {
-			from: H160,
-			to: H160,
-			exit_reason: ExitReason,
-			value: Vec<u8>,
-		},
-	}
-
-	#[pallet::error]
-	pub enum Error<T> {
-		/// Trying to pop from an empty stack.
-		StackUnderflow,
-
-		/// Trying to push into a stack over stack limit.
-		StackOverflow,
-
-		/// Jump destination is invalid.
-		InvalidJump,
-
-		/// An opcode accesses memory region, but the region is invalid.
-		InvalidRange,
-
-		/// Encountered the designated invalid opcode.
-		DesignatedInvalid,
-
-		/// Call stack is too deep (runtime).
-		CallTooDeep,
-
-		/// Create opcode encountered collision (runtime).
-		CreateCollision,
-
-		/// Create init code exceeds limit (runtime).
-		CreateContractLimit,
-
-		/// Invalid opcode during execution or starting byte is 0xef. See [EIP-3541](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-3541.md).
-		InvalidCode(u8),
-
-		/// An opcode accesses external information, but the request is off
-		/// offset limit (runtime).
-		OutOfOffset,
-
-		/// Execution runs out of gas (runtime).
-		OutOfGas,
-
-		/// Not enough fund to start the execution (runtime).
-		OutOfFund,
-
-		/// PC underflowed (unused).
-		PCUnderflow,
-
-		/// Attempt to create an empty account (runtime, unused).
-		CreateEmpty,
-
-		/// The operation is not supported.
-		NotSupported,
-		/// The trap (interrupt) is unhandled.
-		UnhandledInterrupt,
-
-		/// Machine encountered an explicit revert.
-		Reverted,
-
-		/// Unexpected result when executing a transaction.
-		UnexpectedExecuteResult,
-
-		/// Other normal errors.
-		Other,
-	}
-
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		OriginFor<T>:
+			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
+	{
 		fn get_transaction_signature() -> Option<TransactionSignature> {
-			//TODO(cdamian): Same signature as the one in ethereum-xcm.
 			TransactionSignature::new(
 				TRANSACTION_RECOVERY_ID,
-				H256::from_low_u64_be(1u64),
-				H256::from_low_u64_be(1u64),
+				H256::from_low_u64_be(2u64),
+				H256::from_low_u64_be(2u64),
 			)
 		}
 	}
 
-	impl<T: Config> EthereumTransactor for Pallet<T> {
+	impl<T: Config> EthereumTransactor for Pallet<T>
+	where
+		OriginFor<T>:
+			From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
+	{
 		/// This implementation serves as a wrapper around the Ethereum pallet
 		/// execute functionality. It keeps track of the nonce used for each
 		/// call and builds a fake signature for executing the provided call.
@@ -169,88 +105,10 @@ pub mod pallet {
 			});
 
 			Nonce::<T>::put(nonce.saturating_add(U256::one()));
-
-			let (_target, _value, info) = pallet_ethereum::Pallet::<T>::execute(
-				from,
-				&transaction,
-				Some(T::config().clone()),
+			pallet_ethereum::Pallet::<T>::transact(
+				pallet_ethereum::Origin::EthereumTransaction(from).into(),
+				transaction,
 			)
-			.map_err(|e| {
-				let weight = e.post_info.actual_weight.map_or(Weight::zero(), |w| w);
-
-				DispatchErrorWithPostInfo {
-					post_info: PostDispatchInfo {
-						actual_weight: Some(weight.saturating_add(read_weight)),
-						pays_fee: Pays::Yes,
-					},
-					error: e.error,
-				}
-			})?;
-
-			let dispatch_info = PostDispatchInfo {
-				actual_weight: Some(read_weight),
-				pays_fee: Pays::Yes,
-			};
-
-			match info {
-				CallOrCreateInfo::Call(call_info) => {
-					Self::deposit_event(Event::Executed {
-						from,
-						to,
-						exit_reason: call_info.exit_reason.clone(),
-						value: call_info.value.clone(),
-					});
-
-					match call_info.exit_reason {
-						ExitReason::Succeed(_) => Ok(dispatch_info),
-						ExitReason::Error(e) => Err(DispatchErrorWithPostInfo {
-							post_info: dispatch_info,
-							error: map_evm_error::<T>(e).into(),
-						}),
-						ExitReason::Revert(_) => Err(DispatchErrorWithPostInfo {
-							post_info: dispatch_info,
-							error: Error::<T>::Reverted.into(),
-						}),
-						ExitReason::Fatal(e) => Err(DispatchErrorWithPostInfo {
-							post_info: dispatch_info,
-							error: map_evm_fatal_error::<T>(e).into(),
-						}),
-					}
-				}
-				CallOrCreateInfo::Create(_) => Err(DispatchErrorWithPostInfo {
-					post_info: dispatch_info,
-					error: Error::<T>::UnexpectedExecuteResult.into(),
-				}),
-			}
-		}
-	}
-
-	fn map_evm_error<T: Config>(e: ExitError) -> Error<T> {
-		match e {
-			ExitError::StackUnderflow => Error::StackUnderflow,
-			ExitError::StackOverflow => Error::StackOverflow,
-			ExitError::InvalidJump => Error::InvalidJump,
-			ExitError::InvalidRange => Error::InvalidRange,
-			ExitError::DesignatedInvalid => Error::DesignatedInvalid,
-			ExitError::CallTooDeep => Error::CallTooDeep,
-			ExitError::CreateCollision => Error::CreateCollision,
-			ExitError::CreateContractLimit => Error::CreateContractLimit,
-			ExitError::InvalidCode(opcode) => Error::InvalidCode(opcode.0),
-			ExitError::OutOfOffset => Error::OutOfOffset,
-			ExitError::OutOfGas => Error::OutOfGas,
-			ExitError::OutOfFund => Error::OutOfFund,
-			ExitError::PCUnderflow => Error::PCUnderflow,
-			ExitError::CreateEmpty => Error::CreateEmpty,
-			ExitError::Other(_) => Error::Other,
-		}
-	}
-
-	fn map_evm_fatal_error<T: Config>(e: ExitFatal) -> Error<T> {
-		match e {
-			ExitFatal::NotSupported => Error::NotSupported,
-			ExitFatal::UnhandledInterrupt => Error::UnhandledInterrupt,
-			ExitFatal::CallErrorAsFatal(e) => map_evm_error(e),
-			ExitFatal::Other(_) => Error::Other,
 		}
 	}
 }

@@ -13,6 +13,7 @@ use cfg_traits::liquidity_pools::Codec;
 use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_system::pallet_prelude::OriginFor;
 use scale_info::{
 	prelude::string::{String, ToString},
 	TypeInfo,
@@ -52,6 +53,8 @@ where
 		+ pallet_liquidity_pools_gateway::Config
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	pub router: EVMRouter<T>,
 	pub evm_chain: EVMChain,
@@ -66,6 +69,8 @@ where
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	/// Calls the init function on the EVM router.
 	pub fn do_init(&self) -> DispatchResult {
