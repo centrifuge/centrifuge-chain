@@ -84,14 +84,13 @@ use crate::{
 		setup::{cfg, dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::utils::{
-			get_default_moonbeam_native_token_location, DEFAULT_BALANCE_GLMR,
+			get_default_moonbeam_native_token_location, DEFAULT_BALANCE_CFG, DEFAULT_BALANCE_GLMR,
 			DEFAULT_MOONBEAM_LOCATION,
 		},
 	},
 	utils::{AUSD_CURRENCY_ID, GLIMMER_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 	*,
 };
-use crate::liquidity_pools::pallet::development::tests::liquidity_pools::utils::DEFAULT_BALANCE_CFG;
 
 /// NOTE: We can't actually verify that the messages hits the
 /// LiquidityPoolsXcmRouter contract on Moonbeam since that would require a
