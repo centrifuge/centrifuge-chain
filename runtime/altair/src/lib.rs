@@ -1862,7 +1862,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1031,
+	migrations::UpgradeAltair1032,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
