@@ -249,6 +249,7 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[allow(clippy::large_enum_variant)]
 	pub enum Event<T: Config> {
 		/// An incoming LP message was
 		/// detected and is further processed
