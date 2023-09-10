@@ -13,6 +13,7 @@
 
 use cfg_types::domain_address::{Domain, DomainAddress};
 use fp_evm::PrecompileHandle;
+use frame_support::ensure;
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
@@ -250,11 +251,12 @@ where
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
 		payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
-		if handle.context().caller != GatewayContract::<T>::get() {
-			return Err(PrecompileFailure::Error {
-				exit_status: ExitError::Other("axelar gateway contract address mismatch".into()),
-			});
-		}
+		ensure!(
+			handle.context().caller == GatewayContract::<T>::get(),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("gateway contract address mismatch".into()),
+			}
+		);
 
 		let msg = BoundedVec::<
 			u8,

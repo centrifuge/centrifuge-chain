@@ -5805,6 +5805,7 @@ dependencies = [
  "ethabi 16.0.0",
  "frame-support",
  "frame-system",
+ "hex",
  "lazy_static",
  "orml-traits",
  "pallet-balances",
