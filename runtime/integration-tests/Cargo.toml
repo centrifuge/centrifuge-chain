@@ -88,8 +88,8 @@ cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
 
-ethereum = { version = "0.14.0", default-features = false }
 ethabi = { version = "16.0", default-features = false }
+ethereum = { version = "0.14.0", default-features = false }
 
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
