@@ -610,6 +610,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
  "pallet-evm",
  "pallet-liquidity-pools-gateway",
  "parity-scale-codec 3.6.4",
