@@ -86,9 +86,7 @@ impl pallet_ethereum::Config for crate::Runtime {
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
 
-impl pallet_ethereum_transaction::Config for crate::Runtime {
-	type RuntimeEvent = crate::RuntimeEvent;
-}
+impl pallet_ethereum_transaction::Config for crate::Runtime {}
 
 impl axelar_gateway_precompile::Config for crate::Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<crate::LpAdminAccount, TwoThirdOfCouncil>;

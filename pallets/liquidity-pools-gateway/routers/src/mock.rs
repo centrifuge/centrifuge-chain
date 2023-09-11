@@ -114,9 +114,7 @@ impl pallet_mock_liquidity_pools::Config for Runtime {
 	type Message = MessageMock;
 }
 
-impl pallet_ethereum_transaction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
+impl pallet_ethereum_transaction::Config for Runtime {}
 
 impl pallet_mock_routers::Config for Runtime {}
 

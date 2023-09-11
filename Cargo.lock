@@ -11052,6 +11052,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-democracy",
+ "pallet-ethereum",
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
