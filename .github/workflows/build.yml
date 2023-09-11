@@ -11,7 +11,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       # Required as the JSON input file needs to be read
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: set-matrix
         uses: JoshuaTheMiller/conditional-build-matrix@9ff11e2cad4aa166e1d1d834097121a969da8276
         with:
@@ -38,7 +38,7 @@ jobs:
           df -h
           sudo apt-get install protobuf-compiler
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:

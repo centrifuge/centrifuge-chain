@@ -25,7 +25,7 @@ jobs:
           df -h
           sudo apt-get install protobuf-compiler
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
