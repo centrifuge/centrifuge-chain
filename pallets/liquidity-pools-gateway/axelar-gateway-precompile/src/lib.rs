@@ -340,7 +340,7 @@ pub(crate) fn get_source_address_bytes(
 	let str = source_address.as_str().ok()?;
 
 	// Attempt to hex decode source address.
-	return match hex::decode(str.clone()) {
+	match hex::decode(str) {
 		Ok(res) => Some(res),
 		Err(_) => {
 			// Strip 0x prefix.
@@ -348,7 +348,7 @@ pub(crate) fn get_source_address_bytes(
 
 			hex::decode(res).ok()
 		}
-	};
+	}
 }
 
 #[cfg(test)]
