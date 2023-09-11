@@ -1,7 +1,7 @@
 use ::xcm::{
 	lts::WeightLimit,
 	v2::OriginKind,
-	v3::{Instruction::*, MultiAsset, Weight},
+	v3::{Instruction::*, MultiAsset},
 };
 use cfg_mocks::MessageMock;
 use cfg_primitives::CFG;
@@ -202,8 +202,10 @@ mod xcm_router {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				transact_required_weight_at_most: Default::default(),
+				overall_weight: Default::default(),
 				fee_currency: currency_id.clone(),
-				fee_per_second: 1u128,
+				fee_amount: 200000000000000000,
 			};
 
 			let sender: AccountId32 = [0; 32].into();
@@ -256,24 +258,11 @@ mod xcm_router {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
-					DEFAULT_PROOF_SIZE.saturating_div(2),
-				);
-
-				let overall_weight = Weight::from_parts(
-					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
-					DEFAULT_PROOF_SIZE,
-				);
-
-				let fees = Into::<u128>::into(overall_weight.ref_time())
-					* test_data.xcm_domain.fee_per_second;
-
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
@@ -281,9 +270,9 @@ mod xcm_router {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
-					weight_limit: WeightLimit::Limited(overall_weight),
+					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
 
 				let expected_call = get_encoded_ethereum_xcm_call::<Runtime>(
@@ -294,7 +283,7 @@ mod xcm_router {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: transact_weight,
+					require_weight_at_most: test_data.xcm_domain.transact_required_weight_at_most,
 					call: expected_call.into(),
 				}));
 			});
@@ -313,29 +302,6 @@ mod xcm_router {
 				assert_ok!(router.do_init());
 
 				assert_ok!(router.do_send(test_data.sender, test_data.msg));
-			});
-		}
-
-		#[test]
-		fn transactor_info_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let router = XCMRouter::<Runtime> {
-					xcm_domain: test_data.xcm_domain.clone(),
-					_marker: Default::default(),
-				};
-
-				// Manually insert the fee per second in the `DestinationAssetFeePerSecond`
-				// storage.
-
-				pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::insert(
-					test_data.dest,
-					test_data.xcm_domain.fee_per_second.clone(),
-				);
-
-				// We ensure we can send although no `TransactInfo is set`
-				assert_ok!(router.do_send(test_data.sender, test_data.msg),);
 			});
 		}
 	}
@@ -549,8 +515,10 @@ mod axelar_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				transact_required_weight_at_most: Default::default(),
+				overall_weight: Default::default(),
 				fee_currency: currency_id.clone(),
-				fee_per_second: 1u128,
+				fee_amount: 200000000000000000,
 			};
 			let axelar_target_chain = TEST_EVM_CHAIN.clone();
 			let axelar_target_contract = H160::from_low_u64_be(1);
@@ -621,24 +589,14 @@ mod axelar_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
-					DEFAULT_PROOF_SIZE.saturating_div(2),
-				);
-
-				let overall_weight = Weight::from_parts(
-					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
-					DEFAULT_PROOF_SIZE,
-				);
-
-				let fees = Into::<u128>::into(overall_weight.ref_time())
-					* test_data.xcm_domain.fee_per_second;
+				let sent_messages = sent_xcm();
+				assert_eq!(sent_messages.len(), 1);
 
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
@@ -646,9 +604,9 @@ mod axelar_xcm {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
-					weight_limit: WeightLimit::Limited(overall_weight),
+					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
 
 				let contract_call = get_axelar_encoded_msg(
@@ -657,7 +615,6 @@ mod axelar_xcm {
 					test_data.axelar_target_contract,
 				)
 				.unwrap();
-
 				let expected_call = get_encoded_ethereum_xcm_call::<Runtime>(
 					test_data.xcm_domain.clone(),
 					contract_call,
@@ -666,38 +623,9 @@ mod axelar_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: transact_weight,
+					require_weight_at_most: test_data.xcm_domain.transact_required_weight_at_most,
 					call: expected_call.into(),
 				}));
-			});
-		}
-
-		#[test]
-		fn transactor_info_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let domain_router =
-					DomainRouter::<Runtime>::AxelarXCM(AxelarXCMRouter::<Runtime> {
-						router: XCMRouter {
-							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
-						},
-						axelar_target_chain: test_data.axelar_target_chain,
-						axelar_target_contract: test_data.axelar_target_contract,
-						_marker: Default::default(),
-					});
-
-				// Manually insert the fee per second in the `DestinationAssetFeePerSecond`
-				// storage.
-
-				pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::insert(
-					test_data.dest,
-					test_data.xcm_domain.fee_per_second.clone(),
-				);
-
-				// We ensure we can send although no `TransactInfo is set`
-				assert_ok!(domain_router.send(test_data.sender, test_data.msg),);
 			});
 		}
 	}
@@ -730,8 +658,10 @@ mod ethereum_xcm {
 				ethereum_xcm_transact_call_index: bounded_vec![0],
 				contract_address: H160::from_slice([0; 20].as_slice()),
 				max_gas_limit: 10,
+				transact_required_weight_at_most: Default::default(),
+				overall_weight: Default::default(),
 				fee_currency: currency_id.clone(),
-				fee_per_second: 1u128,
+				fee_amount: 200000000000000000,
 			};
 			let axelar_target_chain = TEST_EVM_CHAIN.clone();
 			let axelar_target_contract = H160::from_low_u64_be(1);
@@ -798,24 +728,11 @@ mod ethereum_xcm {
 				let sent_messages = sent_xcm();
 				assert_eq!(sent_messages.len(), 1);
 
-				let transact_weight = Weight::from_parts(
-					test_data.xcm_domain.max_gas_limit * GAS_TO_WEIGHT_MULTIPLIER,
-					DEFAULT_PROOF_SIZE.saturating_div(2),
-				);
-
-				let overall_weight = Weight::from_parts(
-					transact_weight.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
-					DEFAULT_PROOF_SIZE,
-				);
-
-				let fees = Into::<u128>::into(overall_weight.ref_time())
-					* test_data.xcm_domain.fee_per_second;
-
 				let (_, xcm) = sent_messages.first().unwrap();
 				assert!(xcm.0.contains(&WithdrawAsset(
 					(MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					})
 					.into()
 				)));
@@ -823,9 +740,9 @@ mod ethereum_xcm {
 				assert!(xcm.0.contains(&BuyExecution {
 					fees: MultiAsset {
 						id: ::xcm::v3::AssetId::Concrete(MultiLocation::here()),
-						fun: ::xcm::v3::Fungibility::Fungible(fees),
+						fun: ::xcm::v3::Fungibility::Fungible(test_data.xcm_domain.fee_amount),
 					},
-					weight_limit: WeightLimit::Limited(overall_weight),
+					weight_limit: WeightLimit::Limited(test_data.xcm_domain.overall_weight),
 				}));
 
 				let contract_call = get_encoded_contract_call(test_data.msg.serialize()).unwrap();
@@ -837,36 +754,9 @@ mod ethereum_xcm {
 
 				assert!(xcm.0.contains(&Transact {
 					origin_kind: OriginKind::SovereignAccount,
-					require_weight_at_most: transact_weight,
+					require_weight_at_most: test_data.xcm_domain.transact_required_weight_at_most,
 					call: expected_call.into(),
 				}));
-			});
-		}
-
-		#[test]
-		fn transactor_info_not_set() {
-			new_test_ext().execute_with(|| {
-				let test_data = get_test_data();
-
-				let domain_router =
-					DomainRouter::<Runtime>::EthereumXCM(EthereumXCMRouter::<Runtime> {
-						router: XCMRouter {
-							xcm_domain: test_data.xcm_domain.clone(),
-							_marker: Default::default(),
-						},
-						_marker: Default::default(),
-					});
-
-				// Manually insert the fee per second in the `DestinationAssetFeePerSecond`
-				// storage.
-
-				pallet_xcm_transactor::DestinationAssetFeePerSecond::<Runtime>::insert(
-					test_data.dest,
-					test_data.xcm_domain.fee_per_second.clone(),
-				);
-
-				// We ensure we can send although no `TransactInfo is set`
-				assert_ok!(domain_router.send(test_data.sender, test_data.msg),);
 			});
 		}
 	}

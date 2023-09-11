@@ -38,7 +38,7 @@ use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::traits::{BlakeTwo256, EnsureMul, Hash};
+use sp_runtime::traits::{BlakeTwo256, Hash};
 use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
 use xcm::{
 	latest::{MultiLocation, OriginKind},
@@ -237,30 +237,6 @@ where
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
-		// Note: We are using moonbeams calculation for the ref time here and their
-		//       estimate for the PoV.
-		//
-		// 	       - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
-		//           limited fixed)
-		let transact_required_weight_at_most = Weight::from_ref_time(
-			self.xcm_domain
-				.max_gas_limit
-				.ensure_mul(GAS_TO_WEIGHT_MULTIPLIER)?,
-		)
-		.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
-
-		// NOTE: We are choosing an overall weight here to have full control over
-		//       the actual weight usage.
-		//
-		// 	     - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
-		//         limited fixed)
-		//       - Weight for XCM instructions: Fixed weight * 3 (as we have 3
-		//         instructions)
-		let overall_weight = Weight::from_ref_time(
-			transact_required_weight_at_most.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
-		)
-		.set_proof_size(DEFAULT_PROOF_SIZE);
-
 		pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
 			// The destination to which the message should be sent.
@@ -270,16 +246,14 @@ where
 			// The currency in which we want to pay fees.
 			CurrencyPayment {
 				currency: Currency::AsCurrencyId(self.xcm_domain.fee_currency.clone()),
-				fee_amount: Some(
-					self.xcm_domain.fee_per_second * Into::<u128>::into(overall_weight.ref_time()),
-				),
+				fee_amount: Some(self.xcm_domain.fee_amount),
 			},
 			// The call to be executed in the destination chain.
 			ethereum_xcm_call,
 			OriginKind::SovereignAccount,
 			TransactWeights {
-				transact_required_weight_at_most,
-				overall_weight: Some(overall_weight),
+				transact_required_weight_at_most: self.xcm_domain.transact_required_weight_at_most,
+				overall_weight: Some(self.xcm_domain.overall_weight),
 			},
 		)?;
 
@@ -336,16 +310,22 @@ pub struct XcmDomain<CurrencyId> {
 	/// The target contract address on a given domain.
 	pub contract_address: H160,
 
-	/// The max gas_limit we want to propose for a remote evm execution
+	/// The max gas limit for the execution of the EVM call
 	pub max_gas_limit: u64,
+
+	/// The max weight we want to pay for the execution of the Transact call in
+	/// the destination chain
+	pub transact_required_weight_at_most: Weight,
+
+	/// The overall max weight we want to pay for the whole XCM message (i.e,
+	/// all the instructions)
+	pub overall_weight: Weight,
 
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
 
-	/// The fee per second that will be multiplied with
-	/// the overall weight of the call to define the fees on the
-	/// chain that will execute the call.
-	pub fee_per_second: u128,
+	/// The fee we use to buy execution for the execution of the Transact call
+	pub fee_amount: u128,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
