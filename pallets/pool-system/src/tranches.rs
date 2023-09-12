@@ -15,7 +15,10 @@ use cfg_primitives::Moment;
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
-use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
+use cfg_types::{
+	fixed_point::{Quantity, Rate},
+	tokens::TrancheCurrency,
+};
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CustomMetadata},
@@ -1048,12 +1051,12 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 }
 
 #[cfg(test)]
-impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
+impl Default for EpochExecutionTranche<Balance, Quantity, TrancheWeight, TrancheCurrency> {
 	fn default() -> Self {
 		Self {
 			currency: TrancheCurrency::generate(0, [0u8; 16]),
 			supply: 0,
-			price: Rate::one(),
+			price: Quantity::one(),
 			invest: 0,
 			redeem: 0,
 			min_risk_buffer: Default::default(),
@@ -1524,14 +1527,14 @@ fn finalize_combine<R, T, W>(
 pub mod test {
 	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 	use cfg_types::{
-		fixed_point::{FixedPointNumberExtension, Rate},
+		fixed_point::{FixedPointNumberExtension, Quantity, Rate},
 		tokens::TrancheCurrency,
 	};
 
 	use super::*;
 	use crate::mock::MaxTranches;
 
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type TTrancheType = TrancheType<Rate>;
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches =
@@ -3861,7 +3864,7 @@ pub mod test {
 			let tranches = default_epoch_tranches();
 
 			assert_eq!(
-				vec![Rate::one(), Rate::one(), Rate::one()],
+				vec![Quantity::one(), Quantity::one(), Quantity::one()],
 				tranches.prices()
 			)
 		}
@@ -4099,7 +4102,7 @@ pub mod test {
 		#[test]
 		fn epoch_execution_tranches_prices() {
 			let epoch_execution_tranches = default_epoch_tranches();
-			let r = Rate::one();
+			let r = Quantity::one();
 			assert_eq!(epoch_execution_tranches.prices(), vec![r, r, r])
 		}
 	}

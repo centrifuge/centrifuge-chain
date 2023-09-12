@@ -63,7 +63,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
 	FixedPointNumber, SaturatedConversion,
 };
-use sp_std::{convert::TryInto, vec, vec::Vec};
+use sp_std::{convert::TryInto, vec};
 use xcm::{
 	latest::NetworkId,
 	prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
@@ -99,7 +99,7 @@ pub type MessageOf<T> = Message<
 	<T as Config>::PoolId,
 	<T as Config>::TrancheId,
 	<T as Config>::Balance,
-	<T as Config>::Rate,
+	<T as Config>::BalanceRatio,
 >;
 
 pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
@@ -136,9 +136,6 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -168,7 +165,11 @@ pub mod pallet {
 			+ From<[u8; 16]>;
 
 		/// The fixed point number representation for higher precision.
-		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+		type BalanceRatio: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ FixedPointNumber
+			+ TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling
 		/// `set_domain_router`.
@@ -180,7 +181,6 @@ pub mod pallet {
 		type PoolInspect: PoolInspect<
 			Self::AccountId,
 			CurrencyIdOf<Self>,
-			Rate = Self::Rate,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
 		>;
@@ -188,7 +188,7 @@ pub mod pallet {
 		type TrancheTokenPrice: TrancheTokenPrice<
 			Self::AccountId,
 			CurrencyIdOf<Self>,
-			Rate = Self::Rate,
+			BalanceRatio = Self::BalanceRatio,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
 		>;
@@ -276,32 +276,21 @@ pub mod pallet {
 		/// beforehand as part of receiving the corresponding investment
 		/// message.
 		type TreasuryAccount: Get<Self::AccountId>;
+
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub (super) fn deposit_event)]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[allow(clippy::large_enum_variant)]
 	pub enum Event<T: Config> {
-		/// A message was sent to a domain
-		MessageSent {
-			message: MessageOf<T>,
-			domain: Domain,
-		},
-
-		/// The Router for a given domain was set
-		SetDomainRouter {
-			domain: Domain,
-			router: Router<CurrencyIdOf<T>>,
-		},
-
+		/// An incoming LP message was
+		/// detected and is further processed
 		IncomingMessage {
-			sender: T::AccountId,
-			message: Vec<u8>,
+			sender: DomainAddress,
+			message: MessageOf<T>,
 		},
 	}
-
-	#[pallet::storage]
-	pub(crate) type DomainRouter<T: Config> =
-		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -366,22 +355,6 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 	{
-		/// Set a Domain's router
-		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
-		#[pallet::call_index(0)]
-		pub fn set_domain_router(
-			origin: OriginFor<T>,
-			domain: Domain,
-			router: Router<CurrencyIdOf<T>>,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin.clone())?;
-
-			<DomainRouter<T>>::insert(domain.clone(), router.clone());
-			Self::deposit_event(Event::SetDomainRouter { domain, router });
-
-			Ok(())
-		}
-
 		/// Add a pool to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
 		#[pallet::call_index(2)]
@@ -963,6 +936,11 @@ pub mod pallet {
 
 		#[transactional]
 		fn submit(sender: DomainAddress, msg: MessageOf<T>) -> DispatchResult {
+			Self::deposit_event(Event::<T>::IncomingMessage {
+				sender: sender.clone(),
+				message: msg.clone(),
+			});
+
 			match msg {
 				Message::Transfer {
 					currency,

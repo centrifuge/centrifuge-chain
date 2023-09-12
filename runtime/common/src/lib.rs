@@ -21,8 +21,10 @@ mod tests;
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
+pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod xcm;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -223,68 +225,6 @@ pub mod asset_registry {
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
 			Err(())
-		}
-	}
-}
-
-pub mod xcm {
-	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
-	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::traits::Convert;
-	use xcm::{
-		latest::{Junction::GeneralKey, MultiLocation},
-		prelude::{AccountId32, X1},
-	};
-
-	use crate::xcm_fees::default_per_second;
-
-	/// Our FixedConversionRateProvider, used to charge XCM-related fees for
-	/// tokens registered in the asset registry that were not already handled by
-	/// native Trader rules.
-	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
-
-	impl<
-			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
-				AssetId = CurrencyId,
-				Balance = Balance,
-				CustomMetadata = CustomMetadata,
-			>,
-		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
-	{
-		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			match metadata.additional.transferability {
-				CrossChainTransferability::Xcm(xcm_metadata)
-				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
-					.fee_per_second
-					.or_else(|| Some(default_per_second(metadata.decimals))),
-				_ => None,
-			}
-		}
-	}
-
-	/// A utils function to un-bloat and simplify the instantiation of
-	/// `GeneralKey` values
-	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
-		GeneralKey {
-			length: data.len().min(32) as u8,
-			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
-		}
-	}
-
-	/// How we convert an `[AccountId]` into an XCM MultiLocation
-	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
-	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
-	where
-		AccountId: Into<[u8; 32]>,
-	{
-		fn convert(account: AccountId) -> MultiLocation {
-			X1(AccountId32 {
-				network: None,
-				id: account.into(),
-			})
-			.into()
 		}
 	}
 }
@@ -546,6 +486,204 @@ pub mod foreign_investments {
 					.map_err(DispatchError::from)
 				}
 				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+}
+
+pub mod origin {
+	use cfg_primitives::AccountId;
+	use frame_support::traits::{EitherOfDiverse, SortedMembers};
+	use frame_system::{EnsureRoot, EnsureSignedBy};
+	use sp_core::Get;
+
+	pub type EnsureAccountOrRoot<Account> =
+		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>;
+
+	pub type EnsureAccountOrRootOr<Account, O> = EitherOfDiverse<EnsureAccountOrRoot<Account>, O>;
+
+	pub struct AdminOnly<Account>(sp_std::marker::PhantomData<Account>);
+
+	impl<Account> SortedMembers<AccountId> for AdminOnly<Account>
+	where
+		Account: Get<AccountId>,
+	{
+		fn sorted_members() -> sp_std::vec::Vec<AccountId> {
+			sp_std::vec![Account::get()]
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use cfg_primitives::HalfOfCouncil;
+		use frame_support::traits::EnsureOrigin;
+		use sp_core::{crypto::AccountId32, parameter_types};
+
+		use super::*;
+
+		parameter_types! {
+			pub Admin: AccountId = AccountId::new([0u8;32]);
+		}
+
+		#[derive(Clone)]
+		enum OuterOrigin {
+			Raw(frame_system::RawOrigin<AccountId>),
+			Council(pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>),
+			Dummy,
+		}
+
+		impl Into<Result<frame_system::RawOrigin<AccountId>, OuterOrigin>> for OuterOrigin {
+			fn into(self) -> Result<frame_system::RawOrigin<AccountId>, OuterOrigin> {
+				match self {
+					Self::Raw(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl
+			Into<
+				Result<
+					pallet_collective::RawOrigin<
+						sp_runtime::AccountId32,
+						pallet_collective::Instance1,
+					>,
+					OuterOrigin,
+				>,
+			> for OuterOrigin
+		{
+			fn into(
+				self,
+			) -> Result<
+				pallet_collective::RawOrigin<AccountId32, pallet_collective::Instance1>,
+				OuterOrigin,
+			> {
+				match self {
+					Self::Council(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl From<frame_system::RawOrigin<AccountId>> for OuterOrigin {
+			fn from(value: frame_system::RawOrigin<AccountId>) -> Self {
+				Self::Raw(value)
+			}
+		}
+
+		impl From<pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>> for OuterOrigin {
+			fn from(
+				value: pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>,
+			) -> Self {
+				Self::Council(value)
+			}
+		}
+
+		mod ensure_account_or_root_or {
+			use super::*;
+
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(5, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_less_than_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(4, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+		}
+
+		mod ensure_account_or_root {
+			use super::*;
+
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
+
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
+
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
+
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
+
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
 		}
 	}

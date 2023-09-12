@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.30"
+version = "0.10.32"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -214,7 +214,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "liquidity-pools-gateway-routers",
  "log",
  "moonbeam-relay-encoder",
@@ -605,6 +605,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "axelar-gateway-precompile"
 version = "0.1.0"
 dependencies = [
+ "cfg-traits",
  "cfg-types",
  "ethabi 18.0.0",
  "fp-evm",
@@ -1079,7 +1080,7 @@ dependencies = [
  "frame-system",
  "futures",
  "getrandom 0.2.10",
- "hex-literal 0.2.2",
+ "hex-literal",
  "jsonrpsee",
  "log",
  "pallet-anchors",
@@ -1136,8 +1137,9 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.19"
+version = "0.10.20"
 dependencies = [
+ "axelar-gateway-precompile",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -1160,8 +1162,10 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
+ "liquidity-pools-gateway-routers",
  "log",
+ "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
@@ -1186,6 +1190,7 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
+ "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
@@ -1194,6 +1199,9 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
+ "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
+ "pallet-liquidity-rewards",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -1217,6 +1225,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
+ "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.6.4",
  "polkadot-parachain",
@@ -1241,6 +1250,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -1300,8 +1310,11 @@ dependencies = [
  "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -1348,7 +1361,7 @@ dependencies = [
  "cfg-utils",
  "frame-support",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "orml-asset-registry",
  "parity-scale-codec 3.6.4",
  "scale-info",
@@ -2670,7 +2683,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.20"
+version = "0.10.21"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2697,7 +2710,7 @@ dependencies = [
  "frame-try-runtime",
  "getrandom 0.2.10",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "liquidity-pools-gateway-routers",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
@@ -4445,28 +4458,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hex-literal"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70693199b3cf4552f3fa720b54163927a3ebed2aef240efaf556033ab336a11"
-dependencies = [
- "hex-literal-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "hex-literal"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hex-literal-impl"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59448fc2f82a5fb6907f78c3d69d843e82ff5b051923313cc4438cb0c7b745a8"
-dependencies = [
- "proc-macro-hack",
-]
 
 [[package]]
 name = "hkdf"
@@ -5056,7 +5050,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "kusama-runtime-constants",
  "log",
  "pallet-authority-discovery",
@@ -5814,6 +5808,7 @@ dependencies = [
  "ethabi 16.0.0",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "orml-traits",
  "pallet-balances",
  "pallet-ethereum",
@@ -9679,7 +9674,7 @@ version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=097ffd245c42aeff28cf80f8a3568e1bee2e7da7#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "bitvec 1.0.1",
- "hex-literal 0.3.4",
+ "hex-literal",
  "parity-scale-codec 3.6.4",
  "polkadot-core-primitives",
  "polkadot-parachain",
@@ -9745,7 +9740,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -9949,7 +9944,7 @@ dependencies = [
  "frame-support",
  "frame-system-rpc-runtime-api",
  "futures",
- "hex-literal 0.3.4",
+ "hex-literal",
  "kusama-runtime",
  "kvdb",
  "kvdb-rocksdb",
@@ -10287,12 +10282,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -10848,7 +10837,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -11001,6 +10990,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "axelar-gateway-precompile",
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -11008,14 +10998,16 @@ dependencies = [
  "fp-self-contained",
  "frame-support",
  "frame-system",
- "hex-literal 0.2.2",
+ "hex-literal",
  "log",
+ "orml-asset-registry",
  "orml-oracle",
  "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-collective",
  "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
@@ -11028,10 +11020,13 @@ dependencies = [
  "pallet-evm-precompile-simple",
  "pallet-investments",
  "pallet-liquidity-pools",
+ "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
+ "parachain-info",
  "parity-scale-codec 3.6.4",
+ "polkadot-parachain",
  "scale-info",
  "serde",
  "smallvec",
@@ -11042,6 +11037,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
  "xcm-primitives",
 ]
 
@@ -11078,6 +11074,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-democracy",
+ "pallet-ethereum",
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
@@ -15433,7 +15430,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.3.4",
+ "hex-literal",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",

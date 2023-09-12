@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.20"
+version = "0.10.21"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -157,6 +157,7 @@ default = ["std"]
 instant-voting = []
 fast-runtime = []
 std = [
+  "axelar-gateway-precompile/std",
   "cfg-primitives/std",
   "cfg-types/std",
   "chainbridge/std",
@@ -274,10 +275,10 @@ std = [
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
   "getrandom/std",
-  "axelar-gateway-precompile/std",
 ]
 
 runtime-benchmarks = [
+  "axelar-gateway-precompile/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
@@ -346,12 +347,12 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
-  "axelar-gateway-precompile/runtime-benchmarks",
   "pallet-claims/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
 ]
 
 try-runtime = [
+  "axelar-gateway-precompile/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-primitives/try-runtime",
@@ -435,7 +436,6 @@ try-runtime = [
   "fp-self-contained/try-runtime",
   "runtime-common/try-runtime",
   "sp-runtime/try-runtime",
-  "axelar-gateway-precompile/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

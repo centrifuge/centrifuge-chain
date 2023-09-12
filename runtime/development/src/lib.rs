@@ -19,15 +19,13 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::latest::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	CurrencyPrice, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	PriceValue, TrancheTokenPrice,
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -140,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1020,
+	spec_version: 1022,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -298,7 +296,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = Aura;
-	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
 // money stuff
@@ -402,7 +400,7 @@ impl pallet_multisig::Config for Runtime {
 	type MaxSignatories = MaxSignatories;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -614,14 +612,14 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyType = ProxyType;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Runtime>;
 }
 
 impl pallet_utility::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -641,7 +639,7 @@ impl pallet_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -673,7 +671,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -715,7 +713,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type VotingBondBase = VotingBondBase;
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
-	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_elections_phragmen::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "instant-voting")]
@@ -793,7 +791,7 @@ impl pallet_democracy::Config for Runtime {
 	type VoteLockingPeriod = EnactmentPeriod;
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_democracy::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -817,7 +815,7 @@ impl pallet_identity::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Slashed = ();
 	type SubAccountDeposit = SubAccountDeposit;
-	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -832,7 +830,7 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type RuntimeEvent = RuntimeEvent;
 	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
-	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_vesting::WeightInfo<Runtime>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
@@ -871,7 +869,7 @@ impl pallet_uniques::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
-	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_uniques::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -937,7 +935,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
 
 // our pallets
@@ -965,7 +963,7 @@ impl pallet_anchors::Config for Runtime {
 	type Currency = Balances;
 	type Fees = Fees;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_anchors::WeightInfo<Runtime>;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -1033,6 +1031,7 @@ parameter_types! {
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -1081,7 +1080,6 @@ impl pallet_pool_registry::Config for Runtime {
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
@@ -1164,33 +1162,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		true
-	}
-}
-
-pub struct CurrencyPriceSource;
-impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
-	type Moment = Moment;
-	type Rate = Rate;
-
-	fn get_latest(
-		base: CurrencyId,
-		quote: Option<CurrencyId>,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
-		match base {
-			CurrencyId::Tranche(pool_id, tranche_id) => {
-				match <pallet_pool_system::Pallet<Runtime> as TrancheTokenPrice<
-					AccountId,
-					CurrencyId,
-				>>::get(pool_id, tranche_id)
-				{
-					// If a specific quote is requested, this needs to match the actual quote.
-					Some(price) if Some(price.pair.quote) != quote => None,
-					Some(price) => Some(price),
-					None => None,
-				}
-			}
-			_ => None,
-		}
 	}
 }
 
@@ -1370,7 +1341,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type Weights = ();
+	type Weights = weights::pallet_interest_accrual::WeightInfo<Self>;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -1594,6 +1565,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
+	// TODO: Switch to ratio after merging #1546
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = u64;
@@ -1610,16 +1582,16 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter<Runtime>;
-	type DomainAddressToAccountId = AccountConverter<Runtime>;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
 	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1706,7 +1678,7 @@ parameter_types! {
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook =
 		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
 	type CollectedRedemptionHook =
@@ -1875,11 +1847,11 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type Weights = ();
+	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
 
 parameter_types! {
-		pub const OrderPairVecSize: u32 = 1_000_000u32;
+		pub const OrderPairVecSize: u32 = 1_000u32;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1970,7 +1942,7 @@ construct_runtime!(
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
@@ -1989,7 +1961,7 @@ construct_runtime!(
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
-		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage, Event<T>} = 164,
+		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
 		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
@@ -2027,7 +1999,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type PriceForSiblingDelivery = ();
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
@@ -2369,6 +2341,12 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
@@ -2549,27 +2527,42 @@ impl_runtime_apis! {
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
 
+			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, pallet_multisig, Multisig);
+			add_benchmark!(params, batches, pallet_proxy, Proxy);
+			add_benchmark!(params, batches, pallet_utility, Utility);
+			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
+			add_benchmark!(params, batches, pallet_collective, Council);
+			add_benchmark!(params, batches, pallet_democracy, Democracy);
+			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
+			add_benchmark!(params, batches, pallet_identity, Identity);
+			add_benchmark!(params, batches, pallet_vesting, Vesting);
+			add_benchmark!(params, batches, pallet_treasury, Treasury);
+			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
+			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
-			add_benchmark!(params, batches, pallet_balances, Balances);
-			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans, Loans);
+			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
+			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
+			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
+			add_benchmark!(params, batches, pallet_loans, Loans);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
+			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2588,27 +2581,42 @@ impl_runtime_apis! {
 
 			let mut list = Vec::<BenchmarkList>::new();
 
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, pallet_multisig, Multisig);
+			list_benchmark!(list, extra, pallet_proxy, Proxy);
+			list_benchmark!(list, extra, pallet_utility, Utility);
+			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
+			list_benchmark!(list, extra, pallet_collective, Council);
+			list_benchmark!(list, extra, pallet_democracy, Democracy);
+			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
+			list_benchmark!(list, extra, pallet_identity, Identity);
+			list_benchmark!(list, extra, pallet_vesting, Vesting);
+			list_benchmark!(list, extra, pallet_treasury, Treasury);
+			list_benchmark!(list, extra, pallet_preimage, Preimage);
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_anchors, Anchor);
+			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
-			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans, Loans);
+			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
+			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
+			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
-			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
+			list_benchmark!(list, extra, pallet_loans, Loans);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
+			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
+			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

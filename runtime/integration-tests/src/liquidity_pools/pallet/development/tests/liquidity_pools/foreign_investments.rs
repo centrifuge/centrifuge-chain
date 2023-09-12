@@ -102,7 +102,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 
@@ -149,7 +152,10 @@ mod same_currencies {
 			let decrease_amount = invest_amount / 3;
 			let final_amount = invest_amount - decrease_amount;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 
@@ -220,7 +226,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let invest_amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 
@@ -308,7 +317,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
@@ -330,9 +342,9 @@ mod same_currencies {
 			assert_eq!(Tokens::total_issuance(investment_currency_id), 0);
 			assert_ok!(Investments::invest_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Rate::one(),
+					price: Quantity::one(),
 				}
 			));
 			assert_eq!(Tokens::total_issuance(investment_currency_id), amount);
@@ -435,7 +447,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let invest_amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
@@ -454,9 +469,9 @@ mod same_currencies {
 			assert_ok!(Investments::process_invest_orders(default_investment_id()));
 			assert_ok!(Investments::invest_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 
@@ -530,9 +545,9 @@ mod same_currencies {
 			assert_ok!(Investments::process_invest_orders(default_investment_id()));
 			assert_ok!(Investments::invest_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Rate::checked_from_rational(1, 2).unwrap(),
+					price: Quantity::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			// Order should have been cleared by fulfilling investment
@@ -649,7 +664,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 
@@ -701,7 +719,10 @@ mod same_currencies {
 			let decrease_amount = redeem_amount / 3;
 			let final_amount = redeem_amount - decrease_amount;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
@@ -792,7 +813,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let redeem_amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
@@ -879,7 +903,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let pool_account =
@@ -902,9 +929,9 @@ mod same_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Rate::one(),
+					price: Quantity::one(),
 				}
 			));
 
@@ -1013,7 +1040,10 @@ mod same_currencies {
 			let pool_id = DEFAULT_POOL_ID;
 			let redeem_amount = 100_000_000;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
 			let pool_account =
@@ -1035,9 +1065,9 @@ mod same_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 
@@ -1103,9 +1133,9 @@ mod same_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Rate::checked_from_rational(1, 2).unwrap(),
+					price: Quantity::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			// Order should have been cleared by fulfilling redemption
@@ -1200,8 +1230,10 @@ mod same_currencies {
 					let pool_id = DEFAULT_POOL_ID;
 					let invest_amount: u128 = 100_000_000;
 					let decrease_amount = invest_amount + 1;
-					let investor: AccountId =
-						AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1239,8 +1271,10 @@ mod same_currencies {
 					let pool_id = DEFAULT_POOL_ID;
 					let redeem_amount: u128 = 100_000_000;
 					let decrease_amount = redeem_amount + 1;
-					let investor: AccountId =
-						AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1279,8 +1313,10 @@ mod same_currencies {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
 					let amount: u128 = 100_000_000;
-					let investor: AccountId =
-						AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1294,9 +1330,9 @@ mod same_currencies {
 					assert_ok!(Investments::process_invest_orders(default_investment_id()));
 					assert_ok!(Investments::invest_fulfillment(
 						default_investment_id(),
-						FulfillmentWithPrice::<Rate> {
+						FulfillmentWithPrice {
 							of_amount: Perquintill::one(),
-							price: Rate::one(),
+							price: Quantity::one(),
 						}
 					));
 
@@ -1339,8 +1375,10 @@ mod same_currencies {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
 					let amount: u128 = 100_000_000;
-					let investor: AccountId =
-						AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1361,9 +1399,9 @@ mod same_currencies {
 					assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 					assert_ok!(Investments::redeem_fulfillment(
 						default_investment_id(),
-						FulfillmentWithPrice::<Rate> {
+						FulfillmentWithPrice {
 							of_amount: Perquintill::one(),
-							price: Rate::one(),
+							price: Quantity::one(),
 						}
 					));
 
@@ -1423,7 +1461,10 @@ mod mismatching_currencies {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
@@ -1618,7 +1659,10 @@ mod mismatching_currencies {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let trader: AccountId = ALICE.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1798,7 +1842,10 @@ mod mismatching_currencies {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let trader: AccountId = ALICE.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1886,9 +1933,9 @@ mod mismatching_currencies {
 			// tokens
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_eq!(
@@ -1950,9 +1997,9 @@ mod mismatching_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2044,7 +2091,10 @@ mod mismatching_currencies {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
-				AccountConverter::<DevelopmentRuntime>::convert((DOMAIN_MOONBEAM, BOB));
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
 			let trader: AccountId = ALICE.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -2153,9 +2203,9 @@ mod mismatching_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2209,9 +2259,9 @@ mod mismatching_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Rate::checked_from_rational(1, 4).unwrap(),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2263,9 +2313,9 @@ mod mismatching_currencies {
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
 			assert_ok!(Investments::redeem_fulfillment(
 				default_investment_id(),
-				FulfillmentWithPrice::<Rate> {
+				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Rate::checked_from_rational(2, 1).unwrap(),
+					price: Quantity::checked_from_rational(2, 1).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2560,7 +2610,9 @@ mod setup {
 		assert_eq!(
 			Tokens::balance(
 				default_investment_id().into(),
-				&AccountConverter::<DevelopmentRuntime>::convert(DEFAULT_OTHER_DOMAIN_ADDRESS)
+				&AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+					DEFAULT_OTHER_DOMAIN_ADDRESS
+				)
 			),
 			0
 		);

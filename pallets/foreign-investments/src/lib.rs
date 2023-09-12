@@ -227,7 +227,6 @@ pub mod pallet {
 		type PoolInspect: PoolInspect<
 			Self::AccountId,
 			Self::CurrencyId,
-			Rate = Self::Rate,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
 		>;

@@ -15,7 +15,7 @@ use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 };
-pub use cfg_types::fixed_point::Rate;
+pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	time::TimeProvider,
@@ -266,7 +266,7 @@ parameter_types! {
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook = NoopCollectHook;
 	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = TrancheCurrency;
@@ -319,6 +319,7 @@ parameter_types! {
 impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;

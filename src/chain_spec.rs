@@ -23,7 +23,9 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG};
+use cfg_primitives::{
+	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
+};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
@@ -552,7 +554,7 @@ fn centrifuge_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -658,11 +660,15 @@ fn centrifuge_genesis(
 		},
 		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: centrifuge_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
+		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -678,7 +684,7 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -766,12 +772,15 @@ fn altair_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: altair_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -791,7 +800,7 @@ fn development_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -931,6 +940,9 @@ fn development_genesis(
 		evm: Default::default(),
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: development_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 

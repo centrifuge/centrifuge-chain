@@ -51,10 +51,13 @@ where
 			"Pallet is already updated"
 		);
 
-		ensure!(
-			unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()),
-			"Pallet prefix doesn't exists"
-		);
+		// NOTE: We still want to be able to bump StorageVersion
+		if !unhashed::contains_prefixed_key(&pallet_prefix::<Pallet>()) {
+			log::info!(
+				"Nuke-{}: Pallet prefix doesn't exist, storage is empty already",
+				Pallet::name(),
+			)
+		}
 
 		Ok(Vec::new())
 	}
@@ -96,7 +99,7 @@ where
 				+ DbWeight::get().reads_writes(1, 1) // Version read & writen
 		} else {
 			log::warn!(
-				"Nuke-{}: pallet on-chain version is not {:?}. This upgrade can be removed.",
+				"Nuke-{}: pallet on-chain version is not less than {:?}. This upgrade can be removed.",
 				Pallet::name(),
 				Pallet::current_storage_version()
 			);

@@ -72,8 +72,8 @@ use crate::{
 	},
 	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 };
-
-pub const DEFAULT_BALANCE_GLMR: Balance = 1_000_000_000_000;
+// 10 GLMR (18 decimals)
+pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
 pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
@@ -87,7 +87,7 @@ pub const DEFAULT_MOONBEAM_LOCATION: MultiLocation = MultiLocation {
 	interior: X1(Parachain(PARA_ID_MOONBEAM)),
 };
 
-pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
 pub fn get_default_moonbeam_native_token_location() -> MultiLocation {
 	MultiLocation {
@@ -107,9 +107,15 @@ pub fn set_test_domain_router(
 				location: Box::new(xcm_domain_location),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(DEFAULT_EVM_ADDRESS_MOONBEAM),
-				max_gas_limit: 700_000,
+				max_gas_limit: 500_000,
+				transact_required_weight_at_most: Weight::from_parts(
+					12530000000,
+					DEFAULT_PROOF_SIZE.saturating_div(2),
+				),
+				overall_weight: Weight::from_parts(15530000000, DEFAULT_PROOF_SIZE),
 				fee_currency: currency_id,
-				fee_per_second: default_per_second(18),
+				// 0.2 token
+				fee_amount: 200000000000000000,
 			},
 			_marker: Default::default(),
 		},
@@ -160,23 +166,19 @@ pub fn setup_pre_requirements() {
 		Some(GLMR_CURRENCY_ID)
 	));
 
-	// Give Alice, Bob and Treasury enough glimmer to pay for fees
+	// Fund the gateway sender account with enough glimmer to pay for fees
 	OrmlTokens::deposit(
-		GLMR_CURRENCY_ID,
-		&ALICE.into(),
-		DEFAULT_BALANCE_GLMR * dollar(18),
+		GLIMMER_CURRENCY_ID,
+		&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
+		DEFAULT_BALANCE_GLMR,
 	);
-	OrmlTokens::deposit(
-		GLMR_CURRENCY_ID,
-		&BOB.into(),
-		DEFAULT_BALANCE_GLMR * dollar(18),
-	);
-	// Treasury pays for `Executed*` messages
-	OrmlTokens::deposit(
-		GLMR_CURRENCY_ID,
-		&TreasuryPalletId::get().into_account_truncating(),
-		DEFAULT_BALANCE_GLMR * dollar(18),
-	);
+	// TODO: Check
+	// // Treasury pays for `Executed*` messages
+	// OrmlTokens::deposit(
+	// 	GLMR_CURRENCY_ID,
+	// 	&TreasuryPalletId::get().into_account_truncating(),
+	// 	DEFAULT_BALANCE_GLMR * dollar(18),
+	// );
 
 	// Register AUSD in the asset registry which is the default pool currency in
 	// `create_pool`

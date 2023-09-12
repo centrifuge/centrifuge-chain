@@ -153,7 +153,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(_tranche, value)| EpochExecutionTranche {
 					supply: value,
-					price: One::one(),
+					price: Quantity::one(),
 					redeem: 10,
 					..Default::default()
 				})
@@ -502,7 +502,7 @@ fn pool_constraints_pass() {
 		assert_ok!(PoolSystem::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
+			calculate_risk_buffers::<u128, Quantity>(&vec![3, 1], &vec![One::one(), One::one()])
 				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
@@ -577,7 +577,7 @@ fn epoch() {
 			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
-			Rate::one()
+			Quantity::one()
 		);
 
 		assert_err!(
@@ -725,14 +725,14 @@ fn epoch() {
 			0
 		);
 		assert_eq!(pool.reserve.available, pool.reserve.total);
-		assert_eq!(pool.reserve.total, 758968368969420653370);
+		assert_eq!(pool.reserve.total, 758968368969420653250);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
-			251031631030579346631
+			251031631030579346511
 		);
 		assert_eq!(
 			pool.reserve.total + senior_price.saturating_mul_int(250 * CURRENCY),
-			1010 * CURRENCY + 1 // TODO: Fix rounding issue with FixedPointNumberExtension
+			1009999999999999999750 // TODO: Fix rounding issue with FixedPointNumberExtension
 		);
 
 		assert_eq!(
@@ -742,7 +742,7 @@ fn epoch() {
 			>>::get(0, SeniorTrancheId::get())
 			.unwrap()
 			.price,
-			Rate::from_inner(1004126524122317386524000000)
+			Quantity::from_inner(1004126524122317386)
 		);
 	});
 }

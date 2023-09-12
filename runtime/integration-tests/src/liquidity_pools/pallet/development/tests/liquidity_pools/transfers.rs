@@ -258,7 +258,9 @@ fn transfer_tranche_tokens_from_local() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(receiver.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				default_tranche_id(pool_id),
@@ -417,14 +419,18 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(invalid_pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				dest_address.clone()
+			),
 			PermissionScope::Pool(valid_pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
 		));

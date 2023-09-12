@@ -24,6 +24,9 @@ pub const DEFAULT_PROOF_SIZE: u64 = 256 * 1024;
 // See moonbeam docs: https://docs.moonbeam.network/builders/interoperability/xcm/fees/#:~:text=As%20previously%20mentioned%2C%20Polkadot%20currently,1%2C000%2C000%2C000%20weight%20units%20per%20instruction
 pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
 
+/// Multiplier for converting a unit of gas into a unit of Substrate weight
+pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
+
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -31,6 +34,7 @@ use frame_support::{
 	ensure,
 	traits::OriginTrait,
 };
+use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
@@ -57,6 +61,12 @@ type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_liquidity_pools_gateway::Config>::Message;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+/// Maximum size allowed for a byte representation of an Axelar EVM chain
+/// string, as found below:
+/// <https://docs.axelar.dev/dev/reference/mainnet-chain-names>
+/// <https://docs.axelar.dev/dev/reference/testnet-chain-names>
+pub const MAX_AXELAR_EVM_CHAIN_SIZE: u32 = 16;
+
 const FUNCTION_NAME: &str = "handle";
 const MESSAGE_PARAM: &str = "message";
 
@@ -75,6 +85,8 @@ where
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	EthereumXCM(EthereumXCMRouter<T>),
 	AxelarEVM(AxelarEVMRouter<T>),
@@ -89,6 +101,8 @@ where
 		+ pallet_ethereum_transaction::Config
 		+ pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
@@ -115,6 +129,8 @@ where
 pub struct EVMRouter<T>
 where
 	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	pub evm_domain: EVMDomain,
 	pub _marker: PhantomData<T>,
@@ -124,6 +140,8 @@ impl<T> EVMRouter<T>
 where
 	T: frame_system::Config + pallet_ethereum_transaction::Config + pallet_evm::Config,
 	T::AccountId: AsRef<[u8; 32]>,
+	OriginFor<T>:
+		From<pallet_ethereum::Origin> + Into<Result<pallet_ethereum::Origin, OriginFor<T>>>,
 {
 	/// Performs an extra check to ensure that the actual contract is deployed
 	/// at the provided address and that the contract code hash matches.
@@ -219,27 +237,6 @@ where
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
-		// Note: We are using moonbeams calculation for the ref time here and their
-		//       estimate for the PoV.
-		//
-		// 	       - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
-		//           limited fixed)
-		let transact_required_weight_at_most =
-			Weight::from_ref_time(self.xcm_domain.max_gas_limit * 25_000)
-				.set_proof_size(DEFAULT_PROOF_SIZE.saturating_div(2));
-
-		// NOTE: We are choosing an overall weight here to have full control over
-		//       the actual weight usage.
-		//
-		// 	     - Transact weight: gasLimit * 25000 as moonbeam is doing (Proof size
-		//         limited fixed)
-		//       - Weight for XCM instructions: Fixed weight * 3 (as we have 3
-		//         instructions)
-		let overall_weight = Weight::from_ref_time(
-			transact_required_weight_at_most.ref_time() + XCM_INSTRUCTION_WEIGHT * 3,
-		)
-		.set_proof_size(DEFAULT_PROOF_SIZE);
-
 		pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 			<T as frame_system::Config>::RuntimeOrigin::root(),
 			// The destination to which the message should be sent.
@@ -249,16 +246,14 @@ where
 			// The currency in which we want to pay fees.
 			CurrencyPayment {
 				currency: Currency::AsCurrencyId(self.xcm_domain.fee_currency.clone()),
-				fee_amount: Some(
-					self.xcm_domain.fee_per_second * Into::<u128>::into(overall_weight.ref_time()),
-				),
+				fee_amount: Some(self.xcm_domain.fee_amount),
 			},
 			// The call to be executed in the destination chain.
 			ethereum_xcm_call,
 			OriginKind::SovereignAccount,
 			TransactWeights {
-				transact_required_weight_at_most,
-				overall_weight: Some(overall_weight),
+				transact_required_weight_at_most: self.xcm_domain.transact_required_weight_at_most,
+				overall_weight: Some(self.xcm_domain.overall_weight),
 			},
 		)?;
 
@@ -315,16 +310,22 @@ pub struct XcmDomain<CurrencyId> {
 	/// The target contract address on a given domain.
 	pub contract_address: H160,
 
-	/// The max gas_limit we want to propose for a remote evm execution
+	/// The max gas limit for the execution of the EVM call
 	pub max_gas_limit: u64,
+
+	/// The max weight we want to pay for the execution of the Transact call in
+	/// the destination chain
+	pub transact_required_weight_at_most: Weight,
+
+	/// The overall max weight we want to pay for the whole XCM message (i.e,
+	/// all the instructions)
+	pub overall_weight: Weight,
 
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
 
-	/// The fee per second that will be multiplied with
-	/// the overall weight of the call to define the fees on the
-	/// chain that will execute the call.
-	pub fee_per_second: u128,
+	/// The fee we use to buy execution for the execution of the Transact call
+	pub fee_amount: u128,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]

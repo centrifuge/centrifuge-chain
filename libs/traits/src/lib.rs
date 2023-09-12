@@ -126,7 +126,6 @@ pub trait PoolNAV<PoolId, Amount> {
 pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId;
 	type TrancheId;
-	type Rate;
 	type Moment;
 
 	/// check if the pool exists
@@ -144,13 +143,13 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 	type PoolId;
 	type TrancheId;
-	type Rate;
+	type BalanceRatio;
 	type Moment;
 
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+	) -> Option<PriceValue<CurrencyId, Self::BalanceRatio, Self::Moment>>;
 }
 
 /// Variants for valid Pool updates to send out as events
@@ -165,7 +164,6 @@ pub enum UpdateState {
 pub trait PoolMutate<AccountId, PoolId> {
 	type Balance;
 	type CurrencyId;
-	type Rate;
 	type MaxTokenNameLength: Get<u32>;
 	type MaxTokenSymbolLength: Get<u32>;
 	type MaxTranches: Get<u32>;
@@ -603,4 +601,14 @@ pub trait SimpleCurrencyConversion {
 		currency_out: Self::Currency,
 		amount_out: Self::Balance,
 	) -> Result<Self::Balance, Self::Error>;
+}
+
+/// A trait for trying to convert between two types.
+// TODO: Remove usage for the one from Polkadot once we are on the same version
+pub trait TryConvert<A, B> {
+	type Error;
+
+	/// Attempt to make conversion. If returning [Result::Err], the inner must
+	/// always be `a`.
+	fn try_convert(a: A) -> Result<B, Self::Error>;
 }

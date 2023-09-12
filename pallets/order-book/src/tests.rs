@@ -540,16 +540,29 @@ fn ensure_nonce_updates_order_correctly() {
 }
 
 #[test]
-fn place_order_requires_min_buy() {
+fn place_order_requires_no_min_buy() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			1 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			1 * CURRENCY_AUSD_DECIMALS,
+		),);
+	})
+}
+
+#[test]
+fn create_order_requires_min_buy() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::place_order(
-				ACCOUNT_0,
+			OrderBook::create_order(
+				RuntimeOrigin::signed(ACCOUNT_0),
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
 				1 * CURRENCY_AUSD_DECIMALS,
 				Rate::checked_from_rational(3u32, 2u32).unwrap(),
-				1 * CURRENCY_AUSD_DECIMALS,
 			),
 			Error::<Runtime>::InsufficientOrderSize
 		);
@@ -902,7 +915,29 @@ fn update_order_works_with_order_decrease() {
 }
 
 #[test]
-fn update_order_requires_min_buy() {
+fn update_order_requires_no_min_buy() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			15 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			5 * CURRENCY_AUSD_DECIMALS
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_ok!(OrderBook::update_order(
+			ACCOUNT_0,
+			order_id,
+			1 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_integer(1u32).unwrap(),
+			1 * CURRENCY_AUSD_DECIMALS
+		),);
+	})
+}
+
+#[test]
+fn user_update_order_requires_min_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
@@ -914,12 +949,11 @@ fn update_order_requires_min_buy() {
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_err!(
-			OrderBook::update_order(
-				ACCOUNT_0,
+			OrderBook::user_update_order(
+				RuntimeOrigin::signed(ACCOUNT_0),
 				order_id,
 				1 * CURRENCY_AUSD_DECIMALS,
 				Rate::checked_from_integer(1u32).unwrap(),
-				1 * CURRENCY_AUSD_DECIMALS
 			),
 			Error::<Runtime>::InsufficientOrderSize
 		);

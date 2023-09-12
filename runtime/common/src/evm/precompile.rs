@@ -59,9 +59,10 @@ impl<R> CentrifugePrecompiles<R> {
 
 impl<R> PrecompileSet for CentrifugePrecompiles<R>
 where
-	R: pallet_evm::Config,
+	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
 	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
 	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
+	axelar_gateway_precompile::Pallet<R>: Precompile,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		match handle.code_address().0 {
@@ -77,6 +78,9 @@ where
 			SHA3FIPS256_ADDR => Some(Sha3FIPS256::execute(handle)),
 			DISPATCH_ADDR => Some(Dispatch::<R>::execute(handle)),
 			ECRECOVERPUBLICKEY_ADDR => Some(ECRecoverPublicKey::execute(handle)),
+			LP_AXELAR_GATEWAY => {
+				Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
+			}
 			_ => None,
 		}
 	}
@@ -91,6 +95,7 @@ where
 				| BN128PAIRING_ADDR
 				| BLAKE2F_ADDR | SHA3FIPS256_ADDR
 				| DISPATCH_ADDR | ECRECOVERPUBLICKEY_ADDR
+				| LP_AXELAR_GATEWAY
 		)
 	}
 }

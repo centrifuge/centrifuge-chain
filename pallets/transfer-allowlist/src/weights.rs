@@ -10,9 +10,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use frame_support::weights::Weight;
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-pub trait Weights {
+use frame_support::{
+	traits::Get,
+	weights::{constants::RocksDbWeight, Weight},
+};
+use sp_std::marker::PhantomData;
+
+pub trait WeightInfo {
 	fn add_transfer_allowance_no_existing_metadata() -> Weight;
 	fn add_transfer_allowance_existing_metadata() -> Weight;
 	fn add_allowance_delay_no_existing_metadata() -> Weight;
@@ -28,56 +35,247 @@ pub trait Weights {
 	fn purge_transfer_allowance_remaining_metadata() -> Weight;
 }
 
-impl Weights for () {
+/// Weights for pallet_transfer_allowlist using the Substrate node and
+/// recommended hardware.
+pub struct SubstrateWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
 	fn add_transfer_allowance_no_existing_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 40_000 nanoseconds.
+		Weight::from_ref_time(41_000_000)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
 	fn add_transfer_allowance_existing_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(43_000_000)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn add_allowance_delay_no_existing_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 18_000 nanoseconds.
+		Weight::from_ref_time(18_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn add_allowance_delay_existing_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 19_000 nanoseconds.
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn toggle_allowance_delay_once_future_modifiable() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn update_allowance_delay() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
-	fn purge_allowance_delay_remaining_metadata() -> Weight {
-		Weight::zero()
-	}
-
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn purge_allowance_delay_no_remaining_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn purge_allowance_delay_remaining_metadata() -> Weight {
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
 	fn remove_transfer_allowance_missing_allowance() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
 	fn remove_transfer_allowance_delay_present() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
 	fn remove_transfer_allowance_no_delay() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn purge_transfer_allowance_no_remaining_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(43_000_000)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
 	fn purge_transfer_allowance_remaining_metadata() -> Weight {
-		Weight::zero()
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(44_000_000)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
+}
+
+impl WeightInfo for () {
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	fn add_transfer_allowance_no_existing_metadata() -> Weight {
+		// Minimum execution time: 40_000 nanoseconds.
+		Weight::from_ref_time(41_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	fn add_transfer_allowance_existing_metadata() -> Weight {
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(43_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn add_allowance_delay_no_existing_metadata() -> Weight {
+		// Minimum execution time: 18_000 nanoseconds.
+		Weight::from_ref_time(18_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn add_allowance_delay_existing_metadata() -> Weight {
+		// Minimum execution time: 19_000 nanoseconds.
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn toggle_allowance_delay_once_future_modifiable() -> Weight {
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn update_allowance_delay() -> Weight {
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn purge_allowance_delay_no_remaining_metadata() -> Weight {
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn purge_allowance_delay_remaining_metadata() -> Weight {
+		// Minimum execution time: 20_000 nanoseconds.
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	fn remove_transfer_allowance_missing_allowance() -> Weight {
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	fn remove_transfer_allowance_delay_present() -> Weight {
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:0)
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	fn remove_transfer_allowance_no_delay() -> Weight {
+		// Minimum execution time: 26_000 nanoseconds.
+		Weight::from_ref_time(27_000_000)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn purge_transfer_allowance_no_remaining_metadata() -> Weight {
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(43_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+
+	// Storage: TransferAllowList AccountCurrencyTransferAllowance (r:1 w:1)
+	// Storage: Fees FeeBalances (r:1 w:0)
+	// Storage: System Account (r:1 w:1)
+	// Storage: TransferAllowList AccountCurrencyTransferCountDelay (r:1 w:1)
+	fn purge_transfer_allowance_remaining_metadata() -> Weight {
+		// Minimum execution time: 43_000 nanoseconds.
+		Weight::from_ref_time(44_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
 	}
 }

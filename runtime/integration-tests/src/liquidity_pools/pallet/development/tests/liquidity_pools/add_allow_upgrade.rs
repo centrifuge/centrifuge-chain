@@ -222,7 +222,9 @@ fn update_member() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(ALICE.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
-			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				new_member.clone()
+			),
 			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				default_tranche_id(pool_id),
@@ -233,7 +235,9 @@ fn update_member() {
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
 			PermissionScope::Pool(pool_id),
-			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
+			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
+				new_member.clone()
+			),
 			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 		));
 
@@ -293,10 +297,28 @@ fn add_currency() {
 		// Enable LiquidityPools transferability
 		enable_liquidity_pool_transferability(currency_id);
 
+		assert_eq!(
+			OrmlTokens::free_balance(
+				GLIMMER_CURRENCY_ID,
+				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+			),
+			DEFAULT_BALANCE_GLMR
+		);
+
 		assert_ok!(LiquidityPools::add_currency(
 			RuntimeOrigin::signed(BOB.into()),
 			currency_id
 		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(
+				GLIMMER_CURRENCY_ID,
+				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
+			),
+			/// Ensure it only charged the 0.2 GLMR of fee
+			DEFAULT_BALANCE_GLMR
+				- dollar(18).saturating_div(5)
+		);
 	});
 }
 
@@ -627,20 +649,6 @@ fn schedule_upgrade() {
 
 		// Need to burn default minted balance from Treasury
 		OrmlTokens::burn_from(
-			GLMR_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-
-		// Failing because the treasury has no funds
-		assert_noop!(
-			LiquidityPools::schedule_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
-			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
-		);
-
-		// The treasury needs GLRM to cover the fees of sending
-		// this message
-		OrmlTokens::deposit(
 			GLMR_CURRENCY_ID,
 			&TreasuryAccount::get(),
 			DEFAULT_BALANCE_GLMR * dollar(18),

@@ -16,9 +16,9 @@ mod liquidity_pools;
 mod routers;
 
 /// Register AUSD in the asset registry.
-///
-/// NOTE: Assumes to be executed within an externalities environment.
-fn register_ausd() {
+/// 
+/// NOTE: It should be executed within an externalities environment.
+pub fn register_ausd() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 12,
 		name: "Acala Dollar".into(),

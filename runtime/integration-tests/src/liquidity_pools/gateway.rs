@@ -24,8 +24,8 @@ use frame_support::{
 };
 use fudge::primitives::Chain;
 use liquidity_pools_gateway_routers::{
-	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMChain,
-	EVMDomain, FeeValues, XCMRouter, XcmDomain, XcmTransactInfo,
+	axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter, DomainRouter, EVMDomain,
+	FeeValues, XCMRouter, XcmDomain, XcmTransactInfo,
 };
 use orml_traits::asset_registry::AssetMetadata;
 use pallet_democracy::{AccountVote, Conviction, ReferendumIndex, Vote, VoteThreshold};
@@ -100,8 +100,10 @@ async fn set_router() {
 		ethereum_xcm_transact_call_index: bounded_vec![0],
 		contract_address: H160::from_low_u64_be(3),
 		max_gas_limit: 10,
+		transact_required_weight_at_most: Default::default(),
+		overall_weight: Default::default(),
 		fee_currency: currency_id,
-		fee_per_second: 1u128,
+		fee_amount: 0,
 	};
 
 	let ethereum_xcm_router = EthereumXCMRouter::<Runtime> {
@@ -249,7 +251,7 @@ async fn process_msg() {
 	env.with_state(Chain::Para(PARA_ID), || {
 		assert_noop!(
 			pallet_liquidity_pools_gateway::Pallet::<Runtime>::process_msg(
-				GatewayOrigin::Local(test_instance).into(),
+				GatewayOrigin::Domain(test_instance).into(),
 				gateway_msg,
 			),
 			pallet_liquidity_pools::Error::<Runtime>::InvalidIncomingMessage,

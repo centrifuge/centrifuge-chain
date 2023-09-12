@@ -87,13 +87,6 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ core::fmt::Debug;
 
-		type Rate: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ TypeInfo
-			+ MaxEncodedLen;
-
 		/// A fixed-point number which represents an
 		/// interest rate.
 		type InterestRate: Member

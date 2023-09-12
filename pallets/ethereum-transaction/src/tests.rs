@@ -4,7 +4,7 @@ use pallet_evm::{AddressMapping, Error::BalanceLow};
 use sp_core::{crypto::AccountId32, H160, U256};
 
 use super::mock::*;
-use crate::{pallet::Nonce, Error};
+use crate::pallet::Nonce;
 
 mod utils {
 	use super::*;
@@ -101,15 +101,20 @@ mod call {
 
 			assert_eq!(Nonce::<Runtime>::get(), U256::from(0));
 
-			let res = <EthereumTransaction as EthereumTransactor>::call(
+			// NOTE: We can not check for errors as the internal `pallet-ethereum` logic
+			//       does not transform an EVM error into an Substrate error and return
+			//       `Ok(..)` in theses cases.
+			//
+			//       We can also not mimic the `pallet-ethereum::Pallet::<T>::transact(..)`
+			//       code path as some needed parts are private.
+			assert_ok!(<EthereumTransaction as EthereumTransactor>::call(
 				sender,
 				to,
 				data.as_slice(),
 				value,
 				gas_price,
 				gas_limit,
-			);
-			assert_eq!(res.err().unwrap().error, Error::<Runtime>::OutOfGas.into());
+			));
 
 			assert_eq!(Nonce::<Runtime>::get(), U256::from(1));
 		});
