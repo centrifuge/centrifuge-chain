@@ -4,7 +4,7 @@ use cfg_mocks::{
 };
 use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
-	ExecutedForeignCollectRedeem, ExecutedForeignDecrease, ForeignInvestmentInfo,
+	ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
@@ -118,7 +118,7 @@ impl pallet_mock_token_swaps::Config for Runtime {
 type Hook1 = pallet_mock_status_notification::Instance1;
 impl pallet_mock_status_notification::Config<Hook1> for Runtime {
 	type Id = ForeignInvestmentInfo<AccountId, InvestmentId, ()>;
-	type Status = ExecutedForeignDecrease<Balance, CurrencyId>;
+	type Status = ExecutedForeignDecreaseInvest<Balance, CurrencyId>;
 }
 
 type Hook2 = pallet_mock_status_notification::Instance2;
