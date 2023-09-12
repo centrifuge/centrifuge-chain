@@ -2,36 +2,53 @@ on:
   push:
     branches: [main, 'release-v**']
   pull_request:
+    paths:
+      - 'src/'
 name: Tests
 jobs:
-  tests:
-    name: ${{ matrix.target }}
+
+  linter:
+    name: lint-${{ matrix.target }}
+    env:
+      RUST_TOOLCHAIN: "nightly"
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        target: [tests, integration]
-    runs-on: ${{ matrix.os }}
-    env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
+        target: [fmt, taplo, clippy]
+    runs-on: ubuntu-latest
     steps:
       - name: Prep build on Ubuntu
-        if: ${{ matrix.os }} == 'ubuntu-latest'
-        run: |
-          echo "Pre cleanup"
-          df -h
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Post cleanup"
-          df -h
-          sudo apt-get install protobuf-compiler
+        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+      - name: Install taplo
+        uses: actions-rs/install@v0.1
+        with:
+          crate: taplo-cli
+          version: 0.7.2
+          use-tool-cache: true
+      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
+      - name: Run lints
+        run: ./ci/script.sh
+        env:
+          TARGET: ${{ matrix.target }}
+
+  tests:
+    name: test-${{ matrix.target }}
+    strategy:
+      matrix:
+        target: [tests, integration]
+    runs-on: ubuntu-latest
+    env:
+      RUST_TOOLCHAIN: "nightly"
+    steps:
+      - name: Prep build on Ubuntu
+        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          default: true
       - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
+      - name: R
       - name: Run tests
         run: ./ci/script.sh
         env:

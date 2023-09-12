@@ -1,0 +1,91 @@
+on:
+  push:
+    branches: [main, 'release-v**']
+  pull_request:
+name: Build and publish WASMs
+jobs:
+  build-node:
+    name: ci-build-node
+    runs-on: ubuntu-latest-4-cores
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
+      RUSTFLAGS: " -W unused-extern-crates"
+      PACKAGE: "altair-runtime"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Prep build on Ubuntu
+        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env. RUST_TOOLCHAIN }}
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Check cargo build release
+        run: cargo build --release "$@"
+
+  build-runtime-wasms:
+    strategy:
+      matrix:
+        target: [build-runtime, build-runtime-fast]
+        package: [centrifuge-runtime, altair-runtime]
+        rust_version: ["1.64.0"]
+        include:
+          - target: "build-runtime-testnet"
+            package: "altair-runtime"
+          - rust_version: "nightly-2022-11-14"
+            target: "build-node"
+            package: altair-runtime
+    name: ${{ matrix.target }}-${{ matrix.package }}
+    runs-on:  ubuntu-latest-8-cores
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"    
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+      
+      - name: Prep build on Ubuntu
+        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+        
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      
+      - name: Run Docker SRTool
+        uses: addnab/docker-run-action@v3
+        with:
+          image: paritytech/srtool:${{ matrix.rust_version }}
+          options: -v $TMPDIR/cargo:/cargo-home -v $PWD:/build -e PACKAGE=${{ matrix.package }}
+          run: /srtool/build
+
+
+
+      # - if: ${{ matrix.target }}  != "build-node"
+      #   name: Upload WASM to GHA
+      #   uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce #@3.1.2
+      #   with: 
+      #     name: ${{ matrix.package }}-${{ matrix.target }}-wasm
+      #     path: ./runtime/centrifuge/target/srtool/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.compressed.wasm
+      #     if-no-files-found: error
+      
+
+  # publish:
+  #   runs-on:  ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       target: [build-runtime, build-runtime-fast, build-runtime-testnet]
+  #       package: [centrifuge-runtime, altair-runtime]
+  #       exclude:
+  #         - target: build-runtime-testnet
+  #           package: centrifuge-runtime
+  #   steps:
+  #     - name: Publish artifacts to GCS
+  #       uses: ./centrifuge-chain/.github/actions/publish-wasm
+  #       with:
+  #         runtime: ${{ matrix.target }}
+  #         package: ${{ matrix.package }}
+    

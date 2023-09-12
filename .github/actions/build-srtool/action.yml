@@ -1,0 +1,25 @@
+name: "SRtool docker builder"
+description: "build Rust code inside srtool container"
+inputs:
+  toolchain:
+    description: "rust toolchain version"
+    default: "1.64"
+  srtool_version:
+    default: latest
+    description: "SRtool docker tag"
+  target:
+    description: "fast-runtime or testnet-runtime"
+    default: ""
+  package:
+    description: "Altair or centrifuge?"
+    default: centrifuge-runtime
+runs:
+  using: docker
+  image: paritytech/srtool:${{ inputs.srtool_version }}
+  pre-entrypoint: "cd /github/workspace/"
+  env:
+    RUSTC_VERSION: ${{ inputs.toolchain }}
+    PACKAGE: ${{ inputs.package }}
+  args:
+    - --features=${{ inputs.$target }}
+    - build

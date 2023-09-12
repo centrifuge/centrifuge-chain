@@ -1,0 +1,28 @@
+name: Prepare Ubuntu for Rust builds
+description: cleanup and Rust Tools setup
+inputs:
+  RUST_TOOLCHAIN:
+    description: toolchain version
+    required: false
+    default: "nightly-2022-05-09"
+runs:
+  using: composite
+  steps:
+    - name: Prep build on Ubuntu
+      id: ubuntu_prep
+      shell: sh
+      run: |
+        echo "Pre cleanup"
+        df -h
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        echo "Post cleanup"
+        df -h
+        sudo apt-get install protobuf-compiler
+    # - name: Install Rust Toolchain
+    #   shell: bash
+    #   id: install_toolchain
+    #   env:
+    #     RUST_TOOLCHAIN: inputs.RUST_TOOLCHAIN
+    #   run: |
+    #     ./scripts/install_toolchain.sh
