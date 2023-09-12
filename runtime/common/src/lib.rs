@@ -398,21 +398,21 @@ pub mod oracle {
 pub mod changes {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans::ChangeOf as LoansChangeOf;
+	use pallet_loans::entities::changes::Change as LoansChange;
 	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoansChangeOf<T>),
+		Loan(LoansChange<T>),
 	}
 
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
 		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
 			use cfg_primitives::SECONDS_PER_WEEK;
-			use pallet_loans::types::{InternalMutation, LoanMutation};
+			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
 			use pallet_pool_system::pool_types::changes::Requirement;
 			use sp_std::vec;
 
@@ -423,7 +423,7 @@ pub mod changes {
 			let requirements = match loans_change {
 				// Requirements gathered from
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
+				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
 					LoanMutation::Maturity(_) => vec![week, blocked],
 					LoanMutation::MaturityExtension(_) => vec![],
 					LoanMutation::InterestPayments(_) => vec![week, blocked],
@@ -436,7 +436,8 @@ pub mod changes {
 						InternalMutation::DiscountRate(_) => vec![epoch],
 					},
 				},
-				LoansChangeOf::<T>::Policy(_) => vec![week, blocked],
+				LoansChange::<T>::Policy(_) => vec![week, blocked],
+				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![epoch, blocked],
 			};
 
 			PoolChangeProposal::new(requirements)
@@ -457,17 +458,17 @@ pub mod changes {
 	}
 
 	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
 			RuntimeChange::Loan(loan_change)
 		}
 	}
 
 	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
 		type Error = DispatchError;
 
-		fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
 			let RuntimeChange::Loan(loan_change) = self;
 			Ok(loan_change)
 		}
@@ -497,17 +498,17 @@ pub mod changes {
 		}
 
 		/// Used for building CfgChanges in pallet-loans
-		impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
-			fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+		impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
+			fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
 				Self(loan_change.into())
 			}
 		}
 
 		/// Used for recovering LoanChange in pallet-loans
-		impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+		impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
 			type Error = DispatchError;
 
-			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+			fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
 				self.0.try_into()
 			}
 		}
