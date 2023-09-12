@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
       - name: Prep build on Ubuntu
-        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env. RUST_TOOLCHAIN }}
 
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
       
       - name: Prep build on Ubuntu
-        uses: ./centrifuge-chain/.github/actions/prep-ubuntu
+        uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
         
