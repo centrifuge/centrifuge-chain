@@ -59,7 +59,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
-          options: -v $TMPDIR/cargo:/cargo-home -v $PWD:/build -e PACKAGE=${{ matrix.package }}
+          options: -v $TMPDIR/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: /srtool/build
 
 

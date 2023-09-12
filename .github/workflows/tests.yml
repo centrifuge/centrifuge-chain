@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/'
+      - '.github/workflows/tests.yml'
 name: Tests
 jobs:
 
