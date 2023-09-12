@@ -28,6 +28,7 @@ use crate::Config;
 pub enum TokenSwapReason {
 	Investment,
 	Redemption,
+	InvestmentAndRedemption,
 }
 
 /// Restriction of `pallet_foreign_investments::Config` trait to support
@@ -351,4 +352,3 @@ pub enum RedeemTransition<
 	FulfillSwapOrder(Swap<Balance, Currency>),
 	CollectRedemption(Balance, Swap<Balance, Currency>),
 }
-

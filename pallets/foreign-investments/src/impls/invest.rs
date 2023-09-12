@@ -51,6 +51,30 @@ where
 		}
 	}
 
+	// TODO: Docs
+	pub(crate) fn get_active_swap(&self) -> Option<Swap<T::Balance, T::CurrencyId>> {
+		match *self {
+			Self::NoState => None,
+			Self::InvestmentOngoing { .. } => None,
+			Self::ActiveSwapIntoPoolCurrency { swap } => Some(swap),
+			Self::ActiveSwapIntoForeignCurrency { swap } => Some(swap),
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Some(swap),
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Some(swap),
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Some(swap),
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Some(swap),
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Some(swap),
+			Self::SwapIntoForeignDone { .. } => None,
+			Self::SwapIntoForeignDoneAndInvestmentOngoing { .. } => None,
+		}
+	}
+
 	/// Returns the potentially existing active swap amount denominated in pool
 	/// currency:
 	/// * If the state includes `ActiveSwapIntoPoolCurrency`, it returns
@@ -62,22 +86,46 @@ where
 		&self,
 	) -> Result<T::Balance, DispatchError> {
 		match *self {
-			InvestState::NoState => Ok(T::Balance::zero()),
-			InvestState::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
-			InvestState::ActiveSwapIntoPoolCurrency { swap } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoForeignCurrency { swap } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
-				Ok(swap.amount)
-			},
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
-				Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?)
-			},
-			InvestState::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
-			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			Self::NoState => Ok(T::Balance::zero()),
+			Self::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			Self::ActiveSwapIntoPoolCurrency { swap } => Ok(swap.amount),
+			Self::ActiveSwapIntoForeignCurrency { swap } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(swap.amount),
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Ok(swap.amount),
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Ok(T::CurrencyConverter::stable_to_stable(
+				swap.currency_out,
+				swap.currency_in,
+				swap.amount,
+			)?),
+			Self::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
+			Self::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
 		}
 	}
 
@@ -92,35 +140,67 @@ where
 		&self,
 	) -> Result<T::Balance, DispatchError> {
 		match *self {
-			InvestState::NoState => Ok(T::Balance::zero()),
-			InvestState::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
-			InvestState::ActiveSwapIntoPoolCurrency { swap } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoForeignCurrency { swap } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?),
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => Ok(swap.amount),
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
-				Ok(T::CurrencyConverter::stable_to_stable(swap.currency_out, swap.currency_in, swap.amount)?)
-			},
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { swap, .. } => {
+			Self::NoState => Ok(T::Balance::zero()),
+			Self::InvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			Self::ActiveSwapIntoPoolCurrency { swap } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoForeignCurrency { swap } => Ok(swap.amount),
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { swap, .. } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { swap, .. } => Ok(swap.amount),
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { swap, .. } => {
+				Ok(T::CurrencyConverter::stable_to_stable(
+					swap.currency_out,
+					swap.currency_in,
+					swap.amount,
+				)?)
+			}
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
 				Ok(swap.amount)
-			},
-			InvestState::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
-			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
+			}
+			Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Ok(T::CurrencyConverter::stable_to_stable(
+				swap.currency_out,
+				swap.currency_in,
+				swap.amount,
+			)?),
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap,
+				..
+			} => Ok(swap.amount),
+			Self::SwapIntoForeignDone { .. } => Ok(T::Balance::zero()),
+			Self::SwapIntoForeignDoneAndInvestmentOngoing { .. } => Ok(T::Balance::zero()),
 		}
 	}
 
 	/// Returns the `invest_amount` if existent, else zero.
 	pub(crate) fn get_investing_amount(&self) -> T::Balance {
 		match *self {
-			InvestState::InvestmentOngoing { invest_amount}  |
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { invest_amount, .. } |
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { invest_amount, .. } |
-			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } |
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } |
-			InvestState::SwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } => invest_amount,
-			_ => T::Balance::zero()
+			Self::InvestmentOngoing { invest_amount }
+			| Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { invest_amount, .. }
+			| Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing { invest_amount, .. }
+			| Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				invest_amount,
+				..
+			}
+			| Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				invest_amount,
+				..
+			}
+			| Self::SwapIntoForeignDoneAndInvestmentOngoing { invest_amount, .. } => invest_amount,
+			_ => T::Balance::zero(),
 		}
 	}
 }
@@ -489,14 +569,15 @@ where
 		}
 
 		match &self {
-			// Cannot reduce if there is neither an ongoing investment nor an active swap into pool currency
-			InvestState::NoState
-			| InvestState::ActiveSwapIntoForeignCurrency { .. }
-			| InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { .. } => {
-				Err(DispatchError::Other("Invalid invest state when transitioning a decrease"))
-			},
+			// Cannot reduce if there is neither an ongoing investment nor an active swap into pool
+			// currency
+			Self::NoState
+			| Self::ActiveSwapIntoForeignCurrency { .. }
+			| Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { .. } => Err(DispatchError::Other(
+				"Invalid invest state when transitioning a decrease",
+			)),
 			// Increment foreign swap amount up to ongoing investment
-			InvestState::InvestmentOngoing { invest_amount } => {
+			Self::InvestmentOngoing { invest_amount } => {
 				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
 					swap.currency_out,
 					swap.currency_in,
@@ -504,23 +585,17 @@ where
 				)?;
 
 				match foreign_amount_pool_denominated.cmp(invest_amount) {
-					Ordering::Less => {
-						Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap,
-							invest_amount: invest_amount.ensure_sub(foreign_amount_pool_denominated)?,
-						})
-					},
-					Ordering::Equal => {
-						Ok(Self::ActiveSwapIntoForeignCurrency { swap })
-					}
+					Ordering::Less => Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+						swap,
+						invest_amount: invest_amount.ensure_sub(foreign_amount_pool_denominated)?,
+					}),
+					Ordering::Equal => Ok(Self::ActiveSwapIntoForeignCurrency { swap }),
 					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
-					}
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 				}
-			},
+			}
 			// Increment return done amount up to amount of the active pool swap
-			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
+			Self::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, false)?;
 
 				let foreign_amount_pool_denominated = T::CurrencyConverter::stable_to_stable(
@@ -530,26 +605,23 @@ where
 				)?;
 
 				match foreign_amount_pool_denominated.cmp(&pool_swap.amount) {
-					Ordering::Less => {
-						Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
-							swap: Swap {
-								amount: pool_swap.amount.ensure_sub(foreign_amount_pool_denominated)?,
-								..*pool_swap
-							},
-							done_amount: swap.amount,
-						})
-					}
-					Ordering::Equal => {
-						Ok(Self::SwapIntoForeignDone { done_swap: swap })
-					},
+					Ordering::Less => Ok(Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
+						swap: Swap {
+							amount: pool_swap
+								.amount
+								.ensure_sub(foreign_amount_pool_denominated)?,
+							..*pool_swap
+						},
+						done_amount: swap.amount,
+					}),
+					Ordering::Equal => Ok(Self::SwapIntoForeignDone { done_swap: swap }),
 					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
-					}
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 				}
-			},
-			// Increment `foreign_done` up to pool swap amount and increment foreign swap amount up to ongoing investment
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+			}
+			// Increment `foreign_done` up to pool swap amount and increment foreign swap amount up
+			// to ongoing investment
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
 				swap: pool_swap,
 				invest_amount,
 			} => {
@@ -565,7 +637,8 @@ where
 					swap.currency_out,
 					pool_swap.amount,
 				)?;
-				let max_decrease_amount_pool_denominated = pool_swap.amount.ensure_add(*invest_amount)?;
+				let max_decrease_amount_pool_denominated =
+					pool_swap.amount.ensure_add(*invest_amount)?;
 
 				// Decrease swap into pool
 				if foreign_amount_pool_denominated < pool_swap.amount {
@@ -615,9 +688,9 @@ where
 				else {
 					Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
 				}
-			},
+			}
 			// Increment foreign swap up to ongoing investment
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
 				swap: foreign_swap,
 				invest_amount,
 			} => {
@@ -631,24 +704,18 @@ where
 				)?;
 
 				match swap_amount_pool_denominated.cmp(invest_amount) {
-					Ordering::Less => {
-						Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap: Swap { amount, ..swap },
-							invest_amount: invest_amount.ensure_sub(swap_amount_pool_denominated)?,
-						})
-					},
-					Ordering::Equal => {
-						Ok(Self::ActiveSwapIntoForeignCurrency {
-							swap: Swap { amount, ..swap },
-						})
-					},
+					Ordering::Less => Ok(Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+						swap: Swap { amount, ..swap },
+						invest_amount: invest_amount.ensure_sub(swap_amount_pool_denominated)?,
+					}),
+					Ordering::Equal => Ok(Self::ActiveSwapIntoForeignCurrency {
+						swap: Swap { amount, ..swap },
+					}),
 					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
-					},
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 				}
-			},
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+			}
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap: foreign_swap,
 				done_amount,
 				invest_amount,
@@ -683,7 +750,7 @@ where
 						Err(DispatchError::Arithmetic(ArithmeticError::Underflow))
 					}
 				}
-			},
+			}
 			_ => Err(DispatchError::Other(
 				"Invalid invest state, should automatically be transitioned into \
 				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
@@ -721,41 +788,54 @@ where
 		swap: Swap<T::Balance, T::CurrencyId>,
 	) -> Result<Self, DispatchError> {
 		match &self {
-			InvestState::NoState | InvestState::InvestmentOngoing { .. } => Err(DispatchError::Other(
+			Self::NoState | Self::InvestmentOngoing { .. } => Err(DispatchError::Other(
 				"Invalid invest state when transitioning a fulfilled order",
 			)),
-
 			// Increment ongoing investment by swapped amount
-			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
+			Self::ActiveSwapIntoPoolCurrency { swap: pool_swap } => {
 				swap.ensure_currencies_match(pool_swap, true)?;
-
 				match swap.amount.cmp(&pool_swap.amount) {
-					Ordering::Equal => {
-						Ok(Self::InvestmentOngoing {
-							invest_amount: swap.amount,
-						})
-					},
-					Ordering::Less => {
-						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: pool_swap.amount.ensure_sub(swap.amount)?,
-								..swap
-							},
-							invest_amount: swap.amount,
-						})
-					}
+					Ordering::Equal => Ok(Self::InvestmentOngoing {
+						invest_amount: swap.amount,
+					}),
+					Ordering::Less => Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+						swap: Swap {
+							amount: pool_swap.amount.ensure_sub(swap.amount)?,
+							..swap
+						},
+						invest_amount: swap.amount,
+					}),
 					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					}
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+				}
+			}
+			// Increment ongoing investment by swapped amount
+			Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: pool_swap,
+				invest_amount,
+			} => {
+				swap.ensure_currencies_match(pool_swap, true)?;
+				let invest_amount = invest_amount.ensure_add(swap.amount)?;
+				match swap.amount.cmp(&pool_swap.amount) {
+					Ordering::Equal => Ok(Self::InvestmentOngoing { invest_amount }),
+					Ordering::Less => Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+						swap: Swap {
+							amount: pool_swap.amount.ensure_sub(swap.amount)?,
+							..swap
+						},
+						invest_amount,
+					}),
+					// should never occur but let's be safe here
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				}
 			},
 			// Increment done_foreign by swapped amount
-			InvestState::ActiveSwapIntoForeignCurrency { swap: foreign_swap } => {
+			Self::ActiveSwapIntoForeignCurrency { swap: foreign_swap } => {
 				swap.ensure_currencies_match(foreign_swap, true)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					Ordering::Equal => {
+					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
+					Ordering::Equal | Ordering::Greater => {
 						Ok(Self::SwapIntoForeignDone { done_swap: swap })
 					}
 					Ordering::Less => {
@@ -767,48 +847,18 @@ where
 							done_amount: swap.amount,
 						})
 					}
-					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					}
-				}
-			},
-			// Increment ongoing investment by swapped amount
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-				swap: pool_swap,
-				invest_amount,
-			} => {
-				swap.ensure_currencies_match(pool_swap, true)?;
-				let invest_amount = invest_amount.ensure_add(swap.amount)?;
-
-				match swap.amount.cmp(&pool_swap.amount) {
-					Ordering::Equal => {
-						Ok(Self::InvestmentOngoing { invest_amount })
-					},
-					Ordering::Less => {
-						Ok(Self::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: pool_swap.amount.ensure_sub(swap.amount)?,
-								..swap
-							},
-							invest_amount,
-						})
-					}
-					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					}
 				}
 			},
 			// Increment done_foreign by swapped amount, leave invest amount untouched
-			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
 				swap: foreign_swap,
 				invest_amount,
 			} => {
 				swap.ensure_currencies_match(foreign_swap, true)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					Ordering::Equal => {
+					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
+					Ordering::Equal | Ordering::Greater => {
 						Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 							done_swap: swap,
 							invest_amount: *invest_amount,
@@ -826,14 +876,10 @@ where
 							},
 						)
 					}
-					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					}
 				}
 			},
 			// Increment done_foreign by swapped amount
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 				swap: foreign_swap,
 				done_amount,
 			} => {
@@ -841,7 +887,8 @@ where
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					Ordering::Equal => {
+					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
+					Ordering::Equal | Ordering::Greater => {
 						Ok(Self::SwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
@@ -858,14 +905,10 @@ where
 							done_amount,
 						})
 					}
-					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					}
 				}
 			},
 			// Increment done_foreign by swapped amount, leave invest amount untouched
-			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+			Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 				swap: foreign_swap,
 				done_amount,
 				invest_amount,
@@ -874,7 +917,8 @@ where
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					Ordering::Equal => {
+					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
+					Ordering::Equal | Ordering::Greater => {
 						Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 							done_swap: Swap {
 								amount: done_amount,
@@ -894,10 +938,6 @@ where
 								invest_amount: *invest_amount,
 							},
 						)
-					}
-					// should never occur but let's be safe here
-					Ordering::Greater => {
-						Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
 					}
 				}
 			},
@@ -970,7 +1010,7 @@ where
 	) -> Result<Self, DispatchError> {
 		if let Self::InvestmentOngoing { invest_amount } = &self {
 			if swap.amount < *invest_amount {
-				Ok(InvestState::SwapIntoForeignDoneAndInvestmentOngoing {
+				Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 					done_swap: swap,
 					invest_amount: invest_amount.ensure_sub(swap.amount)?,
 				})

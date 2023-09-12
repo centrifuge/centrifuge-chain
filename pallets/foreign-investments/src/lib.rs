@@ -189,6 +189,7 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 			OrderId = Self::TokenSwapOrderId,
+			OrderDetails = Swap<Self::Balance, Self::CurrencyId>,
 			SellRatio = Self::Rate,
 		>;
 
@@ -276,13 +277,14 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	/// Maps `TokenSwapOrders` to `ForeignInvestmentInfo` to implicitly enable
-	/// mapping to `InvestmentState` and `RedemptionState`.
+	/// Maps a token swap order id to the corresponding `ForeignInvestmentInfo`
+	/// to implicitly enable mapping to `InvestmentState` and `RedemptionState`.
 	///
 	/// NOTE: The storage is immediately killed when the swap order is
 	/// completely fulfilled even if the corresponding investment and/or
 	/// redemption might not be fully processed.
 	#[pallet::storage]
+	#[pallet::getter(fn foreign_investment_info)]
 	pub(super) type ForeignInvestmentInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, ForeignInvestmentInfoOf<T>>;
 
@@ -293,6 +295,7 @@ pub mod pallet {
 	/// completely fulfilled even if the investment might not be fully
 	/// processed.
 	#[pallet::storage]
+	#[pallet::getter(fn token_swap_order_ids)]
 	pub(super) type TokenSwapOrderIds<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -382,7 +385,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		InvalidInvestmentCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		InvestmentInfoNotFound,

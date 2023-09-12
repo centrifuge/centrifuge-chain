@@ -72,7 +72,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				log::debug!("InvestState transition error: {:?}", e);
 				Error::<T>::from(InvestError::Increase)
 			})?;
-		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
+		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state, true)?;
 		Ok(())
 	}
 
@@ -108,7 +108,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				log::debug!("InvestState transition error: {:?}", e);
 				Error::<T>::from(InvestError::Decrease)
 			})?;
-		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state)?;
+		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state, true)?;
 
 		Ok(())
 	}
@@ -328,6 +328,7 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		state: InvestState<T>,
+		update_swap_order: bool,
 	) -> DispatchResult {
 		// Must not send executed decrease notification before updating redemption
 		let mut maybe_executed_decrease: Option<(T::CurrencyId, T::Balance)> = None;
@@ -398,14 +399,16 @@ impl<T: Config> Pallet<T> {
 				T::Investment::update_investment(who, investment_id, invest_amount)?;
 			}
 
-			let (maybe_invest_state_prio, maybe_new_redeem_state) = Self::handle_swap_order(who, investment_id, maybe_swap,  TokenSwapReason::Investment)?;
-			// Dispatch transition event, post swap state has priority if it exists as it was the last transition
-			if let Some(invest_state_prio) = maybe_invest_state_prio {
-				Self::deposit_investment_event(who, investment_id, Some(invest_state_prio));
+			// No need to handle swap order, if redeem state transition is applied afterwards
+			let final_invest_state = if update_swap_order {
+				Self::handle_swap_order(who, investment_id, maybe_swap, TokenSwapReason::Investment).map(|(maybe_invest_state, maybe_redeem_state)| {
+					Self::deposit_redemption_event(who, investment_id, maybe_redeem_state);
+					maybe_invest_state.unwrap_or(invest_state)
+				})?
 			} else {
-				Self::deposit_investment_event(who, investment_id, Some(invest_state));
-			}
-			Self::deposit_redemption_event(who, investment_id, maybe_new_redeem_state);
+				invest_state
+			};
+			Self::deposit_investment_event(who, investment_id, Some(final_invest_state));
 
 			// Send notification after updating invest as else funds are still locked in investment account
 			if let Some((foreign_currency, decreased_amount)) = maybe_executed_decrease {
@@ -658,32 +661,35 @@ impl<T: Config> Pallet<T> {
 		DispatchError,
 	> {
 		// check for concurrent conflicting swap orders
-		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::get(who, investment_id) {
-			let (maybe_updated_swap, maybe_invest_state, maybe_redeem_state) =
-				Self::handle_concurrent_swap_orders(who, investment_id, swap_order_id, reason)?;
+		if TokenSwapOrderIds::<T>::get(who, investment_id).is_some() {
+			let (maybe_updated_swap, maybe_invest_state, maybe_redeem_state, swap_reason) =
+				Self::handle_concurrent_swap_orders(who, investment_id)?;
 
 			// Update or kill swap order with updated order having priority in case it was
 			// overwritten
 			if let Some(swap_order) = maybe_updated_swap {
-				Self::place_swap_order(who, investment_id, swap_order, reason)?;
-			} else if let Some(swap_order) = maybe_swap {
-				Self::place_swap_order(who, investment_id, swap_order, reason)?;
+				Self::place_swap_order(who, investment_id, swap_order, swap_reason)?;
 			} else {
 				Self::kill_swap_order(who, investment_id)?;
 			}
 
-			// Update invest and redeem states if necessary
-			InvestmentState::<T>::mutate(who, investment_id, |current_invest_state| {
-				// Should never occur but let's be safe
-				if let Some(state) = &maybe_invest_state {
-					*current_invest_state = state.clone();
+			// Update invest state and kill if NoState
+			InvestmentState::<T>::mutate_exists(who, investment_id, |current_invest_state| {
+				match &maybe_invest_state {
+					Some(state) if state != &InvestState::NoState => {
+						*current_invest_state = Some(state.clone());
+					}
+					Some(state) if state == &InvestState::NoState => {
+						*current_invest_state = None;
+					}
+					_ => (),
 				}
 			});
 
 			// Need to check if `SwapReturnDone` is part of state without
 			// `ActiveSwapIntoForeignCurrency` as this implies the successful termination of
 			// a collect (with swap into foreign currency). If this is the case, the
-			// returned redeem state needs to be updated as well.
+			// returned redeem state needs to be updated or killed as well.
 			let returning_redeem_state = Self::apply_collect_redeem_transition(
 				who,
 				investment_id,
@@ -692,8 +698,12 @@ impl<T: Config> Pallet<T> {
 			.map(Some)
 			.unwrap_or(maybe_redeem_state)
 			.map(|redeem_state| {
-				RedemptionState::<T>::mutate(who, investment_id, |current_redeem_state| {
-					*current_redeem_state = redeem_state;
+				RedemptionState::<T>::mutate_exists(who, investment_id, |current_redeem_state| {
+					if redeem_state != RedeemState::NoState {
+						*current_redeem_state = Some(redeem_state);
+					} else {
+						*current_redeem_state = None;
+					}
 				});
 				redeem_state
 			});
@@ -702,7 +712,7 @@ impl<T: Config> Pallet<T> {
 		}
 		// Update to provided value, if not none
 		else if let Some(swap_order) = maybe_swap {
-			Self::place_swap_order(who, investment_id, swap_order, reason)?;
+			Self::place_swap_order(who, investment_id, swap_order, Some(reason))?;
 			Ok((None, None))
 		} else {
 			Ok((None, None))
@@ -715,7 +725,9 @@ impl<T: Config> Pallet<T> {
 	/// NOTE: Must only be called in `handle_swap_order`.
 	fn kill_swap_order(who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
-			T::TokenSwaps::cancel_order(swap_order_id)?;
+			if T::TokenSwaps::is_active(swap_order_id) {
+				T::TokenSwaps::cancel_order(swap_order_id)?;
+			}
 			ForeignInvestmentInfo::<T>::remove(swap_order_id);
 		}
 		Ok(())
@@ -730,14 +742,38 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		swap: SwapOf<T>,
-		reason: TokenSwapReason,
+		reason: Option<TokenSwapReason>,
 	) -> DispatchResult {
-		// exit early
 		if swap.amount.is_zero() {
 			return Self::kill_swap_order(who, investment_id);
 		}
-		match TokenSwapOrderIds::<T>::get(who, investment_id) {
-			Some(swap_order_id) if T::TokenSwaps::is_active(swap_order_id) => {
+
+		// Determine whether swap order direction changed which would require the order
+		// to be cancelled and all associated storage to be killed
+		let maybe_swap_order_id = TokenSwapOrderIds::<T>::get(who, investment_id);
+		let cancel_swap_order = maybe_swap_order_id
+			.map(|swap_order_id| {
+				let cancel_swap_order = T::TokenSwaps::get_order_details(swap_order_id)
+					.map(|swap_order| {
+						swap_order.currency_in != swap.currency_in
+							|| swap_order.currency_out != swap.currency_out
+					})
+					.unwrap_or(false);
+
+				if cancel_swap_order {
+					Self::kill_swap_order(who, investment_id)?;
+				}
+
+				Ok::<bool, DispatchError>(cancel_swap_order)
+			})
+			.transpose()?
+			.unwrap_or(false);
+
+		match maybe_swap_order_id {
+			// Swap order is active and matches the swap direction
+			Some(swap_order_id)
+				if T::TokenSwaps::is_active(swap_order_id) && !cancel_swap_order =>
+			{
 				T::TokenSwaps::update_order(
 					who.clone(),
 					swap_order_id,
@@ -752,10 +788,11 @@ impl<T: Config> Pallet<T> {
 					ForeignInvestmentInfoOf::<T> {
 						owner: who.clone(),
 						id: investment_id,
-						last_swap_reason: Some(reason),
+						last_swap_reason: reason,
 					},
 				);
 			}
+			// Swap order either has not existed at all or was just cancelled
 			_ => {
 				let swap_order_id = T::TokenSwaps::place_order(
 					who.clone(),
@@ -773,7 +810,7 @@ impl<T: Config> Pallet<T> {
 					ForeignInvestmentInfoOf::<T> {
 						owner: who.clone(),
 						id: investment_id,
-						last_swap_reason: Some(reason),
+						last_swap_reason: reason,
 					},
 				);
 			}
@@ -812,30 +849,41 @@ impl<T: Config> Pallet<T> {
 	fn handle_concurrent_swap_orders(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		swap_order_id: T::TokenSwapOrderId,
-		reason: TokenSwapReason,
 	) -> Result<
 		(
 			Option<Swap<T::Balance, T::CurrencyId>>,
 			Option<InvestState<T>>,
 			Option<RedeemState<T::Balance, T::CurrencyId>>,
+			Option<TokenSwapReason>,
 		),
 		DispatchError,
 	> {
-		let last_reason = ForeignInvestmentInfo::<T>::get(swap_order_id)
-			.ok_or(Error::<T>::InvestmentInfoNotFound)?
-			.last_swap_reason
-			.ok_or(Error::<T>::TokenSwapReasonNotFound)?;
-
-		// Exit early if both reasons match, i.e. we would not override any opposite
-		// swap order
-		if last_reason == reason {
-			return Ok((None, None, None));
-		}
-
 		// Read states from storage and determine amounts in possible denominations
 		let invest_state = InvestmentState::<T>::get(who, investment_id);
 		let redeem_state = RedemptionState::<T>::get(who, investment_id);
+		let active_invest_swap = invest_state.get_active_swap();
+		let active_redeem_swap = redeem_state.get_active_swap();
+
+		// Exit early if neither or only a single swap is active such that no merging is
+		// necessary
+		if active_invest_swap.is_none() && active_redeem_swap.is_none() {
+			return Ok((None, None, None, None));
+		} else if active_invest_swap.is_none() {
+			return Ok((
+				active_redeem_swap,
+				None,
+				Some(redeem_state),
+				Some(TokenSwapReason::Redemption),
+			));
+		} else if active_redeem_swap.is_none() {
+			return Ok((
+				active_invest_swap,
+				Some(invest_state),
+				None,
+				Some(TokenSwapReason::Investment),
+			));
+		}
+
 		let invest_swap_amount_pool_deno =
 			invest_state.get_active_swap_amount_pool_denominated()?;
 		let invest_swap_amount_foreign_deno =
@@ -865,113 +913,109 @@ impl<T: Config> Pallet<T> {
 			.max(redeem_swap_amount_foreign_deno)
 			.ensure_sub(invest_swap_amount_foreign_deno.min(redeem_swap_amount_foreign_deno))?;
 
-		// Determine new invest state
-		let new_invest_state = match invest_state {
-			// As redeem swap can only be into foreign currency, we need to delta on the opposite
-			// swap directions
-			InvestState::ActiveSwapIntoPoolCurrency { swap } => {
-				if invest_swap_amount_pool_deno > redeem_swap_amount_pool_deno {
-					Some(
-						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: swap_amount_opposite_direction_pool_deno,
-								..swap
-							},
-							invest_amount: resolved_amount_pool_deno,
-						},
-					)
-				} else {
-					Some(InvestState::InvestmentOngoing {
-						invest_amount: resolved_amount_pool_deno,
-					})
+		let (maybe_token_swap, maybe_new_invest_state, maybe_new_redeem_state, swap_reason) =
+			match (active_invest_swap, active_redeem_swap) {
+				// same swap direction
+				(Some(invest_swap), Some(redeem_swap))
+					if invest_swap.currency_in == redeem_swap.currency_in =>
+				{
+					invest_swap.ensure_currencies_match(&redeem_swap, true)?;
+					let token_swap = Swap {
+						amount: invest_swap.amount.ensure_add(redeem_swap.amount)?,
+						..invest_swap
+					};
+					Ok((
+						Some(token_swap),
+						None,
+						None,
+						Some(TokenSwapReason::InvestmentAndRedemption),
+					))
 				}
-			}
-			// Same as above except for the base investment amount which is incremented
-			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-				swap: invest_swap,
-				invest_amount,
-			} => {
-				if invest_swap_amount_pool_deno > redeem_swap_amount_pool_deno {
-					Some(
-						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: swap_amount_opposite_direction_pool_deno,
-								..invest_swap
-							},
-							invest_amount: invest_amount.ensure_add(resolved_amount_pool_deno)?,
-						},
-					)
-				} else {
-					Some(InvestState::InvestmentOngoing {
-						invest_amount: invest_amount.ensure_add(resolved_amount_pool_deno)?,
-					})
-				}
-			}
-			// We must not alter the invest state if there is no active pool currency swap
-			_ => None,
-		};
+				// opposite swap direction
+				(Some(invest_swap), Some(redeem_swap))
+					if invest_swap.currency_in == redeem_swap.currency_out =>
+				{
+					invest_swap.ensure_currencies_match(&redeem_swap, false)?;
+					let new_redeem_state = redeem_state.fulfill_active_swap_amount(
+						redeem_swap_amount_foreign_deno.min(invest_swap_amount_foreign_deno),
+					)?;
 
-		// Determine final swap amount and new redeem state
-		let (final_swap_amount_foreign_deno, new_redeem_state) = match invest_state {
-			// Opposite swaps cancel out at least one (or if equal amounts) both swaps
-			InvestState::ActiveSwapIntoPoolCurrency { .. }
-			| InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing { .. } => {
-				let new_state = redeem_state
-					.fulfill_active_swap_amount(
-						redeem_swap_amount_foreign_deno
-							.min(swap_amount_opposite_direction_foreign_deno),
-					)
-					.unwrap_or(redeem_state);
+					let new_invest_state = match invest_state.clone() {
+						InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap }
+						| InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+							swap: pool_swap,
+							..
+						} => {
+							let new_pool_swap = Swap {
+								amount: pool_swap.amount.ensure_sub(resolved_amount_pool_deno)?,
+								..pool_swap
+							};
+							let new_invest_amount = invest_state
+								.get_investing_amount()
+								.ensure_add(resolved_amount_pool_deno)?;
 
-				Ok((swap_amount_opposite_direction_foreign_deno, new_state))
-			}
-			// All leftover combinations either do not involve any active swaps or both
-			// swaps have the same direction, i.e. into foreign currency. Thus, we can
-			// leave states untouched and just add up the potential swap amount.
-			_ => Ok((
-				invest_swap_amount_foreign_deno.ensure_add(redeem_swap_amount_foreign_deno)?,
-				redeem_state,
-			)),
-		}
-		.map(|(token_swap_amount_foreign_deno, maybe_new_redeem_state)| {
-			// If old state match new state, no need to return it as this could cause a
-			// follow-up transition trigger
-			if redeem_state == maybe_new_redeem_state {
-				(token_swap_amount_foreign_deno, None)
-			} else {
-				(token_swap_amount_foreign_deno, Some(maybe_new_redeem_state))
-			}
-		})
-		.map_err(|e: DispatchError| e)?;
+							if pool_swap.amount == resolved_amount_pool_deno {
+								Ok(InvestState::InvestmentOngoing {
+									invest_amount: new_invest_amount,
+								})
+							} else {
+								Ok(
+									InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+										invest_amount: new_invest_amount,
+										swap: new_pool_swap,
+									},
+								)
+							}
+						}
+						state => Ok(state),
+					}
+					.map_err(|e: DispatchError| e)?;
 
-		// Determine token swap from amount
-		let token_swap = redeem_state
-			.get_active_swap()
-			.map(|swap| {
-				if invest_swap_amount_foreign_deno > redeem_swap_amount_foreign_deno {
-					Ok(Swap {
-						amount: T::CurrencyConverter::stable_to_stable(
-							swap.currency_out,
-							swap.currency_in,
-							final_swap_amount_foreign_deno,
-						)?,
-						currency_in: swap.currency_out,
-						currency_out: swap.currency_in,
-					})
+					if invest_swap_amount_foreign_deno > redeem_swap_amount_foreign_deno {
+						let swap = Swap {
+							amount: swap_amount_opposite_direction_pool_deno,
+							..invest_swap
+						};
+						Ok((
+							Some(swap),
+							Some(new_invest_state),
+							Some(new_redeem_state),
+							Some(TokenSwapReason::Investment),
+						))
+					} else {
+						let swap = Swap {
+							amount: swap_amount_opposite_direction_foreign_deno,
+							..redeem_swap
+						};
+						Ok((
+							Some(swap),
+							Some(new_invest_state),
+							Some(new_redeem_state),
+							Some(TokenSwapReason::Redemption),
+						))
+					}
 				}
-				// handle redeem_swap_amount >= invest_swap_amount as well as all cases, in which
-				// neither states include an active swap
-				else {
-					Ok(Swap {
-						amount: final_swap_amount_foreign_deno,
-						..swap
-					})
-				}
-			})
-			.transpose()
+				_ => Err(DispatchError::Other(
+					"Uncaught short circuit when merging concurrent swap orders",
+				)),
+			}
 			.map_err(|e: DispatchError| e)?;
 
-		Ok((token_swap, new_invest_state, new_redeem_state))
+		let new_invest_state = match maybe_new_invest_state {
+			Some(state) if state == invest_state => None,
+			state => state,
+		};
+		let new_redeem_state = match maybe_new_redeem_state {
+			Some(state) if state == redeem_state => None,
+			state => state,
+		};
+
+		Ok((
+			maybe_token_swap,
+			new_invest_state,
+			new_redeem_state,
+			swap_reason,
+		))
 	}
 
 	/// Increments the collected investment amount and transitions investment
@@ -1000,7 +1044,7 @@ impl<T: Config> Pallet<T> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		let post_state =
 			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
-		Self::apply_invest_state_transition(who, investment_id, post_state).map_err(|e| {
+		Self::apply_invest_state_transition(who, investment_id, post_state, true).map_err(|e| {
 			log::debug!("InvestState transition error: {:?}", e);
 			Error::<T>::from(InvestError::Collect)
 		})?;
@@ -1064,14 +1108,12 @@ impl<T: Config> Pallet<T> {
 			.expect("Impossible to collect redemption for non existing pool at this point");
 
 		// Increment by previously stored amounts (via `CollectedInvestmentHook`)
-		let collected = CollectedRedemption::<T>::mutate(who, investment_id, |collected_before| {
-			collected_before
-				.amount_collected
+		CollectedRedemption::<T>::mutate(who, investment_id, |old| {
+			old.amount_collected
 				.ensure_add_assign(collected.amount_collected)?;
-			collected_before
-				.amount_payment
+			old.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
-			Ok::<CollectedAmount<T::Balance>, DispatchError>(collected_before.clone())
+			Ok::<(), DispatchError>(())
 		})?;
 
 		// Transition state to initiate swap from pool to foreign currency

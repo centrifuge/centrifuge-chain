@@ -461,7 +461,7 @@ pub mod pallet {
 				order_id,
 				placing_account: order.placing_account,
 				fulfilling_account: account_id,
-				partial_fulfillment: true,
+				partial_fulfillment: false,
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
 				fulfillment_amount: order.buy_amount,
@@ -613,6 +613,7 @@ pub mod pallet {
 	{
 		type Balance = T::Balance;
 		type CurrencyId = T::AssetCurrencyId;
+		type OrderDetails = Swap<T::Balance, T::AssetCurrencyId>;
 		type OrderId = T::OrderIdNonce;
 		type SellRatio = T::SellRatio;
 
@@ -811,6 +812,16 @@ pub mod pallet {
 		/// Check whether an order is active.
 		fn is_active(order: Self::OrderId) -> bool {
 			<Orders<T>>::contains_key(order)
+		}
+
+		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::AssetCurrencyId>> {
+			Orders::<T>::get(order)
+				.map(|order| Swap {
+					amount: order.buy_amount,
+					currency_in: order.asset_in_id,
+					currency_out: order.asset_out_id,
+				})
+				.ok()
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {

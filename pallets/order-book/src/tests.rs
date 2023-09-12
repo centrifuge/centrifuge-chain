@@ -1001,6 +1001,30 @@ fn update_order_requires_non_zero_price() {
 	})
 }
 
+#[test]
+fn get_order_details_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(OrderBook::place_order(
+			ACCOUNT_0,
+			DEV_AUSD_CURRENCY_ID,
+			DEV_USDT_CURRENCY_ID,
+			15 * CURRENCY_AUSD_DECIMALS,
+			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			5 * CURRENCY_AUSD_DECIMALS
+		));
+		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		assert_eq!(
+			OrderBook::get_order_details(order_id),
+			Some(cfg_types::investments::Swap {
+				amount: 15 * CURRENCY_AUSD_DECIMALS,
+				currency_in: DEV_AUSD_CURRENCY_ID,
+				currency_out: DEV_USDT_CURRENCY_ID
+			})
+		);
+		assert!(OrderBook::get_order_details(order_id + 1).is_none());
+	});
+}
+
 pub fn get_account_orders(
 	account_id: <Runtime as frame_system::Config>::AccountId,
 ) -> Result<sp_std::vec::Vec<(<Runtime as Config>::OrderIdNonce, OrderOf<Runtime>)>, Error<Runtime>>

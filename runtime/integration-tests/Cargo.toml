@@ -101,6 +101,7 @@ pallet-investments = { path = "../../pallets/investments" }
 pallet-liquidity-pools = { path = "../../pallets/liquidity-pools" }
 pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway" }
 pallet-loans = { path = "../../pallets/loans" }
+pallet-order-book = { path = "../../pallets/order-book" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
@@ -139,6 +140,7 @@ std = [
   "pallet-balances/std",
   "pallet-foreign-investments/std",
   "pallet-investments/std",
+  "pallet-order-book/std",
   "pallet-transaction-payment/std",
   "pallet-uniques/std",
   "pallet-xcm/std",
@@ -186,6 +188,7 @@ runtime-benchmarks = [
   "pallet-balances/runtime-benchmarks",
   "pallet-foreign-investments/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",

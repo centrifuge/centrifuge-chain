@@ -474,6 +474,7 @@ pub trait TokenSwaps<Account> {
 	type Balance;
 	type SellRatio;
 	type OrderId;
+	type OrderDetails;
 
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
 	/// `currency_out` tokens. The implementer of this method should know
@@ -566,6 +567,9 @@ pub trait TokenSwaps<Account> {
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
+
+	/// Retrieve the details of the order if it exists.
+	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
