@@ -30,7 +30,7 @@ use cfg_traits::{
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
 	oracles::OracleKey,
@@ -1827,7 +1827,7 @@ impl pallet_order_book::Config for Runtime {
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = Rate;
+	type SellRatio = Ratio;
 	type TradeableAsset = Tokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }

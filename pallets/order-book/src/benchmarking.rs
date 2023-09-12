@@ -12,10 +12,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use cfg_types::{
-	fixed_point::Rate,
-	tokens::{CurrencyId, CustomMetadata},
-};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
 use frame_support::traits::fungibles::Mutate as FungiblesMutate;
 use frame_system::RawOrigin;
@@ -31,33 +28,33 @@ const CURRENCY_1: u128 = 1_000_000_000_000;
 benchmarks! {
 	where_clause {
 		where
-			T: Config<AssetCurrencyId = CurrencyId, Balance = u128, SellRatio = Rate>,
+			T: Config<AssetCurrencyId = CurrencyId, Balance = u128>,
 			<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
 	}
 
 	create_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:create_order(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap())
+		}:create_order(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2))
 
 
 	user_update_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
 
-		}:user_update_order(RawOrigin::Signed(account_0.clone()), order_id, 150 * CURRENCY_0, Rate::checked_from_integer(1u32).unwrap())
+		}:user_update_order(RawOrigin::Signed(account_0.clone()), order_id, 150 * CURRENCY_0, T::SellRatio::saturating_from_integer(1))
 
 	user_cancel_order {
 		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
 
 	}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
 
 	fill_order_full {
 		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, Rate::checked_from_integer(2u32).unwrap().into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
 
 	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
 
