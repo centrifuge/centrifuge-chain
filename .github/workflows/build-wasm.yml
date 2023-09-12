@@ -42,7 +42,7 @@ jobs:
           - target: "build-runtime-testnet"
             package: "centrifuge-runtime"
     name: ${{ matrix.target }}-${{ matrix.package }}
-    runs-on:  ubuntu-latest-8-cores
+    runs-on:  ubuntu-latest-4-cores
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"    
@@ -63,7 +63,13 @@ jobs:
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
           options: -v /tmp/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
-          run: /srtool/build
+          run: |
+            apt-get update && apt-get install --yes libpq-dev wget
+            wget https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
+            && tar xzf sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz \
+            && mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+            && chmod +x /usr/local/bin/sccache
+            /srtool/build
 
       - name: Run sccache stat for check
         shell: bash
