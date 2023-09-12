@@ -2123,7 +2123,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Quantity, MaxTranches> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
@@ -2138,7 +2138,7 @@ impl_runtime_apis! {
 			).ok()
 		}
 
-		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
+		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Quantity>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
@@ -2151,14 +2151,14 @@ impl_runtime_apis! {
 			prices.get(index).cloned()
 		}
 
-		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
+		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
-				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
+				.calculate_prices::<_, OrmlTokens, AccountId>(total_assets, now)
 				.ok()
 		}
 
