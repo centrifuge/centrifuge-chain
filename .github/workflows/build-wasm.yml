@@ -37,7 +37,7 @@ jobs:
         # package: [centrifuge-runtime, altair-runtime]
         target: [build-runtime-fast]
         package: [altair-runtime]
-        rust_version: ["1.64.0"]
+        rust_version: ["1.66.0"]
         exclude:
           - target: "build-runtime-testnet"
             package: "centrifuge-runtime"
