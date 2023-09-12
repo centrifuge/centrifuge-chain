@@ -27,7 +27,7 @@ use sp_std::{collections::btree_map::BTreeMap, marker::PhantomData, vec, vec::Ve
 use crate::{
 	AccountIdOf, EVMRouter, MessageOf, AXELAR_DESTINATION_CHAIN_PARAM,
 	AXELAR_DESTINATION_CONTRACT_ADDRESS_PARAM, AXELAR_FUNCTION_NAME, AXELAR_PAYLOAD_PARAM,
-	FUNCTION_NAME, MAX_AXELAR_EVM_CHAIN_SIZE, MESSAGE_PARAM,
+	MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 
 /// The router used for executing the LiquidityPools contract via Axelar.
@@ -77,8 +77,8 @@ where
 }
 
 /// Encodes the provided message into the format required for submitting it
-/// to the Axelar contract which in turn submits it to the LiquidityPools
-/// contract.
+/// to the Axelar contract which in turn calls the LiquidityPools
+/// contract with the serialized LP message a payload.
 ///
 /// Axelar contract call:
 /// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
@@ -90,36 +90,6 @@ pub(crate) fn get_axelar_encoded_msg(
 	target_chain: Vec<u8>,
 	target_contract: H160,
 ) -> Result<Vec<u8>, &'static str> {
-	let target_chain_string =
-		String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?;
-
-	#[allow(deprecated)]
-	let encoded_liquidity_pools_contract = Contract {
-		constructor: None,
-		functions: BTreeMap::<String, Vec<Function>>::from([(
-			FUNCTION_NAME.to_string(),
-			vec![Function {
-				name: FUNCTION_NAME.into(),
-				inputs: vec![Param {
-					name: MESSAGE_PARAM.into(),
-					kind: ParamType::Bytes,
-					internal_type: None,
-				}],
-				outputs: vec![],
-				constant: false,
-				state_mutability: Default::default(),
-			}],
-		)]),
-		events: Default::default(),
-		errors: Default::default(),
-		receive: false,
-		fallback: false,
-	}
-	.function(FUNCTION_NAME)
-	.map_err(|_| "cannot retrieve LiquidityPools contract function")?
-	.encode_input(&[Token::Bytes(serialized_msg)])
-	.map_err(|_| "cannot encode input for LiquidityPools contract function")?;
-
 	#[allow(deprecated)]
 	let encoded_axelar_contract = Contract {
 		constructor: None,
@@ -157,13 +127,15 @@ pub(crate) fn get_axelar_encoded_msg(
 	.function(AXELAR_FUNCTION_NAME)
 	.map_err(|_| "cannot retrieve Axelar contract function")?
 	.encode_input(&[
-		Token::String(target_chain_string),
+		Token::String(
+			String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?,
+		),
 		// Ensure that the target contract is correctly converted to hex.
 		//
 		// The `to_string` method on the H160 is returning a string containing an ellipsis, such
 		// as: 0x1234…7890
 		Token::String(format!("0x{}", hex::encode(target_contract.0))),
-		Token::Bytes(encoded_liquidity_pools_contract),
+		Token::Bytes(serialized_msg),
 	])
 	.map_err(|_| "cannot encode input for Axelar contract function")?;
 
