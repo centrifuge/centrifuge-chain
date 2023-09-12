@@ -3,6 +3,9 @@ on:
     branches: [main, 'release-v**']
   pull_request:
 name: Build and publish WASMs
+concurrency: 
+  group: 'build-wasm-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
 jobs:
   build-node:
     name: ci-build-node
@@ -29,15 +32,15 @@ jobs:
   build-runtime-wasms:
     strategy:
       matrix:
-        target: [build-runtime, build-runtime-fast]
-        package: [centrifuge-runtime, altair-runtime]
+        # To test until I get one right
+        # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
+        # package: [centrifuge-runtime, altair-runtime]
+        target: [build-runtime-fast]
+        package: [altair-runtime]
         rust_version: ["1.64.0"]
-        include:
+        exclude:
           - target: "build-runtime-testnet"
-            package: "altair-runtime"
-          - rust_version: "nightly-2022-11-14"
-            target: "build-node"
-            package: altair-runtime
+            package: "centrifuge-runtime"
     name: ${{ matrix.target }}-${{ matrix.package }}
     runs-on:  ubuntu-latest-8-cores
     env:

@@ -6,6 +6,9 @@ on:
       - 'src/'
       - '.github/workflows/tests.yml'
 name: Tests
+concurrency: 
+  group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
 jobs:
   linter:
     name: lint-${{ matrix.target }}
@@ -43,6 +46,8 @@ jobs:
     env:
       RUST_TOOLCHAIN: "nightly"
     steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2       
       - name: Prep build on Ubuntu
         uses: ./centrifuge-chain/.github/actions/prep-ubuntu
         with:
