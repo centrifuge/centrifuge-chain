@@ -101,6 +101,11 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 }
 
 impl<T: Config> FulfilledSwapOrderHook<T> {
+	/// Transitions the `InvestState` after fulfilling a swap order.
+	///
+	/// NOTE: If the transition should be followed by a `RedeemState`
+	/// transition, the `update_swap_order` should be set to false in order to
+	/// oppress updating the swap order here.
 	fn fulfill_invest_swap_order(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -136,6 +141,7 @@ impl<T: Config> FulfilledSwapOrderHook<T> {
 		)
 	}
 
+	/// Transitions the `RedeemState` after fulfilling a swap order.
 	fn fulfill_redeem_swap_order(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,

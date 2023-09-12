@@ -51,7 +51,8 @@ where
 		}
 	}
 
-	// TODO: Docs
+	/// Returns the active swap if it exists, i.e. if the state includes
+	/// `ActiveSwapInto{Foreign, Pool}Currency`.
 	pub(crate) fn get_active_swap(&self) -> Option<Swap<T::Balance, T::CurrencyId>> {
 		match *self {
 			Self::NoState => None,
