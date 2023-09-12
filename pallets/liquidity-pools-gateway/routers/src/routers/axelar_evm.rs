@@ -15,7 +15,10 @@ use ethabi::{Contract, Function, Param, ParamType, Token};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::pallet_prelude::OriginFor;
 use scale_info::{
-	prelude::string::{String, ToString},
+	prelude::{
+		format,
+		string::{String, ToString},
+	},
 	TypeInfo,
 };
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
@@ -155,7 +158,11 @@ pub(crate) fn get_axelar_encoded_msg(
 	.map_err(|_| "cannot retrieve Axelar contract function")?
 	.encode_input(&[
 		Token::String(target_chain_string),
-		Token::String(target_contract.to_string()),
+		// Ensure that the target contract is correctly converted to hex.
+		//
+		// The `to_string` method on the H160 is returning a string containing an ellipsis, such
+		// as: 0x1234…7890
+		Token::String(format!("0x{}", hex::encode(target_contract.0))),
 		Token::Bytes(encoded_liquidity_pools_contract),
 	])
 	.map_err(|_| "cannot encode input for Axelar contract function")?;

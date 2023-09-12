@@ -610,6 +610,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
  "pallet-evm",
  "pallet-liquidity-pools-gateway",
  "parity-scale-codec 3.6.4",
@@ -2681,7 +2682,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.21"
+version = "0.10.23"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -5805,6 +5806,7 @@ dependencies = [
  "ethabi 16.0.0",
  "frame-support",
  "frame-system",
+ "hex",
  "lazy_static",
  "orml-traits",
  "pallet-balances",
@@ -11024,6 +11026,7 @@ name = "runtime-integration-tests"
 version = "0.1.0"
 dependencies = [
  "altair-runtime",
+ "axelar-gateway-precompile",
  "centrifuge-runtime",
  "cfg-primitives",
  "cfg-traits",
@@ -11031,6 +11034,7 @@ dependencies = [
  "cfg-utils",
  "cumulus-primitives-core",
  "development-runtime",
+ "ethabi 16.0.0",
  "ethereum",
  "frame-benchmarking",
  "frame-support",
