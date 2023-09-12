@@ -15,10 +15,7 @@ use ethabi::{Contract, Function, Param, ParamType, Token};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::pallet_prelude::OriginFor;
 use scale_info::{
-	prelude::{
-		format,
-		string::{String, ToString},
-	},
+	prelude::{format, string::String},
 	TypeInfo,
 };
 use sp_core::{bounded::BoundedVec, ConstU32, H160};
@@ -78,7 +75,7 @@ where
 
 /// Encodes the provided message into the format required for submitting it
 /// to the Axelar contract which in turn calls the LiquidityPools
-/// contract with the serialized LP message a payload.
+/// contract with the serialized LP message as `payload`.
 ///
 /// Axelar contract call:
 /// <https://github.com/axelarnetwork/axelar-cgp-solidity/blob/v4.3.2/contracts/AxelarGateway.sol#L78>
