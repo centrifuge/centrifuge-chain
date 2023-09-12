@@ -30,7 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection, Swap},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
@@ -41,8 +41,9 @@ use cfg_types::{
 	},
 };
 use development_runtime::{
-	Balances, ForeignInvestments, Investments, LiquidityPools, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, StableToStableRate, System, Tokens,
+	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
+	OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin,
+	StableToStableRate, System, Tokens,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -90,6 +91,7 @@ use crate::{
 };
 
 mod same_currencies {
+
 	use pallet_foreign_investments::{CollectedInvestment, InvestmentState};
 
 	use super::*;

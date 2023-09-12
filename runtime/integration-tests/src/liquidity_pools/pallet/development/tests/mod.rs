@@ -16,7 +16,7 @@ mod liquidity_pools;
 mod routers;
 
 /// Register AUSD in the asset registry.
-/// 
+///
 /// NOTE: It should be executed within an externalities environment.
 pub fn register_ausd() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {

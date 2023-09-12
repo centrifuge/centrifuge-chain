@@ -37,8 +37,8 @@ use cfg_types::{
 	},
 };
 use development_runtime::{
-	LiquidityPools, OrmlAssetRegistry, OrmlTokens, Permissions, Runtime as DevelopmentRuntime,
-	RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
+	LiquidityPools, LocationToAccountId, OrmlAssetRegistry, OrmlTokens, Permissions,
+	Runtime as DevelopmentRuntime, RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Mutate};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
@@ -299,7 +299,7 @@ fn add_currency() {
 
 		assert_eq!(
 			OrmlTokens::free_balance(
-				GLIMMER_CURRENCY_ID,
+				GLMR_CURRENCY_ID,
 				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
 			),
 			DEFAULT_BALANCE_GLMR
@@ -312,7 +312,7 @@ fn add_currency() {
 
 		assert_eq!(
 			OrmlTokens::free_balance(
-				GLIMMER_CURRENCY_ID,
+				GLMR_CURRENCY_ID,
 				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
 			),
 			/// Ensure it only charged the 0.2 GLMR of fee
@@ -647,13 +647,6 @@ fn schedule_upgrade() {
 			BadOrigin
 		);
 
-		// Need to burn default minted balance from Treasury
-		OrmlTokens::burn_from(
-			GLMR_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-
 		// Now it finally works
 		assert_ok!(LiquidityPools::schedule_upgrade(
 			RuntimeOrigin::root(),
@@ -669,7 +662,7 @@ fn cancel_upgrade_upgrade() {
 	Development::execute_with(|| {
 		setup_pre_requirements();
 
-		// Only Root can call `schedule_upgrade`
+		// Only Root can call `cancel_upgrade`
 		assert_noop!(
 			LiquidityPools::cancel_upgrade(
 				RuntimeOrigin::signed(BOB.into()),
@@ -679,29 +672,7 @@ fn cancel_upgrade_upgrade() {
 			BadOrigin
 		);
 
-		// Need to burn default minted balance from Treasury
-		OrmlTokens::burn_from(
-			GLMR_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-
-		// Failing because the treasury has no funds
-		assert_noop!(
-			LiquidityPools::cancel_upgrade(RuntimeOrigin::root(), MOONBEAM_EVM_CHAIN_ID, [7; 20]),
-			pallet_xcm_transactor::Error::<DevelopmentRuntime>::UnableToWithdrawAsset
-		);
-
-		// The treasury needs GLRM to cover the fees of sending
-		// this message
-		OrmlTokens::deposit(
-			GLMR_CURRENCY_ID,
-			&TreasuryAccount::get(),
-			DEFAULT_BALANCE_GLMR * dollar(18),
-		);
-
-		// Now it finally works (even though nothing was scheduled which we don't check
-		// on the local domain)
+		// Now it finally works
 		assert_ok!(LiquidityPools::cancel_upgrade(
 			RuntimeOrigin::root(),
 			MOONBEAM_EVM_CHAIN_ID,

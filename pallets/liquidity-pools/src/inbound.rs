@@ -195,7 +195,7 @@ where
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
-		// TODO(@review): Should this rather be pat of `increase_foreign_redemption`?
+		// TODO(@review): Should this rather be part of `increase_foreign_redemption`?
 		T::Tokens::transfer(
 			invest_id.clone().into(),
 			&Domain::convert(sending_domain.domain()),

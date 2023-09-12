@@ -26,7 +26,7 @@ use cfg_primitives::{currency_decimals, Balance, Moment, PoolId, TrancheId};
 use cfg_traits::{investments::InvestmentAccountant, PoolMutate};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
@@ -45,7 +45,7 @@ use frame_support::{
 };
 use liquidity_pools_gateway_routers::{
 	ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmDomain as GatewayXcmDomain,
-	XcmTransactInfo,
+	XcmTransactInfo, DEFAULT_PROOF_SIZE,
 };
 use orml_asset_registry::{AssetMetadata, Metadata};
 use pallet_liquidity_pools::Message;
@@ -86,6 +86,7 @@ pub const DEFAULT_MOONBEAM_LOCATION: MultiLocation = MultiLocation {
 	parents: 1,
 	interior: X1(Parachain(PARA_ID_MOONBEAM)),
 };
+use frame_support::weights::Weight;
 
 pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
@@ -168,7 +169,7 @@ pub fn setup_pre_requirements() {
 
 	// Fund the gateway sender account with enough glimmer to pay for fees
 	OrmlTokens::deposit(
-		GLIMMER_CURRENCY_ID,
+		GLMR_CURRENCY_ID,
 		&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 		DEFAULT_BALANCE_GLMR,
 	);
