@@ -1304,15 +1304,36 @@ mod tests {
 		);
 	}
 
-	struct Checker; // TODO: add a checker interal state
+	struct Checker {
+		total_pool_amount: u128,
+	} // TODO: add a checker interal state
 
 	impl Checker {
 		fn feed_with_step(&mut self, transition: &InvestTransition) {
+			match transition {
+				InvestTransition::IncreaseInvestOrder(swap) => {
+					self.total_pool_amount += match (swap.currency_in, swap.currency_out) {
+						(CurrencyId::Foreign, CurrencyId::Pool) => swap.amount,
+						(CurrencyId::Pool, CurrencyId::Foreign) => to_pool(swap.amount),
+						_ => panic!("Same currency"),
+					}
+				}
+				InvestTransition::DecreaseInvestOrder(swap) => {
+					self.total_pool_amount -= match (swap.currency_in, swap.currency_out) {
+						(CurrencyId::Foreign, CurrencyId::Pool) => swap.amount,
+						(CurrencyId::Pool, CurrencyId::Foreign) => to_pool(swap.amount),
+						_ => panic!("Same currency"),
+					}
+				}
+				InvestTransition::FulfillSwapOrder(swap) => (),
+				InvestTransition::CollectInvestment(value) => self.total_pool_amount += *value,
+			};
 			// TODO: mutate checker state to track the happen transition into
 			// something with meaning for the invariant computation
 		}
 
 		fn check_invariant(&self, state: &InvestState) {
+			assert_eq!(self.total_pool_amount, state.get_investing_amount());
 			// TODO: evaluate the invariant for the current state and check with
 			// an assert
 		}
@@ -1363,7 +1384,11 @@ mod tests {
 		for _ in 0..10000 {
 			let use_case = transitions.clone().into_iter().choose_multiple(&mut rng, 8);
 
-			let mut checker = Checker {};
+			println!("Testing use case: {:#?}", use_case);
+
+			let mut checker = Checker {
+				total_pool_amount: 0,
+			};
 			let mut state = InvestState::NoState;
 
 			for transition in use_case {
