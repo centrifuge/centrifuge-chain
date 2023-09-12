@@ -62,9 +62,12 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
-          options: -v $TMPDIR/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
+          options: -v /tmp/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: /srtool/build
 
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
 
 
       # - if: ${{ matrix.target }}  != "build-node"
