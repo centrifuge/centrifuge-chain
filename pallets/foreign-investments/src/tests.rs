@@ -46,6 +46,7 @@ mod util {
 		MockInvestment::mock_investment(|_, _| Ok(0));
 		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
 		MockTokenSwaps::mock_cancel_order(|_| Ok(()));
+		MockTokenSwaps::mock_is_active(|_| true);
 		MockCurrencyConversion::mock_stable_to_stable(move |_, _, _| Ok(amount) /* 1:1 */);
 
 		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
@@ -62,6 +63,7 @@ mod util {
 		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
 		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
 		MockTokenSwaps::mock_cancel_order(|_| unimplemented!("no mock"));
+		MockTokenSwaps::mock_is_active(|_| unimplemented!("no mock"));
 		MockCurrencyConversion::mock_stable_to_stable(|_, _, _| unimplemented!("no mock"));
 	}
 }
@@ -70,7 +72,7 @@ mod increase_investment {
 	use super::*;
 
 	#[test]
-	fn new_pending_investment() {
+	fn create_new() {
 		const AMOUNT: Balance = 100;
 
 		new_test_ext().execute_with(|| {
@@ -142,7 +144,7 @@ mod increase_investment {
 	}
 
 	#[test]
-	fn increase_pending_investment() {
+	fn over_pending() {
 		const INITIAL_AMOUNT: Balance = 100;
 		const INCREASE_AMOUNT: Balance = 500;
 
@@ -162,6 +164,14 @@ mod increase_investment {
 			MockTokenSwaps::mock_is_active(|order_id| {
 				assert_eq!(order_id, ORDER_ID);
 				true
+			});
+			MockTokenSwaps::mock_get_order_details(|order_id| {
+				assert_eq!(order_id, ORDER_ID);
+				Some(Swap {
+					currency_out: USER_CURR,
+					currency_in: POOL_CURR,
+					amount: INITIAL_AMOUNT,
+				})
 			});
 			MockTokenSwaps::mock_update_order(|account_id, order_id, amount, limit, min| {
 				assert_eq!(account_id, USER);
@@ -200,7 +210,7 @@ mod increase_investment {
 	}
 
 	#[test]
-	fn increase_ongoing_investment() {
+	fn over_ongoing() {
 		const INITIAL_AMOUNT: Balance = 100;
 		const INCREASE_AMOUNT: Balance = 500;
 
@@ -280,6 +290,10 @@ mod fulfilled_swap {
 				assert_eq!(investment_id, INVESTMENT_ID);
 				assert_eq!(amount, AMOUNT);
 				Ok(())
+			});
+			MockTokenSwaps::mock_is_active(|order_id| {
+				assert_eq!(order_id, ORDER_ID);
+				true
 			});
 			MockTokenSwaps::mock_cancel_order(|order_id| {
 				assert_eq!(order_id, ORDER_ID);

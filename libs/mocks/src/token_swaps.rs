@@ -10,6 +10,7 @@ pub mod pallet {
 		type Balance;
 		type SellRatio;
 		type OrderId;
+		type OrderDetails;
 	}
 
 	#[pallet::pallet]
@@ -59,11 +60,16 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
+
+		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
+		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
 		type SellRatio = T::SellRatio;
 
@@ -98,6 +104,10 @@ pub mod pallet {
 
 		fn valid_pair(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
 			execute_call!((a, b))
+		}
+
+		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
+			execute_call!(a)
 		}
 	}
 }
