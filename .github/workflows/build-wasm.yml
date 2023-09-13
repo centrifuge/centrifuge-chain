@@ -70,6 +70,9 @@ jobs:
         with:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
 
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
