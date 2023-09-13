@@ -18,11 +18,12 @@ jobs:
       # RUSTC_WRAPPER: "sccache"         
     strategy:
       matrix:
-        target: [fmt, taplo, clippy]
+        target: [fmt, clippy]
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2      
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+              
       - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c        
       # - name: Run sccache-cache
       #   uses: mozilla-actions/sccache-action@v0.0.3       
@@ -31,18 +32,7 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          default: true
-      - name: Install taplo
-        uses: actions-rs/install@v0.1
-        with:
-          crate: taplo-cli
-          version: 0.7.2
-          use-tool-cache: true
-
+ 
       - name: Run lints
         run: ./ci/script.sh
         env:
