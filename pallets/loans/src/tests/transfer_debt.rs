@@ -1,6 +1,13 @@
 use super::*;
 
-fn config_mocks() {
+fn config_mocks(
+	transfer: (
+		LoanId,
+		LoanId,
+		RepaidPricingAmount<Runtime>,
+		PricingAmount<Runtime>,
+	),
+) {
 	MockPrices::mock_get(|id| {
 		assert_eq!(*id, REGISTER_PRICE_ID);
 		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
@@ -9,6 +16,30 @@ fn config_mocks() {
 		assert_eq!(*pool_id, POOL_A);
 		assert_eq!(*id, REGISTER_PRICE_ID);
 		Ok(())
+	});
+	MockChangeGuard::mock_note({
+		let (loan_1, loan_2, repay, borrow) = transfer.clone();
+		move |pool_id, change| {
+			assert_eq!(pool_id, POOL_A);
+			assert_eq!(
+				change,
+				Change::TransferDebt(loan_1, loan_2, repay.clone(), borrow.clone())
+			);
+			Ok(CHANGE_ID)
+		}
+	});
+	MockChangeGuard::mock_released({
+		let (loan_1, loan_2, repay, borrow) = transfer.clone();
+		move |pool_id, change_id| {
+			assert_eq!(pool_id, POOL_A);
+			assert_eq!(change_id, CHANGE_ID);
+			Ok(Change::TransferDebt(
+				loan_1,
+				loan_2,
+				repay.clone(),
+				borrow.clone(),
+			))
+		}
 	});
 }
 
@@ -24,7 +55,7 @@ fn with_wrong_borrower() {
 		});
 
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(OTHER_BORROWER),
 				POOL_A,
 				loan_1,
@@ -48,7 +79,7 @@ fn with_wrong_loans() {
 		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				0, // Does not exists
@@ -64,7 +95,7 @@ fn with_wrong_loans() {
 		);
 
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
@@ -88,7 +119,7 @@ fn with_same_loan() {
 		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
@@ -117,7 +148,7 @@ fn with_mismatch_internal_internal_amounts() {
 		});
 
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_1,
@@ -148,9 +179,12 @@ fn with_mismatch_external_internal_amounts() {
 
 		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
 
-		config_mocks();
+		MockPrices::mock_get(|id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		});
 		assert_noop!(
-			Loans::transfer_debt(
+			Loans::propose_transfer_debt(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_1,
@@ -180,23 +214,21 @@ fn with_mismatch_internal_external_amounts() {
 
 		let borrow_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 3);
 
-		config_mocks();
-		assert_ok!(Loans::transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_1,
-			loan_2,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(COLLATERAL_VALUE),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::External(borrow_amount),
-		));
-
-		// There is no way to get this fail, until support either:
-		// 1. slippage
-		// 2. quantity with decimals
+		assert_noop!(
+			Loans::propose_transfer_debt(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_1,
+				loan_2,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+					interest: 0,
+					unscheduled: 0,
+				},
+				PricingAmount::External(borrow_amount),
+			),
+			Error::<Runtime>::TransferDebtAmountMismatched
+		);
 	});
 }
 
@@ -215,23 +247,37 @@ fn with_mismatch_external_external_amounts() {
 		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
 		let borrow_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 3);
 
-		config_mocks();
-		assert_ok!(Loans::transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_1,
-			loan_2,
-			RepaidPricingAmount {
-				principal: PricingAmount::External(repay_amount),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::External(borrow_amount),
-		));
+		MockPrices::mock_get(|id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		});
+		assert_noop!(
+			Loans::propose_transfer_debt(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_1,
+				loan_2,
+				RepaidPricingAmount {
+					principal: PricingAmount::External(repay_amount),
+					interest: 0,
+					unscheduled: 0,
+				},
+				PricingAmount::External(borrow_amount),
+			),
+			Error::<Runtime>::TransferDebtAmountMismatched
+		);
+	});
+}
 
-		// There is no way to get this fail, until support either:
-		// 1. slippage
-		// 2. quantity with decimals
+#[test]
+fn apply_without_released() {
+	new_test_ext().execute_with(|| {
+		MockChangeGuard::mock_released(|_, _| Err("err".into()));
+
+		assert_noop!(
+			Loans::apply_transfer_debt(RuntimeOrigin::signed(ANY), POOL_A, CHANGE_ID),
+			DispatchError::Other("err")
+		);
 	});
 }
 
@@ -246,17 +292,27 @@ fn with_success_internals() {
 			..util::base_internal_loan()
 		});
 
-		assert_ok!(Loans::transfer_debt(
+		let repay_amount = RepaidPricingAmount {
+			principal: PricingAmount::Internal(COLLATERAL_VALUE),
+			interest: 0,
+			unscheduled: 0,
+		};
+		let borrow_amount = PricingAmount::Internal(COLLATERAL_VALUE);
+
+		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
+		assert_ok!(Loans::propose_transfer_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_1,
 			loan_2,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(COLLATERAL_VALUE),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::Internal(COLLATERAL_VALUE),
+			repay_amount,
+			borrow_amount,
+		));
+
+		assert_ok!(Loans::apply_transfer_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			CHANGE_ID,
 		));
 
 		assert_eq!(0, util::current_loan_debt(loan_1));
@@ -276,21 +332,27 @@ fn with_success_externals() {
 			..util::base_external_loan()
 		});
 
-		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
-		let borrow_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
+		let repay_amount = RepaidPricingAmount {
+			principal: PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE * 2)),
+			interest: 0,
+			unscheduled: 0,
+		};
+		let borrow_amount = PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE * 2));
 
-		config_mocks();
-		assert_ok!(Loans::transfer_debt(
+		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
+		assert_ok!(Loans::propose_transfer_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_1,
 			loan_2,
-			RepaidPricingAmount {
-				principal: PricingAmount::External(repay_amount),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::External(borrow_amount),
+			repay_amount,
+			borrow_amount,
+		));
+
+		assert_ok!(Loans::apply_transfer_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			CHANGE_ID,
 		));
 
 		assert_eq!(0, util::current_loan_debt(loan_1));
@@ -312,33 +374,46 @@ fn with_transfer_roundtrip() {
 			..util::base_internal_loan()
 		});
 
-		assert_ok!(Loans::transfer_debt(
+		let repay_amount = RepaidPricingAmount {
+			principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
+			interest: 0,
+			unscheduled: 0,
+		};
+		let borrow_amount = PricingAmount::Internal(COLLATERAL_VALUE / 2);
+
+		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
+		assert_ok!(Loans::propose_transfer_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_1,
 			loan_2,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::Internal(COLLATERAL_VALUE / 2),
+			repay_amount.clone(),
+			borrow_amount.clone(),
+		));
+
+		assert_ok!(Loans::apply_transfer_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			CHANGE_ID,
 		));
 
 		assert_eq!(0, util::current_loan_debt(loan_1));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_2));
 
-		assert_ok!(Loans::transfer_debt(
+		config_mocks((loan_2, loan_1, repay_amount.clone(), borrow_amount.clone()));
+		assert_ok!(Loans::propose_transfer_debt(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_2,
 			loan_1,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
-				interest: 0,
-				unscheduled: 0,
-			},
-			PricingAmount::Internal(COLLATERAL_VALUE / 2),
+			repay_amount,
+			borrow_amount,
+		));
+
+		assert_ok!(Loans::apply_transfer_debt(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			CHANGE_ID,
 		));
 
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_1));

@@ -9,6 +9,7 @@ use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
 	entities::{
+		changes::{Change, InternalMutation, LoanMutation},
 		loans::{ActiveLoan, LoanInfo},
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
@@ -20,10 +21,9 @@ use super::{
 	types::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowLoanError, BorrowRestrictions, Change, CloseLoanError, CreateLoanError,
-		InterestPayments, InternalMutation, LoanMutation, LoanRestrictions, Maturity,
-		MutationError, PayDownSchedule, RepayLoanError, RepayRestrictions, RepaymentSchedule,
-		WrittenOffError,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, InterestPayments,
+		LoanRestrictions, Maturity, MutationError, PayDownSchedule, RepayLoanError,
+		RepayRestrictions, RepaymentSchedule, WrittenOffError,
 	},
 };
 
