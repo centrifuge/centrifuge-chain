@@ -1259,7 +1259,7 @@ mod same_currencies {
 					assert_noop!(
 						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
 						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-							InvestError::Decrease
+							InvestError::DecreaseTransition
 						)
 					);
 				});
@@ -1299,7 +1299,7 @@ mod same_currencies {
 					assert_noop!(
 						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
 						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
-							RedeemError::Decrease
+							RedeemError::DecreaseTransition
 						)
 					);
 				});
@@ -2255,7 +2255,6 @@ mod mismatching_currencies {
 					.into()
 			}));
 
-			// TODO: Check redemption consumes investment instead
 			// Process remaining redemption at 25% rate, i.e. 1 pool currency =
 			// 4 tranche tokens
 			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
@@ -2298,7 +2297,8 @@ mod mismatching_currencies {
 					.into()
 			}));
 
-			// Redeem again
+			// Redeem again with goal of redemption swap to foreign consuming investment
+			// swap to pool
 			let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),

@@ -450,7 +450,7 @@ pub mod pallet {
 
 			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
 			// currencies, this price must be first converted into the currency_id and then
-			// re-denominated to 18 decimals (i.e. `BalanceRatio` precision)
+			// re-denominated to 18 decimals (i.e. `Ratio` precision)
 			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
 				.ok_or(Error::<T>::MissingTranchePrice)?
 				.price;

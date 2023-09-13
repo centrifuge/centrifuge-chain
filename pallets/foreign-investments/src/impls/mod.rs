@@ -52,8 +52,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		// TODO(future): Add implicit collection or error handling (i.e. message to
-		// source domain)
 		ensure!(
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
@@ -70,7 +68,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("InvestState transition error: {:?}", e);
-				Error::<T>::from(InvestError::Increase)
+				Error::<T>::from(InvestError::IncreaseTransition)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state, true)?;
 		Ok(())
@@ -84,8 +82,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		// TODO(future): Add implicit collection or error handling (i.e. message to
-		// source domain)
 		ensure!(
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
@@ -94,7 +90,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		ensure!(
 			pre_state.get_investing_amount() >= amount,
-			Error::<T>::InvestError(InvestError::Decrease)
+			Error::<T>::InvestError(InvestError::DecreaseAmountOverflow)
 		);
 
 		let post_state = pre_state
@@ -106,7 +102,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("InvestState transition error: {:?}", e);
-				Error::<T>::from(InvestError::Decrease)
+				Error::<T>::from(InvestError::DecreaseTransition)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(who, investment_id, post_state, true)?;
 
@@ -120,8 +116,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		amount: T::Balance,
 		payout_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		// TODO(future): This error needs to be communicated to sending domain as it
-		// cannot be resolved by triggering a bot
 		let currency_matches =
 			RedemptionPayoutCurrency::<T>::mutate(who, investment_id, |maybe_currency| {
 				if let Some(currency) = maybe_currency {
@@ -135,8 +129,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			currency_matches,
 			Error::<T>::InvalidRedemptionPayoutCurrency
 		);
-		// TODO(future): Add implicit collection or error handling (i.e. message to
-		// source domain)
 		ensure!(
 			!T::Investment::redemption_requires_collect(who, investment_id),
 			Error::<T>::RedeemError(RedeemError::CollectRequired)
@@ -148,7 +140,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("RedeemState transition error: {:?}", e);
-				Error::<T>::from(RedeemError::Increase)
+				Error::<T>::from(RedeemError::IncreaseTransition)
 			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
@@ -162,8 +154,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		amount: T::Balance,
 		payout_currency: T::CurrencyId,
 	) -> Result<(T::Balance, T::Balance), DispatchError> {
-		// TODO(future): This error needs to be communicated to sending domain as it
-		// cannot be resolved by triggering a bot
 		ensure!(
 			RedemptionPayoutCurrency::<T>::get(who, investment_id)
 				.map(|currency| currency == payout_currency)
@@ -173,8 +163,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				}),
 			Error::<T>::InvalidRedemptionPayoutCurrency
 		);
-		// TODO(future): Add implicit collection or error handling (i.e. message to
-		// source domain)
 		ensure!(
 			!T::Investment::redemption_requires_collect(who, investment_id),
 			Error::<T>::RedeemError(RedeemError::CollectRequired)
@@ -185,7 +173,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			.transition(RedeemTransition::DecreaseRedeemOrder(amount))
 			.map_err(|e| {
 				log::debug!("RedeemState transition error: {:?}", e);
-				Error::<T>::from(RedeemError::Decrease)
+				Error::<T>::from(RedeemError::DecreaseTransition)
 			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;
 
@@ -721,8 +709,6 @@ impl<T: Config> Pallet<T> {
 
 	/// Kills all storage associated with token swaps and cancels the
 	/// potentially active swap order.
-	///
-	/// NOTE: Must only be called in `handle_swap_order`.
 	fn kill_swap_order(who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
 			if T::TokenSwaps::is_active(swap_order_id) {
@@ -1046,7 +1032,7 @@ impl<T: Config> Pallet<T> {
 			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
 		Self::apply_invest_state_transition(who, investment_id, post_state, true).map_err(|e| {
 			log::debug!("InvestState transition error: {:?}", e);
-			Error::<T>::from(InvestError::Collect)
+			Error::<T>::from(InvestError::CollectTransition)
 		})?;
 
 		Ok(())
@@ -1063,10 +1049,6 @@ impl<T: Config> Pallet<T> {
 		pool_currency: T::CurrencyId,
 	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
 		let collected = CollectedInvestment::<T>::take(who, investment_id);
-		ensure!(
-			!collected.amount_payment.is_zero(),
-			Error::<T>::InvestError(InvestError::NothingCollected)
-		);
 
 		// Determine payout and remaining amounts in foreign currency instead of current
 		// pool currency denomination
@@ -1138,7 +1120,7 @@ impl<T: Config> Pallet<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("RedeemState transition error: {:?}", e);
-				Error::<T>::from(RedeemError::Collect)
+				Error::<T>::from(RedeemError::CollectTransition)
 			})?;
 
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)?;

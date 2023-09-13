@@ -25,10 +25,6 @@ use crate::types::{InvestState, InvestStateConfig, InvestTransition};
 impl<T> InvestState<T>
 where
 	T: InvestStateConfig,
-	/* impl<Balance, Currency> InvestState<Balance, Currency>
-	 * where
-	 * 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	 * 	Currency: Clone + Copy + PartialEq + Debug, */
 {
 	/// Solely apply state machine to transition one `InvestState` into another
 	/// based on the transition, see <https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#State-diagram>.
@@ -210,10 +206,6 @@ where
 impl<T> InvestState<T>
 where
 	T: InvestStateConfig,
-	/* impl<Balance, Currency> InvestState<Balance, Currency>
-	 * where
-	 * 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	 * 	Currency: Clone + Copy + PartialEq + Debug, */
 {
 	/// Handle `increase` transitions depicted by `msg::increase` edges in the
 	/// invest state diagram:

@@ -469,7 +469,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type BalanceRatio = Quantity;
+	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
 	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;

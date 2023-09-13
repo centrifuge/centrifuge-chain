@@ -87,9 +87,6 @@ pub(crate) fn get_axelar_encoded_msg(
 	target_chain: Vec<u8>,
 	target_contract: H160,
 ) -> Result<Vec<u8>, &'static str> {
-	let target_chain_string =
-		String::from_utf8(target_chain).map_err(|_| "target chain conversion error")?;
-
 	#[allow(deprecated)]
 	let encoded_axelar_contract = Contract {
 		constructor: None,

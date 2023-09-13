@@ -76,7 +76,7 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 				ensure!(
 					status.amount
 						<= active_invest_swap_amount.ensure_add(active_redeem_swap_amount)?,
-					DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow)
+					Error::<T>::FulfilledTokenSwapAmountOverflow
 				);
 
 				let invest_swap = SwapOf::<T> {
@@ -131,7 +131,7 @@ impl<T: Config> FulfilledSwapOrderHook<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("ForeignInvestment state transition error: {:?}", e);
-				Error::<T>::from(InvestError::FulfillSwapOrder)
+				Error::<T>::from(InvestError::FulfillSwapOrderTransition)
 			})?;
 		Pallet::<T>::apply_invest_state_transition(
 			who,
@@ -168,7 +168,7 @@ impl<T: Config> FulfilledSwapOrderHook<T> {
 			.map_err(|e| {
 				// Inner error holds finer granularity but should never occur
 				log::debug!("ForeignInvestment state transition error: {:?}", e);
-				Error::<T>::from(RedeemError::FulfillSwapOrder)
+				Error::<T>::from(RedeemError::FulfillSwapOrderTransition)
 			})?;
 		Pallet::<T>::apply_redeem_state_transition(who, investment_id, post_state)
 	}

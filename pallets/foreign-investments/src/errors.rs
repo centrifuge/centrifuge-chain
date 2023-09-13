@@ -15,30 +15,32 @@ use codec::{Decode, Encode};
 use frame_support::PalletError;
 use scale_info::TypeInfo;
 
+use crate::pallet::{Config, Error};
+
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 pub enum InvestError {
 	/// Failed to increase the investment.
-	Increase,
-	/// Failed to decrease the unprocessed investment.
-	Decrease,
+	IncreaseTransition,
+	/// The desired decreasing amount exceeds the max amount.
+	DecreaseAmountOverflow,
+	/// Failed to transition the state as a result of a decrease.
+	DecreaseTransition,
 	/// Failed to transition after fulfilled swap order.
-	FulfillSwapOrder,
+	FulfillSwapOrderTransition,
 	/// Failed to transition a (partially) processed investment after
 	/// collecting.
-	Collect,
+	CollectTransition,
 	/// The investment needs to be collected before it can be updated further.
 	CollectRequired,
-	/// Attempted to collect an investment which has not been processed yet.
-	NothingCollected,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 
 pub enum RedeemError {
 	/// Failed to increase the redemption.
-	Increase,
+	IncreaseTransition,
 	/// Failed to collect the redemption.
-	Collect,
+	CollectTransition,
 	/// Failed to retrieve the foreign payout currency for a collected
 	/// redemption.
 	///
@@ -46,13 +48,24 @@ pub enum RedeemError {
 	/// having increased their redemption as this would store the payout
 	/// currency.
 	CollectPayoutCurrencyNotFound,
-	/// Failed to decrease the unprocessed redemption.
-	Decrease,
+	/// The desired decreasing amount exceeds the max amount.
+	DecreaseAmountOverflow,
+	/// Failed to transition the state as a result of a decrease.
+	DecreaseTransition,
 	/// Failed to transition after fulfilled swap order.
-	FulfillSwapOrder,
-	/// Failed to transition a (partially) processed redemption after an epoch
-	/// was executed.
-	EpochExecution,
+	FulfillSwapOrderTransition,
 	/// The redemption needs to be collected before it can be updated further.
 	CollectRequired,
+}
+
+impl<T: Config> From<InvestError> for Error<T> {
+	fn from(error: InvestError) -> Self {
+		Error::<T>::InvestError(error)
+	}
+}
+
+impl<T: Config> From<RedeemError> for Error<T> {
+	fn from(error: RedeemError) -> Self {
+		Error::<T>::RedeemError(error)
+	}
 }

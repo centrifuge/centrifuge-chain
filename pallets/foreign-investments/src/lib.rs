@@ -348,7 +348,9 @@ pub mod pallet {
 	/// Maps an investor and their investment id to the foreign payout currency
 	/// requested on the initial redemption increment.
 	///
-	/// NOTE: The lifetime of this storage mirrors the one of `RedemptionState`.
+	/// TODO(future): The lifetime of this storage is currently defensively
+	/// indefinite. It should most likely mirror the one of `RedemptionState`
+	/// though right now it
 	#[pallet::storage]
 	pub type RedemptionPayoutCurrency<T: Config> = StorageDoubleMap<
 		_,
@@ -396,21 +398,25 @@ pub mod pallet {
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		TokenSwapReasonNotFound,
+		/// The fulfilled token swap amount exceeds the sum of active swap
+		/// amounts of the corresponding `InvestmentState` and
+		/// `RedemptionState`.
+		FulfilledTokenSwapAmountOverflow,
 		/// Failed to transition the `InvestState`.
 		InvestError(InvestError),
 		/// Failed to transition the `RedeemState.`
 		RedeemError(RedeemError),
 	}
 
-	impl<T> From<InvestError> for Error<T> {
-		fn from(error: InvestError) -> Self {
-			Error::<T>::InvestError(error)
-		}
-	}
+	// 	impl<T> From<InvestError> for Error<T> {
+	// 		fn from(error: InvestError) -> Self {
+	// 			Error::<T>::InvestError(error)
+	// 		}
+	// 	}
 
-	impl<T> From<RedeemError> for Error<T> {
-		fn from(error: RedeemError) -> Self {
-			Error::<T>::RedeemError(error)
-		}
-	}
+	// 	impl<T> From<RedeemError> for Error<T> {
+	// 		fn from(error: RedeemError) -> Self {
+	// 			Error::<T>::RedeemError(error)
+	// 		}
+	// 	}
 }

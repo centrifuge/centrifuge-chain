@@ -30,13 +30,13 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 /// corresponding receiver rejects it.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
+pub enum Message<Domain, PoolId, TrancheId, Balance, Ratio>
 where
 	Domain: Codec,
 	PoolId: Encode + Decode,
 	TrancheId: Encode + Decode,
 	Balance: Encode + Decode,
-	Rate: Encode + Decode,
+	Ratio: Encode + Decode,
 {
 	Invalid,
 	/// Add a currency to a domain, i.e, register the mapping of a currency id
@@ -80,7 +80,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		currency: u128,
-		price: Rate,
+		price: Ratio,
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on
 	/// the target domain.
@@ -374,8 +374,8 @@ impl<
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Message<Domain, PoolId, TrancheId, Balance, Rate>
+		Ratio: Encode + Decode,
+	> Message<Domain, PoolId, TrancheId, Balance, Ratio>
 {
 	/// The call type that identifies a specific Message variant. This value is
 	/// used to encode/decode a Message to/from a bytearray, whereas the head of
@@ -419,8 +419,8 @@ impl<
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Codec for Message<Domain, PoolId, TrancheId, Balance, Rate>
+		Ratio: Encode + Decode,
+	> Codec for Message<Domain, PoolId, TrancheId, Balance, Ratio>
 {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
@@ -922,7 +922,7 @@ fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::{Balance, PoolId, TrancheId};
-	use cfg_types::fixed_point::Rate;
+	use cfg_types::fixed_point::Ratio;
 	use cfg_utils::vec_to_fixed_array;
 	use hex::FromHex;
 	use sp_runtime::traits::One;
@@ -930,7 +930,7 @@ mod tests {
 	use super::*;
 	use crate::{Domain, DomainAddress};
 
-	pub type LiquidityPoolsMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	pub type LiquidityPoolsMessage = Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 
 	const AMOUNT: Balance = 100000000000000000000000000;
 	const POOL_ID: PoolId = 12378532;
@@ -1048,9 +1048,9 @@ mod tests {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				currency: TOKEN_ID,
-				price: Rate::one(),
+				price: Ratio::one(),
 			},
-			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000033b2e3c9fd0803ce8000000",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a7640000",
 		)
 	}
 
@@ -1343,13 +1343,13 @@ mod tests {
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(
-		msg: Message<Domain, PoolId, TrancheId, Balance, Rate>,
+		msg: Message<Domain, PoolId, TrancheId, Balance, Ratio>,
 		expected_hex: &str,
 	) {
 		let encoded = msg.serialize();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> = Message::deserialize(
+		let decoded: Message<Domain, PoolId, TrancheId, Balance, Ratio> = Message::deserialize(
 			&mut hex::decode(expected_hex)
 				.expect("Decode should work")
 				.as_slice(),
