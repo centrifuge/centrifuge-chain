@@ -1,0 +1,54 @@
+name: Rustdoc
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  docs:
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    env:
+      RUST_TOOLCHAIN: "1.66.0"
+      RUSTDOCFLAGS: "-D warnings"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+
+      - name: SCcache setup
+        uses: ./.github/actions/sccache-gcloud
+        with:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+          
+      - name: Build documentation
+        id: build_docs
+        run: cargo doc --all --no-deps
+
+
+      - name: Build Documentation failed
+        if: always() && steps.build_docs.outcome == 'failure'
+        run: echo ":::error::cargo doc --all --no-deps failed"
+        # Job will stop here and the check will be red if Build documentation failed
+
+      - name: Create Index file
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "<meta http-equiv=\"refresh\" content=\"0; url=centrifuge_chain/index.html\">" \ > ./target/doc/index.html
+
+      - name: Deploy Docs
+        uses: peaceiris/actions-gh-pages@373f7f263a76c20808c831209c920827a82a2847 # 3.9.3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./target/doc
+          cname: reference.centrifuge.io
+          force_orphan: true

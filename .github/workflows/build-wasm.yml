@@ -2,51 +2,18 @@ on:
   push:
     branches: [main, 'release-v**']
   pull_request:
-name: Build and publish WASMs
+name: Build&Publish WASM
 concurrency:
   group: 'build-wasm-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 jobs:
-  build-node:
-    name: ci-build-node
-    runs-on: ubuntu-latest-4-cores
-    env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
-      # RUSTFLAGS: " -W unused-extern-crates"
-      PACKAGE: "altair-runtime"
-      SCCACHE_GHA_ENABLED: "true"
-      # RUSTC_WRAPPER: "sccache"
-    steps:
-      - name: Check out code
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-
-      - name: Prep build on Ubuntu
-        uses: ./.github/actions/prep-ubuntu
-        with:
-          RUST_TOOLCHAIN: ${{ env. RUST_TOOLCHAIN }}
-
-    # TEST 1: run sccache vanilla using the developer's action
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Reset cache (main branch only)
-        if: ${{ github.ref == 'refs/heads/main'  }}
-        run: echo "SCCACHE_RECACHE=true" >> $GITHUB_ENV
-
-      - name: Check cargo build release
-        run: cargo build --release "$@"
-        
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats        
-
   build-runtime-wasms:
     strategy:
       matrix:
         # To test until I get one right
         # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
         # package: [centrifuge-runtime, altair-runtime]
-        target: [build-runtime-fast]
+        target: [build-runtime-fast, build-runtime-testnet]
         package: [altair-runtime]
         rust_version: ["1.66.0"]
         exclude:
@@ -54,12 +21,10 @@ jobs:
             package: "centrifuge-runtime"
     name: ${{ matrix.target }}-${{ matrix.package }}
     runs-on:  ubuntu-latest-4-cores
-    env:
+    # Cannot make sccache work with the srtool container
+    # env:
       # SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
-    permissions:
-      contents: 'read'
-      id-token: 'write' # needed for gcloud login
+      # RUSTC_WRAPPER: "sccache"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -68,31 +33,50 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
-          
-    # TEST 2: Sccache with Google Buckets
-      - name: SCcache setup
-        uses: ./.github/actions/sccache-gcloud
+
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
         with:
-          GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}
+          prefix-key: build
+          shared-key: wasm
+          # save-if: ${{ github.ref == 'refs/heads/master' }}
+
+    # TEST 2: Sccache with Google Buckets
+    # FAILED: does not work inside the srtool container
+      # - name: SCcache setup
+      #   uses: ./.github/actions/sccache-gcloud
+      #   with:
+      #     GWIP: ${{ secrets.GWIP_SCCACHE }}
+      #     GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Setup build options
+        id: buildopt
+        run: |
+          if ${{ matrix.target == 'build-runtime-testnet'}} ; then
+            echo "BUILD_OPTS="--features=testnet-runtime"" >> GITHUB_ENV
+          elif ${{ matrix.target == 'build-runtime-fast'}} ; then
+            echo "BUILD_OPTS="--features=fast-runtime"" >> GITHUB_ENV
+          fi
 
       - name: Run Docker SRTool
         uses: addnab/docker-run-action@v3
+        env:
+          RUSTC_VERSION: ${{ matrix.rust_version }}
+          BUILD_OPTS: ${{ env.BUILD_OPTS }}
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
-          options: --user root -v ${{ env.SCCACHE_PATH }}:/usr/local/bin/sccache -v ${{ github.workspace }}/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
+          options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: |
-            # apt-get update && apt-get install --yes libpq-dev wget
-            # wget https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
-            # && tar xzf sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
-            # && mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
-            # && chmod +x /usr/local/bin/sccache
+            echo "BUILD_OPT=${BUILD_OPT}"
+            echo "PACKAGE=${PACKAGE}"
+            echo "---- List Cache Folder ----"
+            ls -la /cargo-home/
+            du -sh /cargo-home/*
+            echo "---- Rust Versions ----"
+            rustc --version
+            rustup --version
+            cargo --version            
+            echo "---- RUNNING BUILD ----"
             /srtool/build
-
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
-
 
       # - if: ${{ matrix.target }}  != "build-node"
       #   name: Upload WASM to GHA

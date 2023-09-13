@@ -1,0 +1,90 @@
+name: Benchmark
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  benchmark:
+    permissions:
+      pull-requests: write
+      id-token: write
+    name: benchmark
+    runs-on: ubuntu-latest-8-cores
+    if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
+    env:
+      RUST_TOOLCHAIN: "1.66.0"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/github-script@v6
+        name: Parse Runtime From Comment
+        id: parse-runtime
+        with:
+          result-encoding: string
+          script: |
+            console.log("Comment body", context.payload.comment.body)
+            const [, , runtime] = context.payload.comment.body.split(/\W+/)
+            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
+            return `${runtime}`
+      - uses: actions/github-script@v6
+        name: Acknowledge Run Comment
+        id: ack-run-comment
+        with:
+          script: |
+            const comment = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
+            })
+            return comment.data.id
+      - name: Get PR Hash
+        id: get_pr_hash
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const number = context.payload.issue.number;
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number
+            });
+            return pr.data.head.sha
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.get_pr_hash.outputs.result }}
+
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+
+      - name: SCcache setup
+        uses: ./.github/actions/sccache-gcloud
+        with:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
+        run: ./scripts/runtime_benchmarks.sh ${{steps.parse-runtime.outputs.result}}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{steps.parse-runtime.outputs.result}}-weights
+          path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/
+
+      - uses: actions/github-script@v6
+        name: Notify Benchmark finished
+        with:
+          script: |
+            const id = `${{steps.ack-run-comment.outputs.result}}`
+            await github.rest.issues.updateComment({
+              comment_id: id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark:
+              Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              `
+            })
