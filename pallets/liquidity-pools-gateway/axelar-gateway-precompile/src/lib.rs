@@ -276,9 +276,10 @@ where
 		})?;
 
 		let source_address_bytes =
-			cfg_utils::decode_var_source::<EXPECTED_SOURCE_ADDRESS_SIZE>(source_address.as_bytes()).ok_or(PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid source address".into()),
-			})?;
+			cfg_utils::decode_var_source::<EXPECTED_SOURCE_ADDRESS_SIZE>(source_address.as_bytes())
+				.ok_or(PrecompileFailure::Error {
+					exit_status: ExitError::Other("invalid source address".into()),
+				})?;
 
 		let domain_address = domain_converter
 			.try_convert(source_address_bytes.as_slice())

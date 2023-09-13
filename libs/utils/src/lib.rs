@@ -92,7 +92,7 @@ pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
 
 	let try_bytes = match sp_std::str::from_utf8(source_address) {
 		Ok(res) => res.as_bytes(),
-		Err(_) => source_address
+		Err(_) => source_address,
 	};
 
 	// Attempt to hex decode source address.
@@ -114,7 +114,6 @@ pub fn decode_var_source<const EXPECTED_SOURCE_ADDRESS_SIZE: usize>(
 	}
 }
 
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -129,17 +128,15 @@ mod tests {
 
 			decode_var_source::<EXPECTED>(&hash).expect("address bytes from H160 works");
 
-			let str = String::from(
-				"d47ed02acbbb66ee8a3fe0275bd98add0aa607c3",
-			);
+			let str = String::from("d47ed02acbbb66ee8a3fe0275bd98add0aa607c3");
 
-			decode_var_source::<EXPECTED>(str.as_bytes()).expect("address bytes from un-prefixed hex works");
+			decode_var_source::<EXPECTED>(str.as_bytes())
+				.expect("address bytes from un-prefixed hex works");
 
-			let str = String::from(
-				"0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3",
-			);
+			let str = String::from("0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3");
 
-			decode_var_source::<EXPECTED>(str.as_bytes()).expect("address bytes from prefixed hex works");
+			decode_var_source::<EXPECTED>(str.as_bytes())
+				.expect("address bytes from prefixed hex works");
 		}
 	}
 

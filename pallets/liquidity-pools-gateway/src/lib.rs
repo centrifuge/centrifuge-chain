@@ -352,17 +352,23 @@ pub mod pallet {
 							})
 						})?;
 
-					let source_address =
-						Pallet::<T>::try_range(slice_ref, length_source_address, |source_address| {
-							// NOTE: Axelar simply provides the hexadecimal string of an EVM  address as the `sourceAddress` argument.
-							//       Solidity does on the other side recognize the hex-encoding and encode the hex bytes to
+					let source_address = Pallet::<T>::try_range(
+						slice_ref,
+						length_source_address,
+						|source_address| {
+							// NOTE: Axelar simply provides the hexadecimal string of an EVM
+							// address as the `sourceAddress` argument.       Solidity does on the
+							// other side recognize the hex-encoding and encode the hex bytes to
 							//       utf-8 bytes.
 							//
 							//       Hence, we are reverting this process here.
-							let source_address = cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address).ok_or(Error::<T>::MessageDecodingFailed)?;
+							let source_address =
+								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
+									.ok_or(Error::<T>::MessageDecodingFailed)?;
 
 							Ok(source_address.to_vec())
-						})?;
+						},
+					)?;
 
 					let origin_msg = Pallet::<T>::try_range(slice_ref, slice_ref.len(), |msg| {
 						BoundedVec::try_from(msg.to_vec()).map_err(|_| {
