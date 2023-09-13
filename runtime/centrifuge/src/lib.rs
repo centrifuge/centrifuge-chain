@@ -431,17 +431,14 @@ impl orml_asset_registry::Config for Runtime {
 
 parameter_types! {
 	pub DefaultTokenSellRate: Ratio = Ratio::one();
-	pub StableToStableRatio: Ratio = Ratio::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter = runtime_common::foreign_investments::SimpleStableCurrencyConverter<
-		OrmlAssetRegistry,
-		StableToStableRatio,
-	>;
+	type CurrencyConverter =
+		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;

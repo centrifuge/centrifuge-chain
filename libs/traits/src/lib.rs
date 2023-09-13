@@ -587,7 +587,7 @@ pub trait StatusNotificationHook {
 
 /// Trait to synchronously provide a currency conversion estimation for foreign
 /// currencies into/from pool currencies.
-pub trait SimpleCurrencyConversion {
+pub trait IdentityCurrencyConversion {
 	type Balance;
 	type Currency;
 	type Error;

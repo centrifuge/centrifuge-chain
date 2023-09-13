@@ -26,7 +26,7 @@ use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, 
 use cfg_traits::{
 	investments::{Investment, OrderManager, TrancheCurrency as TrancheCurrencyT},
 	liquidity_pools::InboundQueue,
-	PoolInspect, SimpleCurrencyConversion,
+	IdentityCurrencyConversion, PoolInspect,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -43,7 +43,7 @@ use cfg_types::{
 use development_runtime::{
 	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
 	OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin,
-	StableToStableRatio, System, Tokens,
+	System, Tokens,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -59,7 +59,7 @@ use pallet_foreign_investments::{
 };
 use pallet_investments::CollectOutcome;
 use runtime_common::{
-	account_conversion::AccountConverter, foreign_investments::SimpleStableCurrencyConverter,
+	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 };
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
@@ -1259,7 +1259,7 @@ mod same_currencies {
 					assert_noop!(
 						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
 						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
-							InvestError::DecreaseTransition
+							InvestError::DecreaseAmountOverflow
 						)
 					);
 				});
@@ -1481,15 +1481,13 @@ mod mismatching_currencies {
 
 			// USDT investment preparations
 			register_usdt();
-			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
-				OrmlAssetRegistry,
-				StableToStableRatio,
-			>::stable_to_stable(
-				foreign_currency,
-				pool_currency,
-				invest_amount_pool_denominated,
-			)
-			.unwrap();
+			let invest_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_denominated,
+				)
+				.unwrap();
 
 			// Should fail to increase to an invalid payment currency
 			assert!(!ForeignInvestments::accepted_payment_currency(
@@ -1681,15 +1679,13 @@ mod mismatching_currencies {
 				&trader,
 				invest_amount_pool_denominated
 			));
-			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
-				OrmlAssetRegistry,
-				StableToStableRatio,
-			>::stable_to_stable(
-				foreign_currency,
-				pool_currency,
-				invest_amount_pool_denominated,
-			)
-			.unwrap();
+			let invest_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_denominated,
+				)
+				.unwrap();
 			assert_ok!(OrderBook::add_trading_pair(
 				RuntimeOrigin::root(),
 				pool_currency,
@@ -1866,15 +1862,13 @@ mod mismatching_currencies {
 			// USDT setup
 			register_usdt();
 			enable_liquidity_pool_transferability(foreign_currency);
-			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
-				OrmlAssetRegistry,
-				StableToStableRatio,
-			>::stable_to_stable(
-				foreign_currency,
-				pool_currency,
-				invest_amount_pool_denominated,
-			)
-			.unwrap();
+			let invest_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_denominated,
+				)
+				.unwrap();
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
 				&trader,
@@ -2108,15 +2102,13 @@ mod mismatching_currencies {
 			// USDT setup
 			register_usdt();
 			enable_liquidity_pool_transferability(foreign_currency);
-			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
-				OrmlAssetRegistry,
-				StableToStableRatio,
-			>::stable_to_stable(
-				foreign_currency,
-				pool_currency,
-				invest_amount_pool_denominated,
-			)
-			.unwrap();
+			let invest_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_denominated,
+				)
+				.unwrap();
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
 				&trader,
@@ -2504,13 +2496,13 @@ mod setup {
 					.into()
 			}));
 		} else {
-			let amount_pool_denominated: u128 = SimpleStableCurrencyConverter::<
-				OrmlAssetRegistry,
-				StableToStableRatio,
-			>::stable_to_stable(
-				pool_currency, currency_id, amount
-			)
-			.unwrap();
+			let amount_pool_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					pool_currency,
+					currency_id,
+					amount,
+				)
+				.unwrap();
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
 				InvestState::ActiveSwapIntoPoolCurrency {

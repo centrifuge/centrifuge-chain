@@ -423,38 +423,33 @@ pub mod xcm_transactor {
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
-	use cfg_traits::SimpleCurrencyConversion;
-	use cfg_types::{fixed_point::Ratio, tokens::CurrencyId};
+	use cfg_traits::IdentityCurrencyConversion;
+	use cfg_types::tokens::CurrencyId;
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;
-	use sp_runtime::{
-		traits::{EnsureFixedPointNumber, Get},
-		DispatchError,
-	};
+	use sp_runtime::DispatchError;
 
-	/// Simple stable coin amount converter from one stable to another. Provides
-	/// a synchronous estimation of the amount of one stable currency in
-	/// another, e.g., the worth of 100 EthWrappedDai in USDC.
+	/// Simple currency converter which maps the amount of the outgoing currency
+	/// to the precision of the incoming one. E.g., the worth of 100
+	/// EthWrappedDai in USDC.
 	///
-	/// For now, converts any `ForeignAsset` into another with the configured
-	/// rate.
+	/// Requires currencies to have their decimal precision registered in an
+	/// asset registry. Moreover, one of the currencies must be a allowed as
+	/// pool currency.
 	///
-	/// NOTE: Should be deprecated ASAP!
-	// TODO(@review): Can we determine whether a ForeignAsset is a stable coin at
-	// this point of time?
-	pub struct SimpleStableCurrencyConverter<AssetRegistry, StableToStableRatio>(
-		PhantomData<(AssetRegistry, StableToStableRatio)>,
-	);
+	/// NOTE: This converter is only supposed to be used short-term as an MVP
+	/// for stable coin conversions. We assume those conversions to be 1-to-1
+	/// bidirectionally. In the near future, this conversion must be improved to
+	/// account for conversion ratios other than 1.0.
+	pub struct IdentityPoolCurrencyConverter<AssetRegistry>(PhantomData<AssetRegistry>);
 
-	impl<AssetRegistry, StableToStableRatio> SimpleCurrencyConversion
-		for SimpleStableCurrencyConverter<AssetRegistry, StableToStableRatio>
+	impl<AssetRegistry> IdentityCurrencyConversion for IdentityPoolCurrencyConverter<AssetRegistry>
 	where
 		AssetRegistry: Inspect<
 			AssetId = CurrencyId,
 			Balance = Balance,
 			CustomMetadata = cfg_types::tokens::CustomMetadata,
 		>,
-		StableToStableRatio: Get<Ratio>,
 	{
 		type Balance = Balance;
 		type Currency = CurrencyId;
@@ -481,7 +476,7 @@ pub mod foreign_investments {
 					convert_balance_decimals(
 						from_metadata.decimals,
 						to_metadata.decimals,
-						StableToStableRatio::get().ensure_mul_int(amount_out)?,
+						amount_out,
 					)
 					.map_err(DispatchError::from)
 				}

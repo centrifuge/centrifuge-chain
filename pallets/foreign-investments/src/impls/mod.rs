@@ -14,7 +14,7 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
-	PoolInspect, SimpleCurrencyConversion, StatusNotificationHook, TokenSwaps,
+	IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,

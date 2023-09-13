@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::SimpleCurrencyConversion;
+use cfg_traits::IdentityCurrencyConversion;
 use cfg_types::investments::Swap;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebugNoBound};
@@ -36,7 +36,7 @@ pub enum TokenSwapReason {
 pub trait InvestStateConfig {
 	type Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug + Zero;
 	type CurrencyId: Clone + Copy + PartialEq + Debug;
-	type CurrencyConverter: SimpleCurrencyConversion<
+	type CurrencyConverter: IdentityCurrencyConversion<
 		Balance = Self::Balance,
 		Currency = Self::CurrencyId,
 		Error = sp_runtime::DispatchError,

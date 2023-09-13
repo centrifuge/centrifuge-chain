@@ -217,7 +217,13 @@ pub mod pallet {
 
 		/// Type which provides a conversion from one currency amount to another
 		/// currency amount.
-		type CurrencyConverter: cfg_traits::SimpleCurrencyConversion<
+		///
+		/// NOTE: Restricting to `IdentityCurrencyConversion` is solely a
+		/// short-term MVP solution. In the near future, this type must be
+		/// restricted to a more sophisticated trait which provides
+		/// unidirectional conversions based on an oracle, dynamic prices or at
+		/// least conversion ratios based on specific currency pairs.
+		type CurrencyConverter: cfg_traits::IdentityCurrencyConversion<
 			Balance = Self::Balance,
 			Currency = Self::CurrencyId,
 			Error = DispatchError,

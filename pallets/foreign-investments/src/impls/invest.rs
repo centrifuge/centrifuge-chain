@@ -13,7 +13,7 @@
 
 use core::cmp::Ordering;
 
-use cfg_traits::SimpleCurrencyConversion;
+use cfg_traits::IdentityCurrencyConversion;
 use cfg_types::investments::Swap;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub, Zero},
