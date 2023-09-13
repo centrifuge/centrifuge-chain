@@ -43,13 +43,14 @@ jobs:
           
 
   tests:
-    name: test-${{ matrix.target }}
+    name: ${{ matrix.target }}-tests
     strategy:
       matrix:
-        target: [tests, integration]
+        target: [general, integration]
     runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: "nightly"
+      RUST_MIN_STACK: 8388608
       # SCCACHE_GHA_ENABLED: "true"
       # RUSTC_WRAPPER: "sccache"         
     steps:
@@ -64,10 +65,26 @@ jobs:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Run tests
-        run: ./ci/script.sh
-        env:
-          TARGET: ${{ matrix.target }}
+      
+      - name: runtime-benchmarks and try-runtime
+        if: ${{ matrix.target == 'general' }}
+        run: |
+          cargo test --workspace --release \ 
+            --features runtime-benchmarks,try-runtime \
+            --exclude runtime-integration-tests
+
+      - name: fast-runtime integration tests
+        if: ${{ matrix.target == 'integration' }}
+        run: |
+          cargo test --release \ 
+            --features fast-runtime \
+            --package runtime-integration-tests
+
       # - name: Run sccache stat for check
       #   shell: bash
       #   run: ${SCCACHE_PATH} --show-stats
+
+      # - name: Run tests
+      #   run: ./ci/script.sh
+      #   env:
+      #     TARGET: ${{ matrix.target }}
