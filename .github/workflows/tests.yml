@@ -6,7 +6,7 @@ on:
       - 'src/'
       - '.github/workflows/tests.yml'
 name: Tests
-concurrency: 
+concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 jobs:
@@ -15,7 +15,7 @@ jobs:
     env:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
       # SCCACHE_GHA_ENABLED: "true"
-      # RUSTC_WRAPPER: "sccache"         
+      # RUSTC_WRAPPER: "sccache"
     strategy:
       matrix:
         target: [fmt, clippy]
@@ -23,24 +23,24 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-              
-      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c        
+
+      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
       # - name: Run sccache-cache
-      #   uses: mozilla-actions/sccache-action@v0.0.3       
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
- 
+
       - name: Run lints
         run: ./ci/script.sh
         env:
           TARGET: ${{ matrix.target }}
       # - name: Run sccache stat for check
       #   shell: bash
-      #   run: ${SCCACHE_PATH} --show-stats          
-          
+      #   run: ${SCCACHE_PATH} --show-stats
+
 
   tests:
     name: ${{ matrix.target }}-tests
@@ -52,31 +52,40 @@ jobs:
       RUST_TOOLCHAIN: "nightly"
       RUST_MIN_STACK: 8388608
       # SCCACHE_GHA_ENABLED: "true"
-      # RUSTC_WRAPPER: "sccache"         
+      # RUSTC_WRAPPER: "sccache"
     steps:
       - name: Check out code
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2       
-      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c        
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Swatinem rust cache setup
+        uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191 # 2.6.0
+        with:
+          prefix-key: cache-tests
+          shared-key: cargo-tests
+          cache-on-failure: "true"
+          # save-if: ${{ github.ref == 'refs/heads/master' }}
+
+
       # - name: Run sccache-cache
-      #   uses: mozilla-actions/sccache-action@v0.0.3         
+      #   uses: mozilla-actions/sccache-action@v0.0.3
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
       - name: Check out code
         uses: actions/checkout@v3
-      
+
       - name: runtime-benchmarks and try-runtime
         if: ${{ matrix.target == 'general' }}
         run: |
-          cargo test --workspace --release \ 
+          cargo test --workspace --release \
             --features runtime-benchmarks,try-runtime \
             --exclude runtime-integration-tests
 
       - name: fast-runtime integration tests
         if: ${{ matrix.target == 'integration' }}
         run: |
-          cargo test --release \ 
+          cargo test --release \
             --features fast-runtime \
             --package runtime-integration-tests
 
