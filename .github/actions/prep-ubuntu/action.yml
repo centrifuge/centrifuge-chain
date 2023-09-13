@@ -19,6 +19,12 @@ runs:
         echo "Post cleanup"
         df -h
         sudo apt-get install protobuf-compiler
+
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+      with:
+        toolchain: ${{ inputs.RUST_TOOLCHAIN }}
+        default: true        
     # - name: Install Rust Toolchain
     #   shell: bash
     #   id: install_toolchain
