@@ -21,9 +21,12 @@ jobs:
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
     # TEST 1: run sccache vanilla using the developer's action
-      - name: Run sccache-cache
+      - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3        
-
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
+        
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
