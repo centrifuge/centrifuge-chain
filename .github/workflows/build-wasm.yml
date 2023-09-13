@@ -25,7 +25,11 @@ jobs:
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
-
+      
+      - name: Reset cache (main branch only)
+        if: ${{ github.ref == 'refs/heads/main'  }}
+        run: echo "SCCACHE_RECACHE=true" >> $GITHUB_ENV
+      
       - name: Check cargo build release
         run: cargo build --release "$@"
 
@@ -62,7 +66,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
-          options: -v /tmp/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
+          options: --user root -v /tmp/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: |
             apt-get update && apt-get install --yes libpq-dev wget
             wget https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
