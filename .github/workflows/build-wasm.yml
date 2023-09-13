@@ -20,26 +20,19 @@ jobs:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
-    # TEST 1: run sccache vanilla using the developer's action
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Add sccache to PATH
-        run: |
-          # echo "${SCCACHE_PATH}" >> $GITHUB_PATH
-          echo "RUSTC_WRAPPER=${SCCACHE_PATH}" >> $GITHUB_ENV
-
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env. RUST_TOOLCHAIN }}
 
+    # TEST 1: run sccache vanilla using the developer's action
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - name: Reset cache (main branch only)
         if: ${{ github.ref == 'refs/heads/main'  }}
         run: echo "SCCACHE_RECACHE=true" >> $GITHUB_ENV
-      - name: Run sccache stat for check
-        shell: bash
-        run: sccache --show-stats
+
       - name: Check cargo build release
         run: cargo build --release "$@"
         
@@ -70,22 +63,18 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-
+      
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+          
     # TEST 2: Sccache with Google Buckets
       - name: SCcache setup
         uses: ./.github/actions/sccache-gcloud
         with:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
-      
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
-
-      - name: Prep build on Ubuntu
-        uses: ./.github/actions/prep-ubuntu
-        with:
-          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
 
       - name: Run Docker SRTool
         uses: addnab/docker-run-action@v3
