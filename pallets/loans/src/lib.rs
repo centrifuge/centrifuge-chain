@@ -830,9 +830,9 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount) =
-            Self::get_released_change(pool_id, change_id)? else {
-                Err(Error::<T>::UnrelatedChangeId)?
-			};
+                Self::get_released_change(pool_id, change_id)? else {
+                    Err(Error::<T>::UnrelatedChangeId)?
+                };
 
 			let (amount, _count) = Self::transfer_debt_action(
 				&who,
@@ -850,6 +850,81 @@ pub mod pallet {
 				amount,
 			});
 
+			Ok(())
+		}
+	}
+
+	// Loan actions
+	impl<T: Config> Pallet<T> {
+		fn borrow_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &PricingAmount<T>,
+		) -> Result<u32, DispatchError> {
+			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => {
+					Self::ensure_loan_borrower(who, created_loan.borrower())?;
+
+					let mut active_loan = created_loan.activate(pool_id)?;
+					active_loan.borrow(amount)?;
+
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
+				}
+				None => {
+					Self::update_active_loan(pool_id, loan_id, |loan| {
+						Self::ensure_loan_borrower(who, loan.borrower())?;
+						loan.borrow(amount)
+					})?
+					.1
+				}
+			})
+		}
+
+		fn repay_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &RepaidPricingAmount<T>,
+		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
+			Self::update_active_loan(pool_id, loan_id, |loan| {
+				Self::ensure_loan_borrower(who, loan.borrower())?;
+				loan.repay(amount.clone())
+			})
+		}
+
+		fn transfer_debt_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			repaid_amount: RepaidPricingAmount<T>,
+			borrow_amount: PricingAmount<T>,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			ensure!(
+				from_loan_id != to_loan_id,
+				Error::<T>::TransferDebtToSameLoan
+			);
+
+			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
+
+			ensure!(
+				borrow_amount.balance()? == repaid_amount.repaid_amount()?.total()?,
+				Error::<T>::TransferDebtAmountMismatched
+			);
+
+			let count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
+
+			Ok((repaid_amount.repaid_amount()?.total()?, count))
+		}
+
+		/// Set the maturity date of the loan to this instant.
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn expire_action(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
+			Self::update_active_loan(pool_id, loan_id, |loan| {
+				loan.set_maturity(T::Time::now().as_secs());
+				Ok(())
+			})?;
 			Ok(())
 		}
 	}
@@ -1031,91 +1106,6 @@ pub mod pallet {
 				.find(|(id, _)| *id == loan_id)
 				.map(|(_, loan)| loan.try_into())
 				.transpose()
-		}
-	}
-
-	// Loan actions
-	impl<T: Config> Pallet<T> {
-		fn borrow_action(
-			who: &T::AccountId,
-			pool_id: T::PoolId,
-			loan_id: T::LoanId,
-			amount: &PricingAmount<T>,
-		) -> Result<u32, DispatchError> {
-			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(created_loan) => {
-					Self::ensure_loan_borrower(who, created_loan.borrower())?;
-
-					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(amount)?;
-
-					Self::insert_active_loan(pool_id, loan_id, active_loan)?
-				}
-				None => {
-					Self::update_active_loan(pool_id, loan_id, |loan| {
-						Self::ensure_loan_borrower(who, loan.borrower())?;
-						loan.borrow(amount)
-					})?
-					.1
-				}
-			})
-		}
-
-		fn repay_action(
-			who: &T::AccountId,
-			pool_id: T::PoolId,
-			loan_id: T::LoanId,
-			amount: &RepaidPricingAmount<T>,
-		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
-			Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(who, loan.borrower())?;
-				loan.repay(amount.clone())
-			})
-		}
-
-		fn transfer_debt_action(
-			who: &T::AccountId,
-			pool_id: T::PoolId,
-			from_loan_id: T::LoanId,
-			to_loan_id: T::LoanId,
-			repaid_amount: RepaidPricingAmount<T>,
-			borrow_amount: PricingAmount<T>,
-		) -> Result<(T::Balance, u32), DispatchError> {
-			ensure!(
-				from_loan_id != to_loan_id,
-				Error::<T>::TransferDebtToSameLoan
-			);
-
-			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
-
-			match &borrow_amount {
-				PricingAmount::Internal(value) => {
-					ensure!(
-						*value == repaid_amount.repaid_amount()?.total()?,
-						Error::<T>::TransferDebtAmountMismatched
-					)
-				}
-				PricingAmount::External(_external) => {
-					// TODO (1): handle it once slippage is added.
-					// TODO (2): if quantity is measured as a rate,
-					// then instead of using slippage we can use quantity with
-					// decimals.
-				}
-			}
-
-			let count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
-
-			Ok((repaid_amount.repaid_amount()?.total()?, count))
-		}
-
-		/// Set the maturity date of the loan to this instant.
-		#[cfg(feature = "runtime-benchmarks")]
-		pub fn expire_action(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
-			Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.set_maturity(T::Time::now().as_secs());
-				Ok(())
-			})?;
-			Ok(())
 		}
 	}
 
