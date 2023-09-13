@@ -1,7 +1,7 @@
 use cfg_traits::liquidity_pools::Codec;
-use codec::{Error, Input};
+use codec::{Decode, Error, Input};
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, codec::Encode, Decode)]
 pub enum MessageMock {
 	First,
 	Second,

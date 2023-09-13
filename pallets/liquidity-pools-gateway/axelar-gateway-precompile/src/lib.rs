@@ -31,6 +31,7 @@ pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 42;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
 pub const MAX_PAYLOAD_BYTES: u32 = 1024;
 pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
+const EXPECTED_SOURCE_ADDRESS_SIZE: usize = 20;
 
 pub type String<const U32: u32> = BoundedString<ConstU32<U32>>;
 pub type Bytes<const U32: u32> = BoundedBytes<ConstU32<U32>>;
@@ -275,7 +276,7 @@ where
 		})?;
 
 		let source_address_bytes =
-			get_source_address_bytes(source_address).ok_or(PrecompileFailure::Error {
+			cfg_utils::decode_var_source::<EXPECTED_SOURCE_ADDRESS_SIZE>(source_address.as_bytes()).ok_or(PrecompileFailure::Error {
 				exit_status: ExitError::Other("invalid source address".into()),
 			})?;
 
@@ -324,57 +325,5 @@ where
 	) -> EvmResult {
 		// TODO: Check whether this is enough or if we should error out
 		Ok(())
-	}
-}
-
-const EXPECTED_SOURCE_ADDRESS_SIZE: usize = 20;
-const HEX_PREFIX: &str = "0x";
-
-pub(crate) fn get_source_address_bytes(
-	source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
-) -> Option<Vec<u8>> {
-	if source_address.as_bytes().len() == EXPECTED_SOURCE_ADDRESS_SIZE {
-		return Some(source_address.as_bytes().to_vec());
-	}
-
-	let str = source_address.as_str().ok()?;
-
-	// Attempt to hex decode source address.
-	match hex::decode(str) {
-		Ok(res) => Some(res),
-		Err(_) => {
-			// Strip 0x prefix.
-			let res = str.strip_prefix(HEX_PREFIX)?;
-
-			hex::decode(res).ok()
-		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use sp_core::H160;
-
-	use super::*;
-
-	#[test]
-	fn get_source_address_bytes_works() {
-		let hash = H160::from_low_u64_be(1);
-
-		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(hash.as_fixed_bytes().to_vec());
-
-		get_source_address_bytes(str).expect("address bytes from H160 works");
-
-		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(
-			"d47ed02acbbb66ee8a3fe0275bd98add0aa607c3".to_string(),
-		);
-
-		get_source_address_bytes(str).expect("address bytes from un-prefixed hex works");
-
-		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(
-			"0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3".to_string(),
-		);
-
-		get_source_address_bytes(str).expect("address bytes from prefixed hex works");
 	}
 }

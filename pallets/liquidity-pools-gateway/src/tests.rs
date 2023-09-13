@@ -333,6 +333,57 @@ mod process_msg_axelar_relay {
 	use super::*;
 
 	#[test]
+	fn success_from_solidity_payload() {
+		new_test_ext().execute_with(|| {
+			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
+			let source_address = hex_literal::hex!["423420Ae467df6e90291fd0252c0A8a637C1e03f"];
+			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, source_address);
+			let relayer_address = DomainAddress::EVM(0, address.into());
+
+			assert_ok!(LiquidityPoolsGateway::add_instance(
+				RuntimeOrigin::root(),
+				domain_address.clone(),
+			));
+
+			assert_ok!(LiquidityPoolsGateway::add_relayer(
+				RuntimeOrigin::root(),
+				relayer_address.clone(),
+			));
+
+
+			let expected_msg = MessageMock::First;
+			let expected_domain_address = domain_address.clone();
+
+			MockLiquidityPools::mock_submit(move |domain, message| {
+				assert_eq!(domain, expected_domain_address);
+				assert_eq!(message, expected_msg);
+				Ok(())
+			});
+
+			let expected_domain_address = domain_address.clone();
+
+			MockOriginRecovery::mock_try_convert(move |origin| {
+				let (source_chain, source_address) = origin;
+
+				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
+				assert_eq!(&source_address, source_address.as_slice());
+
+				Ok(expected_domain_address.clone())
+			});
+
+			// NOTE: A solidity generated payload. The most important part about this is the new decoding of the address.
+			//       The message was cut out and replaced with a single byte of value 0 in order to decode correctly to this
+			//       mocks message type.
+			let payload = hex::decode("0000000a657468657265756d2d320000002a30783432333432304165343637646636653930323931666430323532633041386136333743316530336600").unwrap();
+
+			assert_ok!(LiquidityPoolsGateway::process_msg(
+				GatewayOrigin::AxelarRelay(relayer_address).into(),
+				BoundedVec::<u8, MaxIncomingMessageSize>::try_from(payload).unwrap()
+			));
+		})
+	}
+
+	#[test]
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
@@ -398,6 +449,7 @@ mod process_msg_axelar_relay {
 			let expected_msg = MessageMock::First;
 
 			let mut msg = Vec::new();
+
 			// Need to prepend length signaler
 			msg.extend_from_slice(&(0 as u32).to_be_bytes());
 			msg.extend_from_slice(&(0 as u32).to_be_bytes());
@@ -417,7 +469,7 @@ mod process_msg_axelar_relay {
 					GatewayOrigin::AxelarRelay(relayer_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
-				Error::<Runtime>::InvalidMessageOrigin,
+				Error::<Runtime>::MessageDecodingFailed,
 			);
 		});
 	}
