@@ -12,21 +12,23 @@ jobs:
     runs-on: ubuntu-latest-4-cores
     env:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
-      RUSTFLAGS: " -W unused-extern-crates"
+      # RUSTFLAGS: " -W unused-extern-crates"
       PACKAGE: "altair-runtime"
       SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
+      # RUSTC_WRAPPER: "sccache"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
     # TEST 1: run sccache vanilla using the developer's action
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3        
-      - name: Run sccache stat for check
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
-        
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Add sccache to PATH
+        run: |
+          # echo "${SCCACHE_PATH}" >> $GITHUB_PATH
+          echo "RUSTC_WRAPPER=${SCCACHE_PATH}" >> $GITHUB_ENV
+
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
@@ -35,7 +37,9 @@ jobs:
       - name: Reset cache (main branch only)
         if: ${{ github.ref == 'refs/heads/main'  }}
         run: echo "SCCACHE_RECACHE=true" >> $GITHUB_ENV
-
+      - name: Run sccache stat for check
+        shell: bash
+        run: sccache --show-stats
       - name: Check cargo build release
         run: cargo build --release "$@"
         
@@ -73,6 +77,7 @@ jobs:
         with:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
+      
       - name: Run sccache stat for check
         shell: bash
         run: ${SCCACHE_PATH} --show-stats
@@ -86,13 +91,13 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
-          options: --user root -v /tmp/cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
+          options: --user root -v ${{ env.SCCACHE_PATH }}:/usr/local/bin/sccache -v ${{ github.workspace }}/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: |
-            apt-get update && apt-get install --yes libpq-dev wget
-            wget https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
-            && tar xzf sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz \
-            && mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
-            && chmod +x /usr/local/bin/sccache
+            # apt-get update && apt-get install --yes libpq-dev wget
+            # wget https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
+            # && tar xzf sccache-dist-v0.5.4-x86_64-unknown-linux-musl.tar.gz \
+            # && mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+            # && chmod +x /usr/local/bin/sccache
             /srtool/build
 
       - name: Run sccache stat for check
