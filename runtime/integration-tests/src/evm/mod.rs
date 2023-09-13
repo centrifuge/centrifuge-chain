@@ -10,4 +10,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-mod pallet;
+mod ethereum_transaction;
+mod precompile;

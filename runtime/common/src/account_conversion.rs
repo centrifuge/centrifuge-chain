@@ -75,6 +75,7 @@ impl<R, XcmConverter> Convert<(Domain, [u8; 32]), AccountId> for AccountConverte
 		}
 	}
 }
+
 impl<R, XcmConverter> TryConvert<v3::MultiLocation, AccountId> for AccountConverter<R, XcmConverter>
 where
 	XcmConverter: xcm_executor::traits::Convert<v3::MultiLocation, AccountId>,

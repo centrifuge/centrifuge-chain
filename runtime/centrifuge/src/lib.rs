@@ -30,7 +30,7 @@ use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	domain_address::{Domain, DomainAddress},
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{
@@ -430,8 +430,8 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultTokenSellRate: Rate = Rate::one();
-	pub StableToStableRate: Rate = Rate::one();
+	pub DefaultTokenSellRate: Ratio = Ratio::one();
+	pub StableToStableRatio: Ratio = Ratio::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
@@ -440,7 +440,7 @@ impl pallet_foreign_investments::Config for Runtime {
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter = runtime_common::foreign_investments::SimpleStableCurrencyConverter<
 		OrmlAssetRegistry,
-		StableToStableRate,
+		StableToStableRatio,
 	>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook =
@@ -450,8 +450,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	// TODO: Switch to ratio after merging #1546
-	type Rate = Rate;
+	type Rate = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = u64;
 	type TokenSwaps = OrderBook;
@@ -465,6 +464,8 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
+	// NOTE: No need to adapt that. The Router is an artifact and will be removed
+	// with FI PR
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1965,7 +1966,7 @@ impl pallet_order_book::Config for Runtime {
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = Rate;
+	type SellRatio = Ratio;
 	type TradeableAsset = Tokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
@@ -2255,7 +2256,7 @@ impl_runtime_apis! {
 	}
 
 	// PoolsApi
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Quantity, MaxTranches> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
@@ -2270,7 +2271,7 @@ impl_runtime_apis! {
 			).ok()
 		}
 
-		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
+		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Quantity>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
@@ -2283,14 +2284,14 @@ impl_runtime_apis! {
 			prices.get(index).cloned()
 		}
 
-		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
+		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
-				.calculate_prices::<Rate, Tokens, AccountId>(total_assets, now)
+				.calculate_prices::<_, Tokens, AccountId>(total_assets, now)
 				.ok()
 		}
 

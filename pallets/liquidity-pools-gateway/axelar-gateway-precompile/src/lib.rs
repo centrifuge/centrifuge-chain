@@ -12,20 +12,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
-use codec::alloc::string::ToString;
-use ethabi::Token;
 use fp_evm::PrecompileHandle;
-use frame_support::{Blake2_256, StorageHasher};
+use frame_support::ensure;
 use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
-use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
+use sp_runtime::{
+	traits::{BlakeTwo256, Hash},
+	DispatchError,
+};
 use sp_std::vec::Vec;
 
 pub use crate::weights::WeightInfo;
 
 pub const MAX_SOURCE_CHAIN_BYTES: u32 = 128;
-pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 32;
+// Ensure we allow enough to support a hex encoded address with the `0x` prefix.
+pub const MAX_SOURCE_ADDRESS_BYTES: u32 = 42;
 pub const MAX_TOKEN_SYMBOL_BYTES: u32 = 32;
 pub const MAX_PAYLOAD_BYTES: u32 = 1024;
 pub const PREFIX_CONTRACT_CALL_APPROVED: [u8; 32] = keccak256!("contract-call-approved");
@@ -47,7 +49,7 @@ pub mod weights;
 	frame_support::RuntimeDebugNoBound,
 )]
 pub struct SourceConverter {
-	domain: Domain,
+	pub domain: Domain,
 }
 
 impl SourceConverter {
@@ -116,7 +118,7 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	pub type AxelarGatewayContract<T: Config> = StorageValue<_, H160, ValueQuery>;
+	pub type GatewayContract<T: Config> = StorageValue<_, H160, ValueQuery>;
 
 	/// `SourceConversion` is a `hash_of(Vec<u8>)` where the `Vec<u8>` is the
 	/// blake256-hash of the source-chain identifier used by the Axelar network.
@@ -142,7 +144,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			AxelarGatewayContract::<T>::set(self.gateway)
+			GatewayContract::<T>::set(self.gateway)
 		}
 	}
 
@@ -174,7 +176,7 @@ pub mod pallet {
 		pub fn set_gateway(origin: OriginFor<T>, address: H160) -> DispatchResult {
 			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
-			AxelarGatewayContract::<T>::set(address);
+			GatewayContract::<T>::set(address);
 
 			Self::deposit_event(Event::<T>::GatewaySet { address });
 
@@ -205,9 +207,8 @@ impl<T: Config> cfg_traits::TryConvert<(Vec<u8>, Vec<u8>), DomainAddress> for Pa
 	fn try_convert(origin: (Vec<u8>, Vec<u8>)) -> Result<DomainAddress, DispatchError> {
 		let (source_chain, source_address) = origin;
 
-		let domain_converter =
-			SourceConversion::<T>::get(H256::from(Blake2_256::hash(&source_chain)))
-				.ok_or(Error::<T>::NoConverterForSource)?;
+		let domain_converter = SourceConversion::<T>::get(BlakeTwo256::hash(&source_chain))
+			.ok_or(Error::<T>::NoConverterForSource)?;
 
 		domain_converter
 			.try_convert(&source_address)
@@ -246,30 +247,17 @@ where
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
 		handle: &mut impl PrecompileHandle,
-		command_id: H256,
+		_command_id: H256,
 		source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
 		payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
-		// CREATE HASH OF PAYLOAD
-		// - bytes32 payloadHash = keccak256(payload);
-		let payload_hash = H256::from(sp_io::hashing::keccak_256(payload.as_bytes()));
-
-		// CHECK EVM STORAGE OF GATEWAY
-		// - keccak256(abi.encode(PREFIX_CONTRACT_CALL_APPROVED, commandId, sourceChain,
-		//   sourceAddress, contractAddress, payloadHash));
-		let key = H256::from(sp_io::hashing::keccak_256(&ethabi::encode(&[
-			Token::FixedBytes(PREFIX_CONTRACT_CALL_APPROVED.into()),
-			Token::FixedBytes(command_id.as_bytes().into()),
-			Token::String(source_chain.clone().try_into().map_err(|_| {
-				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
-			})?),
-			Token::String(source_address.clone().try_into().map_err(|_| {
-				RevertReason::read_out_of_bounds("utf-8 encoding failing".to_string())
-			})?),
-			Token::Address(handle.context().address),
-			Token::FixedBytes(payload_hash.as_bytes().into()),
-		])));
+		ensure!(
+			handle.context().caller == GatewayContract::<T>::get(),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("gateway contract address mismatch".into()),
+			}
+		);
 
 		let msg = BoundedVec::<
 			u8,
@@ -279,20 +267,34 @@ where
 			exit_status: ExitError::Other("payload conversion".into()),
 		})?;
 
-		Self::execute_call(key, || {
-			let domain_converter =
-				SourceConversion::<T>::get(H256::from(Blake2_256::hash(source_chain.as_bytes())))
-					.ok_or(Error::<T>::NoConverterForSource)?;
+		let domain_converter = SourceConversion::<T>::get(BlakeTwo256::hash(
+			source_chain.as_bytes(),
+		))
+		.ok_or(PrecompileFailure::Error {
+			exit_status: ExitError::Other("converter for source not found".into()),
+		})?;
 
-			let domain_address = domain_converter
-				.try_convert(source_address.as_bytes())
-				.ok_or(Error::<T>::AccountBytesMismatchForDomain)?;
+		let source_address_bytes =
+			get_source_address_bytes(source_address).ok_or(PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid source address".into()),
+			})?;
 
-			pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
-				pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
-				msg,
-			)
-		})
+		let domain_address = domain_converter
+			.try_convert(source_address_bytes.as_slice())
+			.ok_or(PrecompileFailure::Error {
+				exit_status: ExitError::Other("account bytes mismatch for domain".into()),
+			})?;
+
+		match pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
+			pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
+			msg,
+		)
+		.map(|_| ())
+		.map_err(TryDispatchError::Substrate)
+		{
+			Err(e) => Err(e.into()),
+			Ok(()) => Ok(()),
+		}
 	}
 
 	// Mimics:
@@ -323,98 +325,56 @@ where
 		// TODO: Check whether this is enough or if we should error out
 		Ok(())
 	}
+}
 
-	fn execute_call(key: H256, f: impl FnOnce() -> DispatchResult) -> EvmResult {
-		let gateway = AxelarGatewayContract::<T>::get();
+const EXPECTED_SOURCE_ADDRESS_SIZE: usize = 20;
+const HEX_PREFIX: &str = "0x";
 
-		let valid = Self::get_validate_call(gateway, key);
+pub(crate) fn get_source_address_bytes(
+	source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
+) -> Option<Vec<u8>> {
+	if source_address.as_bytes().len() == EXPECTED_SOURCE_ADDRESS_SIZE {
+		return Some(source_address.as_bytes().to_vec());
+	}
 
-		if valid {
-			// Prevent re-entrance
-			Self::set_validate_call(gateway, key, false);
+	let str = source_address.as_str().ok()?;
 
-			match f().map(|_| ()).map_err(TryDispatchError::Substrate) {
-				Err(e) => {
-					Self::set_validate_call(gateway, key, true);
-					Err(e.into())
-				}
-				Ok(()) => Ok(()),
-			}
-		} else {
-			Err(RevertReason::Custom("Call not validated".to_string()).into())
+	// Attempt to hex decode source address.
+	match hex::decode(str) {
+		Ok(res) => Some(res),
+		Err(_) => {
+			// Strip 0x prefix.
+			let res = str.strip_prefix(HEX_PREFIX)?;
+
+			hex::decode(res).ok()
 		}
 	}
+}
 
-	fn get_validate_call(from: H160, key: H256) -> bool {
-		Self::h256_to_bool(pallet_evm::AccountStorages::<T>::get(
-			from,
-			Self::get_index_validate_call(key),
-		))
-	}
+#[cfg(test)]
+mod tests {
+	use sp_core::H160;
 
-	fn set_validate_call(from: H160, key: H256, valid: bool) {
-		pallet_evm::AccountStorages::<T>::set(
-			from,
-			Self::get_index_validate_call(key),
-			Self::bool_to_h256(valid),
-		)
-	}
+	use super::*;
 
-	fn get_index_validate_call(key: H256) -> H256 {
-		// Generate right index:
-		//
-		// From the solidty contract of Axelar (EternalStorage.sol)
-		//     mapping(bytes32 => uint256) private _uintStorage; -> Slot 0
-		//     mapping(bytes32 => string) private _stringStorage; -> Slot 1
-		//     mapping(bytes32 => address) private _addressStorage; -> Slot 2
-		//     mapping(bytes32 => bytes) private _bytesStorage; -> Slot 3
-		//     mapping(bytes32 => bool) private _boolStorage; -> Slot 4
-		//     mapping(bytes32 => int256) private _intStorage; -> Slot 5
-		//
-		// This means our slot is U256::from(4)
-		let slot = U256::from(4);
+	#[test]
+	fn get_source_address_bytes_works() {
+		let hash = H160::from_low_u64_be(1);
 
-		let mut bytes = Vec::new();
-		bytes.extend_from_slice(key.as_bytes());
+		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(hash.as_fixed_bytes().to_vec());
 
-		let mut be_bytes: [u8; 32] = [0u8; 32];
-		// TODO: Is endnianess correct here?
-		slot.to_big_endian(&mut be_bytes);
-		bytes.extend_from_slice(&be_bytes);
+		get_source_address_bytes(str).expect("address bytes from H160 works");
 
-		H256::from(sp_io::hashing::keccak_256(&bytes))
-	}
+		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(
+			"d47ed02acbbb66ee8a3fe0275bd98add0aa607c3".to_string(),
+		);
 
-	// In Solidity, a boolean value (bool) is stored as a single byte (8 bits) in
-	// contract storage. The byte value 0x01 represents true, and the byte value
-	// 0x00 represents false.
-	//
-	// When you declare a boolean variable within a contract and store its value in
-	// storage, the contract reserves one storage slot, which is 32 bytes (256 bits)
-	// in size. However, only the first byte (8 bits) of that storage slot is used
-	// to store the boolean value. The remaining 31 bytes are left unused.
-	fn h256_to_bool(value: H256) -> bool {
-		let first = value.0[0];
+		get_source_address_bytes(str).expect("address bytes from un-prefixed hex works");
 
-		// TODO; Should we check the other values too and error out then?
-		first == 1
-	}
+		let str = String::<MAX_SOURCE_ADDRESS_BYTES>::from(
+			"0xd47ed02acbbb66ee8a3fe0275bd98add0aa607c3".to_string(),
+		);
 
-	// In Solidity, a boolean value (bool) is stored as a single byte (8 bits) in
-	// contract storage. The byte value 0x01 represents true, and the byte value
-	// 0x00 represents false.
-	//
-	// When you declare a boolean variable within a contract and store its value in
-	// storage, the contract reserves one storage slot, which is 32 bytes (256 bits)
-	// in size. However, only the first byte (8 bits) of that storage slot is used
-	// to store the boolean value. The remaining 31 bytes are left unused.
-	fn bool_to_h256(value: bool) -> H256 {
-		let mut bytes: [u8; 32] = [0u8; 32];
-
-		if value {
-			bytes[0] = 1;
-		}
-
-		H256::from(bytes)
+		get_source_address_bytes(str).expect("address bytes from prefixed hex works");
 	}
 }

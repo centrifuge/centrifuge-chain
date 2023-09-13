@@ -25,7 +25,6 @@ use crate::{
 		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
 		RuntimeEvent, PARA_ID,
 	},
-	ethereum_transaction::pallet,
 	utils::{
 		env,
 		env::{ChainState, EventRange, TestEnv},

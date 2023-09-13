@@ -424,7 +424,7 @@ pub mod xcm_transactor {
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
 	use cfg_traits::SimpleCurrencyConversion;
-	use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
+	use cfg_types::{fixed_point::Ratio, tokens::CurrencyId};
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;
 	use sp_runtime::{
@@ -442,19 +442,19 @@ pub mod foreign_investments {
 	/// NOTE: Should be deprecated ASAP!
 	// TODO(@review): Can we determine whether a ForeignAsset is a stable coin at
 	// this point of time?
-	pub struct SimpleStableCurrencyConverter<AssetRegistry, StableToStableRate>(
-		PhantomData<(AssetRegistry, StableToStableRate)>,
+	pub struct SimpleStableCurrencyConverter<AssetRegistry, StableToStableRatio>(
+		PhantomData<(AssetRegistry, StableToStableRatio)>,
 	);
 
-	impl<AssetRegistry, StableToStableRate> SimpleCurrencyConversion
-		for SimpleStableCurrencyConverter<AssetRegistry, StableToStableRate>
+	impl<AssetRegistry, StableToStableRatio> SimpleCurrencyConversion
+		for SimpleStableCurrencyConverter<AssetRegistry, StableToStableRatio>
 	where
 		AssetRegistry: Inspect<
 			AssetId = CurrencyId,
 			Balance = Balance,
 			CustomMetadata = cfg_types::tokens::CustomMetadata,
 		>,
-		StableToStableRate: Get<Rate>,
+		StableToStableRatio: Get<Ratio>,
 	{
 		type Balance = Balance;
 		type Currency = CurrencyId;
@@ -481,7 +481,7 @@ pub mod foreign_investments {
 					convert_balance_decimals(
 						from_metadata.decimals,
 						to_metadata.decimals,
-						StableToStableRate::get().ensure_mul_int(amount_out)?,
+						StableToStableRatio::get().ensure_mul_int(amount_out)?,
 					)
 					.map_err(DispatchError::from)
 				}

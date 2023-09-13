@@ -30,7 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Ratio},
 	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection, Swap},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
@@ -43,7 +43,7 @@ use cfg_types::{
 use development_runtime::{
 	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
 	OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin,
-	StableToStableRate, System, Tokens,
+	StableToStableRatio, System, Tokens,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -1483,7 +1483,7 @@ mod mismatching_currencies {
 			register_usdt();
 			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
 				OrmlAssetRegistry,
-				StableToStableRate,
+				StableToStableRatio,
 			>::stable_to_stable(
 				foreign_currency,
 				pool_currency,
@@ -1683,7 +1683,7 @@ mod mismatching_currencies {
 			));
 			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
 				OrmlAssetRegistry,
-				StableToStableRate,
+				StableToStableRatio,
 			>::stable_to_stable(
 				foreign_currency,
 				pool_currency,
@@ -1738,7 +1738,7 @@ mod mismatching_currencies {
 						fulfillment_amount: invest_amount_pool_denominated,
 						currency_in: pool_currency,
 						currency_out: foreign_currency,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 					}
 					.into()
 			}));
@@ -1804,7 +1804,7 @@ mod mismatching_currencies {
 						fulfillment_amount: invest_amount_foreign_denominated / 2,
 						currency_in: foreign_currency,
 						currency_out: pool_currency,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 					}
 					.into()
 			}));
@@ -1868,7 +1868,7 @@ mod mismatching_currencies {
 			enable_liquidity_pool_transferability(foreign_currency);
 			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
 				OrmlAssetRegistry,
-				StableToStableRate,
+				StableToStableRatio,
 			>::stable_to_stable(
 				foreign_currency,
 				pool_currency,
@@ -1988,7 +1988,7 @@ mod mismatching_currencies {
 						order_id: swap_order_id,
 						account: investor.clone(),
 						buy_amount: swap_amount,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 						min_fulfillment_amount: swap_amount,
 					}
 					.into()
@@ -2037,7 +2037,7 @@ mod mismatching_currencies {
 						order_id: swap_order_id,
 						account: investor.clone(),
 						buy_amount: swap_amount,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 						min_fulfillment_amount: swap_amount,
 					}
 					.into()
@@ -2058,7 +2058,7 @@ mod mismatching_currencies {
 						fulfillment_amount: invest_amount_foreign_denominated / 4 * 5,
 						currency_in: foreign_currency,
 						currency_out: pool_currency,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 					}
 					.into()
 			}));
@@ -2110,7 +2110,7 @@ mod mismatching_currencies {
 			enable_liquidity_pool_transferability(foreign_currency);
 			let invest_amount_foreign_denominated: u128 = SimpleStableCurrencyConverter::<
 				OrmlAssetRegistry,
-				StableToStableRate,
+				StableToStableRatio,
 			>::stable_to_stable(
 				foreign_currency,
 				pool_currency,
@@ -2249,7 +2249,7 @@ mod mismatching_currencies {
 						order_id: swap_order_id,
 						account: investor.clone(),
 						buy_amount: invest_amount_pool_denominated / 8 * 7,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 						min_fulfillment_amount: invest_amount_pool_denominated / 8 * 7,
 					}
 					.into()
@@ -2292,7 +2292,7 @@ mod mismatching_currencies {
 						order_id: swap_order_id,
 						account: investor.clone(),
 						buy_amount: invest_amount_pool_denominated / 4 * 3,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 						min_fulfillment_amount: invest_amount_pool_denominated / 4 * 3,
 					}
 					.into()
@@ -2375,7 +2375,7 @@ mod mismatching_currencies {
 						fulfillment_amount: remaining_foreign_swap_amount,
 						currency_in: foreign_currency,
 						currency_out: pool_currency,
-						sell_rate_limit: Rate::one(),
+						sell_rate_limit: Ratio::one(),
 					}
 					.into()
 			}));
@@ -2506,7 +2506,7 @@ mod setup {
 		} else {
 			let amount_pool_denominated: u128 = SimpleStableCurrencyConverter::<
 				OrmlAssetRegistry,
-				StableToStableRate,
+				StableToStableRatio,
 			>::stable_to_stable(
 				pool_currency, currency_id, amount
 			)

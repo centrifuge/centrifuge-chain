@@ -28,6 +28,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	FixedU128,
 };
 
 use crate as order_book;
@@ -218,7 +219,7 @@ impl order_book::Config for Runtime {
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
-	type SellRatio = cfg_types::fixed_point::Rate;
+	type SellRatio = FixedU128;
 	type TradeableAsset = Tokens;
 	type Weights = ();
 }

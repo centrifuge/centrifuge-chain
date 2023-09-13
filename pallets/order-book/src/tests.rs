@@ -10,9 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{fixed_point::Rate, tokens::CurrencyId};
+use cfg_types::tokens::CurrencyId;
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::RawOrigin};
-use sp_runtime::{traits::Zero, DispatchError, FixedPointNumber};
+use sp_runtime::{traits::Zero, DispatchError, FixedPointNumber, FixedU128};
 
 use super::*;
 use crate::mock::*;
@@ -156,7 +156,7 @@ fn create_order_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3, 2).unwrap()
+			FixedU128::checked_from_rational(3, 2).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_eq!(
@@ -168,7 +168,7 @@ fn create_order_works() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -182,7 +182,7 @@ fn create_order_works() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -202,14 +202,14 @@ fn user_update_order_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3, 2).unwrap()
+			FixedU128::checked_from_rational(3, 2).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::user_update_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			order_id,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_integer(2u32).unwrap(),
+			FixedU128::checked_from_integer(2u32).unwrap(),
 		));
 
 		assert_eq!(
@@ -221,7 +221,7 @@ fn user_update_order_works() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
 				min_fulfillment_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
@@ -237,7 +237,7 @@ fn user_update_order_only_works_for_valid_account() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3, 2).unwrap()
+			FixedU128::checked_from_rational(3, 2).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_err!(
@@ -245,7 +245,7 @@ fn user_update_order_only_works_for_valid_account() {
 				RuntimeOrigin::signed(ACCOUNT_1),
 				order_id,
 				15 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_integer(2u32).unwrap(),
+				FixedU128::checked_from_integer(2u32).unwrap(),
 			),
 			Error::<Runtime>::Unauthorised
 		);
@@ -260,7 +260,7 @@ fn user_cancel_order_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap()
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::user_cancel_order(
@@ -292,7 +292,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap()
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 		));
 
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -310,7 +310,7 @@ fn user_cancel_order_only_works_for_valid_account() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -326,7 +326,7 @@ fn fill_order_full_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap()
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		// verify fulfill runs
@@ -388,7 +388,7 @@ fn fill_order_full_checks_asset_in_for_fulfiller() {
 			CurrencyId::Native,
 			DEV_AUSD_CURRENCY_ID,
 			400 * CURRENCY_NATIVE_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap()
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		// verify fulfill runs
@@ -408,7 +408,7 @@ fn place_order_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -421,7 +421,7 @@ fn place_order_works() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -436,7 +436,7 @@ fn place_order_works() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -464,7 +464,7 @@ fn place_order_works() {
 				currency_out: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				min_fulfillment_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			})
 		);
 	})
@@ -478,7 +478,7 @@ fn place_order_bases_max_sell_off_buy() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			10 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -491,7 +491,7 @@ fn place_order_bases_max_sell_off_buy() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
 			})
@@ -506,7 +506,7 @@ fn place_order_bases_max_sell_off_buy() {
 				currency_out: DEV_USDT_CURRENCY_ID,
 				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
 				min_fulfillment_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			})
 		);
 	})
@@ -520,7 +520,7 @@ fn ensure_nonce_updates_order_correctly() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
 		));
 		assert_ok!(OrderBook::place_order(
@@ -528,7 +528,7 @@ fn ensure_nonce_updates_order_correctly() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
 		));
 		let [(order_id_0, _), (order_id_1, _)] = get_account_orders(ACCOUNT_0)
@@ -547,7 +547,7 @@ fn place_order_requires_no_min_buy() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			1 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			1 * CURRENCY_AUSD_DECIMALS,
 		),);
 	})
@@ -562,7 +562,7 @@ fn create_order_requires_min_buy() {
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
 				1 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			),
 			Error::<Runtime>::InsufficientOrderSize
 		);
@@ -578,7 +578,7 @@ fn place_order_requires_pair_with_defined_min() {
 				DEV_AUSD_CURRENCY_ID,
 				FOREIGN_CURRENCY_NO_MIN_ID,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				1 * CURRENCY_AUSD_DECIMALS,
 			),
 			Error::<Runtime>::InvalidTradingPair
@@ -595,7 +595,7 @@ fn place_order_requires_non_zero_min_fulfillment() {
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				0
 			),
 			Error::<Runtime>::InvalidMinimumFulfillment
@@ -612,7 +612,7 @@ fn place_order_min_fulfillment_cannot_be_less_than_buy() {
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				11 * CURRENCY_AUSD_DECIMALS
 			),
 			Error::<Runtime>::InvalidBuyAmount
@@ -629,7 +629,7 @@ fn place_order_requires_non_zero_price() {
 				DEV_AUSD_CURRENCY_ID,
 				DEV_USDT_CURRENCY_ID,
 				100 * CURRENCY_AUSD_DECIMALS,
-				Rate::zero(),
+				FixedU128::zero(),
 				100 * CURRENCY_AUSD_DECIMALS
 			),
 			Error::<Runtime>::InvalidMaxPrice
@@ -645,7 +645,7 @@ fn cancel_order_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			100 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			100 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -690,7 +690,7 @@ fn update_order_works_with_order_increase() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -698,7 +698,7 @@ fn update_order_works_with_order_increase() {
 			ACCOUNT_0,
 			order_id,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_integer(2u32).unwrap(),
+			FixedU128::checked_from_integer(2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		assert_eq!(
@@ -710,7 +710,7 @@ fn update_order_works_with_order_increase() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
@@ -725,7 +725,7 @@ fn update_order_works_with_order_increase() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_integer(2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
 			})
@@ -758,7 +758,7 @@ fn update_order_works_with_order_increase() {
 				account: ACCOUNT_0,
 				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				sell_rate_limit: Rate::checked_from_integer(2u32).unwrap()
+				sell_rate_limit: FixedU128::checked_from_integer(2u32).unwrap()
 			})
 		);
 	})
@@ -774,7 +774,7 @@ fn update_order_updates_min_fulfillment() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -782,7 +782,7 @@ fn update_order_updates_min_fulfillment() {
 			ACCOUNT_0,
 			order_id,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			6 * CURRENCY_AUSD_DECIMALS
 		));
 		assert_eq!(
@@ -795,7 +795,7 @@ fn update_order_updates_min_fulfillment() {
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
 			})
@@ -811,7 +811,7 @@ fn update_order_updates_min_fulfillment() {
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 
-				max_sell_rate: Rate::checked_from_rational(3u32, 2u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
 			})
@@ -826,7 +826,7 @@ fn update_order_updates_min_fulfillment() {
 				account: ACCOUNT_0,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
-				sell_rate_limit: Rate::checked_from_rational(3u32, 2u32).unwrap()
+				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 			})
 		);
 	})
@@ -840,7 +840,7 @@ fn update_order_works_with_order_decrease() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -848,7 +848,7 @@ fn update_order_works_with_order_decrease() {
 			ACCOUNT_0,
 			order_id,
 			10 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_integer(1u32).unwrap(),
+			FixedU128::checked_from_integer(1u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		assert_eq!(
@@ -860,7 +860,7 @@ fn update_order_works_with_order_decrease() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_integer(1u32).unwrap(),
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
 			})
@@ -875,7 +875,7 @@ fn update_order_works_with_order_decrease() {
 				asset_out_id: DEV_USDT_CURRENCY_ID,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: Rate::checked_from_integer(1u32).unwrap(),
+				max_sell_rate: FixedU128::checked_from_integer(1u32).unwrap(),
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
 				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
 			})
@@ -908,7 +908,7 @@ fn update_order_works_with_order_decrease() {
 				account: ACCOUNT_0,
 				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
 				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				sell_rate_limit: Rate::checked_from_integer(1u32).unwrap()
+				sell_rate_limit: FixedU128::checked_from_integer(1u32).unwrap()
 			})
 		);
 	})
@@ -922,7 +922,7 @@ fn update_order_requires_no_min_buy() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -930,7 +930,7 @@ fn update_order_requires_no_min_buy() {
 			ACCOUNT_0,
 			order_id,
 			1 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_integer(1u32).unwrap(),
+			FixedU128::checked_from_integer(1u32).unwrap(),
 			1 * CURRENCY_AUSD_DECIMALS
 		),);
 	})
@@ -944,7 +944,7 @@ fn user_update_order_requires_min_buy() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -953,7 +953,7 @@ fn user_update_order_requires_min_buy() {
 				RuntimeOrigin::signed(ACCOUNT_0),
 				order_id,
 				1 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_integer(1u32).unwrap(),
+				FixedU128::checked_from_integer(1u32).unwrap(),
 			),
 			Error::<Runtime>::InsufficientOrderSize
 		);
@@ -968,7 +968,7 @@ fn update_order_requires_non_zero_min_fulfillment() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -977,7 +977,7 @@ fn update_order_requires_non_zero_min_fulfillment() {
 				ACCOUNT_0,
 				order_id,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_integer(1u32).unwrap(),
+				FixedU128::checked_from_integer(1u32).unwrap(),
 				0
 			),
 			Error::<Runtime>::InvalidMinimumFulfillment
@@ -993,7 +993,7 @@ fn update_order_min_fulfillment_cannot_be_less_than_buy() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1002,7 +1002,7 @@ fn update_order_min_fulfillment_cannot_be_less_than_buy() {
 				ACCOUNT_0,
 				order_id,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::checked_from_integer(1u32).unwrap(),
+				FixedU128::checked_from_integer(1u32).unwrap(),
 				15 * CURRENCY_AUSD_DECIMALS,
 			),
 			Error::<Runtime>::InvalidBuyAmount
@@ -1018,7 +1018,7 @@ fn update_order_requires_non_zero_price() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1027,7 +1027,7 @@ fn update_order_requires_non_zero_price() {
 				ACCOUNT_0,
 				order_id,
 				10 * CURRENCY_AUSD_DECIMALS,
-				Rate::zero(),
+				FixedU128::zero(),
 				15 * CURRENCY_AUSD_DECIMALS,
 			),
 			Error::<Runtime>::InvalidMaxPrice
@@ -1043,7 +1043,7 @@ fn get_order_details_works() {
 			DEV_AUSD_CURRENCY_ID,
 			DEV_USDT_CURRENCY_ID,
 			15 * CURRENCY_AUSD_DECIMALS,
-			Rate::checked_from_rational(3u32, 2u32).unwrap(),
+			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			5 * CURRENCY_AUSD_DECIMALS
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
