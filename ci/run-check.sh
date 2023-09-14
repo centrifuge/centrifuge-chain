@@ -13,11 +13,11 @@ case $TARGET in
     cargo build --release "$@"
     ;;
 
-  tests-general)
+  test-general)
     RUST_MIN_STACK=8388608 cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
-  tests-integration)
+  test-integration)
     RUST_MIN_STACK=8388608 cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
