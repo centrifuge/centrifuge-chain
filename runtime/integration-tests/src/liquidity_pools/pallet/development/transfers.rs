@@ -22,28 +22,45 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance, PoolId, TrancheId};
+use cfg_traits::{liquidity_pools::Codec, TryConvert};
 use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	fixed_point::Rate,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
-use development_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
-use frame_support::assert_ok;
+use cfg_utils::vec_to_fixed_array;
+use codec::Encode;
+use development_runtime::{
+	Balances, LiquidityPoolsGateway, LocationToAccountId, OrmlAssetRegistry, OrmlTokens,
+	Runtime as DevelopmentRuntime, RuntimeCall as DevelopmentRuntimeCall, RuntimeOrigin, System,
+	XTokens, XcmTransactor,
+};
+use frame_support::{assert_ok, traits::fungible::Mutate};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use pallet_liquidity_pools::Message;
+use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use runtime_common::{
+	account_conversion::AccountConverter,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
 };
+use sp_core::{bounded::BoundedVec, ConstU32, H160};
 use sp_runtime::traits::BadOrigin;
 use xcm::{
 	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId, WeightLimit},
-	VersionedMultiLocation,
+	v3::{OriginKind, Weight},
+	VersionedMultiLocation, VersionedXcm,
 };
 use xcm_emulator::TestExt;
 
 use crate::liquidity_pools::pallet::{
 	development::{
-		setup::{centrifuge_account, cfg, moonbeam_account, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM},
+		setup::{
+			centrifuge_account, cfg, dollar, moonbeam_account, ALICE, BOB, CHARLIE,
+			PARA_ID_MOONBEAM,
+		},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::register_ausd,
 	},
@@ -60,6 +77,89 @@ an unexpectedly big change that would have a big impact on the weights and fees 
 which would go unnoticed and untreated otherwise.
 
  */
+
+#[test]
+fn incoming_xcm() {
+	TestNet::reset();
+
+	let test_address = H160::from_low_u64_be(345654);
+	let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddCurrency {
+		currency: 0,
+		evm_address: test_address.0,
+	};
+
+	let lp_gateway_msg = BoundedVec::<
+		u8,
+		<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::MaxIncomingMessageSize,
+	>::try_from(msg.serialize())
+	.expect("msg should convert to BoundedVec");
+
+	let call = DevelopmentRuntimeCall::LiquidityPoolsGateway(
+		pallet_liquidity_pools_gateway::Call::process_msg {
+			msg: lp_gateway_msg,
+		},
+	);
+
+	let cfg_in_sibling = CurrencyId::ForeignAsset(12);
+
+	transfer_cfg_to_sibling();
+
+	let dest = MultiLocation::new(1, X1(Parachain(parachains::polkadot::centrifuge::ID)));
+
+	Development::execute_with(|| {
+		assert_ok!(LiquidityPoolsGateway::add_relayer(
+			RuntimeOrigin::root(),
+			DomainAddress::EVM(
+				1282,
+				H160::from_slice(&BOB.as_ref()[0..20]).to_fixed_bytes()
+			)
+		));
+	});
+
+	Moonbeam::execute_with(|| {
+		XcmTransactor::set_transact_info(
+			RuntimeOrigin::root(),
+			Box::new(dest.into()),
+			Default::default(),
+			Default::default(),
+			Default::default(),
+		)?;
+
+		XcmTransactor::set_fee_per_second(
+			RuntimeOrigin::root(),
+			Box::new(VersionedMultiLocation::V3(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::polkadot::centrifuge::ID),
+					general_key(parachains::polkadot::centrifuge::CFG_KEY),
+				),
+			))),
+			100,
+		)
+	});
+
+	Moonbeam::execute_with(|| {
+		assert_ok!(XcmTransactor::transact_through_signed(
+			RuntimeOrigin::signed(BOB.into()),
+			Box::new(dest.into()),
+			CurrencyPayment {
+				currency: Currency::AsCurrencyId(cfg_in_sibling),
+				fee_amount: Some(155548480000000000),
+			},
+			call.encode().into(),
+			TransactWeights {
+				transact_required_weight_at_most: Weight::from_all(12530000000),
+				overall_weight: Some(Weight::from_all(15530000000)),
+			},
+		));
+	});
+
+	Development::execute_with(|| {
+		let events = System::events();
+
+		assert!(events.len() > 0)
+	});
+}
 
 #[test]
 fn transfer_cfg_to_sibling() {
@@ -89,7 +189,22 @@ fn transfer_cfg_to_sibling() {
 		},
 	};
 
+	let location = MultiLocation {
+		parents: 1,
+		interior: X2(
+			Parachain(PARA_ID_MOONBEAM),
+			AccountId32 {
+				network: None,
+				id: BOB.into(),
+			},
+		),
+	};
+
+	let bob_acc =
+		AccountConverter::<DevelopmentRuntime, LocationToAccountId>::try_convert(location).unwrap();
+
 	Development::execute_with(|| {
+		assert_ok!(Balances::mint_into(&bob_acc.into(), 1000 * dollar(18)));
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&moonbeam_account()), 0);
 

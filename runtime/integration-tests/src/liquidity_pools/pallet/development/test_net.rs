@@ -62,7 +62,7 @@ decl_test_network! {
 			// Be sure to use `parachains::polkadot::centrifuge::ID`
 			(2031, Development),
 			// Be sure to use `PARA_ID_MOONBEAM`
-			(2023, Moonbeam),
+			(1000, Moonbeam),
 		],
 	}
 }

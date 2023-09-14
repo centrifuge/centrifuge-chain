@@ -57,6 +57,8 @@ pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
 
+	use frame_support::traits::OriginTrait;
+
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
 		MalformedMessage, MalformedSourceAddress, MalformedSourceAddressLength,
@@ -148,6 +150,12 @@ pub mod pallet {
 			message: Vec<u8>,
 			domain: Domain,
 		},
+
+		/// An incoming message has been received.
+		IncomingMessageReceived { message: Vec<u8> },
+
+		/// An invalid origin was used for an incoming message.
+		InvalidIncomingMessageOrigin,
 	}
 
 	/// Storage for domain routers.
@@ -328,7 +336,17 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			msg: BoundedVec<u8, T::MaxIncomingMessageSize>,
 		) -> DispatchResult {
-			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
+			Self::deposit_event(Event::IncomingMessageReceived {
+				message: msg.to_vec(),
+			});
+
+			let origin = T::LocalEVMOrigin::ensure_origin(origin).map_err(|e| {
+				Self::deposit_event(Event::InvalidIncomingMessageOrigin);
+
+				e
+			})?;
+
+			let (domain_address, incoming_msg) = match origin {
 				GatewayOrigin::Domain(domain_address) => {
 					Pallet::<T>::validate(domain_address, msg)?
 				}

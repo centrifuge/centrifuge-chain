@@ -18,6 +18,7 @@ use cfg_types::{
 	EVMChainId, ParaId,
 };
 use frame_support::sp_std::marker::PhantomData;
+use sp_core::H160;
 use sp_runtime::traits::Convert;
 use xcm::v3::{
 	Junction::{AccountId32, AccountKey20, GeneralKey, Parachain},
@@ -99,6 +100,36 @@ where
 				} => {
 					let evm_id = ParaAsEvmChain::try_convert(para).map_err(|_| location)?;
 					let domain_address = DomainAddress::EVM(evm_id, key);
+
+					if pallet_liquidity_pools_gateway::Pallet::<Runtime>::relayer(
+						Domain::EVM(evm_id),
+						&domain_address,
+					)
+					.is_some()
+					{
+						Ok(pallet_liquidity_pools_gateway::GatewayOrigin::AxelarRelay(
+							domain_address,
+						)
+						.into())
+					} else {
+						Err(location)
+					}
+				}
+				// IMPORTANT - This only applies in our integration test environment since the
+				// `Moonbeam` parachain that we setup there is using the same AccountId as we do on
+				// Centrifuge, which is 32 bytes instead of 20.
+				//
+				// !!! REMOVE BEFORE MERGING !!!
+				MultiLocation {
+					parents: 1,
+					interior: X2(Parachain(para), AccountId32 { network: _, id }),
+				} => {
+					let evm_id = ParaAsEvmChain::try_convert(para).map_err(|_| location)?;
+
+					let domain_address = DomainAddress::EVM(
+						evm_id,
+						H160::from_slice(&id.as_ref()[0..20]).to_fixed_bytes(),
+					);
 
 					if pallet_liquidity_pools_gateway::Pallet::<Runtime>::relayer(
 						Domain::EVM(evm_id),

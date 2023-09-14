@@ -25,7 +25,7 @@ pub const TEST_DOMAIN: Domain = Domain::EVM(1284);
 
 /// A PARA ID used for a sibling parachain emulating Moonbeam.
 /// It must be one that doesn't collide with any other in use.
-pub const PARA_ID_MOONBEAM: u32 = 2023;
+pub const PARA_ID_MOONBEAM: u32 = 1000;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
