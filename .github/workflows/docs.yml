@@ -21,13 +21,11 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
-
-      - name: SCcache setup
-        uses: ./.github/actions/sccache-gcloud
-        with:
+          cache: enabled
+          # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}
-          
+          GSA: ${{ secrets.GSA_SCCACHE }}          
+
       - name: Build documentation
         id: build_docs
         run: cargo doc --all --no-deps
