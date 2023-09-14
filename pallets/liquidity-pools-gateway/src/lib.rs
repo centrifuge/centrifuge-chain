@@ -388,9 +388,9 @@ pub mod pallet {
 						Error::<T>::from(MalformedSourceAddress),
 						|source_address| {
 							// NOTE: Axelar simply provides the hexadecimal string of an EVM
-							// address as the `sourceAddress` argument.       Solidity does on the
-							// other side recognize the hex-encoding and encode the hex bytes to
-							//       utf-8 bytes.
+							//       address as the `sourceAddress` argument. Solidity does on the
+							//       other side recognize the hex-encoding and encode the hex bytes
+							//       to utf-8 bytes.
 							//
 							//       Hence, we are reverting this process here.
 							let source_address =
