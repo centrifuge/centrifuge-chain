@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/'
-      - '.github/workflows/tests.yml'
+      - '.github/workflows/sanity-checks.yml'
 name: Sanity checks
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -13,23 +13,15 @@ permissions:
     id-token: write
     contents: read
 jobs:
-  lint-test-build:
-    name: ${{ matrix.target }}${{ format('-{0}, matrix.runtime') || '' }}
+  test-n-lint:
+    name: ${{ matrix.target }}
     runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
-        target: [tests-general, test-integration, 
-                 lint-fmt, lint-clippy, cargo-build, benchmark-check] # ,lint-taplo]
-        include:
-          - target: benchmark-check
-            runtime: development
-          - target: benchmark-check
-            runtime: altair
-          - target: benchmark-check
-            runtime: centrifuge
+        target: [test-general, test-integration, 
+                 lint-fmt, lint-clippy, cargo-build] # ,lint-taplo]
     env:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
-      # SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
       - name: Check out code
@@ -39,29 +31,28 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
-
-      # - name: Swatinem rust cache setup
-      #   uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191 # 2.6.0
-      #   with:
-      #     prefix-key: cache
-      #     shared-key: cargo-tests
-      #     # cache-on-failure: "true"
-      #     # save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: SCcache setup
-        uses: ./.github/actions/sccache-gcloud
-        with:
-          GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}
+          setup_cache: true
+          cache_type: sccache_gcloud
 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh 
         env:
           TARGET: ${{ matrix.target }}
-          RUNTIME: ${{ matrix.runtime }}
+          # RUNTIME: ${{ matrix.runtime }}
 
-
-      # - name: Run tests
-      #   run: ./ci/script.sh
-      #   env:
-      #     TARGET: ${{ matrix.target }}
+  benchmark-check:
+    name: bench-${{ matrix.runtime }}
+    runs-on: ubuntu-latest-4-cores
+    strategy:
+      matrix:
+        runtime: [development, altair, centrifuge]
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2      
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh 
+        env:
+          TARGET: benchmark-check
+          RUNTIME: ${{ matrix.runtime }}      

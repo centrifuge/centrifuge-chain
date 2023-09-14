@@ -33,20 +33,13 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
-
+      
+      # sccache does not work inside the srtool container
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
         with:
           prefix-key: build
           shared-key: wasm
           # save-if: ${{ github.ref == 'refs/heads/master' }}
-
-    # TEST 2: Sccache with Google Buckets
-    # FAILED: does not work inside the srtool container
-      # - name: SCcache setup
-      #   uses: ./.github/actions/sccache-gcloud
-      #   with:
-      #     GWIP: ${{ secrets.GWIP_SCCACHE }}
-      #     GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Setup build options
         id: buildopt

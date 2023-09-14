@@ -3,8 +3,16 @@ description: cleanup and Rust Tools setup
 inputs:
   RUST_TOOLCHAIN:
     description: toolchain version
-    required: false
     default: "1.66"
+  cache:
+    description: cache type (enabled if set)
+    default: "disabled"
+  GWIP:
+    description: "Google Workload identity provider"
+    default: ''
+  GSA:
+    description: "Google Service Account"
+    default: ''
 runs:
   using: composite
   steps:
@@ -25,10 +33,16 @@ runs:
       with:
         toolchain: ${{ inputs.RUST_TOOLCHAIN }}
         default: true        
-    # - name: Install Rust Toolchain
-    #   shell: bash
-    #   id: install_toolchain
-    #   env:
-    #     RUST_TOOLCHAIN: inputs.RUST_TOOLCHAIN
-    #   run: |
-    #     ./scripts/install_toolchain.sh
+
+    - name: SCcache setup
+      if: ${{ inputs.cache_type == 'enabled' }}
+      uses: ./.github/actions/sccache-gcloud
+      with:
+        GWIP: ${{ secrets.GWIP_SCCACHE }}
+        GSA: ${{ secrets.GSA_SCCACHE }}
+    
+    - name: setup Rust sccache wrapper
+      shell: sh
+      run: echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
+
+
