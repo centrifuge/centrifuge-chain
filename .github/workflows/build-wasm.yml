@@ -14,8 +14,8 @@ jobs:
         # To test until I get one right
         # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
         # package: [centrifuge-runtime, altair-runtime]
-        target: [build-runtime-fast, build-runtime-testnet, build-runtime-fast]
-        package: [altair-runtime]
+        target: [build-runtime, build-runtime-testnet, build-runtime-fast]
+        package: [altair-runtime, centrifuge-runtime]
         rust_version: ["1.66.0"]
         exclude:
           - target: "build-runtime-testnet"
@@ -37,7 +37,7 @@ jobs:
       # sccache does not work inside the srtool container
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
         with:
-          prefix-key: build
+          prefix-key: build #-${{ matrix.package }}
           shared-key: wasm
           # save-if: ${{ github.ref == 'refs/heads/master' }}
 
