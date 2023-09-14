@@ -14,12 +14,19 @@ permissions:
     contents: read
 jobs:
   lint-test-build:
-    name: ${{ matrix.target }}
+    name: ${{ matrix.target }}${{ format('-{0}, matrix.runtime') || '' }}
     runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
         target: [tests-general, test-integration, 
                  lint-fmt, lint-clippy, cargo-build, benchmark-check] # ,lint-taplo]
+        include:
+          - target: benchmark-check
+            runtime: development
+          - target: benchmark-check
+            runtime: altair
+          - target: benchmark-check
+            runtime: centrifuge
     env:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
       # SCCACHE_GHA_ENABLED: "true"
@@ -51,6 +58,7 @@ jobs:
         run: ./ci/run-check.sh 
         env:
           TARGET: ${{ matrix.target }}
+          RUNTIME: ${{ matrix.runtime }}
 
 
       # - name: Run tests
