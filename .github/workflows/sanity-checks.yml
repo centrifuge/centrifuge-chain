@@ -32,7 +32,8 @@ jobs:
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
           setup_cache: true
-          cache_type: sccache_gcloud
+          cache: enabled
+          # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 
@@ -59,7 +60,7 @@ jobs:
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
           setup_cache: true
-          cache_type: sccache_gcloud
+          cache: enabled
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
 

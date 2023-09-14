@@ -35,13 +35,14 @@ runs:
         default: true        
 
     - name: SCcache setup
-      if: ${{ inputs.cache_type == 'enabled' }}
+      if: ${{ inputs.cache == 'enabled' }}
       uses: ./.github/actions/sccache-gcloud
       with:
         GWIP: ${{ inputs.GWIP }}
         GSA: ${{ inputs.GSA }}
     
     - name: setup Rust sccache wrapper
+      if: ${{ inputs.cache == 'enabled' }}
       shell: sh
       run: echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
 
