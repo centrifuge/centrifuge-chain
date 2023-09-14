@@ -38,8 +38,8 @@ runs:
       if: ${{ inputs.cache_type == 'enabled' }}
       uses: ./.github/actions/sccache-gcloud
       with:
-        GWIP: ${{ secrets.GWIP_SCCACHE }}
-        GSA: ${{ secrets.GSA_SCCACHE }}
+        GWIP: ${{ inputs.GWIP }}
+        GSA: ${{ inputs.GSA }}
     
     - name: setup Rust sccache wrapper
       shell: sh

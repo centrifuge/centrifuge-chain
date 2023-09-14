@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
-        target: [test-general, test-integration, 
+        target: [test-general, test-integration,
                  lint-fmt, lint-clippy, cargo-build] # ,lint-taplo]
     env:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
@@ -27,15 +27,17 @@ jobs:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
-      - name: Prep build on Ubuntu
+      - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
           setup_cache: true
           cache_type: sccache_gcloud
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Runing cargo ${{ matrix.target }}
-        run: ./ci/run-check.sh 
+        run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
           # RUNTIME: ${{ matrix.runtime }}
@@ -50,9 +52,19 @@ jobs:
       RUST_TOOLCHAIN: "nightly-2022-11-14"
     steps:
       - name: Check out code
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2      
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          setup_cache: true
+          cache_type: sccache_gcloud
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
       - name: Runing cargo ${{ matrix.target }}
-        run: ./ci/run-check.sh 
+        run: ./ci/run-check.sh
         env:
           TARGET: benchmark-check
-          RUNTIME: ${{ matrix.runtime }}      
+          RUNTIME: ${{ matrix.runtime }}
