@@ -214,7 +214,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
  "log",
  "moonbeam-relay-encoder",
@@ -605,6 +605,7 @@ version = "0.1.0"
 dependencies = [
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "ethabi 18.0.0",
  "fp-evm",
  "frame-benchmarking",
@@ -1079,7 +1080,7 @@ dependencies = [
  "frame-system",
  "futures",
  "getrandom 0.2.10",
- "hex-literal",
+ "hex-literal 0.3.4",
  "jsonrpsee",
  "log",
  "pallet-anchors",
@@ -1161,7 +1162,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
  "log",
  "moonbeam-relay-encoder",
@@ -1360,7 +1361,7 @@ dependencies = [
  "cfg-utils",
  "frame-support",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-asset-registry",
  "parity-scale-codec 3.6.4",
  "scale-info",
@@ -1378,6 +1379,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "hex",
  "pallet-aura",
  "pallet-timestamp",
  "parity-scale-codec 3.6.4",
@@ -2682,7 +2684,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.24"
+version = "0.10.27"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2709,7 +2711,7 @@ dependencies = [
  "frame-try-runtime",
  "getrandom 0.2.10",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "liquidity-pools-gateway-routers",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
@@ -4461,6 +4463,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
 
 [[package]]
+name = "hex-literal"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
+
+[[package]]
 name = "hkdf"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5048,7 +5056,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "kusama-runtime-constants",
  "log",
  "pallet-authority-discovery",
@@ -7679,9 +7687,12 @@ dependencies = [
  "cfg-mocks",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
+ "hex-literal 0.4.1",
  "pallet-balances",
  "parity-scale-codec 3.6.4",
  "rand 0.8.5",
@@ -9654,7 +9665,7 @@ version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=097ffd245c42aeff28cf80f8a3568e1bee2e7da7#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "bitvec 1.0.1",
- "hex-literal",
+ "hex-literal 0.3.4",
  "parity-scale-codec 3.6.4",
  "polkadot-core-primitives",
  "polkadot-parachain",
@@ -9720,7 +9731,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -9924,7 +9935,7 @@ dependencies = [
  "frame-support",
  "frame-system-rpc-runtime-api",
  "futures",
- "hex-literal",
+ "hex-literal 0.3.4",
  "kusama-runtime",
  "kvdb",
  "kvdb-rocksdb",
@@ -10817,7 +10828,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -10978,7 +10989,7 @@ dependencies = [
  "fp-self-contained",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "log",
  "orml-asset-registry",
  "orml-oracle",
@@ -15410,7 +15421,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "log",
  "pallet-authority-discovery",
  "pallet-authorship",

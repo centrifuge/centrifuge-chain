@@ -18,8 +18,8 @@ pub type Balance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const LENGTH_SOURCE_CHAIN: usize = 8;
-pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum";
+pub const LENGTH_SOURCE_CHAIN: usize = 10;
+pub const SOURCE_CHAIN: [u8; LENGTH_SOURCE_CHAIN] = *b"ethereum-2";
 pub const SOURCE_CHAIN_EVM_ID: u64 = 1;
 
 pub const LENGTH_SOURCE_ADDRESS: usize = 20;

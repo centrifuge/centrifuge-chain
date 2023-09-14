@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hex = { version = "0.4.3", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+hex = { version = "0.4.3", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -25,6 +25,7 @@ precompile-utils = { git = "https://github.com/PureStake/moonbeam", default-feat
 
 cfg-traits = { path = "../../../libs/traits", default-features = false }
 cfg-types = { path = "../../../libs/types", default-features = false }
+cfg-utils = { path = "../../../libs/utils", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
 
 [features]
@@ -44,6 +45,7 @@ std = [
   "pallet-liquidity-pools-gateway/std",
   "cfg-types/std",
   "cfg-traits/std",
+  "cfg-utils/std",
   "ethabi/std",
   "frame-benchmarking/std",
 ]
@@ -51,6 +53,7 @@ runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
@@ -63,6 +66,7 @@ try-runtime = [
   "pallet-liquidity-pools-gateway/try-runtime",
   "cfg-types/try-runtime",
   "cfg-traits/try-runtime",
+  "cfg-utils/try-runtime",
   "pallet-evm/try-runtime",
   "sp-runtime/try-runtime",
 ]

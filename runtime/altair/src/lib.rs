@@ -1416,7 +1416,8 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
-/// A
+/// A stumb inbound queue that does not yet hit the LP logic (before FI we do
+/// not want that) but stores an Event.
 pub struct StumbInboundQueue;
 impl InboundQueue for StumbInboundQueue {
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
