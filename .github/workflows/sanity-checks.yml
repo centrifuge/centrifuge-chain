@@ -48,7 +48,9 @@ jobs:
           GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Runing cargo ${{ matrix.target }}
-        run: ./ci/run-check.sh ${{ matrix.target }}
+        run: ./ci/run-check.sh 
+        env:
+          TARGET: ${{ matrix.target }}
 
 
       # - name: Run tests

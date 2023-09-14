@@ -8,7 +8,7 @@ jobs:
       pull-requests: write
       id-token: write
     name: benchmark
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
       RUST_TOOLCHAIN: "1.66.0"
@@ -58,7 +58,7 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
-
+          
       - name: SCcache setup
         uses: ./.github/actions/sccache-gcloud
         with:
