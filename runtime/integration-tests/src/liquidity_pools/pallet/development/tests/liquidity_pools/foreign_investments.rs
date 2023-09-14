@@ -1821,13 +1821,6 @@ mod mismatching_currencies {
 		});
 	}
 
-	fn redeem_with_swaps_happy_path() {
-		// increase
-		// process
-		// fulfill swap order
-		todo!()
-	}
-
 	#[test]
 	/// Verify handling concurrent swap orders works if
 	/// * Invest is swapping from pool to foreign after decreasing an
@@ -2072,10 +2065,6 @@ mod mismatching_currencies {
 		});
 	}
 
-	// increase invest --> swap into pool
-	//
-	// increase redeem
-	// process redemption --> swap into foreign
 	#[test]
 	/// Verify handling concurrent swap orders works if
 	/// * Invest is swapping from foreign to pool after increasing
@@ -2385,21 +2374,260 @@ mod mismatching_currencies {
 		});
 	}
 
+	/// 1. increase initial invest in pool currency
+	/// 2. increase invest in foreign
+	/// 3. process invest
+	/// 4. fulfill swap order
+	#[test]
 	fn fulfill_invest_swap_order_requires_collect() {
-		todo!()
-		// increase initial invest in pool currency
-		// increase invest in foreign
-		// process invest
-		// fulfill swap order
+		TestNet::reset();
+		Development::execute_with(|| {
+			// Increase invest setup
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let investor: AccountId =
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
+			let trader: AccountId = ALICE.into();
+			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
+			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+			let pool_currency_decimals = currency_decimals::AUSD;
+			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let swap_order_id = 1;
+			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
+			// invest in pool currency to reach `InvestmentOngoing` quickly
+			do_initial_increase_investment(
+				pool_id,
+				invest_amount_pool_denominated,
+				investor.clone(),
+				pool_currency,
+			);
+
+			// USDT setup
+			register_usdt();
+			enable_liquidity_pool_transferability(foreign_currency);
+			let invest_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					invest_amount_pool_denominated,
+				)
+				.unwrap();
+			assert_ok!(Tokens::mint_into(
+				pool_currency,
+				&trader,
+				invest_amount_pool_denominated
+			));
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
+				pool_currency,
+				foreign_currency,
+				1
+			));
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
+				foreign_currency,
+				pool_currency,
+				1
+			));
+
+			// Increase invest have
+			// InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing
+			let msg = LiquidityPoolMessage::IncreaseInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(foreign_currency),
+				amount: invest_amount_foreign_denominated,
+			};
+			assert_ok!(LiquidityPools::submit(
+				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+				msg.clone()
+			));
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+					swap: Swap {
+						amount: invest_amount_pool_denominated,
+						currency_in: pool_currency,
+						currency_out: foreign_currency,
+					},
+					invest_amount: invest_amount_pool_denominated
+				}
+			);
+			// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
+			// tokens
+			assert_ok!(Investments::process_invest_orders(default_investment_id()));
+			assert_ok!(Investments::invest_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice {
+					of_amount: Perquintill::from_percent(50),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
+				}
+			));
+			assert!(Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+
+			// Fulfill swap order should implicitly collect, otherwise the unprocessed
+			// investment amount is unknown
+			assert_ok!(OrderBook::fill_order_full(
+				RuntimeOrigin::signed(trader.clone()),
+				swap_order_id
+			));
+			assert!(!Investments::investment_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert_eq!(
+				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				InvestState::InvestmentOngoing {
+					invest_amount: invest_amount_pool_denominated / 2 * 3
+				}
+			);
+		});
 	}
 
+	/// 1. increase initial redeem
+	/// 2. process partial redemption
+	/// 3. collect
+	/// 4. process redemption
+	/// 5. fulfill swap order should implicitly collect
+	#[test]
 	fn fulfill_redeem_swap_order_requires_collect() {
-		// increase initial redeem
-		// process redemption
-		// collect partial
-		// collect partial
-		// fulfill swap order
-		todo!()
+		TestNet::reset();
+		Development::execute_with(|| {
+			// Increase redeem setup
+			setup_pre_requirements();
+			let pool_id = DEFAULT_POOL_ID;
+			let investor: AccountId =
+				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
+					DOMAIN_MOONBEAM,
+					BOB,
+				));
+			let trader: AccountId = ALICE.into();
+			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
+			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+			let pool_currency_decimals = currency_decimals::AUSD;
+			let redeem_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let swap_order_id = 1;
+			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
+			let pool_account =
+				pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+			assert_ok!(Tokens::mint_into(
+				pool_currency,
+				&pool_account,
+				redeem_amount_pool_denominated
+			));
+
+			// USDT setup
+			register_usdt();
+			enable_liquidity_pool_transferability(foreign_currency);
+			let redeem_amount_foreign_denominated: u128 =
+				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+					foreign_currency,
+					pool_currency,
+					redeem_amount_pool_denominated,
+				)
+				.unwrap();
+			assert_ok!(Tokens::mint_into(
+				foreign_currency,
+				&trader,
+				redeem_amount_foreign_denominated
+			));
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
+				pool_currency,
+				foreign_currency,
+				1
+			));
+			assert_ok!(OrderBook::add_trading_pair(
+				RuntimeOrigin::root(),
+				foreign_currency,
+				pool_currency,
+				1
+			));
+
+			do_initial_increase_redemption(
+				pool_id,
+				redeem_amount_pool_denominated,
+				investor.clone(),
+				foreign_currency,
+			);
+
+			// Process 50% of redemption at 50% rate, i.e. 1 pool currency = 2 tranche
+			// tokens
+			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+			assert_ok!(Investments::redeem_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice {
+					of_amount: Perquintill::from_percent(50),
+					price: Quantity::checked_from_rational(1, 2).unwrap(),
+				}
+			));
+			assert_noop!(
+				OrderBook::fill_order_full(RuntimeOrigin::signed(trader.clone()), swap_order_id),
+				pallet_order_book::Error::<DevelopmentRuntime>::OrderNotFound
+			);
+			assert!(Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert_ok!(Investments::collect_redemptions_for(
+				RuntimeOrigin::signed(CHARLIE.into()),
+				investor.clone(),
+				default_investment_id()
+			));
+			assert_eq!(
+				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				RedeemState::RedeemingAndActiveSwapIntoForeignCurrency {
+					redeem_amount: redeem_amount_pool_denominated / 2,
+					swap: Swap {
+						amount: redeem_amount_foreign_denominated / 4,
+						currency_in: foreign_currency,
+						currency_out: pool_currency
+					}
+				}
+			);
+
+			// Process remaining redemption at 25% rate, i.e. 1 pool currency = 4 tranche
+			// tokens
+			assert_ok!(Investments::process_redeem_orders(default_investment_id()));
+			assert_ok!(Investments::redeem_fulfillment(
+				default_investment_id(),
+				FulfillmentWithPrice {
+					of_amount: Perquintill::from_percent(100),
+					price: Quantity::checked_from_rational(1, 4).unwrap(),
+				}
+			));
+			assert!(Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			assert_ok!(OrderBook::fill_order_full(
+				RuntimeOrigin::signed(trader.clone()),
+				swap_order_id
+			));
+			assert!(!Investments::redemption_requires_collect(
+				&investor,
+				default_investment_id()
+			));
+			// TODO: Assert ExecutedCollectRedeem was not dispatched
+			assert_eq!(
+				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
+				RedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount: redeem_amount_foreign_denominated / 4,
+					swap: Swap {
+						amount: redeem_amount_foreign_denominated / 8,
+						currency_in: foreign_currency,
+						currency_out: pool_currency
+					}
+				}
+			);
+		});
 	}
 }
 

@@ -778,6 +778,14 @@ impl<T: Config> Pallet<T> {
 					},
 				);
 			}
+			// Edge case: Only occurs as result of implicit collect when fulfilling a swap
+			// order. At this point, swap is fulfilled but not propagated to the state yet as
+			// collecting has to happen beforehand.
+			Some(swap_order_id)
+				if !T::TokenSwaps::is_active(swap_order_id) && !cancel_swap_order =>
+			{
+				Self::kill_swap_order(who, investment_id)?;
+			}
 			// Swap order either has not existed at all or was just cancelled
 			_ => {
 				let swap_order_id = T::TokenSwaps::place_order(
