@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hex = { version = "0.4.3", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+hex = { version = "0.4.3", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -24,8 +24,8 @@ pallet-evm = { git = "https://github.com/PureStake/frontier", default-features =
 precompile-utils = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 cfg-traits = { path = "../../../libs/traits", default-features = false }
-cfg-utils = { path = "../../../libs/utils", default-features = false }
 cfg-types = { path = "../../../libs/types", default-features = false }
+cfg-utils = { path = "../../../libs/utils", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
 
 [features]
