@@ -19,7 +19,7 @@ use cfg_traits::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use codec::{EncodeLike, FullCodec};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
 use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
 use sp_std::{convert::TryInto, vec::Vec};
@@ -37,11 +37,31 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum RelayerMessageDecodingError {
+	MalformedSourceAddress,
+	MalformedSourceAddressLength,
+	MalformedSourceChain,
+	MalformedSourceChainLength,
+	MalformedMessage,
+}
+
+impl<T: Config> From<RelayerMessageDecodingError> for Error<T> {
+	fn from(value: RelayerMessageDecodingError) -> Self {
+		Error::RelayerMessageDecodingFailed { reason: value }
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
+
 	use super::*;
+	use crate::RelayerMessageDecodingError::{
+		MalformedMessage, MalformedSourceAddress, MalformedSourceAddressLength,
+		MalformedSourceChain, MalformedSourceChainLength,
+	};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -191,7 +211,7 @@ pub mod pallet {
 		/// that triggered the message.
 		/// Decoding that is essential and this error
 		/// signals malforming of the wrapping information.
-		RelayerMessageDecodingFailed,
+		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
 	}
 
 	#[pallet::call]
@@ -323,8 +343,11 @@ pub mod pallet {
 					// sourceAddress) from actual origination chain to the
 					// message bytes, with a length identifier
 					let slice_ref = &mut msg.as_slice();
-					let length_source_chain: usize =
-						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
+					let length_source_chain: usize = Pallet::<T>::try_range(
+						slice_ref,
+						BYTES_U32,
+						Error::<T>::from(MalformedSourceChainLength),
+						|be_bytes_u32| {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
 							// bytes have the right length. I.e. 4 in this case
@@ -333,15 +356,21 @@ pub mod pallet {
 							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
 							})
-						})?;
+						},
+					)?;
 
-					let source_chain =
-						Pallet::<T>::try_range(slice_ref, length_source_chain, |source_chain| {
-							Ok(source_chain.to_vec())
-						})?;
+					let source_chain = Pallet::<T>::try_range(
+						slice_ref,
+						length_source_chain,
+						Error::<T>::from(MalformedSourceChain),
+						|source_chain| Ok(source_chain.to_vec()),
+					)?;
 
-					let length_source_address: usize =
-						Pallet::<T>::try_range(slice_ref, BYTES_U32, |be_bytes_u32| {
+					let length_source_address: usize = Pallet::<T>::try_range(
+						slice_ref,
+						BYTES_U32,
+						Error::<T>::from(MalformedSourceAddressLength),
+						|be_bytes_u32| {
 							let mut bytes = [0u8; BYTES_U32];
 							// NOTE: This can NEVER panic as the `try_range` logic ensures the given
 							// bytes have the right length. I.e. 4 in this case
@@ -350,11 +379,13 @@ pub mod pallet {
 							u32::from_be_bytes(bytes).try_into().map_err(|_| {
 								DispatchError::Other("Expect: usize in wasm is always ge u32")
 							})
-						})?;
+						},
+					)?;
 
 					let source_address = Pallet::<T>::try_range(
 						slice_ref,
 						length_source_address,
+						Error::<T>::from(MalformedSourceAddress),
 						|source_address| {
 							// NOTE: Axelar simply provides the hexadecimal string of an EVM
 							// address as the `sourceAddress` argument.       Solidity does on the
@@ -364,19 +395,24 @@ pub mod pallet {
 							//       Hence, we are reverting this process here.
 							let source_address =
 								cfg_utils::decode_var_source::<BYTES_ACCOUNT_20>(source_address)
-									.ok_or(Error::<T>::MessageDecodingFailed)?;
+									.ok_or(Error::<T>::from(MalformedSourceAddress))?;
 
 							Ok(source_address.to_vec())
 						},
 					)?;
 
-					let origin_msg = Pallet::<T>::try_range(slice_ref, slice_ref.len(), |msg| {
-						BoundedVec::try_from(msg.to_vec()).map_err(|_| {
-							DispatchError::Other(
-								"Remaining bytes smaller vector in the first place. qed.",
-							)
-						})
-					})?;
+					let origin_msg = Pallet::<T>::try_range(
+						slice_ref,
+						slice_ref.len(),
+						Error::<T>::from(MalformedMessage),
+						|msg| {
+							BoundedVec::try_from(msg.to_vec()).map_err(|_| {
+								DispatchError::Other(
+									"Remaining bytes smaller vector in the first place. qed.",
+								)
+							})
+						},
+					)?;
 
 					let origin_domain =
 						T::OriginRecovery::try_convert((source_chain, source_address))?;
@@ -393,15 +429,13 @@ pub mod pallet {
 		pub(crate) fn try_range<'a, D, F>(
 			slice: &mut &'a [u8],
 			next_steps: usize,
+			error: Error<T>,
 			transformer: F,
 		) -> Result<D, DispatchError>
 		where
 			F: Fn(&'a [u8]) -> Result<D, DispatchError>,
 		{
-			ensure!(
-				slice.len() >= next_steps,
-				Error::<T>::RelayerMessageDecodingFailed
-			);
+			ensure!(slice.len() >= next_steps, error);
 
 			let (input, new_slice) = slice.split_at(next_steps);
 			let res = transformer(input)?;

@@ -333,7 +333,7 @@ pub type XcmRouter = (
 
 const MOONBASE_ALPHA_PARA_ID: u32 = 1000;
 /// https://chainlist.org/chain/1287
-const MOONBASE_ALPHA_EVM_ID: u64 = 1282;
+const MOONBASE_ALPHA_EVM_ID: u64 = 1287;
 
 /// A constant way of mapping parachain IDs to EVM-chain IDs
 pub struct ParaToEvm;

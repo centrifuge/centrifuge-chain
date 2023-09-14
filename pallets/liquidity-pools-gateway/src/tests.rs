@@ -40,8 +40,13 @@ mod pallet_internals {
 			let steps = 4usize;
 
 			assert_noop!(
-				Pallet::<Runtime>::try_range(&mut three_bytes.as_slice(), steps, |_| Ok(())),
-				Error::<Runtime>::RelayerMessageDecodingFailed
+				Pallet::<Runtime>::try_range(
+					&mut three_bytes.as_slice(),
+					steps,
+					Error::<Runtime>::MessageDecodingFailed,
+					|_| Ok(())
+				),
+				Error::<Runtime>::MessageDecodingFailed
 			);
 		})
 	}
@@ -52,23 +57,35 @@ mod pallet_internals {
 			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
 			let slice = &mut bytes.as_slice();
 			let steps = 4;
-			let first_section =
-				Pallet::<Runtime>::try_range(slice, steps, |first_section| Ok(first_section))
-					.expect("Slice is long enough");
+			let first_section = Pallet::<Runtime>::try_range(
+				slice,
+				steps,
+				Error::<Runtime>::MessageDecodingFailed,
+				|first_section| Ok(first_section),
+			)
+			.expect("Slice is long enough");
 
 			assert_eq!(first_section, &[1, 2, 3, 4]);
 
 			let steps = 2;
-			let second_section =
-				Pallet::<Runtime>::try_range(slice, steps, |second_section| Ok(second_section))
-					.expect("Slice is long enough");
+			let second_section = Pallet::<Runtime>::try_range(
+				slice,
+				steps,
+				Error::<Runtime>::MessageDecodingFailed,
+				|second_section| Ok(second_section),
+			)
+			.expect("Slice is long enough");
 
 			assert_eq!(&second_section, &[5, 6]);
 
 			let steps = 1;
-			let third_section =
-				Pallet::<Runtime>::try_range(slice, steps, |third_section| Ok(third_section))
-					.expect("Slice is long enough");
+			let third_section = Pallet::<Runtime>::try_range(
+				slice,
+				steps,
+				Error::<Runtime>::MessageDecodingFailed,
+				|third_section| Ok(third_section),
+			)
+			.expect("Slice is long enough");
 
 			assert_eq!(&third_section, &[7]);
 		})
@@ -80,16 +97,23 @@ mod pallet_internals {
 			let bytes = [1, 2, 3, 4, 5, 6, 7u8];
 			let slice = &mut bytes.as_slice();
 			let steps = 4;
-			let first_section =
-				Pallet::<Runtime>::try_range(slice, steps, |first_section| Ok(first_section))
-					.expect("Slice is long enough");
+			let first_section = Pallet::<Runtime>::try_range(
+				slice,
+				steps,
+				Error::<Runtime>::MessageDecodingFailed,
+				|first_section| Ok(first_section),
+			)
+			.expect("Slice is long enough");
 
 			assert_eq!(first_section, &[1, 2, 3, 4]);
 
 			let steps = 1;
-			assert!(Pallet::<Runtime>::try_range(slice, steps, |_| Err::<(), _>(
-				DispatchError::Corruption
-			))
+			assert!(Pallet::<Runtime>::try_range(
+				slice,
+				steps,
+				Error::<Runtime>::MessageDecodingFailed,
+				|_| Err::<(), _>(DispatchError::Corruption)
+			)
 			.is_err());
 			assert_eq!(slice, &[5, 6, 7]);
 		})
@@ -331,12 +355,13 @@ mod process_msg_axelar_relay {
 	use sp_core::bounded::BoundedVec;
 
 	use super::*;
+	use crate::RelayerMessageDecodingError;
 
 	#[test]
 	fn success_from_solidity_payload() {
 		new_test_ext().execute_with(|| {
 			let address = H160::from_slice(&get_test_account_id().as_slice()[..20]);
-			let source_address = hex_literal::hex!["423420Ae467df6e90291fd0252c0A8a637C1e03f"];
+			let source_address = hex_literal::hex!["8503b4452Bf6238cC76CdbEE223b46d7196b1c93"];
 			let domain_address = DomainAddress::EVM(SOURCE_CHAIN_EVM_ID, source_address);
 			let relayer_address = DomainAddress::EVM(0, address.into());
 
@@ -363,10 +388,10 @@ mod process_msg_axelar_relay {
 			let expected_domain_address = domain_address.clone();
 
 			MockOriginRecovery::mock_try_convert(move |origin| {
-				let (source_chain, source_address) = origin;
+				let (source_chain, origin_source_address) = origin;
 
 				assert_eq!(&source_chain, SOURCE_CHAIN.as_slice());
-				assert_eq!(&source_address, source_address.as_slice());
+				assert_eq!(&origin_source_address, source_address.as_slice());
 
 				Ok(expected_domain_address.clone())
 			});
@@ -374,7 +399,7 @@ mod process_msg_axelar_relay {
 			// NOTE: A solidity generated payload. The most important part about this is the new decoding of the address.
 			//       The message was cut out and replaced with a single byte of value 0 in order to decode correctly to this
 			//       mocks message type.
-			let payload = hex::decode("0000000a657468657265756d2d320000002a30783432333432304165343637646636653930323931666430323532633041386136333743316530336600").unwrap();
+			let payload = hex::decode("0000000a657468657265756d2d320000002a30783835303362343435324266363233386343373643646245453232336234366437313936623163393300").unwrap();
 
 			assert_ok!(LiquidityPoolsGateway::process_msg(
 				GatewayOrigin::AxelarRelay(relayer_address).into(),
@@ -469,7 +494,9 @@ mod process_msg_axelar_relay {
 					GatewayOrigin::AxelarRelay(relayer_address).into(),
 					BoundedVec::<u8, MaxIncomingMessageSize>::try_from(msg).unwrap()
 				),
-				Error::<Runtime>::MessageDecodingFailed,
+				Error::<Runtime>::RelayerMessageDecodingFailed {
+					reason: RelayerMessageDecodingError::MalformedSourceAddress
+				},
 			);
 		});
 	}
