@@ -20,7 +20,7 @@ jobs:
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
 
       - name: SCcache setup
         uses: ./.github/actions/sccache-gcloud
