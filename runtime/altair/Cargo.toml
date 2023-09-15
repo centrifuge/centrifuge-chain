@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.33"
+version = "0.10.34"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
