@@ -22,13 +22,12 @@
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	liquidity_pools::{InboundQueue, OutboundQueue},
-	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, StatusNotificationHook,
-	TryConvert,
+	liquidity_pools::OutboundQueue,
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
-	domain_address::{Domain, DomainAddress},
+	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -539,7 +538,8 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type InboundQueue = DummyInboundQueue;
+	type InboundQueue =
+		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
@@ -549,19 +549,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type WeightInfo = ();
-}
-
-/// DummyInboundQueue will be used in the first phase of testing in order to
-/// ensure that no incoming messages will be processed.
-pub struct DummyInboundQueue;
-
-impl InboundQueue for DummyInboundQueue {
-	type Message = LiquidityPoolsMessage;
-	type Sender = DomainAddress;
-
-	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
-		Err(DispatchError::Other("InboundQueue not supported yet"))
-	}
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -1767,18 +1754,6 @@ impl<
 				"Account does not have the TrancheInvestor permission.",
 			))
 		}
-	}
-}
-
-// TODO: Remove when adding pallet_foreign_investments to runtime
-pub struct NoopCollectHook;
-impl StatusNotificationHook for NoopCollectHook {
-	type Error = DispatchError;
-	type Id = cfg_types::investments::ForeignInvestmentInfo<AccountId, TrancheCurrency, ()>;
-	type Status = cfg_types::investments::CollectedAmount<Balance>;
-
-	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
-		Ok(())
 	}
 }
 

@@ -1443,37 +1443,13 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
-/// A
-pub struct StumbInboundQueue;
-impl InboundQueue for StumbInboundQueue {
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
-	type Sender = DomainAddress;
-
-	fn submit(sender: Self::Sender, message: Self::Message) -> DispatchResult {
-		let event = {
-			let event =
-				pallet_liquidity_pools::Event::<Runtime>::IncomingMessage { sender, message };
-
-			// Mirror deposit_event logic here as it is private
-			let event = <<Runtime as pallet_liquidity_pools::Config>::RuntimeEvent as From<
-				pallet_liquidity_pools::Event<Runtime>,
-			>>::from(event);
-
-			<<Runtime as pallet_liquidity_pools::Config>::RuntimeEvent as Into<
-				<Runtime as frame_system::Config>::RuntimeEvent,
-			>>::into(event)
-		};
-
-		// Triggering only the event for error resolution
-		System::deposit_event(event);
-
-		Ok(())
-	}
-}
-
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = StumbInboundQueue;
+	#[cfg(not(feature = "testnet-runtime"))]
+	type InboundQueue =
+		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
+	#[cfg(feature = "testnet-runtime")]
+	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
@@ -2056,8 +2032,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_traits::liquidity_pools::InboundQueue;
-use cfg_types::domain_address::{Domain, DomainAddress};
+use cfg_types::domain_address::Domain;
 use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 
 #[cfg(not(feature = "disable-runtime-api"))]
