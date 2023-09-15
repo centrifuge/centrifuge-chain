@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/benchmark-auto-pr.yml'
 concurrency:
-  group: build-benchmark-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}
   cancel-in-progress: true      
 jobs:
   benchmark:
