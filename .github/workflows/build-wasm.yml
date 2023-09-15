@@ -61,6 +61,7 @@ jobs:
           elif ${{ matrix.target == 'build-runtime-fast'}} ; then
             echo "BUILD_OPTS="--features=fast-runtime"" >> GITHUB_ENV
           fi
+          echo "BUILD_OPTS=${{ env.BUILD_OPT }}"
 
       - name: Run Docker SRTool
         uses: addnab/docker-run-action@v3
@@ -71,15 +72,12 @@ jobs:
           image: paritytech/srtool:${{ matrix.rust_version }}
           options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
           run: |
+            echo "---- Env VARS ----"
             echo "BUILD_OPT=${BUILD_OPT}"
             echo "PACKAGE=${PACKAGE}"
             echo "---- List Cache Folder ----"
             ls -la /cargo-home/
             du -sh /cargo-home/*
-            echo "---- Rust Versions ----"
-            rustc --version
-            rustup --version
-            cargo --version
             echo "---- RUNNING BUILD ----"
             /srtool/build --json
 
@@ -100,7 +98,7 @@ jobs:
         run: |
           target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
           runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
-          filename=$(echo "${{ matrix.package }}" | sed -i 's/-/_/g' )
+          filename=$(echo "${{ matrix.package }}" | sed -e` 's/-/_/g' )
           gsutil cp \
             ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
             gs://centrifuge-wasm-repo/$RUNTIME/${target}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm

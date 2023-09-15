@@ -7,11 +7,13 @@ on:
       - ".github/workflows/build-docker.yml"
       - "Dockerfile"
   workflow_dispatch:
-    
+concurrency:
+  group: build-docker-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}
+  cancel-in-progress: true       
 env:
   RUST_TOOLCHAIN: "1.66"
 jobs:
-  docker:
+  docker: 
     strategy:
       matrix:
         target: [ release, test ]
@@ -19,7 +21,6 @@ jobs:
     env:
       WORKFLOW_TAG: ${{ github.event.inputs.docker_tag }}
     steps:
-
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -43,7 +44,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}        
 
-      - run: echo "NOW=$(date -u +%Y%m%d)" >> $GITHUB_ENV
+      - run: echo "NOW=$(date -u +%y-%m-%d)" >> $GITHUB_ENV
 
       - name: Setup docker metadata
         id: meta
