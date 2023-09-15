@@ -40,10 +40,6 @@ runs:
       with:
         GWIP: ${{ inputs.GWIP }}
         GSA: ${{ inputs.GSA }}
-    
-    - name: setup Rust sccache wrapper
-      if: ${{ inputs.cache == 'enabled' }}
-      shell: sh
-      run: echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
+
 
 
