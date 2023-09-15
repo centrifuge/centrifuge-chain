@@ -31,7 +31,7 @@ FROM docker.io/library/ubuntu:22.04 as builder
 
 	RUN	rustup default $RUST_TOOLCHAIN && \
 		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
-		cargo build "--release" --features=${FEATURES}
+		cargo build "--release" --exclude runtime-integration-tests --features=${FEATURES}
 
 # ===== SECOND STAGE ======
 
