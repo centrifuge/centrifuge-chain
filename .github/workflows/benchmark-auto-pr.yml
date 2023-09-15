@@ -1,0 +1,51 @@
+name: Benchmark
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.github/workflows/benchmark-auto-pr.yml'
+jobs:
+  benchmark:
+    permissions:
+      pull-requests: write
+      id-token: write
+    runs-on: ubuntu-latest-8-cores
+    strategy:
+      matrix:
+        runtimes: [centrifuge, altair]
+    env:       
+      RUST_TOOLCHAIN: "1.66.0"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: 'main'
+
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Run Benchmark ${{ matrix.runtimes }}
+        run: ./scripts/runtime_benchmarks.sh ${{ matrix.runtimes }}
+      
+      - name: Create PR with new benchmarks
+        uses: peter-evans/create-pull-request@v5
+        with:
+          add-paths: runtime/${{ matrix.runtimes }}/src/weights/
+          commit-message: "New benchmark weights generated from main by Github Actions Bot"
+          base: main
+          branch: benchmarks/
+          delete-branch: true
+
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ${{steps.parse-runtime.outputs.result}}-weights
+      #     path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/

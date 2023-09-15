@@ -1,7 +1,7 @@
 name: Benchmark
 on:
   issue_comment:
-    types: [created]
+    types: [created]    
 jobs:
   benchmark:
     permissions:
@@ -58,12 +58,10 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
-          
-      - name: SCcache setup
-        uses: ./.github/actions/sccache-gcloud
-        with:
-          GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}
+          cache: enabled
+          # Cache needs Google credentials:
+            GWIP: ${{ secrets.GWIP_SCCACHE }}
+            GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
         run: ./scripts/runtime_benchmarks.sh ${{steps.parse-runtime.outputs.result}}
