@@ -8,7 +8,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     env:
       RUST_TOOLCHAIN: "1.66.0"
       RUSTDOCFLAGS: "-D warnings"

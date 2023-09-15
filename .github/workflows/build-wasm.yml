@@ -8,10 +8,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-runtime-wasms:
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
-    runs-on:  ubuntu-latest-4-cores
+    runs-on:  ubuntu-latest-8-cores
     strategy:
       matrix:
         # To test until I get one right
@@ -74,14 +75,22 @@ jobs:
             echo "---- RUNNING BUILD ----"
             /srtool/build
 
-      # - name: Publish artifacts to GCS
-      #   if: ${{ github.ref == 'refs/heads/main' }}
-      #   shell: bash
-      #   run: |
-          
-      #     target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
-      #     runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
+      - id: 'auth'
+        uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # v1.1.1
+        with:
+          workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
+          service_account: ${{ secrets.GSA_ARTIFACTS }}            
 
-      #     gsutil cp \
-      #       ./runtime/$runtime_name/target/srtool/release/wbuild/${{ matrix.package }}/${{ matrix.package }}.compact.compressed.wasm \
-      #       gs://centrifuge-wasm-repo/$RUNTIME/$target/$runtime_name-$target-$(git rev-parse --short HEAD).wasm
+      - name: Setup - gcloud / gsutil
+        uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b # v1.1.1
+
+          
+      - name: Publish artifacts to GCS
+        # if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
+          runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
+          gsutil cp \
+            ./runtime/$runtime_name/target/srtool/release/wbuild/${{ matrix.package }}/${{ matrix.package }}.compact.compressed.wasm \
+            gs://centrifuge-wasm-repo/$RUNTIME/$target/$runtime_name-$target-$(git rev-parse --short HEAD).wasm

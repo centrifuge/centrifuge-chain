@@ -15,7 +15,7 @@ permissions:
 jobs:
   test-n-lint:
     name: ${{ matrix.target }}
-    runs-on: ubuntu-latest #-4-cores
+    runs-on: ubuntu-latest-4-cores
     strategy:
       matrix:
         target: [test-general, test-integration,
@@ -40,11 +40,10 @@ jobs:
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
-          # RUNTIME: ${{ matrix.runtime }}
 
   benchmark-check:
     name: bench-${{ matrix.runtime }}
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest #r-4-cores
     strategy:
       matrix:
         runtime: [development, altair, centrifuge]
