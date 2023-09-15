@@ -1,0 +1,49 @@
+name: Prepare Ubuntu for Rust builds
+description: cleanup and Rust Tools setup
+inputs:
+  RUST_TOOLCHAIN:
+    description: toolchain version
+    default: "1.66"
+  cache:
+    description: cache type (enabled if set)
+    default: "disabled"
+  GWIP:
+    description: "Google Workload identity provider"
+    default: ''
+  GSA:
+    description: "Google Service Account"
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Prep build on Ubuntu
+      id: ubuntu_prep
+      shell: sh
+      run: |
+        echo "Pre cleanup"
+        df -h
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        echo "Post cleanup"
+        df -h
+        sudo apt-get install protobuf-compiler
+
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+      with:
+        toolchain: ${{ inputs.RUST_TOOLCHAIN }}
+        default: true        
+
+    - name: SCcache setup
+      if: ${{ inputs.cache == 'enabled' }}
+      uses: ./.github/actions/sccache-gcloud
+      with:
+        GWIP: ${{ inputs.GWIP }}
+        GSA: ${{ inputs.GSA }}
+    
+    - name: setup Rust sccache wrapper
+      if: ${{ inputs.cache == 'enabled' }}
+      shell: sh
+      run: echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
+
+
