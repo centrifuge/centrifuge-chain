@@ -42,7 +42,7 @@ jobs:
           TARGET: ${{ matrix.target }}
 
   benchmark-check:
-    name: bench-${{ matrix.runtime }}
+    name: bench-check-${{ matrix.runtime }}
     runs-on: ubuntu-latest #r-4-cores
     strategy:
       matrix:
