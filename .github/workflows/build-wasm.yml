@@ -101,4 +101,4 @@ jobs:
           filename=$(echo "${{ matrix.package }}" | sed -e 's/-/_/g' )
           gsutil cp \
             ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
-            gs://centrifuge-wasm-repo/$RUNTIME/${target}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
+            gs://centrifuge-wasm-repo/${runtime_name}/${target}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
