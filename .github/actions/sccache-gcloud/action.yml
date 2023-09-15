@@ -35,3 +35,7 @@ runs:
       if: ${{ inputs.cache == 'enabled' }}
       shell: sh
       run: echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
+    
+    - name: Run sccache stat for check
+      shell: bash
+      run: ${SCCACHE_PATH} --show-stats      
