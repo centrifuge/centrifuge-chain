@@ -14,9 +14,8 @@ jobs:
   docker:
     strategy:
       matrix:
-        os: [ ubuntu-latest-4-cores ]
         target: [ release, test ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest-4-cores
     env:
       WORKFLOW_TAG: ${{ github.event.inputs.docker_tag }}
     steps:
@@ -28,6 +27,7 @@ jobs:
       # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
         run: |
           sudo rm -rf /usr/share/dotnet
+          # sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: check available docker space
@@ -51,15 +51,16 @@ jobs:
         with:
           images: centrifugeio/centrifuge-chain
           flavor: |
-            prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            suffix=${{ env.NOW }}
+            suffix=-${{ env.NOW }}
+            # latest=auto is already default, but the logic needs a value at the end and '' isn't valid
+            ${{ matrix.target == 'test' && 'prefix=test-' || 'latest=auto' }}
           tags: |
-            type=schedule
             type=ref,event=branch
             type=ref,event=tag
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
-            type=sha,format=short,prefix='git-'            
+            type=edge  
 
       - name: Build and push centrifugeio/centrifuge-chain
         uses: docker/build-push-action@v5
