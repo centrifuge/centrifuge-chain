@@ -827,8 +827,7 @@ where
 				swap.ensure_currencies_match(foreign_swap, true)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
-					Ordering::Equal | Ordering::Greater => {
+					Ordering::Equal => {
 						Ok(Self::SwapIntoForeignDone { done_swap: swap })
 					}
 					Ordering::Less => {
@@ -839,8 +838,8 @@ where
 							},
 							done_amount: swap.amount,
 						})
-					}
-				}
+					},
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),				}
 			},
 			// Increment done_foreign by swapped amount, leave invest amount untouched
 			Self::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
@@ -850,8 +849,7 @@ where
 				swap.ensure_currencies_match(foreign_swap, true)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
-					Ordering::Equal | Ordering::Greater => {
+					Ordering::Equal => {
 						Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 							done_swap: swap,
 							invest_amount: *invest_amount,
@@ -868,7 +866,8 @@ where
 								invest_amount: *invest_amount,
 							},
 						)
-					}
+					},
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				}
 			},
 			// Increment done_foreign by swapped amount
@@ -880,8 +879,7 @@ where
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
-					Ordering::Equal | Ordering::Greater => {
+					Ordering::Equal => {
 						Ok(Self::SwapIntoForeignDone {
 							done_swap: Swap {
 								amount: done_amount,
@@ -897,7 +895,8 @@ where
 							},
 							done_amount,
 						})
-					}
+					},
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				}
 			},
 			// Increment done_foreign by swapped amount, leave invest amount untouched
@@ -910,8 +909,7 @@ where
 				let done_amount = done_amount.ensure_add(swap.amount)?;
 
 				match swap.amount.cmp(&foreign_swap.amount) {
-					// Allowing geq here for handling fulfillment of concurrent active invest and redeem swaps into foreign
-					Ordering::Equal | Ordering::Greater => {
+					Ordering::Equal => {
 						Ok(Self::SwapIntoForeignDoneAndInvestmentOngoing {
 							done_swap: Swap {
 								amount: done_amount,
@@ -931,7 +929,8 @@ where
 								invest_amount: *invest_amount,
 							},
 						)
-					}
+					},
+					Ordering::Greater => Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				}
 			},
 			_ => Err(DispatchError::Other(
