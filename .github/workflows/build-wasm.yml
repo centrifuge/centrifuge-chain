@@ -8,7 +8,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-runtime-wasms:
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
+    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
+    environment: production
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
@@ -76,17 +77,19 @@ jobs:
             /srtool/build
 
       - id: 'auth'
+        # if: ${{ github.ref == 'refs/heads/main' }}
         uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # v1.1.1
         with:
           workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
           service_account: ${{ secrets.GSA_ARTIFACTS }}            
 
       - name: Setup - gcloud / gsutil
+        if: ${{ steps.auth.outcome == 'success }}
         uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b # v1.1.1
 
           
       - name: Publish artifacts to GCS
-        # if: ${{ github.ref == 'refs/heads/main' }}
+        if: ${{ steps.auth.outcome == 'success }}
         shell: bash
         run: |
           target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
