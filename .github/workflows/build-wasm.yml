@@ -1,0 +1,96 @@
+on:
+  push:
+    branches: [main, 'release-v**']
+  pull_request:
+name: Build&Publish WASM
+concurrency:
+  group: 'build-wasm-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+jobs:
+  build-runtime-wasms:
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
+    # Benchmark (with cache hit)
+    # ubuntu-latest 50 min
+    # ubuntu-latest-4-cores 34 min
+    runs-on:  ubuntu-latest-8-cores
+    strategy:
+      matrix:
+        # To test until I get one right
+        # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
+        # package: [centrifuge-runtime, altair-runtime]
+        target: [build-runtime, build-runtime-testnet, build-runtime-fast]
+        package: [altair-runtime, centrifuge-runtime]
+        rust_version: ["1.66.0"]
+        exclude:
+          - target: "build-runtime-testnet"
+            package: "centrifuge-runtime"
+    name: ${{ matrix.target }}-${{ matrix.package }}
+    # Cannot make sccache work with the srtool container
+    # env:
+      # SCCACHE_GHA_ENABLED: "true"
+      # RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+      
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+      
+      # sccache does not work inside the srtool container
+      - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
+        with:
+          prefix-key: build #-${{ matrix.package }}
+          shared-key: wasm
+          # save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Setup build options
+        id: buildopt
+        run: |
+          if ${{ matrix.target == 'build-runtime-testnet'}} ; then
+            echo "BUILD_OPTS="--features=testnet-runtime"" >> GITHUB_ENV
+          elif ${{ matrix.target == 'build-runtime-fast'}} ; then
+            echo "BUILD_OPTS="--features=fast-runtime"" >> GITHUB_ENV
+          fi
+
+      - name: Run Docker SRTool
+        uses: addnab/docker-run-action@v3
+        env:
+          RUSTC_VERSION: ${{ matrix.rust_version }}
+          BUILD_OPTS: ${{ env.BUILD_OPTS }}
+        with:
+          image: paritytech/srtool:${{ matrix.rust_version }}
+          options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
+          run: |
+            echo "BUILD_OPT=${BUILD_OPT}"
+            echo "PACKAGE=${PACKAGE}"
+            echo "---- List Cache Folder ----"
+            ls -la /cargo-home/
+            du -sh /cargo-home/*
+            echo "---- Rust Versions ----"
+            rustc --version
+            rustup --version
+            cargo --version            
+            echo "---- RUNNING BUILD ----"
+            /srtool/build
+
+      - id: 'auth'
+        uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # v1.1.1
+        with:
+          workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
+          service_account: ${{ secrets.GSA_ARTIFACTS }}            
+
+      - name: Setup - gcloud / gsutil
+        uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b # v1.1.1
+
+          
+      - name: Publish artifacts to GCS
+        # if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
+          runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
+          gsutil cp \
+            ./runtime/$runtime_name/target/srtool/release/wbuild/${{ matrix.package }}/${{ matrix.package }}.compact.compressed.wasm \
+            gs://centrifuge-wasm-repo/$RUNTIME/$target/$runtime_name-$target-$(git rev-parse --short HEAD).wasm

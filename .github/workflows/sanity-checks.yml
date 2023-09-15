@@ -1,0 +1,69 @@
+on:
+  # push:
+  #   branches: [main, 'release-v**']
+  pull_request:
+    paths:
+      - 'src/'
+      - '.github/workflows/sanity-checks.yml'
+name: Sanity checks
+concurrency:
+  group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+permissions:
+    id-token: write
+    contents: read
+jobs:
+  test-n-lint:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest-4-cores
+    strategy:
+      matrix:
+        target: [test-general, test-integration,
+                 lint-fmt, lint-clippy, cargo-build] # ,lint-taplo]
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh
+        env:
+          TARGET: ${{ matrix.target }}
+
+  benchmark-check:
+    name: bench-${{ matrix.runtime }}
+    runs-on: ubuntu-latest #r-4-cores
+    strategy:
+      matrix:
+        runtime: [development, altair, centrifuge]
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          setup_cache: true
+          cache: enabled
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh
+        env:
+          TARGET: benchmark-check
+          RUNTIME: ${{ matrix.runtime }}
