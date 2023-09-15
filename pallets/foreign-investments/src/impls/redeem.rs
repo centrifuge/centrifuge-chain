@@ -584,3 +584,119 @@ where
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use frame_support::{assert_err, assert_ok};
+	use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
+
+	use super::*;
+
+	#[derive(Clone, Copy, PartialEq, Debug)]
+	enum CurrencyId {
+		Foreign,
+		Pool,
+	}
+
+	type RedeemState = super::RedeemState<u128, CurrencyId>;
+	type RedeemTransition = super::RedeemTransition<u128, CurrencyId>;
+
+	impl RedeemState {
+		fn get_done_amount(&self) -> u128 {
+			match *self {
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount, ..
+				} => done_amount,
+				Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount,
+					..
+				} => done_amount,
+				_ => 0,
+			}
+		}
+
+		fn get_swap_amount(&self) -> u128 {
+			match *self {
+				Self::ActiveSwapIntoForeignCurrency { swap } => swap.amount,
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
+					swap.amount
+				}
+				Self::RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } => swap.amount,
+				Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					swap,
+					..
+				} => swap.amount,
+				_ => 0,
+			}
+		}
+
+		fn total(&self) -> u128 {
+			self.get_redeeming_amount() + self.get_done_amount() + self.get_swap_amount()
+		}
+	}
+
+	struct Checker {
+		old_state: RedeemState,
+	}
+
+	impl Checker {
+		fn check_delta_invariant(&self, transition: &RedeemTransition, new_state: &RedeemState) {
+			dbg!(
+				transition,
+				self.old_state.total(),
+				new_state.total(),
+				new_state
+			);
+			match transition {
+				RedeemTransition::IncreaseRedeemOrder(amount) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, *amount);
+				}
+				RedeemTransition::DecreaseRedeemOrder(amount) => {
+					let diff = self.old_state.total() - new_state.total();
+					assert_eq!(diff, *amount);
+				}
+				RedeemTransition::FulfillSwapOrder(swap) => (),
+				RedeemTransition::CollectRedemption(value, swap) => (),
+			};
+		}
+	}
+
+	#[test]
+	fn fuzzer() {
+		let transitions = [
+			RedeemTransition::IncreaseRedeemOrder(120),
+			RedeemTransition::IncreaseRedeemOrder(60),
+			RedeemTransition::DecreaseRedeemOrder(120),
+			RedeemTransition::DecreaseRedeemOrder(60),
+			//RedeemTransition::FulfillSwapOrder(pool_swap_big),
+			//RedeemTransition::FulfillSwapOrder(pool_swap_small),
+			//RedeemTransition::FulfillSwapOrder(foreign_swap_big),
+			//RedeemTransition::FulfillSwapOrder(foreign_swap_small),
+			//RedeemTransition::CollectInvestment(60),
+			//RedeemTransition::CollectInvestment(120),
+		];
+
+		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
+
+		for _ in 0..10000 {
+			let use_case = transitions.clone().into_iter().choose_multiple(&mut rng, 8);
+
+			println!("Testing use case: {:#?}", use_case);
+
+			let mut state = RedeemState::NoState;
+			let mut checker = Checker {
+				old_state: state.clone(),
+			};
+
+			for transition in use_case {
+				state = state
+					.transition(transition.clone())
+					.unwrap_or(state.clone());
+
+				checker.check_delta_invariant(&transition, &state);
+				checker.old_state = state.clone();
+			}
+		}
+	}
+}
