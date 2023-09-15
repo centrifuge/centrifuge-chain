@@ -1122,7 +1122,7 @@ where
 mod tests {
 	use cfg_traits::SimpleCurrencyConversion;
 	use frame_support::{assert_err, assert_ok};
-	use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
+	use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
 	use super::*;
 
@@ -1173,39 +1173,6 @@ mod tests {
 
 	type InvestState = super::InvestState<TestConfig>;
 	type InvestTransition = super::InvestTransition<u128, CurrencyId>;
-
-	impl InvestState {
-		fn get_done_amount(&self) -> u128 {
-			match *self {
-				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { done_amount, .. } => {
-					done_amount
-				}
-				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-					done_amount, ..
-				} => done_amount,
-				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-					done_amount,
-					..
-				} => done_amount,
-				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
-					done_amount,
-					..
-				} => done_amount,
-				_ => 0,
-			}
-		}
-
-		fn total(&self, denominated: CurrencyId) -> u128 {
-			self.get_investing_amount()
-				+ self.get_done_amount()
-				+ match denominated {
-					CurrencyId::Pool => self.get_active_swap_amount_pool_denominated().unwrap(),
-					CurrencyId::Foreign => {
-						self.get_active_swap_amount_foreign_denominated().unwrap()
-					}
-				}
-		}
-	}
 
 	#[test]
 	fn increase_with_pool_swap() {
@@ -1337,32 +1304,104 @@ mod tests {
 		);
 	}
 
+	impl InvestState {
+		fn get_done_amount(&self) -> u128 {
+			match *self {
+				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { done_amount, .. } => {
+					done_amount
+				}
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount, ..
+				} => done_amount,
+				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+					done_amount,
+					..
+				} => done_amount,
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+					done_amount,
+					..
+				} => done_amount,
+				Self::SwapIntoForeignDone { done_swap } => done_swap.amount,
+				Self::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, .. } => done_swap.amount,
+				_ => 0,
+			}
+		}
+
+		fn total(&self, denominated: CurrencyId) -> u128 {
+			self.get_investing_amount()
+				+ self.get_done_amount()
+				+ match denominated {
+					CurrencyId::Pool => self.get_active_swap_amount_pool_denominated().unwrap(),
+					CurrencyId::Foreign => {
+						self.get_active_swap_amount_foreign_denominated().unwrap()
+					}
+				}
+		}
+
+		fn total_all(&self, denominated: CurrencyId) -> u128 {
+			match denominated {
+				CurrencyId::Pool => {
+					self.get_investing_amount()
+						+ self.get_done_amount() + self
+						.get_active_swap_amount_pool_denominated()
+						.unwrap()
+				}
+				CurrencyId::Foreign => {
+					to_foreign(self.get_investing_amount())
+						+ to_foreign(self.get_done_amount())
+						+ self.get_active_swap_amount_foreign_denominated().unwrap()
+				}
+			}
+		}
+	}
+
 	struct Checker {
 		old_state: InvestState,
 	}
 
 	impl Checker {
+		fn new(initial_state: InvestState, use_case: &[InvestTransition]) -> Self {
+			println!("Testing use case: {:#?}", use_case);
+
+			Self {
+				old_state: initial_state,
+			}
+		}
+
 		fn check_delta_invariant(&self, transition: &InvestTransition, new_state: &InvestState) {
-			dbg!(
-				transition,
-				self.old_state.total(CurrencyId::Pool),
-				new_state.total(CurrencyId::Pool),
-				new_state
-			);
-			match transition {
+			println!("Transition: {:#?}", transition);
+			println!("New state: {:#?}", new_state);
+			match *transition {
 				InvestTransition::IncreaseInvestOrder(swap) => {
 					let diff =
 						new_state.total(CurrencyId::Pool) - self.old_state.total(CurrencyId::Pool);
+
 					assert_eq!(diff, swap.amount);
 				}
 				InvestTransition::DecreaseInvestOrder(_) => {
+					dbg!(
+						new_state.total(CurrencyId::Foreign),
+						self.old_state.total(CurrencyId::Foreign)
+					);
 					let diff = new_state.total(CurrencyId::Foreign)
 						- self.old_state.total(CurrencyId::Foreign);
+
 					assert_eq!(diff, 0);
 				}
-				InvestTransition::FulfillSwapOrder(swap) => (),
-				InvestTransition::CollectInvestment(value) => (),
-			};
+				InvestTransition::FulfillSwapOrder(swap) => {}
+				InvestTransition::CollectInvestment(value) => {
+					if self.old_state.get_investing_amount() == 0 {
+						assert_eq!(new_state.get_investing_amount(), 0)
+					} else {
+						assert_eq!(new_state.get_investing_amount(), value);
+
+						let diff = self.old_state.total(CurrencyId::Pool)
+							- new_state.total(CurrencyId::Pool);
+
+						assert_eq!(diff, value)
+					}
+				}
+			}
 		}
 	}
 
@@ -1398,29 +1437,27 @@ mod tests {
 			//InvestTransition::FulfillSwapOrder(pool_swap_small),
 			//InvestTransition::FulfillSwapOrder(foreign_swap_big),
 			//InvestTransition::FulfillSwapOrder(foreign_swap_small),
-			//InvestTransition::CollectInvestment(60),
-			//InvestTransition::CollectInvestment(120),
+			InvestTransition::CollectInvestment(60),
+			InvestTransition::CollectInvestment(120),
 		];
 
 		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
 
 		for _ in 0..10000 {
-			let use_case = transitions.clone().into_iter().choose_multiple(&mut rng, 8);
-
-			println!("Testing use case: {:#?}", use_case);
-
+			let mut use_case = transitions.clone();
+			let use_case = use_case.partial_shuffle(&mut rng, 8).0;
 			let mut state = InvestState::NoState;
-			let mut checker = Checker {
-				old_state: state.clone(),
-			};
+			let mut checker = Checker::new(state.clone(), use_case);
 
 			for transition in use_case {
-				state = state
-					.transition(transition.clone())
-					.unwrap_or(state.clone());
-
-				checker.check_delta_invariant(&transition, &state);
-				checker.old_state = state.clone();
+				state = match state.transition(transition.clone()) {
+					Ok(state) => {
+						checker.check_delta_invariant(&transition, &state);
+						checker.old_state = state.clone();
+						state
+					}
+					Err(_) => state,
+				}
 			}
 		}
 	}

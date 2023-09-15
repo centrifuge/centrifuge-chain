@@ -588,7 +588,7 @@ where
 #[cfg(test)]
 mod tests {
 	use frame_support::{assert_err, assert_ok};
-	use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
+	use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
 	use super::*;
 
@@ -611,6 +611,8 @@ mod tests {
 					done_amount,
 					..
 				} => done_amount,
+				Self::SwapIntoForeignDone { done_swap } => done_swap.amount,
+				Self::RedeemingAndSwapIntoForeignDone { done_swap, .. } => done_swap.amount,
 				_ => 0,
 			}
 		}
@@ -640,21 +642,25 @@ mod tests {
 	}
 
 	impl Checker {
+		fn new(initial_state: RedeemState, use_case: &[RedeemTransition]) -> Self {
+			println!("Testing use case: {:#?}", use_case);
+
+			Self {
+				old_state: initial_state,
+			}
+		}
+
 		fn check_delta_invariant(&self, transition: &RedeemTransition, new_state: &RedeemState) {
-			dbg!(
-				transition,
-				self.old_state.total(),
-				new_state.total(),
-				new_state
-			);
-			match transition {
+			println!("Transition: {:#?}", transition);
+			println!("New state: {:#?}", new_state);
+			match *transition {
 				RedeemTransition::IncreaseRedeemOrder(amount) => {
 					let diff = new_state.total() - self.old_state.total();
-					assert_eq!(diff, *amount);
+					assert_eq!(diff, amount);
 				}
 				RedeemTransition::DecreaseRedeemOrder(amount) => {
 					let diff = self.old_state.total() - new_state.total();
-					assert_eq!(diff, *amount);
+					assert_eq!(diff, amount);
 				}
 				RedeemTransition::FulfillSwapOrder(swap) => (),
 				RedeemTransition::CollectRedemption(value, swap) => (),
@@ -680,22 +686,20 @@ mod tests {
 		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
 
 		for _ in 0..10000 {
-			let use_case = transitions.clone().into_iter().choose_multiple(&mut rng, 8);
-
-			println!("Testing use case: {:#?}", use_case);
-
+			let mut use_case = transitions.clone();
+			let use_case = use_case.partial_shuffle(&mut rng, 8).0;
 			let mut state = RedeemState::NoState;
-			let mut checker = Checker {
-				old_state: state.clone(),
-			};
+			let mut checker = Checker::new(state.clone(), &use_case);
 
 			for transition in use_case {
-				state = state
-					.transition(transition.clone())
-					.unwrap_or(state.clone());
-
-				checker.check_delta_invariant(&transition, &state);
-				checker.old_state = state.clone();
+				state = match state.transition(transition.clone()) {
+					Ok(state) => {
+						checker.check_delta_invariant(&transition, &state);
+						checker.old_state = state.clone();
+						state
+					}
+					Err(_) => state,
+				}
 			}
 		}
 	}
