@@ -714,7 +714,7 @@ pub mod pallet {
 			T::OutboundQueue::submit(
 				who,
 				Domain::EVM(chain_id),
-				Message::AllowPoolCurrency { pool_id, currency },
+				Message::AllowInvestmentCurrency { pool_id, currency },
 			)?;
 
 			Ok(())

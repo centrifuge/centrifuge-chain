@@ -56,7 +56,7 @@ where
 	/// Allow a currency to be used as a pool currency and to invest in a pool.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	AllowPoolCurrency {
+	AllowInvestmentCurrency {
 		pool_id: PoolId,
 		currency: u128,
 	},
@@ -388,7 +388,7 @@ impl<
 			Self::Invalid { .. } => 0,
 			Self::AddCurrency { .. } => 1,
 			Self::AddPool { .. } => 2,
-			Self::AllowPoolCurrency { .. } => 3,
+			Self::AllowInvestmentCurrency { .. } => 3,
 			Self::AddTranche { .. } => 4,
 			Self::UpdateTrancheTokenPrice { .. } => 5,
 			Self::UpdateMember { .. } => 6,
@@ -435,7 +435,7 @@ impl<
 			Message::AddPool { pool_id } => {
 				encoded_message(self.call_type(), vec![encode_be(pool_id)])
 			}
-			Message::AllowPoolCurrency { pool_id, currency } => encoded_message(
+			Message::AllowInvestmentCurrency { pool_id, currency } => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), encode_be(currency)],
 			),
@@ -754,7 +754,7 @@ impl<
 			2 => Ok(Self::AddPool {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 			}),
-			3 => Ok(Self::AllowPoolCurrency {
+			3 => Ok(Self::AllowInvestmentCurrency {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
@@ -1008,7 +1008,7 @@ mod tests {
 	#[test]
 	fn allow_pool_currency() {
 		test_encode_decode_identity(
-			LiquidityPoolsMessage::AllowPoolCurrency {
+			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: TOKEN_ID,
 				pool_id: POOL_ID,
 			},
@@ -1019,7 +1019,7 @@ mod tests {
 	#[test]
 	fn allow_pool_currency_zero() {
 		test_encode_decode_identity(
-			LiquidityPoolsMessage::AllowPoolCurrency {
+			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: 0,
 				pool_id: 0,
 			},
