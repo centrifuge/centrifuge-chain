@@ -709,6 +709,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Kills all storage associated with token swaps and cancels the
 	/// potentially active swap order.
+	#[transactional]
 	fn kill_swap_order(who: &T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		if let Some(swap_order_id) = TokenSwapOrderIds::<T>::take(who, investment_id) {
 			if T::TokenSwaps::is_active(swap_order_id) {

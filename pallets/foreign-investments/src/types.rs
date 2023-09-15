@@ -94,9 +94,9 @@ pub enum InvestState<T: InvestStateConfig> {
 	/// * The remainder was swapped back into the foreign currency as a result
 	///   of decreasing the invested amount before being processed.
 	///
-	/// NOTE: This state can be transitioned into `ActiveSwapIntoPoolCurrency`
-	/// by applying the corresponding trigger to handle the foreign return
-	/// amount.
+	/// NOTE: This state is transitioned into `ActiveSwapIntoPoolCurrency`
+	/// in the post-processing `apply_invest_state_transition` as the done part
+	/// invokes `ExecutedDecreaseInvestOrder` dispatch.
 	ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
 		swap: Swap<T::Balance, T::CurrencyId>,
 		done_amount: T::Balance,
@@ -113,9 +113,10 @@ pub enum InvestState<T: InvestStateConfig> {
 	/// * The remainder was swapped back into the foreign currency as a result
 	///   of decreasing the invested amount before being processed.
 	///
-	/// NOTE: This state can be transitioned into
-	/// `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` by applying the
-	/// corresponding trigger to handle the foreign return amount.
+	/// NOTE: This state is transitioned into
+	/// `ActiveSwapIntoPoolCurrencyAndInvestmentOngoing` in the post-processing
+	/// `apply_invest_state_transition` as the done part invokes
+	/// `ExecutedDecreaseInvestOrder` dispatch.
 	ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 		swap: Swap<T::Balance, T::CurrencyId>,
 		done_amount: T::Balance,
@@ -127,7 +128,7 @@ pub enum InvestState<T: InvestStateConfig> {
 	///   decreasing the invested amount before being processed.
 	/// * The remainder was already swapped back into the foreign currency.
 	///
-	/// NOTE: This state should not be transitioned by applying the trigger for
+	/// NOTE: This state must not be transitioned by applying the trigger for
 	/// the done part but wait until the active swap is fulfilled.
 	ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 		swap: Swap<T::Balance, T::CurrencyId>,
@@ -136,8 +137,9 @@ pub enum InvestState<T: InvestStateConfig> {
 	},
 	/// The unprocessed investment was swapped back into foreign currency.
 	///
-	/// NOTE: This state can be killed by applying the corresponding trigger to
-	/// handle the foreign return amount.
+	/// NOTE: This state is killed in the post-processing
+	/// `apply_invest_state_transition` as it invokes
+	/// `ExecutedDecreaseInvestOrder` dispatch.
 	SwapIntoForeignDone {
 		done_swap: Swap<T::Balance, T::CurrencyId>,
 	},
@@ -146,8 +148,9 @@ pub enum InvestState<T: InvestStateConfig> {
 	/// * The swapped back into the foreign currency as a result of decreasing
 	///   the invested amount before being processed.
 	///
-	/// NOTE: This state can be transitioned into `InvestmentOngoing` by
-	/// applying the corresponding trigger to handle the foreign return amount.
+	/// NOTE: This state is transitioned into `InvestmentOngoing`  in the
+	/// post-processing `apply_invest_state_transition` as the done part invokes
+	/// `ExecutedDecreaseInvestOrder` dispatch.
 	SwapIntoForeignDoneAndInvestmentOngoing {
 		done_swap: Swap<T::Balance, T::CurrencyId>,
 		invest_amount: T::Balance,
@@ -307,9 +310,9 @@ pub enum RedeemState<
 	/// The redemption was fully processed, collected and swapped into the
 	/// foreign currency.
 	///
-	/// NOTE: This state does not require handling in `RedeemState::transition`
-	/// as it must be manually transitioned in `apply_redeem_state_transition`,
-	/// similar to the corresponding state in `InvestState`.
+	/// NOTE: This state is automatically killed in the post-processing
+	/// `apply_collect_redeem_transition` as it prepares the dispatch of
+	/// `ExecutedCollectRedeem` message which needs to be triggered manually.
 	SwapIntoForeignDone { done_swap: Swap<Balance, Currency> },
 	/// The redemption is split into two parts:
 	/// * One part is waiting to be processed as redemption.
@@ -323,6 +326,11 @@ pub enum RedeemState<
 	/// * One part is waiting to be processed as redemption.
 	/// * The remainder is swapping back into the foreign currency as a result
 	///   of processing and collecting beforehand.
+	///
+	/// NOTE: This state is automatically transitioned into `Redeeming` in the
+	/// post-processing `apply_collect_redeem_transition` as the done part
+	/// prepares the dispatch of `ExecutedCollectRedeem` message which needs to
+	/// be triggered manually.
 	RedeemingAndSwapIntoForeignDone {
 		redeem_amount: Balance,
 		done_swap: Swap<Balance, Currency>,

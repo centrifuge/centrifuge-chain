@@ -634,8 +634,6 @@ pub mod pallet {
 				.ok_or(Error::<T>::InvalidAssetId)?
 				.decimals;
 
-			// FIXME: Maybe. This equals 10^(to - from) * to_amount when it should be
-			// multiplied with from_amount? Or
 			convert_balance_decimals(from_decimals, to_decimals, ratio.ensure_mul_int(amount)?)
 				.map_err(DispatchError::from)
 		}

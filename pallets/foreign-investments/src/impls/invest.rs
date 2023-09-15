@@ -815,7 +815,7 @@ where
 						swap: Swap {
 							amount: pool_swap.amount.ensure_sub(swap.amount)?,
 							..swap
-						},
+					},
 						invest_amount,
 					}),
 					// should never occur but let's be safe here
