@@ -65,8 +65,11 @@ jobs:
 
       - name: Build and push centrifugeio/centrifuge-chain
         uses: docker/build-push-action@v5
+        env:
+          FEATURES: ${{ matrix.target == 'test' && '"fast-runtime"' || '' }}
         with:
           context: .
+          file: ./docker/centrifuge-chain/Dockerfile
           push: ${{ github.ref == '/refs/heads/main' && true || false }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:  

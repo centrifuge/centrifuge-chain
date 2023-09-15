@@ -1,11 +1,12 @@
 # Based on
 # https://github.com/paritytech/polkadot-sdk/blob/master/docker/dockerfiles/polkadot/polkadot_injected_release.Dockerfile
+
+# ToDo: create a CI/builder image with preloaded tools
 FROM docker.io/library/ubuntu:22.04 as builder
 
 	# Defaults
 	ENV RUST_BACKTRACE 1
 	ENV DEBIAN_FRONTEND=noninteractive
-	ENV RUST_TOOLCHAIN=$RUST_TOOLCHAIN
 	ARG FEATURES=""
 	ARG RUST_TOOLCHAIN="1.66"
 	
@@ -34,7 +35,7 @@ FROM docker.io/library/ubuntu:22.04 as builder
 		cargo build "--release" --features=${FEATURES}
 
 # ===== SECOND STAGE ======
-
+# ToDo: create a secure image as a base for the binary
 FROM docker.io/library/ubuntu:22.04
 
 	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
@@ -45,35 +46,28 @@ FROM docker.io/library/ubuntu:22.04
 		# io.centrifuge.image.revision="${VCS_REF}" \
 		io.centrifuge.image.created="${BUILD_DATE}"
 
-	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
+	# Add chain resources to image
+	COPY res /resources/
 
 	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge && \
 			mkdir -p /data /centrifuge/.local/share && \
 			chown -R centrifuge:centrifuge /data && \
 			ln -s /data /centrifuge/.local/share/centrifuge
-
+	
+	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
 	# checks
 	RUN ldd /usr/local/bin/centrifuge-chain && \
 		/usr/local/bin/centrifuge-chain --version
-
-	# Save sh and bash
-	RUN cp /usr/bin/sh /usr/bin/bash /usr/local/bin/ /root/
 
 	# Unclutter
 	RUN mv /usr/share/ca* /tmp && \
 		rm -rf /usr/share/*  && \
 		mv /tmp/ca-certificates /usr/share/ && \
 		mkdir -p /root/.local/share/centrifuge-chain && \
-		ln -s /root/.local/share/centrifuge-chain /data \
+		ln -s /root/.local/share/centrifuge-chain /data 
 	# minimize the attack surface
-		rm -rf /usr/bin /usr/sbin && \
-		rm -rf /usr/lib/python* && \
-	# check if executable works in this container
-		ldd /usr/local/bin/centrifuge-chain && \
-		/usr/local/bin/centrifuge-chain --version
+		# rm -rf /usr/bin /usr/sbin /usr/lib/python* && \
 
-	# Add chain resources to image
-	COPY res /resources/
 
 USER centrifuge
 EXPOSE 30333 9933 9944
