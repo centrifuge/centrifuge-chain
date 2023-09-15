@@ -6,6 +6,9 @@ name: Build&Publish WASM
 concurrency:
   group: 'build-wasm-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
+permissions:
+  id-token: write
+  contents: read
 jobs:
   build-runtime-wasms:
     # environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
@@ -33,12 +36,12 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
-      
+
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
           RUST_TOOLCHAIN: ${{ matrix.rust_version }}
-      
+
       # sccache does not work inside the srtool container
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
         with:
@@ -48,7 +51,7 @@ jobs:
             .
             ./target/srtool
           cache-directories: ./runtime
-          # save-if: ${{ github.ref == 'refs/heads/master' }}          
+          # save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Setup build options
         id: buildopt
@@ -76,7 +79,7 @@ jobs:
             echo "---- Rust Versions ----"
             rustc --version
             rustup --version
-            cargo --version            
+            cargo --version
             echo "---- RUNNING BUILD ----"
             /srtool/build
 
@@ -85,15 +88,15 @@ jobs:
         uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # v1.1.1
         with:
           workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
-          service_account: ${{ secrets.GSA_ARTIFACTS }}            
+          service_account: ${{ secrets.GSA_ARTIFACTS }}
 
       - name: Setup - gcloud / gsutil
-        if: ${{ steps.auth.outcome == 'success }}
+        if: ${{ steps.auth.outcome == 'success' }}
         uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b # v1.1.1
 
-          
+
       - name: Publish artifacts to GCS
-        if: ${{ steps.auth.outcome == 'success }}
+        if: ${{ steps.auth.outcome == 'success' }}
         shell: bash
         run: |
           target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
