@@ -15,7 +15,7 @@ use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 /// that have to be applied on that chain, which includes migrations that have
 /// already been executed on Algol (1028 & 1029).
 #[cfg(not(feature = "testnet-runtime"))]
-pub type UpgradeAltair1032 = (
+pub type UpgradeAltair1033 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
 	// At minimum, bumps storage version from 1 to 2
@@ -57,7 +57,7 @@ pub type UpgradeAltair1032 = (
 /// the side releases that only landed on Algol (1028 to 1031) but not yet on
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
-pub type UpgradeAltair1032 = ();
+pub type UpgradeAltair1033 = ();
 
 mod asset_registry {
 	use cfg_primitives::Balance;

@@ -43,6 +43,8 @@ pub mod stump_queue {
 	use sp_runtime::DispatchResult;
 	use sp_std::marker::PhantomData;
 
+	/// A stump inbound queue that does not yet hit the LP logic (before FI we
+	/// do not want that) but stores an Event.
 	pub struct StumpInboundQueue<Runtime, RuntimeEvent>(PhantomData<(Runtime, RuntimeEvent)>);
 	impl<Runtime, RuntimeEvent> InboundQueue for StumpInboundQueue<Runtime, RuntimeEvent>
 	where
