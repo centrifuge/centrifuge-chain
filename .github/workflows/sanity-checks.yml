@@ -20,9 +20,6 @@ jobs:
       matrix:
         target: [test-general, test-integration,
                  lint-fmt, lint-clippy, cargo-build] # ,lint-taplo]
-    env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
-      RUSTC_WRAPPER: "sccache"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -30,7 +27,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          RUST_TOOLCHAIN: "nightly-2022-11-14"
           cache: enabled
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
@@ -40,6 +37,7 @@ jobs:
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
+          RUSTC_WRAPPER: "sccache"
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}
@@ -47,8 +45,6 @@ jobs:
     strategy:
       matrix:
         runtime: [development, altair, centrifuge]
-    env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -56,7 +52,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          RUST_TOOLCHAIN: "nightly-2022-11-14"
           setup_cache: true
           cache: enabled
           GWIP: ${{ secrets.GWIP_SCCACHE }}
@@ -67,3 +63,4 @@ jobs:
         env:
           TARGET: benchmark-check
           RUNTIME: ${{ matrix.runtime }}
+          RUSTC_WRAPPER: "sccache"

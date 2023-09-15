@@ -29,10 +29,14 @@ FROM docker.io/library/ubuntu:22.04 as builder
 	COPY . centrifuge-chain
 	WORKDIR /centrifuge-chain
 	RUN echo $(ls -l /centrifuge-chain/)
-
+	RUN \
+		rustup-init -y --profile minimal --default-toolchain stable; \
+		cargo install sccache;
+	
 	RUN	rustup default $RUST_TOOLCHAIN && \
-		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
-		cargo build "--release" --features=${FEATURES}
+		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
+	
+	# RUN cargo build "--release" --features=${FEATURES}
 
 # ===== SECOND STAGE ======
 # ToDo: create a secure image as a base for the binary
@@ -59,14 +63,15 @@ FROM docker.io/library/ubuntu:22.04
 	RUN ldd /usr/local/bin/centrifuge-chain && \
 		/usr/local/bin/centrifuge-chain --version
 
-	# Unclutter
-	RUN mv /usr/share/ca* /tmp && \
-		rm -rf /usr/share/*  && \
-		mv /tmp/ca-certificates /usr/share/ && \
-		mkdir -p /root/.local/share/centrifuge-chain && \
-		ln -s /root/.local/share/centrifuge-chain /data 
-	# minimize the attack surface
+  # Unclutter
+	# RUN mv /usr/share/ca* /tmp && \
+	# 	rm -rf /usr/share/*  && \
+	# 	mv /tmp/ca-certificates /usr/share/
+  # minimize the attack surface
 		# rm -rf /usr/bin /usr/sbin /usr/lib/python* && \
+	RUN	mkdir -p /root/.local/share/centrifuge-chain && \
+		ln -s /root/.local/share/centrifuge-chain /data 
+	
 
 
 USER centrifuge
