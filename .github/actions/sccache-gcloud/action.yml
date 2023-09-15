@@ -26,10 +26,10 @@ runs:
     - name: set GH variables
       shell: bash
       run: |
-        # The gauth step should already take care of this:
-        # echo "SCCACHE_GCS_KEY_PATH=${{ steps.gauth.credentials_file_path }}" >> $GITHUB_ENV
         echo "SCCACHE_GCS_BUCKET=centrifuge-chain-sccache-backend" >> $GITHUB_ENV
         echo "SCCACHE_GCS_RW_MODE=READ_WRITE" >> $GITHUB_ENV
+        # The gauth step should already take care of this:
+        # echo "SCCACHE_GCS_KEY_PATH=${{ steps.gauth.credentials_file_path }}" >> $GITHUB_ENV        
 
     - name: setup Rust sccache wrapper
       if: ${{ inputs.cache == 'enabled' }}
