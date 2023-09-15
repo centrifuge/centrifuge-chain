@@ -6,11 +6,13 @@ jobs:
   benchmark:
     permissions:
       pull-requests: write
+      id-token: write
     name: benchmark
     runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
+      RUST_TOOLCHAIN: "1.66.0"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/github-script@v6
         name: Parse Runtime From Comment
@@ -34,15 +36,6 @@ jobs:
               body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
             })
             return comment.data.id
-      - name: Prep build on Ubuntu
-        run: |
-          echo "Pre cleanup"
-          df -h
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Post cleanup"
-          df -h
-          sudo apt-get install protobuf-compiler
       - name: Get PR Hash
         id: get_pr_hash
         uses: actions/github-script@v6
@@ -60,21 +53,27 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ steps.get_pr_hash.outputs.result }}
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          default: true
+          RUST_TOOLCHAIN: ${{ matrix.rust_version }}
+          
+      - name: SCcache setup
+        uses: ./.github/actions/sccache-gcloud
+        with:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
       - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
-        run: ./ci/script.sh
-        env:
-          TARGET: benchmark
-          RUNTIME: ${{steps.parse-runtime.outputs.result}}
+        run: ./scripts/runtime_benchmarks.sh ${{steps.parse-runtime.outputs.result}}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{steps.parse-runtime.outputs.result}}-weights
           path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/
+
       - uses: actions/github-script@v6
         name: Notify Benchmark finished
         with:
