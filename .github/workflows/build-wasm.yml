@@ -98,7 +98,7 @@ jobs:
         run: |
           target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
           runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
-          filename=$(echo "${{ matrix.package }}" | sed -e` 's/-/_/g' )
+          filename=$(echo "${{ matrix.package }}" | sed -e 's/-/_/g' )
           gsutil cp \
             ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
             gs://centrifuge-wasm-repo/$RUNTIME/${target}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
