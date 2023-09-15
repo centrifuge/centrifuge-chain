@@ -44,7 +44,11 @@ jobs:
         with:
           prefix-key: build #-${{ matrix.package }}
           shared-key: wasm
-          # save-if: ${{ github.ref == 'refs/heads/master' }}
+          workspaces: |
+            .
+            ./target/srtool
+          cache-directories: ./runtime
+          # save-if: ${{ github.ref == 'refs/heads/master' }}          
 
       - name: Setup build options
         id: buildopt
