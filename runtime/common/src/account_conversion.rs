@@ -12,7 +12,7 @@
 
 use cfg_primitives::AccountId;
 use cfg_traits::TryConvert;
-use cfg_types::domain_address::DomainAddress;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
 use sp_core::{Get, H160};
 use sp_runtime::traits::Convert;
@@ -58,6 +58,20 @@ impl<R, XcmConverter> Convert<DomainAddress, AccountId> for AccountConverter<R, 
 		match domain_address {
 			DomainAddress::Centrifuge(addr) => AccountId::new(addr),
 			DomainAddress::EVM(chain_id, addr) => Self::convert_evm_address(chain_id, addr),
+		}
+	}
+}
+
+impl<R, XcmConverter> Convert<(Domain, [u8; 32]), AccountId> for AccountConverter<R, XcmConverter> {
+	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId {
+		match domain {
+			Domain::Centrifuge => AccountId::new(account),
+			// EVM AccountId20 addresses are right-padded to 32 bytes
+			Domain::EVM(chain_id) => {
+				let mut bytes20 = [0; 20];
+				bytes20.copy_from_slice(&account[..20]);
+				Self::convert_evm_address(chain_id, bytes20)
+			}
 		}
 	}
 }

@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.33"
+version = "0.10.34"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -245,6 +245,7 @@ dependencies = [
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
  "pallet-fees",
+ "pallet-foreign-investments",
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
@@ -257,6 +258,7 @@ dependencies = [
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft-sales",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
@@ -1195,6 +1197,7 @@ dependencies = [
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
  "pallet-fees",
+ "pallet-foreign-investments",
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
@@ -1207,6 +1210,7 @@ dependencies = [
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
@@ -2684,7 +2688,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.27"
+version = "0.10.29"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2743,6 +2747,7 @@ dependencies = [
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
  "pallet-fees",
+ "pallet-foreign-investments",
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
@@ -7511,6 +7516,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-foreign-investments"
+version = "1.0.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec 3.6.4",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-grandpa"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=bcff60a227d455d95b4712b6cb356ce56b1ff672#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -11071,10 +11095,12 @@ dependencies = [
  "pallet-ethereum-transaction",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-foreign-investments",
  "pallet-investments",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
  "pallet-loans",
+ "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",

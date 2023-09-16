@@ -21,15 +21,15 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	liquidity_pools::{InboundQueue, OutboundQueue},
-	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _, TryConvert,
+	investments::{OrderManager, TrancheCurrency as _},
+	liquidity_pools::OutboundQueue,
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert,
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
-	domain_address::{Domain, DomainAddress},
+	domain_address::Domain,
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{
@@ -90,7 +90,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -429,20 +429,47 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
+	pub DefaultTokenSellRate: Ratio = Ratio::one();
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type Balance = Balance;
+	type CollectedForeignRedemptionHook =
+		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyConverter =
+		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook =
+		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
+	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type Rate = Ratio;
+	type RuntimeEvent = RuntimeEvent;
+	type TokenSwapOrderId = u64;
+	type TokenSwaps = OrderBook;
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
 	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
 	// NOTE: No need to adapt that. The Router is an artifact and will be removed
 	// with FI PR
 	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type BalanceRatio = Quantity;
+	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type ForeignInvestment = Investments;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 	type OutboundQueue = FilteredOutboundQueue;
 	type Permission = Permissions;
@@ -511,7 +538,8 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type InboundQueue = DummyInboundQueue;
+	type InboundQueue =
+		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
@@ -521,19 +549,6 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Sender = Sender;
 	type WeightInfo = ();
-}
-
-/// DummyInboundQueue will be used in the first phase of testing in order to
-/// ensure that no incoming messages will be processed.
-pub struct DummyInboundQueue;
-
-impl InboundQueue for DummyInboundQueue {
-	type Message = LiquidityPoolsMessage;
-	type Sender = DomainAddress;
-
-	fn submit(_: Self::Sender, _: Self::Message) -> DispatchResult {
-		Err(DispatchError::Other("InboundQueue not supported yet"))
-	}
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -1746,6 +1761,10 @@ impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Quantity;
+	type CollectedInvestmentHook =
+		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
+	type CollectedRedemptionHook =
+		pallet_foreign_investments::hooks::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
@@ -1906,6 +1925,24 @@ impl pallet_uniques::Config for Runtime {
 	type WeightInfo = weights::pallet_uniques::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const OrderPairVecSize: u32 = 1_000u32;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type OrderIdNonce = u64;
+	type OrderPairVecSize = OrderPairVecSize;
+	type RuntimeEvent = RuntimeEvent;
+	type SellRatio = Ratio;
+	type TradeableAsset = Tokens;
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1966,6 +2003,8 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 105,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 106,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 107,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 108,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 109,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2485,6 +2524,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_loans, Loans);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
+			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2555,6 +2595,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_loans, Loans);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
+			add_benchmark!(params, batches,	pallet_order_book, OrderBook);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

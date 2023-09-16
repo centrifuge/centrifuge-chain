@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT, TrancheTokenPrice};
+use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, TrancheTokenPrice};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,

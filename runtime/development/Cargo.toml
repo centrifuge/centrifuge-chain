@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.27"
+version = "0.10.29"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -125,6 +125,7 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-foreign-investments = { path = "../../pallets/foreign-investments", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
@@ -207,6 +208,7 @@ std = [
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
   "pallet-fees/std",
+  "pallet-foreign-investments/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
@@ -299,6 +301,7 @@ runtime-benchmarks = [
   "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
@@ -405,6 +408,7 @@ try-runtime = [
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-fees/try-runtime",
+  "pallet-foreign-investments/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",

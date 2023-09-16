@@ -14,7 +14,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{
+	use cfg_traits::investments::{
 		Investment, InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency,
 	};
 	use cfg_types::orders::{FulfillmentWithPrice, TotalOrder};
@@ -276,6 +276,20 @@ pub mod pallet {
 			Ok(RedeemOrders::<T>::get(investment_id)
 				.unwrap_or_default()
 				.amount)
+		}
+
+		fn investment_requires_collect(
+			_investor: &T::AccountId,
+			_investment_id: Self::InvestmentId,
+		) -> bool {
+			unimplemented!("not needed here, could also default to false")
+		}
+
+		fn redemption_requires_collect(
+			_investor: &T::AccountId,
+			_investment_id: Self::InvestmentId,
+		) -> bool {
+			unimplemented!("not needed here, could also default to false")
 		}
 	}
 

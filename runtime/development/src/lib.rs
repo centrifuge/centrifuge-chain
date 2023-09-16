@@ -24,8 +24,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _, TryConvert as _,
+	investments::{OrderManager, TrancheCurrency as _},
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -102,7 +102,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -138,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1027,
+	spec_version: 1029,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1545,17 +1545,44 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
+	pub DefaultTokenSellRate: Ratio = Ratio::one();
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type Balance = Balance;
+	type CollectedForeignRedemptionHook =
+		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyConverter =
+		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook =
+		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
+	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type Rate = Ratio;
+	type RuntimeEvent = RuntimeEvent;
+	type TokenSwapOrderId = u64;
+	type TokenSwaps = OrderBook;
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AccountConverter = AccountConverter<Runtime, LocationToAccountId>;
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type BalanceRatio = Quantity;
+	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
-	type ForeignInvestment = Investments;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
 	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
 	type OutboundQueue = LiquidityPoolsGateway;
 	type Permission = Permissions;
@@ -1648,6 +1675,10 @@ impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Quantity;
+	type CollectedInvestmentHook =
+		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
+	type CollectedRedemptionHook =
+		pallet_foreign_investments::hooks::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
@@ -1824,6 +1855,7 @@ impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
@@ -1902,6 +1934,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

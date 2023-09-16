@@ -13,7 +13,7 @@
 use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
@@ -174,8 +174,8 @@ where
 	}
 
 	/// Update the debt of a Tranche by multiplying with the accrued interest
-	/// since the last update:     debt = debt * interest_rate_per_second ^ (now
-	/// - last_update)
+	/// since the last update:
+	/// debt = debt * interest_rate_per_second ^ (now - last_update)
 	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();

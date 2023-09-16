@@ -6,17 +6,18 @@ use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::xcm::general_key;
 use xcm::{
 	latest::MultiLocation,
-	prelude::{Parachain, X2},
+	prelude::{GeneralIndex, PalletInstance, Parachain, X2, X3},
 	VersionedMultiLocation,
 };
 
-use crate::utils::AUSD_CURRENCY_ID;
+use crate::utils::{AUSD_CURRENCY_ID, USDT_CURRENCY_ID};
 
 mod liquidity_pools;
 mod routers;
 
 /// Register AUSD in the asset registry.
-/// It should be executed within an externalities environment.
+///
+/// NOTE: It should be executed within an externalities environment.
 pub fn register_ausd() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 12,
@@ -41,5 +42,33 @@ pub fn register_ausd() {
 		RuntimeOrigin::root(),
 		meta,
 		Some(AUSD_CURRENCY_ID)
+	));
+}
+
+/// Register USDT in the asset registry and enable LiquidityPools cross chain
+/// transferability.
+///
+/// NOTE: Assumes to be executed within an externalities environment.
+fn register_usdt() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 6,
+		name: "Tether USDT".into(),
+		symbol: "USDT".into(),
+		existential_deposit: 10_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),
+		))),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::LiquidityPools,
+			pool_currency: true,
+			..CustomMetadata::default()
+		},
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		RuntimeOrigin::root(),
+		meta,
+		Some(USDT_CURRENCY_ID)
 	));
 }

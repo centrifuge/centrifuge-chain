@@ -16,7 +16,7 @@ use cfg_primitives::{
 	types::{PoolId, TrancheId},
 	Balance, PalletIndex,
 };
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
@@ -29,7 +29,7 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::{xcm::XcmMetadata, EVMChainId};
+use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -314,6 +314,14 @@ pub enum LiquidityPoolsWrappedToken {
 		/// The token contract address
 		address: [u8; 20],
 	},
+}
+
+impl From<LiquidityPoolsWrappedToken> for DomainAddress {
+	fn from(token: LiquidityPoolsWrappedToken) -> Self {
+		match token {
+			LiquidityPoolsWrappedToken::EVM { chain_id, address } => Self::EVM(chain_id, address),
+		}
+	}
 }
 
 pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
