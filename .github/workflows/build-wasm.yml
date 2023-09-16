@@ -16,7 +16,7 @@ jobs:
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
-    runs-on:  ubuntu-latest-8-cores
+    runs-on:  ubuntu-latest-4-cores
     strategy:
       matrix:
         # To test until I get one right

@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         target: [ release, test ]
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest-8-cores
     env:
       WORKFLOW_TAG: ${{ github.event.inputs.docker_tag }}
     steps:
@@ -79,7 +79,7 @@ jobs:
           context: .
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
-            FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
+            FEATURES=${{ matrix.target == 'test' && join(['fast', 'runtime'], '-') || '' }}
           # SCCACHE_GHA_ENABLED="true"
           # RUSTC_WRAPPER=sccache
           push: ${{ github.ref == '/refs/heads/main' && true || false }}

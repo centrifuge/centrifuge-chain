@@ -41,7 +41,8 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 	
 	COPY . centrifuge-chain
 	WORKDIR /centrifuge-chain	
-	RUN	cargo build "--release" --features=${FEATURES}
+	RUN	FEATURES=$(echo ${FEATURES} | tr -d '"') \
+		cargo build "--release" --features=${FEATURES}
 
 
 # ===== SECOND STAGE ======
@@ -52,7 +53,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04
 		io.centrifuge.image.vendor="Centrifuge" \
 		io.centrifuge.image.title="centrifugeio/centrifuge-chain" \
 		io.centrifuge.image.description="Centrifuge, the layer 1 of RWA. This is the official Centrifuge image with an injected binary." \
-		io.centrifuge.image.source="https://github.com/centrifuge/centrifuge-chain/blob/main/Dockerfile" \
+		io.centrifuge.image.source="https://github.com/centrifuge/centrifuge-chain/blob/main/docker/centrifuge-chain/Dockerfile" \
 		# io.centrifuge.image.revision="${VCS_REF}" \
 		io.centrifuge.image.created="${BUILD_DATE}"
 
