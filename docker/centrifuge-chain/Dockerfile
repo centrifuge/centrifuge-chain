@@ -30,13 +30,6 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 		./rustup-init -y --no-modify-path --profile minimal --default-toolchain stable; \
 		rm rustup-init;
 
-  # install sccache		
-	COPY ./ci/install-sccache-tarball.sh ./
-	RUN chmod +x install-sccache-tarball.sh && \
-		./install-sccache-tarball.sh 
-	RUN echo $(sccache --show-stats)
-	RUN sccache --show-stats
-
   # BUILD
 	ARG FEATURES=""
 	ARG RUST_TOOLCHAIN="1.66"
