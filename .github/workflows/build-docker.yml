@@ -79,7 +79,7 @@ jobs:
           context: .
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
-            FEATURES=${{ matrix.target == 'test' && join(['fast', 'runtime'], '-') || '' }}
+            FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
           # SCCACHE_GHA_ENABLED="true"
           # RUSTC_WRAPPER=sccache
           push: ${{ github.ref == '/refs/heads/main' && true || false }}
