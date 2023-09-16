@@ -72,23 +72,25 @@ jobs:
 
       - name: Build and push centrifugeio/centrifuge-chain
         uses: docker/build-push-action@v5
-        env:
-          BUILDKIT_PROGRESS: plain
-          DOCKER_BUILDKIT: 1
+        # env:
+        #   BUILDKIT_PROGRESS: plain
+        #   DOCKER_BUILDKIT: 1
         with:
           context: .
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && '"fast-runtime"' || '' }}
-            SCCACHE_GHA_ENABLED="true"
-            RUSTC_WRAPPER=sccache
+          # SCCACHE_GHA_ENABLED="true"
+          # RUSTC_WRAPPER=sccache
           push: ${{ github.ref == '/refs/heads/main' && true || false }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
-          cache-from: type=registry,ref=centrifugeio/centrifuge-chain
+          cache-from: type=gha
+          # cache-from: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}
           # https://docs.docker.com/build/cache/backends/inline/
-          cache-to: inline
+          cache-to: type=gha, mode=max
+          # cache-to: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}, mode=max
 
       - name: Update DockerHub descriptions
         if: contains(github.ref, 'refs/tags/release-v')

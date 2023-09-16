@@ -4,7 +4,7 @@
 # ToDo: create a CI/builder image with preloaded tools
 FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 
-	# Defaults
+  # Defaults
 	ENV RUST_BACKTRACE 1
 	ENV DEBIAN_FRONTEND=noninteractive
 	
@@ -23,32 +23,33 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 	ENV RUSTUP_HOME=/usr/local/rustup \
 		CARGO_HOME=/usr/local/cargo \
 		PATH=/usr/local/cargo/bin:$PATH 
-# install rustup, use minimum components
+  # install rustup, use minimum components
     RUN curl -L "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
         -o rustup-init; \
 		chmod +x rustup-init; \
 		./rustup-init -y --no-modify-path --profile minimal --default-toolchain stable; \
-		rm rustup-init; 
-# install sccache		
+		rm rustup-init;
+
+  # install sccache		
 	COPY ./ci/install-sccache-tarball.sh ./
 	RUN chmod +x install-sccache-tarball.sh && \
 		./install-sccache-tarball.sh 
+	RUN echo $(sccache --show-stats)
+	RUN sccache --show-stats
 
-	# BUILD
+  # BUILD
 	ARG FEATURES=""
 	ARG RUST_TOOLCHAIN="1.66"
-	ARG RUSTC_WRAPPER=sccache
+	ARG RUSTC_WRAPPER=''
 	ARG SCCACHE_GHA_ENABLED="false"	
 
 	RUN	rustup default $RUST_TOOLCHAIN && \
 		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
-
-	RUN echo $(sccache --show-stats)
+	
 	COPY . centrifuge-chain
 	WORKDIR /centrifuge-chain	
-	RUN --mount=type=cache,target=/root/.cache/sccache \
-		cargo build "--release" --features=${FEATURES}
-	RUN sccache --show-stats
+	RUN	cargo build "--release" --features=${FEATURES}
+
 
 # ===== SECOND STAGE ======
 # ToDo: create a secure image as a base for the binary
