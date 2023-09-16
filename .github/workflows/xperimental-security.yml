@@ -1,0 +1,33 @@
+name: Security audit
+on:
+  push:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+jobs:
+  rustsec-audit:
+    # permissions:
+    #   issues: write
+    #   checks: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
+      - uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+# Add this https://github.com/viperproject/prusti-dev/releases
+
+  prusti-dev:
+    runs-on: ubuntu-4-cores
+    name: Prusti
+    steps:
+      - name: check for overflows and panics
+        run: |
+          wget https://github.com/viperproject/prusti-dev/releases/download/v-2023-08-22-1715/prusti-release-ubuntu.zip
+          unzip prusti-release-ubuntu.zip
+          ./cargo-prusti build --release
+
+
+# Report:
+# docker run --rm -e "WORKSPACE=${PWD}" -v $PWD:/app shiftleft/scan scan --build
