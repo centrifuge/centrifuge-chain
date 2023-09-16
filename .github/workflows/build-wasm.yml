@@ -79,7 +79,7 @@ jobs:
             ls -la /cargo-home/
             du -sh /cargo-home/*
             echo "---- RUNNING BUILD ----"
-            srtool build
+            srtool/build --save
 
       - id: 'auth'
         # if: ${{ github.ref == 'refs/heads/main' }}
