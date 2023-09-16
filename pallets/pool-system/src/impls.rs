@@ -11,8 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
-	TrancheCurrency, TrancheTokenPrice, UpdateState,
+	changes::ChangeGuard,
+	investments::{InvestmentAccountant, TrancheCurrency},
+	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
@@ -443,7 +444,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
-	use cfg_traits::{Investment, PoolBenchmarkHelper};
+	use cfg_traits::{investments::Investment, PoolBenchmarkHelper};
 	use cfg_types::{
 		pools::TrancheMetadata,
 		tokens::{CurrencyId, CustomMetadata},

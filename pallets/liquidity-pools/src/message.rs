@@ -30,13 +30,13 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 /// corresponding receiver rejects it.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
+pub enum Message<Domain, PoolId, TrancheId, Balance, Ratio>
 where
 	Domain: Codec,
 	PoolId: Encode + Decode,
 	TrancheId: Encode + Decode,
 	Balance: Encode + Decode,
-	Rate: Encode + Decode,
+	Ratio: Encode + Decode,
 {
 	Invalid,
 	/// Add a currency to a domain, i.e, register the mapping of a currency id
@@ -56,7 +56,7 @@ where
 	/// Allow a currency to be used as a pool currency and to invest in a pool.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
-	AllowPoolCurrency {
+	AllowInvestmentCurrency {
 		pool_id: PoolId,
 		currency: u128,
 	},
@@ -72,7 +72,6 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 		decimals: u8,
-		price: Rate,
 	},
 	/// Update the price of a tranche token on the target domain.
 	///
@@ -80,7 +79,8 @@ where
 	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		price: Rate,
+		currency: u128,
+		price: Ratio,
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on
 	/// the target domain.
@@ -185,6 +185,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
+		currency: u128,
 	},
 	/// Collect the proceeds for the specified pair of pool and
 	/// tranche token.
@@ -199,6 +200,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
+		currency: u128,
 	},
 	/// The message sent back to the domain from which a `DecreaseInvestOrder`
 	/// message was received, ensuring the correct state update on said domain
@@ -218,8 +220,10 @@ where
 		/// `DecreaseInvestOrder` message, i.e., the amount by which the
 		/// investment order was actually decreased by.
 		currency_payout: Balance,
-		/// The outstanding order, in `currency` units
-		remaining_invest_order: Balance,
+		/// The remaining investment amount denominated in the `foreign` payment
+		/// currency. It reflects the sum of the unprocessed as well as the
+		/// processed but not yet collected amounts.
+		remaining_invest_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `DecreaseRedeemOrder`
 	/// message was received, ensuring the correct state update on said domain
@@ -239,9 +243,10 @@ where
 		/// original `DecreaseRedeemOrder` message, i.e., the amount by which
 		/// the redeem order was actually decreased by.
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of tranche tokens the investor still has locked
-		/// to redeem at a later epoch execution
-		remaining_redeem_order: Balance,
+		/// The remaining redemption amount. It reflects the sum of the
+		/// unprocessed as well as the processed but not yet collected amount of
+		/// tranche tokens.
+		remaining_redeem_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectInvest` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -257,13 +262,14 @@ where
 		investor: Address,
 		/// The currency in which the investment was realised
 		currency: u128,
-		/// The amount that was actually collected
+		/// The amount that was actually collected, in `currency` units
 		currency_payout: Balance,
 		/// The amount of tranche tokens received for the investment made
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of `currency` the investor still has locked to
-		/// invest at a later epoch execution
-		remaining_invest_order: Balance,
+		/// The remaining investment amount denominated in the `foreign` payment
+		/// currency. It reflects the sum of the unprocessed as well as the
+		/// processed but not yet collected amounts.
+		remaining_invest_amount: Balance,
 	},
 	/// The message sent back to the domain from which a `CollectRedeem` message
 	/// has been received, which will ensure the `investor` gets the payout
@@ -283,9 +289,46 @@ where
 		currency_payout: Balance,
 		/// How many tranche tokens were actually redeemed
 		tranche_tokens_payout: Balance,
-		/// The remaining amount of tranche tokens the investor still has locked
-		/// to redeem at a later epoch execution
-		remaining_redeem_order: Balance,
+		/// The remaining redemption amount. It reflects the sum of the
+		/// unprocessed as well as the processed but not yet collected amount of
+		/// tranche tokens.
+		remaining_redeem_amount: Balance,
+	},
+	/// Cancel an unprocessed invest order for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Special instance of `DecreaseInvestOrder` where the amount is chosen
+	/// properly to cancel out the ongoing investment. Required for ERC4646.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Directionality: Centrifuge <- EVM Domain.
+	CancelInvestOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		investor: Address,
+		currency: u128,
+	},
+	/// Reduce the redeem order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Special instance of `DecreaseRedeemOrder` where the amount is chosen
+	/// properly to cancel out the ongoing redemption. Required for ERC4646.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Directionality: Centrifuge <- EVM Domain.
+	CancelRedeemOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		investor: Address,
+		currency: u128,
 	},
 	/// Schedules an EVM address to become rely-able by the gateway. Intended to
 	/// be used via governance to execute EVM spells.
@@ -295,6 +338,35 @@ where
 		/// The EVM contract address
 		contract: [u8; 20],
 	},
+	/// Cancel the scheduled process for an EVM address to become rely-able by
+	/// the gateway. Intended to be used via governance to execute EVM spells.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	CancelUpgrade {
+		/// The EVM contract address
+		contract: [u8; 20],
+	},
+	/// Updates the name and symbol of a tranche token.
+	///
+	/// NOTE: We do not allow updating the decimals as this would require
+	/// migrating all associated balances.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	UpdateTrancheTokenMetadata {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		token_name: [u8; TOKEN_NAME_SIZE],
+		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+	},
+	/// Update the investment limit of the specified tranche token. Disables
+	/// investment if the amount is set to zero.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	UpdateTrancheInvestmentLimit {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		amount: Balance,
+	},
 }
 
 impl<
@@ -302,8 +374,8 @@ impl<
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Message<Domain, PoolId, TrancheId, Balance, Rate>
+		Ratio: Encode + Decode,
+	> Message<Domain, PoolId, TrancheId, Balance, Ratio>
 {
 	/// The call type that identifies a specific Message variant. This value is
 	/// used to encode/decode a Message to/from a bytearray, whereas the head of
@@ -316,7 +388,7 @@ impl<
 			Self::Invalid { .. } => 0,
 			Self::AddCurrency { .. } => 1,
 			Self::AddPool { .. } => 2,
-			Self::AllowPoolCurrency { .. } => 3,
+			Self::AllowInvestmentCurrency { .. } => 3,
 			Self::AddTranche { .. } => 4,
 			Self::UpdateTrancheTokenPrice { .. } => 5,
 			Self::UpdateMember { .. } => 6,
@@ -332,7 +404,12 @@ impl<
 			Self::ExecutedDecreaseRedeemOrder { .. } => 16,
 			Self::ExecutedCollectInvest { .. } => 17,
 			Self::ExecutedCollectRedeem { .. } => 18,
+			Self::CancelInvestOrder { .. } => 19,
+			Self::CancelRedeemOrder { .. } => 20,
 			Self::ScheduleUpgrade { .. } => 21,
+			Self::CancelUpgrade { .. } => 22,
+			Self::UpdateTrancheTokenMetadata { .. } => 23,
+			Self::UpdateTrancheInvestmentLimit { .. } => 24,
 		}
 	}
 }
@@ -342,8 +419,8 @@ impl<
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Codec for Message<Domain, PoolId, TrancheId, Balance, Rate>
+		Ratio: Encode + Decode,
+	> Codec for Message<Domain, PoolId, TrancheId, Balance, Ratio>
 {
 	fn serialize(&self) -> Vec<u8> {
 		match self {
@@ -358,7 +435,7 @@ impl<
 			Message::AddPool { pool_id } => {
 				encoded_message(self.call_type(), vec![encode_be(pool_id)])
 			}
-			Message::AllowPoolCurrency { pool_id, currency } => encoded_message(
+			Message::AllowInvestmentCurrency { pool_id, currency } => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), encode_be(currency)],
 			),
@@ -368,7 +445,6 @@ impl<
 				token_name,
 				token_symbol,
 				decimals,
-				price,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -377,16 +453,21 @@ impl<
 					token_name.encode(),
 					token_symbol.encode(),
 					decimals.encode(),
-					encode_be(price),
 				],
 			),
 			Message::UpdateTrancheTokenPrice {
 				pool_id,
 				tranche_id,
+				currency,
 				price,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					encode_be(currency),
+					encode_be(price),
+				],
 			),
 			Message::UpdateMember {
 				pool_id,
@@ -502,17 +583,29 @@ impl<
 				pool_id,
 				tranche_id,
 				investor,
+				currency,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
 			),
 			Message::CollectRedeem {
 				pool_id,
 				tranche_id,
 				investor,
+				currency,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), investor.to_vec()],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
 			),
 			Message::ExecutedDecreaseInvestOrder {
 				pool_id,
@@ -520,7 +613,7 @@ impl<
 				investor,
 				currency,
 				currency_payout,
-				remaining_invest_order,
+				remaining_invest_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -529,7 +622,7 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(currency_payout),
-					encode_be(remaining_invest_order),
+					encode_be(remaining_invest_amount),
 				],
 			),
 			Message::ExecutedDecreaseRedeemOrder {
@@ -538,7 +631,7 @@ impl<
 				investor,
 				currency,
 				tranche_tokens_payout,
-				remaining_redeem_order,
+				remaining_redeem_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -547,7 +640,7 @@ impl<
 					investor.to_vec(),
 					encode_be(currency),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_redeem_order),
+					encode_be(remaining_redeem_amount),
 				],
 			),
 			Message::ExecutedCollectInvest {
@@ -557,7 +650,7 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
-				remaining_invest_order,
+				remaining_invest_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -567,7 +660,7 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_invest_order),
+					encode_be(remaining_invest_amount),
 				],
 			),
 			Message::ExecutedCollectRedeem {
@@ -577,7 +670,7 @@ impl<
 				currency,
 				currency_payout,
 				tranche_tokens_payout,
-				remaining_redeem_order,
+				remaining_redeem_amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -587,12 +680,65 @@ impl<
 					encode_be(currency),
 					encode_be(currency_payout),
 					encode_be(tranche_tokens_payout),
-					encode_be(remaining_redeem_order),
+					encode_be(remaining_redeem_amount),
+				],
+			),
+			Message::CancelInvestOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
+				],
+			),
+			Message::CancelRedeemOrder {
+				pool_id,
+				tranche_id,
+				investor,
+				currency,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					investor.to_vec(),
+					encode_be(currency),
 				],
 			),
 			Message::ScheduleUpgrade { contract } => {
 				encoded_message(self.call_type(), vec![contract.to_vec()])
 			}
+			Message::CancelUpgrade { contract } => {
+				encoded_message(self.call_type(), vec![contract.to_vec()])
+			}
+			Message::UpdateTrancheTokenMetadata {
+				pool_id,
+				tranche_id,
+				token_name,
+				token_symbol,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					token_name.encode(),
+					token_symbol.encode(),
+				],
+			),
+			Message::UpdateTrancheInvestmentLimit {
+				pool_id,
+				tranche_id,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), tranche_id.encode(), encode_be(amount)],
+			),
 		}
 	}
 
@@ -608,7 +754,7 @@ impl<
 			2 => Ok(Self::AddPool {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 			}),
-			3 => Ok(Self::AllowPoolCurrency {
+			3 => Ok(Self::AllowInvestmentCurrency {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
@@ -618,11 +764,11 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				decimals: decode::<1, _, _>(input)?,
-				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			5 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			6 => Ok(Self::UpdateMember {
@@ -677,11 +823,13 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			14 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			15 => Ok(Self::ExecutedDecreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -689,7 +837,7 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			16 => Ok(Self::ExecutedDecreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -697,7 +845,7 @@ impl<
 				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			17 => Ok(Self::ExecutedCollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -706,7 +854,7 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_invest_order: decode_be_bytes::<16, _, _>(input)?,
+				remaining_invest_amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			18 => Ok(Self::ExecutedCollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -715,10 +863,36 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				currency_payout: decode_be_bytes::<16, _, _>(input)?,
 				tranche_tokens_payout: decode_be_bytes::<16, _, _>(input)?,
-				remaining_redeem_order: decode_be_bytes::<16, _, _>(input)?,
+				remaining_redeem_amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			19 => Ok(Self::CancelInvestOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			20 => Ok(Self::CancelRedeemOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			21 => Ok(Self::ScheduleUpgrade {
 				contract: decode::<20, _, _>(input)?,
+			}),
+			22 => Ok(Self::CancelUpgrade {
+				contract: decode::<20, _, _>(input)?,
+			}),
+			23 => Ok(Self::UpdateTrancheTokenMetadata {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
+				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+			}),
+			24 => Ok(Self::UpdateTrancheInvestmentLimit {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -748,7 +922,7 @@ fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::{Balance, PoolId, TrancheId};
-	use cfg_types::fixed_point::Rate;
+	use cfg_types::fixed_point::Ratio;
 	use cfg_utils::vec_to_fixed_array;
 	use hex::FromHex;
 	use sp_runtime::traits::One;
@@ -756,7 +930,7 @@ mod tests {
 	use super::*;
 	use crate::{Domain, DomainAddress};
 
-	pub type LiquidityPoolsMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	pub type LiquidityPoolsMessage = Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 
 	const AMOUNT: Balance = 100000000000000000000000000;
 	const POOL_ID: PoolId = 12378532;
@@ -834,7 +1008,7 @@ mod tests {
 	#[test]
 	fn allow_pool_currency() {
 		test_encode_decode_identity(
-			LiquidityPoolsMessage::AllowPoolCurrency {
+			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: TOKEN_ID,
 				pool_id: POOL_ID,
 			},
@@ -845,7 +1019,7 @@ mod tests {
 	#[test]
 	fn allow_pool_currency_zero() {
 		test_encode_decode_identity(
-			LiquidityPoolsMessage::AllowPoolCurrency {
+			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: 0,
 				pool_id: 0,
 			},
@@ -862,9 +1036,8 @@ mod tests {
 				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 				decimals: 15,
-				price: Rate::one(),
 			},
-			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f00000000033b2e3c9fd0803ce8000000",
+			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f",
 		)
 	}
 
@@ -874,9 +1047,10 @@ mod tests {
 			LiquidityPoolsMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				price: Rate::one(),
+				currency: TOKEN_ID,
+				price: Ratio::one(),
 			},
-			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a7640000",
 		)
 	}
 
@@ -980,6 +1154,19 @@ mod tests {
 	}
 
 	#[test]
+	fn cancel_invest_order() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelInvestOrder {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				investor: default_address_32(),
+				currency: TOKEN_ID,
+			},
+			"130000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
 	fn increase_redeem_order() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::IncreaseRedeemOrder {
@@ -1008,14 +1195,28 @@ mod tests {
 	}
 
 	#[test]
+	fn cancel_redeem_order() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelRedeemOrder {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				investor: default_address_32(),
+				currency: TOKEN_ID,
+			},
+			"140000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
 	fn collect_invest() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::CollectInvest {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
+				currency: TOKEN_ID,
 			},
-			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -1026,8 +1227,9 @@ mod tests {
 				pool_id: POOL_ID,
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
+				currency: TOKEN_ID
 			},
-			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -1040,9 +1242,9 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT / 2,
-				remaining_invest_order: AMOUNT * 2
+				remaining_invest_amount: AMOUNT / 4,
 			},
-			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+			"0f0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)
 	}
 
@@ -1055,9 +1257,9 @@ mod tests {
 				investor: vec_to_fixed_array(default_address_20().to_vec()),
 				currency: TOKEN_ID,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_redeem_order: AMOUNT * 2
+				remaining_redeem_amount: AMOUNT / 4,
 			},
-			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e640669720000000000000000a56fa5b99019a5c8000000",
+			"100000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b0000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)
 	}
 
@@ -1071,9 +1273,9 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_invest_order: AMOUNT * 3,
+				remaining_invest_amount: AMOUNT / 4,
 			},
-			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+			"110000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)
 	}
 
@@ -1087,9 +1289,9 @@ mod tests {
 				currency: TOKEN_ID,
 				currency_payout: AMOUNT,
 				tranche_tokens_payout: AMOUNT / 2,
-				remaining_redeem_order: AMOUNT * 3,
+				remaining_redeem_amount: AMOUNT / 4,
 			},
-			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e640669720000000000000000f8277896582678ac000000",
+			"120000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e40000000000000000295be96e64066972000000000000000014adf4b7320334b9000000",
 		)
 	}
 
@@ -1103,17 +1305,56 @@ mod tests {
 		)
 	}
 
+	#[test]
+	fn cancel_upgrade() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::CancelUpgrade {
+				contract: default_address_20(),
+			},
+			"161231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
+	fn update_tranche_token_metadata() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::UpdateTrancheTokenMetadata {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+			},
+			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
+		)
+	}
+
+	#[test]
+	fn update_tranche_investment_limit() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::UpdateTrancheInvestmentLimit {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				amount: AMOUNT,
+			},
+			"180000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(
-		msg: Message<Domain, PoolId, TrancheId, Balance, Rate>,
+		msg: Message<Domain, PoolId, TrancheId, Balance, Ratio>,
 		expected_hex: &str,
 	) {
 		let encoded = msg.serialize();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
-		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
-			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
+		let decoded: Message<Domain, PoolId, TrancheId, Balance, Ratio> = Message::deserialize(
+			&mut hex::decode(expected_hex)
+				.expect("Decode should work")
+				.as_slice(),
+		)
+		.expect("Deserialization should work");
 		assert_eq!(msg, decoded);
 	}
 

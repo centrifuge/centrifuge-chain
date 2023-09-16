@@ -351,7 +351,7 @@ pub mod changes {
 /// Module for investment portfolio common to all runtimes
 pub mod investment_portfolios {
 
-	use cfg_traits::{InvestmentsPortfolio, TrancheCurrency};
+	use cfg_traits::investments::{InvestmentsPortfolio, TrancheCurrency};
 	use sp_std::vec::Vec;
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
@@ -417,6 +417,71 @@ pub mod xcm_transactor {
 	impl XcmTransact for NullTransactor {
 		fn destination(self) -> xcm::latest::MultiLocation {
 			Default::default()
+		}
+	}
+}
+
+pub mod foreign_investments {
+	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
+	use cfg_traits::IdentityCurrencyConversion;
+	use cfg_types::tokens::CurrencyId;
+	use frame_support::pallet_prelude::PhantomData;
+	use orml_traits::asset_registry::Inspect;
+	use sp_runtime::DispatchError;
+
+	/// Simple currency converter which maps the amount of the outgoing currency
+	/// to the precision of the incoming one. E.g., the worth of 100
+	/// EthWrappedDai in USDC.
+	///
+	/// Requires currencies to have their decimal precision registered in an
+	/// asset registry. Moreover, one of the currencies must be a allowed as
+	/// pool currency.
+	///
+	/// NOTE: This converter is only supposed to be used short-term as an MVP
+	/// for stable coin conversions. We assume those conversions to be 1-to-1
+	/// bidirectionally. In the near future, this conversion must be improved to
+	/// account for conversion ratios other than 1.0.
+	pub struct IdentityPoolCurrencyConverter<AssetRegistry>(PhantomData<AssetRegistry>);
+
+	impl<AssetRegistry> IdentityCurrencyConversion for IdentityPoolCurrencyConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Balance = Balance;
+		type Currency = CurrencyId;
+		type Error = DispatchError;
+
+		fn stable_to_stable(
+			currency_in: Self::Currency,
+			currency_out: Self::Currency,
+			amount_out: Self::Balance,
+		) -> Result<Self::Balance, Self::Error> {
+			match (currency_out, currency_in) {
+				(from, to) if from == to => Ok(amount_out),
+				(CurrencyId::ForeignAsset(_), CurrencyId::ForeignAsset(_)) => {
+					let from_metadata = AssetRegistry::metadata(&currency_out)
+						.ok_or(DispatchError::CannotLookup)?;
+					let to_metadata =
+						AssetRegistry::metadata(&currency_in).ok_or(DispatchError::CannotLookup)?;
+					frame_support::ensure!(
+						from_metadata.additional.pool_currency
+							|| to_metadata.additional.pool_currency,
+						DispatchError::Token(sp_runtime::TokenError::Unsupported)
+					);
+
+					convert_balance_decimals(
+						from_metadata.decimals,
+						to_metadata.decimals,
+						amount_out,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
 		}
 	}
 }

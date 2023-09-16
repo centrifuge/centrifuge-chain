@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.33"
+version = "0.10.34"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -54,7 +54,9 @@ sp-version = { git = "https://github.com/paritytech/substrate", default-features
 # frame dependencies
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38", features = [
+  "tuples-96",
+] }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -113,6 +115,7 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-foreign-investments = { path = "../../pallets/foreign-investments", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
@@ -122,6 +125,7 @@ pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-f
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-order-book = { path = "../../pallets/order-book", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -188,6 +192,7 @@ std = [
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
   "pallet-fees/std",
+  "pallet-foreign-investments/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
@@ -197,6 +202,7 @@ std = [
   "pallet-multisig/std",
   "pallet-membership/std",
   "pallet-nft-sales/std",
+  "pallet-order-book/std",
   "pallet-permissions/std",
   "moonbeam-relay-encoder/std",
   "pallet-pool-system/std",
@@ -272,6 +278,7 @@ runtime-benchmarks = [
   "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
@@ -281,6 +288,7 @@ runtime-benchmarks = [
   "pallet-multisig/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -359,6 +367,7 @@ try-runtime = [
   "pallet-evm/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
+  "pallet-foreign-investments/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
@@ -368,6 +377,7 @@ try-runtime = [
   "pallet-multisig/try-runtime",
   "pallet-membership/try-runtime",
   "pallet-nft-sales/try-runtime",
+  "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-pool-registry/try-runtime",
