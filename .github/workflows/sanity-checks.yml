@@ -38,6 +38,27 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"
+          
+      - name: generate codecov reports
+        run: |
+          if ${{ contains(matrix.target, 'test' ) }}; then
+            echo "---- GENERATE CODE COVERAGE ----"
+            echo "Generate code coverage for ${{ matrix.package }}"
+            cargo binstall cargo-tarpaulin
+            # make Cargo.toml
+            cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
+          fi            
+
+    # UPLOAD REPORTS
+      - name: Upload codecov report
+        uses: codecov/codecov-action@v3
+        with:
+          # token: ${{ secrets.CODECOV_TOKEN }}
+          # files: ./coverage1.xml,./coverage2.xml # optional
+          # flags: unittests # optional
+          # name: codecov-umbrella # optional
+          # fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)        
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}

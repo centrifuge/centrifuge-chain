@@ -34,6 +34,7 @@ jobs:
       # SCCACHE_GHA_ENABLED: "true"
       # RUSTC_WRAPPER: "sccache"
     steps:
+    # PREP  
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
@@ -52,7 +53,7 @@ jobs:
             ./target/srtool
           cache-directories: ./runtime
           # save-if: ${{ github.ref == 'refs/heads/master' }}
-
+    # BUILD
       - name: Setup build options
         id: buildopt
         run: |
@@ -68,6 +69,7 @@ jobs:
         env:
           RUSTC_VERSION: ${{ matrix.rust_version }}
           BUILD_OPTS: ${{ env.BUILD_OPTS }}
+          TARPAULIN_VERSION: 0.19.1 # travis-ci codecov generator
         with:
           image: paritytech/srtool:${{ matrix.rust_version }}
           options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e PACKAGE=${{ matrix.package }}
@@ -80,10 +82,10 @@ jobs:
             du -sh /cargo-home/*
             echo "---- RUNNING BUILD ----"
             /srtool/build --save
-      
+
       - id: set_runtime
         run: echo "RUNTIME=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//")" >> $GITHUB_ENV
-      - name: upload srtool report
+      - name: Upload srtool report
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 #v3.1.3
         with:
           name: srtool-wasm-report.txt
