@@ -44,7 +44,7 @@ jobs:
           if ${{ contains(matrix.target, 'test' ) }}; then
             echo "---- GENERATE CODE COVERAGE ----"
             echo "Generate code coverage for ${{ matrix.package }}"
-            cargo binstall cargo-tarpaulin
+            cargo install cargo-tarpaulin
             # make Cargo.toml
             cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
           fi            
