@@ -64,7 +64,7 @@ jobs:
           echo "BUILD_OPTS=${{ env.BUILD_OPT }}"
 
       - name: Run Docker SRTool
-        uses: addnab/docker-run-action@v3
+        uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
         env:
           RUSTC_VERSION: ${{ matrix.rust_version }}
           BUILD_OPTS: ${{ env.BUILD_OPTS }}
@@ -79,7 +79,7 @@ jobs:
             ls -la /cargo-home/
             du -sh /cargo-home/*
             echo "---- RUNNING BUILD ----"
-            /srtool/build --json
+            srtool build
 
       - id: 'auth'
         # if: ${{ github.ref == 'refs/heads/main' }}
