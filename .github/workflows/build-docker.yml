@@ -63,13 +63,25 @@ jobs:
             type=semver,pattern={{major}}
             type=edge
 
+      - name: Configure sccache
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
       - name: Build and push centrifugeio/centrifuge-chain
         uses: docker/build-push-action@v5
         env:
-          FEATURES: ${{ matrix.target == 'test' && '"fast-runtime"' || '' }}
+          BUILDKIT_PROGRESS: plain
+          DOCKER_BUILDKIT: 1
         with:
           context: .
           file: ./docker/centrifuge-chain/Dockerfile
+          build-args: |
+            FEATURES=${{ matrix.target == 'test' && '"fast-runtime"' || '' }}
+            SCCACHE_GHA_ENABLED="true"
+            RUSTC_WRAPPER=sccache
           push: ${{ github.ref == '/refs/heads/main' && true || false }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:

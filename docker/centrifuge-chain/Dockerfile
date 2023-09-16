@@ -2,13 +2,11 @@
 # https://github.com/paritytech/polkadot-sdk/blob/master/docker/dockerfiles/polkadot/polkadot_injected_release.Dockerfile
 
 # ToDo: create a CI/builder image with preloaded tools
-FROM docker.io/library/ubuntu:22.04 as builder
+FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 
 	# Defaults
 	ENV RUST_BACKTRACE 1
 	ENV DEBIAN_FRONTEND=noninteractive
-	ARG FEATURES=""
-	ARG RUST_TOOLCHAIN="1.66"
 	
 	RUN apt-get update && \
 		# apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
@@ -21,26 +19,40 @@ FROM docker.io/library/ubuntu:22.04 as builder
 			libclang-dev \
 			protobuf-compiler \
 			curl
-	
-	RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-	ENV PATH="${PATH}:/root/.cargo/bin"
-	
+
+	ENV RUSTUP_HOME=/usr/local/rustup \
+		CARGO_HOME=/usr/local/cargo \
+		PATH=/usr/local/cargo/bin:$PATH 
+# install rustup, use minimum components
+    RUN curl -L "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
+        -o rustup-init; \
+		chmod +x rustup-init; \
+		./rustup-init -y --no-modify-path --profile minimal --default-toolchain stable; \
+		rm rustup-init; 
+# install sccache		
+	COPY ./ci/install-sccache-tarball.sh ./
+	RUN chmod +x install-sccache-tarball.sh && \
+		./install-sccache-tarball.sh 
+
 	# BUILD
-	COPY . centrifuge-chain
-	WORKDIR /centrifuge-chain
-	RUN echo $(ls -l /centrifuge-chain/)
-	RUN \
-		rustup-init -y --profile minimal --default-toolchain stable; \
-		cargo install sccache;
-	
+	ARG FEATURES=""
+	ARG RUST_TOOLCHAIN="1.66"
+	ARG RUSTC_WRAPPER=sccache
+	ARG SCCACHE_GHA_ENABLED="false"	
+
 	RUN	rustup default $RUST_TOOLCHAIN && \
 		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
-	
-	# RUN cargo build "--release" --features=${FEATURES}
+
+	RUN echo $(sccache --show-stats)
+	COPY . centrifuge-chain
+	WORKDIR /centrifuge-chain	
+	RUN --mount=type=cache,target=/root/.cache/sccache \
+		cargo build "--release" --features=${FEATURES}
+	RUN sccache --show-stats
 
 # ===== SECOND STAGE ======
 # ToDo: create a secure image as a base for the binary
-FROM docker.io/library/ubuntu:22.04
+FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04
 
 	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
 		io.centrifuge.image.vendor="Centrifuge" \
@@ -67,13 +79,16 @@ FROM docker.io/library/ubuntu:22.04
 	# RUN mv /usr/share/ca* /tmp && \
 	# 	rm -rf /usr/share/*  && \
 	# 	mv /tmp/ca-certificates /usr/share/
+
   # minimize the attack surface
-		# rm -rf /usr/bin /usr/sbin /usr/lib/python* && \
+	# RUN rm -rf /usr/bin /usr/sbin /usr/lib/python*
+	
+	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 	RUN	mkdir -p /root/.local/share/centrifuge-chain && \
 		ln -s /root/.local/share/centrifuge-chain /data 
 	
-
-
+	
+ENV RUST_BACKTRACE 1
 USER centrifuge
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]

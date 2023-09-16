@@ -1,5 +1,0 @@
-**/target/
-ci/
-.github/
-scripts/
-docker-compose*

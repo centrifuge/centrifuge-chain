@@ -1,0 +1,7 @@
+**/target/
+.github/
+scripts/
+docker-compos
+.gitignore
+docker
+README.md
