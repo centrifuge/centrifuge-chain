@@ -12,7 +12,7 @@ jobs:
   benchmark:
     permissions:
       pull-requests: write
-      contents: read
+      contents: write
       id-token: write
     runs-on: ubuntu-latest-8-cores
     strategy:
