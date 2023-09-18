@@ -1357,9 +1357,11 @@ mod tests {
 			}
 		}
 
+		/// Invariants from: https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Without-storage
 		fn check_delta_invariant(&self, transition: &InvestTransition, new_state: &InvestState) {
 			println!("Transition: {:#?}", transition);
 			println!("New state: {:#?}, total: {}", new_state, new_state.total());
+
 			match *transition {
 				InvestTransition::IncreaseInvestOrder(swap) => {
 					let diff = new_state.total() - self.old_state.total();
@@ -1441,7 +1443,7 @@ mod tests {
 
 		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
 
-		for _ in 0..10000 {
+		for _ in 0..100000 {
 			let mut use_case = transitions.clone();
 			let use_case = use_case.partial_shuffle(&mut rng, 8).0;
 			let mut state = InvestState::NoState;
