@@ -32,22 +32,21 @@ jobs:
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
-
-      - name: Runing cargo ${{ matrix.target }}
-        run: ./ci/run-check.sh
-        env:
-          TARGET: ${{ matrix.target }}
-          RUSTC_WRAPPER: "sccache"
-          
       - name: generate codecov reports
         run: |
           if ${{ contains(matrix.target, 'test' ) }}; then
             echo "---- GENERATE CODE COVERAGE ----"
-            echo "Generate code coverage for ${{ matrix.package }}"
+            echo "# Install Tarpaulin"
             cargo install cargo-tarpaulin
             # make Cargo.toml
+            echo "Generate code coverage for ${{ matrix.target }}"
             cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
-          fi            
+          fi 
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh
+        env:
+          TARGET: ${{ matrix.target }}
+          RUSTC_WRAPPER: "sccache"           
 
     # UPLOAD REPORTS
       - name: Upload codecov report
