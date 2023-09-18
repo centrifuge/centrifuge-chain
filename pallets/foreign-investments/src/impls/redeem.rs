@@ -597,16 +597,6 @@ mod tests {
 		Pool,
 	}
 
-	const CONVERSION_RATE: u128 = 3; // 300%
-
-	fn to_pool(foreign_amount: u128) -> u128 {
-		foreign_amount * CONVERSION_RATE
-	}
-
-	fn to_foreign(pool_amount: u128) -> u128 {
-		pool_amount / CONVERSION_RATE
-	}
-
 	type RedeemState = super::RedeemState<u128, CurrencyId>;
 	type RedeemTransition = super::RedeemTransition<u128, CurrencyId>;
 
@@ -627,18 +617,7 @@ mod tests {
 		}
 
 		fn get_swap_amount(&self) -> u128 {
-			match *self {
-				Self::ActiveSwapIntoForeignCurrency { swap } => swap.amount,
-				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone { swap, .. } => {
-					swap.amount
-				}
-				Self::RedeemingAndActiveSwapIntoForeignCurrency { swap, .. } => swap.amount,
-				Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-					swap,
-					..
-				} => swap.amount,
-				_ => 0,
-			}
+			self.get_active_swap().map(|swap| swap.amount).unwrap_or(0)
 		}
 
 		fn total(&self) -> u128 {
@@ -714,8 +693,8 @@ mod tests {
 			RedeemTransition::DecreaseRedeemOrder(60),
 			RedeemTransition::FulfillSwapOrder(foreign_swap_big),
 			RedeemTransition::FulfillSwapOrder(foreign_swap_small),
-			//RedeemTransition::CollectInvestment(60),
-			//RedeemTransition::CollectInvestment(120),
+			RedeemTransition::CollectRedemption(30, foreign_swap_big),
+			RedeemTransition::CollectRedemption(30, foreign_swap_small),
 		];
 
 		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction

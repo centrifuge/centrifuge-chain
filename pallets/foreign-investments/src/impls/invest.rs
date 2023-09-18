@@ -1281,7 +1281,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: 100,
+				done_amount: done_amount + 40,
 				invest_amount: pool_swap.amount
 			}
 		);
@@ -1298,7 +1298,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: 100,
+				done_amount: done_amount + 40,
 				invest_amount: invest_amount + pool_swap.amount
 			}
 		);
