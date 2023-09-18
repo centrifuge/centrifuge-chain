@@ -44,7 +44,6 @@ use core::convert::TryFrom;
 use cfg_traits::liquidity_pools::{InboundQueue, OutboundQueue};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::ExecutedForeignCollectInvest,
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -227,7 +226,6 @@ pub mod pallet {
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
-			CollectInvestResult = ExecutedForeignCollectInvest<Self::Balance>,
 		>;
 
 		/// The source of truth for the transferability of assets via the
@@ -679,7 +677,7 @@ pub mod pallet {
 		/// pool on the domain derived from the given currency.
 		#[pallet::call_index(9)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn allow_pool_currency(
+		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
@@ -799,8 +797,6 @@ pub mod pallet {
 				},
 			)
 		}
-
-		// TODO(@future): pub fn update_tranche_investment_limit
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -1025,7 +1021,6 @@ pub mod pallet {
 					tranche_id,
 					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
-					sender,
 				),
 				Message::CollectRedeem {
 					pool_id,
