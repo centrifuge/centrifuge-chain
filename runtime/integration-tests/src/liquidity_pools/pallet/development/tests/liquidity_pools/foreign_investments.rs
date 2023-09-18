@@ -1477,7 +1477,12 @@ mod mismatching_currencies {
 
 	use super::*;
 	use crate::{
-		liquidity_pools::pallet::development::{setup::CHARLIE, tests::register_usdt},
+		liquidity_pools::pallet::development::{
+			setup::CHARLIE,
+			tests::{
+				liquidity_pools::foreign_investments::setup::enable_usdt_trading, register_usdt,
+			},
+		},
 		utils::{GLMR_CURRENCY_ID, USDT_CURRENCY_ID},
 	};
 
@@ -1498,6 +1503,8 @@ mod mismatching_currencies {
 			let invest_amount_pool_denominated: u128 = 6_000_000_000_000_000;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
+			let invest_amount_foreign_denominated: u128 =
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
 			do_initial_increase_investment(
 				pool_id,
 				invest_amount_pool_denominated,
@@ -1511,23 +1518,6 @@ mod mismatching_currencies {
 				),
 				Some(pool_currency)
 			);
-
-			// USDT investment preparations
-			register_usdt();
-			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
-			enable_liquidity_pool_transferability(foreign_currency);
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
 
 			// Increase invest order such that collect payment currency gets overwritten
 			let msg = LiquidityPoolMessage::IncreaseInvestOrder {
@@ -1603,20 +1593,21 @@ mod mismatching_currencies {
 			);
 
 			// USDT investment preparations
-			register_usdt();
-			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
-
-			// Should fail to increase to an invalid payment currency
-			assert!(!ForeignInvestments::accepted_payment_currency(
-				default_investment_id(),
-				foreign_currency
-			));
+			let invest_amount_foreign_denominated =
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, false, || {
+					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					// Should fail to increase to an invalid payment currency
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+						pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
+					);
+				});
 			let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),
@@ -1624,35 +1615,6 @@ mod mismatching_currencies {
 				currency: general_currency_index(foreign_currency),
 				amount: invest_amount_foreign_denominated,
 			};
-			assert_noop!(
-				LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg.clone()),
-				pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
-			);
-
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert!(ForeignInvestments::accepted_payment_currency(
-				default_investment_id(),
-				foreign_currency
-			));
-			assert!(!ForeignInvestments::accepted_payout_currency(
-				default_investment_id(),
-				foreign_currency
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
-			));
-			assert!(ForeignInvestments::accepted_payout_currency(
-				default_investment_id(),
-				foreign_currency
-			));
 
 			// Should be able to invest since InvestmentState does not have an active swap,
 			// i.e. any tradable pair is allowed to invest at this point
@@ -1792,34 +1754,12 @@ mod mismatching_currencies {
 			let pool_currency_decimals = currency_decimals::AUSD;
 			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
-
-			// USDT investment preparations
-			register_usdt();
-			// Overwrite multilocation to enable LP transferability
-			enable_liquidity_pool_transferability(foreign_currency);
+			let invest_amount_foreign_denominated: u128 =
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
 			assert_ok!(Tokens::mint_into(
 				pool_currency,
 				&trader,
 				invest_amount_pool_denominated
-			));
-			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
 			));
 
 			// Increase such that active swap into USDT is initialized
@@ -1967,6 +1907,8 @@ mod mismatching_currencies {
 			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
+			let invest_amount_foreign_denominated: u128 =
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
 			// invest in pool currency to reach `InvestmentOngoing` quickly
 			do_initial_increase_investment(
 				pool_id,
@@ -1974,33 +1916,10 @@ mod mismatching_currencies {
 				investor.clone(),
 				pool_currency,
 			);
-
-			// USDT setup
-			register_usdt();
-			enable_liquidity_pool_transferability(foreign_currency);
-			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
 				&trader,
 				invest_amount_foreign_denominated * 2
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
 			));
 
 			// Decrease invest setup to have invest order swapping into foreign currency
@@ -2223,33 +2142,12 @@ mod mismatching_currencies {
 			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
-
-			// USDT setup
-			register_usdt();
-			enable_liquidity_pool_transferability(foreign_currency);
 			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
 				&trader,
 				invest_amount_foreign_denominated * 2
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
 			));
 
 			// Increase invest setup to have invest order swapping into pool currency
@@ -2533,6 +2431,8 @@ mod mismatching_currencies {
 			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
+			let invest_amount_foreign_denominated: u128 =
+				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
 			// invest in pool currency to reach `InvestmentOngoing` quickly
 			do_initial_increase_investment(
 				pool_id,
@@ -2540,33 +2440,10 @@ mod mismatching_currencies {
 				investor.clone(),
 				pool_currency,
 			);
-
-			// USDT setup
-			register_usdt();
-			enable_liquidity_pool_transferability(foreign_currency);
-			let invest_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					invest_amount_pool_denominated,
-				)
-				.unwrap();
 			assert_ok!(Tokens::mint_into(
 				pool_currency,
 				&trader,
 				invest_amount_pool_denominated
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
 			));
 
 			// Increase invest have
@@ -2653,40 +2530,18 @@ mod mismatching_currencies {
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let pool_account =
 				pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+			let redeem_amount_foreign_denominated: u128 =
+				enable_usdt_trading(pool_currency, redeem_amount_pool_denominated, true, || {});
 			assert_ok!(Tokens::mint_into(
 				pool_currency,
 				&pool_account,
 				redeem_amount_pool_denominated
 			));
-
-			// USDT setup
-			register_usdt();
-			enable_liquidity_pool_transferability(foreign_currency);
-			let redeem_amount_foreign_denominated: u128 =
-				IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
-					foreign_currency,
-					pool_currency,
-					redeem_amount_pool_denominated,
-				)
-				.unwrap();
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
 				&trader,
 				redeem_amount_foreign_denominated
 			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				pool_currency,
-				foreign_currency,
-				1
-			));
-			assert_ok!(OrderBook::add_trading_pair(
-				RuntimeOrigin::root(),
-				foreign_currency,
-				pool_currency,
-				1
-			));
-
 			do_initial_increase_redemption(
 				pool_id,
 				redeem_amount_pool_denominated,
@@ -2768,8 +2623,16 @@ mod mismatching_currencies {
 }
 
 mod setup {
+	use cfg_traits::investments::ForeignInvestment;
+	use development_runtime::OrderBook;
+
 	use super::*;
-	use crate::liquidity_pools::pallet::development::tests::liquidity_pools::setup::DEFAULT_OTHER_DOMAIN_ADDRESS;
+	use crate::{
+		liquidity_pools::pallet::development::tests::{
+			liquidity_pools::setup::DEFAULT_OTHER_DOMAIN_ADDRESS, register_usdt,
+		},
+		utils::USDT_CURRENCY_ID,
+	};
 
 	/// Sets up required permissions for the investor and executes an
 	/// initial investment via LiquidityPools by executing
@@ -3015,5 +2878,64 @@ mod setup {
 			)),
 			0
 		);
+	}
+
+	/// Registers USDT currency, adds bidirectional trading pairs and returns
+	/// the amount in foreign denomination
+	pub(crate) fn enable_usdt_trading(
+		pool_currency: CurrencyId,
+		amount_pool_denominated: Balance,
+		enable_lp_transferability: bool,
+		// add_trading_pair_to_foreign: bool,
+		// add_trading_pair_to_pool: bool,
+		pre_add_trading_pair_check: impl FnOnce() -> (),
+	) -> Balance {
+		register_usdt();
+		let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+		let amount_foreign_denominated: u128 =
+			IdentityPoolCurrencyConverter::<OrmlAssetRegistry>::stable_to_stable(
+				foreign_currency,
+				pool_currency,
+				amount_pool_denominated,
+			)
+			.unwrap();
+
+		if enable_lp_transferability {
+			enable_liquidity_pool_transferability(foreign_currency);
+		}
+
+		pre_add_trading_pair_check();
+
+		assert!(!ForeignInvestments::accepted_payment_currency(
+			default_investment_id(),
+			foreign_currency
+		));
+		assert_ok!(OrderBook::add_trading_pair(
+			RuntimeOrigin::root(),
+			pool_currency,
+			foreign_currency,
+			1
+		));
+		assert!(ForeignInvestments::accepted_payment_currency(
+			default_investment_id(),
+			foreign_currency
+		));
+		assert!(!ForeignInvestments::accepted_payout_currency(
+			default_investment_id(),
+			foreign_currency
+		));
+
+		assert_ok!(OrderBook::add_trading_pair(
+			RuntimeOrigin::root(),
+			foreign_currency,
+			pool_currency,
+			1
+		));
+		assert!(ForeignInvestments::accepted_payout_currency(
+			default_investment_id(),
+			foreign_currency
+		));
+
+		amount_foreign_denominated
 	}
 }
