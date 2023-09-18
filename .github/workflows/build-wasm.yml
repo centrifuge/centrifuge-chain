@@ -65,7 +65,11 @@ jobs:
           echo "BUILD_OPTS=${{ env.BUILD_OPT }}"
 
       - name: Run srtool
-        run: docker run -it --rm  -e PACKAGE=centrifuge-runtime  -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }} --platform=linux/amd64  -v ${{ github.workspace }}:/build paritytech/srtool:1.66.0  /srtool/build
+        run: >
+          docker run --rm  
+          -e PACKAGE=centrifuge-runtime  -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }} 
+          --platform=linux/amd64  -v ${{ github.workspace }}:/build paritytech/srtool:1.66.0 
+          /srtool/build 
 
       # - name: Run Docker SRTool
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
