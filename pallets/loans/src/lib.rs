@@ -909,7 +909,7 @@ pub mod pallet {
 			);
 
 			let repaid_amount =
-				Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount, permissionless)?.0;
+				Self::repay_action(who, pool_id, from_loan_id, &repaid_amount, permissionless)?.0;
 
 			ensure!(
 				borrow_amount.balance()? == repaid_amount.repaid_amount()?.total()?,
@@ -917,7 +917,7 @@ pub mod pallet {
 			);
 
 			let count =
-				Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
+				Self::borrow_action(who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
 
 			Ok((repaid_amount.repaid_amount()?.total()?, count))
 		}
