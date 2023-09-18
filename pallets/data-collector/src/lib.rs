@@ -28,7 +28,7 @@ mod tests;
 pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataFeeder, DataProvider, DataProviderExtended, OnNewData};
+	use orml_traits::{DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError, DispatchResult,
@@ -58,7 +58,10 @@ pub mod pallet {
 		type Moment: Parameter + MaxEncodedLen;
 
 		/// Data provider for initializing data values
-		type DataProvider: DataProviderExtended<Self::DataId, (Self::Data, Self::Moment)>;
+		type DataProvider: DataProviderExtended<
+			(Self::DataId, Self::CollectionId),
+			(Self::Data, Self::Moment),
+		>;
 
 		/// Max size of a data collection
 		#[pallet::constant]
@@ -105,15 +108,30 @@ pub mod pallet {
 		MaxCollectionNumber,
 	}
 
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
+		fn get_from_source(
+			data_id: &T::DataId,
+			collection_id: &T::CollectionId,
+		) -> Result<DataValueOf<T, I>, DispatchError> {
+			T::DataProvider::get_no_op(&(data_id.clone(), collection_id.clone()))
+				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
+		}
+	}
+
 	impl<T: Config<I>, I: 'static> DataRegistry<T::DataId, T::CollectionId> for Pallet<T, I> {
 		type Collection = CachedCollection<T, I>;
-		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		type Data = DataValueOf<T, I>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
-		fn get(data_id: &T::DataId) -> Self::Data {
-			T::DataProvider::get_no_op(data_id)
-				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
+		fn get(
+			data_id: &T::DataId,
+			collection_id: &T::CollectionId,
+		) -> Result<Self::Data, DispatchError> {
+			Collection::<T, I>::get(collection_id)
+				.get(data_id)
+				.cloned()
+				.ok_or_else(|| Error::<T, I>::DataIdNotInCollection.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
@@ -130,8 +148,8 @@ pub mod pallet {
 							.map_err(|_| Error::<T, I>::MaxCollectionNumber)?;
 
 						Collection::<T, I>::try_mutate(collection_id, |collection| {
-							let data =
-								<Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id)?;
+							let data = Self::get_from_source(data_id, collection_id)?;
+
 							collection
 								.try_insert(data_id.clone(), data)
 								.map(|_| ())
@@ -168,37 +186,13 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T, I>::get(data_id).keys() {
 				Collection::<T, I>::mutate(collection_id, |collection| {
-					let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id);
+					let data = Self::get_from_source(data_id, collection_id);
+
 					if let (Some(value), Ok(new_value)) = (collection.get_mut(data_id), data) {
 						*value = new_value;
 					}
 				});
 			}
-		}
-	}
-
-	// This implementation can be removed once:
-	// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged,
-	// and consecuently, get() call methods simplified.
-	impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
-	where
-		T::DataProvider: DataProvider<T::DataId, T::Data>,
-	{
-		fn get(key: &T::DataId) -> Option<T::Data> {
-			T::DataProvider::get(key)
-		}
-	}
-
-	impl<T: Config<I>, I: 'static> DataFeeder<T::DataId, T::Data, T::AccountId> for Pallet<T, I>
-	where
-		T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
-	{
-		fn feed_value(
-			account_id: T::AccountId,
-			data_id: T::DataId,
-			data: T::Data,
-		) -> DispatchResult {
-			T::DataProvider::feed_value(account_id, data_id, data)
 		}
 	}
 
@@ -208,13 +202,43 @@ pub mod pallet {
 	);
 
 	impl<T: Config<I>, I: 'static> DataCollection<T::DataId> for CachedCollection<T, I> {
-		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		type Data = DataValueOf<T, I>;
 
-		fn get(&self, data_id: &T::DataId) -> Self::Data {
+		fn get(&self, data_id: &T::DataId) -> Result<DataValueOf<T, I>, DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()
 				.ok_or_else(|| Error::<T, I>::DataIdNotInCollection.into())
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	mod benchmark_impls {
+		use orml_traits::{DataFeeder, DataProvider};
+
+		use super::*;
+		// This implementation can be removed once:
+		// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> is merged.
+		impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
+		where
+			T::DataProvider: DataProvider<T::DataId, T::Data>,
+		{
+			fn get(key: &T::DataId) -> Option<T::Data> {
+				T::DataProvider::get(key)
+			}
+		}
+
+		impl<T: Config<I>, I: 'static> DataFeeder<T::DataId, T::Data, T::AccountId> for Pallet<T, I>
+		where
+			T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
+		{
+			fn feed_value(
+				account_id: T::AccountId,
+				data_id: T::DataId,
+				data: T::Data,
+			) -> DispatchResult {
+				T::DataProvider::feed_value(account_id, data_id, data)
+			}
 		}
 	}
 }

@@ -1,0 +1,109 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Centrifuge Liquidity Pools Gateway Routers"
+edition = "2021"
+license = "LGPL-3.0"
+name = "liquidity-pools-gateway-routers"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+hex = { version = "0.4.3", default-features = false }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+# Substrate
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+
+# XCM
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+
+# EVM
+ethabi = { version = "16.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+
+# Custom crates
+cfg-traits = { path = "../../../libs/traits", default-features = false }
+cfg-types = { path = "../../../libs/types", default-features = false }
+
+# Local pallets
+pallet-ethereum-transaction = { path = "../../ethereum-transaction", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../.", default-features = false }
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+
+cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+
+xcm-builder = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+xcm-executor = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
+
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+
+orml-traits = { git = "https://github.com/purestake/open-runtime-module-library", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+
+cfg-mocks = { path = "../../../libs/mocks" }
+cfg-primitives = { path = "../../../libs/primitives" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+
+[features]
+default = ["std"]
+std = [
+  "codec/std",
+  "cfg-types/std",
+  "cfg-traits/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-core/std",
+  "xcm/std",
+  "pallet-liquidity-pools-gateway/std",
+  "pallet-xcm-transactor/std",
+  "pallet-ethereum/std",
+  "pallet-ethereum-transaction/std",
+  "xcm-primitives/std",
+  "ethabi/std",
+  "scale-info/std",
+  "pallet-evm/std",
+  "sp-runtime/std",
+]
+runtime-benchmarks = [
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
+  "pallet-evm/try-runtime",
+  "sp-runtime/try-runtime",
+]

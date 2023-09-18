@@ -72,7 +72,7 @@ pub mod macros {
 	/// 		Chain::Para(PARA_ID),
 	/// 		RuntimeEvent,
 	/// 		max_blocks,
-	/// 		RuntimeEvent::ConnectorsGateway(pallet_connectors_gateway::Event::DomainRouterSet {
+	/// 		RuntimeEvent::LiquidityPoolsGateway(pallet_liquidity_pools_gateway::Event::DomainRouterSet {
 	/// 			domain,
 	/// 			router,
 	/// 		}) if [*domain == test_domain && *router == test_router],
@@ -305,6 +305,7 @@ pub mod macros {
 	/// );
 	/// ```
 	macro_rules! run {
+		// ($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
 		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr$(,)?)+);*) => {{
 				use codec::Encode as _;
 

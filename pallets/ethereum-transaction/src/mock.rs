@@ -37,7 +37,7 @@ frame_support::construct_runtime!(
 );
 
 frame_support::parameter_types! {
-	pub const MaxConnectorsPerDomain: u32 = 3;
+	pub const MaxInstancesPerDomain: u32 = 3;
 }
 
 impl frame_system::Config for Runtime {
@@ -183,9 +183,7 @@ impl pallet_ethereum::Config for Runtime {
 	type StateRoot = IntermediateStateRoot<Self>;
 }
 
-impl pallet_ethereum_transaction::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
+impl pallet_ethereum_transaction::Config for Runtime {}
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let storage = frame_system::GenesisConfig::default()

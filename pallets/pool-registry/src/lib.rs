@@ -13,7 +13,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolMutate, TrancheCurrency, UpdateState};
+use cfg_traits::{
+	investments::TrancheCurrency, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
+};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::{PoolMetadata, PoolRegistrationStatus},
@@ -52,8 +54,13 @@ type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
 	<T as Config>::PoolId,
 >>::TrancheInput;
 
+type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+	<T as Config>::PoolId,
+>>::Policy;
+
 #[frame_support::pallet]
 pub mod pallet {
+
 	use super::*;
 
 	#[pallet::config]
@@ -80,13 +87,6 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ core::fmt::Debug;
 
-		type Rate: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ TypeInfo
-			+ MaxEncodedLen;
-
 		/// A fixed-point number which represents an
 		/// interest rate.
 		type InterestRate: Member
@@ -102,6 +102,8 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 		>;
+
+		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
 
 		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
@@ -228,6 +230,7 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
+		#[allow(clippy::too_many_arguments)]
 		#[pallet::weight(T::WeightInfo::register(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
 		#[pallet::call_index(0)]
@@ -239,6 +242,7 @@ pub mod pallet {
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
+			write_off_policy: PolicyOf<T>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -277,7 +281,9 @@ pub mod pallet {
 				currency,
 				max_reserve,
 			)
-			.map(|_| Self::deposit_event(Event::Registered { pool_id }))
+			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?;
+
+			T::ModifyWriteOffPolicy::update(pool_id, write_off_policy)
 		}
 
 		/// Update per-pool configuration settings.

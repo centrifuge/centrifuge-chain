@@ -251,7 +251,7 @@ impl<
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
-	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
+	TrancheCurrency: Copy + cfg_traits::investments::TrancheCurrency<PoolId, TrancheId>,
 	TrancheId: Clone + From<[u8; 16]> + PartialEq,
 	Weight: Copy + From<u128>,
 	MaxTranches: Get<u32>,

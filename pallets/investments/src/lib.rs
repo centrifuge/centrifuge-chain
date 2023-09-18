@@ -15,22 +15,29 @@
 
 use cfg_primitives::OrderId;
 use cfg_traits::{
-	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, OrderManager,
-	PreConditions,
+	investments::{
+		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
+		InvestmentsPortfolio, OrderManager,
+	},
+	PreConditions, StatusNotificationHook,
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	investments::InvestmentAccount,
+	investments::{
+		CollectedAmount, ForeignInvestmentInfo, InvestCollection, InvestmentAccount,
+		RedeemCollection,
+	},
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, EnsureAddAssign, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{
@@ -50,83 +57,11 @@ mod tests;
 type CurrencyOf<T> =
 	<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 
-/// The outstanding collections for an account
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct InvestCollection<Balance> {
-	/// This is the payout in the denomination currency
-	/// of an investment
-	/// -> investment in payment currency
-	/// -> payout in denomination currency
-	pub payout_investment_invest: Balance,
-
-	/// This is the remaining investment in the payment currency
-	/// of an investment
-	/// -> investment in payment currency
-	/// -> payout in denomination currency
-	pub remaining_investment_invest: Balance,
-}
-
-impl<Balance: Zero> Default for InvestCollection<Balance> {
-	fn default() -> Self {
-		InvestCollection {
-			payout_investment_invest: Zero::zero(),
-			remaining_investment_invest: Zero::zero(),
-		}
-	}
-}
-
-impl<Balance: Zero + Copy> InvestCollection<Balance> {
-	/// Create a `InvestCollection` directly from an active invest order of
-	/// a user.
-	/// The field `remaining_investment_invest` is set to the
-	/// amount of the active invest order of the user and will
-	/// be subtracted from upon given fulfillment's
-	pub fn from_order(order: &Order<Balance, OrderId>) -> Self {
-		InvestCollection {
-			payout_investment_invest: Zero::zero(),
-			remaining_investment_invest: order.amount(),
-		}
-	}
-}
-
-/// The outstanding collections for an account
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct RedeemCollection<Balance> {
-	/// This is the payout in the payment currency
-	/// of an investment
-	/// -> redemption in denomination currency
-	/// -> payout in payment currency
-	pub payout_investment_redeem: Balance,
-
-	/// This is the remaining redemption in the denomination currency
-	/// of an investment
-	/// -> redemption in denomination currency
-	/// -> payout in payment currency
-	pub remaining_investment_redeem: Balance,
-}
-
-impl<Balance: Zero> Default for RedeemCollection<Balance> {
-	fn default() -> Self {
-		RedeemCollection {
-			payout_investment_redeem: Zero::zero(),
-			remaining_investment_redeem: Zero::zero(),
-		}
-	}
-}
-
-impl<Balance: Zero + Copy> RedeemCollection<Balance> {
-	/// Create a `RedeemCollection` directly from an active redeem order of
-	/// a user.
-	/// The field `remaining_investment_redeem` is set to the
-	/// amount of the active redeem order of the user and will
-	/// be subtracted from upon given fulfillment's
-	pub fn from_order(order: &Order<Balance, OrderId>) -> Self {
-		RedeemCollection {
-			payout_investment_redeem: Zero::zero(),
-			remaining_investment_redeem: order.amount(),
-		}
-	}
-}
+type AccountInvestmentPortfolioOf<T> = Vec<(
+	<T as Config>::InvestmentId,
+	CurrencyOf<T>,
+	<T as Config>::Amount,
+)>;
 
 /// The enum we parse to `PreConditions` so the runtime
 /// can make an educated decision about this investment
@@ -173,6 +108,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_types::investments::ForeignInvestmentInfo;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -241,12 +177,33 @@ pub mod pallet {
 			Result = DispatchResult,
 		>;
 
+		/// The hook which acts upon a collected investment.
+		///
+		/// NOTE: NOOP if the investment is not foreign.
+		type CollectedInvestmentHook: StatusNotificationHook<
+			Error = DispatchError,
+			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Status = CollectedAmount<Self::Amount>,
+		>;
+
+		/// The hook which acts upon a (partially) fulfilled order
+		///
+		/// NOTE: NOOP if the redemption is not foreign.
+		type CollectedRedemptionHook: StatusNotificationHook<
+			Error = DispatchError,
+			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Status = CollectedAmount<Self::Amount>,
+		>;
+
 		/// The weight information for this pallet extrinsics.
 		type WeightInfo: weights::WeightInfo;
 	}
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -686,7 +643,7 @@ where
 	}
 
 	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {
-		if amount > T::Amount::zero() {
+		if !amount.is_zero() {
 			Self::deposit_event(on_not_empty);
 		} else {
 			// In this case the user has no active position.
@@ -704,10 +661,14 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		InvestOrders::<T>::try_mutate(
+		let (collected_investment, post_dispatch_info) = InvestOrders::<T>::try_mutate(
 			&who,
 			investment_id,
-			|maybe_order| -> DispatchResultWithPostInfo {
+			|maybe_order| -> Result<
+				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				DispatchErrorWithPostInfo,
+			> {
+				// Exit early if order does not exist
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
 				} else {
@@ -717,8 +678,9 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Default::default(), ().into()));
 				};
+
 				let mut collection = InvestCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
 				let cur_order_id = InvestOrderId::<T>::get(investment_id);
@@ -729,7 +691,7 @@ where
 					cur_order_id,
 				);
 
-				// The current order is not in processing
+				// Exit early if the current order is not in processing
 				if order.submitted_at() == cur_order_id {
 					Self::deposit_event(Event::<T>::InvestCollectedForNonClearedOrderId {
 						who: who.clone(),
@@ -737,16 +699,25 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Default::default(), ().into()));
 				}
 
+				let mut amount_payment = T::Amount::zero();
 				for order_id in order.submitted_at()..last_processed_order_id {
 					let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
 						.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
+					let currency_payout =
+						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
 					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment)?;
 					collected_ids.push(order_id);
+
+					amount_payment.ensure_add_assign(
+						fulfillment
+							.price
+							.checked_mul_int_floor(currency_payout)
+							.ok_or(ArithmeticError::Overflow)?,
+					)?;
 				}
 
 				order.update_after_collect(
@@ -773,6 +744,11 @@ where
 					},
 				);
 
+				let collected_investment = CollectedAmount {
+					amount_collected: collection.payout_investment_invest,
+					amount_payment,
+				};
+
 				Self::deposit_event(Event::InvestOrdersCollected {
 					investment_id,
 					who: who.clone(),
@@ -786,9 +762,23 @@ where
 				});
 
 				// TODO: Actually weight with amount of collects here
-				Ok(().into())
+				Ok((collected_investment, ().into()))
 			},
-		)
+		)?;
+
+		if collected_investment != Default::default() {
+			// Assumption: NOOP if investment is not foreign
+			T::CollectedInvestmentHook::notify_status_change(
+				ForeignInvestmentInfo {
+					owner: who,
+					id: investment_id,
+					last_swap_reason: None,
+				},
+				collected_investment,
+			)?;
+		}
+
+		Ok(post_dispatch_info)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -797,10 +787,14 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		RedeemOrders::<T>::try_mutate(
+		let (collected_redemption, post_dispatch_info) = RedeemOrders::<T>::try_mutate(
 			&who,
 			investment_id,
-			|maybe_order| -> DispatchResultWithPostInfo {
+			|maybe_order| -> Result<
+				(CollectedAmount<T::Amount>, PostDispatchInfo),
+				DispatchErrorWithPostInfo,
+			> {
+				// Exit early if order does not exist
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
 				} else {
@@ -811,8 +805,9 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Default::default(), ().into()));
 				};
+
 				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
 				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
@@ -823,7 +818,7 @@ where
 					cur_order_id,
 				);
 
-				// The current order is not in processing
+				// Exit early if the current order is not in processing
 				if order.submitted_at() == cur_order_id {
 					Self::deposit_event(Event::<T>::RedeemCollectedForNonClearedOrderId {
 						who: who.clone(),
@@ -831,15 +826,29 @@ where
 					});
 					// TODO: Return correct weight
 					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
-					return Ok(().into());
+					return Ok((Default::default(), ().into()));
 				}
 
+				let mut amount_payment = T::Amount::zero();
 				for order_id in order.submitted_at()..last_processed_order_id {
 					let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
 						.map_err(|_| Error::<T>::OrderNotCleared)?;
-					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
+					let payout_tranche_tokens =
+						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
 					Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment)?;
 					collected_ids.push(order_id);
+
+					// TODO(@mustermeiszer): We actually want the reciprocal without rounding, is
+					// this sufficient or should we use something like
+					// `reciprocal_with_rounding(SignedRounding::NearestPrefMajor)`
+					amount_payment.ensure_add_assign(
+						fulfillment
+							.price
+							.reciprocal_floor()
+							.ok_or(Error::<T>::ZeroPricedInvestment)?
+							.checked_mul_int_floor(payout_tranche_tokens)
+							.ok_or(ArithmeticError::Overflow)?,
+					)?;
 				}
 
 				order.update_after_collect(
@@ -870,6 +879,11 @@ where
 					},
 				);
 
+				let collected_redemption = CollectedAmount {
+					amount_collected: collection.payout_investment_redeem,
+					amount_payment,
+				};
+
 				Self::deposit_event(Event::RedeemOrdersCollected {
 					investment_id,
 					who: who.clone(),
@@ -883,9 +897,23 @@ where
 				});
 
 				// TODO: Actually weight this with collected_ids
-				Ok(().into())
+				Ok((collected_redemption, ().into()))
 			},
-		)
+		)?;
+
+		if collected_redemption != Default::default() {
+			// Assumption: NOOP if investment is not foreign
+			T::CollectedRedemptionHook::notify_status_change(
+				ForeignInvestmentInfo {
+					owner: who,
+					id: investment_id,
+					last_swap_reason: None,
+				},
+				collected_redemption,
+			)?;
+		}
+
+		Ok(post_dispatch_info)
 	}
 
 	pub(crate) fn do_update_invest_order(
@@ -965,66 +993,74 @@ where
 		}
 	}
 
+	/// Increments an accounts' investment payout amount based on the remaining
+	/// amount and the fulfillment price.
+	///
+	/// Returns the amount by which was incremented.
 	pub fn acc_payout_invest(
 		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-	) -> DispatchResult {
+	) -> Result<T::Amount, DispatchError> {
 		let remaining = collection.remaining_investment_invest;
 		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a
-		// given price       the system side (i.e. the pallet-investments) will always
-		// have       enough balance to satisfy all claims on payouts.
+		// 		given price the system side (i.e. the pallet-investments) will always
+		//		have enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an
-		// issuer)       will still drain its reserve by the amount without rounding. So
-		// we neither favor       issuer or investor but always the system.
+		// Importantly, the Accountant side (i.e. the pool and therefore an issuer) will
+		// still drain its reserve by the amount without rounding. So we neither favor
+		// issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens
-		// left, that are             rounding leftovers. This will be of importance,
-		// once we remove tranches at some             point.
+		// TODO: Rounding always means, we might have issuance on tranche-tokens
+		// left, that are rounding leftovers. This will be of importance, once we remove
+		// tranches at some point.
+		let payout_investment_invest = &fulfillment
+			.price
+			.reciprocal_floor()
+			.ok_or(Error::<T>::ZeroPricedInvestment)?
+			.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
+			.ok_or(ArithmeticError::Overflow)?;
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
-			.checked_add(
-				&fulfillment
-					.price
-					.reciprocal_floor()
-					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
-					.ok_or(ArithmeticError::Overflow)?,
-			)
+			.checked_add(payout_investment_invest)
 			.ok_or(ArithmeticError::Overflow)?;
 
-		Ok(())
+		Ok(*payout_investment_invest)
 	}
 
+	/// Increments an accounts' redemption payout amount based on the remaining
+	/// amount and the fulfillment price.
+	///
+	/// Returns the amount by which was incremented.
 	pub fn acc_payout_redeem(
 		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-	) -> DispatchResult {
+	) -> Result<T::Amount, DispatchError> {
 		let remaining = collection.remaining_investment_redeem;
 		// NOTE: The checked_mul_int_floor here ensures that for a given price
 		//       the system side (i.e. the pallet-investments) will always have
 		//       enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an
-		// issuer)       will still drain its reserve by the amount without rounding. So
-		// we neither favor       issuer or investor but always the system.
+		// Importantly, the Accountant side (i.e. the pool and therefore an issuer) will
+		// still drain its reserve by the amount without rounding. So we neither favor
+		// issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens
-		// left, that are             rounding leftovers. This will be of importance,
-		// once we remove tranches at some             point.
+		// TODO: Rounding always means, we might have issuance on tranche-tokens left,
+		// that are rounding leftovers. This will be of importance, once we remove
+		// tranches at some point.
+		let payout_investment_redeem = &fulfillment
+			.price
+			.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
+			.ok_or(ArithmeticError::Overflow)?;
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
-			.checked_add(
-				&fulfillment
-					.price
-					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
-					.ok_or(ArithmeticError::Overflow)?,
-			)
+			.checked_add(payout_investment_redeem)
 			.ok_or(ArithmeticError::Overflow)?;
 
-		Ok(())
+		Ok(*payout_investment_redeem)
 	}
 
+	/// Decrements an accounts' remaining redemption amount based on the
+	/// fulfillment price.
 	pub fn acc_remaining_redeem(
 		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
@@ -1038,6 +1074,8 @@ where
 		Ok(())
 	}
 
+	/// Decrements an accounts' remaining investment amount based on the
+	/// fulfillment price.
 	pub fn acc_remaining_invest(
 		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
@@ -1084,6 +1122,41 @@ where
 	}
 }
 
+impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
+	type Balance = T::Amount;
+	type CurrencyId = CurrencyOf<T>;
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
+
+	/// Get the payment currency for an investment.
+	fn get_investment_currency_id(
+		investment_id: T::InvestmentId,
+	) -> Result<CurrencyOf<T>, DispatchError> {
+		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		Ok(info.payment_currency())
+	}
+
+	/// Get the investments and associated payment currencies and balances for
+	/// an account.
+	fn get_account_investments_currency(
+		who: &T::AccountId,
+	) -> Result<Self::AccountInvestmentPortfolio, DispatchError> {
+		let mut investments_currency: Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)> =
+			Vec::new();
+		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
+			let currency = Self::get_investment_currency_id(i)?;
+			let balance = T::Accountant::balance(i, who);
+			investments_currency.push((i, currency, balance));
+			Ok::<(), DispatchError>(())
+		})?;
+		Ok(investments_currency)
+	}
+}
 impl<T: Config> Investment<T::AccountId> for Pallet<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
@@ -1142,6 +1215,30 @@ where
 	) -> Result<Self::Amount, Self::Error> {
 		Ok(RedeemOrders::<T>::get(who, investment_id)
 			.map_or_else(Zero::zero, |order| order.amount()))
+	}
+
+	fn investment_requires_collect(
+		investor: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> bool {
+		InvestOrders::<T>::get(investor, investment_id)
+			.map(|order| {
+				let cur_order_id = InvestOrderId::<T>::get(investment_id);
+				order.submitted_at() != cur_order_id
+			})
+			.unwrap_or(false)
+	}
+
+	fn redemption_requires_collect(
+		investor: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> bool {
+		RedeemOrders::<T>::get(investor, investment_id)
+			.map(|order| {
+				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
+				order.submitted_at() != cur_order_id
+			})
+			.unwrap_or(false)
 	}
 }
 
@@ -1434,19 +1531,13 @@ where
 	type InvestmentId = T::InvestmentId;
 	type Result = ();
 
-	fn collect_investment(
-		who: T::AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error> {
+	fn collect_investment(who: T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		Pallet::<T>::do_collect_invest(who, investment_id)
 			.map_err(|e| e.error)
 			.map(|_| ())
 	}
 
-	fn collect_redemption(
-		who: T::AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error> {
+	fn collect_redemption(who: T::AccountId, investment_id: T::InvestmentId) -> DispatchResult {
 		Pallet::<T>::do_collect_redeem(who, investment_id)
 			.map_err(|e| e.error)
 			.map(|_| ())

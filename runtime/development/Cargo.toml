@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.20"
+version = "0.10.29"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -11,6 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+getrandom = { version = "0.2", features = ["js"] }
 hex = { version = "0.4.3", default_features = false }
 hex-literal = { version = "0.3.4", optional = true }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -112,26 +113,30 @@ runtime-common = { path = "../common", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
 
 # our custom pallets
+axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
+liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
-pallet-connectors = { path = "../../pallets/connectors", default-features = false }
-pallet-connectors-gateway = { path = "../../pallets/connectors-gateway", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-foreign-investments = { path = "../../pallets/foreign-investments", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
+pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-order-book = { path = "../../pallets/order-book", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
@@ -139,7 +144,7 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 pallet-transfer-allowlist = { path = "../../pallets/transfer-allowlist", default-features = false }
 
-# Connectors 3rd-party dependencies
+# LiquidityPools 3rd-party dependencies
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
@@ -149,8 +154,10 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
+instant-voting = []
 fast-runtime = []
 std = [
+  "axelar-gateway-precompile/std",
   "cfg-primitives/std",
   "cfg-types/std",
   "chainbridge/std",
@@ -171,6 +178,7 @@ std = [
   "frame-system-benchmarking?/std",
   "frame-try-runtime/std",
   "hex/std",
+  "liquidity-pools-gateway-routers/std",
   "moonbeam-relay-encoder/std",
   "orml-asset-registry/std",
   "orml-tokens/std",
@@ -187,8 +195,8 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
-  "pallet-connectors/std",
-  "pallet-connectors-gateway/std",
+  "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-data-collector/std",
@@ -200,6 +208,7 @@ std = [
   "pallet-evm-precompile-dispatch/std",
   "pallet-evm-chain-id/std",
   "pallet-fees/std",
+  "pallet-foreign-investments/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
@@ -211,6 +220,7 @@ std = [
   "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-nft/std",
+  "pallet-order-book/std",
   "pallet-permissions/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
@@ -264,9 +274,11 @@ std = [
   "fp-rpc/std",
   "fp-self-contained/std",
   "moonbeam-relay-encoder/std",
+  "getrandom/std",
 ]
 
 runtime-benchmarks = [
+  "axelar-gateway-precompile/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
@@ -275,6 +287,7 @@ runtime-benchmarks = [
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "hex-literal",
+  "liquidity-pools-gateway-routers/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
@@ -288,6 +301,7 @@ runtime-benchmarks = [
   "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
@@ -295,6 +309,7 @@ runtime-benchmarks = [
   "pallet-loans/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -312,11 +327,11 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
-  "pallet-connectors/runtime-benchmarks",
-  "pallet-connectors-gateway/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
+  "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
@@ -332,22 +347,27 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "pallet-claims/runtime-benchmarks",
+  "pallet-rewards/runtime-benchmarks",
 ]
 
 try-runtime = [
-  "pallet-connectors/try-runtime",
-  "pallet-connectors-gateway/try-runtime",
+  "axelar-gateway-precompile/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
+  "liquidity-pools-gateway-routers/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
   "pallet-keystore/try-runtime",
+  "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-nft-sales/try-runtime",
+  "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-registry/try-runtime",
   "pallet-pool-system/try-runtime",
@@ -388,6 +408,7 @@ try-runtime = [
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-fees/try-runtime",
+  "pallet-foreign-investments/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",

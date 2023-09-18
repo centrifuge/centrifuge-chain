@@ -839,6 +839,16 @@ fn fulfillment_partially_works_low_price() {
 			of_amount: PERC_REDEEM_FULFILL,
 			price: PRICE,
 		};
+		#[allow(non_snake_case)]
+		let T_BALANCE_POST_COLLECT_INVEST = PRICE
+			.reciprocal_floor()
+			.unwrap()
+			.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+			.unwrap();
+		#[allow(non_snake_case)]
+		let AUSD_BALANCE_POST_COLLECT_REDEEM = PRICE
+			.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+			.unwrap();
 
 		// Setup investments and redemptions.
 		// We do not thoroughly check the events here, as we
@@ -946,11 +956,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
@@ -1009,11 +1015,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
@@ -1051,11 +1053,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
@@ -1114,11 +1112,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
@@ -1179,9 +1173,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				PRICE
-					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
-					.unwrap()
+				AUSD_BALANCE_POST_COLLECT_REDEEM
 			);
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
@@ -1238,9 +1230,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				PRICE
-					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
-					.unwrap()
+				AUSD_BALANCE_POST_COLLECT_REDEEM
 			);
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
@@ -1385,7 +1375,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -1421,7 +1411,7 @@ fn fulfillment_partially_works_low_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -1534,6 +1524,16 @@ fn fulfillment_partially_works_high_price() {
 			of_amount: PERC_REDEEM_FULFILL,
 			price: PRICE,
 		};
+		#[allow(non_snake_case)]
+		let T_BALANCE_POST_COLLECT_INVEST = PRICE
+			.reciprocal_floor()
+			.unwrap()
+			.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+			.unwrap();
+		#[allow(non_snake_case)]
+		let AUSD_BALANCE_POST_COLLECT_REDEEM = PRICE
+			.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+			.unwrap();
 
 		// Setup investments and redemptions.
 		// We do not thoroughly check the events here, as we
@@ -1641,11 +1641,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
@@ -1704,11 +1700,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
@@ -1746,11 +1738,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
@@ -1809,11 +1797,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal_floor()
-					.unwrap()
-					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
-					.unwrap()
+				T_BALANCE_POST_COLLECT_INVEST
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
@@ -1874,9 +1858,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				PRICE
-					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
-					.unwrap()
+				AUSD_BALANCE_POST_COLLECT_REDEEM
 			);
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
@@ -1933,9 +1915,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				PRICE
-					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
-					.unwrap()
+				AUSD_BALANCE_POST_COLLECT_REDEEM
 			);
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
@@ -2072,7 +2052,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(
@@ -2108,7 +2088,7 @@ fn fulfillment_partially_works_high_price() {
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY less, as he had different fulfillments
-			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       compared to the others. I.e. the first fulfillment not part of his.
 			//       We already floor round for everybody, but there is nothing we can do
 			//       about this.
 			assert_eq!(

@@ -40,10 +40,6 @@
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
 //! loans.
 
-pub mod migrations {
-	pub mod nuke;
-}
-
 /// High level types that uses `pallet::Config`
 pub mod entities {
 	pub mod changes;
@@ -73,11 +69,8 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		self,
-		changes::ChangeGuard,
-		data::{DataCollection, DataRegistry},
-		interest::InterestAccrual,
-		Permissions, PoolInspect, PoolNAV, PoolReserve,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
+		PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -102,12 +95,12 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
-	use sp_arithmetic::FixedPointNumber;
+	use sp_arithmetic::{FixedPointNumber, PerThing};
 	use sp_runtime::{
 		traits::{BadOrigin, EnsureAdd, EnsureAddAssign, EnsureInto, One, Zero},
 		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
-	use sp_std::vec::Vec;
+	use sp_std::{vec, vec::Vec};
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
@@ -118,16 +111,11 @@ pub mod pallet {
 
 	use super::*;
 
-	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-		<T as Config>::PriceId,
-		<T as Config>::PoolId,
-	>>::Collection;
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
-	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -169,6 +157,12 @@ pub mod pallet {
 		/// Defines the balance type used for math computations
 		type Balance: tokens::Balance + FixedPointOperand;
 
+		/// Type to represent different quantities
+		type Quantity: Parameter + Member + FixedPointNumber + TypeInfo + MaxEncodedLen;
+
+		/// Defines the perthing type used where values can not overpass 100%
+		type PerThing: Parameter + Member + PerThing + TypeInfo + MaxEncodedLen;
+
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;
 
@@ -196,7 +190,7 @@ pub mod pallet {
 		>;
 
 		/// Used to fetch and update Oracle prices
-		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceResultOf<Self>>;
+		type PriceRegistry: DataRegistry<Self::PriceId, Self::PoolId, Data = PriceOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -370,14 +364,14 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when an amount used is not a natural number
-		AmountNotNaturalNumber,
 		/// The Change Id does not belong to a loan change
 		NoLoanChangeId,
 		/// The Change Id exists but it's not releated with the expected change
 		UnrelatedChangeId,
 		/// Emits when the pricing method is not compatible with the input
 		MismatchedPricingMethod,
+		/// Emits when settlement price is exceeds the configured variation.
+		SettlementPriceExceedsVariation,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -433,10 +427,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -751,9 +742,7 @@ pub mod pallet {
                 Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
-
-			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+			Self::update_write_off_policy(pool_id, policy)?;
 
 			Ok(())
 		}
@@ -866,15 +855,15 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(pool_id)?;
-					active_loan.borrow(amount)?;
+					let mut active_loan = created_loan.activate(pool_id, amount.clone())?;
+					active_loan.borrow(amount, pool_id)?;
 
 					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
 						Self::ensure_loan_borrower(who, loan.borrower())?;
-						loan.borrow(amount)
+						loan.borrow(amount, pool_id)
 					})?
 					.1
 				}
@@ -889,7 +878,7 @@ pub mod pallet {
 		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(who, loan.borrower())?;
-				loan.repay(amount.clone())
+				loan.repay(amount.clone(), pool_id)
 			})
 		}
 
@@ -991,7 +980,9 @@ pub mod pallet {
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
-			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
+			policy::find_rule(rules, |trigger| {
+				loan.check_write_off_trigger(trigger, pool_id)
+			})
 		}
 
 		fn get_released_change(
@@ -1003,13 +994,37 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
 		}
 
+		fn update_portfolio_valuation_for_pool(
+			pool_id: T::PoolId,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			let rates = T::InterestAccrual::rates();
+			let prices = T::PriceRegistry::collection(&pool_id);
+			let loans = ActiveLoans::<T>::get(pool_id);
+			let values = loans
+				.iter()
+				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
+				.collect::<Result<Vec<_>, DispatchError>>()?;
+
+			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				valuation,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok((valuation, loans.len() as u32))
+		}
+
 		fn insert_active_loan(
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan_id, loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value(pool_id)?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -1044,7 +1059,7 @@ pub mod pallet {
 
 					let result = f(loan)?;
 
-					portfolio.update_elem(loan_id, loan.present_value()?)?;
+					portfolio.update_elem(loan_id, loan.present_value(pool_id)?)?;
 
 					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 						pool_id,
@@ -1055,6 +1070,17 @@ pub mod pallet {
 					Ok((result, active_loans.len().ensure_into()?))
 				})
 			})
+		}
+
+		fn update_write_off_policy(
+			pool_id: T::PoolId,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		) -> DispatchResult {
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
+
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+
+			Ok(())
 		}
 
 		fn take_active_loan(
@@ -1093,7 +1119,7 @@ pub mod pallet {
 		) -> Result<PortfolioInfoOf<T>, DispatchError> {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
-				.map(|(loan_id, loan)| Ok((loan_id, loan.try_into()?)))
+				.map(|(loan_id, loan)| Ok((loan_id, (pool_id, loan).try_into()?)))
 				.collect()
 		}
 
@@ -1104,45 +1130,13 @@ pub mod pallet {
 			ActiveLoans::<T>::get(pool_id)
 				.into_iter()
 				.find(|(id, _)| *id == loan_id)
-				.map(|(_, loan)| loan.try_into())
+				.map(|(_, loan)| (pool_id, loan).try_into())
 				.transpose()
 		}
 	}
 
-	impl<T: Config> Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
-		fn update_portfolio_valuation_for_pool(
-			pool_id: T::PoolId,
-		) -> Result<(T::Balance, u32), DispatchError> {
-			let rates = T::InterestAccrual::rates();
-			let prices = T::PriceRegistry::collection(&pool_id);
-			let loans = ActiveLoans::<T>::get(pool_id);
-			let values = loans
-				.iter()
-				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
-				.collect::<Result<Vec<_>, DispatchError>>()?;
-
-			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
-			let valuation = portfolio.value();
-			PortfolioValuation::<T>::insert(pool_id, portfolio);
-
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				valuation,
-				update_type: PortfolioValuationUpdateType::Exact,
-			});
-
-			Ok((valuation, loans.len() as u32))
-		}
-	}
-
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T>
-	where
-		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	{
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
@@ -1158,6 +1152,30 @@ pub mod pallet {
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
 			// This Loans implementation does not need to initialize explicitally.
 			Ok(())
+		}
+	}
+
+	impl<T: Config> PoolWriteOffPolicyMutate<T::PoolId> for Pallet<T> {
+		type Policy = BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>;
+
+		fn update(pool_id: T::PoolId, policy: Self::Policy) -> DispatchResult {
+			Self::update_write_off_policy(pool_id, policy)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn worst_case_policy() -> Self::Policy {
+			use crate::pallet::policy::WriteOffTrigger;
+
+			vec![
+				WriteOffRule::new(
+					[WriteOffTrigger::PrincipalOverdue(0)],
+					T::Rate::zero(),
+					T::Rate::zero(),
+				);
+				T::MaxWriteOffPolicySize::get() as usize
+			]
+			.try_into()
+			.unwrap()
 		}
 	}
 }

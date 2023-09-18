@@ -25,38 +25,20 @@ fn advance_time(elapsed: u64) {
 }
 
 fn feed(data_id: DataId, data: Data) {
-	Oracle::on_finalize(0); // For testing we want any call to feed_value()
+	// For testing we want to skip the limitiation of one feed call per block
+	Oracle::on_finalize(0);
 	Oracle::feed_value(ORACLE_MEMBER, data_id, data).unwrap();
-}
-
-#[test]
-fn get_no_fed_data() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			DataCollector::get(&DATA_ID),
-			Error::<Runtime>::DataIdWithoutData
-		);
-	});
-}
-
-#[test]
-fn get_feed_data() {
-	new_test_ext().execute_with(|| {
-		feed(DATA_ID, 100);
-
-		assert_eq!(DataCollector::get(&DATA_ID), Ok((100, Timer::now())));
-
-		advance_time(BLOCK_TIME_MS);
-		feed(DATA_ID, 200);
-
-		assert_eq!(DataCollector::get(&DATA_ID), Ok((200, Timer::now())));
-	});
 }
 
 #[test]
 fn feed_and_then_register() {
 	new_test_ext().execute_with(|| {
 		feed(DATA_ID, 100);
+
+		assert_noop!(
+			DataCollector::get(&DATA_ID, &COLLECTION_ID),
+			Error::<Runtime>::DataIdNotInCollection
+		);
 
 		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
@@ -65,12 +47,22 @@ fn feed_and_then_register() {
 			(100, Timer::now())
 		);
 
+		assert_eq!(
+			DataCollector::get(&DATA_ID, &COLLECTION_ID),
+			Ok((100, Timer::now()))
+		);
+
 		advance_time(BLOCK_TIME_MS);
 		feed(DATA_ID, 200);
 
 		assert_ok!(
 			DataCollector::collection(&COLLECTION_ID).get(&DATA_ID),
 			(200, Timer::now())
+		);
+
+		assert_eq!(
+			DataCollector::get(&DATA_ID, &COLLECTION_ID),
+			Ok((200, Timer::now()))
 		);
 	});
 }

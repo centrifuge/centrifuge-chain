@@ -11,16 +11,18 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
-use cfg_types::domain_address::DomainAddress;
+use cfg_traits::TryConvert;
+use cfg_types::domain_address::{Domain, DomainAddress};
 use pallet_evm::AddressMapping;
 use sp_core::{Get, H160};
 use sp_runtime::traits::Convert;
+use xcm::*;
 
 /// Common converter code for translating accounts across different
 /// domains and chains.
-pub struct AccountConverter<R>(core::marker::PhantomData<R>);
+pub struct AccountConverter<R, XcmConverter>(core::marker::PhantomData<(R, XcmConverter)>);
 
-impl<R> AccountConverter<R> {
+impl<R, XcmConverter> AccountConverter<R, XcmConverter> {
 	/// Converts an EVM address from a given chain into a local AccountId
 	pub fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
 		// We use a custom encoding here rather than relying on
@@ -40,7 +42,7 @@ impl<R> AccountConverter<R> {
 }
 
 // Implement EVM account conversion using our shared conversion code
-impl<R> AddressMapping<AccountId> for AccountConverter<R>
+impl<R, XcmConverter> AddressMapping<AccountId> for AccountConverter<R, XcmConverter>
 where
 	R: pallet_evm_chain_id::Config,
 {
@@ -50,12 +52,54 @@ where
 	}
 }
 
-// Implement connectors account conversion using our shared conversion code
-impl<R> Convert<DomainAddress, AccountId> for AccountConverter<R> {
+// Implement liquidityPools account conversion using our shared conversion code
+impl<R, XcmConverter> Convert<DomainAddress, AccountId> for AccountConverter<R, XcmConverter> {
 	fn convert(domain_address: DomainAddress) -> AccountId {
 		match domain_address {
 			DomainAddress::Centrifuge(addr) => AccountId::new(addr),
 			DomainAddress::EVM(chain_id, addr) => Self::convert_evm_address(chain_id, addr),
+		}
+	}
+}
+
+impl<R, XcmConverter> Convert<(Domain, [u8; 32]), AccountId> for AccountConverter<R, XcmConverter> {
+	fn convert((domain, account): (Domain, [u8; 32])) -> AccountId {
+		match domain {
+			Domain::Centrifuge => AccountId::new(account),
+			// EVM AccountId20 addresses are right-padded to 32 bytes
+			Domain::EVM(chain_id) => {
+				let mut bytes20 = [0; 20];
+				bytes20.copy_from_slice(&account[..20]);
+				Self::convert_evm_address(chain_id, bytes20)
+			}
+		}
+	}
+}
+
+impl<R, XcmConverter> TryConvert<v3::MultiLocation, AccountId> for AccountConverter<R, XcmConverter>
+where
+	XcmConverter: xcm_executor::traits::Convert<v3::MultiLocation, AccountId>,
+{
+	type Error = v3::MultiLocation;
+
+	fn try_convert(location: v3::MultiLocation) -> Result<AccountId, Self::Error> {
+		// Try xcm logic first
+		match XcmConverter::convert_ref(location).ok() {
+			Some(acc) => Ok(acc),
+			None => {
+				// match EVM logic
+				match location {
+					v3::MultiLocation {
+						parents: 0,
+						interior:
+							v3::Junctions::X1(v3::Junction::AccountKey20 {
+								network: Some(v3::NetworkId::Ethereum { chain_id }),
+								key,
+							}),
+					} => Ok(Self::convert_evm_address(chain_id, key)),
+					_ => Err(location),
+				}
+			}
 		}
 	}
 }
@@ -71,7 +115,7 @@ mod tests {
 		let address = [0x42; 20];
 		let chain_id = 0xDADB0D;
 		let domain_address = DomainAddress::EVM(chain_id, address);
-		let account: AccountId = AccountConverter::<()>::convert(domain_address);
+		let account: AccountId = AccountConverter::<(), ()>::convert(domain_address);
 		let expected = AccountId::new(hex![
 			"42424242424242424242424242424242424242420000000000DADB0D45564d00"
 		]);
@@ -84,7 +128,7 @@ mod tests {
 		let address = [0x42; 32];
 		let expected = AccountId::new(address);
 		let domain_address = DomainAddress::Centrifuge(address);
-		let account: AccountId = AccountConverter::<()>::convert(domain_address);
+		let account: AccountId = AccountConverter::<(), ()>::convert(domain_address);
 		assert_eq!(account, expected);
 	}
 

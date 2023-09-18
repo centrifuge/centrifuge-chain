@@ -30,6 +30,7 @@ RepaymentSchedule *----> InterestPayments
 enum BorrowRestrictions {
     NoWrittenOff
     FullOnce
+    OraclePriceRequired
 }
 
 enum RepayRestrictions {
@@ -114,7 +115,7 @@ package policy {
 package interest {
     class ActiveInterestRate {
         rate: InterestRate,
-        normalized_debt: Balance,
+        normalized_acc: Balance,
         penalty: Rate
     }
 
@@ -153,9 +154,10 @@ package pricing {
         }
 
         class ExternalPricing {
-            price_id: Price,
+            price_id: PriceId,
             max_borrow_quantity: MaxBorrowAmount,
             notional: Balance,
+            max_price_variation: Rate,
         }
 
         ExternalPricing *-l-> MaxBorrowAmount
@@ -164,6 +166,7 @@ package pricing {
             info: ExternalPricing
             outstanding_quantity: Rate,
             interest: ActiveInterestRate
+            latest_settlement_price: Balance,
         }
 
         ExternalActivePricing *-r-> ActiveInterestRate

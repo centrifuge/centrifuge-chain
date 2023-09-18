@@ -12,12 +12,13 @@
 
 use std::{
 	collections::{BTreeMap, HashMap},
+	marker::PhantomData,
 	path::PathBuf,
 	sync::{Arc, Mutex},
 	time::Duration,
 };
 
-use cfg_primitives::{Block, Hash};
+use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
 use cumulus_client_network::BlockAnnounceValidator;
@@ -27,11 +28,12 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
-use fc_consensus::FrontierBlockImport;
+use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
+use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use futures::{future, StreamExt};
 use polkadot_cli::Cli;
@@ -50,7 +52,7 @@ use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{well_known_cache_keys::Id as CacheKeyId, HeaderBackend};
 use sp_consensus::Error as ConsensusError;
 use sp_keystore::SyncCryptoStorePtr;
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
 use super::{rpc, FullBackend, FullClient, HostFunctions, ParachainBlockImport};
@@ -83,8 +85,19 @@ pub struct EthConfiguration {
 	pub eth_statuses_cache: usize,
 }
 
+type BlockNumberOf<B> = <<B as BlockT>::Header as HeaderT>::Number;
+
+/// A re-implementation of the Frontier block importer, which can be
+/// configured to only start filter for ethereum blocks after a
+/// certain point.
 #[derive(Clone)]
-pub struct BlockImport<B: BlockT, I: BlockImportT<B>, C>(FrontierBlockImport<B, I, C>);
+pub struct BlockImport<B: BlockT, I, C> {
+	inner: I,
+	first_evm_block: BlockNumberOf<B>,
+	_client: Arc<C>,
+	_backend: Arc<fc_db::Backend<B>>,
+	_marker: PhantomData<B>,
+}
 
 impl<B, I, C> BlockImport<B, I, C>
 where
@@ -92,11 +105,20 @@ where
 	I: BlockImportT<B, Transaction = sp_api::TransactionFor<C, B>> + Send + Sync,
 	I::Error: Into<ConsensusError>,
 	C: ProvideRuntimeApi<B> + Send + Sync + HeaderBackend<B> + AuxStore + BlockOf,
-	C::Api: EthereumRuntimeRPCApi<B>,
-	C::Api: BlockBuilderApi<B>,
 {
-	pub fn new(inner: I, client: Arc<C>, backend: Arc<fc_db::Backend<B>>) -> Self {
-		Self(FrontierBlockImport::new(inner, client, backend))
+	pub fn new(
+		inner: I,
+		first_evm_block: BlockNumberOf<B>,
+		client: Arc<C>,
+		backend: Arc<fc_db::Backend<B>>,
+	) -> Self {
+		Self {
+			inner,
+			first_evm_block,
+			_client: client,
+			_backend: backend,
+			_marker: PhantomData,
+		}
 	}
 }
 
@@ -104,6 +126,7 @@ where
 impl<B, I, C> BlockImportT<B> for BlockImport<B, I, C>
 where
 	B: BlockT,
+	<B::Header as HeaderT>::Number: PartialOrd,
 	I: BlockImportT<B, Transaction = sp_api::TransactionFor<C, B>> + Send + Sync,
 	I::Error: Into<ConsensusError>,
 	C: ProvideRuntimeApi<B> + Send + Sync + HeaderBackend<B> + AuxStore + BlockOf,
@@ -117,7 +140,7 @@ where
 		&mut self,
 		block: BlockCheckParams<B>,
 	) -> Result<ImportResult, Self::Error> {
-		self.0.check_block(block).await
+		self.inner.check_block(block).await.map_err(Into::into)
 	}
 
 	async fn import_block(
@@ -125,11 +148,19 @@ where
 		block: BlockImportParams<B, Self::Transaction>,
 		new_cache: HashMap<CacheKeyId, Vec<u8>>,
 	) -> Result<ImportResult, Self::Error> {
-		self.0.import_block(block, new_cache).await
+		// Validate that there is one and exactly one frontier log,
+		// but only on blocks created after frontier was enabled.
+		if *block.header.number() >= self.first_evm_block {
+			ensure_log(block.header.digest()).map_err(Error::from)?;
+		}
+		self.inner
+			.import_block(block, new_cache)
+			.await
+			.map_err(Into::into)
 	}
 }
 
-impl<B: BlockT, I: BlockImportT<B>, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
+impl<B: BlockT, I, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
 
 fn db_config_dir(config: &Configuration) -> PathBuf {
 	config
@@ -149,6 +180,7 @@ fn db_config_dir(config: &Configuration) -> PathBuf {
 #[allow(clippy::type_complexity)]
 pub fn new_partial<RuntimeApi, BIQ>(
 	config: &Configuration,
+	first_evm_block: BlockNumber,
 	build_import_queue: BIQ,
 ) -> Result<
 	PartialComponents<
@@ -184,6 +216,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<FrontierBackend<Block>>,
+		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
@@ -248,6 +281,7 @@ where
 		telemetry.as_ref().map(|telemetry| telemetry.handle()),
 		&task_manager,
 		frontier_backend.clone(),
+		first_evm_block,
 	)?;
 
 	let filter_pool: FilterPool = Arc::new(Mutex::new(BTreeMap::new()));
@@ -287,6 +321,7 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	first_evm_block: BlockNumber,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -324,6 +359,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<FrontierBackend<Block>>,
+		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
@@ -343,7 +379,8 @@ where
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let params = new_partial::<RuntimeApi, BIQ>(&parachain_config, build_import_queue)?;
+	let params =
+		new_partial::<RuntimeApi, BIQ>(&parachain_config, first_evm_block, build_import_queue)?;
 	let (
 		block_import,
 		mut telemetry,

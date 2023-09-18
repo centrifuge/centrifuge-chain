@@ -21,12 +21,17 @@ use crate::{
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ExternalAmount<T: Config> {
-	pub quantity: T::Rate,
+	/// Quantity of different assets identified by the price_id
+	pub quantity: T::Quantity,
+
+	/// Price used to borrow/repay. it must be in the interval
+	/// [price * (1 - max_price_variation), price * (1 + max_price_variation)],
+	/// being price the Oracle price.
 	pub settlement_price: T::Balance,
 }
 
 impl<T: Config> ExternalAmount<T> {
-	pub fn new(quantity: T::Rate, price: T::Balance) -> Self {
+	pub fn new(quantity: T::Quantity, price: T::Balance) -> Self {
 		Self {
 			quantity,
 			settlement_price: price,
@@ -35,7 +40,7 @@ impl<T: Config> ExternalAmount<T> {
 
 	pub fn empty() -> Self {
 		Self {
-			quantity: T::Rate::zero(),
+			quantity: T::Quantity::zero(),
 			settlement_price: T::Balance::zero(),
 		}
 	}
@@ -63,21 +68,19 @@ pub struct ExternalPricing<T: Config> {
 	pub price_id: T::PriceId,
 
 	/// Maximum amount that can be borrowed.
-	pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
+	pub max_borrow_amount: MaxBorrowAmount<T::Quantity>,
 
 	/// Reference price used to calculate the interest
 	pub notional: T::Balance,
+
+	/// Maximum variation between the settlement price chosen for
+	/// borrow/repay and the current oracle price.
+	/// See [`ExternalAmount::settlement_price`].
+	pub max_price_variation: T::Rate,
 }
 
 impl<T: Config> ExternalPricing<T> {
 	pub fn validate(&self) -> DispatchResult {
-		if let MaxBorrowAmount::Quantity(quantity) = self.max_borrow_amount {
-			ensure!(
-				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
-				Error::<T>::AmountNotNaturalNumber
-			)
-		}
-
 		Ok(())
 	}
 }
@@ -90,10 +93,13 @@ pub struct ExternalActivePricing<T: Config> {
 	info: ExternalPricing<T>,
 
 	/// Outstanding quantity that should be repaid.
-	outstanding_quantity: T::Rate,
+	outstanding_quantity: T::Quantity,
 
 	/// Current interest rate
 	pub interest: ActiveInterestRate<T>,
+
+	/// Settlement price used in the most recent borrow or repay transaction.
+	latest_settlement_price: T::Balance,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
@@ -101,12 +107,20 @@ impl<T: Config> ExternalActivePricing<T> {
 		info: ExternalPricing<T>,
 		interest_rate: InterestRate<T::Rate>,
 		pool_id: T::PoolId,
+		amount: ExternalAmount<T>,
+		price_required: bool,
 	) -> Result<Self, DispatchError> {
-		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
+		let result = T::PriceRegistry::register_id(&info.price_id, &pool_id);
+		if price_required {
+			// Only if the price is required, we treat the error as an error.
+			result?;
+		}
+
 		Ok(Self {
 			info,
-			outstanding_quantity: T::Rate::zero(),
+			outstanding_quantity: T::Quantity::zero(),
 			interest: ActiveInterestRate::activate(interest_rate)?,
+			latest_settlement_price: amount.settlement_price,
 		})
 	}
 
@@ -118,15 +132,19 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn current_price(&self) -> Result<T::Balance, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
 	}
 
-	pub fn last_updated(&self) -> Result<Moment, DispatchError> {
-		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
+	pub fn outstanding_principal(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		let price = match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
+		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
 	}
 
-	pub fn current_interest(&self) -> Result<T::Balance, DispatchError> {
+	pub fn outstanding_interest(&self) -> Result<T::Balance, DispatchError> {
 		let outstanding_notional = self
 			.outstanding_quantity
 			.ensure_mul_int(self.info.notional)?;
@@ -135,23 +153,57 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(debt.ensure_sub(outstanding_notional)?)
 	}
 
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let price = self.current_price()?;
-		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
+	pub fn present_value(&self, pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+		self.outstanding_principal(pool_id)
 	}
 
 	pub fn present_value_cached<Prices>(&self, cache: &Prices) -> Result<T::Balance, DispatchError>
 	where
-		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = PriceOf<T>>,
 	{
-		let price = cache.get(&self.info.price_id)?.0;
+		let price = match cache.get(&self.info.price_id) {
+			Ok(data) => data.0,
+			Err(_) => self.latest_settlement_price,
+		};
 		Ok(self.outstanding_quantity.ensure_mul_int(price)?)
+	}
+
+	fn validate_amount(
+		&self,
+		amount: &ExternalAmount<T>,
+		pool_id: T::PoolId,
+	) -> Result<(), DispatchError> {
+		match T::PriceRegistry::get(&self.info.price_id, &pool_id) {
+			Ok(data) => {
+				let price = data.0;
+				let delta = if amount.settlement_price > price {
+					amount.settlement_price.ensure_sub(price)?
+				} else {
+					price.ensure_sub(amount.settlement_price)?
+				};
+				let variation = T::Rate::checked_from_rational(delta, price)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				// We bypass any price if quantity is zero,
+				// because it does not take effect in the computation.
+				ensure!(
+					variation <= self.info.max_price_variation || amount.quantity.is_zero(),
+					Error::<T>::SettlementPriceExceedsVariation
+				);
+
+				Ok(())
+			}
+			Err(_) => Ok(()),
+		}
 	}
 
 	pub fn max_borrow_amount(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		match self.info.max_borrow_amount {
 			MaxBorrowAmount::Quantity(quantity) => {
 				let available = quantity.ensure_sub(self.outstanding_quantity)?;
@@ -164,7 +216,10 @@ impl<T: Config> ExternalActivePricing<T> {
 	pub fn max_repay_principal(
 		&self,
 		amount: ExternalAmount<T>,
+		pool_id: T::PoolId,
 	) -> Result<T::Balance, DispatchError> {
+		self.validate_amount(&amount, pool_id)?;
+
 		Ok(self
 			.outstanding_quantity
 			.ensure_mul_int(amount.settlement_price)?)
@@ -172,23 +227,23 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn adjust(
 		&mut self,
-		quantity_adj: Adjustment<T::Rate>,
+		amount_adj: Adjustment<ExternalAmount<T>>,
 		interest: T::Balance,
 	) -> DispatchResult {
-		self.outstanding_quantity = quantity_adj.ensure_add(self.outstanding_quantity)?;
+		self.outstanding_quantity = amount_adj
+			.clone()
+			.map(|amount| amount.quantity)
+			.ensure_add(self.outstanding_quantity)?;
 
-		let interest_adj = quantity_adj.try_map(|quantity| -> Result<_, DispatchError> {
-			ensure!(
-				quantity.frac().is_zero() && quantity >= T::Rate::zero(),
-				Error::<T>::AmountNotNaturalNumber
-			);
-
-			Ok(quantity
+		let interest_adj = amount_adj.clone().try_map(|amount| {
+			amount
+				.quantity
 				.ensure_mul_int(self.info.notional)?
-				.ensure_add(interest)?)
+				.ensure_add(interest)
 		})?;
 
 		self.interest.adjust_debt(interest_adj)?;
+		self.latest_settlement_price = amount_adj.abs().settlement_price;
 
 		Ok(())
 	}

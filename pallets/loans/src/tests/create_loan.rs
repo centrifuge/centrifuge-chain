@@ -14,9 +14,12 @@ fn config_mocks(pool_id: PoolId) {
 			POOL_OTHER_ACCOUNT
 		}
 	});
-	MockPrices::mock_get(|id| match *id {
-		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err("Should never be dispatched".into()),
+	MockPrices::mock_get(|id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err("Should never be dispatched".into()),
+		}
 	});
 }
 
@@ -144,26 +147,6 @@ fn with_wrong_interest_rate() {
 		assert_noop!(
 			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 			pallet_interest_accrual::Error::<Runtime>::InvalidRate
-		);
-	});
-}
-
-#[test]
-fn with_no_natural_quantity() {
-	new_test_ext().execute_with(|| {
-		config_mocks(POOL_A);
-
-		let loan = LoanInfo {
-			pricing: Pricing::External(ExternalPricing {
-				max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY + Rate::from_float(0.1)),
-				..util::base_external_pricing()
-			}),
-			..util::base_external_loan()
-		};
-
-		assert_noop!(
-			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-			Error::<Runtime>::AmountNotNaturalNumber
 		);
 	});
 }

@@ -8,8 +8,9 @@ fn config_mocks(
 		PricingAmount<Runtime>,
 	),
 ) {
-	MockPrices::mock_get(|id| {
+	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*id, REGISTER_PRICE_ID);
+		assert_eq!(*pool_id, POOL_A);
 		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
@@ -177,10 +178,11 @@ fn with_mismatch_external_internal_amounts() {
 			..util::base_internal_loan()
 		});
 
-		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
+		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + 2);
 
-		MockPrices::mock_get(|id| {
+		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
+			assert_eq!(*pool_id, POOL_A);
 			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});
 		assert_noop!(
@@ -244,11 +246,12 @@ fn with_mismatch_external_external_amounts() {
 			..util::base_external_loan()
 		});
 
-		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2);
-		let borrow_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 3);
+		let repay_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + 2);
+		let borrow_amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + 3);
 
-		MockPrices::mock_get(|id| {
+		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
+			assert_eq!(*pool_id, POOL_A);
 			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});
 		assert_noop!(
@@ -333,11 +336,11 @@ fn with_success_externals() {
 		});
 
 		let repay_amount = RepaidPricingAmount {
-			principal: PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE * 2)),
+			principal: PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE)),
 			interest: 0,
 			unscheduled: 0,
 		};
-		let borrow_amount = PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE * 2));
+		let borrow_amount = PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE));
 
 		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
 		assert_ok!(Loans::propose_transfer_debt(

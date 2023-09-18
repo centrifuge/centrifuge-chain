@@ -21,7 +21,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 		type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 		type Balance;
-		type Rate;
+		type BalanceRatio;
 		type CurrencyId;
 	}
 
@@ -78,7 +78,6 @@ pub mod pallet {
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		type Moment = Moment;
 		type PoolId = T::PoolId;
-		type Rate = T::Rate;
 		type TrancheId = T::TrancheId;
 
 		fn pool_exists(a: T::PoolId) -> bool {
@@ -99,15 +98,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
+		type BalanceRatio = T::BalanceRatio;
 		type Moment = Moment;
 		type PoolId = T::PoolId;
-		type Rate = T::Rate;
 		type TrancheId = T::TrancheId;
 
 		fn get(
 			a: T::PoolId,
 			b: T::TrancheId,
-		) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
+		) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
 			execute_call!((a, b))
 		}
 	}

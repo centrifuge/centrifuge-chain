@@ -12,10 +12,10 @@
 use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as TrancheCurrencyT,
+	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
+	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 };
-pub use cfg_types::fixed_point::Rate;
+pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	time::TimeProvider,
@@ -250,13 +250,25 @@ where
 	}
 }
 
+pub struct NoopCollectHook;
+impl cfg_traits::StatusNotificationHook for NoopCollectHook {
+	type Error = sp_runtime::DispatchError;
+	type Id = cfg_types::investments::ForeignInvestmentInfo<MockAccountId, TrancheCurrency, ()>;
+	type Status = cfg_types::investments::CollectedAmount<Balance>;
+
+	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
+		Ok(())
+	}
+}
 parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
+	type CollectedInvestmentHook = NoopCollectHook;
+	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
@@ -307,6 +319,7 @@ parameter_types! {
 impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
