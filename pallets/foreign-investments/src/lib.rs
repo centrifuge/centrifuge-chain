@@ -68,7 +68,7 @@ pub mod pallet {
 		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
-		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 	};
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
@@ -211,7 +211,18 @@ pub mod pallet {
 				Self::InvestmentId,
 				(),
 			>,
-			Status = ExecutedForeignCollectRedeem<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
+			Error = DispatchError,
+		>;
+
+		/// The hook type which acts upon a finalized redemption collection.
+		type CollectedForeignInvestmentHook: StatusNotificationHook<
+			Id = cfg_types::investments::ForeignInvestmentInfo<
+				Self::AccountId,
+				Self::InvestmentId,
+				(),
+			>,
+			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
@@ -318,7 +329,7 @@ pub mod pallet {
 	/// NOTE: The lifetime of this storage starts with receiving a notification
 	/// of an executed investment via the `CollectedInvestmentHook`. It ends
 	/// with transferring the collected tranche tokens by executing
-	/// `transfer_collected_investment` which is part of
+	/// `notify_executed_collect_invest` which is part of
 	/// `collect_foreign_investment`.
 	#[pallet::storage]
 	pub type CollectedInvestment<T: Config> = StorageDoubleMap<
@@ -351,12 +362,26 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Maps an investor and their investment id to the foreign payment currency
+	/// provided on the initial investment increment.
+	///
+	/// The lifetime is synchronized with the one of
+	/// `InvestmentState`.
+	#[pallet::storage]
+	pub type InvestmentPaymentCurrency<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		T::CurrencyId,
+	>;
+
 	/// Maps an investor and their investment id to the foreign payout currency
 	/// requested on the initial redemption increment.
 	///
-	/// TODO(future): The lifetime of this storage is currently defensively
-	/// indefinite. It should most likely mirror the one of `RedemptionState`
-	/// though right now it
+	/// The lifetime is synchronized with the one of
+	/// `RedemptionState`.
 	#[pallet::storage]
 	pub type RedemptionPayoutCurrency<T: Config> = StorageDoubleMap<
 		_,
@@ -412,17 +437,12 @@ pub mod pallet {
 		InvestError(InvestError),
 		/// Failed to transition the `RedeemState.`
 		RedeemError(RedeemError),
+		/// Failed to retrieve the pool for the given pool id.
+		PoolNotFound,
+		/// Failed to retrieve the payment currency when collecting an
+		/// investment.
+		///
+		/// NOTE: The payment currency is mutated upon increasing an investment.
+		InvestmentPaymentCurrencyNotFound,
 	}
-
-	// 	impl<T> From<InvestError> for Error<T> {
-	// 		fn from(error: InvestError) -> Self {
-	// 			Error::<T>::InvestError(error)
-	// 		}
-	// 	}
-
-	// 	impl<T> From<RedeemError> for Error<T> {
-	// 		fn from(error: RedeemError) -> Self {
-	// 			Error::<T>::RedeemError(error)
-	// 		}
-	// 	}
 }

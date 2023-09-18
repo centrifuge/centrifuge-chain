@@ -15,12 +15,15 @@ use cfg_traits::{
 	investments::TrancheCurrency, liquidity_pools::OutboundQueue, StatusNotificationHook,
 };
 use cfg_types::{
-	domain_address::DomainAddress,
-	investments::{ExecutedForeignDecreaseInvest, ForeignInvestmentInfo},
+	domain_address::{Domain, DomainAddress},
+	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo},
 };
-use frame_support::{traits::fungibles::Mutate, transactional};
+use frame_support::{
+	traits::fungibles::{Mutate, Transfer},
+	transactional,
+};
 use sp_core::Get;
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::{traits::Convert, DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
 use crate::{pallet::Config, Message, MessageOf, Pallet};
@@ -76,12 +79,12 @@ where
 {
 	type Error = DispatchError;
 	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
-	type Status = cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>;
+	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
 		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
-		status: cfg_types::investments::ExecutedForeignCollectRedeem<T::Balance, T::CurrencyId>,
+		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
 		let ForeignInvestmentInfo {
 			id: investment_id,
@@ -101,7 +104,57 @@ where
 			currency,
 			currency_payout: status.amount_currency_payout,
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
-			remaining_redeem_amount: status.amount_remaining_redeem,
+			remaining_redeem_amount: status.amount_remaining,
+		};
+
+		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;
+
+		Ok(())
+	}
+}
+
+/// The hook struct which acts upon a finalized investment collection.
+
+pub struct CollectedForeignInvestmentHook<T>(PhantomData<T>);
+
+impl<T: Config> StatusNotificationHook for CollectedForeignInvestmentHook<T>
+where
+	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
+{
+	type Error = DispatchError;
+	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
+	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
+
+	#[transactional]
+	fn notify_status_change(
+		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
+		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
+	) -> DispatchResult {
+		let ForeignInvestmentInfo {
+			id: investment_id,
+			owner: investor,
+			..
+		} = id;
+		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
+		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
+		let domain_address: DomainAddress = wrapped_token.into();
+
+		T::Tokens::transfer(
+			investment_id.clone().into(),
+			&investor,
+			&Domain::convert(domain_address.domain()),
+			status.amount_tranche_tokens_payout,
+			false,
+		)?;
+
+		let message: MessageOf<T> = Message::ExecutedCollectInvest {
+			pool_id: investment_id.of_pool(),
+			tranche_id: investment_id.of_tranche(),
+			investor: investor.into(),
+			currency: currency,
+			currency_payout: status.amount_currency_payout,
+			tranche_tokens_payout: status.amount_tranche_tokens_payout,
+			remaining_invest_amount: status.amount_remaining,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), domain_address.domain(), message)?;

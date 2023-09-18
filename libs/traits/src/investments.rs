@@ -297,7 +297,6 @@ pub trait ForeignInvestment<AccountId> {
 	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
-	type CollectInvestResult;
 
 	/// Initiates the increment of a foreign investment amount in
 	/// `foreign_payment_currency` of who into the investment class
@@ -365,8 +364,7 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
-	) -> Result<Self::CollectInvestResult, Self::Error>;
+	) -> Result<(), Self::Error>;
 
 	/// Collect the results of a user's foreign redeem orders for the given
 	/// investment. If any amounts are not fulfilled they are directly

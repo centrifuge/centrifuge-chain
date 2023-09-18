@@ -17,8 +17,7 @@ use cfg_traits::{
 	IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollectInvest, ExecutedForeignCollectRedeem,
-	ExecutedForeignDecreaseInvest, Swap,
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
 use frame_support::{ensure, traits::Get, transactional};
 use sp_runtime::{
@@ -30,8 +29,8 @@ use crate::{
 	errors::{InvestError, RedeemError},
 	types::{InvestState, InvestTransition, RedeemState, RedeemTransition, TokenSwapReason},
 	CollectedInvestment, CollectedRedemption, Config, Error, Event, ForeignInvestmentInfo,
-	ForeignInvestmentInfoOf, InvestmentState, Pallet, RedemptionPayoutCurrency, RedemptionState,
-	SwapOf, TokenSwapOrderIds,
+	ForeignInvestmentInfoOf, InvestmentPaymentCurrency, InvestmentState, Pallet,
+	RedemptionPayoutCurrency, RedemptionState, SwapOf, TokenSwapOrderIds,
 };
 
 mod invest;
@@ -39,7 +38,6 @@ mod redeem;
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	type Amount = T::Balance;
-	type CollectInvestResult = ExecutedForeignCollectInvest<T::Balance>;
 	type CurrencyId = T::CurrencyId;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
@@ -56,6 +54,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
+
+		// NOTE: For the MVP, we simply overwrite any existing payment currency. In a
+		// later version, we might want to store a `BoundedVec` instead.
+		InvestmentPaymentCurrency::<T>::insert(who, investment_id, foreign_currency);
+
 		let amount_pool_denominated =
 			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
@@ -187,19 +190,19 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		foreign_payout_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
+	) -> DispatchResult {
+		// Simply overwrite any existing payment currency to enable the investor to have
+		// full control over the payment currency
+		InvestmentPaymentCurrency::<T>::insert(who, investment_id, foreign_payout_currency);
+
 		// Note: We assume the configured Investment trait to notify about the collected
 		// amounts via the `CollectedInvestmentHook` which handles incrementing the
-		// `CollectedInvestment` amount.
+		// `CollectedInvestment` amount and notifying any consumer of
+		// `ExecutedForeignInvestmentHook` which is expected to dispatch
+		// `ExecutedCollectInvest`.
 		T::Investment::collect_investment(who.clone(), investment_id)?;
 
-		Self::transfer_collected_investment(
-			who,
-			investment_id,
-			foreign_payout_currency,
-			pool_currency,
-		)
+		Ok(())
 	}
 
 	#[transactional]
@@ -325,6 +328,10 @@ impl<T: Config> Pallet<T> {
 		match state {
 			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
+				#[cfg(feature = "std")] {
+					println!("Clearing InvestState");
+				}
+				InvestmentPaymentCurrency::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
@@ -367,6 +374,7 @@ impl<T: Config> Pallet<T> {
 				maybe_executed_decrease = Some((done_swap.currency_in, done_swap.amount));
 
 				InvestmentState::<T>::remove(who, investment_id);
+				InvestmentPaymentCurrency::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))
 			},
@@ -456,6 +464,7 @@ impl<T: Config> Pallet<T> {
 		match state {
 			RedeemState::NoState => {
 				RedemptionState::<T>::remove(who, investment_id);
+				RedemptionPayoutCurrency::<T>::remove(who, investment_id);
 				Ok((Some(RedeemState::NoState), None))
 			}
 			RedeemState::Redeeming { .. } => {
@@ -610,6 +619,7 @@ impl<T: Config> Pallet<T> {
 		match state {
 			RedeemState::SwapIntoForeignDone { .. } => {
 				RedemptionState::<T>::remove(who, investment_id);
+				RedemptionPayoutCurrency::<T>::remove(who, investment_id);
 				Ok(Some(RedeemState::NoState))
 			}
 			RedeemState::RedeemingAndSwapIntoForeignDone { redeem_amount, .. } => {
@@ -1017,7 +1027,8 @@ impl<T: Config> Pallet<T> {
 	/// state as a result of collecting the investment.
 	///
 	/// NOTE: Does not transfer back the collected tranche tokens. This happens
-	/// in `transfer_collected_investment`.
+	/// in `notify_executed_collect_invest`.
+	#[transactional]
 	pub(crate) fn denote_collected_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -1039,45 +1050,17 @@ impl<T: Config> Pallet<T> {
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		let post_state =
 			pre_state.transition(InvestTransition::CollectInvestment(investing_amount))?;
+
+		// Need to send notification before potentially killing the `InvestmentState` if
+		// all was collected and no swap is remaining
+		Self::notify_executed_collect_invest(who, investment_id)?;
+
 		Self::apply_invest_state_transition(who, investment_id, post_state, true).map_err(|e| {
 			log::debug!("InvestState transition error: {:?}", e);
 			Error::<T>::from(InvestError::CollectTransition)
 		})?;
 
 		Ok(())
-	}
-
-	/// Consumes the `CollectedInvestment` amounts and returns these.
-	///
-	/// NOTE: Converts the collected pool currency payment amount to foreign
-	/// currency via the `CurrencyConverter` trait.
-	pub(crate) fn transfer_collected_investment(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		foreign_payout_currency: T::CurrencyId,
-		pool_currency: T::CurrencyId,
-	) -> Result<ExecutedForeignCollectInvest<T::Balance>, DispatchError> {
-		let collected = CollectedInvestment::<T>::take(who, investment_id);
-
-		// Determine payout and remaining amounts in foreign currency instead of current
-		// pool currency denomination
-		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
-			foreign_payout_currency,
-			pool_currency,
-			collected.amount_payment,
-		)?;
-		let remaining_amount_pool_denominated = T::Investment::investment(who, investment_id)?;
-		let amount_remaining_invest_foreign_denominated = T::CurrencyConverter::stable_to_stable(
-			foreign_payout_currency,
-			pool_currency,
-			remaining_amount_pool_denominated,
-		)?;
-
-		Ok(ExecutedForeignCollectInvest {
-			amount_currency_payout,
-			amount_tranche_tokens_payout: collected.amount_collected,
-			amount_remaining_invest: amount_remaining_invest_foreign_denominated,
-		})
 	}
 
 	/// Increments the collected redemption amount and transitions redemption
@@ -1171,9 +1154,56 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
+	/// Consumes the `CollectedInvestment` amounts and
+	/// `CollectedForeignInvestmentHook` notification such that any
+	/// potential consumer could act upon that, e.g. Liquidity Pools for
+	/// `ExecutedCollectInvest`.
+	///
+	/// NOTE: Converts the collected pool currency payment amount to foreign
+	/// currency via the `CurrencyConverter` trait.
+	pub(crate) fn notify_executed_collect_invest(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> DispatchResult {
+		let foreign_payout_currency = InvestmentPaymentCurrency::<T>::get(who, investment_id)
+			.ok_or(Error::<T>::InvestmentPaymentCurrencyNotFound)?;
+		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
+			.ok_or(Error::<T>::PoolNotFound)?;
+		let collected = CollectedInvestment::<T>::take(who, investment_id);
+
+		// Determine payout and remaining amounts in foreign currency instead of current
+		// pool currency denomination
+		let amount_currency_payout = T::CurrencyConverter::stable_to_stable(
+			foreign_payout_currency,
+			pool_currency,
+			collected.amount_payment,
+		)?;
+		let remaining_amount_pool_denominated = T::Investment::investment(who, investment_id)?;
+		let amount_remaining_invest_foreign_denominated = T::CurrencyConverter::stable_to_stable(
+			foreign_payout_currency,
+			pool_currency,
+			remaining_amount_pool_denominated,
+		)?;
+
+		T::CollectedForeignInvestmentHook::notify_status_change(
+			cfg_types::investments::ForeignInvestmentInfo::<T::AccountId, T::InvestmentId, ()> {
+				owner: who.clone(),
+				id: investment_id,
+				// not relevant here
+				last_swap_reason: None,
+			},
+			ExecutedForeignCollect {
+				currency: foreign_payout_currency,
+				amount_currency_payout: amount_currency_payout,
+				amount_tranche_tokens_payout: collected.amount_collected,
+				amount_remaining: amount_remaining_invest_foreign_denominated,
+			},
+		)
+	}
+
 	/// Sends `CollectedForeignRedemptionHook` notification such that any
 	/// potential consumer could act upon that, e.g. Liquidity Pools for
-	/// `ExecutedCollectRedeemOrder`.
+	/// `ExecutedCollectRedeem`.
 	#[transactional]
 	pub(crate) fn notify_executed_collect_redeem(
 		who: &T::AccountId,
@@ -1188,11 +1218,11 @@ impl<T: Config> Pallet<T> {
 				// not relevant here
 				last_swap_reason: None,
 			},
-			ExecutedForeignCollectRedeem {
+			ExecutedForeignCollect {
 				currency,
 				amount_currency_payout: collected.amount_collected,
 				amount_tranche_tokens_payout: collected.amount_payment,
-				amount_remaining_redeem: T::Investment::redemption(who, investment_id)?,
+				amount_remaining: T::Investment::redemption(who, investment_id)?,
 			},
 		)
 	}

@@ -16,7 +16,6 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::ExecutedForeignCollectInvest,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_support::{
@@ -195,7 +194,6 @@ where
 
 		// Transfer tranche tokens from `DomainLocator` account of
 		// origination domain
-		// TODO(@review): Should this rather be part of `increase_foreign_redemption`?
 		T::Tokens::transfer(
 			invest_id.clone().into(),
 			&Domain::convert(sending_domain.domain()),
@@ -305,44 +303,17 @@ where
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
 		currency_index: GeneralCurrencyIndexOf<T>,
-		destination: DomainAddress,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let currency_index_u128 = currency_index.index;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
-		let ExecutedForeignCollectInvest::<T::Balance> {
-			amount_currency_payout,
-			amount_tranche_tokens_payout,
-			amount_remaining_invest,
-		} = T::ForeignInvestment::collect_foreign_investment(
+		// NOTE: Dispatch of `ExecutedCollectInvest` is handled by
+		// `ExecutedCollectInvestHook`
+		T::ForeignInvestment::collect_foreign_investment(
 			&investor,
 			invest_id.clone(),
 			payout_currency,
-			pool_currency,
 		)?;
-
-		T::Tokens::transfer(
-			invest_id.into(),
-			&investor,
-			&Domain::convert(destination.domain()),
-			amount_tranche_tokens_payout,
-			false,
-		)?;
-
-		let message: MessageOf<T> = Message::ExecutedCollectInvest {
-			pool_id,
-			tranche_id,
-			investor: investor.into(),
-			currency: currency_index_u128,
-			currency_payout: amount_currency_payout,
-			tranche_tokens_payout: amount_tranche_tokens_payout,
-			remaining_invest_amount: amount_remaining_invest,
-		};
-
-		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
 
 		Ok(())
 	}
