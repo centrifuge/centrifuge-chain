@@ -313,7 +313,7 @@ fn with_success_internals() {
 		));
 
 		assert_ok!(Loans::apply_transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
+			RuntimeOrigin::signed(ANY),
 			POOL_A,
 			CHANGE_ID,
 		));
@@ -353,7 +353,7 @@ fn with_success_externals() {
 		));
 
 		assert_ok!(Loans::apply_transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
+			RuntimeOrigin::signed(ANY),
 			POOL_A,
 			CHANGE_ID,
 		));
@@ -395,7 +395,7 @@ fn with_transfer_roundtrip() {
 		));
 
 		assert_ok!(Loans::apply_transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
+			RuntimeOrigin::signed(ANY),
 			POOL_A,
 			CHANGE_ID,
 		));
@@ -414,7 +414,7 @@ fn with_transfer_roundtrip() {
 		));
 
 		assert_ok!(Loans::apply_transfer_debt(
-			RuntimeOrigin::signed(BORROWER),
+			RuntimeOrigin::signed(ANY),
 			POOL_A,
 			CHANGE_ID,
 		));

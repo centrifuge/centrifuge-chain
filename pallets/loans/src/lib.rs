@@ -479,7 +479,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount)?;
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
 
 			T::Pool::withdraw(pool_id, who, amount.balance()?)?;
 
@@ -512,7 +512,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount)?;
+			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount, false)?;
 
 			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;
 
@@ -789,6 +789,7 @@ pub mod pallet {
 					to_loan_id,
 					repaid_amount.clone(),
 					borrow_amount.clone(),
+					false,
 				);
 
 				// We do not want to apply the mutation,
@@ -830,6 +831,7 @@ pub mod pallet {
 				to_loan_id,
 				repaid_amount,
 				borrow_amount,
+				true,
 			)?;
 
 			Self::deposit_event(Event::<T>::TransferDebt {
@@ -850,10 +852,13 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: &PricingAmount<T>,
+			permissionless: bool,
 		) -> Result<u32, DispatchError> {
 			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
-					Self::ensure_loan_borrower(who, created_loan.borrower())?;
+					if !permissionless {
+						Self::ensure_loan_borrower(who, created_loan.borrower())?;
+					}
 
 					let mut active_loan = created_loan.activate(pool_id, amount.clone())?;
 					active_loan.borrow(amount, pool_id)?;
@@ -862,7 +867,10 @@ pub mod pallet {
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
-						Self::ensure_loan_borrower(who, loan.borrower())?;
+						if !permissionless {
+							Self::ensure_loan_borrower(who, loan.borrower())?;
+						}
+
 						loan.borrow(amount, pool_id)
 					})?
 					.1
@@ -875,9 +883,13 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			amount: &RepaidPricingAmount<T>,
+			permissionless: bool,
 		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(who, loan.borrower())?;
+				if !permissionless {
+					Self::ensure_loan_borrower(who, loan.borrower())?;
+				}
+
 				loan.repay(amount.clone(), pool_id)
 			})
 		}
@@ -889,20 +901,23 @@ pub mod pallet {
 			to_loan_id: T::LoanId,
 			repaid_amount: RepaidPricingAmount<T>,
 			borrow_amount: PricingAmount<T>,
+			permissionless: bool,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			ensure!(
 				from_loan_id != to_loan_id,
 				Error::<T>::TransferDebtToSameLoan
 			);
 
-			let repaid_amount = Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount)?.0;
+			let repaid_amount =
+				Self::repay_action(&who, pool_id, from_loan_id, &repaid_amount, permissionless)?.0;
 
 			ensure!(
 				borrow_amount.balance()? == repaid_amount.repaid_amount()?.total()?,
 				Error::<T>::TransferDebtAmountMismatched
 			);
 
-			let count = Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount)?;
+			let count =
+				Self::borrow_action(&who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
 
 			Ok((repaid_amount.repaid_amount()?.total()?, count))
 		}

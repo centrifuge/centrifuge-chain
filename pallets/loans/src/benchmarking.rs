@@ -476,7 +476,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
 
 	apply_transfer_debt {
-		let any = account("borrower", 0, 0);
+		let any = account("any", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
 		let change_id = Helper::<T>::propose_transfer_debt(pool_id);
 
