@@ -1194,7 +1194,7 @@ impl<T: Config> Pallet<T> {
 			},
 			ExecutedForeignCollect {
 				currency: foreign_payout_currency,
-				amount_currency_payout: amount_currency_payout,
+				amount_currency_payout,
 				amount_tranche_tokens_payout: collected.amount_collected,
 				amount_remaining: amount_remaining_invest_foreign_denominated,
 			},

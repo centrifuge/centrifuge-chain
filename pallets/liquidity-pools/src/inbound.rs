@@ -309,11 +309,7 @@ where
 
 		// NOTE: Dispatch of `ExecutedCollectInvest` is handled by
 		// `ExecutedCollectInvestHook`
-		T::ForeignInvestment::collect_foreign_investment(
-			&investor,
-			invest_id.clone(),
-			payout_currency,
-		)?;
+		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id, payout_currency)?;
 
 		Ok(())
 	}

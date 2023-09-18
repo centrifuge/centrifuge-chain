@@ -151,7 +151,7 @@ where
 			pool_id: investment_id.of_pool(),
 			tranche_id: investment_id.of_tranche(),
 			investor: investor.into(),
-			currency: currency,
+			currency,
 			currency_payout: status.amount_currency_payout,
 			tranche_tokens_payout: status.amount_tranche_tokens_payout,
 			remaining_invest_amount: status.amount_remaining,
