@@ -77,9 +77,12 @@ jobs:
             echo "---- Env VARS ----"
             echo "BUILD_OPT=${BUILD_OPT}"
             echo "PACKAGE=${PACKAGE}"
-            echo "---- List Cache Folder ----"
+            echo "---- List Folders ----"
+            echo "-List cargo folders-"
             ls -la /cargo-home/
             du -sh /cargo-home/*
+            echo "-List build folder-"
+            ls /build/ -la
             echo "---- RUNNING BUILD ----"
             /srtool/build --save
 
