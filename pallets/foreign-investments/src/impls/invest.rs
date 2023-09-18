@@ -1134,12 +1134,12 @@ mod tests {
 
 	const CONVERSION_RATE: u128 = 3; // 300%
 
-	fn to_pool(amount: u128) -> u128 {
-		amount * CONVERSION_RATE
+	fn to_pool(foreign_amount: u128) -> u128 {
+		foreign_amount * CONVERSION_RATE
 	}
 
-	fn to_foreign(amount: u128) -> u128 {
-		amount / CONVERSION_RATE
+	fn to_foreign(pool_amount: u128) -> u128 {
+		pool_amount / CONVERSION_RATE
 	}
 
 	struct TestCurrencyConverter;
@@ -1308,50 +1308,39 @@ mod tests {
 		fn get_done_amount(&self) -> u128 {
 			match *self {
 				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { done_amount, .. } => {
-					done_amount
+					to_pool(done_amount)
 				}
 				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
 					done_amount, ..
-				} => done_amount,
+				} => to_pool(done_amount),
 				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 					done_amount,
 					..
-				} => done_amount,
+				} => to_pool(done_amount),
 				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
 					done_amount,
 					..
-				} => done_amount,
-				Self::SwapIntoForeignDone { done_swap } => done_swap.amount,
-				Self::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, .. } => done_swap.amount,
+				} => to_pool(done_amount),
+				Self::SwapIntoForeignDone { done_swap } => to_pool(done_swap.amount),
+				Self::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, .. } => {
+					to_pool(done_swap.amount)
+				}
 				_ => 0,
 			}
 		}
 
-		fn total(&self, denominated: CurrencyId) -> u128 {
-			self.get_investing_amount()
-				+ self.get_done_amount()
-				+ match denominated {
-					CurrencyId::Pool => self.get_active_swap_amount_pool_denominated().unwrap(),
-					CurrencyId::Foreign => {
-						self.get_active_swap_amount_foreign_denominated().unwrap()
-					}
-				}
+		fn get_swap_pool_amount(&self) -> u128 {
+			self.get_active_swap_amount_pool_denominated().unwrap()
 		}
 
-		fn total_all(&self, denominated: CurrencyId) -> u128 {
-			match denominated {
-				CurrencyId::Pool => {
-					self.get_investing_amount()
-						+ self.get_done_amount() + self
-						.get_active_swap_amount_pool_denominated()
-						.unwrap()
-				}
-				CurrencyId::Foreign => {
-					to_foreign(self.get_investing_amount())
-						+ to_foreign(self.get_done_amount())
-						+ self.get_active_swap_amount_foreign_denominated().unwrap()
-				}
-			}
+		fn has_active_pool_swap(&self) -> bool {
+			self.get_active_swap()
+				.map(|swap| swap.currency_in == CurrencyId::Pool)
+				.unwrap_or(false)
+		}
+
+		fn total(&self) -> u128 {
+			self.get_investing_amount() + self.get_done_amount() + self.get_swap_pool_amount()
 		}
 	}
 
@@ -1370,35 +1359,44 @@ mod tests {
 
 		fn check_delta_invariant(&self, transition: &InvestTransition, new_state: &InvestState) {
 			println!("Transition: {:#?}", transition);
-			println!("New state: {:#?}", new_state);
+			println!("New state: {:#?}, total: {}", new_state, new_state.total());
 			match *transition {
 				InvestTransition::IncreaseInvestOrder(swap) => {
-					let diff =
-						new_state.total(CurrencyId::Pool) - self.old_state.total(CurrencyId::Pool);
-
+					let diff = new_state.total() - self.old_state.total();
 					assert_eq!(diff, swap.amount);
 				}
 				InvestTransition::DecreaseInvestOrder(_) => {
-					dbg!(
-						new_state.total(CurrencyId::Foreign),
-						self.old_state.total(CurrencyId::Foreign)
-					);
-					let diff = new_state.total(CurrencyId::Foreign)
-						- self.old_state.total(CurrencyId::Foreign);
-
+					let diff = new_state.total() - self.old_state.total();
 					assert_eq!(diff, 0);
 				}
-				InvestTransition::FulfillSwapOrder(swap) => {}
+				InvestTransition::FulfillSwapOrder(swap) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, 0);
+
+					if self.old_state.has_active_pool_swap() {
+						let invest_diff = new_state.get_investing_amount()
+							- self.old_state.get_investing_amount();
+						assert_eq!(invest_diff, swap.amount)
+					} else {
+						let done_diff =
+							new_state.get_done_amount() - self.old_state.get_done_amount();
+						assert_eq!(done_diff, to_pool(swap.amount))
+					}
+				}
 				InvestTransition::CollectInvestment(value) => {
 					if self.old_state.get_investing_amount() == 0 {
 						assert_eq!(new_state.get_investing_amount(), 0)
 					} else {
 						assert_eq!(new_state.get_investing_amount(), value);
 
-						let diff = self.old_state.total(CurrencyId::Pool)
-							- new_state.total(CurrencyId::Pool);
-
-						assert_eq!(diff, value)
+						assert_eq!(
+							new_state.get_done_amount(),
+							self.old_state.get_done_amount()
+						);
+						assert_eq!(
+							new_state.get_swap_pool_amount(),
+							self.old_state.get_swap_pool_amount(),
+						);
 					}
 				}
 			}
