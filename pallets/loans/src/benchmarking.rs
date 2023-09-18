@@ -246,6 +246,39 @@ where
 		T::ChangeGuard::note(pool_id, Change::<T>::Policy(policy).into()).unwrap()
 	}
 
+	fn propose_transfer_debt(pool_id: T::PoolId) -> T::Hash {
+		let borrower = account("borrower", 0, 0);
+		let loan_1 = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_1);
+		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
+
+		let repaid_amount = RepaidPricingAmount {
+			principal: PricingAmount::Internal(10.into()),
+			interest: 0.into(),
+			unscheduled: 0.into(),
+		};
+		let borrow_amount = PricingAmount::Internal(10.into());
+
+		Pallet::<T>::propose_transfer_debt(
+			RawOrigin::Signed(borrower).into(),
+			pool_id,
+			loan_1,
+			loan_2,
+			repaid_amount.clone(),
+			borrow_amount.clone(),
+		)
+		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(
+			pool_id,
+			Change::<T>::TransferDebt(loan_1, loan_2, repaid_amount, borrow_amount).into(),
+		)
+		.unwrap()
+	}
+
 	fn set_policy(pool_id: T::PoolId) {
 		let change_id = Self::propose_policy(pool_id);
 
@@ -441,6 +474,14 @@ benchmarks! {
 		let borrow_amount = PricingAmount::Internal(10.into());
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
+
+	apply_transfer_debt {
+		let any = account("borrower", 0, 0);
+		let pool_id = Helper::<T>::prepare_benchmark();
+		let change_id = Helper::<T>::propose_transfer_debt(pool_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
+
 }
 
 impl_benchmark_test_suite!(
