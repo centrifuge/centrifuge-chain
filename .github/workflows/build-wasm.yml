@@ -54,7 +54,7 @@ jobs:
           cache-directories: ./runtime
           # save-if: ${{ github.ref == 'refs/heads/master' }}
     # BUILD
-      - name: Setup build options
+      - 
         id: buildopt
         run: |
           if ${{ matrix.target == 'build-runtime-testnet'}} ; then
@@ -63,15 +63,9 @@ jobs:
             echo "BUILD_OPTS="--features=fast-runtime"" >> GITHUB_ENV
           fi
           echo "BUILD_OPTS=${{ env.BUILD_OPT }}"
-          
+
       - name: Run srtool
-        run: |
-          docker run -it --rm \
-            -e PACKAGE=centrifuge-runtime \
-            -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }}
-            --platform=linux/amd64 \
-            -v $PWD:/build paritytech/srtool:1.66.0 \
-            /srtool/build --save
+        run: docker run -it --rm  -e PACKAGE=centrifuge-runtime  -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }} --platform=linux/amd64  -v ${{ github.workspace }}:/build paritytech/srtool:1.66.0  /srtool/build
 
       # - name: Run Docker SRTool
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
@@ -91,13 +85,11 @@ jobs:
       #       echo "---- RUNNING BUILD ----"
       #       /srtool/build --save
 
-      - id: set_runtime
-        run: echo "RUNTIME=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//")" >> $GITHUB_ENV
       - name: Upload srtool report
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 #v3.1.3
         with:
           name: srtool-wasm-report.txt
-          path: ./runtime/${{ env.RUNTIME }}/target/srtool/srtool-wasm-report-*.txt       
+          path: ./${{ matrix.package }}-srtool-wasm-report.json      
 
       - id: 'auth'
         # if: ${{ github.ref == 'refs/heads/main' }}
