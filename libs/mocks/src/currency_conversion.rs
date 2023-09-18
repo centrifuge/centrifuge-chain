@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::SimpleCurrencyConversion;
+	use cfg_traits::IdentityCurrencyConversion;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -31,7 +31,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> SimpleCurrencyConversion for Pallet<T> {
+	impl<T: Config> IdentityCurrencyConversion for Pallet<T> {
 		type Balance = T::Balance;
 		type Currency = T::CurrencyId;
 		type Error = DispatchError;

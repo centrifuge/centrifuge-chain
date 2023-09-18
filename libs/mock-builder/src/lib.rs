@@ -358,19 +358,3 @@ macro_rules! execute_call_instance {
 		$crate::execute::<CallIds<T, I>, _, _, _>(|| (), $input)
 	}};
 }
-
-/// Same as [`register_call`] but using an instanciable storage
-#[macro_export]
-macro_rules! register_call_i {
-	($f:expr) => {{
-		$crate::register::<CallIds<T, I>, _, _, _, _>(|| (), $f)
-	}};
-}
-
-/// Same as [`execute_call`] but using an instanciable storage
-#[macro_export]
-macro_rules! execute_call_i {
-	($input:expr) => {{
-		$crate::execute::<CallIds<T, I>, _, _, _>(|| (), $input)
-	}};
-}

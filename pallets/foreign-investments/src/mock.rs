@@ -31,7 +31,7 @@ pub type TrancheId = u32;
 pub type PoolId = u64;
 pub type OrderId = u64;
 pub type CurrencyId = u8;
-pub type Rate = FixedU128;
+pub type Ratio = FixedU128;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct InvestmentId(pub PoolId, pub TrancheId);
@@ -51,7 +51,7 @@ impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
 }
 
 frame_support::parameter_types! {
-	pub DefaultTokenSellRate: Rate = FixedU128::from_float(1.5);
+	pub DefaultTokenSellRate: Ratio = FixedU128::from_float(1.5);
 }
 
 // ======================
@@ -135,9 +135,9 @@ impl pallet_mock_currency_conversion::Config for Runtime {
 
 impl pallet_mock_pools::Config for Runtime {
 	type Balance = Balance;
+	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type TrancheId = TrancheId;
 }
 
@@ -152,7 +152,7 @@ impl pallet_foreign_investments::Config for Runtime {
 	type InvestmentId = InvestmentId;
 	type PoolId = PoolId;
 	type PoolInspect = MockPools;
-	type Rate = Rate;
+	type Rate = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = OrderId;
 	type TokenSwaps = MockTokenSwaps;

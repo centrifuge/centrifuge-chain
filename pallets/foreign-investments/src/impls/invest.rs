@@ -1120,7 +1120,7 @@ where
 
 #[cfg(test)]
 mod tests {
-	use cfg_traits::SimpleCurrencyConversion;
+	use cfg_traits::IdentityCurrencyConversion;
 	use frame_support::{assert_err, assert_ok};
 	use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
@@ -1144,7 +1144,7 @@ mod tests {
 
 	struct TestCurrencyConverter;
 
-	impl SimpleCurrencyConversion for TestCurrencyConverter {
+	impl IdentityCurrencyConversion for TestCurrencyConverter {
 		type Balance = u128;
 		type Currency = CurrencyId;
 		type Error = DispatchError;
