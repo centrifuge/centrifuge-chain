@@ -456,7 +456,7 @@ mod benchmarks_utils {
 
 	use super::*;
 
-	const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
 
 	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
 	where
@@ -467,16 +467,16 @@ mod benchmarks_utils {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn bench_create_ausd_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
 
-			if T::AssetRegistry::metadata(&AUSD_CURRENCY_ID).is_none() {
+			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
 				T::AssetRegistry::register_asset(
-					Some(AUSD_CURRENCY_ID),
+					Some(POOL_CURRENCY),
 					orml_asset_registry::AssetMetadata {
 						decimals: 12,
-						name: "MOCK AUSD".as_bytes().to_vec(),
-						symbol: "MOCKAUSD".as_bytes().to_vec(),
+						name: "MOCK POOL CURRENCY".as_bytes().to_vec(),
+						symbol: "MOCKPCUR".as_bytes().to_vec(),
 						existential_deposit: Zero::zero(),
 						location: None,
 						additional: CustomMetadata {
@@ -515,7 +515,7 @@ mod benchmarks_utils {
 						},
 					},
 				],
-				AUSD_CURRENCY_ID,
+				POOL_CURRENCY,
 				FUNDS.into(),
 			)
 			.unwrap();
@@ -535,7 +535,7 @@ mod benchmarks_utils {
 			)
 			.unwrap();
 
-			T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor, FUNDS.into()).unwrap();
+			T::Tokens::mint_into(POOL_CURRENCY, &investor, FUNDS.into()).unwrap();
 			T::Investments::update_investment(
 				&investor,
 				T::TrancheCurrency::generate(pool_id.into(), tranche),
@@ -553,8 +553,8 @@ mod benchmarks_utils {
 			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
 		}
 
-		fn bench_mint_ausd_into(account: &T::AccountId, balance: T::Balance) {
-			T::Tokens::mint_into(AUSD_CURRENCY_ID, account, balance).unwrap();
+		fn bench_mint_pool_currency_into(account: &T::AccountId, balance: T::Balance) {
+			T::Tokens::mint_into(POOL_CURRENCY, account, balance).unwrap();
 			T::Currency::make_free_balance_be(account, balance);
 		}
 	}

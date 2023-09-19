@@ -49,6 +49,10 @@ pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
 
+#[cfg(feature = "runtime-benchmarks")]
+/// Traits related to benchmarking tooling.
+pub mod benchmarking;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -255,20 +259,6 @@ pub trait PoolWriteOffPolicyMutate<PoolId> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn worst_case_policy() -> Self::Policy;
-}
-
-/// Utility to benchmark pools easily
-#[cfg(feature = "runtime-benchmarks")]
-pub trait PoolBenchmarkHelper {
-	type PoolId;
-	type AccountId;
-	type Balance;
-
-	/// Create a benchmark pool giving the id and the admin.
-	fn benchmark_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
-
-	/// Give AUSD to the account
-	fn benchmark_give_ausd(account: &Self::AccountId, balance: Self::Balance);
 }
 
 /// A trait that can be used to retrieve the current price for a currency

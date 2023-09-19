@@ -129,11 +129,11 @@ pub mod pallet {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn bench_create_ausd_pool(a: Self::PoolId, b: &Self::AccountId) {
+		fn bench_create_pool(a: Self::PoolId, b: &Self::AccountId) {
 			execute_call!((a, b))
 		}
 
-		fn bench_mint_ausd_into(a: &Self::AccountId, b: Self::Balance) {
+		fn bench_mint_pool_currency_into(a: &Self::AccountId, b: Self::Balance) {
 			execute_call!((a, b))
 		}
 	}

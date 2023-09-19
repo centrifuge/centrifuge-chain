@@ -108,7 +108,7 @@ where
 		let pool_id = Default::default();
 
 		let pool_admin = account("pool_admin", 0, 0);
-		T::Pool::bench_create_ausd_pool(pool_id, &pool_admin);
+		T::Pool::bench_create_pool(pool_id, &pool_admin);
 
 		let loan_admin = account("loan_admin", 0, 0);
 		T::Permissions::add(
@@ -119,7 +119,7 @@ where
 		.unwrap();
 
 		let borrower = account::<T::AccountId>("borrower", 0, 0);
-		T::Pool::bench_mint_ausd_into(&borrower, (FUNDS * CFG).into());
+		T::Pool::bench_mint_pool_currency_into(&borrower, (FUNDS * CFG).into());
 		T::NonFungible::create_collection(&COLLECION_ID.into(), &borrower, &borrower).unwrap();
 		T::Permissions::add(
 			PermissionScope::Pool(pool_id),

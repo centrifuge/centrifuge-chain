@@ -16,11 +16,11 @@ pub trait PoolBenchmarkHelper {
 	type AccountId;
 	type Balance;
 
-	/// Create a benchmark AUSD pool giving the id and the admin.
-	fn bench_create_ausd_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
+	/// Create a pool for the given the pool id and the admin.
+	fn bench_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
 
-	/// Give AUSD to the account
-	fn bench_mint_ausd_into(account: &Self::AccountId, balance: Self::Balance);
+	/// Give pool currency to the account
+	fn bench_mint_pool_currency_into(account: &Self::AccountId, balance: Self::Balance);
 }
 
 /// Benchmark utility for adding currency trading pairs
@@ -43,4 +43,27 @@ pub trait OrderBookBenchmarkHelper {
 
 	/// Fulfills the given swap order from the trader account
 	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce);
+}
+
+/// Benchmark utility for updating/collecting foreign investments and
+/// redemptions.
+
+pub trait ForeignInvestmentsBenchmarkHelper {
+	type AccountId;
+	type AssetRegistry;
+	type Balance;
+	type CurrencyId;
+	type InvestmentId;
+
+	fn bench_foreign_investment_setup();
+
+	fn bench_increase_foreign_investment(
+		investor: Self::AccountId,
+		investment_id: Self::InvestmentId,
+		foreign_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+		amount_foreign_denominated: Self::Balance,
+	);
+
+	fn bench_enable_lp_transferability(currency: Self::CurrencyId);
 }
