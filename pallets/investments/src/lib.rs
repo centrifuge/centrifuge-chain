@@ -933,7 +933,14 @@ where
 			&mut total_order.amount,
 		)?;
 
-		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
+		dbg!(transfer_amount);
+		dbg!(info.payment_currency());
+		dbg!(send, recv, who);
+
+		dbg!(
+			T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false)
+				.map(|_| ()),
+		)
 	}
 
 	pub(crate) fn do_update_redeem_order(

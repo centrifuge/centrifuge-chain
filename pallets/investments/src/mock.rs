@@ -203,6 +203,15 @@ pub enum InvestmentId {
 	},
 }
 
+impl Default for InvestmentId {
+	fn default() -> Self {
+		Self::PoolTranche {
+			pool_id: Default::default(),
+			tranche_id: Default::default(),
+		}
+	}
+}
+
 impl From<InvestmentId> for CurrencyId {
 	fn from(val: InvestmentId) -> Self {
 		match val {
@@ -366,7 +375,7 @@ pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
 }
 
 /// Redeem amount into INVESTMENT_0_0
-///  
+///
 /// User accounts are the default TrancheHolder{A,B,C}
 pub(crate) fn redeem_x_per_investor(amount: Balance) -> DispatchResult {
 	Investments::update_redeem_order(
