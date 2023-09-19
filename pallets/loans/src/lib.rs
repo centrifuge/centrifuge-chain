@@ -26,6 +26,8 @@
 //! | [`Pallet::admin_write_off()`]       | LoanAdmin |
 //! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
 //! | [`Pallet::apply_loan_mutation()`]   |           |
+//! | [`Pallet::propose_transfer_debt()`] | Borrower  |
+//! | [`Pallet::apply_transfer_debt()`]   |           |
 //! | [`Pallet::close()`]                 | Borrower  |
 //!
 //! The following actions are performed over an entire pool of loans:
