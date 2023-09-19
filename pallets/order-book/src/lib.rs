@@ -923,4 +923,61 @@ pub mod pallet {
 			TradingPair::<T>::get(currency_in, currency_out).is_ok()
 		}
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::OrderBookBenchmarkHelper for Pallet<T>
+	where
+		T::AssetRegistry: orml_traits::asset_registry::Mutate<
+			AssetId = T::AssetCurrencyId,
+			Balance = T::Balance,
+			CustomMetadata = CustomMetadata,
+		>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type CurrencyId = T::AssetCurrencyId;
+		type OrderIdNonce = T::OrderIdNonce;
+
+		fn bench_setup_trading_pair(
+			asset_in: Self::CurrencyId,
+			asset_out: Self::CurrencyId,
+			amount_in: Self::Balance,
+			amount_out: Self::Balance,
+			decimals_in: u32,
+			decimals_out: u32,
+		) -> (Self::AccountId, Self::AccountId) {
+			let account_out: Self::AccountId =
+				frame_benchmarking::account::<Self::AccountId>("account_out", 1, 0);
+			let account_in: Self::AccountId =
+				frame_benchmarking::account::<Self::AccountId>("account_in", 2, 0);
+			crate::benchmarking::Helper::<T>::register_trading_assets(
+				asset_in.into(),
+				asset_out.into(),
+				decimals_in,
+				decimals_out,
+			);
+
+			frame_support::assert_ok!(T::TradeableAsset::mint_into(
+				asset_out,
+				&account_out,
+				amount_out
+			));
+			frame_support::assert_ok!(T::TradeableAsset::mint_into(
+				asset_in,
+				&account_in,
+				amount_in,
+			));
+
+			TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
+
+			(account_out, account_in)
+		}
+
+		fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
+			frame_support::assert_ok!(Self::fill_order_full(
+				frame_system::RawOrigin::Signed(trader.clone()).into(),
+				order_id
+			));
+		}
+	}
 }

@@ -15,10 +15,9 @@
 use cfg_traits::benchmarking::OrderBookBenchmarkHelper;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
-use frame_support::{assert_ok, traits::fungibles::Mutate as FungiblesMutate};
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect, Mutate};
-use sp_runtime::{traits::One, FixedPointNumber};
+use sp_runtime::FixedPointNumber;
 
 use super::*;
 
@@ -38,26 +37,26 @@ benchmarks! {
 	}
 
 	create_order {
-		let (account_out, _) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 		}:create_order(RawOrigin::Signed(account_out.clone()), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2))
 
 
 	user_update_order {
-		let (account_out, _) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
 		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
 
 		}:user_update_order(RawOrigin::Signed(account_out.clone()), order_id, 10 * BUY_AMOUNT, T::SellRatio::saturating_from_integer(1))
 
 	user_cancel_order {
-		let (account_out, _) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
 		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
 
 	}:user_cancel_order(RawOrigin::Signed(account_out.clone()), order_id)
 
 	fill_order_full {
-		let (account_out, account_in) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
 		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
 
@@ -67,62 +66,17 @@ benchmarks! {
 		}:add_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT, BUY_AMOUNT)
 
 	rm_trading_pair {
-		let (account_out, _) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 		}:rm_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT)
 
 	update_min_order {
-		let (account_out, _) = Helper::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 		}:update_min_order(RawOrigin::Root, ASSET_IN, ASSET_OUT, AMOUNT_IN)
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
 
-struct Helper<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> OrderBookBenchmarkHelper for Helper<T>
-where
-	T::AssetRegistry:
-		Mutate<AssetId = T::AssetCurrencyId, Balance = T::Balance, CustomMetadata = CustomMetadata>,
-{
-	type AccountId = T::AccountId;
-	type Balance = T::Balance;
-	type CurrencyId = T::AssetCurrencyId;
-	type OrderIdNonce = T::OrderIdNonce;
-
-	fn bench_setup_trading_pair(
-		asset_in: Self::CurrencyId,
-		asset_out: Self::CurrencyId,
-		amount_in: Self::Balance,
-		amount_out: Self::Balance,
-		decimals_in: u32,
-		decimals_out: u32,
-	) -> (Self::AccountId, Self::AccountId) {
-		let account_out: Self::AccountId = account::<Self::AccountId>("account_out", 1, 0);
-		let account_in: Self::AccountId = account::<Self::AccountId>("account_in", 2, 0);
-		Self::register_trading_assets(asset_in.into(), asset_out.into(), decimals_in, decimals_out);
-
-		assert_ok!(T::TradeableAsset::mint_into(
-			asset_out,
-			&account_out,
-			amount_out
-		));
-		assert_ok!(T::TradeableAsset::mint_into(
-			asset_in,
-			&account_in,
-			amount_in,
-		));
-
-		TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
-
-		(account_out, account_in)
-	}
-
-	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
-		assert_ok!(Pallet::<T>::fill_order_full(
-			RawOrigin::Signed(trader.clone()).into(),
-			order_id
-		));
-	}
-}
+pub(crate) struct Helper<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> Helper<T>
 where
