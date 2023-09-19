@@ -444,7 +444,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
-	use cfg_traits::{investments::Investment, PoolBenchmarkHelper};
+	use cfg_traits::{benchmarking::PoolBenchmarkHelper, investments::Investment};
 	use cfg_types::{
 		pools::TrancheMetadata,
 		tokens::{CurrencyId, CustomMetadata},
@@ -467,7 +467,7 @@ mod benchmarks_utils {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+		fn bench_create_ausd_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
 
 			if T::AssetRegistry::metadata(&AUSD_CURRENCY_ID).is_none() {
@@ -553,7 +553,7 @@ mod benchmarks_utils {
 			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
 		}
 
-		fn benchmark_give_ausd(account: &T::AccountId, balance: T::Balance) {
+		fn bench_mint_ausd_into(account: &T::AccountId, balance: T::Balance) {
 			T::Tokens::mint_into(AUSD_CURRENCY_ID, account, balance).unwrap();
 			T::Currency::make_free_balance_be(account, balance);
 		}

@@ -124,16 +124,16 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> cfg_traits::PoolBenchmarkHelper for Pallet<T> {
+	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn benchmark_create_pool(a: Self::PoolId, b: &Self::AccountId) {
+		fn bench_create_ausd_pool(a: Self::PoolId, b: &Self::AccountId) {
 			execute_call!((a, b))
 		}
 
-		fn benchmark_give_ausd(a: &Self::AccountId, b: Self::Balance) {
+		fn bench_mint_ausd_into(a: &Self::AccountId, b: Self::Balance) {
 			execute_call!((a, b))
 		}
 	}
