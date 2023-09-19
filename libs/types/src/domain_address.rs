@@ -13,6 +13,7 @@
 use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AccountIdConversion, Convert};
 use sp_std::{vec, vec::Vec};
@@ -23,8 +24,7 @@ use crate::EVMChainId;
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling
 	/// incoming messages.
@@ -77,8 +77,7 @@ pub struct DomainLocator<Domain> {
 	pub domain: Domain,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Clone, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum DomainAddress {
 	/// A Centrifuge-Chain based account address, 32-bytes long
 	Centrifuge([u8; 32]),
