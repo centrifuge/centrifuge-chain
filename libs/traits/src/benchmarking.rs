@@ -28,6 +28,7 @@ pub trait OrderBookBenchmarkHelper {
 	type AccountId;
 	type Balance;
 	type CurrencyId;
+	type OrderIdNonce;
 
 	/// Adds the corresponding trading pair, creates trader accounts and mints
 	/// appropriate amounts of balance into these
@@ -39,4 +40,7 @@ pub trait OrderBookBenchmarkHelper {
 		decimals_in: u32,
 		decimals_out: u32,
 	) -> (Self::AccountId, Self::AccountId);
+
+	/// Fulfills the given swap order from the trader account
+	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce);
 }

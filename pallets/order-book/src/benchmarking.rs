@@ -86,6 +86,7 @@ where
 	type AccountId = T::AccountId;
 	type Balance = T::Balance;
 	type CurrencyId = T::AssetCurrencyId;
+	type OrderIdNonce = T::OrderIdNonce;
 
 	fn bench_setup_trading_pair(
 		asset_in: Self::CurrencyId,
@@ -113,6 +114,13 @@ where
 		TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
 
 		(account_out, account_in)
+	}
+
+	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
+		assert_ok!(Pallet::<T>::fill_order_full(
+			RawOrigin::Signed(trader.clone()).into(),
+			order_id
+		));
 	}
 }
 
