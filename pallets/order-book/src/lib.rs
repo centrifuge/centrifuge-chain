@@ -515,98 +515,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Fill an existing order, based on the provided ratio.
-		#[pallet::call_index(7)]
-		#[pallet::weight(T::Weights::fill_order_partial())]
-		pub fn fill_order_partial(
-			origin: OriginFor<T>,
-			order_id: T::OrderIdNonce,
-			fulfillment_ratio: Perquintill,
-		) -> DispatchResult {
-			let account_id = ensure_signed(origin)?;
-			let order = <Orders<T>>::get(order_id)?;
-
-			ensure!(
-				!fulfillment_ratio.is_zero(),
-				Error::<T>::InvalidPartialOrderRatio
-			);
-
-			let partial_buy_amount = fulfillment_ratio.mul_floor(order.buy_amount);
-			let partial_sell_amount = fulfillment_ratio.mul_floor(order.max_sell_amount);
-			let remaining_buy_amount = order
-				.buy_amount
-				.checked_sub(&partial_buy_amount)
-				.ok_or(Error::<T>::RemainingBuyAmountError)?;
-			let partial_fulfillment = !remaining_buy_amount.is_zero();
-
-			if partial_fulfillment {
-				Self::update_order(
-					order.placing_account.clone(),
-					order_id,
-					remaining_buy_amount,
-					order.max_sell_rate,
-					remaining_buy_amount.min(order.min_fulfillment_amount),
-				)?;
-			} else {
-				T::TradeableAsset::release(
-					order.asset_out_id,
-					&order.placing_account,
-					partial_sell_amount,
-					false,
-				)?;
-
-				Self::remove_order(order.order_id)?;
-			}
-
-			ensure!(
-				partial_buy_amount >= order.min_fulfillment_amount,
-				Error::<T>::InsufficientOrderSize,
-			);
-
-			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, partial_buy_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
-
-			T::TradeableAsset::transfer(
-				order.asset_in_id,
-				&account_id,
-				&order.placing_account,
-				partial_buy_amount,
-				false,
-			)?;
-
-			T::TradeableAsset::transfer(
-				order.asset_out_id,
-				&order.placing_account,
-				&account_id,
-				partial_sell_amount,
-				false,
-			)?;
-
-			T::FulfilledOrderHook::notify_status_change(
-				order_id,
-				Swap {
-					amount: partial_buy_amount,
-					currency_in: order.asset_in_id,
-					currency_out: order.asset_out_id,
-				},
-			)?;
-
-			Self::deposit_event(Event::OrderFulfillment {
-				order_id,
-				placing_account: order.placing_account,
-				fulfilling_account: account_id,
-				partial_fulfillment,
-				currency_in: order.asset_in_id,
-				currency_out: order.asset_out_id,
-				fulfillment_amount: partial_buy_amount,
-				sell_rate_limit: order.max_sell_rate,
-			});
-
-			Ok(())
-		}
-
 		/// Adds a valid trading pair.
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::Weights::add_trading_pair())]
@@ -680,6 +588,98 @@ pub mod pallet {
 				asset_in,
 				asset_out,
 				min_order,
+			});
+
+			Ok(())
+		}
+
+		/// Fill an existing order, based on the provided ratio.
+		#[pallet::call_index(7)]
+		#[pallet::weight(T::Weights::fill_order_partial())]
+		pub fn fill_order_partial(
+			origin: OriginFor<T>,
+			order_id: T::OrderIdNonce,
+			fulfillment_ratio: Perquintill,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			let order = <Orders<T>>::get(order_id)?;
+
+			ensure!(
+				!fulfillment_ratio.is_zero(),
+				Error::<T>::InvalidPartialOrderRatio
+			);
+
+			let partial_buy_amount = fulfillment_ratio.mul_floor(order.buy_amount);
+			let partial_sell_amount = fulfillment_ratio.mul_floor(order.max_sell_amount);
+			let remaining_buy_amount = order
+				.buy_amount
+				.checked_sub(&partial_buy_amount)
+				.ok_or(Error::<T>::RemainingBuyAmountError)?;
+			let partial_fulfillment = !remaining_buy_amount.is_zero();
+
+			ensure!(
+				partial_buy_amount >= order.min_fulfillment_amount,
+				Error::<T>::InsufficientOrderSize,
+			);
+
+			ensure!(
+				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, partial_buy_amount),
+				Error::<T>::InsufficientAssetFunds,
+			);
+
+			if partial_fulfillment {
+				Self::update_order(
+					order.placing_account.clone(),
+					order_id,
+					remaining_buy_amount,
+					order.max_sell_rate,
+					remaining_buy_amount.min(order.min_fulfillment_amount),
+				)?;
+			} else {
+				T::TradeableAsset::release(
+					order.asset_out_id,
+					&order.placing_account,
+					partial_sell_amount,
+					false,
+				)?;
+
+				Self::remove_order(order.order_id)?;
+			}
+
+			T::TradeableAsset::transfer(
+				order.asset_in_id,
+				&account_id,
+				&order.placing_account,
+				partial_buy_amount,
+				false,
+			)?;
+
+			T::TradeableAsset::transfer(
+				order.asset_out_id,
+				&order.placing_account,
+				&account_id,
+				partial_sell_amount,
+				false,
+			)?;
+
+			T::FulfilledOrderHook::notify_status_change(
+				order_id,
+				Swap {
+					amount: partial_buy_amount,
+					currency_in: order.asset_in_id,
+					currency_out: order.asset_out_id,
+				},
+			)?;
+
+			Self::deposit_event(Event::OrderFulfillment {
+				order_id,
+				placing_account: order.placing_account,
+				fulfilling_account: account_id,
+				partial_fulfillment,
+				currency_in: order.asset_in_id,
+				currency_out: order.asset_out_id,
+				fulfillment_amount: partial_buy_amount,
+				sell_rate_limit: order.max_sell_rate,
 			});
 
 			Ok(())
