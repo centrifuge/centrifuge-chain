@@ -11,46 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-/*
 use cfg_traits::investments::{InvestmentAccountant, InvestmentProperties};
-use cfg_types::tokens::CurrencyId;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_support::traits::fungibles::Mutate;
-use frame_system::RawOrigin;
-
-use crate::{Call, Config, CurrencyOf, Pallet};
-
-benchmarks! {
-	where_clause {
-	where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-		T::InvestmentId: Default + Into<CurrencyOf<T>>,
-	}
-
-	update_invest_order {
-		let caller: T::AccountId = whitelisted_caller();
-		let investment_id = T::InvestmentId::default();
-		let currency_id = T::Accountant::info(investment_id).unwrap().payment_currency();
-		dbg!(investment_id, &caller);
-		T::Tokens::mint_into(currency_id, &caller, 10u32.into()).unwrap();
-
-
-	}: _(RawOrigin::Signed(caller), T::InvestmentId::default(), 1u32.into())
-}
-
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::build(),
-	crate::mock::MockRuntime
-);
-*/
-
-use cfg_traits::investments::{InvestmentAccountant, InvestmentProperties};
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{investments::InvestmentAccount, tokens::CurrencyId};
 use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*, whitelisted_caller};
 use frame_support::traits::fungibles::Mutate;
 use frame_system::RawOrigin;
+use sp_runtime::traits::AccountIdConversion;
 
 use crate::{Call, Config, CurrencyOf, Pallet};
 
@@ -71,14 +37,22 @@ mod benchmarks {
 			.unwrap()
 			.payment_currency();
 
-		T::Tokens::mint_into(currency_id, &caller, 10u32.into()).unwrap();
+		T::Tokens::mint_into(currency_id, &caller, 1u32.into()).unwrap();
 
 		#[extrinsic_call]
-		update_invest_order(
-			RawOrigin::Signed(caller),
-			T::InvestmentId::default(),
-			1u32.into(),
-		);
+		update_invest_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
+	}
+
+	#[benchmark]
+	fn update_redeem_order() {
+		let caller: T::AccountId = whitelisted_caller();
+		let investment_id = T::InvestmentId::default();
+		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id).unwrap().id().into();
+
+		T::Tokens::mint_into(currency_id, &caller, 1u32.into()).unwrap();
+
+		#[extrinsic_call]
+		update_redeem_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
 	}
 
 	impl_benchmark_test_suite!(
