@@ -56,7 +56,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		);
 
 		// NOTE: For the MVP, we simply overwrite any existing payment currency. In a
-		// later version, we might want to store a `BoundedVec` instead.
+		// later version, we might want to store a `StorageDoubleMap` instead.
 		InvestmentPaymentCurrency::<T>::insert(who, investment_id, foreign_currency);
 
 		let amount_pool_denominated =
@@ -328,9 +328,6 @@ impl<T: Config> Pallet<T> {
 		match state {
 			InvestState::NoState => {
 				InvestmentState::<T>::remove(who, investment_id);
-				#[cfg(feature = "std")] {
-					println!("Clearing InvestState");
-				}
 				InvestmentPaymentCurrency::<T>::remove(who, investment_id);
 
 				Ok((InvestState::NoState, None, Zero::zero()))

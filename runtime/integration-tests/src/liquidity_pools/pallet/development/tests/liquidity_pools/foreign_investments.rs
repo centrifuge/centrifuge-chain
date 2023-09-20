@@ -1500,12 +1500,12 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 6_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 6 * dollar(18);
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
 				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
-			
+
 			do_initial_increase_investment(
 				pool_id,
 				invest_amount_pool_denominated,
@@ -1584,7 +1584,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 6_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 6 * dollar(18);
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			do_initial_increase_investment(
 				pool_id,
@@ -1753,7 +1753,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 10 * dollar(18);
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
 				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
@@ -1905,7 +1905,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 10 * dollar(18);
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
@@ -2140,7 +2140,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 10 * dollar(18);
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
@@ -2429,7 +2429,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let invest_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let invest_amount_pool_denominated: u128 = 10 * dollar(18);
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
@@ -2526,7 +2526,7 @@ mod mismatching_currencies {
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
-			let redeem_amount_pool_denominated: u128 = 10_000_000_000_000_000;
+			let redeem_amount_pool_denominated: u128 = 10 * dollar(18);
 			let swap_order_id = 1;
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let pool_account =
