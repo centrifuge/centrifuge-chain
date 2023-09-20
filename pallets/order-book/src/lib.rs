@@ -54,10 +54,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
-	use sp_arithmetic::{
-		traits::{BaseArithmetic, CheckedSub},
-		Perquintill,
-	};
+	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
@@ -361,8 +358,6 @@ pub mod pallet {
 		/// Error when unable to calculate the remaining buy amount for a
 		/// partial order.
 		RemainingBuyAmountError,
-		/// Error when the ratio provided for a partial error is 0.
-		InvalidPartialOrderRatio,
 	}
 
 	#[pallet::call]
@@ -599,33 +594,32 @@ pub mod pallet {
 		pub fn fill_order_partial(
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
-			fulfillment_ratio: Perquintill,
+			buy_amount: T::Balance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 
 			ensure!(
-				!fulfillment_ratio.is_zero(),
-				Error::<T>::InvalidPartialOrderRatio
-			);
-
-			let partial_buy_amount = fulfillment_ratio.mul_floor(order.buy_amount);
-			let partial_sell_amount = fulfillment_ratio.mul_floor(order.max_sell_amount);
-			let remaining_buy_amount = order
-				.buy_amount
-				.checked_sub(&partial_buy_amount)
-				.ok_or(Error::<T>::RemainingBuyAmountError)?;
-			let partial_fulfillment = !remaining_buy_amount.is_zero();
-
-			ensure!(
-				partial_buy_amount >= order.min_fulfillment_amount,
+				buy_amount >= order.min_fulfillment_amount,
 				Error::<T>::InsufficientOrderSize,
 			);
 
 			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, partial_buy_amount),
+				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, buy_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
+
+			let sell_amount = Self::convert_with_ratio(
+				order.asset_in_id,
+				order.asset_out_id,
+				order.max_sell_rate,
+				buy_amount,
+			)?;
+			let remaining_buy_amount = order
+				.buy_amount
+				.checked_sub(&buy_amount)
+				.ok_or(Error::<T>::RemainingBuyAmountError)?;
+			let partial_fulfillment = !remaining_buy_amount.is_zero();
 
 			if partial_fulfillment {
 				Self::update_order(
@@ -639,7 +633,7 @@ pub mod pallet {
 				T::TradeableAsset::release(
 					order.asset_out_id,
 					&order.placing_account,
-					partial_sell_amount,
+					sell_amount,
 					false,
 				)?;
 
@@ -650,7 +644,7 @@ pub mod pallet {
 				order.asset_in_id,
 				&account_id,
 				&order.placing_account,
-				partial_buy_amount,
+				buy_amount,
 				false,
 			)?;
 
@@ -658,14 +652,14 @@ pub mod pallet {
 				order.asset_out_id,
 				&order.placing_account,
 				&account_id,
-				partial_sell_amount,
+				sell_amount,
 				false,
 			)?;
 
 			T::FulfilledOrderHook::notify_status_change(
 				order_id,
 				Swap {
-					amount: partial_buy_amount,
+					amount: buy_amount,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				},
@@ -678,7 +672,7 @@ pub mod pallet {
 				partial_fulfillment,
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
-				fulfillment_amount: partial_buy_amount,
+				fulfillment_amount: buy_amount,
 				sell_rate_limit: order.max_sell_rate,
 			});
 
