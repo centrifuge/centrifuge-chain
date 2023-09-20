@@ -185,7 +185,7 @@ pub struct Swap<
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
-	/// The amount of outgoing currency which shall be exchanged.
+	/// The amount of incoming currency which shall be bought.
 	pub amount: Balance,
 }
 
