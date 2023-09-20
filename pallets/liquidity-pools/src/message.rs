@@ -2,6 +2,7 @@ use cfg_primitives::Moment;
 use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
 
@@ -28,8 +29,7 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 ///
 /// NOTE: The sender of a message cannot ensure whether the
 /// corresponding receiver rejects it.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Ratio>
 where
 	Domain: Codec,
