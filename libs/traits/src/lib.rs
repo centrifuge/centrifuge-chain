@@ -132,8 +132,10 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 	type TrancheId;
 	type Moment;
 
-	/// check if the pool exists
+	/// Check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
+
+	/// Check if the tranche exists for the given pool
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
 
 	/// Get the account used for the given `pool_id`.

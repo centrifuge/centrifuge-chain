@@ -2665,6 +2665,6 @@ fn benchmark_pool() {
 	use cfg_traits::benchmarking::PoolBenchmarkHelper;
 
 	new_test_ext().execute_with(|| {
-		PoolSystem::benchmark_create_pool(0, &0);
+		PoolSystem::bench_create_pool(0, &0);
 	});
 }

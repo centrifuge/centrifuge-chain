@@ -23,6 +23,7 @@ pub mod pallet {
 		type Balance;
 		type BalanceRatio;
 		type CurrencyId;
+		type TrancheCurrency;
 	}
 
 	#[pallet::pallet]
@@ -66,12 +67,18 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_benchmark_create_pool(f: impl Fn(T::PoolId, &T::AccountId) + 'static) {
+		pub fn mock_bench_create_pool(f: impl Fn(T::PoolId, &T::AccountId) + 'static) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_benchmark_give_ausd(f: impl Fn(&T::AccountId, T::Balance) + 'static) {
-			register_call!(move |(a, b)| f(a, b));
+		pub fn mock_bench_investor_setup(
+			f: impl Fn(T::PoolId, T::AccountId, T::Balance) + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+
+		pub fn mock_bench_default_investment_id(f: impl Fn(T::TrancheCurrency) + 'static) {
+			register_call!(f);
 		}
 	}
 
@@ -133,8 +140,18 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn bench_mint_pool_currency_into(a: &Self::AccountId, b: Self::Balance) {
-			execute_call!((a, b))
+		fn bench_investor_setup(a: Self::PoolId, b: Self::AccountId, c: Self::Balance) {
+			execute_call!((a, b, c))
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::InvestmentIdBenchmarkHelper for Pallet<T> {
+		type InvestmentId = T::TrancheCurrency;
+		type PoolId = T::PoolId;
+
+		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {
+			execute_call!(a)
 		}
 	}
 }

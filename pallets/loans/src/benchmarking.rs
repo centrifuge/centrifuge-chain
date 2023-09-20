@@ -78,8 +78,8 @@ fn config_mocks() {
 	MockPools::mock_account_for(|_| 0);
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPools::mock_benchmark_create_pool(|_, _| {});
-	MockPools::mock_benchmark_give_ausd(|_, _| {});
+	MockPools::mock_bench_create_pool(|_, _| {});
+	MockPools::mock_bench_investor_setup(|_, _, _| {});
 	MockPrices::mock_feed_value(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
@@ -119,7 +119,7 @@ where
 		.unwrap();
 
 		let borrower = account::<T::AccountId>("borrower", 0, 0);
-		T::Pool::bench_mint_pool_currency_into(&borrower, (FUNDS * CFG).into());
+		T::Pool::bench_investor_setup(pool_id, borrower.clone(), (FUNDS * CFG).into());
 		T::NonFungible::create_collection(&COLLECION_ID.into(), &borrower, &borrower).unwrap();
 		T::Permissions::add(
 			PermissionScope::Pool(pool_id),
