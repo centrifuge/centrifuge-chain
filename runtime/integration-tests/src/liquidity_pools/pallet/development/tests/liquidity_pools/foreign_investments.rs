@@ -1505,6 +1505,7 @@ mod mismatching_currencies {
 			create_currency_pool(pool_id, pool_currency, pool_currency_decimals.into());
 			let invest_amount_foreign_denominated: u128 =
 				enable_usdt_trading(pool_currency, invest_amount_pool_denominated, true, || {});
+			
 			do_initial_increase_investment(
 				pool_id,
 				invest_amount_pool_denominated,

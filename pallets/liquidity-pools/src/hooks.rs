@@ -114,7 +114,6 @@ where
 }
 
 /// The hook struct which acts upon a finalized investment collection.
-
 pub struct CollectedForeignInvestmentHook<T>(PhantomData<T>);
 
 impl<T: Config> StatusNotificationHook for CollectedForeignInvestmentHook<T>
