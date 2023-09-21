@@ -1,8 +1,6 @@
 use super::*;
 
 /// Used where the error comes from other pallet impl. unknown from the tests
-const PRICE_ID_NO_FOUND: DispatchError = DispatchError::Other("Price ID not found");
-
 fn config_mocks(withdraw_amount: Balance) {
 	MockPools::mock_withdraw(move |pool_id, to, amount| {
 		assert_eq!(to, BORROWER);
@@ -10,9 +8,12 @@ fn config_mocks(withdraw_amount: Balance) {
 		assert_eq!(withdraw_amount, amount);
 		Ok(())
 	});
-	MockPrices::mock_get(|id| match *id {
-		REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
-		_ => Err(PRICE_ID_NO_FOUND),
+	MockPrices::mock_get(|id, pool_id| {
+		assert_eq!(*pool_id, POOL_A);
+		match *id {
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			_ => Err(PRICE_ID_NO_FOUND),
+		}
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
@@ -255,13 +256,17 @@ fn with_correct_amount_internal_pricing() {
 }
 
 #[test]
-fn with_unregister_price_id() {
+fn with_unregister_price_id_and_oracle_required() {
 	new_test_ext().execute_with(|| {
 		let loan = LoanInfo {
 			pricing: Pricing::External(ExternalPricing {
 				price_id: UNREGISTER_PRICE_ID,
 				..util::base_external_pricing()
 			}),
+			restrictions: LoanRestrictions {
+				borrows: BorrowRestrictions::OraclePriceRequired,
+				repayments: RepayRestrictions::None,
+			},
 			..util::base_external_loan()
 		};
 
@@ -278,6 +283,61 @@ fn with_unregister_price_id() {
 				PricingAmount::External(amount)
 			),
 			PRICE_ID_NO_FOUND
+		);
+	});
+}
+
+#[test]
+fn with_unregister_price_id_and_oracle_not_required() {
+	new_test_ext().execute_with(|| {
+		let loan = LoanInfo {
+			pricing: Pricing::External(ExternalPricing {
+				price_id: UNREGISTER_PRICE_ID,
+				..util::base_external_pricing()
+			}),
+			..util::base_external_loan()
+		};
+
+		let loan_id = util::create_loan(loan);
+
+		// Borrow half
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE * 2);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			(QUANTITY / 2.into()).saturating_mul_int(PRICE_VALUE * 2),
+			util::current_loan_pv(loan_id)
+		);
+
+		// Borrow half, price changed
+		let amount = ExternalAmount::new(QUANTITY / 2.into(), PRICE_VALUE * 4);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			(QUANTITY).saturating_mul_int(PRICE_VALUE * 4),
+			util::current_loan_pv(loan_id)
+		);
+
+		// Suddenty, the oracle set a value
+		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME.as_secs())));
+
+		assert_eq!(
+			(QUANTITY).saturating_mul_int(PRICE_VALUE * 8),
+			util::current_loan_pv(loan_id)
 		);
 	});
 }
@@ -303,14 +363,13 @@ fn with_wrong_big_amount_external_pricing() {
 }
 
 #[test]
-fn with_wrong_quantity_amount_external_pricing() {
+fn with_incorrect_settlement_price_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		// It's not multiple of PRICE_VALUE
-		let amount = ExternalAmount::new(Quantity::from_float(0.5), PRICE_VALUE);
+		// Much higher
+		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE + PRICE_VALUE + 1);
 		config_mocks(amount.balance().unwrap());
-
 		assert_noop!(
 			Loans::borrow(
 				RuntimeOrigin::signed(BORROWER),
@@ -318,25 +377,40 @@ fn with_wrong_quantity_amount_external_pricing() {
 				loan_id,
 				PricingAmount::External(amount)
 			),
-			Error::<Runtime>::AmountNotNaturalNumber
+			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
-	});
-}
 
-#[test]
-fn with_correct_amount_external_pricing() {
-	new_test_ext().execute_with(|| {
-		let loan_id = util::create_loan(util::base_external_loan());
-
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
+		// Higher
+		let amount = ExternalAmount::new(
+			QUANTITY,
+			PRICE_VALUE + (MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE) + 1),
+		);
 		config_mocks(amount.balance().unwrap());
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
+			Error::<Runtime>::SettlementPriceExceedsVariation
+		);
 
-		assert_ok!(Loans::borrow(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_id,
-			PricingAmount::External(amount)
-		));
+		// Lower
+		let amount = ExternalAmount::new(
+			QUANTITY,
+			PRICE_VALUE - (MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE) + 1),
+		);
+		config_mocks(amount.balance().unwrap());
+		assert_noop!(
+			Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PricingAmount::External(amount)
+			),
+			Error::<Runtime>::SettlementPriceExceedsVariation
+		);
 	});
 }
 
@@ -345,7 +419,11 @@ fn with_correct_settlement_price_external_pricing() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 
-		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE * 2 /* Any value */);
+		// Higher
+		let amount = ExternalAmount::new(
+			QUANTITY / 3.into(),
+			PRICE_VALUE + MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE),
+		);
 		config_mocks(amount.balance().unwrap());
 
 		assert_ok!(Loans::borrow(
@@ -354,6 +432,46 @@ fn with_correct_settlement_price_external_pricing() {
 			loan_id,
 			PricingAmount::External(amount)
 		));
+
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE),
+			util::current_loan_pv(loan_id)
+		);
+
+		// Same
+		let amount = ExternalAmount::new(QUANTITY / 3.into(), PRICE_VALUE);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			(QUANTITY / 3.into()).saturating_mul_int(PRICE_VALUE) * 2,
+			util::current_loan_pv(loan_id)
+		);
+
+		// Lower
+		let amount = ExternalAmount::new(
+			QUANTITY / 3.into(),
+			PRICE_VALUE - MAX_PRICE_VARIATION.saturating_mul_int(PRICE_VALUE),
+		);
+		config_mocks(amount.balance().unwrap());
+
+		assert_ok!(Loans::borrow(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			PricingAmount::External(amount)
+		));
+
+		assert_eq!(
+			QUANTITY.saturating_mul_int(PRICE_VALUE),
+			util::current_loan_pv(loan_id)
+		);
 	});
 }
 

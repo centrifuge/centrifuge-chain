@@ -12,16 +12,24 @@
 
 use core::marker::PhantomData;
 
-use cfg_primitives::types::{PoolId, TrancheId};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_primitives::{
+	types::{PoolId, TrancheId},
+	Balance, PalletIndex,
+};
+use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
+use xcm::{
+	prelude::{AccountKey20, GlobalConsensus, PalletInstance},
+	v3::{MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 
-use crate::{xcm::XcmMetadata, EVMChainId};
+use crate::{domain_address::DomainAddress, xcm::XcmMetadata, EVMChainId};
 
 /// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
@@ -239,7 +247,7 @@ pub struct CustomMetadata {
 
 /// The Cross Chain Transferability property of an asset describes the way(s),
 /// if any, that said asset is cross-chain transferable. It may currently be
-/// transferable through Xcm, Centrifuge Connectors, or All .
+/// transferable through Xcm, Centrifuge Liquidity Pools, or All .
 ///
 /// NOTE: Once set to `All`, the asset is automatically transferable through any
 /// eventual new option added at a later stage. A migration might be required if
@@ -267,8 +275,8 @@ pub enum CrossChainTransferability {
 	/// The asset is only transferable through XCM
 	Xcm(XcmMetadata),
 
-	/// The asset is only transferable through Centrifuge Connectors
-	Connectors,
+	/// The asset is only transferable through Centrifuge Liquidity Pools
+	LiquidityPools,
 
 	/// The asset is transferable through all available options
 	All(XcmMetadata),
@@ -279,21 +287,21 @@ impl CrossChainTransferability {
 		matches!(self, Self::Xcm(..) | Self::All(..))
 	}
 
-	pub fn includes_connectors(self) -> bool {
-		matches!(self, Self::Connectors | Self::All(..))
+	pub fn includes_liquidity_pools(self) -> bool {
+		matches!(self, Self::LiquidityPools | Self::All(..))
 	}
 }
 
-/// Connectors-wrapped tokens
+/// Liquidity Pools-wrapped tokens
 ///
-/// Currently, Connectors are only deployed on EVM-based chains and therefore
-/// we only support EVM tokens. In the far future, we might support wrapped
-/// tokens from other chains such as Cosmos based ones.
+/// Currently, LiquidityPools are only deployed on EVM-based chains and
+/// therefore we only support EVM tokens. In the far future, we might support
+/// wrapped tokens from other chains such as Cosmos based ones.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ConnectorsWrappedToken {
+pub enum LiquidityPoolsWrappedToken {
 	/// An EVM-native token
 	EVM {
 		/// The EVM chain id where the token is deployed
@@ -301,6 +309,97 @@ pub enum ConnectorsWrappedToken {
 		/// The token contract address
 		address: [u8; 20],
 	},
+}
+
+impl From<LiquidityPoolsWrappedToken> for DomainAddress {
+	fn from(token: LiquidityPoolsWrappedToken) -> Self {
+		match token {
+			LiquidityPoolsWrappedToken::EVM { chain_id, address } => Self::EVM(chain_id, address),
+		}
+	}
+}
+
+pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
+
+pub const ETHEREUM_MAINNET_CHAIN_ID: EVMChainId = 1;
+pub const GOERLI_CHAIN_ID: EVMChainId = 5;
+
+pub const ETHEREUM_USDC: [u8; 20] = hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+pub const GOERLI_USDC: [u8; 20] = hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
+
+/// The metadata for the LpEthUSDC token
+// TODO(nuno): once used in the Centrifuge migration registering it,
+// move it directly to the `chain_spec` > development genesis where it is also
+// used.
+pub fn lp_eth_usdc_metadata(
+	pallet_index: PalletIndex,
+	chain_id: EVMChainId,
+	usdc_contract: [u8; 20],
+) -> AssetMetadata<Balance, CustomMetadata> {
+	AssetMetadata {
+		decimals: 6,
+		name: "LP Ethereum Wrapped USDC".as_bytes().to_vec(),
+		symbol: "LpEthUSDC".as_bytes().to_vec(),
+		existential_deposit: 1000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation {
+			parents: 0,
+			interior: xcm::v3::Junctions::X3(
+				PalletInstance(pallet_index),
+				GlobalConsensus(NetworkId::Ethereum { chain_id }),
+				AccountKey20 {
+					network: None,
+					key: usdc_contract,
+				},
+			),
+		})),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::LiquidityPools,
+			mintable: false,
+			permissioned: false,
+			pool_currency: true,
+		},
+	}
+}
+
+pub mod before {
+	use cfg_primitives::{PoolId, TrancheId};
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use scale_info::TypeInfo;
+
+	use crate::tokens::{ForeignAssetId, StakingCurrency};
+
+	/// The old definition of `CurrencyId` which included `AUSD` and
+	/// `KSM` as hardcoded variants.
+	#[derive(
+		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	)]
+	pub enum CurrencyId {
+		// The Native token, representing AIR in Altair and CFG in Centrifuge.
+		#[codec(index = 0)]
+		Native,
+
+		/// A Tranche token
+		#[codec(index = 1)]
+		Tranche(PoolId, TrancheId),
+
+		/// Karura KSM
+		#[codec(index = 2)]
+		KSM,
+
+		/// Acala Dollar
+		/// In Altair, it represents AUSD in Kusama;
+		/// In Centrifuge, it represents AUSD in Polkadot;
+		#[codec(index = 3)]
+		AUSD,
+
+		/// A foreign asset
+		#[codec(index = 4)]
+		ForeignAsset(ForeignAssetId),
+
+		/// A staking currency
+		#[codec(index = 5)]
+		Staking(StakingCurrency),
+	}
 }
 
 #[cfg(test)]

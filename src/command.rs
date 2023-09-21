@@ -56,6 +56,7 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 		} else if self.id().starts_with("altair")
 			|| self.id().starts_with("charcoal")
 			|| self.id().starts_with("antares")
+			|| self.id().starts_with("algol")
 		{
 			ChainIdentity::Altair
 		} else {
@@ -224,11 +225,14 @@ macro_rules! with_runtime {
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 	    let runner = $cli.create_runner($cmd)?;
+	    let first_evm_block = chain_spec::Extensions::try_get(&*runner.config().chain_spec)
+	        .map(|e| e.first_evm_block).unwrap_or(1);
             match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
 				let $components = new_partial::<altair_runtime::RuntimeApi, _>(
 					&$config,
+					first_evm_block,
 					crate::service::build_altair_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
@@ -239,6 +243,7 @@ macro_rules! construct_async_run {
 		    runner.async_run(|$config| {
 				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _>(
 					&$config,
+					first_evm_block,
 					crate::service::build_centrifuge_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
@@ -249,6 +254,7 @@ macro_rules! construct_async_run {
 		    runner.async_run(|$config| {
 				let $components = new_partial::<development_runtime::RuntimeApi, _>(
 					&$config,
+					first_evm_block,
 					crate::service::build_development_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
@@ -440,6 +446,8 @@ pub fn run() -> Result<()> {
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
 					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in chain spec or CLI."));
+				let first_evm_block = chain_spec::Extensions::try_get(&*config.chain_spec)
+					.map(|e| e.first_evm_block).unwrap_or(1);
 
 				let id = ParaId::from(para_id);
 
@@ -480,18 +488,24 @@ pub fn run() -> Result<()> {
 				}
 
 				match config.chain_spec.identify() {
-					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, cli.eth, collator_options, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
+					ChainIdentity::Altair => crate::service::start_altair_node(
+						config,
+						polkadot_config,
+                        cli.eth,
+						collator_options,
+						id,
+						first_evm_block,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into),
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
                         cli.eth,
 						collator_options,
 						id,
+						first_evm_block,
 					)
 					.await
 					.map(|r| r.0)
@@ -502,6 +516,7 @@ pub fn run() -> Result<()> {
                         cli.eth,
 						collator_options,
 						id,
+						first_evm_block,
 					)
 					.await
 					.map(|r| r.0)

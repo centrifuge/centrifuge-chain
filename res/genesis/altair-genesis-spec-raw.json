@@ -16,6 +16,7 @@
   },
   "relay_chain": "kusama",
   "para_id": 2088,
+  "first_evm_block": 3250908,
   "consensusEngine": null,
   "codeSubstitutes": {},
   "genesis": {

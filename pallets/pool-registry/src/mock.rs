@@ -11,10 +11,13 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
+use cfg_mocks::pallet_mock_write_off_policy;
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
+use cfg_traits::{
+	investments::OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState,
+};
 use cfg_types::{
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -137,6 +140,7 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 impl pallet_pool_system::Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -208,7 +212,6 @@ impl<
 		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
-	type Rate = <T as pallet_pool_registry::Config>::Rate;
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
@@ -240,6 +243,11 @@ impl<
 	}
 }
 
+impl pallet_mock_write_off_policy::Config for Test {
+	type Policy = ();
+	type PoolId = PoolId;
+}
+
 pub struct Always;
 impl<T> PreConditions<T> for Always {
 	type Result = DispatchResult;
@@ -259,10 +267,10 @@ impl Config for Test {
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = ModifyPoolMock<Self>;
+	type ModifyWriteOffPolicy = MockWriteOffPolicy;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
@@ -294,13 +302,25 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
+pub struct NoopCollectHook;
+impl cfg_traits::StatusNotificationHook for NoopCollectHook {
+	type Error = DispatchError;
+	type Id = cfg_types::investments::ForeignInvestmentInfo<AccountId, TrancheCurrency, ()>;
+	type Status = cfg_types::investments::CollectedAmount<Balance>;
+
+	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
+		Ok(())
+	}
+}
 parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
 impl pallet_investments::Config for Test {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
+	type CollectedInvestmentHook = NoopCollectHook;
+	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
@@ -326,6 +346,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+		MockWriteOffPolicy: pallet_mock_write_off_policy,
 	}
 );
 

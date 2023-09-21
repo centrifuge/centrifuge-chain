@@ -19,16 +19,17 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+use ::xcm::v3::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	investments::{OrderManager, TrancheCurrency as _},
+	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
-	fixed_point::{Quantity, Rate},
+	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	oracles::OracleKey,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
@@ -60,7 +61,6 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
-use pallet_ethereum::Transaction as EthereumTransaction;
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -73,8 +73,11 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	fees::{DealWithFees, WeightToFee},
+	gateway::GatewayAccountProvider,
+};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
@@ -85,10 +88,10 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill, Perquintill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -124,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1028,
+	spec_version: 1034,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -240,7 +243,14 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
-			RuntimeCall::EVM(_) => false, // Disable all non-root EVM access
+			// Disable all non-root EVM access
+			RuntimeCall::EVM(_) => false,
+			// We block this call since it includes Moonbeam trait implementations such
+			// as UtilityEncodeCall and XcmTransact that we don't implement and don't want
+			// arbitrary users calling it.
+			RuntimeCall::XcmTransactor(
+				pallet_xcm_transactor::Call::transact_through_derivative { .. },
+			) => false,
 			_ => true,
 		}
 	}
@@ -486,7 +496,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
 					// `collect_investments`, `collect_redemptions`
-					// Specifically omitting Connectors
+					// Specifically omitting LiquidityPools
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
 					// Specifically omitting ChainBridge
@@ -1185,13 +1195,13 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 
 // Block Rewards
 
-frame_support::parameter_types! {
+parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
+	pub const BlockRewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
 }
 
@@ -1199,7 +1209,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type GroupId = u32;
-	type PalletId = RewardsPalletId;
+	type PalletId = BlockRewardsPalletId;
 	type RewardCurrency = RewardCurrency;
 	// Must not change this to ensure block rewards are minted
 	type RewardIssuance =
@@ -1213,7 +1223,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
-frame_support::parameter_types! {
+parameter_types! {
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(StakingCurrency::BlockRewards);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1238,6 +1248,52 @@ impl pallet_block_rewards::Config for Runtime {
 	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
+}
+
+// Liquidity rewards
+
+parameter_types! {
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 50;
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+	pub const LiquidityRewardsPalletId: PalletId = cfg_types::ids::LIQUIDITY_REWARDS_PALLET_ID;
+	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+}
+
+impl pallet_rewards::mechanism::gap::Config for Runtime {
+	type Balance = Balance;
+	type DistributionId = u32;
+	type IBalance = IBalance;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI128;
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = LiquidityRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type Timer = Timestamp;
+	type Weight = u64;
+	type WeightInfo = weights::pallet_liquidity_rewards::WeightInfo<Runtime>;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type PalletId = LiquidityRewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = GapRewardMechanism;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 // PoolSystem & Loans
@@ -1282,9 +1338,9 @@ impl orml_oracle::Config for Runtime {
 	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
-	type OnNewData = PriceCollector;
+	type OnNewData = runtime_common::oracle::OnNewPrice<PriceCollector>;
 	type OracleKey = OracleKey;
-	type OracleValue = Balance;
+	type OracleValue = Quantity;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1295,10 +1351,114 @@ impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Balance;
 	type DataId = OracleKey;
-	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
+	type DataProvider =
+		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
 	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
 	type Moment = Moment;
+}
+
+parameter_types! {
+	// 1 KSM should be enough to cover for fees opening/accepting HRMP channels
+	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+}
+
+/// Xcm Weigher shared between multiple Xcm-related configs.
+pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+
+impl pallet_xcm_transactor::Config for Runtime {
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AssetTransactor = FungiblesTransactor;
+	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdToMultiLocation = CurrencyIdConvert;
+	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type RuntimeEvent = RuntimeEvent;
+	type SelfLocation = SelfLocation;
+	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
+	type Transactor = xcm_transactor::NullTransactor;
+	type UniversalLocation = UniversalLocation;
+	type Weigher = XcmWeigher;
+	type WeightInfo = ();
+	type XcmSender = XcmRouter;
+}
+
+parameter_types! {
+	pub DefaultTokenSellRate: Ratio = Ratio::one();
+}
+
+impl pallet_foreign_investments::Config for Runtime {
+	type Balance = Balance;
+	type CollectedForeignRedemptionHook =
+		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
+	type CurrencyConverter =
+		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
+	type CurrencyId = CurrencyId;
+	type DecreasedForeignInvestOrderHook =
+		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
+	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type Investment = Investments;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type Rate = Ratio;
+	type RuntimeEvent = RuntimeEvent;
+	type TokenSwapOrderId = u64;
+	type TokenSwaps = OrderBook;
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
+}
+
+impl pallet_liquidity_pools::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CurrencyId = CurrencyId;
+	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
+	type ForeignInvestment = ForeignInvestments;
+	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
+	type OutboundQueue = LiquidityPoolsGateway;
+	type Permission = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
+	type TrancheId = TrancheId;
+	type TrancheTokenPrice = PoolSystem;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxIncomingMessageSize: u32 = 1024;
+	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
+}
+
+impl pallet_liquidity_pools_gateway::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	#[cfg(not(feature = "testnet-runtime"))]
+	type InboundQueue =
+		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
+	#[cfg(feature = "testnet-runtime")]
+	type InboundQueue = LiquidityPools;
+	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
+	type MaxIncomingMessageSize = MaxIncomingMessageSize;
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type Sender = Sender;
+	type WeightInfo = ();
 }
 
 impl pallet_interest_accrual::Config for Runtime {
@@ -1323,6 +1483,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
+	type PerThing = Perquintill;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PoolId = PoolId;
@@ -1385,6 +1546,7 @@ parameter_types! {
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -1435,10 +1597,10 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type ModifyWriteOffPolicy = pallet_loans::Pallet<Self>;
 	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
-	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
@@ -1530,7 +1692,11 @@ parameter_types! {
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
+	type CollectedInvestmentHook =
+		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
+	type CollectedRedemptionHook =
+		pallet_foreign_investments::hooks::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
@@ -1605,6 +1771,24 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const OrderPairVecSize: u32 = 1_000_000u32;
+}
+
+impl pallet_order_book::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetCurrencyId = CurrencyId;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type OrderIdNonce = u64;
+	type OrderPairVecSize = OrderPairVecSize;
+	type RuntimeEvent = RuntimeEvent;
+	type SellRatio = Ratio;
+	type TradeableAsset = Tokens;
+	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1658,20 +1842,28 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 104,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 107,
+		LiquidityPools: pallet_liquidity_pools::{Pallet, Call, Storage, Event<T>} = 108,
+		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 109,
+		LiquidityRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
+		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
+		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
+		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 113,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 114,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
@@ -1685,6 +1877,8 @@ construct_runtime!(
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
 		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
+		EthereumTransaction: pallet_ethereum_transaction::{Pallet, Storage} = 164,
+		LiquidityPoolsAxelarGateway: axelar_gateway_precompile::{Pallet, Call, Storage, Event<T>} = 165,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -1724,7 +1918,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeAltair1028,
+	migrations::UpgradeAltair1034,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -1838,6 +2032,8 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use cfg_types::domain_address::Domain;
+use runtime_common::{account_conversion::AccountConverter, xcm::AccountIdToMultiLocation};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1953,7 +2149,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Quantity, MaxTranches> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
@@ -1968,7 +2164,7 @@ impl_runtime_apis! {
 			).ok()
 		}
 
-		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
+		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Quantity>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
@@ -1981,14 +2177,14 @@ impl_runtime_apis! {
 			prices.get(index).cloned()
 		}
 
-		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
+		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Quantity>>{
 			let now = <Timestamp as UnixTime>::now().as_secs();
 			let mut pool = PoolSystem::pool(pool_id)?;
 			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
-				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
+				.calculate_prices::<_, OrmlTokens, AccountId>(total_assets, now)
 				.ok()
 		}
 
@@ -2038,6 +2234,20 @@ impl_runtime_apis! {
 			loan_id: LoanId
 		) -> Option<ActiveLoanInfo<Runtime>> {
 			Loans::get_active_loan_info(pool_id, loan_id).ok().flatten()
+		}
+	}
+
+
+	// Investment Runtime APIs
+	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
+		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
+			runtime_common::investment_portfolios::get_portfolios::<Runtime, AccountId, TrancheId, Investments, TrancheCurrency, CurrencyId, PoolId, Balance>(account_id)
+		}
+	}
+
+	impl runtime_common::apis::AccountConversionApi<Block, AccountId> for Runtime {
+		fn conversion_of(location: MultiLocation) -> Option<AccountId> {
+			AccountConverter::<Runtime, LocationToAccountId>::try_convert(location).ok()
 		}
 	}
 
@@ -2105,17 +2315,40 @@ impl_runtime_apis! {
 		}
 
 		fn create(
-			_from: H160,
-			_data: Vec<u8>,
-			_value: U256,
-			_gas_limit: U256,
-			_max_fee_per_gas: Option<U256>,
-			_max_priority_fee_per_gas: Option<U256>,
-			_nonce: Option<U256>,
-			_estimate: bool,
-			_access_list: Option<Vec<(H160, Vec<H256>)>>,
+			from: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			max_fee_per_gas: Option<U256>,
+			max_priority_fee_per_gas: Option<U256>,
+			nonce: Option<U256>,
+			estimate: bool,
+			access_list: Option<Vec<(H160, Vec<H256>)>>,
 		) -> Result<pallet_evm::CreateInfo, sp_runtime::DispatchError> {
-			Err(sp_runtime::DispatchError::Other("Creating contracts is not currently supported"))
+			let config = if estimate {
+				let mut config = <Runtime as pallet_evm::Config>::config().clone();
+				config.estimate = true;
+				Some(config)
+			} else {
+				None
+			};
+
+			let is_transactional = false;
+			let validate = true;
+			let evm_config = config.as_ref().unwrap_or_else(|| <Runtime as pallet_evm::Config>::config());
+			<Runtime as pallet_evm::Config>::Runner::create(
+				from,
+				data,
+				value,
+				gas_limit.unique_saturated_into(),
+				max_fee_per_gas,
+				max_priority_fee_per_gas,
+				nonce,
+				access_list.unwrap_or_default(),
+				is_transactional,
+				validate,
+				evm_config,
+			).map_err(|err| err.error.into())
 		}
 
 		fn current_transaction_statuses() -> Option<Vec<TransactionStatus>> {
@@ -2144,11 +2377,11 @@ impl_runtime_apis! {
 
 		fn extrinsic_filter(
 			xts: Vec<<Block as BlockT>::Extrinsic>,
-		) -> Vec<EthereumTransaction> {
+		) -> Vec<pallet_ethereum::Transaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
 				RuntimeCall::Ethereum(pallet_ethereum::Call::transact { transaction }) => Some(transaction),
 				_ => None
-			}).collect::<Vec<EthereumTransaction>>()
+			}).collect::<Vec<pallet_ethereum::Transaction>>()
 		}
 
 		fn elasticity() -> Option<Permill> {
@@ -2159,7 +2392,7 @@ impl_runtime_apis! {
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
-		fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
+		fn convert_transaction(transaction: pallet_ethereum::Transaction) -> <Block as BlockT>::Extrinsic {
 			UncheckedExtrinsic::new_unsigned(
 				pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
 			)
@@ -2221,6 +2454,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
+			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2291,6 +2525,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
+			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

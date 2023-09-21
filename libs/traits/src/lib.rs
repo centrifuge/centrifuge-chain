@@ -36,14 +36,16 @@ use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
-/// Traits related to connectors.
-pub mod connectors;
 /// Traits related to data registry and collection.
 pub mod data;
 /// Traits related to Ethereum/EVM.
 pub mod ethereum;
 /// Traits related to interest rates.
 pub mod interest;
+/// Traits related to investments.
+pub mod investments;
+/// Traits related to liquidity pools.
+pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
 
@@ -124,7 +126,6 @@ pub trait PoolNAV<PoolId, Amount> {
 pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId;
 	type TrancheId;
-	type Rate;
 	type Moment;
 
 	/// check if the pool exists
@@ -142,13 +143,13 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 pub trait TrancheTokenPrice<AccountId, CurrencyId> {
 	type PoolId;
 	type TrancheId;
-	type Rate;
+	type BalanceRatio;
 	type Moment;
 
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+	) -> Option<PriceValue<CurrencyId, Self::BalanceRatio, Self::Moment>>;
 }
 
 /// Variants for valid Pool updates to send out as events
@@ -163,7 +164,6 @@ pub enum UpdateState {
 pub trait PoolMutate<AccountId, PoolId> {
 	type Balance;
 	type CurrencyId;
-	type Rate;
 	type MaxTokenNameLength: Get<u32>;
 	type MaxTokenSymbolLength: Get<u32>;
 	type MaxTranches: Get<u32>;
@@ -244,6 +244,17 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
+}
+
+/// A trait that supports modifications of pool write-off policies
+pub trait PoolWriteOffPolicyMutate<PoolId> {
+	type Policy: Parameter;
+
+	/// Updates the policy with the new policy
+	fn update(pool_id: PoolId, policy: Self::Policy) -> DispatchResult;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn worst_case_policy() -> Self::Policy;
 }
 
 /// Utility to benchmark pools easily
@@ -368,238 +379,6 @@ impl<T> PreConditions<T> for Never {
 	}
 }
 
-/// A trait for converting from a PoolId and a TranchId
-/// into a given Self::Currency
-pub trait TrancheCurrency<PoolId, TrancheId> {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self;
-
-	fn of_pool(&self) -> PoolId;
-
-	fn of_tranche(&self) -> TrancheId;
-}
-
-/// A trait, when implemented allows to invest into
-/// investment classes
-pub trait Investment<AccountId> {
-	type Amount;
-	type CurrencyId;
-	type Error: Debug;
-	type InvestmentId;
-
-	/// Updates the current investment amount of who into the
-	/// investment class to amount.
-	/// Meaning: if amount < previous investment, then investment
-	/// will be reduced, and increases in the opposite case.
-	fn update_investment(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
-	) -> Result<(), Self::Error>;
-
-	/// Checks whether a currency can be used for buying `InvestmentId`
-	fn accepted_payment_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
-
-	/// Returns, if possible, the current investment amount of who into the
-	/// given investment class
-	fn investment(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
-
-	/// Updates the current redemption amount of who into the
-	/// investment class to amount.
-	/// Meaning: if amount < previous redemption, then redemption
-	/// will be reduced, and increases in the opposite case.
-	fn update_redemption(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
-	) -> Result<(), Self::Error>;
-
-	/// Checks whether a currency is accepted as a payout for an `InvestmentId`
-	fn accepted_payout_currency(
-		investment_id: Self::InvestmentId,
-		currency: Self::CurrencyId,
-	) -> bool;
-
-	/// Returns, if possible, the current redemption amount of who into the
-	/// given investment class
-	fn redemption(
-		who: &AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
-}
-
-/// A trait which allows to collect existing investments and redemptions.
-pub trait InvestmentCollector<AccountId> {
-	type Error: Debug;
-	type InvestmentId;
-	type Result: Debug;
-
-	/// Collect the results of a user's invest orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	fn collect_investment(
-		who: AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error>;
-
-	/// Collect the results of a users redeem orders for the given
-	/// investment. If any amounts are not fulfilled they are directly
-	/// appended to the next active order for this investment.
-	fn collect_redemption(
-		who: AccountId,
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::Result, Self::Error>;
-}
-
-/// A trait, when implemented must take care of
-/// collecting orders (invest & redeem) for a given investment class.
-/// When being asked it must return the current orders and
-/// when being singled about a fulfillment, it must act accordingly.
-pub trait OrderManager {
-	type Error;
-	type InvestmentId;
-	type Orders;
-	type Fulfillment;
-
-	/// When called the manager return the current
-	/// invest orders for the given investment class.
-	fn invest_orders(asset_id: Self::InvestmentId) -> Self::Orders;
-
-	/// When called the manager return the current
-	/// redeem orders for the given investment class.
-	fn redeem_orders(asset_id: Self::InvestmentId) -> Self::Orders;
-
-	/// When called the manager return the current
-	/// invest orders for the given investment class.
-	/// Callers of this method can expect that the returned
-	/// orders equal the returned orders from `invest_orders`.
-	///
-	/// **NOTE:** Once this is called, the OrderManager is expected
-	/// to start a new round of orders and return an error if this
-	/// method is to be called again before `invest_fulfillment` is
-	/// called.
-	fn process_invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
-
-	/// When called the manager return the current
-	/// invest orders for the given investment class.
-	/// Callers of this method can expect that the returned
-	/// orders equal the returned orders from `redeem_orders`.
-	///
-	/// **NOTE:** Once this is called, the OrderManager is expected
-	/// to start a new round of orders and return an error if this
-	/// method is to be called again before `redeem_fulfillment` is
-	/// called.
-	fn process_redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
-
-	/// Signals the manager that the previously
-	/// fetch invest orders for a given investment class
-	/// will be fulfilled by fulfillment.
-	fn invest_fulfillment(
-		asset_id: Self::InvestmentId,
-		fulfillment: Self::Fulfillment,
-	) -> Result<(), Self::Error>;
-
-	/// Signals the manager that the previously
-	/// fetch redeem orders for a given investment class
-	/// will be fulfilled by fulfillment.
-	fn redeem_fulfillment(
-		asset_id: Self::InvestmentId,
-		fulfillment: Self::Fulfillment,
-	) -> Result<(), Self::Error>;
-}
-
-/// A trait who's implementer provides means of accounting
-/// for investments of a generic kind.
-pub trait InvestmentAccountant<AccountId> {
-	type Error;
-	type InvestmentId;
-	type InvestmentInfo: InvestmentProperties<AccountId, Id = Self::InvestmentId>;
-	type Amount;
-
-	/// Information about an asset. Must allow to derive
-	/// owner, payment and denomination currency
-	fn info(id: Self::InvestmentId) -> Result<Self::InvestmentInfo, Self::Error>;
-
-	/// Return the balance of a given user for the given investmnet
-	fn balance(id: Self::InvestmentId, who: &AccountId) -> Self::Amount;
-
-	/// Transfer a given investment from source, to destination
-	fn transfer(
-		id: Self::InvestmentId,
-		source: &AccountId,
-		dest: &AccountId,
-		amount: Self::Amount,
-	) -> Result<(), Self::Error>;
-
-	/// Increases the existance of
-	fn deposit(
-		buyer: &AccountId,
-		id: Self::InvestmentId,
-		amount: Self::Amount,
-	) -> Result<(), Self::Error>;
-
-	/// Reduce the existance of an asset
-	fn withdraw(
-		seller: &AccountId,
-		id: Self::InvestmentId,
-		amount: Self::Amount,
-	) -> Result<(), Self::Error>;
-}
-
-/// A trait that allows to retrieve information
-/// about an investment class.
-pub trait InvestmentProperties<AccountId> {
-	/// The overarching Currency that payments
-	/// for this class are made in
-	type Currency;
-	/// Who the investment class can be identified
-	type Id;
-
-	/// Returns the owner of the investment class
-	fn owner(&self) -> AccountId;
-
-	/// Returns the id of the investment class
-	fn id(&self) -> Self::Id;
-
-	/// Returns the currency in which the investment class
-	/// can be bought.
-	fn payment_currency(&self) -> Self::Currency;
-
-	/// Returns the account a payment for the investment class
-	/// must be made to.
-	///
-	/// Defaults to owner.
-	fn payment_account(&self) -> AccountId {
-		self.owner()
-	}
-}
-
-impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<AccountId> for &T {
-	type Currency = T::Currency;
-	type Id = T::Id;
-
-	fn owner(&self) -> AccountId {
-		(*self).owner()
-	}
-
-	fn id(&self) -> Self::Id {
-		(*self).id()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		(*self).payment_currency()
-	}
-
-	fn payment_account(&self) -> AccountId {
-		(*self).payment_account()
-	}
-}
-
 pub mod fees {
 	use codec::FullCodec;
 	use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
@@ -691,40 +470,145 @@ pub trait CurrencyInspect {
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
+	type SellRatio;
 	type OrderId;
+	type OrderDetails;
+
 	/// Swap tokens buying a `buy_amount` of `currency_in` using the
-	/// `currency_out` tokens. The implementator of this method should know
+	/// `currency_out` tokens. The implementer of this method should know
 	/// the current market rate between those two currencies.
-	/// `sell_price_limit` defines the lowest price acceptable for
+	/// `sell_rate_limit` defines the highest price acceptable for
 	/// `currency_in` currency when buying with `currency_out`. This
 	/// protects order placer if market changes unfavourably for swap order.
-	/// Returns the order id created with by this buy order if it could not
-	/// be immediately and completely fulfilled.
+	/// For example, with a `sell_rate_limit` of `3/2` one asset in should never
+	/// cost more than 1.5 units of asset out. Returns `Result` with `OrderId`
+	/// upon successful order creation.
+	///
+	/// Example usage with pallet_order_book impl:
+	/// OrderBook::place_order(
+	///     {AccountId},
+	///     CurrencyId::ForeignAsset(0),
+	///     CurrencyId::ForeignAsset(1),
+	///     100 * FOREIGN_ASSET_0_DECIMALS,
+	///     Quantity::checked_from_rational(3u32, 2u32).unwrap(),
+	///     100 * FOREIGN_ASSET_0_DECIMALS
+	/// )
+	/// Would return Ok({OrderId})
+	/// and create the following order in storage:
+	/// Order {
+	///     order_id: {OrderId},
+	///     placing_account: {AccountId},
+	///     asset_in_id: CurrencyId::ForeignAsset(0),
+	///     asset_out_id: CurrencyId::ForeignAsset(1),
+	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     sell_rate_limit: Quantity::checked_from_rational(3u32,
+	/// 2u32).unwrap(),     min_fulfillment_amount: 100 *
+	/// FOREIGN_ASSET_0_DECIMALS,     max_sell_amount: 150 *
+	/// FOREIGN_ASSET_1_DECIMALS }
 	fn place_order(
 		account: Account,
-		currency_out: Self::CurrencyId,
 		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
 		buy_amount: Self::Balance,
-		sell_price_limit: Self::Balance,
-		min_fullfillment_amount: Self::Balance,
+		sell_rate_limit: Self::SellRatio,
+		min_fulfillment_amount: Self::Balance,
 	) -> Result<Self::OrderId, DispatchError>;
 
-	/// Can fail for various reasons
+	/// Update an existing active order.
+	/// As with create order `sell_rate_limit` defines the highest price
+	/// acceptable for `currency_in` currency when buying with `currency_out`.
+	/// Returns a Dispatch result.
 	///
-	/// E.g. min_fullfillment_amount is lower and
+	/// This Can fail for various reasons
+	///
+	/// E.g. min_fulfillment_amount is lower and
 	///      the system has already fulfilled up to the previous
 	///      one.
+	///
+	/// Example usage with pallet_order_book impl:
+	/// OrderBook::update_order(
+	///     {AccountId},
+	///     {OrderId},
+	///     15 * FOREIGN_ASSET_0_DECIMALS,
+	///     Quantity::checked_from_integer(2u32).unwrap(),
+	///     6 * FOREIGN_ASSET_0_DECIMALS
+	/// )
+	/// Would return Ok(())
+	/// and update the following order in storage:
+	/// Order {
+	///     order_id: {OrderId},
+	///     placing_account: {AccountId},
+	///     asset_in_id: CurrencyId::ForeignAsset(0),
+	///     asset_out_id: CurrencyId::ForeignAsset(1),
+	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
+	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
+	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
+	///     min_fulfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
+	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
+	/// }
 	fn update_order(
 		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
-		sell_price_limit: Self::Balance,
-		min_fullfillment_amount: Self::Balance,
+		sell_rate_limit: Self::SellRatio,
+		min_fulfillment_amount: Self::Balance,
 	) -> DispatchResult;
+
+	/// A sanity check that can be used for validating that a trading pair
+	/// is supported. Will also be checked when placing an order but might be
+	/// cheaper.
+	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
 
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
 	/// Check if the order is still active.
 	fn is_active(order: Self::OrderId) -> bool;
+
+	/// Retrieve the details of the order if it exists.
+	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
+}
+
+/// Trait to transmit a change of status for anything uniquely identifiable.
+///
+/// NOTE: The main use case to handle asynchronous operations.
+pub trait StatusNotificationHook {
+	/// The identifying type
+	type Id;
+	/// The type for possible states
+	type Status;
+	/// The error type
+	type Error: Debug;
+
+	/// Notify that the status has changed for the given id
+	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
+}
+
+/// Trait to synchronously provide a currency conversion estimation for foreign
+/// currencies into/from pool currencies.
+pub trait IdentityCurrencyConversion {
+	type Balance;
+	type Currency;
+	type Error;
+
+	/// Estimate the worth of an outgoing currency amount in the incoming
+	/// currency.
+	///
+	/// NOTE: At least applies decimal conversion if both currencies mismatch.
+	fn stable_to_stable(
+		currency_in: Self::Currency,
+		currency_out: Self::Currency,
+		amount_out: Self::Balance,
+	) -> Result<Self::Balance, Self::Error>;
+}
+
+/// A trait for trying to convert between two types.
+// TODO: Remove usage for the one from Polkadot once we are on the same version
+pub trait TryConvert<A, B> {
+	type Error;
+
+	/// Attempt to make conversion. If returning [Result::Err], the inner must
+	/// always be `a`.
+	fn try_convert(a: A) -> Result<B, Self::Error>;
 }

@@ -23,10 +23,15 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
+use cfg_primitives::{
+	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
+};
 use cfg_types::{
 	fee_keys::FeeKey,
-	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
+	tokens::{
+		lp_eth_usdc_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
+		GOERLI_CHAIN_ID, GOERLI_USDC, LP_ETH_USDC_CURRENCY_ID,
+	},
 };
 use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
@@ -66,6 +71,8 @@ pub struct Extensions {
 	pub relay_chain: String,
 	/// The id of the Parachain.
 	pub para_id: u32,
+	/// The first block which contains EVM logs
+	pub first_evm_block: BlockNumber,
 }
 
 impl Extensions {
@@ -81,6 +88,7 @@ fn development_extensions(para_id: u32) -> Extensions {
 	Extensions {
 		para_id,
 		relay_chain: "rococo-local".into(),
+		first_evm_block: 1,
 	}
 }
 
@@ -546,7 +554,7 @@ fn centrifuge_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -641,7 +649,6 @@ fn centrifuge_genesis(
 			threshold: 1,
 		},
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: centrifuge_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()
@@ -651,16 +658,17 @@ fn centrifuge_genesis(
 			collator_reward: 8_325 * MILLI_CFG,
 			total_reward: 10_048 * CFG,
 		},
-		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: centrifuge_runtime::ExistentialDeposit::get(),
-		},
+		block_rewards_base: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: centrifuge_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
+		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -676,7 +684,7 @@ fn altair_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -743,10 +751,7 @@ fn altair_genesis(
 			collator_reward: 98_630 * MILLI_AIR,
 			total_reward: 98_630 * MILLI_AIR * 100,
 		},
-		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: altair_runtime::ExistentialDeposit::get(),
-		},
+		block_rewards_base: Default::default(),
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
 			keys: initial_authorities
@@ -766,13 +771,16 @@ fn altair_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig {
+		evm_chain_id: altair_runtime::EVMChainIdConfig {
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
+		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
+		},
 	}
 }
 
@@ -792,7 +800,7 @@ fn development_genesis(
 
 	endowed_accounts.extend(endowed_evm_accounts.into_iter().map(|(addr, id)| {
 		let chain_id = id.unwrap_or_else(|| chain_id.into());
-		AccountConverter::<centrifuge_runtime::Runtime>::convert_evm_address(chain_id, addr)
+		AccountConverter::<centrifuge_runtime::Runtime, centrifuge_runtime::LocationToAccountId>::convert_evm_address(chain_id, addr)
 	}));
 
 	let num_endowed_accounts = endowed_accounts.len();
@@ -915,7 +923,6 @@ fn development_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
-		interest_accrual: Default::default(),
 		block_rewards: development_runtime::BlockRewardsConfig {
 			collators: initial_authorities
 				.iter()
@@ -931,13 +938,10 @@ fn development_genesis(
 		},
 		ethereum: Default::default(),
 		evm: Default::default(),
-		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: development_runtime::ExistentialDeposit::get(),
-		},
-		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
-			currency_id: CurrencyId::Native,
-			amount: development_runtime::ExistentialDeposit::get(),
+		block_rewards_base: Default::default(),
+		liquidity_rewards_base: Default::default(),
+		polkadot_xcm: development_runtime::PolkadotXcmConfig {
+			safe_xcm_version: Some(SAFE_XCM_VERSION),
 		},
 	}
 }
@@ -992,6 +996,15 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
+			.encode(),
+		),
+		(
+			LP_ETH_USDC_CURRENCY_ID,
+			lp_eth_usdc_metadata(
+				development_runtime::LiquidityPoolsPalletIndex::get(),
+				GOERLI_CHAIN_ID,
+				GOERLI_USDC,
+			)
 			.encode(),
 		),
 	]

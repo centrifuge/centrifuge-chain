@@ -141,7 +141,12 @@ impl OnUnbalanced<NegativeImbalanceOf<Test>> for RewardRemainderMock {
 }
 
 orml_traits::parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance { 0 };
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			CurrencyId::Native => ExistentialDeposit::get(),
+			_ => 0,
+		}
+	};
 }
 
 impl orml_tokens::Config for Test {
@@ -363,12 +368,9 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.expect("Session pallet's storage can be assimilated");
 
-		pallet_rewards::GenesisConfig::<Test, pallet_rewards::Instance1> {
-			currency_id: CurrencyId::Native,
-			amount: ExistentialDeposit::get(),
-		}
-		.assimilate_storage(&mut storage)
-		.expect("Rewards pallet's storage can be assimilated");
+		pallet_rewards::GenesisConfig::<Test, pallet_rewards::Instance1>::default()
+			.assimilate_storage(&mut storage)
+			.expect("Rewards pallet's storage can be assimilated");
 
 		let mut ext = sp_io::TestExternalities::new(storage);
 

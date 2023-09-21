@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use cfg_primitives::Block;
+use cfg_primitives::{Block, BlockNumber};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
@@ -124,12 +124,18 @@ pub fn build_altair_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
+	let block_import = evm::BlockImport::new(
+		block_import,
+		first_evm_block,
+		client.clone(),
+		frontier_backend,
+	);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -166,6 +172,7 @@ pub async fn start_altair_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
@@ -174,6 +181,7 @@ pub async fn start_altair_node(
 		eth_config,
 		collator_options,
 		id,
+		first_evm_block,
 		move |client,
 		      pool,
 		      deny_unsafe,
@@ -296,12 +304,18 @@ pub fn build_centrifuge_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
+	let block_import = evm::BlockImport::new(
+		block_import,
+		first_evm_block,
+		client.clone(),
+		frontier_backend,
+	);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -338,6 +352,7 @@ pub async fn start_centrifuge_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
@@ -346,6 +361,7 @@ pub async fn start_centrifuge_node(
 		eth_config,
 		collator_options,
 		id,
+		first_evm_block,
 		move |client,
 		      pool,
 		      deny_unsafe,
@@ -468,12 +484,18 @@ pub fn build_development_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: Arc<FrontierBackend<Block>>,
+	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<development_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
+	let block_import = evm::BlockImport::new(
+		block_import,
+		first_evm_block,
+		client.clone(),
+		frontier_backend,
+	);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -510,6 +532,7 @@ pub async fn start_development_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<FullClient<development_runtime::RuntimeApi>>,
@@ -521,6 +544,7 @@ pub async fn start_development_node(
 		eth_config,
 		collator_options,
 		id,
+		first_evm_block,
 		move |client,
 		      pool,
 		      deny_unsafe,

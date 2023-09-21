@@ -14,12 +14,12 @@
 #![cfg(test)]
 #![allow(unused)]
 
-mod ethereum_transaction;
+mod evm;
+mod liquidity_pools;
 mod pools;
 mod rewards;
 mod runtime_apis;
 mod utils;
-mod xcm;
 
 /// Re-exports the correct runtimes that we run the integration tests with
 /// This allows all other modules to use the import of `crate::chain::{...}`

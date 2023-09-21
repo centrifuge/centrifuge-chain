@@ -21,7 +21,10 @@ mod tests;
 pub mod account_conversion;
 pub mod apis;
 pub mod evm;
-pub mod routers;
+pub mod gateway;
+pub mod migrations;
+pub mod oracle;
+pub mod xcm;
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -226,175 +229,6 @@ pub mod asset_registry {
 	}
 }
 
-pub mod xcm {
-	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
-	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::traits::Convert;
-	use xcm::{
-		latest::{Junction::GeneralKey, MultiLocation},
-		prelude::{AccountId32, X1},
-	};
-
-	use crate::xcm_fees::default_per_second;
-
-	/// Our FixedConversionRateProvider, used to charge XCM-related fees for
-	/// tokens registered in the asset registry that were not already handled by
-	/// native Trader rules.
-	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
-
-	impl<
-			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
-				AssetId = CurrencyId,
-				Balance = Balance,
-				CustomMetadata = CustomMetadata,
-			>,
-		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
-	{
-		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			match metadata.additional.transferability {
-				CrossChainTransferability::Xcm(xcm_metadata)
-				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
-					.fee_per_second
-					.or_else(|| Some(default_per_second(metadata.decimals))),
-				_ => None,
-			}
-		}
-	}
-
-	/// A utils function to un-bloat and simplify the instantiation of
-	/// `GeneralKey` values
-	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
-		GeneralKey {
-			length: data.len().min(32) as u8,
-			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
-		}
-	}
-
-	/// How we convert an `[AccountId]` into an XCM MultiLocation
-	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
-	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
-	where
-		AccountId: Into<[u8; 32]>,
-	{
-		fn convert(account: AccountId) -> MultiLocation {
-			X1(AccountId32 {
-				network: None,
-				id: account.into(),
-			})
-			.into()
-		}
-	}
-}
-
-pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment};
-	use cfg_types::oracles::OracleKey;
-	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
-	use sp_runtime::DispatchResult;
-	use sp_std::{marker::PhantomData, vec::Vec};
-
-	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
-
-	/// Always choose the last updated value in case of several values.
-	pub struct LastOracleValue;
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-		fn combine_data(
-			_: &OracleKey,
-			values: Vec<OracleValue>,
-			_: Option<OracleValue>,
-		) -> Option<OracleValue> {
-			values
-				.into_iter()
-				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
-		}
-	}
-
-	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
-	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
-	/// and can be removed once they fix this.
-	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
-
-	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
-		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
-	{
-		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
-			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
-		}
-
-		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
-			OrmlOracle::get_all_values()
-				.into_iter()
-				.map(|elem| {
-					(
-						elem.0,
-						elem.1
-							.map(|OracleValue { value, timestamp }| (value, timestamp)),
-					)
-				})
-				.collect()
-		}
-	}
-
-	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
-		for DataProviderBridge<OrmlOracle>
-	{
-		fn get(key: &OracleKey) -> Option<Balance> {
-			OrmlOracle::get(key)
-		}
-	}
-
-	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
-		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
-	{
-		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
-			OrmlOracle::feed_value(who, key, value)
-		}
-	}
-
-	/// This is used for feeding the oracle from the data-collector in
-	/// benchmarks.
-	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-	#[cfg(feature = "runtime-benchmarks")]
-	pub mod benchmarks_util {
-		use frame_support::traits::SortedMembers;
-		use sp_std::vec::Vec;
-
-		use super::*;
-
-		impl CombineData<OracleKey, OracleValue> for LastOracleValue {
-			fn combine_data(
-				_: &OracleKey,
-				_: Vec<OracleValue>,
-				_: Option<OracleValue>,
-			) -> Option<OracleValue> {
-				Some(OracleValue {
-					value: Default::default(),
-					timestamp: 0,
-				})
-			}
-		}
-
-		pub struct Members;
-
-		impl SortedMembers<AccountId> for Members {
-			fn sorted_members() -> Vec<AccountId> {
-				// We do not want members for benchmarking
-				Vec::default()
-			}
-
-			fn contains(_: &AccountId) -> bool {
-				// We want to mock the member permission for benchmark
-				// Allowing any member
-				true
-			}
-		}
-	}
-}
-
 pub mod changes {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
@@ -509,6 +343,342 @@ pub mod changes {
 
 			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
 				self.0.try_into()
+			}
+		}
+	}
+}
+
+/// Module for investment portfolio common to all runtimes
+pub mod investment_portfolios {
+
+	use cfg_traits::investments::{InvestmentsPortfolio, TrancheCurrency};
+	use sp_std::vec::Vec;
+
+	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
+	/// investments for an account.
+	pub fn get_portfolios<
+		Runtime,
+		AccountId,
+		TrancheId,
+		Investments,
+		InvestmentId,
+		CurrencyId,
+		PoolId,
+		Balance,
+	>(
+		account_id: AccountId,
+	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
+	where
+		Investments: InvestmentsPortfolio<
+			AccountId,
+			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
+			InvestmentId = InvestmentId,
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+		>,
+		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
+		Runtime: frame_system::Config,
+	{
+		let account_investments: Vec<(InvestmentId, CurrencyId, Balance)> =
+			Investments::get_account_investments_currency(&account_id).ok()?;
+		// Pool getting defined in runtime
+		// as opposed to pallet helper method
+		// as getting pool id in investments pallet
+		// would force tighter coupling of investments
+		// and pool pallets.
+		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
+			.into_iter()
+			.map(|(investment_id, currency_id, balance)| {
+				(investment_id.of_pool(), currency_id, investment_id, balance)
+			})
+			.collect();
+		Some(portfolio)
+	}
+}
+
+pub mod xcm_transactor {
+	use codec::{Decode, Encode};
+	use scale_info::TypeInfo;
+	use sp_std::{vec, vec::Vec};
+	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
+
+	/// NOTE: our usage of XcmTransactor does NOT use this type so we have it
+	/// implement the required traits by returning safe dummy values.
+	#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+	pub struct NullTransactor {}
+
+	impl UtilityEncodeCall for NullTransactor {
+		fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
+			vec![]
+		}
+	}
+
+	impl XcmTransact for NullTransactor {
+		fn destination(self) -> xcm::latest::MultiLocation {
+			Default::default()
+		}
+	}
+}
+
+pub mod foreign_investments {
+	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
+	use cfg_traits::IdentityCurrencyConversion;
+	use cfg_types::tokens::CurrencyId;
+	use frame_support::pallet_prelude::PhantomData;
+	use orml_traits::asset_registry::Inspect;
+	use sp_runtime::DispatchError;
+
+	/// Simple currency converter which maps the amount of the outgoing currency
+	/// to the precision of the incoming one. E.g., the worth of 100
+	/// EthWrappedDai in USDC.
+	///
+	/// Requires currencies to have their decimal precision registered in an
+	/// asset registry. Moreover, one of the currencies must be a allowed as
+	/// pool currency.
+	///
+	/// NOTE: This converter is only supposed to be used short-term as an MVP
+	/// for stable coin conversions. We assume those conversions to be 1-to-1
+	/// bidirectionally. In the near future, this conversion must be improved to
+	/// account for conversion ratios other than 1.0.
+	pub struct IdentityPoolCurrencyConverter<AssetRegistry>(PhantomData<AssetRegistry>);
+
+	impl<AssetRegistry> IdentityCurrencyConversion for IdentityPoolCurrencyConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Balance = Balance;
+		type Currency = CurrencyId;
+		type Error = DispatchError;
+
+		fn stable_to_stable(
+			currency_in: Self::Currency,
+			currency_out: Self::Currency,
+			amount_out: Self::Balance,
+		) -> Result<Self::Balance, Self::Error> {
+			match (currency_out, currency_in) {
+				(from, to) if from == to => Ok(amount_out),
+				(CurrencyId::ForeignAsset(_), CurrencyId::ForeignAsset(_)) => {
+					let from_metadata = AssetRegistry::metadata(&currency_out)
+						.ok_or(DispatchError::CannotLookup)?;
+					let to_metadata =
+						AssetRegistry::metadata(&currency_in).ok_or(DispatchError::CannotLookup)?;
+					frame_support::ensure!(
+						from_metadata.additional.pool_currency
+							|| to_metadata.additional.pool_currency,
+						DispatchError::Token(sp_runtime::TokenError::Unsupported)
+					);
+
+					convert_balance_decimals(
+						from_metadata.decimals,
+						to_metadata.decimals,
+						amount_out,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+}
+
+pub mod origin {
+	use cfg_primitives::AccountId;
+	use frame_support::traits::{EitherOfDiverse, SortedMembers};
+	use frame_system::{EnsureRoot, EnsureSignedBy};
+	use sp_core::Get;
+
+	pub type EnsureAccountOrRoot<Account> =
+		EitherOfDiverse<EnsureSignedBy<AdminOnly<Account>, AccountId>, EnsureRoot<AccountId>>;
+
+	pub type EnsureAccountOrRootOr<Account, O> = EitherOfDiverse<EnsureAccountOrRoot<Account>, O>;
+
+	pub struct AdminOnly<Account>(sp_std::marker::PhantomData<Account>);
+
+	impl<Account> SortedMembers<AccountId> for AdminOnly<Account>
+	where
+		Account: Get<AccountId>,
+	{
+		fn sorted_members() -> sp_std::vec::Vec<AccountId> {
+			sp_std::vec![Account::get()]
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use cfg_primitives::HalfOfCouncil;
+		use frame_support::traits::EnsureOrigin;
+		use sp_core::{crypto::AccountId32, parameter_types};
+
+		use super::*;
+
+		parameter_types! {
+			pub Admin: AccountId = AccountId::new([0u8;32]);
+		}
+
+		#[derive(Clone)]
+		enum OuterOrigin {
+			Raw(frame_system::RawOrigin<AccountId>),
+			Council(pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>),
+			Dummy,
+		}
+
+		impl Into<Result<frame_system::RawOrigin<AccountId>, OuterOrigin>> for OuterOrigin {
+			fn into(self) -> Result<frame_system::RawOrigin<AccountId>, OuterOrigin> {
+				match self {
+					Self::Raw(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl
+			Into<
+				Result<
+					pallet_collective::RawOrigin<
+						sp_runtime::AccountId32,
+						pallet_collective::Instance1,
+					>,
+					OuterOrigin,
+				>,
+			> for OuterOrigin
+		{
+			fn into(
+				self,
+			) -> Result<
+				pallet_collective::RawOrigin<AccountId32, pallet_collective::Instance1>,
+				OuterOrigin,
+			> {
+				match self {
+					Self::Council(raw) => Ok(raw),
+					_ => Err(self),
+				}
+			}
+		}
+
+		impl From<frame_system::RawOrigin<AccountId>> for OuterOrigin {
+			fn from(value: frame_system::RawOrigin<AccountId>) -> Self {
+				Self::Raw(value)
+			}
+		}
+
+		impl From<pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>> for OuterOrigin {
+			fn from(
+				value: pallet_collective::RawOrigin<AccountId, pallet_collective::Instance1>,
+			) -> Self {
+				Self::Council(value)
+			}
+		}
+
+		mod ensure_account_or_root_or {
+			use super::*;
+
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(5, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_less_than_half_of_council() {
+				let origin = OuterOrigin::Council(pallet_collective::RawOrigin::Members(4, 9));
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_ok()
+				)
+			}
+
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
+
+				assert!(
+					EnsureAccountOrRootOr::<Admin, HalfOfCouncil>::ensure_origin(origin).is_err()
+				)
+			}
+		}
+
+		mod ensure_account_or_root {
+			use super::*;
+
+			#[test]
+			fn works_with_account() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Signed(Admin::get()));
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
+
+			#[test]
+			fn fails_with_non_admin_account() {
+				let origin =
+					OuterOrigin::Raw(frame_system::RawOrigin::Signed(AccountId::from([1u8; 32])));
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
+
+			#[test]
+			fn works_with_root() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::Root);
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_ok())
+			}
+
+			#[test]
+			fn fails_with_none() {
+				let origin = OuterOrigin::Raw(frame_system::RawOrigin::None);
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
+			}
+
+			#[test]
+			fn fails_with_dummy() {
+				let origin = OuterOrigin::Dummy;
+
+				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
 		}
 	}

@@ -10,18 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{EnsureRootOr, HalfOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
-	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
+	evm::{precompile::Altair, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
 
-use crate::Aura;
+use crate::{Aura, LocationToAccountId, Runtime, RuntimeEvent};
 
 /// To create valid Ethereum-compatible blocks, we need a 20-byte
 /// "author" for the block. Since that author is purely informational,
@@ -42,12 +42,12 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
+	pub PrecompilesValue: Altair<Runtime> = Altair::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
 }
 
-impl pallet_evm::Config for crate::Runtime {
-	type AddressMapping = AccountConverter<crate::Runtime>;
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = AccountConverter<Runtime, LocationToAccountId>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<crate::AccountId>;
@@ -58,29 +58,37 @@ impl pallet_evm::Config for crate::Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type PrecompilesType = CentrifugePrecompiles<Self>;
+	type PrecompilesType = Altair<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
-	type RuntimeEvent = crate::RuntimeEvent;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressTruncated;
 }
 
-impl pallet_evm_chain_id::Config for crate::Runtime {}
+impl pallet_evm_chain_id::Config for Runtime {}
 
 parameter_types! {
 	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
 	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
 }
 
-impl pallet_base_fee::Config for crate::Runtime {
+impl pallet_base_fee::Config for Runtime {
 	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
 	type DefaultElasticity = DefaultElasticity;
-	type RuntimeEvent = crate::RuntimeEvent;
+	type RuntimeEvent = RuntimeEvent;
 	type Threshold = BaseFeeThreshold;
 }
 
-impl pallet_ethereum::Config for crate::Runtime {
-	type RuntimeEvent = crate::RuntimeEvent;
+impl pallet_ethereum::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
+impl pallet_ethereum_transaction::Config for Runtime {}
+
+impl axelar_gateway_precompile::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
