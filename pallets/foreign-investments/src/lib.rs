@@ -375,6 +375,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::InvestmentId,
 		T::CurrencyId,
+		ResultQuery<Error<T>::InvestmentPaymentCurrencyNotFound>,
 	>;
 
 	/// Maps an investor and their investment id to the foreign payout currency
@@ -390,6 +391,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::InvestmentId,
 		T::CurrencyId,
+		ResultQuery<Error<T>::RedemptionPayoutCurrencyNotFound>,
 	>;
 
 	#[pallet::event]
@@ -417,15 +419,23 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Failed to retrieve the foreign payment currency for a collected
+		/// investment.
+		///
+		/// NOTE: This error can only occur, if a user tries to collect before
+		/// having increased their investment as this would store the payment
+		/// currency.
+		InvestmentPaymentCurrencyNotFound,
+		/// Failed to retrieve the foreign payout currency for a collected
+		/// redemption.
+		///
+		/// NOTE: This error can only occur, if a user tries to collect before
+		/// having increased their redemption as this would store the payout
+		/// currency.
+		RedemptionPayoutCurrencyNotFound,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		InvestmentInfoNotFound,
-		/// The provided currency does not match the one provided when the first
-		/// redemption increase was triggered.
-		///
-		/// NOTE: As long as the `RedemptionState` has not been cleared, the
-		/// payout currency cannot change from the initially provided one.
-		InvalidRedemptionPayoutCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		TokenSwapReasonNotFound,
@@ -439,10 +449,5 @@ pub mod pallet {
 		RedeemError(RedeemError),
 		/// Failed to retrieve the pool for the given pool id.
 		PoolNotFound,
-		/// Failed to retrieve the payment currency when collecting an
-		/// investment.
-		///
-		/// NOTE: The payment currency is mutated upon increasing an investment.
-		InvestmentPaymentCurrencyNotFound,
 	}
 }

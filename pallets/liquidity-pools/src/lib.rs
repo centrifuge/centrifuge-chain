@@ -688,11 +688,18 @@ pub mod pallet {
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
-			// Ensure currency matches the currency of the pool
+			// Ensure currency is allowed as payment and payout currency for pool
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			// Required for increasing and collecting investments
 			ensure!(
-				T::ForeignInvestment::accepted_payment_currency(invest_id, currency_id),
+				T::ForeignInvestment::accepted_payment_currency(invest_id.clone(), currency_id),
 				Error::<T>::InvalidPaymentCurrency
+			);
+			// Required for decreasing investments as well as increasing, decreasing and
+			// collecting redemptions
+			ensure!(
+				T::ForeignInvestment::accepted_payout_currency(invest_id, currency_id),
+				Error::<T>::InvalidPayoutCurrency
 			);
 
 			// Ensure the currency is enabled as pool_currency

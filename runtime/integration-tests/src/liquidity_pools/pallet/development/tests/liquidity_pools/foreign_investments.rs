@@ -92,6 +92,8 @@ use crate::{
 };
 
 mod same_currencies {
+	use pallet_foreign_investments::errors::InvestError;
+
 	use super::*;
 
 	#[test]
@@ -113,7 +115,7 @@ mod same_currencies {
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
 			// Set permissions and execute initial investment
-			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
+			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id, false);
 
 			// Verify the order was updated to the amount
 			assert_eq!(
@@ -163,7 +165,13 @@ mod same_currencies {
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
 			// Set permissions and execute initial investment
-			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			do_initial_increase_investment(
+				pool_id,
+				invest_amount,
+				investor.clone(),
+				currency_id,
+				false,
+			);
 
 			// Mock incoming decrease message
 			let msg = LiquidityPoolMessage::DecreaseInvestOrder {
@@ -237,7 +245,13 @@ mod same_currencies {
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
 
 			// Set permissions and execute initial investment
-			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			do_initial_increase_investment(
+				pool_id,
+				invest_amount,
+				investor.clone(),
+				currency_id,
+				false,
+			);
 
 			// Verify investment account holds funds before cancelling
 			assert_eq!(
@@ -331,7 +345,7 @@ mod same_currencies {
 			let investment_currency_id: CurrencyId = default_investment_id().into();
 
 			// Set permissions and execute initial investment
-			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
+			do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id, false);
 			let events_before_collect = System::events();
 
 			// Process and fulfill order
@@ -459,7 +473,13 @@ mod same_currencies {
 			let currency_decimals = currency_decimals::AUSD;
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
-			do_initial_increase_investment(pool_id, invest_amount, investor.clone(), currency_id);
+			do_initial_increase_investment(
+				pool_id,
+				invest_amount,
+				investor.clone(),
+				currency_id,
+				false,
+			);
 			enable_liquidity_pool_transferability(currency_id);
 			let investment_currency_id: CurrencyId = default_investment_id().into();
 
@@ -505,8 +525,9 @@ mod same_currencies {
 				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
 					&investor,
 					default_investment_id()
-				),
-				Some(currency_id)
+				)
+				.unwrap(),
+				currency_id
 			);
 			assert!(!Investments::investment_requires_collect(
 				&investor,
@@ -647,34 +668,16 @@ mod same_currencies {
 				1
 			);
 
-			// Should not mutate any state if user collects through foreign investments
-			// after collecting through Investments
+			// Should fail to collect if `InvestmentState` does not exist
 			let msg = LiquidityPoolMessage::CollectInvest {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),
 				investor: investor.clone().into(),
 				currency: general_currency_index(currency_id),
 			};
-			assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
-			assert!(!CollectedInvestment::<DevelopmentRuntime>::contains_key(
-				&investor,
-				default_investment_id()
-			));
-			assert_eq!(
-				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
-					&investor,
-					default_investment_id()
-				),
-				Some(currency_id)
-			);
-			assert_eq!(
-				Tokens::total_issuance(investment_currency_id),
-				amount_tranche_tokens
-			);
-			assert!(Tokens::balance(investment_currency_id, &investor).is_zero());
-			assert_eq!(
-				Tokens::balance(investment_currency_id, &sending_domain_locator),
-				amount_tranche_tokens
+			assert_noop!(
+				LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg),
+				pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestmentPaymentCurrencyNotFound
 			);
 		});
 	}
@@ -1271,6 +1274,7 @@ mod same_currencies {
 						invest_amount,
 						investor.clone(),
 						currency_id,
+						false,
 					);
 					enable_liquidity_pool_transferability(currency_id);
 
@@ -1349,7 +1353,13 @@ mod same_currencies {
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
-					do_initial_increase_investment(pool_id, amount, investor.clone(), currency_id);
+					do_initial_increase_investment(
+						pool_id,
+						amount,
+						investor.clone(),
+						currency_id,
+						false,
+					);
 					enable_liquidity_pool_transferability(currency_id);
 
 					// Prepare collection
@@ -1466,6 +1476,266 @@ mod same_currencies {
 				});
 			}
 		}
+
+		mod payment_payout_currency {
+			use super::*;
+			use crate::{
+				liquidity_pools::pallet::development::tests::{
+					liquidity_pools::foreign_investments::setup::enable_usdt_trading,
+				},
+				utils::USDT_CURRENCY_ID,
+			};
+
+			#[test]
+			fn invalid_invest_payment_currency() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
+					let pool_currency = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+					let amount = 6 * dollar(18);
+
+					create_currency_pool(pool_id, pool_currency, currency_decimals.into());
+					do_initial_increase_investment(
+						pool_id,
+						amount,
+						investor.clone(),
+						pool_currency,
+						false,
+					);
+					enable_usdt_trading(pool_currency, amount, true, true, true, || {});
+
+					// Should fail to increase, decrease or collect for another foreign currency as
+					// long as `InvestmentState` exists
+					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::InvalidPaymentCurrency
+						)
+					);
+					let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::InvalidPaymentCurrency
+						)
+					);
+					let collect_msg = LiquidityPoolMessage::CollectInvest {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestError(
+							InvestError::InvalidPaymentCurrency
+						)
+					);
+				});
+			}
+
+			#[test]
+			fn invalid_redeem_payout_currency() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
+					let pool_currency = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+					let amount = 6 * dollar(18);
+
+					create_currency_pool(pool_id, pool_currency, currency_decimals.into());
+					do_initial_increase_redemption(
+						pool_id,
+						amount,
+						investor.clone(),
+						pool_currency,
+					);
+					enable_usdt_trading(pool_currency, amount, true, true, true, || {});
+					assert_ok!(Tokens::mint_into(
+						default_investment_id().into(),
+						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+						amount,
+					));
+
+					// Should fail to increase, decrease or collect for another foreign currency as
+					// long as `RedemptionState` exists
+					let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::InvalidPayoutCurrency
+						)
+					);
+					let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::InvalidPayoutCurrency
+						)
+					);
+					let collect_msg = LiquidityPoolMessage::CollectRedeem {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedeemError(
+							RedeemError::InvalidPayoutCurrency
+						)
+					);
+				});
+			}
+
+			#[test]
+			fn invest_payment_currency_not_found() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
+					let pool_currency = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+					let amount = 6 * dollar(18);
+
+					create_currency_pool(pool_id, pool_currency, currency_decimals.into());
+					do_initial_increase_investment(
+						pool_id,
+						amount,
+						investor.clone(),
+						pool_currency,
+						true,
+					);
+					enable_usdt_trading(pool_currency, amount, true, true, true, || {});
+
+					// Should fail to decrease or collect for another foreign currency as
+					// long as `InvestmentState` exists
+					let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestmentPaymentCurrencyNotFound
+					);
+					let collect_msg = LiquidityPoolMessage::CollectInvest {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::InvestmentPaymentCurrencyNotFound
+					);
+				});
+			}
+
+			#[test]
+			fn redeem_payout_currency_not_found() {
+				TestNet::reset();
+				Development::execute_with(|| {
+					setup_pre_requirements();
+					let pool_id = DEFAULT_POOL_ID;
+					let investor: AccountId = AccountConverter::<
+						DevelopmentRuntime,
+						LocationToAccountId,
+					>::convert((DOMAIN_MOONBEAM, BOB));
+					let pool_currency = AUSD_CURRENCY_ID;
+					let currency_decimals = currency_decimals::AUSD;
+					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+					let amount = 6 * dollar(18);
+
+					create_currency_pool(pool_id, pool_currency, currency_decimals.into());
+					do_initial_increase_redemption(
+						pool_id,
+						amount,
+						investor.clone(),
+						pool_currency,
+					);
+					enable_usdt_trading(pool_currency, amount, true, true, true, || {});
+					assert_ok!(Tokens::mint_into(
+						default_investment_id().into(),
+						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
+						amount,
+					));
+					RedemptionPayoutCurrency::<DevelopmentRuntime>::remove(
+						&investor,
+						default_investment_id(),
+					);
+
+					// Should fail to decrease or collect for another foreign currency as
+					// long as `RedemptionState` exists
+					let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+						amount: 1,
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedemptionPayoutCurrencyNotFound
+					);
+					let collect_msg = LiquidityPoolMessage::CollectRedeem {
+						pool_id,
+						tranche_id: default_tranche_id(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index(foreign_currency),
+					};
+					assert_noop!(
+						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
+						pallet_foreign_investments::Error::<DevelopmentRuntime>::RedemptionPayoutCurrencyNotFound
+					);
+				});
+			}
+		}
 	}
 }
 
@@ -1518,16 +1788,13 @@ mod mismatching_currencies {
 				invest_amount_pool_denominated,
 				investor.clone(),
 				pool_currency,
-			);
-			assert_eq!(
-				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
-					&investor,
-					default_investment_id()
-				),
-				Some(pool_currency)
+				true,
 			);
 
 			// Increase invest order such that collect payment currency gets overwritten
+			// NOTE: Overwriting InvestmentPaymentCurrency works here because we manually
+			// clear that state after investing with pool currency as a short cut for
+			// testing purposes.
 			let msg = LiquidityPoolMessage::IncreaseInvestOrder {
 				pool_id,
 				tranche_id: default_tranche_id(pool_id),
@@ -1555,8 +1822,9 @@ mod mismatching_currencies {
 				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
 					&investor,
 					default_investment_id()
-				),
-				Some(foreign_currency)
+				)
+				.unwrap(),
+				foreign_currency
 			);
 			assert!(Tokens::balance(default_investment_id().into(), &investor).is_zero());
 			assert_eq!(
@@ -1569,8 +1837,9 @@ mod mismatching_currencies {
 				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
 					&investor,
 					default_investment_id()
-				),
-				Some(foreign_currency)
+				)
+				.unwrap(),
+				foreign_currency
 			);
 		});
 	}
@@ -1598,6 +1867,7 @@ mod mismatching_currencies {
 				invest_amount_pool_denominated,
 				investor.clone(),
 				pool_currency,
+				true,
 			);
 
 			// USDT investment preparations
@@ -1788,6 +2058,7 @@ mod mismatching_currencies {
 				invest_amount_foreign_denominated,
 				investor.clone(),
 				foreign_currency,
+				false,
 			);
 			let swap_order_id =
 				ForeignInvestments::token_swap_order_ids(&investor, default_investment_id())
@@ -1941,6 +2212,13 @@ mod mismatching_currencies {
 				invest_amount_pool_denominated,
 				investor.clone(),
 				pool_currency,
+				true,
+			);
+			// Manually set payment currency since we removed it in the above shortcut setup
+			InvestmentPaymentCurrency::<DevelopmentRuntime>::insert(
+				&investor,
+				default_investment_id(),
+				foreign_currency,
 			);
 			assert_ok!(Tokens::mint_into(
 				foreign_currency,
@@ -2039,8 +2317,9 @@ mod mismatching_currencies {
 				RedemptionPayoutCurrency::<DevelopmentRuntime>::get(
 					&investor,
 					default_investment_id()
-				),
-				Some(foreign_currency)
+				)
+				.unwrap(),
+				foreign_currency
 			);
 			let swap_amount =
 				invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
@@ -2188,6 +2467,7 @@ mod mismatching_currencies {
 				invest_amount_foreign_denominated,
 				investor.clone(),
 				foreign_currency,
+				false,
 			);
 			assert_eq!(
 				InvestmentState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
@@ -2477,6 +2757,7 @@ mod mismatching_currencies {
 				invest_amount_pool_denominated,
 				investor.clone(),
 				pool_currency,
+				true,
 			);
 			assert_ok!(Tokens::mint_into(
 				pool_currency,
@@ -2690,6 +2971,7 @@ mod setup {
 		amount: Balance,
 		investor: AccountId,
 		currency_id: CurrencyId,
+		clear_investment_payment_currency: bool,
 	) {
 		let valid_until = DEFAULT_VALIDITY;
 		let pool_currency: CurrencyId =
@@ -2737,8 +3019,9 @@ mod setup {
 			InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
 				&investor,
 				default_investment_id()
-			),
-			Some(currency_id),
+			)
+			.unwrap(),
+			currency_id,
 		);
 
 		if currency_id == pool_currency {
@@ -2790,6 +3073,17 @@ mod setup {
 						amount: amount_pool_denominated
 					}
 				}
+			);
+		}
+
+		// NOTE: In some tests, we run this setup with a pool currency to immediately
+		// set the investment state to `InvestmentOngoing`. However, afterwards we want
+		// to invest with another currency and treat that investment as the initial one.
+		// In order to do that, we need to clear the payment currency.
+		if clear_investment_payment_currency {
+			InvestmentPaymentCurrency::<DevelopmentRuntime>::remove(
+				&investor,
+				default_investment_id(),
 			);
 		}
 	}
@@ -2868,8 +3162,9 @@ mod setup {
 			}
 		);
 		assert_eq!(
-			RedemptionPayoutCurrency::<DevelopmentRuntime>::get(&investor, default_investment_id()),
-			Some(currency_id)
+			RedemptionPayoutCurrency::<DevelopmentRuntime>::get(&investor, default_investment_id())
+				.unwrap(),
+			currency_id
 		);
 		// Verify redemption was transferred into investment account
 		assert_eq!(

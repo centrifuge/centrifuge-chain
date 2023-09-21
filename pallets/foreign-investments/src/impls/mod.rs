@@ -55,9 +55,27 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
 
-		// NOTE: For the MVP, we simply overwrite any existing payment currency. In a
-		// later version, we might want to store a `StorageDoubleMap` instead.
-		InvestmentPaymentCurrency::<T>::insert(who, investment_id, foreign_currency);
+		// NOTE: For the MVP, we restrict the investment to the payment currency of the
+		// one from the initial increase. Once the `InvestmentState` has been cleared,
+		// another payment currency can be introduced.
+		let currency_matches = InvestmentPaymentCurrency::<T>::try_mutate_exists(
+			who,
+			investment_id,
+			|maybe_currency| {
+				if let Some(currency) = maybe_currency {
+					Ok::<bool, DispatchError>(currency == &foreign_currency)
+				} else {
+					*maybe_currency = Some(foreign_currency);
+					Ok::<bool, DispatchError>(true)
+				}
+			},
+		)
+		// An error reflects the payment currency has not been set yet
+		.unwrap_or(true);
+		ensure!(
+			currency_matches,
+			Error::<T>::InvestError(InvestError::InvalidPaymentCurrency)
+		);
 
 		let amount_pool_denominated =
 			T::CurrencyConverter::stable_to_stable(pool_currency, foreign_currency, amount)?;
@@ -89,6 +107,11 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			!T::Investment::investment_requires_collect(who, investment_id),
 			Error::<T>::InvestError(InvestError::CollectRequired)
 		);
+		let payment_currency = InvestmentPaymentCurrency::<T>::get(who, investment_id)?;
+		ensure!(
+			payment_currency == foreign_currency,
+			Error::<T>::InvestError(InvestError::InvalidPaymentCurrency)
+		);
 
 		let pre_state = InvestmentState::<T>::get(who, investment_id);
 		ensure!(
@@ -119,18 +142,23 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		amount: T::Balance,
 		payout_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
-		let currency_matches =
-			RedemptionPayoutCurrency::<T>::mutate(who, investment_id, |maybe_currency| {
+		let currency_matches = RedemptionPayoutCurrency::<T>::try_mutate_exists(
+			who,
+			investment_id,
+			|maybe_currency| {
 				if let Some(currency) = maybe_currency {
-					currency == &payout_currency
+					Ok::<bool, DispatchError>(currency == &payout_currency)
 				} else {
 					*maybe_currency = Some(payout_currency);
-					true
+					Ok::<bool, DispatchError>(true)
 				}
-			});
+			},
+		)
+		// An error reflects the payout currency has not been set yet
+		.unwrap_or(true);
 		ensure!(
 			currency_matches,
-			Error::<T>::InvalidRedemptionPayoutCurrency
+			Error::<T>::RedeemError(RedeemError::InvalidPayoutCurrency)
 		);
 		ensure!(
 			!T::Investment::redemption_requires_collect(who, investment_id),
@@ -157,14 +185,10 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		amount: T::Balance,
 		payout_currency: T::CurrencyId,
 	) -> Result<(T::Balance, T::Balance), DispatchError> {
+		let stored_payout_currency = RedemptionPayoutCurrency::<T>::get(who, investment_id)?;
 		ensure!(
-			RedemptionPayoutCurrency::<T>::get(who, investment_id)
-				.map(|currency| currency == payout_currency)
-				.unwrap_or_else(|| {
-					log::debug!("Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
-					false
-				}),
-			Error::<T>::InvalidRedemptionPayoutCurrency
+			stored_payout_currency == payout_currency,
+			Error::<T>::RedeemError(RedeemError::InvalidPayoutCurrency)
 		);
 		ensure!(
 			!T::Investment::redemption_requires_collect(who, investment_id),
@@ -189,11 +213,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	fn collect_foreign_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		foreign_payout_currency: T::CurrencyId,
+		foreign_payment_currency: T::CurrencyId,
 	) -> DispatchResult {
-		// Simply overwrite any existing payment currency to enable the investor to have
-		// full control over the payment currency
-		InvestmentPaymentCurrency::<T>::insert(who, investment_id, foreign_payout_currency);
+		let payment_currency = InvestmentPaymentCurrency::<T>::get(who, investment_id)?;
+		ensure!(
+			payment_currency == foreign_payment_currency,
+			Error::<T>::InvestError(InvestError::InvalidPaymentCurrency)
+		);
 
 		// Note: We assume the configured Investment trait to notify about the collected
 		// amounts via the `CollectedInvestmentHook` which handles incrementing the
@@ -212,14 +238,10 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_payout_currency: T::CurrencyId,
 		pool_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
+		let payout_currency = RedemptionPayoutCurrency::<T>::get(who, investment_id)?;
 		ensure!(
-			RedemptionPayoutCurrency::<T>::get(who, investment_id)
-				.map(|currency| currency == foreign_payout_currency)
-				.unwrap_or_else(|| {
-					log::debug!("Corruption: Redemption payout currency missing when calling decrease. Should never occur if redemption has been increased beforehand");
-					false
-				}),
-			Error::<T>::InvalidRedemptionPayoutCurrency
+			payout_currency == foreign_payout_currency,
+			Error::<T>::RedeemError(RedeemError::InvalidPayoutCurrency)
 		);
 		ensure!(T::PoolInspect::currency_for(investment_id.of_pool())
 			.map(|currency| currency == pool_currency)
@@ -1071,10 +1093,7 @@ impl<T: Config> Pallet<T> {
 		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		let foreign_payout_currency = RedemptionPayoutCurrency::<T>::get(who, investment_id)
-			.ok_or(Error::<T>::RedeemError(
-				RedeemError::CollectPayoutCurrencyNotFound,
-			))?;
+		let foreign_payout_currency = RedemptionPayoutCurrency::<T>::get(who, investment_id)?;
 		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
 			.expect("Impossible to collect redemption for non existing pool at this point");
 
@@ -1162,8 +1181,7 @@ impl<T: Config> Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> DispatchResult {
-		let foreign_payout_currency = InvestmentPaymentCurrency::<T>::get(who, investment_id)
-			.ok_or(Error::<T>::InvestmentPaymentCurrencyNotFound)?;
+		let foreign_payout_currency = InvestmentPaymentCurrency::<T>::get(who, investment_id)?;
 		let pool_currency = T::PoolInspect::currency_for(investment_id.of_pool())
 			.ok_or(Error::<T>::PoolNotFound)?;
 		let collected = CollectedInvestment::<T>::take(who, investment_id);
