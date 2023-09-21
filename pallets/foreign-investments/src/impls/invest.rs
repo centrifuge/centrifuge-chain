@@ -1222,7 +1222,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: 40,
+				done_amount: to_foreign(pool_swap.amount),
 				invest_amount: pool_swap.amount,
 			}
 		);
@@ -1253,7 +1253,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: 40,
+				done_amount: to_foreign(pool_swap.amount),
 				invest_amount: invest_amount + pool_swap.amount,
 			}
 		);
@@ -1281,7 +1281,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: done_amount + 40,
+				done_amount: done_amount + to_foreign(pool_swap.amount),
 				invest_amount: pool_swap.amount
 			}
 		);
@@ -1298,7 +1298,7 @@ mod tests {
 					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
 					..foreign_swap
 				},
-				done_amount: done_amount + 40,
+				done_amount: done_amount + to_foreign(pool_swap.amount),
 				invest_amount: invest_amount + pool_swap.amount
 			}
 		);
@@ -1456,6 +1456,7 @@ mod tests {
 						checker.old_state = state.clone();
 						state
 					}
+					// We skip the imposible transition and continues with the use case
 					Err(_) => state,
 				}
 			}

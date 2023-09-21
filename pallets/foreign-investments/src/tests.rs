@@ -54,7 +54,7 @@ mod util {
 			Swap {
 				currency_out: USER_CURR,
 				currency_in: POOL_CURR,
-				amount: amount,
+				amount,
 			},
 		)
 		.unwrap();

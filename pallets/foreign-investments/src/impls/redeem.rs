@@ -712,6 +712,7 @@ mod tests {
 						checker.old_state = state.clone();
 						state
 					}
+					// We skip the imposible transition and continues with the use case
 					Err(_) => state,
 				}
 			}
