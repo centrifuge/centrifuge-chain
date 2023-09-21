@@ -17,6 +17,7 @@ pub trait WeightInfo {
 	fn user_cancel_order() -> Weight;
 	fn user_update_order() -> Weight;
 	fn fill_order_full() -> Weight;
+	fn fill_order_partial() -> Weight;
 	fn add_trading_pair() -> Weight;
 	fn rm_trading_pair() -> Weight;
 	fn update_min_order() -> Weight;
@@ -36,6 +37,10 @@ impl WeightInfo for () {
 	}
 
 	fn fill_order_full() -> Weight {
+		Weight::zero()
+	}
+
+	fn fill_order_partial() -> Weight {
 		Weight::zero()
 	}
 
