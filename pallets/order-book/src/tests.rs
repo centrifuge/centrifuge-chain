@@ -16,7 +16,6 @@ use frame_support::{
 	dispatch::RawOrigin,
 	traits::fungibles::{Inspect, MutateHold},
 };
-use orml_tokens::Error::BalanceTooLow;
 use sp_arithmetic::Perquintill;
 use sp_runtime::{
 	traits::{BadOrigin, Zero},
@@ -525,6 +524,15 @@ mod fill_order_partial {
 			)
 			.unwrap();
 
+			assert_err!(
+				UserOrders::<Runtime>::get(order.placing_account, order_id),
+				Error::<Runtime>::OrderNotFound
+			);
+			assert_err!(
+				Orders::<Runtime>::get(order_id),
+				Error::<Runtime>::OrderNotFound
+			);
+
 			assert_eq!(
 				System::events()[2].event,
 				RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
@@ -570,26 +578,11 @@ mod fill_order_partial {
 	#[test]
 	fn fill_order_partial_bad_origin() {
 		new_test_ext().execute_with(|| {
-			let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
-			let min_fulfillment_amount = 10 * CURRENCY_AUSD_DECIMALS;
-			let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
-
-			assert_ok!(OrderBook::place_order(
-				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				buy_amount,
-				sell_ratio,
-				min_fulfillment_amount,
-			));
-
-			let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-
 			assert_noop!(
 				OrderBook::fill_order_partial(
 					RawOrigin::None.into(),
-					order_id,
-					min_fulfillment_amount,
+					1,
+					10 * CURRENCY_AUSD_DECIMALS,
 				),
 				BadOrigin
 			);
@@ -664,16 +657,13 @@ mod fill_order_partial {
 				total_balance
 			));
 
-			// TODO(cdamian): No way of triggering `InsufficientAssetFunds` given that
-			// `T::TradeableAsset::can_hold` is always returning true?
-
 			assert_noop!(
 				OrderBook::fill_order_partial(
 					RuntimeOrigin::signed(ACCOUNT_1),
 					order_id,
 					buy_amount,
 				),
-				BalanceTooLow::<Runtime>,
+				Error::<Runtime>::InsufficientAssetFunds,
 			);
 		});
 	}
@@ -702,7 +692,7 @@ mod fill_order_partial {
 					order_id,
 					buy_amount + 1 * CURRENCY_AUSD_DECIMALS,
 				),
-				Error::<Runtime>::RemainingBuyAmountError
+				Error::<Runtime>::BuyAmountTooLarge
 			);
 		});
 	}
