@@ -156,6 +156,7 @@ async fn axelar_precompile_execute() {
 
 	let command_id = H256::from_low_u64_be(5678);
 
+	#[allow(deprecated)]
 	let test_input = Contract {
 		constructor: None,
 		functions: BTreeMap::<String, Vec<Function>>::from([(
