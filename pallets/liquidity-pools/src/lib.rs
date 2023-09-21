@@ -913,13 +913,18 @@ pub mod pallet {
 		/// Ensures that currency id can be derived from the
 		/// GeneralCurrencyIndex and that the former is an accepted payout
 		/// currency for the given investment id.
-		///
-		/// NOTE: Exactly the same as try_get_payment_currency for now.
 		pub fn try_get_payout_currency(
 			invest_id: <T as pallet::Config>::TrancheCurrency,
 			currency_index: GeneralCurrencyIndexOf<T>,
 		) -> Result<CurrencyIdOf<T>, DispatchError> {
-			Self::try_get_payment_currency(invest_id, currency_index)
+			let currency = Self::try_get_currency_id(currency_index)?;
+
+			ensure!(
+				T::ForeignInvestment::accepted_payout_currency(invest_id, currency),
+				Error::<T>::InvalidPaymentCurrency
+			);
+
+			Ok(currency)
 		}
 	}
 

@@ -137,7 +137,10 @@ where
 		amount: <T as Config>::Balance,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		// NOTE: Even though we can assume this currency to have been used as payment,
+		// the trading pair needs to be registered for the opposite direction in case a
+		// swap from pool to foreign results from updating the `InvestState`
+		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 		let pool_currency =
 			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
@@ -145,7 +148,7 @@ where
 			&investor,
 			invest_id,
 			amount,
-			payment_currency,
+			payout_currency,
 			pool_currency,
 		)?;
 
@@ -305,11 +308,11 @@ where
 		currency_index: GeneralCurrencyIndexOf<T>,
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
-		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// NOTE: Dispatch of `ExecutedCollectInvest` is handled by
 		// `ExecutedCollectInvestHook`
-		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id, payout_currency)?;
+		T::ForeignInvestment::collect_foreign_investment(&investor, invest_id, payment_currency)?;
 
 		Ok(())
 	}
