@@ -140,4 +140,13 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+	fn fill_order_partial() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1702`
+		//  Estimated: `8020828`
+		// Minimum execution time: 64_000 nanoseconds.
+		Weight::from_parts(64_000_000, 8020828)
+			.saturating_add(T::DbWeight::get().reads(8))
+			.saturating_add(T::DbWeight::get().writes(7))
+	}
 }
