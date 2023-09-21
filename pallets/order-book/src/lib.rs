@@ -127,9 +127,7 @@ pub mod pallet {
 			+ EnsureMul
 			+ EnsureDiv
 			+ TypeInfo
-			+ MaxEncodedLen
-			+ From<u64>
-			+ sp_arithmetic::traits::Unsigned;
+			+ MaxEncodedLen;
 
 		/// Type for currency orders can be made for
 		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
@@ -355,9 +353,8 @@ pub mod pallet {
 		/// Error when unable to convert fee balance to asset balance when asset
 		/// out matches fee currency
 		BalanceConversionErr,
-		/// Error when unable to calculate the remaining buy amount for a
-		/// partial order.
-		RemainingBuyAmountError,
+		/// Error when the provided partial buy amount is too large.
+		BuyAmountTooLarge,
 	}
 
 	#[pallet::call]
@@ -464,50 +461,9 @@ pub mod pallet {
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
+			let buy_amount = order.buy_amount;
 
-			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, order.buy_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
-
-			Self::unreserve_order(&order)?;
-			T::TradeableAsset::transfer(
-				order.asset_in_id,
-				&account_id,
-				&order.placing_account,
-				order.buy_amount,
-				false,
-			)?;
-			T::TradeableAsset::transfer(
-				order.asset_out_id,
-				&order.placing_account,
-				&account_id,
-				order.max_sell_amount,
-				false,
-			)?;
-			Self::remove_order(order.order_id)?;
-
-			T::FulfilledOrderHook::notify_status_change(
-				order_id,
-				Swap {
-					amount: order.buy_amount,
-					currency_in: order.asset_in_id,
-					currency_out: order.asset_out_id,
-				},
-			)?;
-
-			Self::deposit_event(Event::OrderFulfillment {
-				order_id,
-				placing_account: order.placing_account,
-				fulfilling_account: account_id,
-				partial_fulfillment: false,
-				currency_in: order.asset_in_id,
-				currency_out: order.asset_out_id,
-				fulfillment_amount: order.buy_amount,
-				sell_rate_limit: order.max_sell_rate,
-			});
-
-			Ok(())
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
 		}
 
 		/// Adds a valid trading pair.
@@ -588,7 +544,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Fill an existing order, based on the provided ratio.
+		/// Fill an existing order, based on the provided partial buy amount.
 		#[pallet::call_index(7)]
 		#[pallet::weight(T::Weights::fill_order_partial())]
 		pub fn fill_order_partial(
@@ -599,6 +555,16 @@ pub mod pallet {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn fulfill_order_with_amount(
+			order: OrderOf<T>,
+			buy_amount: T::Balance,
+			account_id: T::AccountId,
+		) -> DispatchResult {
 			ensure!(
 				buy_amount >= order.min_fulfillment_amount,
 				Error::<T>::InsufficientOrderSize,
@@ -618,13 +584,13 @@ pub mod pallet {
 			let remaining_buy_amount = order
 				.buy_amount
 				.checked_sub(&buy_amount)
-				.ok_or(Error::<T>::RemainingBuyAmountError)?;
+				.ok_or(Error::<T>::BuyAmountTooLarge)?;
 			let partial_fulfillment = !remaining_buy_amount.is_zero();
 
 			if partial_fulfillment {
 				Self::update_order(
 					order.placing_account.clone(),
-					order_id,
+					order.order_id,
 					remaining_buy_amount,
 					order.max_sell_rate,
 					remaining_buy_amount.min(order.min_fulfillment_amount),
@@ -647,7 +613,6 @@ pub mod pallet {
 				buy_amount,
 				false,
 			)?;
-
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
 				&order.placing_account,
@@ -657,7 +622,7 @@ pub mod pallet {
 			)?;
 
 			T::FulfilledOrderHook::notify_status_change(
-				order_id,
+				order.order_id,
 				Swap {
 					amount: buy_amount,
 					currency_in: order.asset_in_id,
@@ -666,7 +631,7 @@ pub mod pallet {
 			)?;
 
 			Self::deposit_event(Event::OrderFulfillment {
-				order_id,
+				order_id: order.order_id,
 				placing_account: order.placing_account,
 				fulfilling_account: account_id,
 				partial_fulfillment,
@@ -678,9 +643,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
 
-	impl<T: Config> Pallet<T> {
 		/// Remove an order from storage
 		pub fn remove_order(order_id: T::OrderIdNonce) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
