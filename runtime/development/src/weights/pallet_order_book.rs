@@ -140,7 +140,6 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
-	// TODO(cdamian): This is copied from `fill_order_full`, don't merge until we get the real weight.
 	fn fill_order_partial() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1702`
