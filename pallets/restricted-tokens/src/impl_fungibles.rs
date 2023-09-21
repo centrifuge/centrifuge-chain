@@ -151,7 +151,8 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::can_hold(who, amount)
 		} else {
-			let can_hold = <T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, who, amount);
+			let can_hold =
+				<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, who, amount);
 
 			T::PreFungiblesInspectHold::check(FungiblesInspectHoldEffects::CanHold(
 				asset,
