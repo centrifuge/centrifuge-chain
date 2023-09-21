@@ -1054,15 +1054,18 @@ impl<T: Config> Pallet<T> {
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
 		// Increment by previously stored amounts (via `CollectedInvestmentHook`)
-		CollectedInvestment::<T>::mutate(who, investment_id, |collected_before| {
-			collected_before
-				.amount_collected
+		let nothing_collect = CollectedInvestment::<T>::mutate(who, investment_id, |c| {
+			c.amount_collected
 				.ensure_add_assign(collected.amount_collected)?;
-			collected_before
-				.amount_payment
+			c.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
-			Ok::<(), DispatchError>(())
+			Ok::<bool, DispatchError>(c.amount_collected.is_zero() && c.amount_payment.is_zero())
 		})?;
+
+		// No need to transition if nothing was collected
+		if nothing_collect {
+			return Ok(());
+		}
 
 		// Update invest state to decrease the unprocessed investing amount
 		let investing_amount = T::Investment::investment(who, investment_id)?;
@@ -1098,13 +1101,18 @@ impl<T: Config> Pallet<T> {
 			.expect("Impossible to collect redemption for non existing pool at this point");
 
 		// Increment by previously stored amounts (via `CollectedInvestmentHook`)
-		CollectedRedemption::<T>::mutate(who, investment_id, |old| {
-			old.amount_collected
+		let nothing_collect = CollectedRedemption::<T>::mutate(who, investment_id, |c| {
+			c.amount_collected
 				.ensure_add_assign(collected.amount_collected)?;
-			old.amount_payment
+			c.amount_payment
 				.ensure_add_assign(collected.amount_payment)?;
-			Ok::<(), DispatchError>(())
+			Ok::<bool, DispatchError>(c.amount_collected.is_zero() && c.amount_payment.is_zero())
 		})?;
+
+		// No need to transition if nothing was collected
+		if nothing_collect {
+			return Ok(());
+		}
 
 		// Transition state to initiate swap from pool to foreign currency
 		let pre_state = RedemptionState::<T>::get(who, investment_id);
