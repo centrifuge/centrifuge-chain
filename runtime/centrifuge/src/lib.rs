@@ -1772,11 +1772,7 @@ impl pallet_investments::Config for Runtime {
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
-	// TODO: Fix benchmarks
-	//
-	// NOTE: Fixed weights are really high and
-	//       cover worst case, but are inefficient.
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
 }
 
 parameter_types! {

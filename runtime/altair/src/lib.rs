@@ -1704,7 +1704,7 @@ impl pallet_investments::Config for Runtime {
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
 }
 
 /// Checks whether the given `who` has the role

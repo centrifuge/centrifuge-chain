@@ -152,7 +152,7 @@ impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 }
 
 parameter_types! {
-	pub const MaxOutstandingCollect: u64 = 10;
+	pub const MaxOutstandingCollect: u32 = 10;
 }
 
 impl pallet_investments::Config for MockRuntime {
