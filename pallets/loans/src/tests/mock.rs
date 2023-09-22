@@ -55,6 +55,7 @@ pub const ASSET_AA: Asset = (COLLECTION_A, 1);
 pub const ASSET_AB: Asset = (COLLECTION_A, 2);
 pub const ASSET_BA: Asset = (COLLECTION_B, 1);
 pub const ASSET_BB: Asset = (COLLECTION_B, 2);
+pub const ASSET_BC: Asset = (COLLECTION_B, 3);
 pub const NO_ASSET: Asset = (42, 1);
 
 pub const POOL_A: PoolId = 1;
@@ -263,6 +264,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BA.1, &BORROWER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BB.1, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_B, &ASSET_BC.1, &OTHER_BORROWER).unwrap();
 	});
 	ext
 }

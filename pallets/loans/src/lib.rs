@@ -341,7 +341,7 @@ pub mod pallet {
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 		/// Debt has been transfered between loans
-		TransferDebt {
+		DebtTransferred {
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
 			to_loan_id: T::LoanId,
@@ -836,7 +836,7 @@ pub mod pallet {
 				true,
 			)?;
 
-			Self::deposit_event(Event::<T>::TransferDebt {
+			Self::deposit_event(Event::<T>::DebtTransferred {
 				pool_id,
 				from_loan_id,
 				to_loan_id,

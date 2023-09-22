@@ -74,6 +74,70 @@ fn with_wrong_borrower() {
 }
 
 #[test]
+fn with_wrong_borrower_for_repaid_loan() {
+	new_test_ext().execute_with(|| {
+		let loan_1 = util::create_loan_by(
+			LoanInfo {
+				collateral: ASSET_BC,
+				..util::base_internal_loan()
+			},
+			OTHER_BORROWER,
+		);
+		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+
+		let loan_2 = util::create_loan(util::base_internal_loan());
+
+		assert_noop!(
+			Loans::propose_transfer_debt(
+				RuntimeOrigin::signed(OTHER_BORROWER),
+				POOL_A,
+				loan_1,
+				loan_2,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+					interest: 0,
+					unscheduled: 0,
+				},
+				PricingAmount::Internal(COLLATERAL_VALUE),
+			),
+			Error::<Runtime>::NotLoanBorrower
+		);
+	});
+}
+
+#[test]
+fn with_wrong_borrower_for_borrowed_loan() {
+	new_test_ext().execute_with(|| {
+		let loan_1 = util::create_loan(util::base_internal_loan());
+		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+
+		let loan_2 = util::create_loan_by(
+			LoanInfo {
+				collateral: ASSET_BC,
+				..util::base_internal_loan()
+			},
+			OTHER_BORROWER,
+		);
+
+		assert_noop!(
+			Loans::propose_transfer_debt(
+				RuntimeOrigin::signed(OTHER_BORROWER),
+				POOL_A,
+				loan_1,
+				loan_2,
+				RepaidPricingAmount {
+					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+					interest: 0,
+					unscheduled: 0,
+				},
+				PricingAmount::Internal(COLLATERAL_VALUE),
+			),
+			Error::<Runtime>::NotLoanBorrower
+		);
+	});
+}
+
+#[test]
 fn with_wrong_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());

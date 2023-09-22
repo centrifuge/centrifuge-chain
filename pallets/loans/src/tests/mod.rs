@@ -17,7 +17,7 @@ use super::{
 			ActivePricing, Pricing, PricingAmount, RepaidPricingAmount,
 		},
 	},
-	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
+	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
 	types::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
