@@ -46,7 +46,7 @@ use sp_std::{
 	vec::Vec,
 };
 pub mod weights;
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
