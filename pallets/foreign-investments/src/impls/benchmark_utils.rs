@@ -120,6 +120,7 @@ where
 			pool_currency,
 			foreign_currency
 		);
+
 		// Create `InvestState::ActiveSwapIntoPoolCurrency` and prepare redemption for
 		// collection by redeeming
 		assert_ok!(Pallet::<T>::increase_foreign_investment(
