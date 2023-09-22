@@ -1,6 +1,7 @@
 set -eu
 
 runtime=$1
+pallet_input=${2:-}
 
 run_benchmark() {
   pallet=$1
@@ -40,7 +41,16 @@ all_pallets=$(
   ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq
 )
 
-for pallet in $all_pallets
-do
-    run_benchmark $pallet
-done
+if [ -n "$pallet_input" ];
+then
+  echo "Only benchmarking a single pallet: $pallet_input"
+  run_benchmark $pallet_input
+else
+  echo "Benchmarking all pallets"
+  for pallet in $all_pallets
+  do
+      run_benchmark $pallet
+  done
+fi
+
+

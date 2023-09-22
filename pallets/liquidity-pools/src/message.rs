@@ -1006,7 +1006,7 @@ mod tests {
 	}
 
 	#[test]
-	fn allow_pool_currency() {
+	fn allow_investment_currency() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: TOKEN_ID,
@@ -1017,7 +1017,7 @@ mod tests {
 	}
 
 	#[test]
-	fn allow_pool_currency_zero() {
+	fn allow_investment_currency_zero() {
 		test_encode_decode_identity(
 			LiquidityPoolsMessage::AllowInvestmentCurrency {
 				currency: 0,
