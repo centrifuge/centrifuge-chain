@@ -1745,7 +1745,7 @@ impl<
 			),
 		};
 
-		if is_tranche_investor {
+		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
