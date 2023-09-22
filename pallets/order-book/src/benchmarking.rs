@@ -63,11 +63,11 @@ benchmarks! {
 	}:fill_order_full(RawOrigin::Signed(account_in.clone()), order_id)
 
 	fill_order_partial {
-		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 10 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT / 10)?;
 
-	}:fill_order_partial(RawOrigin::Signed(account_1.clone()), order_id, 40 * CURRENCY_0)
+	}:fill_order_partial(RawOrigin::Signed(account_in.clone()), order_id, BUY_AMOUNT / 2)
 
 	add_trading_pair {
 		}:add_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT, BUY_AMOUNT)
