@@ -81,6 +81,8 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 pub mod hooks;
 mod inbound;
 
