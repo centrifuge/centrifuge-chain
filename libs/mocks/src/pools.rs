@@ -43,7 +43,7 @@ pub mod pallet {
 			register_call!(f);
 		}
 
-		pub fn tranche_exists(f: impl Fn(T::PoolId, T::TrancheId) -> bool + 'static) {
+		pub fn mock_tranche_exists(f: impl Fn(T::PoolId, T::TrancheId) -> bool + 'static) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 

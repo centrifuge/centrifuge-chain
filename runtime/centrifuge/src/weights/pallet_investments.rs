@@ -1,6 +1,6 @@
 //! TEMP: This file will be regenerated!
 
-use frame_support::{traits::Get, weights::Weight};
+use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);

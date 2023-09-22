@@ -11,25 +11,52 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::investments::{
-	Investment, InvestmentAccountant, InvestmentProperties, OrderManager,
+use cfg_traits::{
+	benchmarking::{InvestmentIdBenchmarkHelper, PoolBenchmarkHelper},
+	investments::{Investment, InvestmentAccountant, InvestmentProperties, OrderManager},
 };
-use cfg_types::{investments::InvestmentAccount, orders::FulfillmentWithPrice, tokens::CurrencyId};
+use cfg_types::orders::FulfillmentWithPrice;
 use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*, whitelisted_caller};
 use frame_support::traits::fungibles::Mutate;
 use frame_system::RawOrigin;
-use sp_runtime::{
-	traits::{AccountIdConversion, One},
-	Perquintill,
-};
+use sp_runtime::{traits::One, Perquintill};
 
 use crate::{Call, Config, CurrencyOf, Pallet};
+
+struct Helper<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Helper<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	T::InvestmentId: Default + Into<CurrencyOf<T>>,
+	T::Accountant: PoolBenchmarkHelper<AccountId = T::AccountId>
+		+ InvestmentIdBenchmarkHelper<
+			InvestmentId = T::InvestmentId,
+			PoolId = <T::Accountant as PoolBenchmarkHelper>::PoolId,
+		>,
+	<T::Accountant as PoolBenchmarkHelper>::PoolId: Default + Copy,
+{
+	fn get_investment_id() -> T::InvestmentId
+where {
+		let pool_id = Default::default();
+		let pool_admin = account("pool_admin", 0, 0);
+
+		T::Accountant::bench_create_pool(pool_id, &pool_admin);
+		T::Accountant::bench_default_investment_id(pool_id)
+	}
+}
 
 #[benchmarks(
 	where
 		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 		T::InvestmentId: Default + Into<CurrencyOf<T>>,
+		T::Accountant: PoolBenchmarkHelper<AccountId = T::AccountId>
+			+ InvestmentIdBenchmarkHelper<
+				InvestmentId = T::InvestmentId,
+				PoolId = <T::Accountant as PoolBenchmarkHelper>::PoolId,
+			>,
+		<T::Accountant as PoolBenchmarkHelper>::PoolId: Default + Copy,
 )]
 mod benchmarks {
 	use super::*;
@@ -37,7 +64,7 @@ mod benchmarks {
 	#[benchmark]
 	fn update_invest_order() {
 		let caller: T::AccountId = whitelisted_caller();
-		let investment_id = T::InvestmentId::default();
+		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency();
 
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
@@ -49,7 +76,7 @@ mod benchmarks {
 	#[benchmark]
 	fn update_redeem_order() {
 		let caller: T::AccountId = whitelisted_caller();
-		let investment_id = T::InvestmentId::default();
+		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
 
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
@@ -61,7 +88,7 @@ mod benchmarks {
 	#[benchmark]
 	fn collect_investments(n: Linear<1, 10>) {
 		let caller: T::AccountId = whitelisted_caller();
-		let investment_id = T::InvestmentId::default();
+		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)
 			.unwrap()
 			.payment_currency();
@@ -87,7 +114,7 @@ mod benchmarks {
 	#[benchmark]
 	fn collect_redemptions(n: Linear<1, 10>) {
 		let caller: T::AccountId = whitelisted_caller();
-		let investment_id = T::InvestmentId::default();
+		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
 
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
