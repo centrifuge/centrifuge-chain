@@ -1389,11 +1389,12 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultTokenSellRate: Ratio = Ratio::one();
+	pub DefaultTokenSellRatio: Ratio = Ratio::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type BalanceRatio = Ratio;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter =
@@ -1401,12 +1402,11 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = u64;
 	type TokenSwaps = OrderBook;

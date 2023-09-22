@@ -152,7 +152,7 @@ pub mod pallet {
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
-		type Rate: Parameter
+		type BalanceRatio: Parameter
 			+ Member
 			+ sp_runtime::FixedPointNumber
 			+ sp_runtime::traits::EnsureMul
@@ -171,7 +171,7 @@ pub mod pallet {
 		/// more sophisticated swap price discovery. For now, this should be set
 		/// to one.
 		#[pallet::constant]
-		type DefaultTokenSellRate: Get<Self::Rate>;
+		type DefaultTokenSellRatio: Get<Self::BalanceRatio>;
 
 		/// The token swap order identifying type
 		type TokenSwapOrderId: Parameter
@@ -190,7 +190,7 @@ pub mod pallet {
 			Balance = Self::Balance,
 			OrderId = Self::TokenSwapOrderId,
 			OrderDetails = Swap<Self::Balance, Self::CurrencyId>,
-			SellRatio = Self::Rate,
+			SellRatio = Self::BalanceRatio,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -413,16 +413,4 @@ pub mod pallet {
 		/// Failed to transition the `RedeemState.`
 		RedeemError(RedeemError),
 	}
-
-	// 	impl<T> From<InvestError> for Error<T> {
-	// 		fn from(error: InvestError) -> Self {
-	// 			Error::<T>::InvestError(error)
-	// 		}
-	// 	}
-
-	// 	impl<T> From<RedeemError> for Error<T> {
-	// 		fn from(error: RedeemError) -> Self {
-	// 			Error::<T>::RedeemError(error)
-	// 		}
-	// 	}
 }
