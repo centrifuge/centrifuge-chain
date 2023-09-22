@@ -34,6 +34,8 @@ use crate::{
 	SwapOf, TokenSwapOrderIds,
 };
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmark_utils;
 mod invest;
 mod redeem;
 
@@ -766,7 +768,7 @@ impl<T: Config> Pallet<T> {
 					swap_order_id,
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
-					T::DefaultTokenSellRate::get(),
+					T::DefaultTokenSellRatio::get(),
 					// The minimum fulfillment must be everything
 					swap.amount,
 				)?;
@@ -795,7 +797,7 @@ impl<T: Config> Pallet<T> {
 					swap.currency_out,
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
-					T::DefaultTokenSellRate::get(),
+					T::DefaultTokenSellRatio::get(),
 					// The minimum fulfillment must be everything
 					swap.amount,
 				)?;
@@ -1197,3 +1199,9 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 }
+
+// #[cfg(feature = "runtime-benchmarks")]
+// impl<T: Config> cfg_traits::benchmarking::ForeignInvestmentBenchmarkHelper
+// for Pallet<T> {
+
+// }
