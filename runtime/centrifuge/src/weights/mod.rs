@@ -24,6 +24,7 @@ pub mod pallet_elections_phragmen;
 pub mod pallet_fees;
 pub mod pallet_identity;
 pub mod pallet_interest_accrual;
+pub mod pallet_investments;
 pub mod pallet_keystore;
 pub mod pallet_liquidity_rewards;
 pub mod pallet_loans;
