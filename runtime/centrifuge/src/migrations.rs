@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 use codec::{Decode, Encode};
 
-use crate::{PoolSystem, Runtime, Weight};
+use crate::{Investments, PoolSystem, Runtime, Weight};
 
 pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 
@@ -19,14 +19,15 @@ pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 /// native on Polkadot's AssetHub.
 mod anemoy_pool {
 
-	use cfg_primitives::PoolId;
-	use cfg_types::tokens::CurrencyId;
+	use cfg_primitives::{PoolId, TrancheId};
+	use cfg_types::tokens::{CurrencyId, TrancheCurrency};
 	use frame_support::traits::OnRuntimeUpgrade;
 	use pallet_pool_system::PoolDetailsOf;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
+	use cfg_types::orders::TotalOrder;
 
 	use super::*;
 
@@ -84,5 +85,16 @@ mod anemoy_pool {
 			log::info!("anemoy_pool::Migration: post_upgrade succeeded");
 			Ok(())
 		}
+	}
+
+	// todo(nuno): also check that pool value is 0 and check also that Investments::InvestOrders and
+	// Investments::RedeemOrder have no entries from Anemoy; the latter ones seem tricky at first
+	// sight since they are double maps first keyed by an AccountId, meaning we need to transverse
+	// that first which is more costly.
+	fn sanity_checks(tranche_id: TrancheId) -> bool {
+		let tc = TrancheCurrency { pool_id: ANEMOY_POOL_ID, tranche_id};
+
+		Investments::acc_active_invest_order(tc) == TotalOrder::default()
+			&& Investments::acc_active_redeem_order(tc) == TotalOrder::default()
 	}
 }
