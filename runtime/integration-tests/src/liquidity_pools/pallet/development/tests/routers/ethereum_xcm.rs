@@ -45,6 +45,7 @@ use crate::{
 	},
 	utils::accounts::Keyring,
 };
+use crate::utils::AUSD_CURRENCY_ID;
 
 #[test]
 fn submit_ethereum_xcm() {
@@ -200,6 +201,6 @@ fn setup(router_creation_fn: RouterCreationFn) {
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
 		ausd_meta,
-		Some(CurrencyId::AUSD)
+		Some(AUSD_CURRENCY_ID)
 	));
 }

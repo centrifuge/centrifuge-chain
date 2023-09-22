@@ -600,34 +600,6 @@ fn allow_pool_should_fail() {
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsWrappedToken
 		);
-
-		// Create new pool for non foreign asset
-		// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			asset_metadata(
-				"Acala Dollar".into(),
-				"AUSD".into(),
-				12,
-				true,
-				None,
-				Default::default()
-			),
-			Some(CurrencyId::AUSD)
-		));
-		create_currency_pool(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
-		// Should fail if currency is not foreign asset
-		assert_noop!(
-			LiquidityPools::allow_pool_currency(
-				RuntimeOrigin::signed(BOB.into()),
-				pool_id + 1,
-				// Tranche id is arbitrary in this case, so we don't need to check for the exact
-				// pool_id
-				default_tranche_id(pool_id + 1),
-				CurrencyId::AUSD,
-			),
-			DispatchError::Token(sp_runtime::TokenError::Unsupported)
-		);
 	});
 }
 
