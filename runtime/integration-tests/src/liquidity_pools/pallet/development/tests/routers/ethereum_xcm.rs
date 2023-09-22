@@ -43,9 +43,8 @@ use crate::{
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::routers::axelar_evm::TEST_EVM_CHAIN,
 	},
-	utils::accounts::Keyring,
+	utils::{accounts::Keyring, AUSD_CURRENCY_ID},
 };
-use crate::utils::AUSD_CURRENCY_ID;
 
 #[test]
 fn submit_ethereum_xcm() {
