@@ -36,8 +36,7 @@ where
 		>,
 	<T::Accountant as PoolBenchmarkHelper>::PoolId: Default + Copy,
 {
-	fn get_investment_id() -> T::InvestmentId
-where {
+	fn get_investment_id() -> T::InvestmentId {
 		let pool_id = Default::default();
 		let pool_admin = account("pool_admin", 0, 0);
 
