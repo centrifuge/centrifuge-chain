@@ -77,7 +77,9 @@ pub mod pallet {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_bench_default_investment_id(f: impl Fn(T::TrancheCurrency) + 'static) {
+		pub fn mock_bench_default_investment_id(
+			f: impl Fn(T::PoolId) -> T::TrancheCurrency + 'static + 'static,
+		) {
 			register_call!(f);
 		}
 	}

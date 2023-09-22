@@ -154,7 +154,6 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_types! {
-
 		pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
 
