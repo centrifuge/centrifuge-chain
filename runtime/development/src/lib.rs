@@ -1550,6 +1550,8 @@ parameter_types! {
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type CollectedForeignInvestmentHook =
+		pallet_liquidity_pools::hooks::CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter =
