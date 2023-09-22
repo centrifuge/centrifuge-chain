@@ -11,12 +11,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{benchmarking::ForeignInvestmentBenchmarkHelper, investments::TrancheCurrency};
+use cfg_traits::{
+	benchmarking::ForeignInvestmentBenchmarkHelper,
+	investments::{ForeignInvestment, TrancheCurrency},
+};
 use frame_benchmarking::v2::*;
-use frame_system::RawOrigin;
 
 use super::*;
-use crate::{MessageOf, Pallet};
+use crate::Pallet;
 
 #[benchmarks(
     where
@@ -28,7 +30,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn inbound_collect_redeem() -> Result<(), BenchmarkError> {
+	fn inbound_collect_redeem() {
 		let (investor, investment_id, pool_currency, foreign_currency, _) = <T::ForeignInvestment as ForeignInvestmentBenchmarkHelper>::bench_prepare_foreign_investments_setup();
 
 		// Fund investor with foreign currency and tranche tokens
@@ -36,28 +38,31 @@ mod benchmarks {
 			investment_id.clone().into(),
 			&investor,
 			(u128::max_value() / 10).into(),
-		);
-		T::Tokens::mint_into(foreign_currency, &investor, (u128::max_value() / 10).into());
+		)?;
+		T::Tokens::mint_into(foreign_currency, &investor, (u128::max_value() / 10).into())?;
+
+		// Increase investment and redemption
 		<T::ForeignInvestment as ForeignInvestmentBenchmarkHelper>::bench_prep_foreign_investments_worst_case(investor.clone(), investment_id.clone(), pool_currency, foreign_currency);
 
+		let investor_pointer = investor.clone();
+		let redeeming_amount =
+			T::ForeignInvestment::redemption(&investor_pointer, investment_id.clone())?;
 		let pool_id = investment_id.of_pool();
 		let tranche_id = investment_id.of_tranche();
-		let foreign_currency_u128 = Pallet::<T>::try_get_general_index(foreign_currency)?.into();
-		let message = MessageOf::<T>::CollectRedeem {
-			pool_id,
-			tranche_id,
-			investor: investor.into(),
-			currency: foreign_currency_u128,
-		};
-		let sender = DomainAddress::EVM(1, [0u8; 20]);
+		let foreign_currency_index = Pallet::<T>::try_get_general_index(foreign_currency)?.into();
 
 		#[block]
 		{
-			<Pallet<T> as InboundQueue>::submit(sender, message)?;
+			Pallet::<T>::handle_collect_redemption(
+				pool_id,
+				tranche_id,
+				investor,
+				foreign_currency_index,
+			)?;
 		}
 
-		// TODO: Verify block?
+		assert!(
+			T::ForeignInvestment::redemption(&investor_pointer, investment_id)? < redeeming_amount
+		);
 	}
-	// impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(),
-	// crate::mock::Test);
 }

@@ -29,8 +29,8 @@ use sp_runtime::{DispatchError, FixedPointNumber, Perquintill};
 
 use crate::{Config, Pallet};
 
-pub const CURRENCY_POOL: CurrencyId = ForeignAsset(1);
-pub const CURRENCY_FOREIGN: CurrencyId = ForeignAsset(2);
+pub const CURRENCY_POOL: CurrencyId = CurrencyId::ForeignAsset(1);
+pub const CURRENCY_FOREIGN: CurrencyId = CurrencyId::ForeignAsset(2);
 pub const DECIMALS_POOL: u32 = 12;
 pub const DECIMALS_FOREIGN: u32 = 6;
 pub const INVEST_AMOUNT_POOL_DENOMINATED: u128 = 1_000_000_000_000;
@@ -112,9 +112,14 @@ where
 	fn bench_prep_foreign_investments_worst_case(
 		investor: Self::AccountId,
 		investment_id: Self::InvestmentId,
-		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
+		foreign_currency: Self::CurrencyId,
 	) {
+		log::debug!(
+			"Preparing worst case foreign investment benchmark setup with pool currency {:?} and foreign currency: {:?}",
+			pool_currency,
+			foreign_currency
+		);
 		// Create `InvestState::ActiveSwapIntoPoolCurrency` and prepare redemption for
 		// collection by redeeming
 		assert_ok!(Pallet::<T>::increase_foreign_investment(
@@ -124,12 +129,22 @@ where
 			foreign_currency,
 			pool_currency,
 		));
+		assert_eq!(
+			crate::InvestmentPaymentCurrency::<T>::get(&investor, investment_id).unwrap(),
+			foreign_currency
+		);
+
+		log::debug!("Increasing foreign redemption");
 		assert_ok!(Pallet::<T>::increase_foreign_redemption(
 			&investor,
 			investment_id,
 			INVEST_AMOUNT_FOREIGN_DENOMINATED.into(),
 			foreign_currency,
 		));
+		assert_eq!(
+			crate::RedemptionPayoutCurrency::<T>::get(&investor, investment_id).unwrap(),
+			foreign_currency
+		);
 
 		// Process redemption such that collecting will trigger worst case
 		let fulfillment: FulfillmentWithPrice<T::BalanceRatio> = FulfillmentWithPrice {
@@ -143,5 +158,6 @@ where
 			investment_id,
 			fulfillment
 		));
+		log::debug!("Worst case benchmark foreign investment setup done!");
 	}
 }
