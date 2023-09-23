@@ -224,7 +224,7 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type InvestOrders<T: Config> = StorageDoubleMap<
+	pub type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -234,7 +234,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub(crate) type RedeemOrders<T: Config> = StorageDoubleMap<
+	pub type RedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -245,7 +245,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub(crate) type ActiveInvestOrders<T: Config> =
+	pub type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]

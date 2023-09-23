@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::{Investments, PoolSystem, Runtime, Weight};
+use crate::{Runtime, Weight};
 
 pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 
@@ -17,11 +17,8 @@ pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 /// native on Polkadot's AssetHub.
 mod anemoy_pool {
 
-	use cfg_primitives::{PoolId, TrancheId};
-	use cfg_types::{
-		orders::TotalOrder,
-		tokens::{CurrencyId, TrancheCurrency},
-	};
+	use cfg_primitives::PoolId;
+	use cfg_types::tokens::CurrencyId;
 	#[cfg(feature = "try-runtime")]
 	use codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
@@ -33,6 +30,8 @@ mod anemoy_pool {
 	use sp_std::vec::Vec;
 
 	use super::*;
+	#[cfg(feature = "try-runtime")]
+	use crate::PoolSystem;
 
 	const ANEMOY_POOL_ID: PoolId = 4_139_607_887;
 	#[cfg(feature = "try-runtime")]
@@ -58,19 +57,31 @@ mod anemoy_pool {
 		fn on_runtime_upgrade() -> Weight {
 			// To be executed at 1021, reject higher spec_versions
 			if crate::VERSION.spec_version >= 1022 {
-				log::info!(
+				log::error!(
 					"anemoy_pool::Migration: NOT execution since VERSION.spec_version >= 1022"
 				);
 				return Weight::zero();
 			}
 
+			let (sanity_checks, weight) = verify_sanity_checks();
+			if !sanity_checks {
+				log::error!("anemoy_pool::Migration: Sanity checks FAILED");
+				return weight;
+			}
+
 			pallet_pool_system::Pool::<Runtime>::mutate(ANEMOY_POOL_ID, |details| {
 				let details = details.as_mut().unwrap();
 				details.currency = DOT_NATIVE_USDC;
-				log::info!("anemoy_pool::Migration: Finished mutating currency to USDC");
+				log::info!("anemoy_pool::Migration: currency set to USDC ✓");
 			});
 
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+			weight.saturating_add(
+				<Runtime as frame_system::Config>::DbWeight::get().reads(
+					pallet_pool_system::Pool::<Runtime>::iter_keys()
+						.count()
+						.saturating_mul(2) as u64,
+				),
+			)
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -88,23 +99,36 @@ mod anemoy_pool {
 				"Corrupted migration: Only the currency of the Anemoy pool should have changed"
 			);
 
-			log::info!("anemoy_pool::Migration: post_upgrade succeeded");
+			log::info!("anemoy_pool::Migration: post_upgrade succeeded ✓");
 			Ok(())
 		}
 	}
 
-	// todo(nuno): also check that pool value is 0 and check also that
-	// Investments::InvestOrders and Investments::RedeemOrder have no entries from
-	// Anemoy; the latter ones seem tricky at first sight since they are double maps
-	// first keyed by an AccountId, meaning we need to transverse that first which
-	// is more costly.
-	fn sanity_checks(tranche_id: TrancheId) -> bool {
-		let tc = TrancheCurrency {
-			pool_id: ANEMOY_POOL_ID,
-			tranche_id,
-		};
+	fn verify_sanity_checks() -> (bool, Weight) {
+		let res =
+			pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
+				.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
+				.count() == 0 && pallet_investments::InvestOrders::<Runtime>::iter_keys()
+				.filter(|(_, investment)| investment.pool_id == ANEMOY_POOL_ID)
+				.count() == 0 && pallet_investments::RedeemOrders::<Runtime>::iter_keys()
+				.filter(|(_, investment)| investment.pool_id == ANEMOY_POOL_ID)
+				.count() == 0;
 
-		Investments::acc_active_invest_order(tc) == TotalOrder::default()
-			&& Investments::acc_active_redeem_order(tc) == TotalOrder::default()
+		let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(
+			0u64.saturating_add(
+				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
+			)
+			.saturating_add(
+				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
+			)
+			.saturating_add(pallet_investments::InvestOrders::<Runtime>::iter_keys().count() as u64)
+			.saturating_add(pallet_investments::RedeemOrders::<Runtime>::iter_keys().count() as u64)
+			// 2x, first for the sanity checks and now for calculating these weights
+			.saturating_mul(2),
+		);
+
+		(res, weight)
 	}
 }
