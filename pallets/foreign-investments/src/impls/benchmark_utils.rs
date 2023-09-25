@@ -13,14 +13,13 @@
 
 use cfg_traits::{
 	benchmarking::{
-		ForeignInvestmentBenchmarkHelper, InvestmentIdBenchmarkHelper, OrderBookBenchmarkHelper,
-		PoolBenchmarkHelper,
+		BenchForeignInvestmentSetupInfo, ForeignInvestmentBenchmarkHelper,
+		InvestmentIdBenchmarkHelper, OrderBookBenchmarkHelper, PoolBenchmarkHelper,
 	},
 	investments::{ForeignInvestment, OrderManager},
 };
 use cfg_types::{
 	fixed_point::Ratio,
-	investments::BenchForeignInvestmentSetupInfo,
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
@@ -61,9 +60,9 @@ where
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
 	type InvestmentId = T::InvestmentId;
-	type SetupInfo = BenchForeignInvestmentSetupInfo<T::AccountId, T::InvestmentId, T::CurrencyId>;
 
-	fn bench_prepare_foreign_investments_setup() -> Self::SetupInfo {
+	fn bench_prepare_foreign_investments_setup(
+	) -> BenchForeignInvestmentSetupInfo<Self::AccountId, Self::InvestmentId, Self::CurrencyId> {
 		let pool_id = Default::default();
 		let pool_admin: T::AccountId = frame_benchmarking::account("pool_admin", 0, 0);
 		<T::PoolInspect as PoolBenchmarkHelper>::bench_create_pool(pool_id, &pool_admin);
@@ -96,7 +95,7 @@ where
 		let investment_id =
 			<T::PoolInspect as InvestmentIdBenchmarkHelper>::bench_default_investment_id(pool_id);
 
-		Self::SetupInfo {
+		BenchForeignInvestmentSetupInfo {
 			investor,
 			investment_id,
 			pool_currency: CURRENCY_POOL.into(),

@@ -12,10 +12,9 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	benchmarking::ForeignInvestmentBenchmarkHelper,
+	benchmarking::{BenchForeignInvestmentSetupInfo, ForeignInvestmentBenchmarkHelper},
 	investments::{ForeignInvestment, TrancheCurrency},
 };
-use cfg_types::investments::BenchForeignInvestmentSetupInfo;
 use frame_benchmarking::v2::*;
 
 use super::*;
@@ -23,7 +22,7 @@ use crate::Pallet;
 
 #[benchmarks(
     where
-        T::ForeignInvestment: ForeignInvestmentBenchmarkHelper<AccountId = T::AccountId, Balance = T::Balance, CurrencyId = T::CurrencyId, InvestmentId = T::TrancheCurrency, SetupInfo = BenchForeignInvestmentSetupInfo<T::AccountId, T::TrancheCurrency, T::CurrencyId>>,
+        T::ForeignInvestment: ForeignInvestmentBenchmarkHelper<AccountId = T::AccountId, Balance = T::Balance, CurrencyId = T::CurrencyId, InvestmentId = T::TrancheCurrency>,
         T::Balance: From<u128>,
         T::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 )]

@@ -59,6 +59,22 @@ pub trait OrderBookBenchmarkHelper {
 	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce);
 }
 
+/// A representation of information helpful when doing a foreign investment
+/// benchmark setup.
+pub struct BenchForeignInvestmentSetupInfo<AccountId, InvestmentId, CurrencyId> {
+	/// The substrate investor address
+	pub investor: AccountId,
+	/// The investment id
+	pub investment_id: InvestmentId,
+	/// The pool currency which eventually will be invested
+	pub pool_currency: CurrencyId,
+	/// The foreign currency which shall be invested and thus swapped into pool
+	/// currency beforehand
+	pub foreign_currency: CurrencyId,
+	/// Bidirectionally funded to fulfill token swap orders
+	pub funded_trader: AccountId,
+}
+
 /// Benchmark utility for updating/collecting foreign investments and
 /// redemptions.
 
@@ -67,7 +83,6 @@ pub trait ForeignInvestmentBenchmarkHelper {
 	type Balance;
 	type CurrencyId;
 	type InvestmentId;
-	type SetupInfo;
 
 	/// Perform necessary setup to enable an investor to invest with or redeem
 	/// into a foreign currency.
@@ -79,7 +94,8 @@ pub trait ForeignInvestmentBenchmarkHelper {
 	///  * The foreign currency id
 	///  * A trading account which can bidirectionally fulfill swap orders for
 	///    the (foreign, pool) currency pair
-	fn bench_prepare_foreign_investments_setup() -> Self::SetupInfo;
+	fn bench_prepare_foreign_investments_setup(
+	) -> BenchForeignInvestmentSetupInfo<Self::AccountId, Self::InvestmentId, Self::CurrencyId>;
 
 	/// Perform necessary setup to prepare for the worst benchmark case by
 	/// calling just a single subsequent function.
