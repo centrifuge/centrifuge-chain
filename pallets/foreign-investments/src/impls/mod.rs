@@ -1252,9 +1252,3 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 }
-
-// #[cfg(feature = "runtime-benchmarks")]
-// impl<T: Config> cfg_traits::benchmarking::ForeignInvestmentBenchmarkHelper
-// for Pallet<T> {
-
-// }
