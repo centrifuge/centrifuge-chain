@@ -1746,7 +1746,7 @@ impl<
 			),
 		};
 
-		if is_tranche_investor {
+		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
@@ -1772,11 +1772,7 @@ impl pallet_investments::Config for Runtime {
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
-	// TODO: Fix benchmarks
-	//
-	// NOTE: Fixed weights are really high and
-	//       cover worst case, but are inefficient.
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2527,6 +2523,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
+			list_benchmark!(list, extra, pallet_investments, Investments);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2598,6 +2595,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches,	pallet_order_book, OrderBook);
+			add_benchmark!(params, batches,	pallet_investments, Investments);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

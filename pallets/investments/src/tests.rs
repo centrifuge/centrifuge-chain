@@ -2859,7 +2859,7 @@ fn collecting_over_max_works() {
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
 				Some(Order::new(
 					5368709120000000000,
-					MaxOutstandingCollect::get()
+					MaxOutstandingCollect::get().into()
 				)),
 			);
 			assert_ok!(collect_both(
@@ -2914,7 +2914,7 @@ fn collecting_over_max_works() {
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
 				Some(Order::new(
 					5368709120000000000,
-					MaxOutstandingCollect::get()
+					MaxOutstandingCollect::get().into()
 				)),
 			);
 			assert_ok!(collect_both(

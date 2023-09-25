@@ -1727,7 +1727,7 @@ impl<
 			),
 		};
 
-		if is_tranche_investor {
+		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
@@ -2562,6 +2562,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 			add_benchmark!(params, batches, pallet_liquidity_pools, LiquidityPools);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
+			add_benchmark!(params, batches, pallet_investments, Investments);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2617,6 +2618,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 			list_benchmark!(list, extra, pallet_liquidity_pools, LiquidityPools);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
+			list_benchmark!(list, extra, pallet_investments, Investments);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
