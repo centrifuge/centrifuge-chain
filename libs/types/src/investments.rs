@@ -263,3 +263,20 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 	///   pool currency)
 	pub amount_remaining: Balance,
 }
+
+/// A representation of information helpful when doing a foreign investment
+/// benchmark setup.
+#[cfg(feature = "runtime-benchmarks")]
+pub struct BenchForeignInvestmentSetupInfo<AccountId, InvestmentId, CurrencyId> {
+	/// The substrate investor address
+	pub investor: AccountId,
+	/// The investment id
+	pub investment_id: InvestmentId,
+	/// The pool currency which eventually will be invested
+	pub pool_currency: CurrencyId,
+	/// The foreign currency which shall be invested and thus swapped into pool
+	/// currency beforehand
+	pub foreign_currency: CurrencyId,
+	/// Bidirectionally funded to fulfill token swap orders
+	pub funded_trader: AccountId,
+}

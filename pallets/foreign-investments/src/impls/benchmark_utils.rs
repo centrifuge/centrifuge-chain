@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge Chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	fixed_point::Ratio,
+	investments::BenchForeignInvestmentSetupInfo,
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
@@ -60,20 +61,15 @@ where
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
 	type InvestmentId = T::InvestmentId;
+	type SetupInfo = BenchForeignInvestmentSetupInfo<T::AccountId, T::InvestmentId, T::CurrencyId>;
 
-	fn bench_prepare_foreign_investments_setup() -> (
-		T::AccountId,
-		T::InvestmentId,
-		T::CurrencyId,
-		T::CurrencyId,
-		T::AccountId,
-	) {
+	fn bench_prepare_foreign_investments_setup() -> Self::SetupInfo {
 		let pool_id = Default::default();
 		let pool_admin: T::AccountId = frame_benchmarking::account("pool_admin", 0, 0);
 		<T::PoolInspect as PoolBenchmarkHelper>::bench_create_pool(pool_id, &pool_admin);
 
 		// Add bidirectional trading pair and fund both accounts
-		let (investor, trader) =
+		let (investor, funded_trader) =
 			<T::TokenSwaps as OrderBookBenchmarkHelper>::bench_setup_trading_pair(
 				CURRENCY_POOL.into(),
 				CURRENCY_FOREIGN.into(),
@@ -100,13 +96,13 @@ where
 		let investment_id =
 			<T::PoolInspect as InvestmentIdBenchmarkHelper>::bench_default_investment_id(pool_id);
 
-		(
+		Self::SetupInfo {
 			investor,
 			investment_id,
-			CURRENCY_POOL.into(),
-			CURRENCY_FOREIGN.into(),
-			trader,
-		)
+			pool_currency: CURRENCY_POOL.into(),
+			foreign_currency: CURRENCY_FOREIGN.into(),
+			funded_trader,
+		}
 	}
 
 	fn bench_prep_foreign_investments_worst_case(

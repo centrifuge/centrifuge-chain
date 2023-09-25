@@ -67,6 +67,7 @@ pub trait ForeignInvestmentBenchmarkHelper {
 	type Balance;
 	type CurrencyId;
 	type InvestmentId;
+	type SetupInfo;
 
 	/// Perform necessary setup to enable an investor to invest with or redeem
 	/// into a foreign currency.
@@ -78,13 +79,7 @@ pub trait ForeignInvestmentBenchmarkHelper {
 	///  * The foreign currency id
 	///  * A trading account which can bidirectionally fulfill swap orders for
 	///    the (foreign, pool) currency pair
-	fn bench_prepare_foreign_investments_setup() -> (
-		Self::AccountId,
-		Self::InvestmentId,
-		Self::CurrencyId,
-		Self::CurrencyId,
-		Self::AccountId,
-	);
+	fn bench_prepare_foreign_investments_setup() -> Self::SetupInfo;
 
 	/// Perform necessary setup to prepare for the worst benchmark case by
 	/// calling just a single subsequent function.

@@ -15,6 +15,7 @@ use cfg_traits::{
 	benchmarking::ForeignInvestmentBenchmarkHelper,
 	investments::{ForeignInvestment, TrancheCurrency},
 };
+use cfg_types::investments::BenchForeignInvestmentSetupInfo;
 use frame_benchmarking::v2::*;
 
 use super::*;
@@ -22,7 +23,7 @@ use crate::Pallet;
 
 #[benchmarks(
     where
-        T::ForeignInvestment: ForeignInvestmentBenchmarkHelper<AccountId = T::AccountId, Balance = T::Balance, CurrencyId = T::CurrencyId, InvestmentId = T::TrancheCurrency>,
+        T::ForeignInvestment: ForeignInvestmentBenchmarkHelper<AccountId = T::AccountId, Balance = T::Balance, CurrencyId = T::CurrencyId, InvestmentId = T::TrancheCurrency, SetupInfo = BenchForeignInvestmentSetupInfo<T::AccountId, T::TrancheCurrency, T::CurrencyId>>,
         T::Balance: From<u128>,
         T::AccountId: From<[u8; 32]> + Into<[u8; 32]>,
 )]
@@ -31,7 +32,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn inbound_collect_redeem() {
-		let (investor, investment_id, pool_currency, foreign_currency, _) = <T::ForeignInvestment as ForeignInvestmentBenchmarkHelper>::bench_prepare_foreign_investments_setup();
+		let BenchForeignInvestmentSetupInfo { investor, investment_id, pool_currency, foreign_currency, .. } = <T::ForeignInvestment as ForeignInvestmentBenchmarkHelper>::bench_prepare_foreign_investments_setup();
 
 		// Fund investor with foreign currency and tranche tokens
 		T::Tokens::mint_into(
