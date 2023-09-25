@@ -123,8 +123,10 @@ mod anemoy_pool {
 				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count(),
 				pallet_investments::ActiveRedeemOrders::<Runtime>::iter_keys().count(),
 				pallet_investments::InvestOrders::<Runtime>::iter_keys().count(),
-				pallet_investments::RedeemOrders::<Runtime>::iter_keys().count()
-			].iter().sum() as u64
+				pallet_investments::RedeemOrders::<Runtime>::iter_keys().count(),
+			]
+			.iter()
+			.sum() as u64,
 		);
 
 		(res, weight)
