@@ -19,14 +19,16 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, Get},
+	traits::{EnsureAdd, Get},
 	ArithmeticError,
 };
 
+pub mod cashflow;
 pub mod policy;
 pub mod portfolio;
 pub mod valuation;
 
+use cashflow::{InterestPayments, Maturity, PayDownSchedule};
 use policy::WriteOffRule;
 use valuation::ValuationMethod;
 
@@ -88,80 +90,6 @@ pub enum MutationError {
 	InternalPricingExpected,
 	/// Maturity extensions exceed max extension allowed.
 	MaturityExtendedTooMuch,
-}
-
-/// Specify the expected repayments date
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum Maturity {
-	/// Fixed point in time, in secs
-	Fixed {
-		/// Secs when maturity ends
-		date: Moment,
-		/// Extension in secs, without special permissions
-		extension: Moment,
-	},
-}
-
-impl Maturity {
-	pub fn fixed(date: Moment) -> Self {
-		Self::Fixed { date, extension: 0 }
-	}
-
-	pub fn date(&self) -> Moment {
-		match self {
-			Maturity::Fixed { date, .. } => *date,
-		}
-	}
-
-	pub fn is_valid(&self, now: Moment) -> bool {
-		match self {
-			Maturity::Fixed { date, .. } => *date > now,
-		}
-	}
-
-	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
-		match self {
-			Maturity::Fixed { date, extension } => {
-				date.ensure_add_assign(value)?;
-				extension.ensure_sub_assign(value)
-			}
-		}
-	}
-}
-
-/// Interest payment periods
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum InterestPayments {
-	/// All interest is expected to be paid at the maturity date
-	None,
-}
-
-/// Specify the paydown schedules of the loan
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum PayDownSchedule {
-	/// The entire borrowed amount is expected to be paid back at the maturity
-	/// date
-	None,
-}
-
-/// Specify the repayment schedule of the loan
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct RepaymentSchedule {
-	/// Expected repayments date for remaining debt
-	pub maturity: Maturity,
-
-	/// Period at which interest is paid
-	pub interest_payments: InterestPayments,
-
-	/// How much of the initially borrowed amount is paid back during interest
-	/// payments
-	pub pay_down_schedule: PayDownSchedule,
-}
-
-impl RepaymentSchedule {
-	pub fn is_valid(&self, now: Moment) -> bool {
-		self.maturity.is_valid(now)
-	}
 }
 
 /// Specify how offer a loan can be borrowed

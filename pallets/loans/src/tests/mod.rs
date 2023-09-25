@@ -18,12 +18,12 @@ use super::{
 	},
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
+		cashflow::{InterestPayments, Maturity, PayDownSchedule, RepaymentSchedule},
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowLoanError, BorrowRestrictions, Change, CloseLoanError, CreateLoanError,
-		InterestPayments, InternalMutation, LoanMutation, LoanRestrictions, Maturity,
-		MutationError, PayDownSchedule, RepayLoanError, RepayRestrictions, RepaymentSchedule,
-		WrittenOffError,
+		InternalMutation, LoanMutation, LoanRestrictions, MutationError, RepayLoanError,
+		RepayRestrictions, WrittenOffError,
 	},
 };
 

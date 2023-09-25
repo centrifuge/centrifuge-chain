@@ -24,10 +24,10 @@ use super::pricing::{
 use crate::{
 	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
+		cashflow::RepaymentSchedule,
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
 		LoanRestrictions, MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
-		RepaymentSchedule,
 	},
 };
 
@@ -228,6 +228,12 @@ impl<T: Config> ActiveLoan<T> {
 		&self.pricing
 	}
 
+	pub fn principal(&self) -> Result<T::Balance, DispatchError> {
+		Ok(self
+			.total_borrowed
+			.ensure_sub(self.total_repaid.principal)?)
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
@@ -258,6 +264,35 @@ impl<T: Config> ActiveLoan<T> {
 					Ok(now >= pricing.last_updated(pool_id)?.ensure_add(*secs)?)
 				}
 				ActivePricing::Internal(_) => Ok(false),
+			},
+			WriteOffTrigger::InterestOverdue(_overdue_seconds) => match &self.pricing {
+				// TODO: should be implemented once interest_rate is moved to ActiveLoan
+				ActivePricing::External(_) => Ok(false),
+				ActivePricing::Internal(pricing) => {
+					let cashflows = self.schedule.generate_expected_cashflows(
+						self.origination_date,
+						self.principal()?,
+						pricing.interest.rate(),
+					)?;
+
+					// TODO(Luis): If from this point, any field of ActiveLoan is needed, I would
+					// move this code into cashflow.rs
+
+					/*
+					let now_date = NaiveDateTime::from_timestamp_opt(now as i64, 0)
+						.ok_or(DispatchError::Other("Invalid now date"))?;
+					let cashflows_in_past = cashflows
+						.iter()
+						.filter(|(d, _)| d.and_hms_opt(0, 0, 0).unwrap() > now_date);
+					*/
+
+					// TODO: should find the first cashflow that was not paid,
+					// based on total_repaid_interest and by reducing the cashflows_in_past
+					// from this, and should the ncompare the first cash flow that was not paid date
+					// with now - overdue_secs.
+
+					Ok(false)
+				}
 			},
 		}
 	}
@@ -337,6 +372,19 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
+		// If the loan has an interest or pay down schedule other than None,
+		// then we should only allow borrowing more if no interest or principal
+		// payments are overdue.
+		//
+		// This is required because after borrowing more, it is not possible
+		// to validate anymore whether previous cashflows matched the repayment
+		// schedule, as we don't store historic data of the principal.
+		//
+		// Therefore, in `borrow()` we set repayments_on_schedule_until to now.
+		//
+		// TODO: check total_repaid_interest >= total_expected_interest
+		// and total_repaid_principal >= total_expected_principal
+
 		Ok(())
 	}
 
@@ -371,10 +419,7 @@ impl<T: Config> ActiveLoan<T> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.principal.internal()?;
-
-				let principal = self
-					.total_borrowed
-					.ensure_sub(self.total_repaid.principal)?;
+				let principal = self.principal()?;
 
 				(principal, inner.outstanding_interest(principal)?)
 			}
@@ -511,7 +556,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Moment) {
-		self.schedule.maturity = crate::types::Maturity::fixed(duration);
+		self.schedule.maturity = crate::types::cashflow::Maturity::fixed(duration);
 	}
 }
 

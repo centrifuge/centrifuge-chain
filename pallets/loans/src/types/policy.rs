@@ -42,6 +42,9 @@ pub enum WriteOffTrigger {
 
 	/// Seconds since the oracle valuation was last updated
 	PriceOutdated(Moment),
+
+	/// Seconds that an interest payment is overdue
+	InterestOverdue(Moment),
 }
 
 /// Wrapper type to identify equality berween kinds of triggers,
@@ -57,6 +60,9 @@ impl PartialEq for UniqueWriteOffTrigger {
 			}
 			WriteOffTrigger::PriceOutdated(_) => {
 				matches!(other.0, WriteOffTrigger::PriceOutdated(_))
+			}
+			WriteOffTrigger::InterestOverdue(_) => {
+				matches!(other.0, WriteOffTrigger::InterestOverdue(_))
 			}
 		}
 	}
