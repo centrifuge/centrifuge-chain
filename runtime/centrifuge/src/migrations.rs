@@ -75,11 +75,7 @@ mod anemoy_pool {
 			});
 
 			weight.saturating_add(
-				<Runtime as frame_system::Config>::DbWeight::get().reads(
-					pallet_pool_system::Pool::<Runtime>::iter_keys()
-						.count()
-						.saturating_mul(2) as u64,
-				),
+				<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1),
 			)
 		}
 
