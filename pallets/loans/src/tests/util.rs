@@ -171,7 +171,7 @@ pub fn borrow_loan(loan_id: LoanId, borrow_amount: PrincipalInput<Runtime>) {
 	MockPrices::mock_register_id(|_, _| panic!("no register_id() mock"));
 }
 
-pub fn repay_loan(loan_id: LoanId, repay_amount: PrincingInput<Runtime>) {
+pub fn repay_loan(loan_id: LoanId, repay_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
