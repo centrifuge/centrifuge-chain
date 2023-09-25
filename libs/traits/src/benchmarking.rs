@@ -58,3 +58,56 @@ pub trait OrderBookBenchmarkHelper {
 	/// Fulfills the given swap order from the trader account
 	fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce);
 }
+
+/// A representation of information helpful when doing a foreign investment
+/// benchmark setup.
+pub struct BenchForeignInvestmentSetupInfo<AccountId, InvestmentId, CurrencyId> {
+	/// The substrate investor address
+	pub investor: AccountId,
+	/// The investment id
+	pub investment_id: InvestmentId,
+	/// The pool currency which eventually will be invested
+	pub pool_currency: CurrencyId,
+	/// The foreign currency which shall be invested and thus swapped into pool
+	/// currency beforehand
+	pub foreign_currency: CurrencyId,
+	/// Bidirectionally funded to fulfill token swap orders
+	pub funded_trader: AccountId,
+}
+
+/// Benchmark utility for updating/collecting foreign investments and
+/// redemptions.
+
+pub trait ForeignInvestmentBenchmarkHelper {
+	type AccountId;
+	type Balance;
+	type CurrencyId;
+	type InvestmentId;
+
+	/// Perform necessary setup to enable an investor to invest with or redeem
+	/// into a foreign currency.
+	///
+	/// Returns
+	///  * The substrate investor address
+	///  * The investment id
+	///  * The pool currency id
+	///  * The foreign currency id
+	///  * A trading account which can bidirectionally fulfill swap orders for
+	///    the (foreign, pool) currency pair
+	fn bench_prepare_foreign_investments_setup(
+	) -> BenchForeignInvestmentSetupInfo<Self::AccountId, Self::InvestmentId, Self::CurrencyId>;
+
+	/// Perform necessary setup to prepare for the worst benchmark case by
+	/// calling just a single subsequent function.
+	///
+	/// NOTE: For the time being, the worst case should be collecting a
+	/// redemption when there is an active invest swap from foreign to pool. The
+	/// redemption collection will initiate a swap from pool to foreign such
+	/// that there is a swap merge conflict to be resolved.
+	fn bench_prep_foreign_investments_worst_case(
+		investor: Self::AccountId,
+		investment_id: Self::InvestmentId,
+		foreign_currency: Self::CurrencyId,
+		pool_currency: Self::CurrencyId,
+	);
+}

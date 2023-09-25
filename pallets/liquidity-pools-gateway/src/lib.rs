@@ -322,7 +322,7 @@ pub mod pallet {
 		}
 
 		/// Process an incoming message.
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::process_msg())]
 		#[pallet::call_index(5)]
 		pub fn process_msg(
 			origin: OriginFor<T>,

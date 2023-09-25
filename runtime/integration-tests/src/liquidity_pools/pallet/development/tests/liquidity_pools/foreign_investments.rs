@@ -30,7 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::{Quantity, Ratio},
+	fixed_point::Ratio,
 	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection, Swap},
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
@@ -359,7 +359,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::one(),
+					price: Ratio::one(),
 				}
 			));
 			assert_eq!(Tokens::total_issuance(investment_currency_id), amount);
@@ -495,7 +495,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 
@@ -572,7 +572,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::checked_from_rational(1, 2).unwrap(),
+					price: Ratio::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			// Order should have been cleared by fulfilling investment
@@ -963,7 +963,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::one(),
+					price: Ratio::one(),
 				}
 			));
 
@@ -1099,7 +1099,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 
@@ -1167,7 +1167,7 @@ mod same_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::checked_from_rational(1, 2).unwrap(),
+					price: Ratio::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			// Order should have been cleared by fulfilling redemption
@@ -1371,7 +1371,7 @@ mod same_currencies {
 						default_investment_id(),
 						FulfillmentWithPrice {
 							of_amount: Perquintill::one(),
-							price: Quantity::one(),
+							price: Ratio::one(),
 						}
 					));
 
@@ -1440,7 +1440,7 @@ mod same_currencies {
 						default_investment_id(),
 						FulfillmentWithPrice {
 							of_amount: Perquintill::one(),
-							price: Quantity::one(),
+							price: Ratio::one(),
 						}
 					));
 
@@ -1742,7 +1742,7 @@ mod same_currencies {
 mod mismatching_currencies {
 	use cfg_traits::investments::ForeignInvestment;
 	use cfg_types::investments::{ForeignInvestmentInfo, Swap};
-	use development_runtime::{DefaultTokenSellRate, OrderBook};
+	use development_runtime::{DefaultTokenSellRatio, OrderBook};
 	use pallet_foreign_investments::{types::TokenSwapReason, InvestmentState};
 
 	use super::*;
@@ -1810,7 +1810,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::checked_from_rational(1, 2).unwrap(),
+					price: Ratio::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_investments_for(
@@ -2270,7 +2270,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_eq!(
@@ -2342,7 +2342,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2534,7 +2534,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2589,7 +2589,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2644,7 +2644,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Quantity::checked_from_rational(2, 1).unwrap(),
+					price: Ratio::checked_from_rational(2, 1).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
@@ -2796,7 +2796,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert!(Investments::investment_requires_collect(
@@ -2881,7 +2881,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(50),
-					price: Quantity::checked_from_rational(1, 2).unwrap(),
+					price: Ratio::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			assert_noop!(
@@ -2916,7 +2916,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::from_percent(100),
-					price: Quantity::checked_from_rational(1, 4).unwrap(),
+					price: Ratio::checked_from_rational(1, 4).unwrap(),
 				}
 			));
 			assert!(Investments::redemption_requires_collect(

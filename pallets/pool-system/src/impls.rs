@@ -472,6 +472,7 @@ mod benchmarks_utils {
 
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
+			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 
 			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
 				frame_support::assert_ok!(T::AssetRegistry::register_asset(
@@ -519,6 +520,14 @@ mod benchmarks_utils {
 				],
 				POOL_CURRENCY,
 				FUNDS.into(),
+			));
+
+			// Fund pool account
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
+			frame_support::assert_ok!(T::Tokens::mint_into(
+				POOL_CURRENCY,
+				&pool_account,
+				POOL_ACCOUNT_BALANCE.into()
 			));
 
 			// Investment in pool
