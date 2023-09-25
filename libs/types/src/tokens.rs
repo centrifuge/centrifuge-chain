@@ -183,18 +183,7 @@ where
 /// enables us to use the `TrancheCurrency` type separately where solely this
 /// enum variant would be relevant. Most notably, in the `struct Tranche`.
 #[derive(
-	Clone,
-	Copy,
-	Default,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {

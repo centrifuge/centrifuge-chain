@@ -28,7 +28,6 @@ impl<T: Config> Helper<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	T::InvestmentId: Default + Into<CurrencyOf<T>>,
 	T::Accountant: PoolBenchmarkHelper<AccountId = T::AccountId>
 		+ InvestmentIdBenchmarkHelper<
 			InvestmentId = T::InvestmentId,
@@ -49,7 +48,6 @@ where
 	where
 		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-		T::InvestmentId: Default + Into<CurrencyOf<T>>,
 		T::Accountant: PoolBenchmarkHelper<AccountId = T::AccountId>
 			+ InvestmentIdBenchmarkHelper<
 				InvestmentId = T::InvestmentId,
