@@ -7,7 +7,7 @@ implementing [these traits](https://reference.centrifuge.io/cfg_traits/rewards/i
 
 The user can stake an amount to claim a proportional reward.
 The staked amount is reserved/held from the user account for that currency when it's deposited
-and unreserved/released when it's withdrawed.
+and unreserved/released when it's withdrawn.
 
 The pallet stores three main entities:
 - Groups, where the reward is distributed.
@@ -52,4 +52,4 @@ For that, you need to add the interface traits as a dependency where you use the
 cfg-traits = { git = "https://github.com/centrifuge/centrifuge-chain.git", branch = "release-vX.X.X", default-features = false }
 ```
 
-*Take a look to the runtimes of this repository to see examples of how to configure it*
+*Take a look at the runtimes of this repository to see examples of how to configure it*
