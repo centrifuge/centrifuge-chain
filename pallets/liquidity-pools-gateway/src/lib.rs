@@ -94,7 +94,7 @@ pub mod pallet {
 		///
 		/// NOTE - this `Codec` trait is the Centrifuge trait for liquidity
 		/// pools' messages.
-		type Message: Codec + Clone;
+		type Message: Codec + Clone + Debug + PartialEq;
 
 		/// The message router type that is stored for each domain.
 		type Router: DomainRouter<Sender = Self::AccountId, Message = Self::Message>
@@ -145,8 +145,8 @@ pub mod pallet {
 		/// An outbound message has been submitted.
 		OutboundMessageSubmitted {
 			sender: T::AccountId,
-			message: Vec<u8>,
 			domain: Domain,
+			message: T::Message,
 		},
 	}
 
@@ -478,7 +478,7 @@ pub mod pallet {
 		fn submit(
 			sender: Self::Sender,
 			destination: Self::Destination,
-			msg: Self::Message,
+			message: Self::Message,
 		) -> DispatchResult {
 			ensure!(
 				destination != Domain::Centrifuge,
@@ -488,12 +488,12 @@ pub mod pallet {
 			let router =
 				DomainRouters::<T>::get(destination.clone()).ok_or(Error::<T>::RouterNotFound)?;
 
-			router.send(T::Sender::get(), msg.clone())?;
+			router.send(T::Sender::get(), message.clone())?;
 
 			Self::deposit_event(Event::OutboundMessageSubmitted {
 				sender,
-				message: msg.serialize(),
 				domain: destination,
+				message,
 			});
 
 			Ok(())

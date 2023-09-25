@@ -138,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1029,
+	spec_version: 1030,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1550,6 +1550,8 @@ parameter_types! {
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type CollectedForeignInvestmentHook =
+		pallet_liquidity_pools::hooks::CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter =

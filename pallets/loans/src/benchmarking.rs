@@ -13,10 +13,11 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
+	benchmarking::PoolBenchmarkHelper,
 	changes::ChangeGuard,
 	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolBenchmarkHelper, PoolWriteOffPolicyMutate,
+	Permissions, PoolWriteOffPolicyMutate,
 };
 use cfg_types::{
 	adjustments::Adjustment,
@@ -79,8 +80,8 @@ fn config_mocks() {
 	MockPools::mock_account_for(|_| 0);
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPools::mock_benchmark_create_pool(|_, _| {});
-	MockPools::mock_benchmark_give_ausd(|_, _| {});
+	MockPools::mock_bench_create_pool(|_, _| {});
+	MockPools::mock_bench_investor_setup(|_, _, _| {});
 	MockPrices::mock_feed_value(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
@@ -109,7 +110,7 @@ where
 		let pool_id = Default::default();
 
 		let pool_admin = account("pool_admin", 0, 0);
-		T::Pool::benchmark_create_pool(pool_id, &pool_admin);
+		T::Pool::bench_create_pool(pool_id, &pool_admin);
 
 		let loan_admin = account("loan_admin", 0, 0);
 		T::Permissions::add(
@@ -120,7 +121,7 @@ where
 		.unwrap();
 
 		let borrower = account::<T::AccountId>("borrower", 0, 0);
-		T::Pool::benchmark_give_ausd(&borrower, (FUNDS * CFG).into());
+		T::Pool::bench_investor_setup(pool_id, borrower.clone(), (FUNDS * CFG).into());
 		T::NonFungible::create_collection(&COLLECION_ID.into(), &borrower, &borrower).unwrap();
 		T::Permissions::add(
 			PermissionScope::Pool(pool_id),

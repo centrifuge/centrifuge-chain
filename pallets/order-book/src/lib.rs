@@ -54,7 +54,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
-	use sp_arithmetic::traits::BaseArithmetic;
+	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
@@ -353,6 +353,8 @@ pub mod pallet {
 		/// Error when unable to convert fee balance to asset balance when asset
 		/// out matches fee currency
 		BalanceConversionErr,
+		/// Error when the provided partial buy amount is too large.
+		BuyAmountTooLarge,
 	}
 
 	#[pallet::call]
@@ -459,50 +461,9 @@ pub mod pallet {
 		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
+			let buy_amount = order.buy_amount;
 
-			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, order.buy_amount),
-				Error::<T>::InsufficientAssetFunds,
-			);
-
-			Self::unreserve_order(&order)?;
-			T::TradeableAsset::transfer(
-				order.asset_in_id,
-				&account_id,
-				&order.placing_account,
-				order.buy_amount,
-				false,
-			)?;
-			T::TradeableAsset::transfer(
-				order.asset_out_id,
-				&order.placing_account,
-				&account_id,
-				order.max_sell_amount,
-				false,
-			)?;
-			Self::remove_order(order.order_id)?;
-
-			T::FulfilledOrderHook::notify_status_change(
-				order_id,
-				Swap {
-					amount: order.buy_amount,
-					currency_in: order.asset_in_id,
-					currency_out: order.asset_out_id,
-				},
-			)?;
-
-			Self::deposit_event(Event::OrderFulfillment {
-				order_id,
-				placing_account: order.placing_account,
-				fulfilling_account: account_id,
-				partial_fulfillment: false,
-				currency_in: order.asset_in_id,
-				currency_out: order.asset_out_id,
-				fulfillment_amount: order.buy_amount,
-				sell_rate_limit: order.max_sell_rate,
-			});
-
-			Ok(())
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
 		}
 
 		/// Adds a valid trading pair.
@@ -582,9 +543,107 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Fill an existing order, based on the provided partial buy amount.
+		#[pallet::call_index(7)]
+		#[pallet::weight(T::Weights::fill_order_partial())]
+		pub fn fill_order_partial(
+			origin: OriginFor<T>,
+			order_id: T::OrderIdNonce,
+			buy_amount: T::Balance,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			let order = <Orders<T>>::get(order_id)?;
+
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn fulfill_order_with_amount(
+			order: OrderOf<T>,
+			buy_amount: T::Balance,
+			account_id: T::AccountId,
+		) -> DispatchResult {
+			ensure!(
+				buy_amount >= order.min_fulfillment_amount,
+				Error::<T>::InsufficientOrderSize,
+			);
+
+			ensure!(
+				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, buy_amount),
+				Error::<T>::InsufficientAssetFunds,
+			);
+
+			let sell_amount = Self::convert_with_ratio(
+				order.asset_in_id,
+				order.asset_out_id,
+				order.max_sell_rate,
+				buy_amount,
+			)?;
+			let remaining_buy_amount = order
+				.buy_amount
+				.checked_sub(&buy_amount)
+				.ok_or(Error::<T>::BuyAmountTooLarge)?;
+			let partial_fulfillment = !remaining_buy_amount.is_zero();
+
+			if partial_fulfillment {
+				Self::update_order(
+					order.placing_account.clone(),
+					order.order_id,
+					remaining_buy_amount,
+					order.max_sell_rate,
+					remaining_buy_amount.min(order.min_fulfillment_amount),
+				)?;
+			} else {
+				T::TradeableAsset::release(
+					order.asset_out_id,
+					&order.placing_account,
+					sell_amount,
+					false,
+				)?;
+
+				Self::remove_order(order.order_id)?;
+			}
+
+			T::TradeableAsset::transfer(
+				order.asset_in_id,
+				&account_id,
+				&order.placing_account,
+				buy_amount,
+				false,
+			)?;
+			T::TradeableAsset::transfer(
+				order.asset_out_id,
+				&order.placing_account,
+				&account_id,
+				sell_amount,
+				false,
+			)?;
+
+			T::FulfilledOrderHook::notify_status_change(
+				order.order_id,
+				Swap {
+					amount: buy_amount,
+					currency_in: order.asset_in_id,
+					currency_out: order.asset_out_id,
+				},
+			)?;
+
+			Self::deposit_event(Event::OrderFulfillment {
+				order_id: order.order_id,
+				placing_account: order.placing_account,
+				fulfilling_account: account_id,
+				partial_fulfillment,
+				currency_in: order.asset_in_id,
+				currency_out: order.asset_out_id,
+				fulfillment_amount: buy_amount,
+				sell_rate_limit: order.max_sell_rate,
+			});
+
+			Ok(())
+		}
+
 		/// Remove an order from storage
 		pub fn remove_order(order_id: T::OrderIdNonce) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
@@ -921,6 +980,63 @@ pub mod pallet {
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
 			TradingPair::<T>::get(currency_in, currency_out).is_ok()
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::OrderBookBenchmarkHelper for Pallet<T>
+	where
+		T::AssetRegistry: orml_traits::asset_registry::Mutate<
+			AssetId = T::AssetCurrencyId,
+			Balance = T::Balance,
+			CustomMetadata = CustomMetadata,
+		>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type CurrencyId = T::AssetCurrencyId;
+		type OrderIdNonce = T::OrderIdNonce;
+
+		fn bench_setup_trading_pair(
+			asset_in: Self::CurrencyId,
+			asset_out: Self::CurrencyId,
+			amount_in: Self::Balance,
+			amount_out: Self::Balance,
+			decimals_in: u32,
+			decimals_out: u32,
+		) -> (Self::AccountId, Self::AccountId) {
+			let account_out: Self::AccountId =
+				frame_benchmarking::account::<Self::AccountId>("account_out", 1, 0);
+			let account_in: Self::AccountId =
+				frame_benchmarking::account::<Self::AccountId>("account_in", 2, 0);
+			crate::benchmarking::Helper::<T>::register_trading_assets(
+				asset_in.into(),
+				asset_out.into(),
+				decimals_in,
+				decimals_out,
+			);
+
+			frame_support::assert_ok!(T::TradeableAsset::mint_into(
+				asset_out,
+				&account_out,
+				amount_out
+			));
+			frame_support::assert_ok!(T::TradeableAsset::mint_into(
+				asset_in,
+				&account_in,
+				amount_in,
+			));
+
+			TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
+
+			(account_out, account_in)
+		}
+
+		fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
+			frame_support::assert_ok!(Self::fill_order_full(
+				frame_system::RawOrigin::Signed(trader.clone()).into(),
+				order_id
+			));
 		}
 	}
 }

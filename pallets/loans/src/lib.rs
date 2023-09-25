@@ -1111,6 +1111,10 @@ pub mod pallet {
 					.position(|(id, _)| *id == loan_id)
 					.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
+				PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
+					portfolio.remove_elem(loan_id)
+				})?;
+
 				Ok((
 					active_loans.swap_remove(index).1,
 					active_loans.len().ensure_into()?,
