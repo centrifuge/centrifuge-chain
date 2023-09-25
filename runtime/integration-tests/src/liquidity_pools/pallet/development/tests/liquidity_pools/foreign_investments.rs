@@ -1810,7 +1810,7 @@ mod mismatching_currencies {
 				default_investment_id(),
 				FulfillmentWithPrice {
 					of_amount: Perquintill::one(),
-					price: Quantity::checked_from_rational(1, 2).unwrap(),
+					price: Ratio::checked_from_rational(1, 2).unwrap(),
 				}
 			));
 			assert_ok!(Investments::collect_investments_for(
