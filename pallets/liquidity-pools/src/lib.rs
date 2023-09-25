@@ -69,7 +69,9 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-pub mod weights;
+// NOTE: Should be replaced with generated weights in the future. For now, let's
+// be defensive.
+pub mod defensive_weights;
 
 mod message;
 pub use message::*;
@@ -80,6 +82,8 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 pub mod hooks;
 mod inbound;
 
@@ -127,7 +131,7 @@ pub mod pallet {
 	use xcm::latest::MultiLocation;
 
 	use super::*;
-	use crate::weights::WeightInfo;
+	use crate::defensive_weights::WeightInfo;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
