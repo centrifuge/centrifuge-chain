@@ -26,6 +26,7 @@ mod anemoy_pool {
 	use frame_support::traits::{fungibles::Inspect, OnRuntimeUpgrade};
 	#[cfg(feature = "try-runtime")]
 	use pallet_pool_system::PoolDetailsOf;
+	use sp_std::vec;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
@@ -126,7 +127,7 @@ mod anemoy_pool {
 				pallet_investments::RedeemOrders::<Runtime>::iter_keys().count(),
 			]
 			.iter()
-			.sum() as u64,
+			.fold(0u64, |acc, x| acc.saturating_add(*x as u64)),
 		);
 
 		(res, weight)
