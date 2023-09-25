@@ -4,8 +4,8 @@ fn config_mocks(
 	transfer: (
 		LoanId,
 		LoanId,
-		RepaidPricingAmount<Runtime>,
-		PricingAmount<Runtime>,
+		RepaidInput<Runtime>,
+		PrincipalInput<Runtime>,
 	),
 ) {
 	MockPrices::mock_get(|id, pool_id| {
@@ -48,7 +48,7 @@ fn config_mocks(
 fn with_wrong_borrower() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
@@ -61,12 +61,12 @@ fn with_wrong_borrower() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::NotLoanBorrower
 		);
@@ -83,7 +83,7 @@ fn with_wrong_borrower_for_repaid_loan() {
 			},
 			OTHER_BORROWER,
 		);
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan(util::base_internal_loan());
 
@@ -93,12 +93,12 @@ fn with_wrong_borrower_for_repaid_loan() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::NotLoanBorrower
 		);
@@ -109,7 +109,7 @@ fn with_wrong_borrower_for_repaid_loan() {
 fn with_wrong_borrower_for_borrowed_loan() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan_by(
 			LoanInfo {
@@ -125,12 +125,12 @@ fn with_wrong_borrower_for_borrowed_loan() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::NotLoanBorrower
 		);
@@ -141,7 +141,7 @@ fn with_wrong_borrower_for_borrowed_loan() {
 fn with_wrong_loans() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
 			Loans::propose_transfer_debt(
@@ -149,12 +149,12 @@ fn with_wrong_loans() {
 				POOL_A,
 				0, // Does not exists
 				loan_id,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
 		);
@@ -165,12 +165,12 @@ fn with_wrong_loans() {
 				POOL_A,
 				loan_id,
 				0, // Does not exists
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
 		);
@@ -181,7 +181,7 @@ fn with_wrong_loans() {
 fn with_same_loan() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		assert_noop!(
 			Loans::propose_transfer_debt(
@@ -189,12 +189,12 @@ fn with_same_loan() {
 				POOL_A,
 				loan_id,
 				loan_id,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::TransferDebtToSameLoan
 		);
@@ -205,7 +205,7 @@ fn with_same_loan() {
 fn with_mismatch_internal_internal_amounts() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
@@ -218,12 +218,12 @@ fn with_mismatch_internal_internal_amounts() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE / 3),
+				PrincipalInput::Internal(COLLATERAL_VALUE / 3),
 			),
 			Error::<Runtime>::TransferDebtAmountMismatched
 		);
@@ -235,7 +235,7 @@ fn with_mismatch_external_internal_amounts() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_1, PricingAmount::External(amount));
+		util::borrow_loan(loan_1, PrincipalInput::External(amount));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
@@ -255,12 +255,12 @@ fn with_mismatch_external_internal_amounts() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::External(repay_amount),
+				RepaidInput {
+					principal: PrincipalInput::External(repay_amount),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::Internal(COLLATERAL_VALUE),
+				PrincipalInput::Internal(COLLATERAL_VALUE),
 			),
 			Error::<Runtime>::TransferDebtAmountMismatched
 		);
@@ -271,7 +271,7 @@ fn with_mismatch_external_internal_amounts() {
 fn with_mismatch_internal_external_amounts() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
@@ -286,12 +286,12 @@ fn with_mismatch_internal_external_amounts() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::Internal(COLLATERAL_VALUE),
+				RepaidInput {
+					principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::External(borrow_amount),
+				PrincipalInput::External(borrow_amount),
 			),
 			Error::<Runtime>::TransferDebtAmountMismatched
 		);
@@ -303,7 +303,7 @@ fn with_mismatch_external_external_amounts() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_1, PricingAmount::External(amount));
+		util::borrow_loan(loan_1, PrincipalInput::External(amount));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
@@ -324,12 +324,12 @@ fn with_mismatch_external_external_amounts() {
 				POOL_A,
 				loan_1,
 				loan_2,
-				RepaidPricingAmount {
-					principal: PricingAmount::External(repay_amount),
+				RepaidInput {
+					principal: PrincipalInput::External(repay_amount),
 					interest: 0,
 					unscheduled: 0,
 				},
-				PricingAmount::External(borrow_amount),
+				PrincipalInput::External(borrow_amount),
 			),
 			Error::<Runtime>::TransferDebtAmountMismatched
 		);
@@ -352,19 +352,19 @@ fn apply_without_released() {
 fn with_success_internals() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_internal_loan()
 		});
 
-		let repay_amount = RepaidPricingAmount {
-			principal: PricingAmount::Internal(COLLATERAL_VALUE),
+		let repay_amount = RepaidInput {
+			principal: PrincipalInput::Internal(COLLATERAL_VALUE),
 			interest: 0,
 			unscheduled: 0,
 		};
-		let borrow_amount = PricingAmount::Internal(COLLATERAL_VALUE);
+		let borrow_amount = PrincipalInput::Internal(COLLATERAL_VALUE);
 
 		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
 		assert_ok!(Loans::propose_transfer_debt(
@@ -392,19 +392,19 @@ fn with_success_externals() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_external_loan());
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_1, PricingAmount::External(amount));
+		util::borrow_loan(loan_1, PrincipalInput::External(amount));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_external_loan()
 		});
 
-		let repay_amount = RepaidPricingAmount {
-			principal: PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE)),
+		let repay_amount = RepaidInput {
+			principal: PrincipalInput::External(ExternalAmount::new(QUANTITY, PRICE_VALUE)),
 			interest: 0,
 			unscheduled: 0,
 		};
-		let borrow_amount = PricingAmount::External(ExternalAmount::new(QUANTITY, PRICE_VALUE));
+		let borrow_amount = PrincipalInput::External(ExternalAmount::new(QUANTITY, PRICE_VALUE));
 
 		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
 		assert_ok!(Loans::propose_transfer_debt(
@@ -434,19 +434,19 @@ fn with_success_externals() {
 fn with_transfer_roundtrip() {
 	new_test_ext().execute_with(|| {
 		let loan_1 = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_1, PricingAmount::Internal(COLLATERAL_VALUE / 2));
+		util::borrow_loan(loan_1, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
 
 		let loan_2 = util::create_loan(LoanInfo {
 			collateral: ASSET_BA,
 			..util::base_internal_loan()
 		});
 
-		let repay_amount = RepaidPricingAmount {
-			principal: PricingAmount::Internal(COLLATERAL_VALUE / 2),
+		let repay_amount = RepaidInput {
+			principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
 			interest: 0,
 			unscheduled: 0,
 		};
-		let borrow_amount = PricingAmount::Internal(COLLATERAL_VALUE / 2);
+		let borrow_amount = PrincipalInput::Internal(COLLATERAL_VALUE / 2);
 
 		config_mocks((loan_1, loan_2, repay_amount.clone(), borrow_amount.clone()));
 		assert_ok!(Loans::propose_transfer_debt(

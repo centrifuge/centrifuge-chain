@@ -36,10 +36,11 @@ use sp_std::time::Duration;
 use crate::{
 	entities::{
 		changes::{Change, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing, PricingAmount, RepaidPricingAmount,
+			Pricing,
 		},
 	},
 	pallet::*,
@@ -185,7 +186,7 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			PricingAmount::Internal(10.into()),
+			PrincipalInput::Internal(10.into()),
 		)
 		.unwrap();
 	}
@@ -196,8 +197,8 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(10.into()),
+			RepaidInput {
+				principal: PrincipalInput::Internal(10.into()),
 				interest: T::Balance::max_value(),
 				unscheduled: 0.into(),
 			},
@@ -252,12 +253,12 @@ where
 		Helper::<T>::borrow_loan(pool_id, loan_1);
 		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
 
-		let repaid_amount = RepaidPricingAmount {
-			principal: PricingAmount::Internal(10.into()),
+		let repaid_amount = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
 			interest: 0.into(),
 			unscheduled: 0.into(),
 		};
-		let borrow_amount = PricingAmount::Internal(10.into());
+		let borrow_amount = PrincipalInput::Internal(10.into());
 
 		Pallet::<T>::propose_transfer_debt(
 			RawOrigin::Signed(borrower).into(),
@@ -356,7 +357,7 @@ benchmarks! {
 		let pool_id = Helper::<T>::initialize_active_state(n);
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PricingAmount::Internal(10.into()))
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PrincipalInput::Internal(10.into()))
 
 	repay {
 		let n in 1..Helper::<T>::max_active_loans() - 1;
@@ -366,8 +367,8 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-		let repaid = RepaidPricingAmount {
-			principal: PricingAmount::Internal(10.into()),
+		let repaid = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
 			interest: 0.into(),
 			unscheduled: 0.into()
 		};
@@ -466,12 +467,12 @@ benchmarks! {
 		Helper::<T>::borrow_loan(pool_id, loan_1);
 		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
 
-		let repaid_amount = RepaidPricingAmount {
-			principal: PricingAmount::Internal(10.into()),
+		let repaid_amount = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
 			interest: 0.into(),
 			unscheduled: 0.into()
 		};
-		let borrow_amount = PricingAmount::Internal(10.into());
+		let borrow_amount = PrincipalInput::Internal(10.into());
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
 

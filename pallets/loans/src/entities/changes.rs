@@ -5,7 +5,7 @@ use frame_support::{storage::bounded_vec::BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 
 use crate::{
-	entities::pricing::{PricingAmount, RepaidPricingAmount},
+	entities::input::{PrincipalInput, RepaidInput},
 	pallet::Config,
 	types::{
 		policy::WriteOffRule, valuation::ValuationMethod, InterestPayments, Maturity,
@@ -39,10 +39,5 @@ pub enum LoanMutation<Rate> {
 pub enum Change<T: Config> {
 	Loan(T::LoanId, LoanMutation<T::Rate>),
 	Policy(BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>),
-	TransferDebt(
-		T::LoanId,
-		T::LoanId,
-		RepaidPricingAmount<T>,
-		PricingAmount<T>,
-	),
+	TransferDebt(T::LoanId, T::LoanId, RepaidInput<T>, PrincipalInput<T>),
 }

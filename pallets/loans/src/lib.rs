@@ -45,6 +45,7 @@
 /// High level types that uses `pallet::Config`
 pub mod entities {
 	pub mod changes;
+	pub mod input;
 	pub mod interest;
 	pub mod loans;
 	pub mod pricing;
@@ -81,8 +82,8 @@ pub mod pallet {
 	use codec::HasCompact;
 	use entities::{
 		changes::{Change, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
-		pricing::{PricingAmount, RepaidPricingAmount},
 	};
 	use frame_support::{
 		pallet_prelude::*,
@@ -303,13 +304,13 @@ pub mod pallet {
 		Borrowed {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: PricingAmount<T>,
+			amount: PrincipalInput<T>,
 		},
 		/// An amount was repaid for a loan
 		Repaid {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidPricingAmount<T>,
+			amount: RepaidInput<T>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -477,7 +478,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: PricingAmount<T>,
+			amount: PrincipalInput<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -510,7 +511,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidPricingAmount<T>,
+			amount: RepaidInput<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -778,8 +779,8 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
 			to_loan_id: T::LoanId,
-			repaid_amount: RepaidPricingAmount<T>,
-			borrow_amount: PricingAmount<T>,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -853,7 +854,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: &PricingAmount<T>,
+			amount: &PrincipalInput<T>,
 			permissionless: bool,
 		) -> Result<u32, DispatchError> {
 			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
@@ -884,9 +885,9 @@ pub mod pallet {
 			who: &T::AccountId,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: &RepaidPricingAmount<T>,
+			amount: &RepaidInput<T>,
 			permissionless: bool,
-		) -> Result<(RepaidPricingAmount<T>, u32), DispatchError> {
+		) -> Result<(RepaidInput<T>, u32), DispatchError> {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
 				if !permissionless {
 					Self::ensure_loan_borrower(who, loan.borrower())?;
@@ -901,8 +902,8 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
 			to_loan_id: T::LoanId,
-			repaid_amount: RepaidPricingAmount<T>,
-			borrow_amount: PricingAmount<T>,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
 			permissionless: bool,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			ensure!(

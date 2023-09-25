@@ -10,11 +10,12 @@ use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 use super::{
 	entities::{
 		changes::{Change, InternalMutation, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::{ActiveLoan, LoanInfo},
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
-			ActivePricing, Pricing, PricingAmount, RepaidPricingAmount,
+			ActivePricing, Pricing,
 		},
 	},
 	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},

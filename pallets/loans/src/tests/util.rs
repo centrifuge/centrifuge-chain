@@ -153,7 +153,7 @@ pub fn create_loan_by(loan: LoanInfo<Runtime>, borrower: AccountId) -> LoanId {
 	LastLoanId::<Runtime>::get(POOL_A)
 }
 
-pub fn borrow_loan(loan_id: LoanId, borrow_amount: PricingAmount<Runtime>) {
+pub fn borrow_loan(loan_id: LoanId, borrow_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 	MockPrices::mock_register_id(|_, _| Ok(()));
@@ -171,7 +171,7 @@ pub fn borrow_loan(loan_id: LoanId, borrow_amount: PricingAmount<Runtime>) {
 	MockPrices::mock_register_id(|_, _| panic!("no register_id() mock"));
 }
 
-pub fn repay_loan(loan_id: LoanId, repay_amount: PricingAmount<Runtime>) {
+pub fn repay_loan(loan_id: LoanId, repay_amount: PrincingInput<Runtime>) {
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
@@ -179,7 +179,7 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: PricingAmount<Runtime>) {
 		RuntimeOrigin::signed(borrower(loan_id)),
 		POOL_A,
 		loan_id,
-		RepaidPricingAmount {
+		RepaidInput {
 			principal: repay_amount,
 			interest: u128::MAX,
 			unscheduled: 0,

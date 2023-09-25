@@ -20,9 +20,10 @@ use sp_runtime::{
 use crate::{
 	entities::{
 		changes::LoanMutation,
+		input::{PrincipalInput, RepaidInput},
 		pricing::{
 			external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing,
-			Pricing, PricingAmount, RepaidPricingAmount,
+			Pricing,
 		},
 	},
 	pallet::{AssetOf, Config, Error, PriceOf},
@@ -101,7 +102,7 @@ impl<T: Config> CreatedLoan<T> {
 	pub fn activate(
 		self,
 		pool_id: T::PoolId,
-		initial_amount: PricingAmount<T>,
+		initial_amount: PrincipalInput<T>,
 	) -> Result<ActiveLoan<T>, DispatchError> {
 		ActiveLoan::new(
 			pool_id,
@@ -188,7 +189,7 @@ impl<T: Config> ActiveLoan<T> {
 		pool_id: T::PoolId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
-		initial_amount: PricingAmount<T>,
+		initial_amount: PrincipalInput<T>,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
 		Ok(ActiveLoan {
@@ -300,7 +301,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.write_down(value)
 	}
 
-	fn ensure_can_borrow(&self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+	fn ensure_can_borrow(&self, amount: &PrincipalInput<T>, pool_id: T::PoolId) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.internal()?;
@@ -342,7 +343,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn borrow(&mut self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+	pub fn borrow(&mut self, amount: &PrincipalInput<T>, pool_id: T::PoolId) -> DispatchResult {
 		self.ensure_can_borrow(amount, pool_id)?;
 
 		self.total_borrowed.ensure_add_assign(amount.balance()?)?;
@@ -367,9 +368,9 @@ impl<T: Config> ActiveLoan<T> {
 	/// - Checking repay restrictions
 	fn prepare_repayment(
 		&self,
-		mut amount: RepaidPricingAmount<T>,
+		mut amount: RepaidInput<T>,
 		pool_id: T::PoolId,
-	) -> Result<RepaidPricingAmount<T>, DispatchError> {
+	) -> Result<RepaidInput<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.principal.internal()?;
@@ -411,9 +412,9 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn repay(
 		&mut self,
-		amount: RepaidPricingAmount<T>,
+		amount: RepaidInput<T>,
 		pool_id: T::PoolId,
-	) -> Result<RepaidPricingAmount<T>, DispatchError> {
+	) -> Result<RepaidInput<T>, DispatchError> {
 		let amount = self.prepare_repayment(amount, pool_id)?;
 
 		self.total_repaid
