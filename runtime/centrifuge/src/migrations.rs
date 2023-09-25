@@ -16,7 +16,6 @@ pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
 /// native on Polkadot's AssetHub.
 mod anemoy_pool {
-
 	use cfg_primitives::PoolId;
 	use cfg_traits::PoolInspect;
 	use cfg_types::tokens::CurrencyId;
@@ -31,11 +30,9 @@ mod anemoy_pool {
 	use sp_std::vec::Vec;
 
 	use super::*;
-	#[cfg(feature = "try-runtime")]
 	use crate::PoolSystem;
 
 	const ANEMOY_POOL_ID: PoolId = 4_139_607_887;
-	#[cfg(feature = "try-runtime")]
 	const LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	const DOT_NATIVE_USDC: CurrencyId = CurrencyId::ForeignAsset(6);
 
@@ -107,10 +104,12 @@ mod anemoy_pool {
 
 	fn verify_sanity_checks() -> (bool, Weight) {
 		let res =
-			crate::Tokens::balance(LP_ETH_USDC, &PoolSystem::account_for(ANEMOY_POOL_ID)) == 0
-				&& pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
-					.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
-					.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+			crate::Tokens::balance(
+				LP_ETH_USDC,
+				&<PoolSystem as PoolInspect<_, _>>::account_for(ANEMOY_POOL_ID),
+			) == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
+				.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
 				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
 				.count() == 0 && pallet_investments::InvestOrders::<Runtime>::iter_keys()
 				.filter(|(_, investment)| investment.pool_id == ANEMOY_POOL_ID)
