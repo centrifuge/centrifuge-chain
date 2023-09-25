@@ -18,12 +18,13 @@ pub type UpgradeCentrifuge1021 = anemoy_pool::Migration;
 mod anemoy_pool {
 
 	use cfg_primitives::PoolId;
+	use cfg_traits::PoolInspect;
 	use cfg_types::tokens::CurrencyId;
 	#[cfg(feature = "try-runtime")]
 	use codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
-	use frame_support::traits::OnRuntimeUpgrade;
+	use frame_support::traits::{fungibles::Inspect, OnRuntimeUpgrade};
 	#[cfg(feature = "try-runtime")]
 	use pallet_pool_system::PoolDetailsOf;
 	#[cfg(feature = "try-runtime")]
@@ -106,9 +107,10 @@ mod anemoy_pool {
 
 	fn verify_sanity_checks() -> (bool, Weight) {
 		let res =
-			pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
-				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
-				.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+			crate::Tokens::balance(LP_ETH_USDC, &PoolSystem::account_for(ANEMOY_POOL_ID)) == 0
+				&& pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+					.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
+					.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
 				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
 				.count() == 0 && pallet_investments::InvestOrders::<Runtime>::iter_keys()
 				.filter(|(_, investment)| investment.pool_id == ANEMOY_POOL_ID)
@@ -117,16 +119,21 @@ mod anemoy_pool {
 				.count() == 0;
 
 		let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(
-			0u64.saturating_add(
-				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
-			)
-			.saturating_add(
-				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
-			)
-			.saturating_add(pallet_investments::InvestOrders::<Runtime>::iter_keys().count() as u64)
-			.saturating_add(pallet_investments::RedeemOrders::<Runtime>::iter_keys().count() as u64)
-			// 2x, first for the sanity checks and now for calculating these weights
-			.saturating_mul(2),
+			1u64 // Anemoy pool account balance read
+				.saturating_add(
+					pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
+				)
+				.saturating_add(
+					pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
+				)
+				.saturating_add(
+					pallet_investments::InvestOrders::<Runtime>::iter_keys().count() as u64,
+				)
+				.saturating_add(
+					pallet_investments::RedeemOrders::<Runtime>::iter_keys().count() as u64,
+				)
+				// 2x, first for the sanity checks and now for calculating these weights
+				.saturating_mul(2),
 		);
 
 		(res, weight)
