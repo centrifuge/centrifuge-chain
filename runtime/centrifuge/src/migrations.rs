@@ -109,7 +109,7 @@ mod anemoy_pool {
 				&<PoolSystem as PoolInspect<_, _>>::account_for(ANEMOY_POOL_ID),
 			) == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
 				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
-				.count() == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
+				.count() == 0 && pallet_investments::ActiveRedeemOrders::<Runtime>::iter_keys()
 				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
 				.count() == 0 && pallet_investments::InvestOrders::<Runtime>::iter_keys()
 				.filter(|(_, investment)| investment.pool_id == ANEMOY_POOL_ID)
@@ -118,21 +118,13 @@ mod anemoy_pool {
 				.count() == 0;
 
 		let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(
-			1u64 // Anemoy pool account balance read
-				.saturating_add(
-					pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
-				)
-				.saturating_add(
-					pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count() as u64,
-				)
-				.saturating_add(
-					pallet_investments::InvestOrders::<Runtime>::iter_keys().count() as u64,
-				)
-				.saturating_add(
-					pallet_investments::RedeemOrders::<Runtime>::iter_keys().count() as u64,
-				)
-				// 2x, first for the sanity checks and now for calculating these weights
-				.saturating_mul(2),
+			vec![
+				1, // pool account balance read
+				pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys().count(),
+				pallet_investments::ActiveRedeemOrders::<Runtime>::iter_keys().count(),
+				pallet_investments::InvestOrders::<Runtime>::iter_keys().count(),
+				pallet_investments::RedeemOrders::<Runtime>::iter_keys().count()
+			].iter().sum() as u64
 		);
 
 		(res, weight)

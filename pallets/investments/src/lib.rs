@@ -250,7 +250,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub(crate) type ActiveRedeemOrders<T: Config> =
+	pub type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
