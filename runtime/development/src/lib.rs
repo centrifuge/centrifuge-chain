@@ -1546,7 +1546,6 @@ impl orml_asset_registry::Config for Runtime {
 
 parameter_types! {
 	pub DefaultTokenSellRatio: Ratio = Ratio::one();
-	pub DefaultMinSwapFulfillmentAmount: Balance = 10 * CFG;
 }
 
 impl pallet_foreign_investments::Config for Runtime {
@@ -1559,11 +1558,8 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyConverter =
 		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
-	type DecimalConverter =
-		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultMinSwapFulfillmentAmount = DefaultMinSwapFulfillmentAmount;
 	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
@@ -1854,6 +1850,7 @@ impl pallet_transfer_allowlist::Config for Runtime {
 
 parameter_types! {
 		pub const OrderPairVecSize: u32 = 1_000u32;
+		pub MinFulfillmentAmountNative: Balance = 10 * CFG;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1861,7 +1858,10 @@ impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type DecimalConverter =
+		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;

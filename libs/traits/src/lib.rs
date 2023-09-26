@@ -472,11 +472,15 @@ pub trait TokenSwaps<Account> {
 	/// `sell_rate_limit` defines the highest price acceptable for
 	/// `currency_in` currency when buying with `currency_out`. This
 	/// protects order placer if market changes unfavourably for swap order.
-	/// For example, with a `sell_rate_limit` of `3/2` one asset in should never
-	/// cost more than 1.5 units of asset out. Returns `Result` with `OrderId`
-	/// upon successful order creation.
+	/// For example, with a `sell_rate_limit` of `3/2`, one `asset_in`
+	/// should never cost more than 1.5 units of `asset_out`. Returns `Result`
+	/// with `OrderId` upon successful order creation.
 	///
-	/// Example usage with pallet_order_book impl:
+	/// NOTE: The minimum fulfillment amount is implicitly set by the
+	/// implementor.
+	///
+	/// Example usage with `pallet_order_book` impl:
+	/// ```rust
 	/// OrderBook::place_order(
 	///     {AccountId},
 	///     CurrencyId::ForeignAsset(0),
@@ -485,8 +489,9 @@ pub trait TokenSwaps<Account> {
 	///     Quantity::checked_from_rational(3u32, 2u32).unwrap(),
 	///     100 * FOREIGN_ASSET_0_DECIMALS
 	/// )
-	/// Would return Ok({OrderId})
-	/// and create the following order in storage:
+	/// ```
+	/// Would return `Ok({OrderId}` and create the following order in storage:
+	/// ```rust
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
@@ -494,31 +499,31 @@ pub trait TokenSwaps<Account> {
 	///     asset_out_id: CurrencyId::ForeignAsset(1),
 	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     sell_rate_limit: Quantity::checked_from_rational(3u32,
-	/// 2u32).unwrap(),     min_fulfillment_amount: 100 *
-	/// FOREIGN_ASSET_0_DECIMALS,     max_sell_amount: 150 *
-	/// FOREIGN_ASSET_1_DECIMALS }
+	///     sell_rate_limit: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
+	///     max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS,
+	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
+	/// }
+	/// ```
 	fn place_order(
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fulfillment_amount: Self::Balance,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
-	/// As with create order `sell_rate_limit` defines the highest price
-	/// acceptable for `currency_in` currency when buying with `currency_out`.
-	/// Returns a Dispatch result.
+	/// As with creating an order, the `sell_rate_limit` defines the highest
+	/// price acceptable for `currency_in` currency when buying with
+	/// `currency_out`. Returns a Dispatch result.
 	///
-	/// This Can fail for various reasons
+	/// NOTE: The minimum fulfillment amount is implicitly set by the
+	/// implementor.
 	///
-	/// E.g. min_fulfillment_amount is lower and
-	///      the system has already fulfilled up to the previous
-	///      one.
+	/// This Can fail for various reasons.
 	///
-	/// Example usage with pallet_order_book impl:
+	/// Example usage with `pallet_order_book` impl:
+	/// ```rust
 	/// OrderBook::update_order(
 	///     {AccountId},
 	///     {OrderId},
@@ -526,8 +531,9 @@ pub trait TokenSwaps<Account> {
 	///     Quantity::checked_from_integer(2u32).unwrap(),
 	///     6 * FOREIGN_ASSET_0_DECIMALS
 	/// )
-	/// Would return Ok(())
-	/// and update the following order in storage:
+	/// ```
+	/// Would return `Ok(())` and update the following order in storage:
+	/// ```rust
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
@@ -536,15 +542,15 @@ pub trait TokenSwaps<Account> {
 	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
-	///     min_fulfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
 	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
+	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
 	/// }
+	/// ```
 	fn update_order(
 		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fulfillment_amount: Self::Balance,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair

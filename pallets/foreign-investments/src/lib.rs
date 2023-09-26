@@ -173,15 +173,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultTokenSellRatio: Get<Self::BalanceRatio>;
 
-		/// The default minimum fulfillment amount for creating or updating swap
-		/// orders through `TokenSwaps.
-		///
-		/// NOTE: The amount is expected to be denominated in native currency.
-		/// When applying to a swap order, it will be re-denominated into the
-		/// target currency.
-		#[pallet::constant]
-		type DefaultMinSwapFulfillmentAmount: Get<Self::Balance>;
-
 		/// The token swap order identifying type
 		type TokenSwapOrderId: Parameter
 			+ Member
@@ -246,17 +237,6 @@ pub mod pallet {
 		type CurrencyConverter: cfg_traits::IdentityCurrencyConversion<
 			Balance = Self::Balance,
 			Currency = Self::CurrencyId,
-			Error = DispatchError,
-		>;
-
-		/// Type which provides a decimal conversion from native to a foreign
-		/// currency.
-		///
-		/// NOTE: Required for `DefaultMinSwapFulfillmentAmount`.
-		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
-			Self::Balance,
-			Self::CurrencyId,
-			Self::Balance,
 			Error = DispatchError,
 		>;
 

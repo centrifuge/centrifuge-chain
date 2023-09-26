@@ -41,9 +41,9 @@ use cfg_types::{
 	},
 };
 use development_runtime::{
-	Balances, DefaultMinSwapFulfillmentAmount, ForeignInvestments, Investments, LiquidityPools,
-	LocationToAccountId, OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime,
-	RuntimeOrigin, System, Tokens, TreasuryAccount,
+	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
+	MinFulfillmentAmountNative, OrmlAssetRegistry, Permissions, PoolSystem,
+	Runtime as DevelopmentRuntime, RuntimeOrigin, System, Tokens, TreasuryAccount,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -3364,7 +3364,7 @@ mod mismatching_currencies {
 				invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
 			dbg!(System::events());
 			dbg!(swap_amount);
-			dbg!(DefaultMinSwapFulfillmentAmount::get());
+			dbg!(MinFulfillmentAmountNative::get());
 			assert!(System::events().iter().any(|e| {
 				e.event
 					== pallet_order_book::Event::<DevelopmentRuntime>::OrderUpdated {
@@ -3951,7 +3951,7 @@ mod setup {
 
 	pub(crate) fn min_fulfillment_amount(currency_id: CurrencyId) -> Balance {
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter::<OrmlAssetRegistry>::to_asset_balance(
-			DefaultMinSwapFulfillmentAmount::get(),
+			MinFulfillmentAmountNative::get(),
 			currency_id,
 		)
 		.expect("CurrencyId should be registered in AssetRegistry")
