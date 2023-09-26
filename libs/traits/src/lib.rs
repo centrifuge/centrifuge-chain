@@ -480,7 +480,7 @@ pub trait TokenSwaps<Account> {
 	/// implementor.
 	///
 	/// Example usage with `pallet_order_book` impl:
-	/// ```rust
+	/// ```ignore
 	/// OrderBook::place_order(
 	///     {AccountId},
 	///     CurrencyId::ForeignAsset(0),
@@ -491,7 +491,7 @@ pub trait TokenSwaps<Account> {
 	/// )
 	/// ```
 	/// Would return `Ok({OrderId}` and create the following order in storage:
-	/// ```rust
+	/// ```ignore
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
@@ -523,7 +523,7 @@ pub trait TokenSwaps<Account> {
 	/// This Can fail for various reasons.
 	///
 	/// Example usage with `pallet_order_book` impl:
-	/// ```rust
+	/// ```ignore
 	/// OrderBook::update_order(
 	///     {AccountId},
 	///     {OrderId},
@@ -533,7 +533,7 @@ pub trait TokenSwaps<Account> {
 	/// )
 	/// ```
 	/// Would return `Ok(())` and update the following order in storage:
-	/// ```rust
+	/// ```ignore
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
