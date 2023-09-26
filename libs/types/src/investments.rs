@@ -138,7 +138,7 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 
 /// The collected investment/redemption amount for an account
 #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
+pub struct CollectedAmount<Balance> {
 	/// The amount which was collected
 	/// * If investment: Tranche tokens
 	/// * If redemption: Payment currency
