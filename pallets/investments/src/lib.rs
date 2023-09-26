@@ -46,6 +46,7 @@ use sp_std::{
 	vec::Vec,
 };
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -162,7 +163,8 @@ pub mod pallet {
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
-		type MaxOutstandingCollects: Get<u64>;
+		#[pallet::constant]
+		type MaxOutstandingCollects: Get<u32>;
 
 		/// Something that can handle payments and transfers of
 		/// currencies
@@ -224,7 +226,7 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type InvestOrders<T: Config> = StorageDoubleMap<
+	pub type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -234,7 +236,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub(crate) type RedeemOrders<T: Config> = StorageDoubleMap<
+	pub type RedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -245,12 +247,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub(crate) type ActiveInvestOrders<T: Config> =
+	pub type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub(crate) type ActiveRedeemOrders<T: Config> =
+	pub type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
@@ -423,7 +425,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		#[pallet::call_index(0)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
@@ -443,7 +445,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		#[pallet::call_index(1)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
@@ -458,7 +460,7 @@ pub mod pallet {
 		/// Collect the results of a user's invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_investments(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(2)]
 		pub fn collect_investments(
 			origin: OriginFor<T>,
@@ -472,7 +474,7 @@ pub mod pallet {
 		/// Collect the results of a user's redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_redemptions(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(3)]
 		pub fn collect_redemptions(
 			origin: OriginFor<T>,
@@ -486,7 +488,7 @@ pub mod pallet {
 		/// Collect the results of another users invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_investments(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(4)]
 		pub fn collect_investments_for(
 			origin: OriginFor<T>,
@@ -501,7 +503,7 @@ pub mod pallet {
 		/// Collect the results of another users redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_redemptions(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(5)]
 		pub fn collect_redemptions_for(
 			origin: OriginFor<T>,
@@ -687,7 +689,7 @@ where
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
-						.saturating_add(T::MaxOutstandingCollects::get()),
+						.saturating_add(T::MaxOutstandingCollects::get().into()),
 					cur_order_id,
 				);
 
@@ -814,7 +816,7 @@ where
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
-						.saturating_add(T::MaxOutstandingCollects::get()),
+						.saturating_add(T::MaxOutstandingCollects::get().into()),
 					cur_order_id,
 				);
 

@@ -98,7 +98,7 @@ mod increase_investment {
 					assert_eq!(curr_in, POOL_CURR);
 					assert_eq!(curr_out, USER_CURR);
 					assert_eq!(amount, AMOUNT);
-					assert_eq!(limit, DefaultTokenSellRate::get());
+					assert_eq!(limit, DefaultTokenSellRatio::get());
 					assert_eq!(min, AMOUNT);
 					Ok(ORDER_ID)
 				},
@@ -177,7 +177,7 @@ mod increase_investment {
 				assert_eq!(account_id, USER);
 				assert_eq!(order_id, ORDER_ID);
 				assert_eq!(amount, INITIAL_AMOUNT + INCREASE_AMOUNT);
-				assert_eq!(limit, DefaultTokenSellRate::get());
+				assert_eq!(limit, DefaultTokenSellRatio::get());
 				assert_eq!(min, INITIAL_AMOUNT + INCREASE_AMOUNT);
 				Ok(())
 			});
@@ -230,7 +230,7 @@ mod increase_investment {
 					assert_eq!(curr_in, POOL_CURR);
 					assert_eq!(curr_out, USER_CURR);
 					assert_eq!(amount, INCREASE_AMOUNT);
-					assert_eq!(limit, DefaultTokenSellRate::get());
+					assert_eq!(limit, DefaultTokenSellRatio::get());
 					assert_eq!(min, INCREASE_AMOUNT);
 					Ok(ORDER_ID)
 				},

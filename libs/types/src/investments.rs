@@ -185,7 +185,7 @@ pub struct Swap<
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
-	/// The amount of outgoing currency which shall be exchanged.
+	/// The amount of incoming currency which shall be bought.
 	pub amount: Balance,
 }
 
@@ -237,30 +237,29 @@ pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 	pub amount_remaining: Balance,
 }
 
-/// A representation of an executed collected investment.
+/// A representation of an executed collected foreign investment or redemption.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedForeignCollectInvest<Balance> {
-	/// The amount that was actually collected
-	pub amount_currency_payout: Balance,
-	/// The amount of tranche tokens received for the investment made
-	pub amount_tranche_tokens_payout: Balance,
-	/// The unprocessed plus processed but not yet collected investment amount
-	/// denominated in foreign currency
-	pub amount_remaining_invest: Balance,
-}
-
-/// A representation of an executed collected redemption.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-
-pub struct ExecutedForeignCollectRedeem<Balance, Currency> {
-	/// The foreign currency in which the payout takes place
+pub struct ExecutedForeignCollect<Balance, Currency> {
+	/// The foreign currency in which ...
+	/// * If investment: the payment took place
+	/// * If redemption: the payout takes place
 	pub currency: Currency,
-	/// The amount of `currency` being paid out to the investor
+
+	/// The amount of `currency`...
+	/// * If investment: that was collected
+	/// * If redemption: paid out to the investor
 	pub amount_currency_payout: Balance,
-	/// How many tranche tokens were actually redeemed
+
+	/// The amount of tranche tokens...
+	/// * If investment: received for the investment made
+	/// * If redemption: which were actually redeemed
 	pub amount_tranche_tokens_payout: Balance,
-	/// The unprocessed plus processed but not yet collected redemption amount
-	/// of tranche tokens
-	pub amount_remaining_redeem: Balance,
+
+	/// The unprocessed ...
+	/// * If investment: investment amount of `currency` (denominated in foreign
+	///   currency)
+	/// * If redemption: redemption amount of tranche tokens (denominated in
+	///   pool currency)
+	pub amount_remaining: Balance,
 }

@@ -44,7 +44,6 @@ use core::convert::TryFrom;
 use cfg_traits::liquidity_pools::{InboundQueue, OutboundQueue};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::ExecutedForeignCollectInvest,
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
@@ -70,7 +69,9 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-pub mod weights;
+// NOTE: Should be replaced with generated weights in the future. For now, let's
+// be defensive.
+pub mod defensive_weights;
 
 mod message;
 pub use message::*;
@@ -81,6 +82,8 @@ pub use routers::*;
 mod contract;
 pub use contract::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 pub mod hooks;
 mod inbound;
 
@@ -128,7 +131,7 @@ pub mod pallet {
 	use xcm::latest::MultiLocation;
 
 	use super::*;
-	use crate::weights::WeightInfo;
+	use crate::defensive_weights::WeightInfo;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -227,7 +230,6 @@ pub mod pallet {
 			CurrencyId = CurrencyIdOf<Self>,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
-			CollectInvestResult = ExecutedForeignCollectInvest<Self::Balance>,
 		>;
 
 		/// The source of truth for the transferability of assets via the
@@ -679,7 +681,7 @@ pub mod pallet {
 		/// pool on the domain derived from the given currency.
 		#[pallet::call_index(9)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn allow_pool_currency(
+		pub fn allow_investment_currency(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
@@ -690,11 +692,18 @@ pub mod pallet {
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
-			// Ensure currency matches the currency of the pool
+			// Ensure currency is allowed as payment and payout currency for pool
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			// Required for increasing and collecting investments
 			ensure!(
-				T::ForeignInvestment::accepted_payment_currency(invest_id, currency_id),
+				T::ForeignInvestment::accepted_payment_currency(invest_id.clone(), currency_id),
 				Error::<T>::InvalidPaymentCurrency
+			);
+			// Required for decreasing investments as well as increasing, decreasing and
+			// collecting redemptions
+			ensure!(
+				T::ForeignInvestment::accepted_payout_currency(invest_id, currency_id),
+				Error::<T>::InvalidPayoutCurrency
 			);
 
 			// Ensure the currency is enabled as pool_currency
@@ -799,8 +808,6 @@ pub mod pallet {
 				},
 			)
 		}
-
-		// TODO(@future): pub fn update_tranche_investment_limit
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -917,13 +924,18 @@ pub mod pallet {
 		/// Ensures that currency id can be derived from the
 		/// GeneralCurrencyIndex and that the former is an accepted payout
 		/// currency for the given investment id.
-		///
-		/// NOTE: Exactly the same as try_get_payment_currency for now.
 		pub fn try_get_payout_currency(
 			invest_id: <T as pallet::Config>::TrancheCurrency,
 			currency_index: GeneralCurrencyIndexOf<T>,
 		) -> Result<CurrencyIdOf<T>, DispatchError> {
-			Self::try_get_payment_currency(invest_id, currency_index)
+			let currency = Self::try_get_currency_id(currency_index)?;
+
+			ensure!(
+				T::ForeignInvestment::accepted_payout_currency(invest_id, currency),
+				Error::<T>::InvalidPaymentCurrency
+			);
+
+			Ok(currency)
 		}
 	}
 
@@ -1025,7 +1037,6 @@ pub mod pallet {
 					tranche_id,
 					T::DomainAccountToAccountId::convert((sender.domain(), investor)),
 					currency.into(),
-					sender,
 				),
 				Message::CollectRedeem {
 					pool_id,

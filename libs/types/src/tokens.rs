@@ -187,8 +187,8 @@ where
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
-	pub(crate) pool_id: PoolId,
-	pub(crate) tranche_id: TrancheId,
+	pub pool_id: PoolId,
+	pub tranche_id: TrancheId,
 }
 
 impl From<TrancheCurrency> for CurrencyId {

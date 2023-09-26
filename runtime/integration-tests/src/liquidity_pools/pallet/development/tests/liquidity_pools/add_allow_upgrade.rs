@@ -37,7 +37,7 @@ use cfg_types::{
 	},
 };
 use development_runtime::{
-	LiquidityPools, LocationToAccountId, OrmlAssetRegistry, OrmlTokens, Permissions,
+	LiquidityPools, LocationToAccountId, OrderBook, OrmlAssetRegistry, OrmlTokens, Permissions,
 	Runtime as DevelopmentRuntime, RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Mutate};
@@ -426,7 +426,7 @@ fn add_currency_should_fail() {
 }
 
 #[test]
-fn allow_pool_currency() {
+fn allow_investment_currency() {
 	TestNet::reset();
 	Development::execute_with(|| {
 		setup_pre_requirements();
@@ -461,7 +461,7 @@ fn allow_pool_currency() {
 			})
 		));
 
-		assert_ok!(LiquidityPools::allow_pool_currency(
+		assert_ok!(LiquidityPools::allow_investment_currency(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
 			default_tranche_id(pool_id),
@@ -482,7 +482,7 @@ fn allow_pool_should_fail() {
 		setup_pre_requirements();
 		// Should fail if pool does not exist
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				// Tranche id is arbitrary in this case as pool does not exist
@@ -509,16 +509,35 @@ fn allow_pool_should_fail() {
 		// Create pool
 		create_currency_pool(pool_id, currency_id, 10_000 * dollar(12));
 
-		// Should fail if asset is not pool currency
+		// Should fail if asset is not payment currency
 		assert!(currency_id != ausd_currency_id);
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				ausd_currency_id,
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPaymentCurrency
+		);
+
+		// Allow as payment but not payout currency
+		assert_ok!(OrderBook::add_trading_pair(
+			RuntimeOrigin::root(),
+			currency_id,
+			ausd_currency_id,
+			Default::default()
+		));
+		// Should fail if asset is not payout currency
+		enable_liquidity_pool_transferability(ausd_currency_id);
+		assert_noop!(
+			LiquidityPools::allow_investment_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				default_tranche_id(pool_id),
+				ausd_currency_id,
+			),
+			pallet_liquidity_pools::Error::<DevelopmentRuntime>::InvalidPayoutCurrency
 		);
 
 		// Should fail if currency is not liquidityPools transferable
@@ -540,7 +559,7 @@ fn allow_pool_should_fail() {
 			}),
 		));
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				default_tranche_id(pool_id),
@@ -568,7 +587,7 @@ fn allow_pool_should_fail() {
 			}),
 		));
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				default_tranche_id(pool_id),
@@ -592,7 +611,7 @@ fn allow_pool_should_fail() {
 			None,
 		));
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id,
 				default_tranche_id(pool_id),
@@ -618,7 +637,7 @@ fn allow_pool_should_fail() {
 		create_currency_pool(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
 		// Should fail if currency is not foreign asset
 		assert_noop!(
-			LiquidityPools::allow_pool_currency(
+			LiquidityPools::allow_investment_currency(
 				RuntimeOrigin::signed(BOB.into()),
 				pool_id + 1,
 				// Tranche id is arbitrary in this case, so we don't need to check for the exact

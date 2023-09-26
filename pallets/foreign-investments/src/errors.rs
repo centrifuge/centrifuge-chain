@@ -32,6 +32,12 @@ pub enum InvestError {
 	CollectTransition,
 	/// The investment needs to be collected before it can be updated further.
 	CollectRequired,
+	/// The provided currency does not match the one stored when the first
+	/// investment increase was triggered.
+	///
+	/// NOTE: As long as the `InvestmentState` has not been cleared, the
+	/// payment currency cannot change from the initially provided one.
+	InvalidPaymentCurrency,
 }
 
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -41,13 +47,6 @@ pub enum RedeemError {
 	IncreaseTransition,
 	/// Failed to collect the redemption.
 	CollectTransition,
-	/// Failed to retrieve the foreign payout currency for a collected
-	/// redemption.
-	///
-	/// NOTE: This error can only occur, if a user tries to collect before
-	/// having increased their redemption as this would store the payout
-	/// currency.
-	CollectPayoutCurrencyNotFound,
 	/// The desired decreasing amount exceeds the max amount.
 	DecreaseAmountOverflow,
 	/// Failed to transition the state as a result of a decrease.
@@ -56,6 +55,12 @@ pub enum RedeemError {
 	FulfillSwapOrderTransition,
 	/// The redemption needs to be collected before it can be updated further.
 	CollectRequired,
+	/// The provided currency does not match the one stored when the first
+	/// redemption increase was triggered.
+	///
+	/// NOTE: As long as the `RedemptionState` has not been cleared, the
+	/// payout currency cannot change from the initially provided one.
+	InvalidPayoutCurrency,
 }
 
 impl<T: Config> From<InvestError> for Error<T> {

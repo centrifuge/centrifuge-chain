@@ -4,7 +4,7 @@ use cfg_mocks::{
 };
 use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
-	ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo, Swap,
+	ExecutedForeignCollect, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo, Swap,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
@@ -51,7 +51,7 @@ impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
 }
 
 frame_support::parameter_types! {
-	pub DefaultTokenSellRate: Ratio = FixedU128::from_float(1.5);
+	pub DefaultTokenSellRatio: Ratio = FixedU128::from_float(1.5);
 }
 
 // ======================
@@ -69,6 +69,7 @@ frame_support::construct_runtime!(
 		MockTokenSwaps: pallet_mock_token_swaps,
 		MockDecreaseInvestHook: pallet_mock_status_notification::<Instance1>,
 		MockCollectRedeemHook: pallet_mock_status_notification::<Instance2>,
+		MockCollectInvestHook: pallet_mock_status_notification::<Instance3>,
 		MockCurrencyConversion: pallet_mock_currency_conversion,
 		MockPools: pallet_mock_pools,
 		ForeignInvestment: pallet_foreign_investments,
@@ -125,7 +126,13 @@ impl pallet_mock_status_notification::Config<Hook1> for Runtime {
 type Hook2 = pallet_mock_status_notification::Instance2;
 impl pallet_mock_status_notification::Config<Hook2> for Runtime {
 	type Id = ForeignInvestmentInfo<AccountId, InvestmentId, ()>;
-	type Status = ExecutedForeignCollectRedeem<Balance, CurrencyId>;
+	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
+}
+
+type Hook3 = pallet_mock_status_notification::Instance3;
+impl pallet_mock_status_notification::Config<Hook3> for Runtime {
+	type Id = ForeignInvestmentInfo<AccountId, InvestmentId, ()>;
+	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
 }
 
 impl pallet_mock_currency_conversion::Config for Runtime {
@@ -138,21 +145,23 @@ impl pallet_mock_pools::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CurrencyId = CurrencyId;
 	type PoolId = PoolId;
+	type TrancheCurrency = InvestmentId;
 	type TrancheId = TrancheId;
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CollectedForeignInvestmentHook = MockCollectInvestHook;
 	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
 	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
-	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
 	type PoolId = PoolId;
 	type PoolInspect = MockPools;
-	type Rate = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = OrderId;
 	type TokenSwaps = MockTokenSwaps;

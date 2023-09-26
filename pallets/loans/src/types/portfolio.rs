@@ -71,11 +71,11 @@ where
 		self.last_updated
 	}
 
-	pub fn value_of(&self, id: ElemId) -> Option<&Balance> {
+	pub fn value_of(&self, id: ElemId) -> Option<Balance> {
 		self.values
 			.iter()
 			.find(|(elem_id, _)| *elem_id == id)
-			.map(|(_, balance)| balance)
+			.map(|(_, balance)| *balance)
 	}
 
 	pub fn insert_elem(&mut self, id: ElemId, pv: Balance) -> DispatchResult {
@@ -83,7 +83,8 @@ where
 			.try_push((id, pv))
 			.map_err(|_| DispatchError::Other("Max portfolio size reached"))?;
 
-		Ok(self.value.ensure_add_assign(pv)?)
+		self.value.ensure_add_assign(pv)?;
+		Ok(())
 	}
 
 	pub fn update_elem(&mut self, id: ElemId, new_pv: Balance) -> DispatchResult {
@@ -108,6 +109,18 @@ where
 
 		*old_pv = new_pv;
 
+		Ok(())
+	}
+
+	pub fn remove_elem(&mut self, elem_id: ElemId) -> DispatchResult {
+		let index = self
+			.values
+			.iter()
+			.position(|(id, _)| *id == elem_id)
+			.ok_or(DispatchError::CannotLookup)?;
+
+		let (_, pv) = self.values.swap_remove(index);
+		self.value.ensure_sub_assign(pv)?;
 		Ok(())
 	}
 }
@@ -135,4 +148,44 @@ pub enum PortfolioValuationUpdateType {
 	Exact,
 	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
+}
+
+#[cfg(test)]
+mod tests {
+	use frame_support::assert_ok;
+	use sp_core::ConstU32;
+
+	use super::*;
+
+	#[test]
+	fn general_usage() {
+		let mut portfolio = PortfolioValuation::<u128, u64, ConstU32<3>>::new(10);
+
+		assert_ok!(portfolio.insert_elem(1, 100));
+		assert_ok!(portfolio.insert_elem(2, 200));
+		assert_ok!(portfolio.insert_elem(3, 300));
+
+		assert_eq!(portfolio.value(), 600);
+
+		// Increase
+		assert_ok!(portfolio.update_elem(1, 300));
+		assert_eq!(portfolio.value(), 800);
+
+		// Do not change
+		assert_ok!(portfolio.update_elem(2, 200));
+		assert_eq!(portfolio.value(), 800);
+
+		// Decrease
+		assert_ok!(portfolio.update_elem(3, 100));
+		assert_eq!(portfolio.value(), 600);
+
+		assert_eq!(portfolio.value_of(1), Some(300));
+		assert_eq!(portfolio.value_of(2), Some(200));
+		assert_eq!(portfolio.value_of(3), Some(100));
+
+		assert_ok!(portfolio.remove_elem(1));
+		assert_ok!(portfolio.remove_elem(2));
+		assert_ok!(portfolio.remove_elem(3));
+		assert_eq!(portfolio.value(), 0);
+	}
 }
