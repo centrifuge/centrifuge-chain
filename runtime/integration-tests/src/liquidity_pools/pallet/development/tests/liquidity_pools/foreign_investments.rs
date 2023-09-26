@@ -43,7 +43,7 @@ use cfg_types::{
 use development_runtime::{
 	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
 	OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin,
-	System, Tokens,
+	System, Tokens, TreasuryAccount,
 };
 use frame_support::{
 	assert_noop, assert_ok,
@@ -75,6 +75,7 @@ use crate::{
 		tests::liquidity_pools::{
 			foreign_investments::setup::{
 				do_initial_increase_investment, do_initial_increase_redemption,
+				ensure_executed_collect_redeem_not_dispatched,
 			},
 			setup::{
 				asset_metadata, create_ausd_pool, create_currency_pool,
@@ -454,6 +455,24 @@ mod same_currencies {
 				}
 				.into()
 			}));
+
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectInvest {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: amount,
+							tranche_tokens_payout: amount,
+							remaining_invest_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -520,7 +539,6 @@ mod same_currencies {
 				investor.clone(),
 				default_investment_id()
 			));
-
 			assert_eq!(
 				InvestmentPaymentCurrency::<DevelopmentRuntime>::get(
 					&investor,
@@ -562,6 +580,23 @@ mod same_currencies {
 							remaining_investment_invest: invest_amount / 2,
 						},
 						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectInvest {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: invest_amount / 2,
+							tranche_tokens_payout: invest_amount * 2,
+							remaining_invest_amount: invest_amount / 2,
+						},
 					}
 					.into()
 			}));
@@ -649,6 +684,23 @@ mod same_currencies {
 							remaining_investment_invest: 0,
 						},
 						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectInvest {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: invest_amount / 2,
+							tranche_tokens_payout: invest_amount,
+							remaining_invest_amount: 0,
+						},
 					}
 					.into()
 			}));
@@ -1061,6 +1113,23 @@ mod same_currencies {
 					}
 					.into()
 			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: amount,
+							tranche_tokens_payout: amount,
+							remaining_redeem_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -1134,6 +1203,23 @@ mod same_currencies {
 							remaining_investment_redeem: redeem_amount / 2,
 						},
 						outcome: CollectOutcome::FullyCollected,
+					}
+					.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: redeem_amount / 8,
+							tranche_tokens_payout: redeem_amount / 2,
+							remaining_redeem_amount: redeem_amount / 2,
+						},
 					}
 					.into()
 			}));
@@ -1243,6 +1329,23 @@ mod same_currencies {
 					.count(),
 				1
 			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							currency_payout: redeem_amount / 4,
+							tranche_tokens_payout: redeem_amount / 2,
+							remaining_redeem_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -1831,6 +1934,23 @@ mod mismatching_currencies {
 				Tokens::balance(default_investment_id().into(), &sending_domain_locator),
 				invest_amount_pool_denominated * 2
 			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectInvest {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated,
+							tranche_tokens_payout: invest_amount_pool_denominated * 2,
+							remaining_invest_amount: 0,
+						},
+					}
+					.into()
+			}));
 
 			// Should not be cleared as invest state is swapping into pool currency
 			assert_eq!(
@@ -2334,6 +2454,7 @@ mod mismatching_currencies {
 					}
 					.into()
 			}));
+			ensure_executed_collect_redeem_not_dispatched();
 
 			// Process remaining redemption at 25% rate, i.e. 1 pool currency =
 			// 4 tranche tokens
@@ -2422,6 +2543,23 @@ mod mismatching_currencies {
 				ForeignInvestments::token_swap_order_ids(&investor, default_investment_id())
 					.is_none()
 			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated / 4,
+							tranche_tokens_payout: invest_amount_pool_denominated,
+							remaining_redeem_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -2581,6 +2719,23 @@ mod mismatching_currencies {
 					}
 					.into()
 			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated / 8,
+							tranche_tokens_payout: invest_amount_pool_denominated / 2,
+							remaining_redeem_amount: invest_amount_pool_denominated / 2,
+						},
+					}
+					.into()
+			}));
 
 			// Process remaining redemption at 25% rate, i.e. 1 pool currency =
 			// 4 tranche tokens
@@ -2620,6 +2775,23 @@ mod mismatching_currencies {
 						buy_amount: invest_amount_pool_denominated / 4 * 3,
 						sell_rate_limit: Ratio::one(),
 						min_fulfillment_amount: invest_amount_pool_denominated / 4 * 3,
+					}
+					.into()
+			}));
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated / 8,
+							tranche_tokens_payout: invest_amount_pool_denominated / 2,
+							remaining_redeem_amount: 0,
+						},
 					}
 					.into()
 			}));
@@ -2686,6 +2858,7 @@ mod mismatching_currencies {
 					}
 				}
 			);
+			ensure_executed_collect_redeem_not_dispatched();
 
 			// Fulfilling order should the invest
 			assert_ok!(OrderBook::fill_order_full(
@@ -2717,6 +2890,23 @@ mod mismatching_currencies {
 				ForeignInvestments::token_swap_order_ids(&investor, default_investment_id())
 					.is_none()
 			);
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated * 2,
+							tranche_tokens_payout: invest_amount_pool_denominated,
+							remaining_redeem_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -2908,6 +3098,21 @@ mod mismatching_currencies {
 					}
 				}
 			);
+			// ExecutedCollectRedeem should not have been dispatched
+			assert!(System::events().iter().any(|e| {
+				match &e.event {
+					development_runtime::RuntimeEvent::LiquidityPoolsGateway(
+						pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+							message,
+							..
+						},
+					) => match message {
+						pallet_liquidity_pools::Message::ExecutedCollectRedeem { .. } => false,
+						_ => true,
+					},
+					_ => true,
+				}
+			}));
 
 			// Process remaining redemption at 25% rate, i.e. 1 pool currency = 4 tranche
 			// tokens
@@ -2931,7 +3136,6 @@ mod mismatching_currencies {
 				&investor,
 				default_investment_id()
 			));
-			// TODO: Assert ExecutedCollectRedeem was not dispatched
 			assert_eq!(
 				RedemptionState::<DevelopmentRuntime>::get(&investor, default_investment_id()),
 				RedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
@@ -2943,6 +3147,37 @@ mod mismatching_currencies {
 					}
 				}
 			);
+			// ExecutedCollectRedeem should not have been dispatched as RedemptionState is
+			// still swapping
+			ensure_executed_collect_redeem_not_dispatched();
+
+			// Fulfill redemption swap
+			assert_ok!(OrderBook::fill_order_full(
+				RuntimeOrigin::signed(trader.clone()),
+				swap_order_id + 1
+			));
+			assert!(!RedemptionState::<DevelopmentRuntime>::contains_key(
+				&investor,
+				default_investment_id()
+			));
+			dbg!(System::events());
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: redeem_amount_foreign_denominated / 8 * 3,
+							tranche_tokens_payout: redeem_amount_pool_denominated,
+							remaining_redeem_amount: 0,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 }
@@ -3280,5 +3515,21 @@ mod setup {
 		}
 
 		amount_foreign_denominated
+	}
+
+	pub(crate) fn ensure_executed_collect_redeem_not_dispatched() {
+		assert!(System::events().iter().any(|e| {
+			match &e.event {
+				development_runtime::RuntimeEvent::LiquidityPoolsGateway(
+					pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						message, ..
+					},
+				) => match message {
+					pallet_liquidity_pools::Message::ExecutedCollectRedeem { .. } => false,
+					_ => true,
+				},
+				_ => true,
+			}
+		}));
 	}
 }
