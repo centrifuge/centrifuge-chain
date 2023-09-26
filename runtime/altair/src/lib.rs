@@ -1390,6 +1390,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 
 parameter_types! {
 	pub DefaultTokenSellRatio: Ratio = Ratio::one();
+	pub DefaultMinSwapFulfillmentAmount: Balance = 10 * CFG;
 }
 
 impl pallet_foreign_investments::Config for Runtime {
@@ -1402,8 +1403,11 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyConverter =
 		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
+	type DecimalConverter =
+		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
+	type DefaultMinSwapFulfillmentAmount = DefaultMinSwapFulfillmentAmount;
 	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;

@@ -14,7 +14,8 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
-	IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
+	ConversionToAssetBalance, IdentityCurrencyConversion, PoolInspect, StatusNotificationHook,
+	TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
@@ -798,8 +799,11 @@ impl<T: Config> Pallet<T> {
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
 					T::DefaultTokenSellRatio::get(),
-					// The minimum fulfillment must be everything
-					swap.amount,
+					// Convert default min fulfillment amount from native to incoming currency
+					T::DecimalConverter::to_asset_balance(
+						T::DefaultMinSwapFulfillmentAmount::get(),
+						swap.currency_in,
+					)?,
 				)?;
 				ForeignInvestmentInfo::<T>::insert(
 					swap_order_id,
@@ -827,8 +831,11 @@ impl<T: Config> Pallet<T> {
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
 					T::DefaultTokenSellRatio::get(),
-					// The minimum fulfillment must be everything
-					swap.amount,
+					// Convert default min fulfillment amount from native to incoming currency
+					T::DecimalConverter::to_asset_balance(
+						T::DefaultMinSwapFulfillmentAmount::get(),
+						swap.currency_in,
+					)?,
 				)?;
 				TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
 				ForeignInvestmentInfo::<T>::insert(

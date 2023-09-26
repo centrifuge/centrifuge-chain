@@ -596,11 +596,32 @@ pub trait IdentityCurrencyConversion {
 }
 
 /// A trait for trying to convert between two types.
-// TODO: Remove usage for the one from Polkadot once we are on the same version
+// TODO: Remove usage for the one from sp_runtime::traits once we are on
+// the same Polkadot version
 pub trait TryConvert<A, B> {
 	type Error;
 
 	/// Attempt to make conversion. If returning [Result::Err], the inner must
 	/// always be `a`.
 	fn try_convert(a: A) -> Result<B, Self::Error>;
+}
+
+/// Converts a balance value into an asset balance.
+// TODO: Remove usage for the one from frame_support::traits::tokens once we are
+// on the same Polkadot version
+pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
+	type Error;
+	fn to_asset_balance(balance: InBalance, asset_id: AssetId)
+		-> Result<AssetBalance, Self::Error>;
+}
+
+/// Converts an asset balance value into balance.
+// TODO: Remove usage for the one from frame_support::traits::tokens once we are
+// on the same Polkadot version
+pub trait ConversionFromAssetBalance<AssetBalance, AssetId, OutBalance> {
+	type Error;
+	fn from_asset_balance(
+		balance: AssetBalance,
+		asset_id: AssetId,
+	) -> Result<OutBalance, Self::Error>;
 }
