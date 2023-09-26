@@ -16,6 +16,9 @@
 
 mod evm;
 mod liquidity_pools;
+mod loans {
+	mod development;
+}
 mod pools;
 mod rewards;
 mod runtime_apis;
