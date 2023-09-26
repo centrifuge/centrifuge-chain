@@ -880,6 +880,23 @@ mod same_currencies {
 				.amount,
 				final_amount
 			);
+
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedDecreaseRedeemOrder {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(currency_id),
+							tranche_tokens_payout: decrease_amount,
+							remaining_redeem_amount: final_amount,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -1583,9 +1600,7 @@ mod same_currencies {
 		mod payment_payout_currency {
 			use super::*;
 			use crate::{
-				liquidity_pools::pallet::development::tests::{
-					liquidity_pools::foreign_investments::setup::enable_usdt_trading,
-				},
+				liquidity_pools::pallet::development::tests::liquidity_pools::foreign_investments::setup::enable_usdt_trading,
 				utils::USDT_CURRENCY_ID,
 			};
 
@@ -2289,9 +2304,22 @@ mod mismatching_currencies {
 					.is_none()
 			);
 			assert!(ForeignInvestments::foreign_investment_info(swap_order_id).is_none());
-
-			// TODO: Check for event that ExecutedDecreaseInvestOrder was
-			// dispatched
+			assert!(System::events().iter().any(|e| {
+				e.event
+					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
+						sender: TreasuryAccount::get(),
+						domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+						message: pallet_liquidity_pools::Message::ExecutedDecreaseInvestOrder {
+							pool_id,
+							tranche_id: default_tranche_id(pool_id),
+							investor: investor.clone().into(),
+							currency: general_currency_index(foreign_currency),
+							currency_payout: invest_amount_foreign_denominated / 2,
+							remaining_invest_amount: invest_amount_foreign_denominated / 2,
+						},
+					}
+					.into()
+			}));
 		});
 	}
 
@@ -3160,7 +3188,6 @@ mod mismatching_currencies {
 				&investor,
 				default_investment_id()
 			));
-			dbg!(System::events());
 			assert!(System::events().iter().any(|e| {
 				e.event
 					== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
