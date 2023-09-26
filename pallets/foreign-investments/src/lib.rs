@@ -54,6 +54,12 @@ pub mod hooks;
 pub mod impls;
 pub mod types;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
@@ -73,7 +79,7 @@ pub mod pallet {
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::{InvestState, RedeemState};
+	use types::{InvestState, InvestStateConfig, RedeemState};
 
 	use super::*;
 
@@ -100,13 +106,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency type of transferrable tokens
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
 		type PoolId: Member
@@ -118,17 +118,10 @@ pub mod pallet {
 			+ core::fmt::Debug;
 
 		/// The tranche id type required for the investment identifier
-		type TrancheId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<[u8; 16]>;
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The investment identifying type required for the investment type
 		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
 			+ Clone
 			+ Member
 			+ Parameter
@@ -249,6 +242,16 @@ pub mod pallet {
 		>;
 	}
 
+	/// Aux type for configurations that inherents from `Config`
+	#[derive(PartialEq)]
+	pub struct Of<T: Config>(PhantomData<T>);
+
+	impl<T: Config> InvestStateConfig for Of<T> {
+		type Balance = T::Balance;
+		type CurrencyConverter = T::CurrencyConverter;
+		type CurrencyId = T::CurrencyId;
+	}
+
 	/// Maps an investor and their `InvestmentId` to the corresponding
 	/// `InvestState`.
 	///
@@ -263,7 +266,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		InvestState<T>,
+		InvestState<Of<T>>,
 		ValueQuery,
 	>;
 
@@ -400,7 +403,7 @@ pub mod pallet {
 		ForeignInvestmentUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: InvestState<T>,
+			state: InvestState<Of<T>>,
 		},
 		ForeignInvestmentCleared {
 			investor: T::AccountId,

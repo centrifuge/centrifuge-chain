@@ -345,9 +345,6 @@ macro_rules! execute_call {
 	($input:expr) => {{
 		$crate::execute::<CallIds<T>, _, _, _>(|| (), $input)
 	}};
-	($input:expr, $gen:expr) => {{
-		$crate::execute::<CallIds<$gen>, _, _, _>(|| (), $input)
-	}};
 }
 
 /// Execute a function from the function storage for a pallet with instances.

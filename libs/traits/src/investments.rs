@@ -105,7 +105,7 @@ pub trait Investment<AccountId> {
 pub trait InvestmentCollector<AccountId> {
 	type Error: Debug;
 	type InvestmentId;
-	type Result: Debug;
+	type Result;
 
 	/// Collect the results of a user's invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
