@@ -381,8 +381,7 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
 	{
-		/// Create an order, with the minimum fulfillment amount set to the buy
-		/// amount, as the first iteration will not have partial fulfillment
+		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::Weights::create_order())]
 		pub fn create_order(
