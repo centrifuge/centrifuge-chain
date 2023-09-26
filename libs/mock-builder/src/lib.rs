@@ -122,8 +122,10 @@
 //! }
 //! ```
 //!
-//! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of
-//! how to use a *mock pallet*. It supports any kind of trait, with reference
+//! Take a look to the [pallet
+//! tests](https://github.com/foss3/runtime-pallet-library/blob/main/mock-builder/tests/pallet.rs)
+//! to have a user view of how to use a *mock pallet*.
+//! It supports any kind of trait, with reference
 //! parameters and generics at trait level and method level.
 //!
 //! ## Mock pallet creation
@@ -344,9 +346,6 @@ macro_rules! register_call_instance {
 macro_rules! execute_call {
 	($input:expr) => {{
 		$crate::execute::<CallIds<T>, _, _, _>(|| (), $input)
-	}};
-	($input:expr, $gen:expr) => {{
-		$crate::execute::<CallIds<$gen>, _, _, _>(|| (), $input)
 	}};
 }
 
