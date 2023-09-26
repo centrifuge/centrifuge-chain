@@ -33,18 +33,16 @@ pub mod pallet {
 					T::CurrencyId,
 					T::Balance,
 					T::SellRatio,
-					T::Balance,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
 		) {
-			register_call!(move |(a, b, c, d, e, g)| f(a, b, c, d, e, g));
+			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::SellRatio, T::Balance) -> DispatchResult
-				+ 'static,
+			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::SellRatio) -> DispatchResult + 'static,
 		) {
-			register_call!(move |(a, b, c, d, e)| f(a, b, c, d, e));
+			register_call!(move |(a, b, c, d)| f(a, b, c, d));
 		}
 
 		pub fn mock_cancel_order(f: impl Fn(T::OrderId) -> DispatchResult + 'static) {
@@ -79,9 +77,8 @@ pub mod pallet {
 			c: Self::CurrencyId,
 			d: Self::Balance,
 			e: Self::SellRatio,
-			f: Self::Balance,
 		) -> Result<Self::OrderId, DispatchError> {
-			execute_call!((a, b, c, d, e, f))
+			execute_call!((a, b, c, d, e))
 		}
 
 		fn update_order(
@@ -89,9 +86,8 @@ pub mod pallet {
 			b: Self::OrderId,
 			c: Self::Balance,
 			d: Self::SellRatio,
-			e: Self::Balance,
 		) -> DispatchResult {
-			execute_call!((a, b, c, d, e))
+			execute_call!((a, b, c, d))
 		}
 
 		fn cancel_order(a: Self::OrderId) -> DispatchResult {
