@@ -32,7 +32,7 @@ use cfg_types::{
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
+	traits::tokens::fungibles::{Inspect, Mutate},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;

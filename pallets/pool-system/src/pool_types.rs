@@ -117,7 +117,7 @@ pub struct PoolDetails<
 	MaxTranches,
 > where
 	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
+	Balance: FixedPointOperand + sp_arithmetic::MultiplyRational,
 	MaxTranches: Get<u32>,
 {
 	/// Currency that the pool is denominated in (immutable).
@@ -246,7 +246,7 @@ impl<
 		PoolId,
 		MaxTranches,
 	> where
-	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
+	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
