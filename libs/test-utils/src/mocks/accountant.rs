@@ -166,6 +166,27 @@ macro_rules! impl_mock_accountant {
 				}
 			}
 
+			#[cfg(feature = "runtime-benchmarks")]
+			impl<Tokens> cfg_traits::benchmarking::PoolBenchmarkHelper for $name<Tokens> {
+				type AccountId = $account_id;
+				type Balance = $balance;
+				type PoolId = ();
+
+				fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+
+				fn bench_investor_setup(_: Self::PoolId, _: Self::AccountId, _: Self::Balance) {}
+			}
+
+			#[cfg(feature = "runtime-benchmarks")]
+			impl<Tokens> cfg_traits::benchmarking::InvestmentIdBenchmarkHelper for $name<Tokens> {
+				type InvestmentId = $investment_id;
+				type PoolId = ();
+
+				fn bench_default_investment_id(_: Self::PoolId) -> Self::InvestmentId {
+					Self::InvestmentId::default()
+				}
+			}
+
 			impl cfg_traits::investments::InvestmentProperties<$account_id> for InvestmentInfo {
 				type Currency = $currency_id;
 				type Id = $investment_id;

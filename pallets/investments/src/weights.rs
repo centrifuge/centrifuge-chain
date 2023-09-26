@@ -11,6 +11,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub trait WeightInfo {}
+use frame_support::weights::Weight;
 
-impl WeightInfo for () {}
+pub trait WeightInfo {
+	fn update_invest_order() -> Weight;
+	fn update_redeem_order() -> Weight;
+	fn collect_investments(n: u32) -> Weight;
+	fn collect_redemptions(n: u32) -> Weight;
+}
+
+impl WeightInfo for () {
+	fn update_invest_order() -> Weight {
+		Weight::zero()
+	}
+
+	fn update_redeem_order() -> Weight {
+		Weight::zero()
+	}
+
+	fn collect_investments(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn collect_redemptions(_: u32) -> Weight {
+		Weight::zero()
+	}
+}
