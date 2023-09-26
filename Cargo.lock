@@ -202,7 +202,7 @@ dependencies = [
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "fp-rpc",
@@ -221,13 +221,13 @@ dependencies = [
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -267,9 +267,9 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-scheduler",
- "pallet-session",
- "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-uniques",
@@ -279,7 +279,7 @@ dependencies = [
  "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "runtime-common",
  "scale-info",
@@ -297,9 +297,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -1051,7 +1051,7 @@ dependencies = [
  "cumulus-client-network",
  "cumulus-client-service",
  "cumulus-pallet-session-benchmarking",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-inprocess-interface",
  "cumulus-relay-chain-interface",
@@ -1074,11 +1074,11 @@ dependencies = [
  "log",
  "pallet-anchors",
  "pallet-pool-system",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec 3.6.5",
  "polkadot-cli",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-service",
  "runtime-common",
  "runtime-integration-tests",
@@ -1087,7 +1087,7 @@ dependencies = [
  "sc-cli",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-consensus-grandpa 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "sc-consensus-grandpa",
  "sc-executor 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-network-sync 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -1112,7 +1112,7 @@ dependencies = [
  "sp-offchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-transaction-pool 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
@@ -1121,7 +1121,7 @@ dependencies = [
  "try-runtime-cli",
  "url",
  "vergen",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -1139,7 +1139,7 @@ dependencies = [
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "fp-rpc",
@@ -1158,13 +1158,13 @@ dependencies = [
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -1206,9 +1206,9 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-scheduler",
- "pallet-session",
- "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-uniques",
@@ -1218,7 +1218,7 @@ dependencies = [
  "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "runtime-common",
  "scale-info",
@@ -1237,9 +1237,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -1277,7 +1277,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "mock-builder",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -1290,7 +1290,7 @@ dependencies = [
 name = "cfg-primitives"
 version = "2.0.0"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-collective",
@@ -1303,8 +1303,8 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -1360,7 +1360,7 @@ dependencies = [
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -1371,7 +1371,7 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "hex",
  "pallet-aura",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-consensus-aura",
@@ -1948,14 +1948,14 @@ source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e
 dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "futures",
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -1973,14 +1973,14 @@ dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
  "cumulus-client-consensus-proposer",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-interface",
  "futures",
  "parity-scale-codec 3.6.5",
  "polkadot-node-primitives",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus-aura",
@@ -1997,7 +1997,7 @@ dependencies = [
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "substrate-prometheus-endpoint 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "tracing",
 ]
@@ -2009,13 +2009,13 @@ source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e
 dependencies = [
  "async-trait",
  "cumulus-client-pov-recovery",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "dyn-clone",
  "futures",
  "log",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "schnellru",
@@ -2055,8 +2055,8 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "polkadot-node-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2072,7 +2072,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "futures",
  "futures-timer",
@@ -2080,7 +2080,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2100,12 +2100,12 @@ dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
  "cumulus-client-pov-recovery",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-inprocess-interface",
  "cumulus-relay-chain-interface",
  "cumulus-relay-chain-minimal-node",
  "futures",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2146,7 +2146,7 @@ name = "cumulus-pallet-dmp-queue"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
@@ -2155,7 +2155,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -2165,7 +2165,7 @@ source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e
 dependencies = [
  "bytes",
  "cumulus-pallet-parachain-system-proc-macro",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-parachain-inherent",
  "environmental",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2173,7 +2173,7 @@ dependencies = [
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-externalities 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2184,7 +2184,7 @@ dependencies = [
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-trie 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -2206,7 +2206,7 @@ dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2217,7 +2217,7 @@ name = "cumulus-pallet-xcm"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
@@ -2225,7 +2225,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -2233,7 +2233,7 @@ name = "cumulus-pallet-xcmp-queue"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2245,8 +2245,25 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "cumulus-primitives-core"
+version = "0.1.0"
+source = "git+https://github.com/moonbeam-foundation/cumulus?branch=moonbeam-polkadot-v0.9.43#e3c7110a29df950e8ef1bc0a5c616332987f0725"
+dependencies = [
+ "parity-scale-codec 3.6.5",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "scale-info",
+ "sp-api 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-trie 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -2255,15 +2272,15 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "parity-scale-codec 3.6.5",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-trie 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -2272,7 +2289,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "cumulus-test-relay-sproof-builder",
  "parity-scale-codec 3.6.5",
@@ -2294,12 +2311,12 @@ name = "cumulus-primitives-timestamp"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "futures",
  "parity-scale-codec 3.6.5",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
 [[package]]
@@ -2307,7 +2324,7 @@ name = "cumulus-primitives-utility"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
  "parity-scale-codec 3.6.5",
@@ -2315,9 +2332,9 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -2326,7 +2343,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "futures",
  "futures-timer",
@@ -2351,7 +2368,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "futures",
  "jsonrpsee-core",
  "parity-scale-codec 3.6.5",
@@ -2370,21 +2387,21 @@ source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e
 dependencies = [
  "array-bytes 6.1.0",
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "cumulus-relay-chain-rpc-interface",
  "futures",
  "lru 0.9.0",
  "polkadot-availability-recovery 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
  "polkadot-collator-protocol 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
- "polkadot-core-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-network-bridge",
  "polkadot-node-collation-generation 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
  "polkadot-node-core-runtime-api 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-authority-discovery",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2407,7 +2424,7 @@ version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
  "async-trait",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-relay-chain-interface",
  "futures",
  "futures-timer",
@@ -2421,7 +2438,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2436,9 +2453,9 @@ name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -2739,7 +2756,7 @@ dependencies = [
  "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "fp-rpc",
@@ -2759,13 +2776,13 @@ dependencies = [
  "orml-asset-registry",
  "orml-oracle",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-block-rewards",
@@ -2808,10 +2825,10 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-scheduler",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transfer-allowlist",
  "pallet-treasury",
@@ -2822,7 +2839,7 @@ dependencies = [
  "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "runtime-common",
  "scale-info",
@@ -2841,9 +2858,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -3327,22 +3344,19 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 
 [[package]]
 name = "evm"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4448c65b71e8e2b9718232d84d09045eeaaccb2320494e6bd6dbf7e58fec8ff"
+version = "0.39.0"
+source = "git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost#53315e22da8494dbcb6b54a18e09775e956b7c73"
 dependencies = [
  "auto_impl",
- "environmental",
  "ethereum",
- "evm-core 0.37.0",
- "evm-gasometer 0.37.0",
- "evm-runtime 0.37.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
+ "evm-gasometer 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
+ "evm-runtime 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
  "log",
  "parity-scale-codec 3.6.5",
  "primitive-types 0.12.1",
  "rlp",
  "scale-info",
- "serde",
  "sha3 0.10.8",
 ]
 
@@ -3354,9 +3368,9 @@ dependencies = [
  "auto_impl",
  "environmental",
  "ethereum",
- "evm-core 0.39.0",
- "evm-gasometer 0.39.0",
- "evm-runtime 0.39.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
+ "evm-gasometer 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
+ "evm-runtime 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
  "log",
  "parity-scale-codec 3.6.5",
  "primitive-types 0.12.1",
@@ -3368,14 +3382,12 @@ dependencies = [
 
 [[package]]
 name = "evm-core"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64c51bec0eb68a891c2575c758eaaa1d61373fc51f7caaf216b1fb5c3fea3b5d"
+version = "0.39.0"
+source = "git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost#53315e22da8494dbcb6b54a18e09775e956b7c73"
 dependencies = [
  "parity-scale-codec 3.6.5",
  "primitive-types 0.12.1",
  "scale-info",
- "serde",
 ]
 
 [[package]]
@@ -3391,13 +3403,11 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8b93c59c54fc26522d842f0e0d3f8e8be331c776df18ff3e540b53c2f64d509"
+version = "0.39.0"
+source = "git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost#53315e22da8494dbcb6b54a18e09775e956b7c73"
 dependencies = [
- "environmental",
- "evm-core 0.37.0",
- "evm-runtime 0.37.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
+ "evm-runtime 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
  "primitive-types 0.12.1",
 ]
 
@@ -3407,20 +3417,18 @@ version = "0.39.0"
 source = "git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c#a33ac87ad7462b7e7029d12c385492b2a8311d1c"
 dependencies = [
  "environmental",
- "evm-core 0.39.0",
- "evm-runtime 0.39.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
+ "evm-runtime 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
  "primitive-types 0.12.1",
 ]
 
 [[package]]
 name = "evm-runtime"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79b9459ce64f1a28688397c4013764ce53cd57bb84efc16b5187fa9b05b13ad"
+version = "0.39.0"
+source = "git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost#53315e22da8494dbcb6b54a18e09775e956b7c73"
 dependencies = [
  "auto_impl",
- "environmental",
- "evm-core 0.37.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?branch=tgm-record-external-cost)",
  "primitive-types 0.12.1",
  "sha3 0.10.8",
 ]
@@ -3432,7 +3440,7 @@ source = "git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e702
 dependencies = [
  "auto_impl",
  "environmental",
- "evm-core 0.39.0",
+ "evm-core 0.39.0 (git+https://github.com/moonbeam-foundation/evm?rev=a33ac87ad7462b7e7029d12c385492b2a8311d1c)",
  "primitive-types 0.12.1",
  "sha3 0.10.8",
 ]
@@ -3824,14 +3832,6 @@ dependencies = [
 [[package]]
 name = "fork-tree"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "parity-scale-codec 3.6.5",
-]
-
-[[package]]
-name = "fork-tree"
-version = "3.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "parity-scale-codec 3.6.5",
@@ -3844,6 +3844,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fp-account"
+version = "1.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43#a39b3011b9fb62b47931a199060c1b23926f34d8"
+dependencies = [
+ "hex",
+ "impl-serde",
+ "libsecp256k1",
+ "log",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -3894,15 +3913,16 @@ dependencies = [
 [[package]]
 name = "fp-evm"
 version = "3.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+source = "git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43#a39b3011b9fb62b47931a199060c1b23926f34d8"
 dependencies = [
- "evm 0.37.0",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "evm 0.39.1",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
+ "scale-info",
  "serde",
- "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -4089,6 +4109,17 @@ dependencies = [
 [[package]]
 name = "frame-election-provider-solution-type"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.37",
+]
+
+[[package]]
+name = "frame-election-provider-solution-type"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "proc-macro-crate",
@@ -4100,16 +4131,33 @@ dependencies = [
 [[package]]
 name = "frame-election-provider-support"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-election-provider-solution-type 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-arithmetic 6.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "frame-election-provider-support"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
- "frame-election-provider-solution-type",
+ "frame-election-provider-solution-type 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
@@ -4506,7 +4554,7 @@ source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#1d0f47
 dependencies = [
  "fudge-companion",
  "fudge-core",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-executor 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-service 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -4542,9 +4590,9 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "polkadot-cli",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-parachains",
  "polkadot-service",
  "prioritized-metered-channel",
@@ -4575,7 +4623,7 @@ dependencies = [
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-storage 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-transaction-pool 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tokio",
@@ -5618,7 +5666,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "bitvec 1.0.1",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-executive",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -5629,7 +5677,7 @@ dependencies = [
  "kusama-runtime-constants",
  "log",
  "pallet-authority-discovery",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-bags-list",
  "pallet-balances",
@@ -5661,14 +5709,14 @@ dependencies = [
  "pallet-recovery",
  "pallet-referenda",
  "pallet-scheduler",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-session-benchmarking",
  "pallet-society",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-staking-runtime-api",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-tips",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -5677,7 +5725,7 @@ dependencies = [
  "pallet-xcm",
  "pallet-xcm-benchmarks",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "rustc-hex",
@@ -5687,7 +5735,7 @@ dependencies = [
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
@@ -5695,7 +5743,7 @@ dependencies = [
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-mmr-primitives",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-offchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -5705,9 +5753,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -5716,7 +5764,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "smallvec",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -6352,13 +6400,13 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "ethabi 16.0.0",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "hex",
  "lazy_static",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-ethereum",
  "pallet-ethereum-transaction",
@@ -6366,7 +6414,7 @@ dependencies = [
  "pallet-evm-chain-id",
  "pallet-evm-precompile-simple",
  "pallet-liquidity-pools-gateway",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-xcm-transactor",
  "parity-scale-codec 3.6.5",
  "scale-info",
@@ -6374,9 +6422,9 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -6701,16 +6749,16 @@ dependencies = [
 [[package]]
 name = "moonbeam-relay-encoder"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
- "cumulus-primitives-core",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/moonbeam-foundation/cumulus?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "pallet-evm-precompile-relay-encoder",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
  "xcm-primitives",
 ]
 
@@ -7217,16 +7265,16 @@ source = "git+https://github.com/open-web3-stack/open-runtime-module-library?bra
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-xcm",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -7236,8 +7284,8 @@ source = "git+https://github.com/open-web3-stack/open-runtime-module-library?bra
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
- "orml-utilities",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
+ "orml-utilities 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7254,7 +7302,7 @@ source = "git+https://github.com/open-web3-stack/open-runtime-module-library?bra
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7266,12 +7314,31 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
+source = "git+https://github.com/moonbeam-foundation/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.43#7fcd5143351315c459ee61cf805361a4c7223a47"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities 0.4.1-dev (git+https://github.com/moonbeam-foundation/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "orml-traits"
+version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43#28a2e6f0df9540d91db4018c7ecebb8bfc217a2a"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "impl-trait-for-tuples",
  "num-traits",
- "orml-utilities",
+ "orml-utilities 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7279,7 +7346,21 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "0.4.1-dev"
+source = "git+https://github.com/moonbeam-foundation/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.43#7fcd5143351315c459ee61cf805361a4c7223a47"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -7307,7 +7388,7 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -7316,12 +7397,12 @@ version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43#28a2e6f0df9540d91db4018c7ecebb8bfc217a2a"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -7329,10 +7410,10 @@ name = "orml-xtokens"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43#28a2e6f0df9540d91db4018c7ecebb8bfc217a2a"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "orml-xcm-support",
  "pallet-xcm",
  "parity-scale-codec 3.6.5",
@@ -7341,8 +7422,8 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -7378,9 +7459,9 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-aura",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7399,7 +7480,7 @@ source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf51
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7415,13 +7496,27 @@ source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf51
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+]
+
+[[package]]
+name = "pallet-authorship"
+version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "impl-trait-for-tuples",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -7447,9 +7542,9 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-authorship",
- "pallet-session",
- "pallet-timestamp",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7468,7 +7563,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
@@ -7518,8 +7613,8 @@ source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf51
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-authorship",
- "pallet-session",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7542,7 +7637,7 @@ dependencies = [
  "log",
  "pallet-beefy",
  "pallet-mmr",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -7567,12 +7662,12 @@ dependencies = [
  "log",
  "num-traits",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-collator-selection",
  "pallet-restricted-tokens",
  "pallet-rewards",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7610,10 +7705,10 @@ dependencies = [
  "chainbridge",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-fees",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7683,8 +7778,8 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-authorship",
- "pallet-session",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "rand 0.8.5",
  "scale-info",
@@ -7780,8 +7875,8 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-oracle",
- "orml-traits",
- "pallet-timestamp",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7833,7 +7928,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
@@ -7844,7 +7939,7 @@ dependencies = [
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "strum",
@@ -7856,10 +7951,10 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
@@ -7876,7 +7971,7 @@ dependencies = [
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
@@ -7920,7 +8015,7 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm 6.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.43)",
  "pallet-evm-precompile-simple",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -7932,25 +8027,25 @@ dependencies = [
 [[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
+source = "git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43#a39b3011b9fb62b47931a199060c1b23926f34d8"
 dependencies = [
  "environmental",
- "evm 0.37.0",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38)",
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "hex",
+ "evm 0.39.1",
+ "fp-account 1.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
+ "fp-evm 3.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "log",
- "pallet-timestamp",
  "parity-scale-codec 3.6.5",
  "rlp",
  "scale-info",
- "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -7960,7 +8055,7 @@ source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.
 dependencies = [
  "environmental",
  "evm 0.39.1",
- "fp-account",
+ "fp-account 1.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.43)",
  "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.43)",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
@@ -8029,22 +8124,22 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-relay-encoder"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
- "cumulus-primitives-core",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/moonbeam-foundation/cumulus?branch=moonbeam-polkadot-v0.9.43)",
+ "fp-evm 3.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "log",
  "num_enum 0.5.11",
- "pallet-evm 6.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38)",
- "pallet-staking",
+ "pallet-evm 6.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
+ "pallet-staking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "precompile-utils",
  "rustc-hex",
- "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "xcm-primitives",
 ]
 
@@ -8073,7 +8168,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
@@ -8093,7 +8188,7 @@ dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-treasury",
  "parity-scale-codec 3.6.5",
@@ -8132,8 +8227,8 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-authorship",
- "pallet-session",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8171,7 +8266,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8211,7 +8306,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8233,7 +8328,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-restricted-tokens",
  "parity-scale-codec 3.6.5",
@@ -8277,10 +8372,10 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "hex",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-ethereum",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-uniques",
  "parity-scale-codec 3.6.5",
  "scale-info",
@@ -8289,7 +8384,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -8345,10 +8440,10 @@ dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-interest-accrual",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-uniques",
  "parity-scale-codec 3.6.5",
  "scale-info",
@@ -8462,9 +8557,9 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-anchors",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "proofs",
  "scale-info",
@@ -8484,7 +8579,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-uniques",
  "parity-scale-codec 3.6.5",
@@ -8534,12 +8629,12 @@ version = "1.0.0"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-bags-list",
  "pallet-nomination-pools",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8582,7 +8677,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
@@ -8591,8 +8686,8 @@ dependencies = [
  "pallet-grandpa",
  "pallet-im-online",
  "pallet-offences",
- "pallet-session",
- "pallet-staking",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8614,7 +8709,7 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-asset-registry",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-restricted-tokens",
  "parity-scale-codec 3.6.5",
@@ -8625,7 +8720,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -8658,12 +8753,12 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-asset-registry",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
  "pallet-pool-system",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parachain-info",
  "parity-scale-codec 3.6.5",
  "scale-info",
@@ -8672,7 +8767,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -8690,12 +8785,12 @@ dependencies = [
  "log",
  "orml-asset-registry",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
  "pallet-restricted-tokens",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parachain-info",
  "parity-scale-codec 3.6.5",
  "rand 0.8.5",
@@ -8708,7 +8803,7 @@ dependencies = [
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "strum",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -8823,7 +8918,7 @@ dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-balances",
  "pallet-permissions",
  "parity-scale-codec 3.6.5",
@@ -8846,7 +8941,7 @@ dependencies = [
  "log",
  "num-traits",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
@@ -8891,13 +8986,34 @@ dependencies = [
 [[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "impl-trait-for-tuples",
+ "log",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-session 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-staking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-trie 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "pallet-session"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "impl-trait-for-tuples",
  "log",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8917,8 +9033,8 @@ dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "pallet-session",
- "pallet-staking",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "rand 0.8.5",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -8942,15 +9058,37 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "log",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "pallet-session 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-application-crypto 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-staking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "pallet-staking"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
- "pallet-authorship",
- "pallet-session",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "rand_chacha 0.2.2",
  "scale-info",
@@ -9026,6 +9164,24 @@ dependencies = [
 [[package]]
 name = "pallet-timestamp"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "log",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-inherents 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "pallet-timestamp"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9038,7 +9194,7 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
 [[package]]
@@ -9058,6 +9214,22 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+]
+
+[[package]]
+name = "pallet-transaction-payment"
+version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -9097,7 +9269,7 @@ name = "pallet-transaction-payment-rpc-runtime-api"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9219,8 +9391,8 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -9237,31 +9409,31 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
 name = "pallet-xcm-transactor"
 version = "0.2.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
- "cumulus-primitives-core",
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/moonbeam-foundation/cumulus?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "log",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/moonbeam-foundation/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
- "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-builder 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-executor 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
  "xcm-primitives",
 ]
 
@@ -9270,7 +9442,7 @@ name = "parachain-info"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
@@ -9618,7 +9790,7 @@ dependencies = [
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -9632,7 +9804,7 @@ dependencies = [
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -9652,7 +9824,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9674,7 +9846,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -9695,7 +9867,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -9742,11 +9914,11 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system-rpc-runtime-api",
  "futures",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
- "polkadot-core-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-core-parachains-inherent",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime",
  "polkadot-runtime-common",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9754,7 +9926,7 @@ dependencies = [
  "sc-executor 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-service 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9769,7 +9941,7 @@ dependencies = [
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-storage 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-transaction-pool 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
@@ -9787,7 +9959,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9809,12 +9981,24 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "polkadot-core-primitives"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -9846,7 +10030,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9861,7 +10045,7 @@ source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.43#ba42
 dependencies = [
  "parity-scale-codec 3.6.5",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "reed-solomon-novelpoly",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-trie 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9875,7 +10059,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "parity-scale-codec 3.6.5",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "reed-solomon-novelpoly",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-trie 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9892,7 +10076,7 @@ dependencies = [
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -9918,7 +10102,7 @@ dependencies = [
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -9936,7 +10120,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -9954,7 +10138,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -9979,12 +10163,12 @@ dependencies = [
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "schnorrkel",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10005,7 +10189,7 @@ dependencies = [
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10023,7 +10207,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-statement-table",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10038,7 +10222,7 @@ dependencies = [
  "futures",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10059,8 +10243,8 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -10073,7 +10257,7 @@ dependencies = [
  "futures",
  "polkadot-node-metrics 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-subsystem",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus-babe",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10092,7 +10276,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -10110,7 +10294,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10126,7 +10310,7 @@ dependencies = [
  "futures-timer",
  "polkadot-node-subsystem",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10145,7 +10329,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10162,11 +10346,11 @@ dependencies = [
  "libc",
  "parity-scale-codec 3.6.5",
  "pin-project",
- "polkadot-core-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-metrics 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "slotmap",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10188,7 +10372,7 @@ dependencies = [
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
@@ -10205,8 +10389,8 @@ dependencies = [
  "libc",
  "parity-scale-codec 3.6.5",
  "polkadot-node-core-pvf",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rayon",
  "sc-executor 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-executor-common 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10233,7 +10417,7 @@ dependencies = [
  "polkadot-node-metrics 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-types 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-consensus-babe",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
 ]
@@ -10248,7 +10432,7 @@ dependencies = [
  "polkadot-node-metrics 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-types 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-consensus-babe",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -10264,7 +10448,7 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10282,7 +10466,7 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10299,7 +10483,7 @@ dependencies = [
  "futures-timer",
  "log",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "prioritized-metered-channel",
  "sc-cli",
  "sc-service 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10318,7 +10502,7 @@ dependencies = [
  "futures-timer",
  "log",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "prioritized-metered-channel",
  "sc-cli",
  "sc-service 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10341,7 +10525,7 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "polkadot-node-jaeger 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "rand 0.8.5",
  "sc-authority-discovery",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10358,8 +10542,8 @@ dependencies = [
  "bounded-vec",
  "futures",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "schnorrkel",
  "serde",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10394,12 +10578,12 @@ dependencies = [
  "polkadot-node-jaeger 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-statement-table",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "substrate-prometheus-endpoint 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10417,12 +10601,12 @@ dependencies = [
  "polkadot-node-jaeger 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-statement-table",
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "substrate-prometheus-endpoint 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10451,7 +10635,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-overseer",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "prioritized-metered-channel",
  "rand 0.8.5",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10476,12 +10660,29 @@ dependencies = [
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem-types 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "tikv-jemalloc-ctl",
  "tracing-gum 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "polkadot-parachain"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "bounded-collections",
+ "derive_more",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -10493,7 +10694,7 @@ dependencies = [
  "derive_more",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
- "polkadot-core-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "serde",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10512,11 +10713,37 @@ dependencies = [
  "polkadot-erasure-coding 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-core-pvf-worker",
  "polkadot-node-primitives",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "quote",
  "sc-executor-common 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
+]
+
+[[package]]
+name = "polkadot-primitives"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "bitvec 1.0.1",
+ "hex-literal 0.4.1",
+ "parity-scale-codec 3.6.5",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-application-crypto 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-arithmetic 6.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-inherents 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-keystore 0.13.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-staking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -10527,15 +10754,15 @@ dependencies = [
  "bitvec 1.0.1",
  "hex-literal 0.4.1",
  "parity-scale-codec 3.6.5",
- "polkadot-core-primitives",
- "polkadot-parachain",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
- "sp-consensus-slots",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10553,7 +10780,7 @@ dependencies = [
  "jsonrpsee",
  "mmr-rpc",
  "pallet-transaction-payment-rpc",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sc-chain-spec 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus-babe",
@@ -10561,7 +10788,7 @@ dependencies = [
  "sc-consensus-beefy",
  "sc-consensus-beefy-rpc",
  "sc-consensus-epochs",
- "sc-consensus-grandpa 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "sc-consensus-grandpa",
  "sc-consensus-grandpa-rpc",
  "sc-rpc 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-sync-state-rpc",
@@ -10584,7 +10811,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "bitvec 1.0.1",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-executive",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10594,7 +10821,7 @@ dependencies = [
  "hex-literal 0.4.1",
  "log",
  "pallet-authority-discovery",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-bags-list",
  "pallet-balances",
@@ -10623,14 +10850,14 @@ dependencies = [
  "pallet-proxy",
  "pallet-referenda",
  "pallet-scheduler",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-session-benchmarking",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-staking-reward-curve",
  "pallet-staking-runtime-api",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-tips",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -10638,7 +10865,7 @@ dependencies = [
  "pallet-whitelist",
  "pallet-xcm",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "polkadot-runtime-constants",
  "polkadot-runtime-parachains",
@@ -10649,7 +10876,7 @@ dependencies = [
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
@@ -10657,7 +10884,7 @@ dependencies = [
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-mmr-primitives",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-offchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10667,9 +10894,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -10679,26 +10906,26 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "bitvec 1.0.1",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "impl-trait-for-tuples",
  "libsecp256k1",
  "log",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-balances",
  "pallet-election-provider-multi-phase",
  "pallet-fast-unstake",
- "pallet-session",
- "pallet-staking",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-staking-reward-fn",
- "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-treasury",
  "pallet-vesting",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-parachains",
  "rustc-hex",
  "scale-info",
@@ -10709,13 +10936,13 @@ dependencies = [
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -10724,7 +10951,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "smallvec",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10739,7 +10966,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "bs58",
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-tracing 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
@@ -10757,17 +10984,17 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "log",
  "pallet-authority-discovery",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-balances",
  "pallet-message-queue",
- "pallet-session",
- "pallet-staking",
- "pallet-timestamp",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-vesting",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-metrics",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -10785,8 +11012,8 @@ dependencies = [
  "sp-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -10808,7 +11035,7 @@ dependencies = [
  "mmr-gadget",
  "pallet-babe",
  "pallet-im-online",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-db",
  "polkadot-approval-distribution",
@@ -10839,8 +11066,8 @@ dependencies = [
  "polkadot-node-subsystem-types 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-rpc",
  "polkadot-runtime",
  "polkadot-runtime-constants",
@@ -10856,7 +11083,7 @@ dependencies = [
  "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus-babe",
  "sc-consensus-beefy",
- "sc-consensus-grandpa 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "sc-consensus-grandpa",
  "sc-consensus-slots",
  "sc-executor 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10872,7 +11099,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10889,7 +11116,7 @@ dependencies = [
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-storage 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-transaction-pool 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-trie 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "substrate-prometheus-endpoint 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -10912,7 +11139,7 @@ dependencies = [
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "thiserror",
@@ -10925,7 +11152,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "parity-scale-codec 3.6.5",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
@@ -10995,32 +11222,32 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 [[package]]
 name = "precompile-utils"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
  "affix",
  "environmental",
- "evm 0.37.0",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "evm 0.39.0",
+ "fp-evm 3.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "hex",
  "impl-trait-for-tuples",
  "log",
  "num_enum 0.5.11",
- "pallet-evm 6.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38)",
+ "pallet-evm 6.0.0-dev (git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "paste",
  "precompile-utils-macro",
  "sha3 0.10.8",
- "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
 name = "precompile-utils-macro"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
  "case",
  "num_enum 0.5.11",
@@ -11722,7 +11949,7 @@ dependencies = [
  "hex-literal 0.4.1",
  "log",
  "pallet-authority-discovery",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-balances",
  "pallet-beefy",
@@ -11746,14 +11973,14 @@ dependencies = [
  "pallet-proxy",
  "pallet-recovery",
  "pallet-scheduler",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-society",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-state-trie-migration",
  "pallet-sudo",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-tips",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -11761,8 +11988,8 @@ dependencies = [
  "pallet-xcm",
  "pallet-xcm-benchmarks",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "rococo-runtime-constants",
@@ -11771,7 +11998,7 @@ dependencies = [
  "serde_derive",
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
@@ -11788,9 +12015,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "static_assertions",
  "substrate-wasm-builder",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -11799,7 +12026,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "smallvec",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -11885,9 +12112,9 @@ dependencies = [
  "log",
  "orml-asset-registry",
  "orml-oracle",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "pallet-anchors",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-collective",
@@ -11909,7 +12136,7 @@ dependencies = [
  "pallet-treasury",
  "parachain-info",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "serde",
  "smallvec",
@@ -11919,8 +12146,8 @@ dependencies = [
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-primitives",
 ]
 
@@ -11935,7 +12162,7 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "development-runtime",
  "ethabi 16.0.0",
  "ethereum",
@@ -11951,7 +12178,7 @@ dependencies = [
  "node-primitives",
  "orml-asset-registry",
  "orml-tokens",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43)",
  "orml-xtokens",
  "pallet-aura",
  "pallet-balances",
@@ -11974,16 +12201,16 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage 4.0.0-dev (git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43)",
  "pallet-rewards",
- "pallet-session",
- "pallet-transaction-payment",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-uniques",
  "pallet-xcm",
  "pallet-xcm-transactor",
  "parachain-info",
  "parity-scale-codec 3.6.5",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-core-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
@@ -11996,7 +12223,7 @@ dependencies = [
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-aura",
  "sp-consensus-babe",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -12005,9 +12232,9 @@ dependencies = [
  "sp-tracing 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "tokio",
  "tracing-subscriber",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "xcm-emulator",
- "xcm-executor",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -12248,7 +12475,7 @@ dependencies = [
  "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-network-common 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -12585,7 +12812,7 @@ dependencies = [
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-aura",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -12621,7 +12848,7 @@ dependencies = [
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -12723,46 +12950,6 @@ dependencies = [
 [[package]]
 name = "sc-consensus-grandpa"
 version = "0.10.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "ahash 0.8.3",
- "array-bytes 4.2.0",
- "async-trait",
- "dyn-clone",
- "finality-grandpa",
- "fork-tree 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
- "futures",
- "futures-timer",
- "log",
- "parity-scale-codec 3.6.5",
- "parking_lot 0.12.1",
- "rand 0.8.5",
- "sc-block-builder 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-chain-spec 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-network 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-network-common 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-network-gossip",
- "sc-telemetry 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "serde_json",
- "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus-grandpa 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
- "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "substrate-prometheus-endpoint 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "thiserror",
-]
-
-[[package]]
-name = "sc-consensus-grandpa"
-version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "ahash 0.8.3",
@@ -12811,7 +12998,7 @@ dependencies = [
  "log",
  "parity-scale-codec 3.6.5",
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sc-consensus-grandpa 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "sc-consensus-grandpa",
  "sc-rpc 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "serde",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -12836,7 +13023,7 @@ dependencies = [
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -13926,7 +14113,7 @@ dependencies = [
  "sc-client-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sc-consensus-babe",
  "sc-consensus-epochs",
- "sc-consensus-grandpa 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "sc-consensus-grandpa",
  "serde",
  "serde_json",
  "sp-blockchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -14888,6 +15075,19 @@ dependencies = [
 [[package]]
 name = "sp-authority-discovery"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-api 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-application-crypto 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "sp-authority-discovery"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "parity-scale-codec 3.6.5",
@@ -14999,11 +15199,11 @@ dependencies = [
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
 [[package]]
@@ -15018,13 +15218,13 @@ dependencies = [
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-application-crypto 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-consensus-slots",
+ "sp-consensus-slots 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-keystore 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
 [[package]]
@@ -15122,13 +15322,25 @@ dependencies = [
 [[package]]
 name = "sp-consensus-slots"
 version = "0.10.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "sp-consensus-slots"
+version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
 ]
 
 [[package]]
@@ -15666,6 +15878,20 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections"
 version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-arithmetic 6.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "sp-npos-elections"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "parity-scale-codec 3.6.5",
@@ -16118,6 +16344,21 @@ dependencies = [
  "serde",
  "sp-debug-derive 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+]
+
+[[package]]
+name = "sp-timestamp"
+version = "4.0.0-dev"
+source = "git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43#fb7885d0002f63a0919dc3e7cf071695ef5e3a6c"
+dependencies = [
+ "async-trait",
+ "futures-timer",
+ "log",
+ "parity-scale-codec 3.6.5",
+ "sp-inherents 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "thiserror",
 ]
 
 [[package]]
@@ -16752,7 +16993,7 @@ dependencies = [
  "pallet-beefy-mmr",
  "pallet-root-testing",
  "pallet-sudo",
- "pallet-timestamp",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
  "sc-service 0.10.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "scale-info",
@@ -17319,7 +17560,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.43#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "polkadot-node-jaeger 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "tracing",
  "tracing-gum-proc-macro 0.9.43 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.43)",
 ]
@@ -17330,7 +17571,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "polkadot-node-jaeger 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "tracing",
  "tracing-gum-proc-macro 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
@@ -17516,7 +17757,7 @@ dependencies = [
  "sp-rpc 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-state-machine 0.13.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-timestamp",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-transaction-storage-proof 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-weights 4.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -18400,7 +18641,7 @@ source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c
 dependencies = [
  "bitvec 1.0.1",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-election-provider-support",
+ "frame-election-provider-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-executive",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -18410,7 +18651,7 @@ dependencies = [
  "hex-literal 0.4.1",
  "log",
  "pallet-authority-discovery",
- "pallet-authorship",
+ "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-babe",
  "pallet-bags-list",
  "pallet-balances",
@@ -18436,16 +18677,16 @@ dependencies = [
  "pallet-proxy",
  "pallet-recovery",
  "pallet-scheduler",
- "pallet-session",
+ "pallet-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-session-benchmarking",
  "pallet-society",
- "pallet-staking",
+ "pallet-staking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-staking-reward-curve",
  "pallet-staking-runtime-api",
  "pallet-state-trie-migration",
  "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
@@ -18453,8 +18694,8 @@ dependencies = [
  "pallet-xcm",
  "pallet-xcm-benchmarks",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
- "polkadot-primitives",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "rustc-hex",
@@ -18463,7 +18704,7 @@ dependencies = [
  "serde_derive",
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-authority-discovery",
+ "sp-authority-discovery 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-block-builder 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-consensus-babe",
  "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
@@ -18471,7 +18712,7 @@ dependencies = [
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-mmr-primitives",
- "sp-npos-elections",
+ "sp-npos-elections 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-offchain 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-session 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -18481,9 +18722,9 @@ dependencies = [
  "sp-version 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "substrate-wasm-builder",
  "westend-runtime-constants",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-builder 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -18492,7 +18733,7 @@ version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-common",
  "smallvec",
  "sp-core 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -18840,6 +19081,22 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "bounded-collections",
+ "derivative",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-weights 4.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-procedural 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "xcm"
+version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
  "bounded-collections",
@@ -18850,7 +19107,29 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-weights 4.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm-procedural",
+ "xcm-procedural 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "xcm-builder"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "impl-trait-for-tuples",
+ "log",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "parity-scale-codec 3.6.5",
+ "polkadot-parachain 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "scale-info",
+ "sp-arithmetic 6.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-weights 4.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-executor 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -18862,17 +19141,17 @@ dependencies = [
  "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "impl-trait-for-tuples",
  "log",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "parity-scale-codec 3.6.5",
- "polkadot-parachain",
+ "polkadot-parachain 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "scale-info",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-weights 4.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
@@ -18883,7 +19162,7 @@ dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech//cumulus?rev=b8999fce0f61fb757f9e57e326cda48e70137019)",
  "cumulus-primitives-parachain-inherent",
  "cumulus-test-relay-sproof-builder",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
@@ -18891,14 +19170,33 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec 3.6.5",
  "paste",
- "polkadot-primitives",
+ "polkadot-primitives 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
  "polkadot-runtime-parachains",
  "quote",
  "sp-arithmetic 6.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-executor",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+ "xcm-executor 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
+]
+
+[[package]]
+name = "xcm-executor"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "environmental",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec 3.6.5",
+ "sp-arithmetic 6.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-core 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-weights 4.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
 ]
 
 [[package]]
@@ -18918,34 +19216,45 @@ dependencies = [
  "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
  "sp-weights 4.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
+ "xcm 0.9.43 (git+https://github.com/paritytech//polkadot?rev=ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25)",
 ]
 
 [[package]]
 name = "xcm-primitives"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=00b3e3d97806e889b02e1bcb4b69e65433dd805d#00b3e3d97806e889b02e1bcb4b69e65433dd805d"
+source = "git+https://github.com/PureStake/moonbeam?rev=9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7#9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7"
 dependencies = [
- "cumulus-primitives-core",
+ "cumulus-primitives-core 0.1.0 (git+https://github.com/moonbeam-foundation/cumulus?branch=moonbeam-polkadot-v0.9.43)",
  "ethereum",
  "ethereum-types 0.14.1",
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-support 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "frame-system 4.0.0-dev (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
  "hex",
  "impl-trait-for-tuples",
  "log",
- "orml-traits",
+ "orml-traits 0.4.1-dev (git+https://github.com/moonbeam-foundation/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.43)",
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
  "sha3 0.10.8",
- "sp-io 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-runtime 7.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "sp-std 5.0.0 (git+https://github.com/paritytech//substrate?rev=5e49f6e44820affccaf517fd22af564f4b495d40)",
- "xcm",
- "xcm-builder",
- "xcm-executor",
+ "sp-io 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-runtime 7.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "sp-std 5.0.0 (git+https://github.com/moonbeam-foundation/substrate?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-builder 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+ "xcm-executor 0.9.43 (git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43)",
+]
+
+[[package]]
+name = "xcm-procedural"
+version = "0.9.43"
+source = "git+https://github.com/moonbeam-foundation/polkadot?branch=moonbeam-polkadot-v0.9.43#d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.37",
 ]
 
 [[package]]

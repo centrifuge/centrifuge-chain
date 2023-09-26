@@ -356,6 +356,7 @@ sc-consensus = { git = "https://github.com/paritytech//substrate", rev = "5e49f6
 sc-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
+sc-consensus-grandpa = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-executor = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
@@ -559,6 +560,7 @@ sc-consensus = { git = "https://github.com/paritytech//substrate", rev = "5e49f6
 sc-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
+sc-consensus-grandpa = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 sc-executor = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
