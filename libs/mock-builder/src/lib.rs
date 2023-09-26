@@ -122,8 +122,10 @@
 //! }
 //! ```
 //!
-//! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of
-//! how to use a *mock pallet*. It supports any kind of trait, with reference
+//! Take a look to the [pallet
+//! tests](https://github.com/foss3/runtime-pallet-library/blob/main/mock-builder/tests/pallet.rs)
+//! to have a user view of how to use a *mock pallet*.
+//! It supports any kind of trait, with reference
 //! parameters and generics at trait level and method level.
 //!
 //! ## Mock pallet creation
