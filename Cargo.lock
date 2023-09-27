@@ -10310,6 +10310,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "procedural"
+version = "0.1.0"
+
+[[package]]
 name = "prometheus"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
