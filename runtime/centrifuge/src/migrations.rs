@@ -146,9 +146,12 @@ pub mod add_wrapped_usdc_variants {
 	use orml_asset_registry::AssetMetadata;
 	use sp_runtime::SaturatedConversion;
 	use sp_std::{vec, vec::Vec};
+	use cfg_types::tokens::usdc::{CHAIN_ID_CELO_MAINNET, CONTRACT_CELO_USDC, CURRENCY_ID_LP_CELO_USDC};
 
 	use super::*;
 	use crate::{Balance, LiquidityPoolsPalletIndex, OrmlAssetRegistry, Runtime};
+	#[cfg(feature = "try-runtime")]
+	use crate::OrderBook;
 
 	pub struct Migration;
 
@@ -259,7 +262,7 @@ pub mod add_wrapped_usdc_variants {
 
 	impl Migration {
 		fn get_unregistered_ids() -> Vec<CurrencyId> {
-			vec![CURRENCY_ID_LP_BASE_USDC, CURRENCY_ID_LP_ARB_USDC]
+			vec![CURRENCY_ID_LP_BASE_USDC, CURRENCY_ID_LP_ARB_USDC, CURRENCY_ID_LP_CELO_USDC]
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -268,6 +271,7 @@ pub mod add_wrapped_usdc_variants {
 				CURRENCY_ID_LP_ETH_USDC,
 				CURRENCY_ID_LP_BASE_USDC,
 				CURRENCY_ID_LP_ARB_USDC,
+				CURRENCY_ID_LP_CELO_USDC
 			]
 		}
 
@@ -293,6 +297,16 @@ pub mod add_wrapped_usdc_variants {
 						LiquidityPoolsPalletIndex::get(),
 						CHAIN_ID_ARBITRUM_MAINNET,
 						CONTRACT_ARBITRUM_USDC,
+						true,
+					),
+				),				(
+					CURRENCY_ID_LP_CELO_USDC,
+					lp_wrapped_usdc_metadata(
+						"LP Celo Wrapped USDC".as_bytes().to_vec(),
+						"LpCeloUSDC".as_bytes().to_vec(),
+						LiquidityPoolsPalletIndex::get(),
+						CHAIN_ID_CELO_MAINNET,
+						CONTRACT_CELO_USDC,
 						true,
 					),
 				),

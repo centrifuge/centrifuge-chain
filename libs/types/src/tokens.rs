@@ -379,11 +379,13 @@ pub mod usdc {
 	pub const CURRENCY_ID_LP_ETH_GOERLI_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	pub const CURRENCY_ID_LP_BASE_USDC: CurrencyId = CurrencyId::ForeignAsset(100_002);
 	pub const CURRENCY_ID_LP_ARB_USDC: CurrencyId = CurrencyId::ForeignAsset(100_004);
+	pub const CURRENCY_ID_LP_CELO_USDC: CurrencyId = CurrencyId::ForeignAsset(100_005);
 
 	pub const CHAIN_ID_ETHEREUM_MAINNET: EVMChainId = 1;
 	pub const CHAIN_ID_ETH_GOERLI_TESTNET: EVMChainId = 5;
 	pub const CHAIN_ID_BASE_MAINNET: EVMChainId = 8453;
 	pub const CHAIN_ID_ARBITRUM_MAINNET: EVMChainId = 42_161;
+	pub const CHAIN_ID_CELO_MAINNET: EVMChainId = 42_220;
 
 	pub const CONTRACT_ETHEREUM_USDC: [u8; 20] =
 		hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
@@ -391,8 +393,9 @@ pub mod usdc {
 		hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
 	pub const CONTRACT_BASE_USDC: [u8; 20] =
 		hex_literal::hex!("833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
-	pub const CONTRACT_ARBITRUM_USDC: [u8; 20] =
-		hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
+	pub const CONTRACT_ARBITRUM_USDC: [u8; 20] = hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
+	pub const CONTRACT_CELO_USDC: [u8; 20] =
+		hex_literal::hex!("37f750B7cC259A2f741AF45294f6a16572CF5cAd");
 
 	/// The metadata generator for the LP wrapped USDC currencies
 	// TODO(future): If no further LP wrapped USDC variants are expected, move this
