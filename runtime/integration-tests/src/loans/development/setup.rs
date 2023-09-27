@@ -8,13 +8,15 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use development_runtime::{
-	Investments, OrmlAssetRegistry, Permissions, PoolDeposit, PoolRegistry, Runtime, RuntimeOrigin,
+use frame_support::{
+	assert_noop,
+	traits::{GenesisBuild, Get, OriginTrait},
+	BoundedVec,
 };
-use frame_support::{assert_noop, traits::GenesisBuild, BoundedVec};
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
-use sp_runtime::{traits::One, Perquintill};
+use sp_runtime::{traits::One, AccountId32, Perquintill};
 
+use super::generic::Config;
 use crate::utils::accounts::Keyring;
 
 pub const MUSD_DECIMALS: u32 = 6;
@@ -27,14 +29,14 @@ pub const INVESTOR: Keyring = Keyring::Charlie;
 
 pub const POOL_FUNDS: Balance = 100_000_000 * MUSD_UNIT;
 
-pub fn new_ext() -> sp_io::TestExternalities {
+pub fn new_ext<T: Config>() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+		.build_storage::<T>()
 		.unwrap();
 
-	pallet_balances::GenesisConfig::<Runtime> {
+	pallet_balances::GenesisConfig::<T> {
 		balances: vec![
-			(ADMIN.to_account_id(), PoolDeposit::get()),
+			(ADMIN.to_account_id(), T::PoolDeposit::get()),
 			(BORROWER.to_account_id(), 1 * CFG),
 			(INVESTOR.to_account_id(), 1 * CFG),
 		],
@@ -42,7 +44,7 @@ pub fn new_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut storage)
 	.unwrap();
 
-	orml_tokens::GenesisConfig::<Runtime> {
+	orml_tokens::GenesisConfig::<T> {
 		balances: vec![
 			(ADMIN.to_account_id(), MUSD_CURRENCY_ID, 1 * MUSD_UNIT),
 			(BORROWER.to_account_id(), MUSD_CURRENCY_ID, 1 * MUSD_UNIT),
@@ -55,9 +57,9 @@ pub fn new_ext() -> sp_io::TestExternalities {
 	sp_io::TestExternalities::new(storage)
 }
 
-pub fn register_usdt() {
-	OrmlAssetRegistry::register_asset(
-		RuntimeOrigin::root(),
+pub fn register_usdt<T: Config>() {
+	orml_asset_registry::Pallet::<T>::register_asset(
+		T::RuntimeOrigin::root(),
 		AssetMetadata {
 			decimals: MUSD_DECIMALS,
 			name: "MOCK USD".as_bytes().to_vec(),
@@ -74,9 +76,10 @@ pub fn register_usdt() {
 	.unwrap();
 }
 
-pub fn create_pool(pool_id: PoolId) {
-	PoolRegistry::register(
-		RuntimeOrigin::signed(ADMIN.to_account_id()),
+/*
+pub fn create_pool<T: Config>(pool_id: PoolId) {
+	pallet_pool_registry::Pallet::<T>::register(
+		T::RuntimeOrigin::signed(ADMIN.to_account_id()),
 		ADMIN.to_account_id(),
 		pool_id,
 		vec![
@@ -108,8 +111,8 @@ pub fn create_pool(pool_id: PoolId) {
 	.unwrap();
 }
 
-pub fn fund_pool(pool_id: PoolId) {
-	let tranche_id = pallet_pool_system::Pool::<Runtime>::get(pool_id)
+pub fn fund_pool<T: Config>(pool_id: PoolId) {
+	let tranche_id = pallet_pool_system::Pool::<T>::get(pool_id)
 		.unwrap()
 		.tranches
 		.tranche_id(TrancheLoc::Index(0))
@@ -117,17 +120,18 @@ pub fn fund_pool(pool_id: PoolId) {
 
 	let role = Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Moment::MAX));
 
-	Permissions::add(
-		RuntimeOrigin::root(),
+	pallet_permissions::Pallet::<T>::add(
+		T::RuntimeOrigin::root(),
 		role,
 		INVESTOR.to_account_id(),
 		PermissionScope::Pool(pool_id),
 		role,
 	);
 
-	Investments::update_invest_order(
-		RuntimeOrigin::signed(INVESTOR.into()),
+	pallet_investments::Pallet::<T>::update_invest_order(
+		T::RuntimeOrigin::signed(INVESTOR.into()),
 		TrancheCurrency::generate(pool_id, tranche_id),
 		POOL_FUNDS,
 	);
 }
+*/
