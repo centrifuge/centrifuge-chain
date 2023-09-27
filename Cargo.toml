@@ -161,14 +161,14 @@ runtime-integration-tests = { path = "runtime/integration-tests", optional = tru
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 
 # frontier
-fc-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-db = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-mapping-sync = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -488,12 +488,12 @@ cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech
 # PureStake maintains their own forks of Parity's Substrate, Polkadot, and Cumulus,
 # and of open-web3-stack's ORML. By depending on crates from the Moonbeam repository, we are indirectly pulling crates
 # from these forked reposities, which lead to multiple cargo issues due to duplication versions of crates being found.
-# With the rules below, we tell cargo that whenever it finds a crate with source in `PureStake/`, that it should use
+# With the rules below, we tell cargo that whenever it finds a crate with source in `moonbeam-foundation/`, that it should use
 # the specific official revision of the respective repository at hand.
 #
 
-# Apply cargo patch to all the PureStake/substrate crates
-[patch."https://github.com/PureStake/substrate"]
+# Apply cargo patch to all the moonbeam-foundation/substrate crates
+[patch."https://github.com/moonbeam-foundation/substrate"]
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 frame-election-provider-support = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
@@ -632,8 +632,8 @@ substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech//sub
 substrate-test-client = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "5e49f6e44820affccaf517fd22af564f4b495d40" }
 
-# Cargo patch rules for all the PureStake/polkadot crates
-[patch."https://github.com/PureStake/polkadot"]
+# Cargo patch rules for all the moonbeam-foundation/polkadot crates
+[patch."https://github.com/moonbeam-foundation/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25" }
 kusama-runtime-constants = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25" }
 pallet-xcm = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25" }
@@ -662,8 +662,8 @@ xcm = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bda
 xcm-builder = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", rev = "ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25" }
 
-# Cargo patch rules for all the PureStake/cumulus crates
-[patch."https://github.com/PureStake/cumulus"]
+# Cargo patch rules for all the moonbeam-foundation/cumulus crates
+[patch."https://github.com/moonbeam-foundation/cumulus"]
 cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "b8999fce0f61fb757f9e57e326cda48e70137019" }
 cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "b8999fce0f61fb757f9e57e326cda48e70137019" }
 cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "b8999fce0f61fb757f9e57e326cda48e70137019" }
@@ -683,8 +683,8 @@ parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "b8999f
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech//cumulus", rev = "b8999fce0f61fb757f9e57e326cda48e70137019" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech//cumulus", rev = "b8999fce0f61fb757f9e57e326cda48e70137019" }
 
-# Cargo patch rules for all the PureStake/open-runtime-module-library crates
-[patch."https://github.com/PureStake/open-runtime-module-library"]
+# Cargo patch rules for all the moonbeam-foundation/open-runtime-module-library crates
+[patch."https://github.com/moonbeam-foundation/open-runtime-module-library"]
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
