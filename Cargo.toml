@@ -69,6 +69,7 @@ members = [
   "runtime/centrifuge",
   "runtime/common",
   "runtime/integration-tests",
+  "runtime/integration-tests-v2",
 ]
 
 [dependencies]

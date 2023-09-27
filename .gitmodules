@@ -1,0 +1,8 @@
+[submodule "runtime/integration-tests-v2/submodules/liquidity-pools"]
+	path = runtime/integration-tests-v2/submodules/liquidity-pools
+	url = git@github.com:centrifuge/liquidity-pools.git
+	branch = feat/forwarder
+[submodule "runtime/integration-tests-v2/submodules/axelar-cgp-solidity"]
+	path = runtime/integration-tests-v2/submodules/axelar-cgp-solidity
+	url = git@github.com:axelarnetwork/axelar-cgp-solidity.git
+	branch = releases/4.3.x
