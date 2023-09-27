@@ -423,7 +423,9 @@ pub mod xcm_transactor {
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
-	use cfg_traits::IdentityCurrencyConversion;
+	use cfg_traits::{
+		ConversionFromAssetBalance, ConversionToAssetBalance, IdentityCurrencyConversion,
+	};
 	use cfg_types::tokens::CurrencyId;
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;
@@ -477,6 +479,80 @@ pub mod foreign_investments {
 						from_metadata.decimals,
 						to_metadata.decimals,
 						amount_out,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+
+	/// Provides means of applying the decimals of an incoming currency to the
+	/// amount of an outgoing currency.
+	///
+	/// NOTE: Either the incoming (in case of `ConversionFromAssetBalance`) or
+	/// outgoing currency (in case of `ConversionToAssetBalance`) is assumed
+	/// to be `CurrencyId::Native`.
+	pub struct NativeBalanceDecimalConverter<AssetRegistry>(PhantomData<AssetRegistry>);
+
+	impl<AssetRegistry> ConversionToAssetBalance<Balance, CurrencyId, Balance>
+		for NativeBalanceDecimalConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Error = DispatchError;
+
+		fn to_asset_balance(
+			balance: Balance,
+			currency_in: CurrencyId,
+		) -> Result<Balance, DispatchError> {
+			match currency_in {
+				CurrencyId::Native => Ok(balance),
+				CurrencyId::ForeignAsset(_) => {
+					let to_decimals = AssetRegistry::metadata(&currency_in)
+						.ok_or(DispatchError::CannotLookup)?
+						.decimals;
+					convert_balance_decimals(
+						cfg_primitives::currency_decimals::NATIVE,
+						to_decimals,
+						balance,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+
+	impl<AssetRegistry> ConversionFromAssetBalance<Balance, CurrencyId, Balance>
+		for NativeBalanceDecimalConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Error = DispatchError;
+
+		fn from_asset_balance(
+			balance: Balance,
+			currency_out: CurrencyId,
+		) -> Result<Balance, DispatchError> {
+			match currency_out {
+				CurrencyId::Native => Ok(balance),
+				CurrencyId::ForeignAsset(_) => {
+					let from_decimals = AssetRegistry::metadata(&currency_out)
+						.ok_or(DispatchError::CannotLookup)?
+						.decimals;
+					convert_balance_decimals(
+						from_decimals,
+						cfg_primitives::currency_decimals::NATIVE,
+						balance,
 					)
 					.map_err(DispatchError::from)
 				}
