@@ -16,8 +16,7 @@
 use cfg_primitives::OrderId;
 use cfg_traits::{
 	investments::{
-		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
-		InvestmentsPortfolio, OrderManager,
+		Investment, InvestmentAccountant, InvestmentCollector, InvestmentsPortfolio, OrderManager,
 	},
 	PreConditions, StatusNotificationHook,
 };
@@ -109,7 +108,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_types::investments::ForeignInvestmentInfo;
+	use cfg_types::investments::{ForeignInvestmentInfo, InvestmentInfo};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -125,13 +124,6 @@ pub mod pallet {
 		/// The underlying investments one can invest into
 		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen + Into<CurrencyOf<Self>>;
 
-		/// Properties used for the Accountant type
-		type InvestmentInfo: InvestmentProperties<
-			Self::AccountId,
-			Id = Self::InvestmentId,
-			Currency = CurrencyOf<Self>,
-		>;
-
 		/// Something that knows how to handle accounting for the given
 		/// investments and provides metadata about them
 		type Accountant: InvestmentAccountant<
@@ -139,7 +131,7 @@ pub mod pallet {
 			Error = DispatchError,
 			InvestmentId = Self::InvestmentId,
 			Amount = Self::Amount,
-			InvestmentInfo = Self::InvestmentInfo,
+			InvestmentInfo = InvestmentInfo<Self::AccountId, CurrencyOf<Self>, Self::InvestmentId>,
 		>;
 
 		/// A representation for an investment or redemption. Usually this
@@ -541,7 +533,7 @@ impl<T: Config> Pallet<T> {
 							total_order,
 							&who,
 							investment_id,
-							info,
+							info.payment_currency,
 							order,
 							amount,
 						)?;
@@ -580,7 +572,7 @@ impl<T: Config> Pallet<T> {
 			amount,
 		})?;
 
-		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let _ = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
 			investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
@@ -603,7 +595,6 @@ impl<T: Config> Pallet<T> {
 							total_order,
 							&who,
 							investment_id,
-							info,
 							order,
 							amount,
 						)?;
@@ -647,7 +638,7 @@ impl<T: Config> Pallet<T> {
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
-		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let _ = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let (collected_investment, post_dispatch_info) = InvestOrders::<T>::try_mutate(
 			&who,
 			investment_id,
@@ -663,8 +654,7 @@ impl<T: Config> Pallet<T> {
 						who: who.clone(),
 						investment_id,
 					});
-					// TODO: Return correct weight
-					//       - Accountant::info() + Storage::read() + Storage::write()
+					// TODO: Return correct weight + Storage::read() + Storage::write()
 					return Ok((Default::default(), ().into()));
 				};
 
@@ -684,8 +674,7 @@ impl<T: Config> Pallet<T> {
 						who: who.clone(),
 						investment_id,
 					});
-					// TODO: Return correct weight
-					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					// TODO: Return correct weight 2 * Storage::read() + Storage::write()
 					return Ok((Default::default(), ().into()));
 				}
 
@@ -713,7 +702,7 @@ impl<T: Config> Pallet<T> {
 				);
 
 				T::Accountant::transfer(
-					info.id(),
+					investment_id,
 					&InvestmentAccount { investment_id }.into_account_truncating(),
 					&who,
 					collection.payout_investment_invest,
@@ -847,7 +836,7 @@ impl<T: Config> Pallet<T> {
 				let investment_account =
 					InvestmentAccount { investment_id }.into_account_truncating();
 				T::Tokens::transfer(
-					info.payment_currency(),
+					info.payment_currency,
 					&investment_account,
 					&who,
 					collection.payout_investment_redeem,
@@ -907,7 +896,7 @@ impl<T: Config> Pallet<T> {
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
+		payment_currency: CurrencyOf<T>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {
@@ -920,14 +909,13 @@ impl<T: Config> Pallet<T> {
 			&mut total_order.amount,
 		)?;
 
-		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
+		T::Tokens::transfer(payment_currency, send, recv, transfer_amount, false).map(|_| ())
 	}
 
 	pub(crate) fn do_update_redeem_order(
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {
@@ -940,7 +928,7 @@ impl<T: Config> Pallet<T> {
 			&mut total_order.amount,
 		)?;
 
-		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
+		T::Accountant::transfer(investment_id, send, recv, transfer_amount)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -1121,7 +1109,7 @@ impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 	) -> Result<CurrencyOf<T>, DispatchError> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		Ok(info.payment_currency())
+		Ok(info.payment_currency)
 	}
 
 	/// Get the investments and associated payment currencies and balances for
@@ -1159,7 +1147,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 		currency: Self::CurrencyId,
 	) -> bool {
 		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency() == currency)
+			.map(|info| info.payment_currency == currency)
 			.unwrap_or(false)
 	}
 
@@ -1184,7 +1172,7 @@ impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 		currency: Self::CurrencyId,
 	) -> bool {
 		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency() == currency)
+			.map(|info| info.payment_currency == currency)
 			.unwrap_or(false)
 	}
 
@@ -1354,9 +1342,9 @@ impl<T: Config> OrderManager for Pallet<T> {
 				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
-					info.payment_currency(),
+					info.payment_currency,
 					&investment_account,
-					&info.payment_account(),
+					&info.owner,
 					invest_amount,
 					false,
 				)?;
@@ -1371,7 +1359,7 @@ impl<T: Config> OrderManager for Pallet<T> {
 					.checked_mul_int(invest_amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
-				T::Accountant::deposit(&investment_account, info.id(), amount_of_investment_units)?;
+				T::Accountant::deposit(&investment_account, info.id, amount_of_investment_units)?;
 
 				// The previous OrderId is always 1 away
 				//
@@ -1446,14 +1434,14 @@ impl<T: Config> OrderManager for Pallet<T> {
 				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
-					info.payment_currency(),
-					&info.payment_account(),
+					info.payment_currency,
+					&info.owner,
 					&investment_account,
 					redeem_amount_payment,
 					false,
 				)?;
 
-				T::Accountant::withdraw(&investment_account, info.id(), redeem_amount)?;
+				T::Accountant::withdraw(&investment_account, info.id, redeem_amount)?;
 
 				// The previous OrderId is always 1 away
 				//
