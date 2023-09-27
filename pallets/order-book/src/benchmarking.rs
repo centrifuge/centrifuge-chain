@@ -12,6 +12,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use cfg_primitives::CFG;
 use cfg_traits::benchmarking::OrderBookBenchmarkHelper;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
@@ -21,8 +22,8 @@ use sp_runtime::FixedPointNumber;
 
 use super::*;
 
-const AMOUNT_IN: u128 = 1_000_000;
-const AMOUNT_OUT: u128 = 1_000_000_000_000;
+const AMOUNT_IN: u128 = 100 * CFG;
+const AMOUNT_OUT: u128 = 100_000_000 * CFG;
 const BUY_AMOUNT: u128 = 100 * AMOUNT_IN;
 const ASSET_IN: CurrencyId = CurrencyId::ForeignAsset(1);
 const ASSET_OUT: CurrencyId = CurrencyId::ForeignAsset(2);
