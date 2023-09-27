@@ -12,6 +12,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use cfg_primitives::CFG;
 use cfg_traits::benchmarking::OrderBookBenchmarkHelper;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
@@ -21,8 +22,8 @@ use sp_runtime::FixedPointNumber;
 
 use super::*;
 
-const AMOUNT_IN: u128 = 1_000_000;
-const AMOUNT_OUT: u128 = 1_000_000_000_000;
+const AMOUNT_IN: u128 = 100 * CFG;
+const AMOUNT_OUT: u128 = 100_000_000 * CFG;
 const BUY_AMOUNT: u128 = 100 * AMOUNT_IN;
 const ASSET_IN: CurrencyId = CurrencyId::ForeignAsset(1);
 const ASSET_OUT: CurrencyId = CurrencyId::ForeignAsset(2);
@@ -44,28 +45,28 @@ benchmarks! {
 	user_update_order {
 		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
 		}:user_update_order(RawOrigin::Signed(account_out.clone()), order_id, 10 * BUY_AMOUNT, T::SellRatio::saturating_from_integer(1))
 
 	user_cancel_order {
 		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
 	}:user_cancel_order(RawOrigin::Signed(account_out.clone()), order_id)
 
 	fill_order_full {
 		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
 	}:fill_order_full(RawOrigin::Signed(account_in.clone()), order_id)
 
 	fill_order_partial {
 		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into(), BUY_AMOUNT / 10)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
 	}:fill_order_partial(RawOrigin::Signed(account_in.clone()), order_id, BUY_AMOUNT / 2)
 
