@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::CFG;
 use cfg_traits::{
 	benchmarking::{
 		BenchForeignInvestmentSetupInfo, ForeignInvestmentBenchmarkHelper,
@@ -33,7 +34,7 @@ pub const CURRENCY_POOL: CurrencyId = CurrencyId::ForeignAsset(1);
 pub const CURRENCY_FOREIGN: CurrencyId = CurrencyId::ForeignAsset(2);
 pub const DECIMALS_POOL: u32 = 12;
 pub const DECIMALS_FOREIGN: u32 = 6;
-pub const INVEST_AMOUNT_POOL_DENOMINATED: u128 = 1_000_000_000_000;
+pub const INVEST_AMOUNT_POOL_DENOMINATED: u128 = 100_000_000 * CFG;
 pub const INVEST_AMOUNT_FOREIGN_DENOMINATED: u128 = INVEST_AMOUNT_POOL_DENOMINATED / 1_000_000;
 
 impl<T: Config> ForeignInvestmentBenchmarkHelper for Pallet<T>
