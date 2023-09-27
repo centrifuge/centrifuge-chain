@@ -17,8 +17,14 @@ trait_set::trait_set! {
 		+ pallet_pool_system::Config<CurrencyId = CurrencyId, Balance = Balance, PoolId = PoolId>
 		+ pallet_balances::Config<Balance = Balance>
 		+ pallet_investments::Config
-		+ pallet_pool_registry::Config<CurrencyId = CurrencyId, PoolId = PoolId, Balance = Balance>
-		+ pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
+		+ pallet_pool_registry::Config<
+			CurrencyId = CurrencyId,
+			PoolId = PoolId,
+			Balance = Balance,
+			ModifyPool = pallet_pool_system::Pallet<Self>,
+			ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
+		> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
+		+ pallet_loans::Config<Balance = Balance, PoolId = PoolId>
 		+ orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 		+ orml_asset_registry::Config<
 			AssetId = CurrencyId,

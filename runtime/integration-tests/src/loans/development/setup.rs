@@ -13,6 +13,7 @@ use frame_support::{
 	traits::{GenesisBuild, Get, OriginTrait},
 	BoundedVec,
 };
+use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use sp_runtime::{traits::One, AccountId32, Perquintill};
 
@@ -59,7 +60,7 @@ pub fn new_ext<T: Config>() -> sp_io::TestExternalities {
 
 pub fn register_usdt<T: Config>() {
 	orml_asset_registry::Pallet::<T>::register_asset(
-		T::RuntimeOrigin::root(),
+		RawOrigin::Root.into(),
 		AssetMetadata {
 			decimals: MUSD_DECIMALS,
 			name: "MOCK USD".as_bytes().to_vec(),
@@ -76,10 +77,9 @@ pub fn register_usdt<T: Config>() {
 	.unwrap();
 }
 
-/*
 pub fn create_pool<T: Config>(pool_id: PoolId) {
 	pallet_pool_registry::Pallet::<T>::register(
-		T::RuntimeOrigin::signed(ADMIN.to_account_id()),
+		RawOrigin::Signed(ADMIN.to_account_id()).into(),
 		ADMIN.to_account_id(),
 		pool_id,
 		vec![
@@ -111,6 +111,7 @@ pub fn create_pool<T: Config>(pool_id: PoolId) {
 	.unwrap();
 }
 
+/*
 pub fn fund_pool<T: Config>(pool_id: PoolId) {
 	let tranche_id = pallet_pool_system::Pool::<T>::get(pool_id)
 		.unwrap()
