@@ -13,7 +13,7 @@
 
 use cfg_traits::{
 	benchmarking::{InvestmentIdBenchmarkHelper, PoolBenchmarkHelper},
-	investments::{Investment, InvestmentAccountant, InvestmentProperties, OrderManager},
+	investments::{Investment, InvestmentAccountant, OrderManager},
 };
 use cfg_types::orders::FulfillmentWithPrice;
 use frame_benchmarking::{account, impl_benchmark_test_suite, v2::*, whitelisted_caller};
@@ -58,7 +58,7 @@ mod benchmarks {
 	fn update_invest_order() {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
-		let currency_id = T::Accountant::info(investment_id)?.payment_currency();
+		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
 
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
 
@@ -82,9 +82,7 @@ mod benchmarks {
 	fn collect_investments(n: Linear<1, 10>) {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
-		let currency_id = T::Accountant::info(investment_id)
-			.unwrap()
-			.payment_currency();
+		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
 
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
 
