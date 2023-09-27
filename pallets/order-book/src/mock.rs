@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_mocks::pallet_mock_fees;
-use cfg_primitives::CFG;
-use cfg_traits::StatusNotificationHook;
+use cfg_primitives::{conversion::convert_balance_decimals, CFG};
+use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
 use cfg_types::{
 	investments::Swap,
 	tokens::{CurrencyId, CustomMetadata},
@@ -23,12 +23,15 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, GenesisBuild},
 };
 use frame_system::EnsureRoot;
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use orml_traits::{
+	asset_registry::{AssetMetadata, Inspect},
+	parameter_type_with_key,
+};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128,
+	DispatchError, FixedU128,
 };
 
 use crate as order_book;
@@ -47,6 +50,7 @@ pub(crate) const CURRENCY_USDT_DECIMALS: u128 = 1_000_000;
 pub(crate) const CURRENCY_AUSD_DECIMALS: u128 = 1_000_000_000_000;
 pub(crate) const CURRENCY_NO_MIN_DECIMALS: u128 = 1_000_000_000_000;
 pub(crate) const CURRENCY_NATIVE_DECIMALS: Balance = CFG;
+pub(crate) const MIN_AUSD_FULFILLMENT_AMOUNT: u128 = CURRENCY_AUSD_DECIMALS / 100;
 
 const DEFAULT_DEV_MIN_ORDER: u128 = 5;
 const MIN_DEV_USDT_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_USDT_DECIMALS;
@@ -182,6 +186,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 
 parameter_types! {
 		pub const OrderPairVecSize: u32 = 1_000_000u32;
+		pub MinFulfillmentAmountNative: Balance = CURRENCY_NATIVE_DECIMALS / 100;
 }
 
 pub struct DummyHook;
@@ -209,12 +214,40 @@ parameter_type_with_key! {
 		};
 }
 
+pub struct DecimalConverter;
+impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter {
+	type Error = DispatchError;
+
+	fn to_asset_balance(
+		balance: Balance,
+		currency_in: CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		match currency_in {
+			CurrencyId::Native => Ok(balance),
+			CurrencyId::ForeignAsset(_) => {
+				let to_decimals = RegistryMock::metadata(&currency_in)
+					.ok_or(DispatchError::CannotLookup)?
+					.decimals;
+				convert_balance_decimals(
+					cfg_primitives::currency_decimals::NATIVE,
+					to_decimals,
+					balance,
+				)
+				.map_err(DispatchError::from)
+			}
+			_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+		}
+	}
+}
+
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<MockAccountId>;
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type DecimalConverter = DecimalConverter;
 	type FulfilledOrderHook = DummyHook;
+	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;

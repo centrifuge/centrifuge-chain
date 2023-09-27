@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::OrderId;
-use cfg_traits::investments::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -33,29 +32,6 @@ pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
 	pub owner: AccountId,
 	pub id: InvestmentId,
 	pub payment_currency: Currency,
-}
-
-impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
-	for InvestmentInfo<AccountId, Currency, InvestmentId>
-where
-	AccountId: Clone,
-	Currency: Clone,
-	InvestmentId: Clone,
-{
-	type Currency = Currency;
-	type Id = InvestmentId;
-
-	fn owner(&self) -> AccountId {
-		self.owner.clone()
-	}
-
-	fn id(&self) -> Self::Id {
-		self.id.clone()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		self.payment_currency.clone()
-	}
 }
 
 /// The outstanding collections for an account
