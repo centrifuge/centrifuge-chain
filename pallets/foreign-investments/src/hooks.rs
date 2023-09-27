@@ -79,18 +79,28 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 					Error::<T>::FulfilledTokenSwapAmountOverflow
 				);
 
-				let invest_swap = SwapOf::<T> {
-					amount: active_invest_swap_amount,
-					..status
-				};
-				let redeem_swap = SwapOf::<T> {
-					amount: status.amount.ensure_sub(active_invest_swap_amount)?,
-					..status
-				};
+				// Order was fulfilled at least for invest swap amount
+				if status.amount > active_invest_swap_amount {
+					let invest_swap = SwapOf::<T> {
+						amount: active_invest_swap_amount,
+						..status
+					};
+					let redeem_swap = SwapOf::<T> {
+						amount: status.amount.ensure_sub(active_invest_swap_amount)?,
+						..status
+					};
 
-				// NOTE: Fulfillment of invest swap before redeem one for no particular reason
-				Self::fulfill_invest_swap_order(&info.owner, info.id, invest_swap, false)?;
-				Self::fulfill_redeem_swap_order(&info.owner, info.id, redeem_swap)
+					// NOTE: Fulfillment of invest swap before redeem one for no particular reason.
+					// If we wanted to fulfill the min swap amount, we would have to add support for
+					// oppression of for swap updates to `fulfill_redeem_swap_order` as well in case
+					// redeem_swap.amount < status.amount < invest_swap.amount
+					Self::fulfill_invest_swap_order(&info.owner, info.id, invest_swap, false)?;
+					Self::fulfill_redeem_swap_order(&info.owner, info.id, redeem_swap)
+				}
+				// Order was fulfilled below invest swap amount
+				else {
+					Self::fulfill_invest_swap_order(&info.owner, info.id, status, true)
+				}
 			}
 			_ => {
 				log::debug!("Fulfilled token swap order id {:?} without advancing foreign investment because swap reason does not exist", id);

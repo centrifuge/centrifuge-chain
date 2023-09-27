@@ -22,7 +22,7 @@ mod util {
 		MockInvestment::mock_investment_requires_collect(|_, _| false);
 		MockInvestment::mock_investment(|_, _| Ok(0));
 		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
-		MockTokenSwaps::mock_place_order(move |_, _, _, _, _, _| Ok(order_id));
+		MockTokenSwaps::mock_place_order(move |_, _, _, _, _| Ok(order_id));
 		MockCurrencyConversion::mock_stable_to_stable(move |_, _, _| Ok(amount) /* 1:1 */);
 
 		ForeignInvestment::increase_foreign_investment(
@@ -37,7 +37,7 @@ mod util {
 		MockInvestment::mock_investment_requires_collect(|_, _| unimplemented!("no mock"));
 		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
 		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
-		MockTokenSwaps::mock_place_order(|_, _, _, _, _, _| unimplemented!("no mock"));
+		MockTokenSwaps::mock_place_order(|_, _, _, _, _| unimplemented!("no mock"));
 		MockCurrencyConversion::mock_stable_to_stable(|_, _, _| unimplemented!("no mock"));
 	}
 
@@ -92,17 +92,14 @@ mod increase_investment {
 				assert_eq!(amount, 0); // We still do not have the swap done.
 				Ok(())
 			});
-			MockTokenSwaps::mock_place_order(
-				|account_id, curr_in, curr_out, amount, limit, min| {
-					assert_eq!(account_id, USER);
-					assert_eq!(curr_in, POOL_CURR);
-					assert_eq!(curr_out, USER_CURR);
-					assert_eq!(amount, AMOUNT);
-					assert_eq!(limit, DefaultTokenSellRatio::get());
-					assert_eq!(min, AMOUNT);
-					Ok(ORDER_ID)
-				},
-			);
+			MockTokenSwaps::mock_place_order(|account_id, curr_in, curr_out, amount, limit| {
+				assert_eq!(account_id, USER);
+				assert_eq!(curr_in, POOL_CURR);
+				assert_eq!(curr_out, USER_CURR);
+				assert_eq!(amount, AMOUNT);
+				assert_eq!(limit, DefaultTokenSellRatio::get());
+				Ok(ORDER_ID)
+			});
 			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, USER_CURR);
@@ -173,12 +170,11 @@ mod increase_investment {
 					amount: INITIAL_AMOUNT,
 				})
 			});
-			MockTokenSwaps::mock_update_order(|account_id, order_id, amount, limit, min| {
+			MockTokenSwaps::mock_update_order(|account_id, order_id, amount, limit| {
 				assert_eq!(account_id, USER);
 				assert_eq!(order_id, ORDER_ID);
 				assert_eq!(amount, INITIAL_AMOUNT + INCREASE_AMOUNT);
 				assert_eq!(limit, DefaultTokenSellRatio::get());
-				assert_eq!(min, INITIAL_AMOUNT + INCREASE_AMOUNT);
 				Ok(())
 			});
 			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
@@ -224,17 +220,14 @@ mod increase_investment {
 				assert_eq!(order_id, ORDER_ID);
 				false
 			});
-			MockTokenSwaps::mock_place_order(
-				|account_id, curr_in, curr_out, amount, limit, min| {
-					assert_eq!(account_id, USER);
-					assert_eq!(curr_in, POOL_CURR);
-					assert_eq!(curr_out, USER_CURR);
-					assert_eq!(amount, INCREASE_AMOUNT);
-					assert_eq!(limit, DefaultTokenSellRatio::get());
-					assert_eq!(min, INCREASE_AMOUNT);
-					Ok(ORDER_ID)
-				},
-			);
+			MockTokenSwaps::mock_place_order(|account_id, curr_in, curr_out, amount, limit| {
+				assert_eq!(account_id, USER);
+				assert_eq!(curr_in, POOL_CURR);
+				assert_eq!(curr_out, USER_CURR);
+				assert_eq!(amount, INCREASE_AMOUNT);
+				assert_eq!(limit, DefaultTokenSellRatio::get());
+				Ok(ORDER_ID)
+			});
 			MockInvestment::mock_update_investment(|_, _, amount| {
 				assert_eq!(amount, 0);
 				Ok(())
