@@ -825,7 +825,6 @@ impl<T: Config> Pallet<T> {
 					swap.amount,
 					// The max accepted sell rate is independent of the asset type for now
 					T::DefaultTokenSellRatio::get(),
-					// Convert default min fulfillment amount from native to incoming currency
 				)?;
 				TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
 				ForeignInvestmentInfo::<T>::insert(
