@@ -13,10 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{
-	investments::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _},
-	UpdateState,
-};
+use cfg_traits::{investments::TrancheCurrency as _, UpdateState};
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -53,8 +50,6 @@ benchmarks! {
 			  EpochId = PoolEpochId>
 			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = u128>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
-		<<T as pallet_investments::Config>::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyId>,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,

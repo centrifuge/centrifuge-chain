@@ -186,7 +186,7 @@ pub trait OrderManager {
 pub trait InvestmentAccountant<AccountId> {
 	type Error;
 	type InvestmentId;
-	type InvestmentInfo: InvestmentProperties<AccountId, Id = Self::InvestmentId>;
+	type InvestmentInfo;
 	type Amount;
 
 	/// Information about an asset. Must allow to derive
@@ -217,55 +217,6 @@ pub trait InvestmentAccountant<AccountId> {
 		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
-}
-
-/// A trait that allows to retrieve information
-/// about an investment class.
-pub trait InvestmentProperties<AccountId> {
-	/// The overarching Currency that payments
-	/// for this class are made in
-	type Currency;
-	/// Who the investment class can be identified
-	type Id;
-
-	/// Returns the owner of the investment class
-	fn owner(&self) -> AccountId;
-
-	/// Returns the id of the investment class
-	fn id(&self) -> Self::Id;
-
-	/// Returns the currency in which the investment class
-	/// can be bought.
-	fn payment_currency(&self) -> Self::Currency;
-
-	/// Returns the account a payment for the investment class
-	/// must be made to.
-	///
-	/// Defaults to owner.
-	fn payment_account(&self) -> AccountId {
-		self.owner()
-	}
-}
-
-impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<AccountId> for &T {
-	type Currency = T::Currency;
-	type Id = T::Id;
-
-	fn owner(&self) -> AccountId {
-		(*self).owner()
-	}
-
-	fn id(&self) -> Self::Id {
-		(*self).id()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		(*self).payment_currency()
-	}
-
-	fn payment_account(&self) -> AccountId {
-		(*self).payment_account()
-	}
 }
 
 /// Trait to handle Investment Portfolios for accounts
