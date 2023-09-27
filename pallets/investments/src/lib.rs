@@ -117,17 +117,20 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it
 	/// depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config
-	where
-		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
-			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
-	{
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's
 		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
 		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen + Into<CurrencyOf<Self>>;
+
+		/// Properties used for the Accountant type
+		type InvestmentInfo: InvestmentProperties<
+			Self::AccountId,
+			Id = Self::InvestmentId,
+			Currency = CurrencyOf<Self>,
+		>;
 
 		/// Something that knows how to handle accounting for the given
 		/// investments and provides metadata about them
@@ -136,6 +139,7 @@ pub mod pallet {
 			Error = DispatchError,
 			InvestmentId = Self::InvestmentId,
 			Amount = Self::Amount,
+			InvestmentInfo = Self::InvestmentInfo,
 		>;
 
 		/// A representation for an investment or redemption. Usually this
@@ -207,13 +211,6 @@ pub mod pallet {
 	#[pallet::generate_store(pub (super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>
-	{
-	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn invest_order_id)]
@@ -289,11 +286,7 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config>
-	where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
+	pub enum Event<T: Config> {
 		/// Fulfilled orders were collected.
 		/// [investment_id, who, collected_orders, Collection, CollectOutcome]
 		InvestOrdersCollected {
@@ -412,11 +405,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Update an order to invest into a given investment.
 		///
 		/// If the requested amount is greater than the current
@@ -517,11 +506,7 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> Pallet<T> {
 	pub(crate) fn do_update_investment(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -1124,11 +1109,7 @@ where
 	}
 }
 
-impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T> {
 	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
 	type Balance = T::Amount;
 	type CurrencyId = CurrencyOf<T>;
@@ -1159,11 +1140,7 @@ where
 		Ok(investments_currency)
 	}
 }
-impl<T: Config> Investment<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	type Amount = T::Amount;
 	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
@@ -1244,11 +1221,7 @@ where
 	}
 }
 
-impl<T: Config> OrderManager for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> OrderManager for Pallet<T> {
 	type Error = DispatchError;
 	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 	type InvestmentId = T::InvestmentId;
@@ -1524,11 +1497,7 @@ where
 	}
 }
 
-impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 	type Result = ();

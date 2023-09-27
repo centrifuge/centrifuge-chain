@@ -162,6 +162,7 @@ impl pallet_investments::Config for MockRuntime {
 	type CollectedInvestmentHook = NoopCollectHook;
 	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = InvestmentId;
+	type InvestmentInfo = accountant_mock::InvestmentInfo;
 	type MaxOutstandingCollects = MaxOutstandingCollect;
 	type PreConditions = Always;
 	type RuntimeEvent = RuntimeEvent;
