@@ -20,8 +20,8 @@ pallets/block-rewards/* @wischli @lemunozm
 pallets/nft-sales/* @NunoAlexandre
 pallets/keystore/* @cdamian
 pallets/pool-registry/* @mustermeiszer
-pallets/pool-system/* @mustermeiszer @offerijns
-pallets/loans/* @mustermeiszer @offerijns @lemunozm
+pallets/pool-system/* @mustermeiszer @hieronx
+pallets/loans/* @mustermeiszer @hieronx @lemunozm
 pallets/interest-accrual/* @lemunozm
 pallets/investments/* @mustermeiszer
 pallets/permissions/* @mustermeiszer
@@ -38,9 +38,9 @@ libs/traits/src/changes.rs @lemunozm
 libs/traits/src/data.rs @lemunozm
 
 ## Changes to runtime
-runtime/common/* @mustermeiszer @NunoAlexandre @offerijns @lemunozm
-runtime/altair/* @mustermeiszer @NunoAlexandre @offerijns @wischli
-runtime/centrifuge/* @mustermeiszer @NunoAlexandre @offerijns @wischli
+runtime/common/* @mustermeiszer @NunoAlexandre @hieronx @lemunozm
+runtime/altair/* @mustermeiszer @NunoAlexandre @hieronx @wischli
+runtime/centrifuge/* @mustermeiszer @NunoAlexandre @hieronx @wischli
 
 ## Changes to integration tests
 runtime/integration-tests/* @mustermeiszer @NunoAlexandre @wischli @cdamian
