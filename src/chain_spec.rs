@@ -29,8 +29,11 @@ use cfg_primitives::{
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
-		lp_eth_usdc_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
-		GOERLI_CHAIN_ID, GOERLI_USDC, LP_ETH_USDC_CURRENCY_ID,
+		usdc::{
+			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI_USDC,
+			CURRENCY_ID_LP_ETH_GOERLI_USDC,
+		},
+		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
 	},
 };
 use cfg_utils::vec_to_fixed_array;
@@ -999,11 +1002,14 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			LP_ETH_USDC_CURRENCY_ID,
-			lp_eth_usdc_metadata(
+			CURRENCY_ID_LP_ETH_GOERLI_USDC,
+			lp_wrapped_usdc_metadata(
+				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
+				"LpEthUSDC".as_bytes().to_vec(),
 				development_runtime::LiquidityPoolsPalletIndex::get(),
-				GOERLI_CHAIN_ID,
-				GOERLI_USDC,
+				CHAIN_ID_ETH_GOERLI_TESTNET,
+				CONTRACT_ETH_GOERLI_USDC,
+				true,
 			)
 			.encode(),
 		),

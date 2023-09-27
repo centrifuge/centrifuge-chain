@@ -324,48 +324,6 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 	}
 }
 
-pub const LP_ETH_USDC_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(100001);
-
-pub const ETHEREUM_MAINNET_CHAIN_ID: EVMChainId = 1;
-pub const GOERLI_CHAIN_ID: EVMChainId = 5;
-
-pub const ETHEREUM_USDC: [u8; 20] = hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
-pub const GOERLI_USDC: [u8; 20] = hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
-
-/// The metadata for the LpEthUSDC token
-// TODO(nuno): once used in the Centrifuge migration registering it,
-// move it directly to the `chain_spec` > development genesis where it is also
-// used.
-pub fn lp_eth_usdc_metadata(
-	pallet_index: PalletIndex,
-	chain_id: EVMChainId,
-	usdc_contract: [u8; 20],
-) -> AssetMetadata<Balance, CustomMetadata> {
-	AssetMetadata {
-		decimals: 6,
-		name: "LP Ethereum Wrapped USDC".as_bytes().to_vec(),
-		symbol: "LpEthUSDC".as_bytes().to_vec(),
-		existential_deposit: 1000,
-		location: Some(VersionedMultiLocation::V3(MultiLocation {
-			parents: 0,
-			interior: xcm::v3::Junctions::X3(
-				PalletInstance(pallet_index),
-				GlobalConsensus(NetworkId::Ethereum { chain_id }),
-				AccountKey20 {
-					network: None,
-					key: usdc_contract,
-				},
-			),
-		})),
-		additional: CustomMetadata {
-			transferability: CrossChainTransferability::LiquidityPools,
-			mintable: false,
-			permissioned: false,
-			pool_currency: true,
-		},
-	}
-}
-
 pub mod before {
 	use cfg_primitives::{PoolId, TrancheId};
 	use codec::{Decode, Encode, MaxEncodedLen};
@@ -404,6 +362,72 @@ pub mod before {
 		/// A staking currency
 		#[codec(index = 5)]
 		Staking(StakingCurrency),
+	}
+}
+
+pub mod usdc {
+	use sp_std::vec::Vec;
+
+	use super::*;
+
+	pub const MIN_SWAP_ORDER_AMOUNT_USDC: Balance = 10_000_000;
+	pub const DECIMALS_USDC: u32 = 6;
+	pub const EXISTENTIAL_DEPOSIT_USDC: Balance = 1000;
+
+	pub const CURRENCY_ID_DOT_NATIVE_USDC: CurrencyId = CurrencyId::ForeignAsset(6);
+	pub const CURRENCY_ID_LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
+	pub const CURRENCY_ID_LP_ETH_GOERLI_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
+	pub const CURRENCY_ID_LP_BASE_USDC: CurrencyId = CurrencyId::ForeignAsset(100_002);
+	pub const CURRENCY_ID_LP_ARB_USDC: CurrencyId = CurrencyId::ForeignAsset(100_004);
+
+	pub const CHAIN_ID_ETHEREUM_MAINNET: EVMChainId = 1;
+	pub const CHAIN_ID_ETH_GOERLI_TESTNET: EVMChainId = 5;
+	pub const CHAIN_ID_BASE_MAINNET: EVMChainId = 8453;
+	pub const CHAIN_ID_ARBITRUM_MAINNET: EVMChainId = 42_161;
+
+	pub const CONTRACT_ETHEREUM_USDC: [u8; 20] =
+		hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+	pub const CONTRACT_ETH_GOERLI_USDC: [u8; 20] =
+		hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
+	pub const CONTRACT_BASE_USDC: [u8; 20] =
+		hex_literal::hex!("833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
+	pub const CONTRACT_ARBITRUM_USDC: [u8; 20] =
+		hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
+
+	/// The metadata generator for the LP wrapped USDC currencies
+	// TODO(future): If no further LP wrapped USDC variants are expected, move this
+	// to `chain_spec.rs`.
+	pub fn lp_wrapped_usdc_metadata(
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		pallet_index: PalletIndex,
+		chain_id: EVMChainId,
+		contract_address_usdc: [u8; 20],
+		pool_currency: bool,
+	) -> AssetMetadata<Balance, CustomMetadata> {
+		AssetMetadata {
+			decimals: DECIMALS_USDC,
+			name,
+			symbol,
+			existential_deposit: EXISTENTIAL_DEPOSIT_USDC,
+			location: Some(VersionedMultiLocation::V3(MultiLocation {
+				parents: 0,
+				interior: xcm::v3::Junctions::X3(
+					PalletInstance(pallet_index),
+					GlobalConsensus(NetworkId::Ethereum { chain_id }),
+					AccountKey20 {
+						network: None,
+						key: contract_address_usdc,
+					},
+				),
+			})),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::LiquidityPools,
+				mintable: false,
+				permissioned: false,
+				pool_currency,
+			},
+		}
 	}
 }
 
