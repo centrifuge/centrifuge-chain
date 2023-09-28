@@ -36,17 +36,19 @@ use sp_std::time::Duration;
 
 use crate::{
 	entities::{
+		changes::{Change, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing, PricingAmount, RepaidPricingAmount,
+			Pricing,
 		},
 	},
 	pallet::*,
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowRestrictions, InterestPayments, LoanMutation, LoanRestrictions, Maturity,
-		PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
+		RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -185,7 +187,7 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			PricingAmount::Internal(10.into()),
+			PrincipalInput::Internal(10.into()),
 		)
 		.unwrap();
 	}
@@ -196,8 +198,8 @@ where
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
 			loan_id,
-			RepaidPricingAmount {
-				principal: PricingAmount::Internal(10.into()),
+			RepaidInput {
+				principal: PrincipalInput::Internal(10.into()),
 				interest: T::Balance::max_value(),
 				unscheduled: 0.into(),
 			},
@@ -225,7 +227,7 @@ where
 		// to obtain the ChangeId used previously.
 		T::ChangeGuard::note(
 			pool_id,
-			ChangeOf::<T>::Loan(loan_id, Self::create_mutation()).into(),
+			Change::<T>::Loan(loan_id, Self::create_mutation()).into(),
 		)
 		.unwrap()
 	}
@@ -243,7 +245,40 @@ where
 		// We need to call noted again
 		// (that is idempotent for the same change and instant)
 		// to obtain the ChangeId used previously.
-		T::ChangeGuard::note(pool_id, ChangeOf::<T>::Policy(policy).into()).unwrap()
+		T::ChangeGuard::note(pool_id, Change::<T>::Policy(policy).into()).unwrap()
+	}
+
+	fn propose_transfer_debt(pool_id: T::PoolId) -> T::Hash {
+		let borrower = account("borrower", 0, 0);
+		let loan_1 = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_1);
+		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
+
+		let repaid_amount = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
+			interest: 0.into(),
+			unscheduled: 0.into(),
+		};
+		let borrow_amount = PrincipalInput::Internal(10.into());
+
+		Pallet::<T>::propose_transfer_debt(
+			RawOrigin::Signed(borrower).into(),
+			pool_id,
+			loan_1,
+			loan_2,
+			repaid_amount.clone(),
+			borrow_amount.clone(),
+		)
+		.unwrap();
+
+		// We need to call noted again
+		// (that is idempotent for the same change and instant)
+		// to obtain the ChangeId used previously.
+		T::ChangeGuard::note(
+			pool_id,
+			Change::<T>::TransferDebt(loan_1, loan_2, repaid_amount, borrow_amount).into(),
+		)
+		.unwrap()
 	}
 
 	fn set_policy(pool_id: T::PoolId) {
@@ -255,7 +290,7 @@ where
 	}
 
 	fn expire_loan(pool_id: T::PoolId, loan_id: T::LoanId) {
-		Pallet::<T>::expire(pool_id, loan_id).unwrap();
+		Pallet::<T>::expire_action(pool_id, loan_id).unwrap();
 	}
 
 	fn initialize_active_state(n: u32) -> T::PoolId {
@@ -323,7 +358,7 @@ benchmarks! {
 		let pool_id = Helper::<T>::initialize_active_state(n);
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PricingAmount::Internal(10.into()))
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PrincipalInput::Internal(10.into()))
 
 	repay {
 		let n in 1..Helper::<T>::max_active_loans() - 1;
@@ -333,8 +368,8 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-		let repaid = RepaidPricingAmount {
-			principal: PricingAmount::Internal(10.into()),
+		let repaid = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
 			interest: 0.into(),
 			unscheduled: 0.into()
 		};
@@ -423,6 +458,32 @@ benchmarks! {
 	verify {
 		assert!(Pallet::<T>::portfolio_valuation(pool_id).value() > Zero::zero());
 	}
+
+	propose_transfer_debt {
+		let n in 2..Helper::<T>::max_active_loans() - 2;
+
+		let borrower = account("borrower", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_1 = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+		Helper::<T>::borrow_loan(pool_id, loan_1);
+		let loan_2 = Helper::<T>::create_loan(pool_id, (u16::MAX - 1).into());
+
+		let repaid_amount = RepaidInput {
+			principal: PrincipalInput::Internal(10.into()),
+			interest: 0.into(),
+			unscheduled: 0.into()
+		};
+		let borrow_amount = PrincipalInput::Internal(10.into());
+
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
+
+	apply_transfer_debt {
+		let any = account("any", 0, 0);
+		let pool_id = Helper::<T>::prepare_benchmark();
+		let change_id = Helper::<T>::propose_transfer_debt(pool_id);
+
+	}: _(RawOrigin::Signed(any), pool_id, change_id)
+
 }
 
 impl_benchmark_test_suite!(
