@@ -21,7 +21,7 @@ use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
 
 use super::ApiEnv;
-use crate::utils::accounts::Keyring;
+use crate::utils::accounts::{Keyring, Sr25519};
 
 #[tokio::test]
 async fn liquidity_rewards_runtime_api_works() {
@@ -43,7 +43,7 @@ where
 		+ DistributedRewards
 		+ GroupRewards<Balance = Balance, GroupId = GroupId>,
 {
-	let staker = Keyring::Alice.to_account_id();
+	let staker = Keyring::<Sr25519>::Alice.to_account_id();
 	let expected_reward = 200 * CFG;
 	ApiEnv::new(Handle::current())
 		.startup(|| {

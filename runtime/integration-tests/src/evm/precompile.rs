@@ -233,7 +233,7 @@ async fn axelar_precompile_execute() {
 }
 
 #[tokio::test]
-async fn axelar_precompile_execute() {
+async fn axelar_precompile_execute_2() {
 	let mut env = env::test_env_default(Handle::current());
 
 	prepare_evm(&mut env);

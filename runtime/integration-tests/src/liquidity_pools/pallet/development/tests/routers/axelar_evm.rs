@@ -36,7 +36,7 @@ use crate::{
 	},
 	liquidity_pools::gateway::get_council_members,
 	utils::{
-		accounts::Keyring,
+		accounts::{Keyring, Sr25519},
 		democracy::execute_via_democracy,
 		env,
 		env::{ChainState, EventRange, TestEnv},
@@ -129,7 +129,7 @@ async fn submit() {
 		}) if [*domain == test_domain && *router == test_router],
 	);
 
-	let sender = Keyring::Alice.to_account_id();
+	let sender = Keyring::<Sr25519>::Alice.to_account_id();
 	let gateway_sender = env
 		.with_state(Chain::Para(PARA_ID), || {
 			<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get()
@@ -146,8 +146,8 @@ async fn submit() {
 
 	let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 		currency: 0,
-		sender: Keyring::Alice.to_account_id().into(),
-		receiver: Keyring::Bob.to_account_id().into(),
+		sender: Keyring::<Sr25519>::Alice.to_account_id().into(),
+		receiver: Keyring::<Sr25519>::Bob.to_account_id().into(),
 		amount: 1_000u128,
 	};
 

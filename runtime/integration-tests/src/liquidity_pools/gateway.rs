@@ -48,7 +48,7 @@ use crate::{
 		RuntimeEvent, PARA_ID,
 	},
 	utils::{
-		accounts::Keyring,
+		accounts::{Keyring, Sr25519},
 		collective::{collective_close, collective_propose, collective_vote},
 		democracy::{democracy_vote, execute_via_democracy, external_propose_majority, fast_track},
 		env::{ChainState, EventRange},
@@ -61,7 +61,11 @@ use crate::{
 };
 
 pub(crate) fn get_council_members() -> Vec<Keyring> {
-	vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
+	vec![
+		Keyring::<Sr25519>::Alice,
+		Keyring::<Sr25519>::Bob,
+		Keyring::<Sr25519>::Charlie,
+	]
 }
 
 #[tokio::test]

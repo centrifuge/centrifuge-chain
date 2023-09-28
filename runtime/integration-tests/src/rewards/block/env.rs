@@ -19,7 +19,7 @@ use crate::{
 	chain::centrifuge::{CollatorSelection, Runtime, PARA_ID},
 	rewards::block::invariants::assert_all_staked,
 	utils::{
-		accounts::Keyring,
+		accounts::{Keyring, Sr25519},
 		env::test_env_with_centrifuge_storage,
 		genesis::{
 			admin_collator, admin_invulnerable, default_native_balances, default_session_keys,
@@ -29,12 +29,12 @@ use crate::{
 
 pub(crate) fn default_collators() -> Vec<Keyring> {
 	vec![
-		Keyring::Alice,
-		Keyring::Bob,
-		Keyring::Charlie,
-		Keyring::Dave,
-		Keyring::Eve,
-		Keyring::Ferdie,
+		Keyring::<Sr25519>::Alice,
+		Keyring::<Sr25519>::Bob,
+		Keyring::<Sr25519>::Charlie,
+		Keyring::<Sr25519>::Dave,
+		Keyring::<Sr25519>::Eve,
+		Keyring::<Sr25519>::Ferdie,
 	]
 }
 
@@ -76,6 +76,6 @@ async fn genesis_collators_are_staked() {
 
 	// Ensure default collators are neither candidates nor invulnerables
 	env.with_state(Chain::Para(PARA_ID), || {
-		assert_all_staked(&[Keyring::Admin.to_account_id()]);
+		assert_all_staked(&[Keyring::<Sr25519>::Admin.to_account_id()]);
 	});
 }

@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
 use crate::utils::{
-	accounts::{default_accounts, Keyring},
+	accounts::{default_accounts, Keyring, Sr25519},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 	AUSD_CURRENCY_ID, RELAY_ASSET_ID,
 };
@@ -198,7 +198,7 @@ where
 	use sp_core::Get;
 
 	pallet_collator_selection::GenesisConfig::<Runtime> {
-		invulnerables: vec![Keyring::Admin.to_account_id().into()],
+		invulnerables: vec![Keyring::<Sr25519>::Admin.to_account_id().into()],
 		candidacy_bond: cfg_primitives::MILLI_CFG.into(),
 		desired_candidates: <Runtime as pallet_collator_selection::Config>::MaxCandidates::get(),
 	}
@@ -214,7 +214,7 @@ where
 	<Runtime as pallet_block_rewards::Config>::Balance: From<u128>,
 {
 	pallet_block_rewards::GenesisConfig::<Runtime> {
-		collators: vec![Keyring::Admin.to_account_id().into()],
+		collators: vec![Keyring::<Sr25519>::Admin.to_account_id().into()],
 		collator_reward: (1000 * cfg_primitives::CFG).into(),
 		total_reward: (10_000 * cfg_primitives::CFG).into(),
 	}

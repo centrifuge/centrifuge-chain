@@ -18,7 +18,7 @@ use tokio::runtime::Handle;
 use crate::{
 	chain::centrifuge::{Runtime, RuntimeCall, RuntimeEvent, PARA_ID},
 	utils::{
-		accounts::Keyring,
+		accounts::{Keyring, Sr25519},
 		env::{ChainState, EventRange},
 		loans::{borrow_call, issue_default_loan, NftManager},
 		pools::{default_pool_calls, permission_call},
@@ -47,9 +47,9 @@ async fn create_loan() {
 		Chain::Para(PARA_ID),
 		RuntimeCall,
 		ChainState::PoolEmpty,
-		Keyring::Admin => default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
+		Keyring::<Sr25519>::Admin => default_pool_calls(Keyring::<Sr25519>::Admin.into(), pool_id, &mut nft_manager),
 			issue_default_loan(
-				Keyring::Admin.into(),
+				Keyring::<Sr25519>::Admin.into(),
 				pool_id,
 				loan_amount,
 				maturity,

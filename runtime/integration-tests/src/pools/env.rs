@@ -22,7 +22,7 @@ use crate::{
 		centrifuge::{Runtime, PARA_ID},
 	},
 	utils::{
-		accounts::Keyring,
+		accounts::{Keyring, Sr25519},
 		extrinsics::{nonce_centrifuge, xt_centrifuge},
 		*,
 	},
@@ -61,11 +61,11 @@ async fn extrinsics_works() {
 	genesis::default_balances::<Runtime>(&mut genesis);
 	let mut env = env::test_env_with_centrifuge_storage(Handle::current(), genesis);
 
-	let to: cfg_primitives::Address = Keyring::Bob.into();
+	let to: cfg_primitives::Address = Keyring::<Sr25519>::Bob.into();
 	let xt = xt_centrifuge(
 		&env,
-		Keyring::Alice,
-		nonce_centrifuge(&env, Keyring::Alice),
+		Keyring::<Sr25519>::Alice,
+		nonce_centrifuge(&env, Keyring::<Sr25519>::Alice),
 		centrifuge::RuntimeCall::Balances(BalancesCall::transfer {
 			dest: to,
 			value: 100 * cfg_primitives::constants::CFG,
@@ -78,8 +78,8 @@ async fn extrinsics_works() {
 	let (alice_before, bob_before) = env
 		.with_state(Chain::Para(PARA_ID), || {
 			(
-				frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-				frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Alice.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Bob.to_account_id()),
 			)
 		})
 		.unwrap();
@@ -89,8 +89,8 @@ async fn extrinsics_works() {
 	let (alice_after, bob_after) = env
 		.with_state(Chain::Para(PARA_ID), || {
 			(
-				frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-				frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Alice.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Bob.to_account_id()),
 			)
 		})
 		.unwrap();
@@ -107,8 +107,8 @@ async fn extrinsics_works() {
 	let (alice_after, bob_after) = env
 		.with_state(Chain::Para(PARA_ID), || {
 			(
-				frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
-				frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Alice.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::<Sr25519>::Bob.to_account_id()),
 			)
 		})
 		.unwrap();

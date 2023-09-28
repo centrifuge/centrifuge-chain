@@ -13,26 +13,15 @@
 use frame_support::assert_ok;
 use fudge::primitives::Chain;
 
-use crate::{chain::centrifuge::PARA_ID, utils::env::TestEnv};
-
+use crate::{
+	chain::centrifuge::{Runtime, PARA_ID},
+	utils::env::TestEnv,
+};
 mod ethereum_transaction;
 mod precompile;
-
+use frame_system::RawOrigin;
 fn prepare_evm(env: &mut TestEnv) {
 	env.evolve().unwrap();
 
-	env.with_mut_state(Chain::Para(PARA_ID), || {
-		assert_ok!(pallet_evm::Pallet::<Runtime>::create2(
-			RawOrigin::Signed(derived_sender_account.clone()).into(),
-			sender_address,
-			LP_AXELAR_GATEWAY.into(),
-			test_input.to_vec(),
-			U256::from(0),
-			0x100000,
-			U256::from(1_000_000_000),
-			None,
-			Some(U256::from(0)),
-			Vec::new(),
-		));
-	})
+	env.with_mut_state(Chain::Para(PARA_ID), || {});
 }

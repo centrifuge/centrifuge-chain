@@ -37,18 +37,21 @@ mod chain {
 		pub mod centrifuge {
 			pub use centrifuge_runtime::*;
 			pub const PARA_ID: u32 = 2031;
+			pub const CHAIN_ID: u64 = 2023;
 		}
 
 		#[cfg(feature = "runtime-altair")]
 		pub mod altair {
 			pub use altair_runtime::*;
 			pub const PARA_ID: u32 = 2088;
+			pub const CHAIN_ID: u64 = 2088;
 		}
 
 		#[cfg(feature = "runtime-development")]
 		pub mod development {
 			pub use development_runtime::*;
 			pub const PARA_ID: u32 = 2000;
+			pub const CHAIN_ID: u64 = 2000;
 		}
 	}
 

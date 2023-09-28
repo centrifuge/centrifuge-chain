@@ -37,3 +37,7 @@ pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
 pub const USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 /// The EVM Chain id of Moonbeam
 pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
+
+/// Type that can not be instantiated.
+#[derive(Debug, Copy, PartialEq, Eq, Clone, Hash)]
+pub enum Never {}
