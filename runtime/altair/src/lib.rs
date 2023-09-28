@@ -1447,14 +1447,10 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	#[cfg(not(feature = "testnet-runtime"))]
-	type InboundQueue =
-		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
-	#[cfg(feature = "testnet-runtime")]
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

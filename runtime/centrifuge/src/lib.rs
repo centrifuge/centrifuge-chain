@@ -488,7 +488,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 }
 
 type LiquidityPoolsMessage =
-	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 
 /// The FilteredOutboundQueue serves as a filter for outbound LP messages that
 /// we want to allow initially.
@@ -540,8 +540,7 @@ parameter_types! {
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type InboundQueue =
-		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
+	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
