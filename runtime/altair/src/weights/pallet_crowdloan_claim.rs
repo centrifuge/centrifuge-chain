@@ -57,8 +57,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `619`
 		//  Estimated: `17661`
-		// Minimum execution time: 210_393 nanoseconds.
-		Weight::from_parts(212_657_000, 17661)
+		// Minimum execution time: 213_238 nanoseconds.
+		Weight::from_parts(215_733_000, 17661)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -88,8 +88,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `658`
 		//  Estimated: `17661`
-		// Minimum execution time: 213_789 nanoseconds.
-		Weight::from_parts(216_033_000, 17661)
+		// Minimum execution time: 216_475 nanoseconds.
+		Weight::from_parts(219_470_000, 17661)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -119,8 +119,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `619`
 		//  Estimated: `17661`
-		// Minimum execution time: 194_313 nanoseconds.
-		Weight::from_parts(196_587_000, 17661)
+		// Minimum execution time: 196_056 nanoseconds.
+		Weight::from_parts(198_050_000, 17661)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -142,8 +142,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `76`
 		//  Estimated: `1996`
-		// Minimum execution time: 24_426 nanoseconds.
-		Weight::from_parts(25_357_000, 1996)
+		// Minimum execution time: 25_107 nanoseconds.
+		Weight::from_parts(25_608_000, 1996)
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -153,8 +153,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 11_301 nanoseconds.
-		Weight::from_ref_time(11_762_000)
+		// Minimum execution time: 11_772 nanoseconds.
+		Weight::from_ref_time(12_062_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim LeasePeriod (r:0 w:1)
@@ -163,8 +163,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 11_201 nanoseconds.
-		Weight::from_ref_time(11_722_000)
+		// Minimum execution time: 11_491 nanoseconds.
+		Weight::from_ref_time(11_992_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim Contributions (r:0 w:1)
@@ -173,8 +173,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 12_313 nanoseconds.
-		Weight::from_ref_time(12_723_000)
+		// Minimum execution time: 12_644 nanoseconds.
+		Weight::from_ref_time(13_054_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim LockedAt (r:0 w:1)
@@ -183,8 +183,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 11_331 nanoseconds.
-		Weight::from_ref_time(11_802_000)
+		// Minimum execution time: 11_691 nanoseconds.
+		Weight::from_ref_time(12_023_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim CrowdloanTrieIndex (r:0 w:1)
@@ -193,8 +193,8 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 11_341 nanoseconds.
-		Weight::from_ref_time(11_992_000)
+		// Minimum execution time: 11_772 nanoseconds.
+		Weight::from_ref_time(12_133_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

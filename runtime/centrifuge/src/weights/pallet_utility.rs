@@ -36,43 +36,43 @@ impl<T: frame_system::Config> pallet_utility::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 10_709 nanoseconds.
-		Weight::from_ref_time(9_256_993)
-			// Standard Error: 3_208
-			.saturating_add(Weight::from_ref_time(8_566_938).saturating_mul(c.into()))
+		// Minimum execution time: 10_740 nanoseconds.
+		Weight::from_ref_time(14_011_539)
+			// Standard Error: 2_996
+			.saturating_add(Weight::from_ref_time(8_513_023).saturating_mul(c.into()))
 	}
 	fn as_derivative() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 8_015 nanoseconds.
-		Weight::from_ref_time(8_165_000)
+		// Minimum execution time: 7_985 nanoseconds.
+		Weight::from_ref_time(8_256_000)
 	}
 	/// The range of component `c` is `[0, 1000]`.
 	fn batch_all(c: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 10_810 nanoseconds.
-		Weight::from_ref_time(16_450_337)
-			// Standard Error: 2_934
-			.saturating_add(Weight::from_ref_time(8_924_434).saturating_mul(c.into()))
+		// Minimum execution time: 10_980 nanoseconds.
+		Weight::from_ref_time(12_577_335)
+			// Standard Error: 3_115
+			.saturating_add(Weight::from_ref_time(8_922_390).saturating_mul(c.into()))
 	}
 	fn dispatch_as() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 14_147 nanoseconds.
-		Weight::from_ref_time(14_627_000)
+		// Minimum execution time: 13_997 nanoseconds.
+		Weight::from_ref_time(14_657_000)
 	}
 	/// The range of component `c` is `[0, 1000]`.
 	fn force_batch(c: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 10_620 nanoseconds.
-		Weight::from_ref_time(45_861_061)
-			// Standard Error: 37_314
-			.saturating_add(Weight::from_ref_time(8_523_549).saturating_mul(c.into()))
+		// Minimum execution time: 11_071 nanoseconds.
+		Weight::from_ref_time(11_948_523)
+			// Standard Error: 2_773
+			.saturating_add(Weight::from_ref_time(8_526_127).saturating_mul(c.into()))
 	}
 }

@@ -49,8 +49,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `889`
 		//  Estimated: `22046`
-		// Minimum execution time: 70_332 nanoseconds.
-		Weight::from_parts(71_593_000, 22046)
+		// Minimum execution time: 69_170 nanoseconds.
+		Weight::from_parts(70_532_000, 22046)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -68,8 +68,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1394`
 		//  Estimated: `16867`
-		// Minimum execution time: 70_672 nanoseconds.
-		Weight::from_parts(73_857_000, 16867)
+		// Minimum execution time: 69_180 nanoseconds.
+		Weight::from_parts(70_802_000, 16867)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -85,8 +85,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `880`
 		//  Estimated: `15808`
-		// Minimum execution time: 49_703 nanoseconds.
-		Weight::from_parts(51_016_000, 15808)
+		// Minimum execution time: 48_822 nanoseconds.
+		Weight::from_parts(50_244_000, 15808)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -108,8 +108,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1602`
 		//  Estimated: `37935`
-		// Minimum execution time: 133_820 nanoseconds.
-		Weight::from_parts(136_154_000, 37935)
+		// Minimum execution time: 131_556 nanoseconds.
+		Weight::from_parts(133_900_000, 37935)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(9))
 	}
@@ -131,8 +131,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1818`
 		//  Estimated: `32866`
-		// Minimum execution time: 143_107 nanoseconds.
-		Weight::from_parts(146_032_000, 32866)
+		// Minimum execution time: 141_765 nanoseconds.
+		Weight::from_parts(143_479_000, 32866)
 			.saturating_add(T::DbWeight::get().reads(12))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -142,8 +142,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 13_545 nanoseconds.
-		Weight::from_ref_time(14_056_000)
+		// Minimum execution time: 12_624 nanoseconds.
+		Weight::from_ref_time(13_325_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: OrderBook TradingPair (r:0 w:1)
@@ -152,8 +152,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 14_958 nanoseconds.
-		Weight::from_ref_time(15_169_000)
+		// Minimum execution time: 14_256 nanoseconds.
+		Weight::from_ref_time(14_798_000)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: OrderBook TradingPair (r:1 w:1)
@@ -162,8 +162,8 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `242`
 		//  Estimated: `2557`
-		// Minimum execution time: 22_131 nanoseconds.
-		Weight::from_parts(22_813_000, 2557)
+		// Minimum execution time: 21_260 nanoseconds.
+		Weight::from_parts(22_101_000, 2557)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

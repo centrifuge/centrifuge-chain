@@ -37,8 +37,8 @@ impl<T: frame_system::Config> cumulus_pallet_xcmp_queue::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `142`
 		//  Estimated: `637`
-		// Minimum execution time: 12_423 nanoseconds.
-		Weight::from_parts(13_395_000, 637)
+		// Minimum execution time: 9_087 nanoseconds.
+		Weight::from_parts(9_438_000, 637)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -48,8 +48,8 @@ impl<T: frame_system::Config> cumulus_pallet_xcmp_queue::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `142`
 		//  Estimated: `637`
-		// Minimum execution time: 9_307 nanoseconds.
-		Weight::from_parts(9_748_000, 637)
+		// Minimum execution time: 8_967 nanoseconds.
+		Weight::from_parts(9_167_000, 637)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

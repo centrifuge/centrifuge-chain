@@ -43,8 +43,8 @@ impl<T: frame_system::Config> pallet_block_rewards::WeightInfo for WeightInfo<T>
 		// Proof Size summary in bytes:
 		//  Measured:  `678`
 		//  Estimated: `12885`
-		// Minimum execution time: 59_681 nanoseconds.
-		Weight::from_parts(60_764_000, 12885)
+		// Minimum execution time: 59_271 nanoseconds.
+		Weight::from_parts(60_203_000, 12885)
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -56,8 +56,8 @@ impl<T: frame_system::Config> pallet_block_rewards::WeightInfo for WeightInfo<T>
 		// Proof Size summary in bytes:
 		//  Measured:  `138`
 		//  Estimated: `3115`
-		// Minimum execution time: 12_112 nanoseconds.
-		Weight::from_parts(12_674_000, 3115)
+		// Minimum execution time: 12_073 nanoseconds.
+		Weight::from_parts(12_533_000, 3115)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> pallet_block_rewards::WeightInfo for WeightInfo<T>
 		//  Measured:  `97`
 		//  Estimated: `3115`
 		// Minimum execution time: 11_140 nanoseconds.
-		Weight::from_parts(11_751_000, 3115)
+		Weight::from_parts(11_442_000, 3115)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

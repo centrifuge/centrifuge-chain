@@ -33,7 +33,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(31_799_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -44,7 +44,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(31_799_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -55,7 +55,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(31_799_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -66,7 +66,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(31_799_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -77,19 +77,20 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(31_799_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 
 	fn process_msg() -> Weight {
-		// TODO: BENCHMARK AND USE REAL WEIGHTS
+		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
+		// be replaced with real benchmark soon.
 		//
 		// NOTE: For reference this weight compared to our maximum weight
 		//       * This weight      { ref_time: 4333558693, proof_size:   91070 }
 		//       * Maximum weight { ref_time: 500000000000, proof_size: 5242880 }
 		//
-		Weight::from_parts(131_175_488, 19974)
+		Weight::from_parts(124_979_771, 19974)
 			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))

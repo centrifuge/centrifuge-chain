@@ -39,8 +39,8 @@ impl<T: frame_system::Config> pallet_collator_allowlist::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `556`
 		//  Estimated: `5538`
-		// Minimum execution time: 25_397 nanoseconds.
-		Weight::from_parts(26_470_000, 5538)
+		// Minimum execution time: 26_079 nanoseconds.
+		Weight::from_parts(27_280_000, 5538)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -50,8 +50,8 @@ impl<T: frame_system::Config> pallet_collator_allowlist::WeightInfo for WeightIn
 		// Proof Size summary in bytes:
 		//  Measured:  `232`
 		//  Estimated: `2507`
-		// Minimum execution time: 19_837 nanoseconds.
-		Weight::from_parts(20_268_000, 2507)
+		// Minimum execution time: 19_596 nanoseconds.
+		Weight::from_parts(20_027_000, 2507)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}

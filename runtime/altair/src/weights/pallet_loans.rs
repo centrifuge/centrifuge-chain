@@ -53,8 +53,8 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1323`
 		//  Estimated: `14271`
-		// Minimum execution time: 79_638 nanoseconds.
-		Weight::from_parts(81_462_000, 14271)
+		// Minimum execution time: 79_559 nanoseconds.
+		Weight::from_parts(80_390_000, 14271)
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(6))
 	}
@@ -77,12 +77,14 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	/// Storage: System Account (r:1 w:0)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 9]`.
-	fn borrow(_n: u32, ) -> Weight {
+	fn borrow(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `38238 + n * (340 ±0)`
 		//  Estimated: `406331`
-		// Minimum execution time: 239_046 nanoseconds.
-		Weight::from_parts(269_141_482, 406331)
+		// Minimum execution time: 250_549 nanoseconds.
+		Weight::from_parts(269_059_406, 406331)
+			// Standard Error: 72_865
+			.saturating_add(Weight::from_ref_time(433_503).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -107,10 +109,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `38294 + n * (340 ±0)`
 		//  Estimated: `403628`
-		// Minimum execution time: 182_330 nanoseconds.
-		Weight::from_parts(195_999_646, 403628)
-			// Standard Error: 59_409
-			.saturating_add(Weight::from_ref_time(965_651).saturating_mul(n.into()))
+		// Minimum execution time: 188_823 nanoseconds.
+		Weight::from_parts(200_809_419, 403628)
+			// Standard Error: 51_840
+			.saturating_add(Weight::from_ref_time(336_065).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -131,10 +133,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `41302 + n * (340 ±0)`
 		//  Estimated: `400130`
-		// Minimum execution time: 325_337 nanoseconds.
-		Weight::from_parts(351_306_624, 400130)
-			// Standard Error: 90_838
-			.saturating_add(Weight::from_ref_time(502_589).saturating_mul(n.into()))
+		// Minimum execution time: 329_846 nanoseconds.
+		Weight::from_parts(356_180_860, 400130)
+			// Standard Error: 73_406
+			.saturating_add(Weight::from_ref_time(141_382).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -153,14 +155,12 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	/// Storage: InterestAccrual LastUpdated (r:1 w:0)
 	/// Proof: InterestAccrual LastUpdated (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 9]`.
-	fn admin_write_off(n: u32, ) -> Weight {
+	fn admin_write_off(_n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `41553 + n * (340 ±0)`
 		//  Estimated: `402833`
-		// Minimum execution time: 344_954 nanoseconds.
-		Weight::from_parts(377_526_758, 402833)
-			// Standard Error: 128_847
-			.saturating_add(Weight::from_ref_time(572_230).saturating_mul(n.into()))
+		// Minimum execution time: 351_166 nanoseconds.
+		Weight::from_parts(376_863_225, 402833)
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -177,10 +177,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `1003 + n * (316 ±0)`
 		//  Estimated: `331707`
-		// Minimum execution time: 49_663 nanoseconds.
-		Weight::from_parts(58_662_626, 331707)
-			// Standard Error: 23_966
-			.saturating_add(Weight::from_ref_time(156_734).saturating_mul(n.into()))
+		// Minimum execution time: 51_156 nanoseconds.
+		Weight::from_parts(58_771_114, 331707)
+			// Standard Error: 22_845
+			.saturating_add(Weight::from_ref_time(400_702).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -203,10 +203,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `37639 + n * (340 ±0)`
 		//  Estimated: `403476`
-		// Minimum execution time: 106_399 nanoseconds.
-		Weight::from_parts(116_054_810, 403476)
-			// Standard Error: 45_569
-			.saturating_add(Weight::from_ref_time(759_549).saturating_mul(n.into()))
+		// Minimum execution time: 111_679 nanoseconds.
+		Weight::from_parts(119_865_142, 403476)
+			// Standard Error: 37_882
+			.saturating_add(Weight::from_ref_time(607_123).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -233,10 +233,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `37497 + n * (373 ±0)`
 		//  Estimated: `399496`
-		// Minimum execution time: 140_533 nanoseconds.
-		Weight::from_parts(160_223_520, 399496)
-			// Standard Error: 59_637
-			.saturating_add(Weight::from_ref_time(329_351).saturating_mul(n.into()))
+		// Minimum execution time: 147_436 nanoseconds.
+		Weight::from_parts(160_957_070, 399496)
+			// Standard Error: 53_460
+			.saturating_add(Weight::from_ref_time(579_039).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -252,8 +252,8 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `512`
 		//  Estimated: `6494`
-		// Minimum execution time: 87_633 nanoseconds.
-		Weight::from_parts(89_337_000, 6494)
+		// Minimum execution time: 88_666 nanoseconds.
+		Weight::from_parts(90_500_000, 6494)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -267,8 +267,8 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `4950`
 		//  Estimated: `10947`
-		// Minimum execution time: 91_541 nanoseconds.
-		Weight::from_parts(92_703_000, 10947)
+		// Minimum execution time: 95_388 nanoseconds.
+		Weight::from_parts(97_683_000, 10947)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -289,10 +289,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `37060 + n * (316 ±0)`
 		//  Estimated: `408290`
-		// Minimum execution time: 91_070 nanoseconds.
-		Weight::from_parts(93_309_197, 408290)
-			// Standard Error: 44_566
-			.saturating_add(Weight::from_ref_time(9_762_971).saturating_mul(n.into()))
+		// Minimum execution time: 95_619 nanoseconds.
+		Weight::from_parts(95_212_206, 408290)
+			// Standard Error: 62_465
+			.saturating_add(Weight::from_ref_time(10_471_077).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -315,10 +315,10 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `37304 + n * (340 ±0)`
 		//  Estimated: `395232`
-		// Minimum execution time: 284_972 nanoseconds.
-		Weight::from_parts(302_869_213, 395232)
-			// Standard Error: 97_354
-			.saturating_add(Weight::from_ref_time(854_838).saturating_mul(n.into()))
+		// Minimum execution time: 293_078 nanoseconds.
+		Weight::from_parts(311_351_284, 395232)
+			// Standard Error: 103_889
+			.saturating_add(Weight::from_ref_time(1_470_198).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -338,12 +338,15 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	/// Proof: InterestAccrual LastUpdated (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Loans CreatedLoan (r:1 w:1)
 	/// Proof: Loans CreatedLoan (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)
-	fn apply_transfer_debt(_n: u32, ) -> Weight {
+	/// The range of component `n` is `[1, 10]`.
+	fn apply_transfer_debt(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2060`
+		//  Measured:  `38029 + n * (340 ±0)`
 		//  Estimated: `406179`
-		// Minimum execution time: 119_433 nanoseconds.
-		Weight::from_parts(120_635_000, 406179)
+		// Minimum execution time: 183_000 nanoseconds.
+		Weight::from_parts(220_730_649, 406179)
+			// Standard Error: 324_292
+			.saturating_add(Weight::from_ref_time(1_790_308).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
