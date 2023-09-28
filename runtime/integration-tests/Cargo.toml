@@ -111,7 +111,7 @@ pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-rewards = { path = "../../pallets/rewards" }
 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7" }
+pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.43" }

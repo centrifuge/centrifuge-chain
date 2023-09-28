@@ -54,7 +54,7 @@ pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/f
 fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 # Moonbeam dependencies
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "9e2eb91286ca48b62ba19c1e393ef0bdc7a8f6a7" }
+xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
 # Local Dependencies
 axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }

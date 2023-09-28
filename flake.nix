@@ -31,7 +31,7 @@
           # This selects a nightly Rust version, based on the date.
           nightly-date = pkgs.lib.strings.removePrefix "nightly-" rustToolChainTOML.toolchain.channel;
           # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
-          nightly-sha256 = "sha256-0HHSyIcGCh8bXZFzFMc2dSPJTtd02eijcok5YXHd+5A=";
+          nightly-sha256 = "sha256-hEf6+Lr/Pi7Mn6ESUrNYw9Wn8vKOpicKG/Y/3p5WQlo=";
           # This is the git short commit of the current version of the program.
           shortCommit = builtins.substring 0 7 (inputs.self.rev or "dirty");
 
