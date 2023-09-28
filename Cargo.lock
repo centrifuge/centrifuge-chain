@@ -10310,10 +10310,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "procedural"
-version = "0.1.0"
-
-[[package]]
 name = "prometheus"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11064,92 +11060,6 @@ dependencies = [
 
 [[package]]
 name = "runtime-integration-tests"
-version = "0.1.0"
-dependencies = [
- "altair-runtime",
- "axelar-gateway-precompile",
- "centrifuge-runtime",
- "cfg-primitives",
- "cfg-traits",
- "cfg-types",
- "cfg-utils",
- "cumulus-primitives-core",
- "development-runtime",
- "ethabi 16.0.0",
- "ethereum",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "fudge",
- "getrandom 0.2.10",
- "hex",
- "kusama-runtime",
- "lazy_static",
- "liquidity-pools-gateway-routers",
- "node-primitives",
- "orml-asset-registry",
- "orml-tokens",
- "orml-traits",
- "orml-xtokens",
- "pallet-aura",
- "pallet-balances",
- "pallet-block-rewards",
- "pallet-collator-selection",
- "pallet-collective",
- "pallet-democracy",
- "pallet-ethereum",
- "pallet-ethereum-transaction",
- "pallet-evm",
- "pallet-evm-chain-id",
- "pallet-foreign-investments",
- "pallet-investments",
- "pallet-liquidity-pools",
- "pallet-liquidity-pools-gateway",
- "pallet-loans",
- "pallet-order-book",
- "pallet-permissions",
- "pallet-pool-registry",
- "pallet-pool-system",
- "pallet-preimage",
- "pallet-rewards",
- "pallet-session",
- "pallet-transaction-payment",
- "pallet-uniques",
- "pallet-xcm",
- "pallet-xcm-transactor",
- "parachain-info",
- "parity-scale-codec 3.6.4",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
- "polkadot-runtime",
- "polkadot-runtime-common",
- "polkadot-runtime-parachains",
- "rococo-runtime",
- "runtime-common",
- "sc-client-api",
- "sc-executor",
- "sc-service",
- "serde",
- "sp-api",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-consensus-slots",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-tracing",
- "tokio",
- "tracing-subscriber",
- "xcm",
- "xcm-emulator",
- "xcm-executor",
-]
-
-[[package]]
-name = "runtime-integration-tests-v2"
 version = "0.1.0"
 dependencies = [
  "altair-runtime",

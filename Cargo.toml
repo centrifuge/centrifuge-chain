@@ -69,8 +69,6 @@ members = [
   "runtime/centrifuge",
   "runtime/common",
   "runtime/integration-tests",
-  "runtime/integration-tests-v2",
-  "runtime/integration-tests-v2/src/utils/procedural"
 ]
 
 [dependencies]

@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 license = "LGPL-3.0"
+build = "build.rs"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
