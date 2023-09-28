@@ -338,7 +338,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	/// Proof: InterestAccrual LastUpdated (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Loans CreatedLoan (r:1 w:1)
 	/// Proof: Loans CreatedLoan (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)
-	fn apply_transfer_debt() -> Weight {
+	fn apply_transfer_debt(_n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2060`
 		//  Estimated: `406179`
