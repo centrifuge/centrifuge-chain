@@ -433,11 +433,15 @@ substrate-test-runtime-client = { git = "https://github.com/paritytech//substrat
 node-primitives = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-nomination-pools = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sc-service-test = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sc-network-transactions = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-beefy = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-grandpa = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 
 [patch."https://github.com/paritytech/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 kusama-runtime-constants = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 pallet-xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-availability-recovery = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-cli = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-client = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
@@ -462,6 +466,10 @@ rococo-runtime = { git = "https://github.com/paritytech//polkadot", branch = "re
 xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 xcm-builder = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-collator-protocol = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-erasure-coding = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-node-collation-generation = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-node-core-runtime-api = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", branch = "polkadot-v0.9.43" }
@@ -633,12 +641,16 @@ substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", bra
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 substrate-test-client = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sc-network-transactions = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-beefy = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-grandpa = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 
 # Cargo patch rules for all the moonbeam-foundation/polkadot crates
 [patch."https://github.com/moonbeam-foundation/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 kusama-runtime-constants = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 pallet-xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-availability-recovery = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-cli = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-client = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
@@ -663,6 +675,10 @@ rococo-runtime = { git = "https://github.com/paritytech//polkadot", branch = "re
 xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 xcm-builder = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-collator-protocol = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-erasure-coding = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-node-collation-generation = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
+polkadot-node-core-runtime-api = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.43" }
 
 # Cargo patch rules for all the moonbeam-foundation/cumulus crates
 [patch."https://github.com/moonbeam-foundation/cumulus"]
