@@ -9,15 +9,15 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dev-dependencies]
 # Common
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 cfg-primitives = { path = "../../libs/primitives" }
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 # Runtimes
 altair-runtime = { path = "../altair" }
@@ -26,11 +26,11 @@ development-runtime = { path = "../development" }
 runtime-common = { path = "../common" }
 
 # Pallets
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-investments = { path = "../../pallets/investments" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
