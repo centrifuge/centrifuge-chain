@@ -2,17 +2,15 @@ use cfg_primitives::PoolId;
 use sp_runtime::{traits::Get, AccountId32};
 
 use crate::{
-	util::{self, genesis, Account, MUSD_UNIT},
+	util::{self, genesis, MUSD_UNIT},
 	Config,
 };
 
 const POOL_A: PoolId = 23;
 
-const AAA: AccountId32 = AccountId32::new([0; 32]);
-
-const ADMIN: Account = Account(1);
-const INVESTOR: Account = Account(2);
-const BORROWER: Account = Account(3);
+const ADMIN: AccountId32 = AccountId32::new([1; 32]);
+const INVESTOR: AccountId32 = AccountId32::new([2; 32]);
+const BORROWER: AccountId32 = AccountId32::new([3; 32]);
 
 fn borrow_from_pool<T: Config>() {
 	// Creating a pool

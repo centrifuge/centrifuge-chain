@@ -40,14 +40,19 @@ pub trait Config:
 	const KIND: RuntimeKind;
 }
 
-impl Config for development_runtime::Runtime {
-	const KIND: RuntimeKind = RuntimeKind::Development;
-}
-impl Config for altair_runtime::Runtime {
-	const KIND: RuntimeKind = RuntimeKind::Altair;
-}
-impl Config for centrifuge_runtime::Runtime {
-	const KIND: RuntimeKind = RuntimeKind::Centrifuge;
+#[cfg(feature = "compile-runtimes")]
+mod __impl {
+	use super::*;
+
+	impl Config for development_runtime::Runtime {
+		const KIND: RuntimeKind = RuntimeKind::Development;
+	}
+	impl Config for altair_runtime::Runtime {
+		const KIND: RuntimeKind = RuntimeKind::Altair;
+	}
+	impl Config for centrifuge_runtime::Runtime {
+		const KIND: RuntimeKind = RuntimeKind::Centrifuge;
+	}
 }
 
 pub enum RuntimeKind {
@@ -63,20 +68,29 @@ macro_rules! test_with_all_runtimes {
 			use super::*;
 
 			#[test]
+			#[cfg(feature = "compile-runtimes")]
 			fn development() {
 				$setup::<development_runtime::Runtime>()
 					.execute_with($name::<development_runtime::Runtime>);
 			}
 
 			#[test]
+			#[cfg(feature = "compile-runtimes")]
 			fn altair() {
 				$setup::<altair_runtime::Runtime>().execute_with($name::<altair_runtime::Runtime>);
 			}
 
 			#[test]
+			#[cfg(feature = "compile-runtimes")]
 			fn centrifuge() {
 				$setup::<centrifuge_runtime::Runtime>()
 					.execute_with($name::<centrifuge_runtime::Runtime>);
+			}
+
+			#[test]
+			#[cfg(not(feature = "compile-runtimes"))]
+			fn no_runtime() {
+				panic!("Compile without '--no-default-features' to run the tests with runtimes");
 			}
 		}
 	};

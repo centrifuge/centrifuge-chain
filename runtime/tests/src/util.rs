@@ -25,20 +25,7 @@ pub const MUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(23);
 
 pub const POOL_FUNDS: Balance = 100_000_000 * MUSD_UNIT;
 
-const MAX_ACCOUNTS: u32 = 20;
-
-#[derive(Debug, Clone, Copy)]
-pub struct Account(pub u32);
-
-impl Account {
-	pub fn id(&self) -> AccountId32 {
-		Pair::from_string(&format!("//{:?}", self), None)
-			.unwrap()
-			.public()
-			.0
-			.into()
-	}
-}
+const MAX_ACCOUNTS: u8 = 20;
 
 /// This genesis basically do:
 /// - ED for any account available
@@ -51,7 +38,7 @@ pub fn genesis<T: Config>() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<T> {
 		balances: (0..MAX_ACCOUNTS)
 			.into_iter()
-			.map(|i| (Account(i).id(), T::ExistentialDeposit::get()))
+			.map(|i| (AccountId32::new([i; 32]), T::ExistentialDeposit::get()))
 			.collect(),
 	}
 	.assimilate_storage(&mut storage)
@@ -62,7 +49,7 @@ pub fn genesis<T: Config>() -> sp_io::TestExternalities {
 			.into_iter()
 			.map(|i| {
 				(
-					Account(i).id(),
+					AccountId32::new([i; 32]),
 					MUSD_CURRENCY_ID,
 					T::ExistentialDeposit::get(),
 				)
@@ -94,22 +81,22 @@ pub fn genesis<T: Config>() -> sp_io::TestExternalities {
 	ext
 }
 
-pub fn give_balance_to<T: Config>(dest: Account, amount: Balance) {
-	let data = pallet_balances::Account::<T>::get(dest.id());
+pub fn give_balance_to<T: Config>(dest: AccountId32, amount: Balance) {
+	let data = pallet_balances::Account::<T>::get(dest.clone());
 	pallet_balances::Pallet::<T>::set_balance(
 		RawOrigin::Root.into(),
-		T::Lookup::unlookup(dest.id()),
+		T::Lookup::unlookup(dest),
 		data.free + amount,
 		data.reserved,
 	)
 	.unwrap();
 }
 
-pub fn give_musd_to<T: Config>(dest: Account, amount: Balance) {
-	let data = orml_tokens::Accounts::<T>::get(dest.id(), MUSD_CURRENCY_ID);
+pub fn give_musd_to<T: Config>(dest: AccountId32, amount: Balance) {
+	let data = orml_tokens::Accounts::<T>::get(dest.clone(), MUSD_CURRENCY_ID);
 	orml_tokens::Pallet::<T>::set_balance(
 		RawOrigin::Root.into(),
-		T::Lookup::unlookup(dest.id()),
+		T::Lookup::unlookup(dest),
 		MUSD_CURRENCY_ID,
 		data.free + amount,
 		data.reserved,
@@ -117,13 +104,13 @@ pub fn give_musd_to<T: Config>(dest: Account, amount: Balance) {
 	.unwrap();
 }
 
-pub fn create_pool<T: Config>(admin: Account, pool_id: PoolId) {
+pub fn create_pool<T: Config>(admin: AccountId32, pool_id: PoolId) {
 	pallet_pool_registry::Pallet::<T>::register(
 		match T::KIND {
-			RuntimeKind::Development => RawOrigin::Signed(admin.id()).into(),
+			RuntimeKind::Development => RawOrigin::Signed(admin.clone()).into(),
 			_ => RawOrigin::Root.into(),
 		},
-		admin.id(),
+		admin,
 		pool_id,
 		vec![
 			TrancheInput {
@@ -155,37 +142,41 @@ pub fn create_pool<T: Config>(admin: Account, pool_id: PoolId) {
 }
 
 pub fn invest<T: Config>(
-	investor: Account,
+	investor: AccountId32,
 	pool_id: PoolId,
 	tranche_id: TrancheId,
 	amount: Balance,
 ) {
 	pallet_investments::Pallet::<T>::update_invest_order(
-		RawOrigin::Signed(investor.id()).into(),
+		RawOrigin::Signed(investor).into(),
 		TrancheCurrency::generate(pool_id, tranche_id),
 		amount,
 	)
 	.unwrap();
 }
 
-pub fn give_investor_role<T: Config>(investor: Account, pool_id: PoolId, tranche_id: TrancheId) {
+pub fn give_investor_role<T: Config>(
+	investor: AccountId32,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+) {
 	let role = Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Moment::MAX));
 	pallet_permissions::Pallet::<T>::add(
 		RawOrigin::Root.into(),
 		role,
-		investor.id(),
+		investor,
 		PermissionScope::Pool(pool_id),
 		role,
 	)
 	.unwrap();
 }
 
-pub fn give_borrower_role<T: Config>(borrower: Account, pool_id: PoolId) {
+pub fn give_borrower_role<T: Config>(borrower: AccountId32, pool_id: PoolId) {
 	let role = Role::PoolRole(PoolRole::Borrower);
 	pallet_permissions::Pallet::<T>::add(
 		RawOrigin::Root.into(),
 		role,
-		borrower.id(),
+		borrower,
 		PermissionScope::Pool(pool_id),
 		role,
 	)
