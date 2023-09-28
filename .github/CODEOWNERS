@@ -29,6 +29,7 @@ pallets/restricted-tokens/* @mustermeiszer
 pallets/data-collector/* @lemunozm
 pallets/fees/* @lemunozm
 pallets/transfer-allowlist/* @mustermeiszer
+pallets/foreign-investments/* @wischli
 
 ## Changes to specific libraries
 libs/mock-builder/* @lemunozm
@@ -38,7 +39,7 @@ libs/traits/src/changes.rs @lemunozm
 libs/traits/src/data.rs @lemunozm
 
 ## Changes to runtime
-runtime/common/* @mustermeiszer @NunoAlexandre @hieronx @lemunozm
+runtime/common/* @mustermeiszer @NunoAlexandre @hieronx @lemunozm @wischli
 runtime/altair/* @mustermeiszer @NunoAlexandre @hieronx @wischli
 runtime/centrifuge/* @mustermeiszer @NunoAlexandre @hieronx @wischli
 
