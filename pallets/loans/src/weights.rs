@@ -25,6 +25,8 @@ pub trait WeightInfo {
 	fn propose_write_off_policy() -> Weight;
 	fn apply_write_off_policy() -> Weight;
 	fn update_portfolio_valuation(n: u32) -> Weight;
+	fn propose_transfer_debt(n: u32) -> Weight;
+	fn apply_transfer_debt(n: u32) -> Weight;
 }
 
 impl WeightInfo for () {
@@ -69,6 +71,14 @@ impl WeightInfo for () {
 	}
 
 	fn update_portfolio_valuation(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn propose_transfer_debt(_: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn apply_transfer_debt(_: u32) -> Weight {
 		Weight::zero()
 	}
 }

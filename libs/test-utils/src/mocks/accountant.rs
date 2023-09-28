@@ -12,12 +12,7 @@
 
 /// Exposes a struct $name that implements the `trait Accountant`. The struct
 /// expects one generic parameter that implements the fungibles traits
-/// `Inspect`, `Mutate` and `Transfer`. Furthermore, there exists a struct
-/// `GenesisConfig` that implements `trait GenesisBuild` that can be used
-/// like any other `GenesisConfig` to initialize state in the
-/// `TestExternalities`.
-///
-/// Also exports a `struct InvestmentInfo` to be used in the `GenesisConfig`
+/// `Inspect`, `Mutate` and `Transfer`.
 ///
 /// * E.g.: `MockAccountant<Tokens:
 ///   frame_support::traits::tokens::fungibles::{Inspect, Mutate, Transfer}>`
@@ -54,7 +49,7 @@
 ///
 /// // Using the `GenesisConfig`
 /// use accountant_mock::InvestmentInfo;
-/// let storage = GenesisBuild::build_storage(&accountant_mock::GenesisConfig {
+/// let storage = GenesisBuild::init(&accountant_mock::Genesis {
 ///             infos: vec![
 ///             (
 ///                 InvestmentId::Tranche(0, [0;16]),
@@ -79,30 +74,26 @@ macro_rules! impl_mock_accountant {
 
 			use super::*;
 
-			#[derive(Default, serde::Serialize, serde::Deserialize)]
-			pub struct GenesisConfig {
+			pub type InvestmentInfo =
+				cfg_types::investments::InvestmentInfo<$account_id, $currency_id, $investment_id>;
+
+			#[derive(Default)]
+			pub struct Genesis {
 				pub infos: Vec<($investment_id, InvestmentInfo)>,
-			}
-
-			impl frame_support::traits::GenesisBuild<()> for GenesisConfig {
-				fn build(&self) {
-					__private_STATE.with(|s| {
-						let mut state = s.borrow_mut();
-
-						for (id, info) in &self.infos {
-							state.add(id.clone(), info.clone())
-						}
-					})
-				}
 			}
 
 			pub struct $name<Tokens>(sp_std::marker::PhantomData<Tokens>);
 
-			#[derive(Clone, serde::Serialize, serde::Deserialize)]
-			pub struct InvestmentInfo {
-				pub owner: $account_id,
-				pub id: $investment_id,
-				pub payment_currency: $currency_id,
+			impl<Tokens> $name<Tokens> {
+				pub fn init(genesis: Genesis) {
+					__private_STATE.with(|s| {
+						let mut state = s.borrow_mut();
+
+						for (id, info) in &genesis.infos {
+							state.add(id.clone(), info.clone())
+						}
+					})
+				}
 			}
 
 			impl<Tokens> cfg_traits::investments::InvestmentAccountant<$account_id> for $name<Tokens>
@@ -187,23 +178,6 @@ macro_rules! impl_mock_accountant {
 				}
 			}
 
-			impl cfg_traits::investments::InvestmentProperties<$account_id> for InvestmentInfo {
-				type Currency = $currency_id;
-				type Id = $investment_id;
-
-				fn owner(&self) -> $account_id {
-					self.owner
-				}
-
-				fn id(&self) -> Self::Id {
-					self.id
-				}
-
-				fn payment_currency(&self) -> Self::Currency {
-					self.payment_currency
-				}
-			}
-
 			mod __private {
 				use super::*;
 
@@ -235,7 +209,7 @@ macro_rules! impl_mock_accountant {
 
 					pub fn add(&mut self, investment_id: $investment_id, info: InvestmentInfo) {
 						// NOTE: We deliberately update the info here as add() is only called
-						//       upon GenesisConfig.build(). We assume, if we are running in the
+						//       upon init(). We assume, if we are running in the
 						//       same thread this means a new initialization is wanted.
 						for (curr_id, curr_info) in &mut self.infos {
 							if *curr_id == investment_id {

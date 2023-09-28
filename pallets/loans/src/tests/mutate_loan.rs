@@ -50,7 +50,7 @@ fn without_active_loan() {
 fn with_wrong_policy_change() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(0));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 		config_mocks(loan_id, &DEFAULT_MUTATION);
 		MockChangeGuard::mock_released(|_, _| Ok(Change::Policy(vec![].try_into().unwrap())));
@@ -66,7 +66,7 @@ fn with_wrong_policy_change() {
 fn with_wrong_permissions() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(0));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 		config_mocks(loan_id, &DEFAULT_MUTATION);
 		assert_noop!(
@@ -98,7 +98,7 @@ mod wrong_mutation {
 	fn with_dcf() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, PricingAmount::Internal(0));
+			util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 			let mutation = LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(
 				Rate::from_float(0.5),
@@ -121,7 +121,7 @@ mod wrong_mutation {
 	fn with_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PricingAmount::External(ExternalAmount::empty()));
+			util::borrow_loan(loan_id, PrincipalInput::External(ExternalAmount::empty()));
 
 			let mutation = LoanMutation::Internal(InternalMutation::ProbabilityOfDefault(
 				Rate::from_float(0.5),
@@ -144,7 +144,7 @@ mod wrong_mutation {
 	fn with_maturity_extension() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, PricingAmount::Internal(0));
+			util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 			let mutation = LoanMutation::MaturityExtension(YEAR.as_secs());
 
@@ -165,7 +165,7 @@ mod wrong_mutation {
 	fn with_interest_rate() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, PricingAmount::Internal(0));
+			util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 			// Too high
 			let mutation = LoanMutation::InterestRate(InterestRate::Fixed {
@@ -191,7 +191,7 @@ mod wrong_mutation {
 fn with_successful_proposal() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(0));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(0));
 
 		config_mocks(loan_id, &DEFAULT_MUTATION);
 
@@ -235,7 +235,7 @@ fn with_successful_mutation_application() {
 		};
 
 		let loan_id = util::create_loan(loan);
-		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE / 2));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE / 2));
 
 		let mutations = vec![
 			// LoanMutation::InterestPayments(..), No changes, only one variant

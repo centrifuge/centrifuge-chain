@@ -20,10 +20,11 @@ use cfg_traits::interest::{CompoundingSchedule, InterestRate};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
 	entities::{
+		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount},
-			Pricing, PricingAmount, RepaidPricingAmount,
+			Pricing,
 		},
 	},
 	types::{
@@ -185,7 +186,7 @@ pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Runtime>) -> RuntimeCall
 pub fn borrow_call(
 	pool_id: PoolId,
 	loan_id: LoanId,
-	amount: PricingAmount<Runtime>,
+	amount: PrincipalInput<Runtime>,
 ) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::borrow {
 		pool_id,
@@ -194,11 +195,7 @@ pub fn borrow_call(
 	})
 }
 
-pub fn repay_call(
-	pool_id: PoolId,
-	loan_id: LoanId,
-	amount: RepaidPricingAmount<Runtime>,
-) -> RuntimeCall {
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: RepaidInput<Runtime>) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
