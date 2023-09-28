@@ -11,7 +11,7 @@ const POOL_A: PoolId = 23;
 fn loan_lifetime<T: Config>() {
 	setup::register_usdt::<T>();
 	setup::create_pool::<T>(POOL_A);
-	//setup::<T>::fund_pool::<T>(POOL_A);
+	setup::fund_pool::<T>(POOL_A);
 
 	// ... actual loan testing part
 }

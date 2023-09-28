@@ -17,7 +17,7 @@ use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use sp_runtime::{traits::One, AccountId32, Perquintill};
 
-use super::generic::Config;
+use super::generic::{Config, RuntimeKind};
 use crate::utils::accounts::Keyring;
 
 pub const MUSD_DECIMALS: u32 = 6;
@@ -37,9 +37,12 @@ pub fn new_ext<T: Config>() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<T> {
 		balances: vec![
-			(ADMIN.to_account_id(), T::PoolDeposit::get()),
-			(BORROWER.to_account_id(), 1 * CFG),
-			(INVESTOR.to_account_id(), 1 * CFG),
+			(
+				ADMIN.to_account_id(),
+				T::PoolDeposit::get() + T::ExistentialDeposit::get(),
+			),
+			(BORROWER.to_account_id(), T::ExistentialDeposit::get()),
+			(INVESTOR.to_account_id(), T::ExistentialDeposit::get()),
 		],
 	}
 	.assimilate_storage(&mut storage)
@@ -79,7 +82,10 @@ pub fn register_usdt<T: Config>() {
 
 pub fn create_pool<T: Config>(pool_id: PoolId) {
 	pallet_pool_registry::Pallet::<T>::register(
-		RawOrigin::Signed(ADMIN.to_account_id()).into(),
+		match T::RuntimeKind {
+			RuntimeKind::Development => RawOrigin::Signed(ADMIN.to_account_id()).into(),
+			_ => RawOrigin::Root.into(),
+		},
 		ADMIN.to_account_id(),
 		pool_id,
 		vec![
@@ -111,7 +117,6 @@ pub fn create_pool<T: Config>(pool_id: PoolId) {
 	.unwrap();
 }
 
-/*
 pub fn fund_pool<T: Config>(pool_id: PoolId) {
 	let tranche_id = pallet_pool_system::Pool::<T>::get(pool_id)
 		.unwrap()
@@ -122,7 +127,7 @@ pub fn fund_pool<T: Config>(pool_id: PoolId) {
 	let role = Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Moment::MAX));
 
 	pallet_permissions::Pallet::<T>::add(
-		T::RuntimeOrigin::root(),
+		RawOrigin::Root.into(),
 		role,
 		INVESTOR.to_account_id(),
 		PermissionScope::Pool(pool_id),
@@ -130,9 +135,8 @@ pub fn fund_pool<T: Config>(pool_id: PoolId) {
 	);
 
 	pallet_investments::Pallet::<T>::update_invest_order(
-		T::RuntimeOrigin::signed(INVESTOR.into()),
+		RawOrigin::Signed(INVESTOR.to_account_id()).into(),
 		TrancheCurrency::generate(pool_id, tranche_id),
 		POOL_FUNDS,
 	);
 }
-*/
