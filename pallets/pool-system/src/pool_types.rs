@@ -246,7 +246,8 @@ impl<
 		PoolId,
 		MaxTranches,
 	> where
-	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+	Balance:
+		FixedPointOperand + BaseArithmetic + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
 	CurrencyId: Copy,
 	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,

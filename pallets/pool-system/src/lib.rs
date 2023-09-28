@@ -188,9 +188,11 @@ pub mod pallet {
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
-		pallet_prelude::*, sp_runtime::traits::Convert, traits::Contains, PalletId,
+		pallet_prelude::*,
+		sp_runtime::traits::Convert,
+		traits::{tokens::Preservation, Contains},
+		PalletId,
 	};
-	use frame_support::traits::tokens::Preservation;
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 	use super::*;
@@ -1231,7 +1233,13 @@ pub mod pallet {
 				// TODO: Add a debug log here and/or a debut_assert maybe even an error if
 				// remaining_amount != 0 at this point!
 
-				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, Preservation::Expendable)?;
+				T::Tokens::transfer(
+					pool.currency,
+					&who,
+					&pool_account,
+					amount,
+					Preservation::Expendable,
+				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})
@@ -1280,7 +1288,13 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, Preservation::Expendable)?;
+				T::Tokens::transfer(
+					pool.currency,
+					&pool_account,
+					&who,
+					amount,
+					Preservation::Expendable,
+				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})

@@ -20,9 +20,10 @@ pub mod pallet {
 	use cfg_types::orders::{FulfillmentWithPrice, TotalOrder};
 	use frame_support::{
 		pallet_prelude::*,
-		traits::fungibles::{Inspect, Mutate, Transfer},
+		traits::fungibles::{Inspect, Mutate},
 		PalletId,
 	};
+	use frame_support::traits::tokens::Preservation;
 	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 
@@ -74,7 +75,7 @@ pub mod pallet {
 
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>;
 
-		type Tokens: Inspect<Self::AccountId> + Mutate<Self::AccountId> + Transfer<Self::AccountId>;
+		type Tokens: Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
@@ -178,7 +179,7 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let mut orders = InvestOrders::<T>::get(investment_id).unwrap_or_default();
-			orders.amount += amount;
+			orders.amount += amount.clone();
 			InvestOrders::<T>::insert(investment_id, orders);
 
 			let details = T::Accountant::info(investment_id)?;
@@ -188,7 +189,7 @@ pub mod pallet {
 				&T::FundsAccount::get().into_account_truncating(),
 				&OrderManagerAccount::get::<T>(),
 				amount,
-				false,
+				Preservation::Expendable,
 			)
 			.map(|_| ())
 		}
@@ -347,8 +348,8 @@ pub mod pallet {
 				details.payment_currency(),
 				&OrderManagerAccount::get::<T>(),
 				&details.payment_account(),
-				tokens_to_transfer_to_pool,
-				true,
+				tokens_to_transfer_to_pool.clone(),
+				Preservation::Preserve,
 			)
 			.expect("Transferring must work. Qed.");
 
@@ -356,7 +357,7 @@ pub mod pallet {
 			InvestOrders::<T>::insert(
 				asset_id,
 				TotalOrder {
-					amount: orders.amount - tokens_to_transfer_to_pool,
+					amount: orders.amount.clone() - tokens_to_transfer_to_pool.clone(),
 				},
 			);
 
@@ -414,7 +415,7 @@ pub mod pallet {
 				&details.payment_account(),
 				&OrderManagerAccount::get::<T>(),
 				payment_currency_to_move_to_order_manager,
-				false,
+				Preservation::Expendable,
 			)
 			.expect("Transferring must work. Qed.");
 

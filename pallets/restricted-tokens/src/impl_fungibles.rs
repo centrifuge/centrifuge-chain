@@ -13,7 +13,7 @@
 use cfg_traits::PreConditions;
 use frame_support::traits::{
 	fungible,
-	fungibles::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
+	fungibles::{Inspect, InspectHold, Mutate, MutateHold},
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
 

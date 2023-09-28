@@ -52,6 +52,7 @@ use frame_support::{
 	},
 	DefaultNoBound,
 };
+use frame_support::traits::tokens::{Fortitude, Precision};
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
@@ -366,7 +367,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
 		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
-		T::Currency::burn_from(T::StakeCurrencyId::get(), who, amount).map(|_| ())
+		T::Currency::burn_from(T::StakeCurrencyId::get(), who, amount, Precision::Exact, Fortitude::Polite).map(|_| ())
 	}
 
 	/// Apply session changes and distribute rewards.

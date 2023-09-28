@@ -240,7 +240,12 @@ where
 	where
 		Weight: Copy + From<u128>,
 		BalanceRatio: Copy + FixedPointNumber,
-		Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+		Balance: Copy
+			+ BaseArithmetic
+			+ FixedPointOperand
+			+ Unsigned
+			+ From<u64>
+			+ sp_arithmetic::MultiplyRational,
 		MaxExecutionTranches: Get<u32>,
 	{
 		let risk_buffer_improvement_scores =
@@ -444,7 +449,12 @@ pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Curren
 ) -> Result<(Balance, Balance, Vec<Perquintill>), DispatchError>
 where
 	BalanceRatio: Copy + FixedPointNumber,
-	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+	Balance: Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 	Weight: Copy + From<u128>,
 	MaxTranches: Get<u32>,
 {

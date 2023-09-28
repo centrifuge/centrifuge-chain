@@ -133,8 +133,7 @@ pub mod pallet {
 		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
 			+ InspectHold<Self::AccountId>
 			+ MutateHold<Self::AccountId>
-			+ Mutate<Self::AccountId>
-			+ Transfer<Self::AccountId>;
+			+ Mutate<Self::AccountId>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing

@@ -19,9 +19,10 @@ use cfg_types::{
 	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo},
 };
 use frame_support::{
-	traits::fungibles::{Mutate, Transfer},
+	traits::fungibles::Mutate,
 	transactional,
 };
+use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
 use sp_core::Get;
 use sp_runtime::{traits::Convert, DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
@@ -53,7 +54,7 @@ where
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.foreign_currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
 
-		T::Tokens::burn_from(status.foreign_currency, &investor, status.amount_decreased)?;
+		T::Tokens::burn_from(status.foreign_currency, &investor, status.amount_decreased, Precision::Exact, Fortitude::Polite)?;
 
 		let message: MessageOf<T> = Message::ExecutedDecreaseInvestOrder {
 			pool_id: investment_id.of_pool(),
@@ -95,7 +96,7 @@ where
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
 
-		T::Tokens::burn_from(status.currency, &investor, status.amount_currency_payout)?;
+		T::Tokens::burn_from(status.currency, &investor, status.amount_currency_payout, Precision::Exact, Fortitude::Polite)?;
 
 		let message: MessageOf<T> = Message::ExecutedCollectRedeem {
 			pool_id: investment_id.of_pool(),
@@ -143,7 +144,7 @@ where
 			&investor,
 			&Domain::convert(domain_address.domain()),
 			status.amount_tranche_tokens_payout,
-			false,
+			Preservation::Expendable,
 		)?;
 
 		let message: MessageOf<T> = Message::ExecutedCollectInvest {

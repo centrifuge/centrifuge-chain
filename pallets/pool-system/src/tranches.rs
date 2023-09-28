@@ -158,7 +158,12 @@ impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 
 impl<Balance, Rate, Weight, Currency> Tranche<Balance, Rate, Weight, Currency>
 where
-	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+	Balance: Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 	Rate: FixedPointNumber<Inner = Balance> + One + Copy,
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
@@ -342,7 +347,13 @@ impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
 	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
 where
 	TrancheCurrency: Copy + TrancheCurrencyT<PoolId, TrancheId>,
-	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+	Balance: Zero
+		+ Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 	Weight: Copy + From<u128>,
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
 	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
@@ -1400,7 +1411,12 @@ pub fn calculate_risk_buffers<Balance, BalanceRatio>(
 ) -> Result<Vec<Perquintill>, DispatchError>
 where
 	BalanceRatio: Copy + FixedPointNumber,
-	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64> + sp_arithmetic::MultiplyRational,
+	Balance: Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 {
 	let tranche_values: Vec<_> = tranche_supplies
 		.iter()

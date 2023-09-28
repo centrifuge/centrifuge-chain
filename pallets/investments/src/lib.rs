@@ -32,7 +32,10 @@ use cfg_types::{
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::tokens::fungibles::{Inspect, Mutate},
+	traits::tokens::{
+		fungibles::{Inspect, Mutate},
+		Preservation,
+	},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -168,9 +171,7 @@ pub mod pallet {
 
 		/// Something that can handle payments and transfers of
 		/// currencies
-		type Tokens: Mutate<Self::AccountId>
-			+ Inspect<Self::AccountId, Balance = Self::Amount>
-			+ Transfer<Self::AccountId>;
+		type Tokens: Mutate<Self::AccountId> + Inspect<Self::AccountId, Balance = Self::Amount>;
 
 		/// A possible check if investors fulfill every condition to invest into
 		/// a given investment
@@ -866,7 +867,7 @@ where
 					&investment_account,
 					&who,
 					collection.payout_investment_redeem,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				let amount = order.amount();
@@ -935,7 +936,14 @@ where
 			&mut total_order.amount,
 		)?;
 
-		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
+		T::Tokens::transfer(
+			info.payment_currency(),
+			send,
+			recv,
+			transfer_amount,
+			Preservation::Expendable,
+		)
+		.map(|_| ())
 	}
 
 	pub(crate) fn do_update_redeem_order(
@@ -1385,7 +1393,7 @@ where
 					&investment_account,
 					&info.payment_account(),
 					invest_amount,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				// The amount of investments the accountant needs to
@@ -1477,7 +1485,7 @@ where
 					&info.payment_account(),
 					&investment_account,
 					redeem_amount_payment,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				T::Accountant::withdraw(&investment_account, info.id(), redeem_amount)?;

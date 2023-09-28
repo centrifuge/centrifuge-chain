@@ -50,7 +50,7 @@ use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{
-		fungibles::{Inspect, Mutate, Transfer},
+		fungibles::{Inspect, Mutate},
 		PalletInfo,
 	},
 	transactional,
@@ -126,6 +126,7 @@ pub mod pallet {
 	};
 	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::UnixTime};
+	use frame_support::traits::tokens::Preservation;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
@@ -214,8 +215,7 @@ pub mod pallet {
 			+ Inspect<
 				Self::AccountId,
 				AssetId = CurrencyIdOf<Self>,
-				Balance = <Self as pallet::Config>::Balance,
-			> + Transfer<Self::AccountId>;
+				Balance = <Self as Config>::Balance>;
 
 		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>
@@ -569,7 +569,7 @@ pub mod pallet {
 				&Domain::convert(domain_address.domain()),
 				amount,
 				// NOTE: Here, we allow death
-				false,
+				Preservation::Expendable,
 			)?;
 
 			T::OutboundQueue::submit(
@@ -631,7 +631,7 @@ pub mod pallet {
 				&Domain::convert(receiver.domain()),
 				amount,
 				// NOTE: Here, we allow death
-				false,
+				Preservation::Expendable,
 			)?;
 
 			T::OutboundQueue::submit(

@@ -16,8 +16,10 @@ use cfg_traits::{
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
-use frame_support::traits::Contains;
-use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
+use frame_support::traits::{
+	tokens::{Fortitude, Precision, Preservation},
+	Contains,
+};
 use sp_runtime::traits::Hash;
 
 use super::*;
@@ -372,8 +374,9 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 	) -> Result<(), Self::Error> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
-		T::Tokens::mint_into(id.into(), buyer, amount)
-			.map(|_| ()) // todo(nuno): propagate this api change upstream
+		T::Tokens::mint_into(id.into(), buyer, amount).map(|_| ()) // todo(nuno):
+		                                                   // propagate this api
+		                                                   // change upstream
 	}
 
 	fn withdraw(
@@ -383,8 +386,14 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 	) -> Result<(), Self::Error> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
-		T::Tokens::burn_from(id.into(), seller, amount, Precision::Exact, Fortitude::Polite)
-			.map(|_| ())
+		T::Tokens::burn_from(
+			id.into(),
+			seller,
+			amount,
+			Precision::Exact,
+			Fortitude::Polite,
+		)
+		.map(|_| ())
 	}
 }
 

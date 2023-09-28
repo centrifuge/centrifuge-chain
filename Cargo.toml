@@ -54,7 +54,6 @@ members = [
   "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
-  "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/order-book",
