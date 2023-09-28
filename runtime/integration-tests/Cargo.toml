@@ -71,7 +71,6 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 
 # Misc
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "754f3b90ecc65af735a6c9a2e1792c5253926ff6" }
-trait-set = "0.3.0"
 
 # Local
 altair-runtime = { path = "../altair" }

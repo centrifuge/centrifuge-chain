@@ -57,7 +57,7 @@ pub enum RuntimeKind {
 }
 
 #[macro_export]
-macro_rules! test_all_runtimes {
+macro_rules! test_with_all_runtimes {
 	($setup:ident, $name:ident) => {
 		mod $name {
 			use super::*;

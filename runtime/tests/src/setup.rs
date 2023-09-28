@@ -70,7 +70,7 @@ pub fn new_ext<T: Config>() -> sp_io::TestExternalities {
 	sp_io::TestExternalities::new(storage)
 }
 
-pub fn register_usdt<T: Config>() {
+pub fn register_musd<T: Config>() {
 	orml_asset_registry::Pallet::<T>::register_asset(
 		RawOrigin::Root.into(),
 		AssetMetadata {
