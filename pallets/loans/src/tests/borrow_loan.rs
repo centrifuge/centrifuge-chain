@@ -34,7 +34,7 @@ fn with_wrong_loan_id() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				0,
-				PricingAmount::Internal(COLLATERAL_VALUE)
+				PrincipalInput::Internal(COLLATERAL_VALUE)
 			),
 			Error::<Runtime>::LoanNotActiveOrNotFound
 		);
@@ -53,7 +53,7 @@ fn from_other_borrower() {
 				RuntimeOrigin::signed(OTHER_BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(COLLATERAL_VALUE)
+				PrincipalInput::Internal(COLLATERAL_VALUE)
 			),
 			Error::<Runtime>::NotLoanBorrower
 		);
@@ -70,7 +70,7 @@ fn with_restriction_no_written_off() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE / 2)
+			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 
 		advance_time(YEAR + DAY);
@@ -81,7 +81,7 @@ fn with_restriction_no_written_off() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(COLLATERAL_VALUE / 2)
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
@@ -105,7 +105,7 @@ fn with_restriction_full_once() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(COLLATERAL_VALUE / 2) // Must be full value
+				PrincipalInput::Internal(COLLATERAL_VALUE / 2) // Must be full value
 			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
@@ -115,7 +115,7 @@ fn with_restriction_full_once() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE)
+			PrincipalInput::Internal(COLLATERAL_VALUE)
 		));
 
 		// Borrow was already done
@@ -124,7 +124,7 @@ fn with_restriction_full_once() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(0)
+				PrincipalInput::Internal(0)
 			),
 			Error::<Runtime>::from(BorrowLoanError::Restriction)
 		);
@@ -144,7 +144,7 @@ fn with_maturity_passed() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(COLLATERAL_VALUE)
+				PrincipalInput::Internal(COLLATERAL_VALUE)
 			),
 			Error::<Runtime>::from(BorrowLoanError::MaturityDatePassed)
 		);
@@ -162,7 +162,7 @@ fn with_wrong_internal_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(0)
+				PrincipalInput::Internal(0)
 			),
 			Error::<Runtime>::MismatchedPricingMethod
 		);
@@ -180,7 +180,7 @@ fn with_wrong_external_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(ExternalAmount::empty())
+				PrincipalInput::External(ExternalAmount::empty())
 			),
 			Error::<Runtime>::MismatchedPricingMethod
 		);
@@ -214,7 +214,7 @@ fn with_wrong_big_amount_internal_pricing() {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					PricingAmount::Internal(amount)
+					PrincipalInput::Internal(amount)
 				),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 			);
@@ -248,7 +248,7 @@ fn with_correct_amount_internal_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(amount)
+				PrincipalInput::Internal(amount)
 			));
 			assert_eq!(amount, util::current_loan_debt(loan_id));
 		});
@@ -280,7 +280,7 @@ fn with_unregister_price_id_and_oracle_required() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(amount)
+				PrincipalInput::External(amount)
 			),
 			PRICE_ID_NO_FOUND
 		);
@@ -308,7 +308,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 
 		assert_eq!(
@@ -324,7 +324,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 
 		assert_eq!(
@@ -355,7 +355,7 @@ fn with_wrong_big_amount_external_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(amount)
+				PrincipalInput::External(amount)
 			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
@@ -375,7 +375,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(amount)
+				PrincipalInput::External(amount)
 			),
 			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
@@ -391,7 +391,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(amount)
+				PrincipalInput::External(amount)
 			),
 			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
@@ -407,7 +407,7 @@ fn with_incorrect_settlement_price_external_pricing() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::External(amount)
+				PrincipalInput::External(amount)
 			),
 			Error::<Runtime>::SettlementPriceExceedsVariation
 		);
@@ -430,7 +430,7 @@ fn with_correct_settlement_price_external_pricing() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 
 		assert_eq!(
@@ -446,7 +446,7 @@ fn with_correct_settlement_price_external_pricing() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 
 		assert_eq!(
@@ -465,7 +465,7 @@ fn with_correct_settlement_price_external_pricing() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 
 		assert_eq!(
@@ -495,7 +495,7 @@ fn with_unlimited_amount_external_pricing() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::External(amount)
+			PrincipalInput::External(amount)
 		));
 	});
 }
@@ -511,7 +511,7 @@ fn twice() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE / 2)
+			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
@@ -519,7 +519,7 @@ fn twice() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE / 2)
+			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 
@@ -530,7 +530,7 @@ fn twice() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(extra)
+				PrincipalInput::Internal(extra)
 			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
@@ -548,7 +548,7 @@ fn twice_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE / 2)
+			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 		assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
@@ -566,7 +566,7 @@ fn twice_with_elapsed_time() {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			loan_id,
-			PricingAmount::Internal(COLLATERAL_VALUE / 2)
+			PrincipalInput::Internal(COLLATERAL_VALUE / 2)
 		));
 
 		// At this point the loan has been fully borrowed.
@@ -576,7 +576,7 @@ fn twice_with_elapsed_time() {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PricingAmount::Internal(extra)
+				PrincipalInput::Internal(extra)
 			),
 			Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 		);
