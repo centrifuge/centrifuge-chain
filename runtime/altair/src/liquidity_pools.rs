@@ -11,8 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{
-	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, EnsureRootOr, HalfOfCouncil,
-	PalletIndex, PoolId, TrancheId,
+	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, PalletIndex, PoolId, TrancheId,
 };
 use cfg_types::{
 	fixed_point::Ratio,
@@ -30,9 +29,9 @@ use runtime_common::{
 use sp_runtime::traits::One;
 
 use crate::{
-	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
-	LiquidityPoolsGateway, LocationToAccountId, OrderBook, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TreasuryAccount,
+	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsGateway, LocationToAccountId,
+	OrderBook, OrmlAssetRegistry, Permissions, PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin,
+	Timestamp, Tokens, TreasuryAccount,
 };
 
 parameter_types! {
@@ -60,7 +59,6 @@ impl pallet_foreign_investments::Config for Runtime {
 }
 
 parameter_types! {
-	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
 	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
 }
 
@@ -94,12 +92,12 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type InboundQueue = LiquidityPools;
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type InboundQueue = crate::LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
-	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

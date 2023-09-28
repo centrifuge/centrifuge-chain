@@ -150,7 +150,7 @@ pub mod add_wrapped_usdc_variants {
 	use super::*;
 	#[cfg(feature = "try-runtime")]
 	use crate::OrderBook;
-	use crate::{Balance, LiquidityPoolsPalletIndex, OrmlAssetRegistry, Runtime};
+	use crate::{liquidity_pools::LiquidityPoolsPalletIndex, Balance, OrmlAssetRegistry, Runtime};
 
 	pub struct Migration;
 

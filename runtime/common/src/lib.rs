@@ -563,6 +563,14 @@ pub mod foreign_investments {
 	}
 }
 
+pub mod liquidity_pools {
+	use cfg_primitives::{Balance, PoolId, TrancheId};
+	use cfg_types::{domain_address::Domain, fixed_point::Ratio};
+
+	pub type LiquidityPoolsMessage =
+		pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
+}
+
 pub mod origin {
 	use cfg_primitives::AccountId;
 	use frame_support::traits::{EitherOfDiverse, SortedMembers};

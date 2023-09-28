@@ -1006,7 +1006,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			lp_wrapped_usdc_metadata(
 				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
 				"LpEthUSDC".as_bytes().to_vec(),
-				development_runtime::LiquidityPoolsPalletIndex::get(),
+				development_runtime::liquidity_pools::LiquidityPoolsPalletIndex::get(),
 				CHAIN_ID_ETH_GOERLI_TESTNET,
 				CONTRACT_ETH_GOERLI_USDC,
 				true,
