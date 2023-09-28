@@ -11,7 +11,7 @@ use sp_runtime::AccountId32;
 mod use_case {
 	mod loans;
 }
-pub mod setup;
+pub mod util;
 
 pub trait Config:
 	frame_system::Config<AccountId = AccountId32>
