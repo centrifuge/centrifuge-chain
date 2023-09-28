@@ -66,8 +66,7 @@ pub struct Price<CurrencyId, Balance> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, transactional, PalletId};
-	use frame_support::traits::tokens::Preservation;
+	use frame_support::{pallet_prelude::*, traits::tokens::Preservation, transactional, PalletId};
 	use frame_system::{pallet_prelude::*, RawOrigin};
 
 	use super::*;

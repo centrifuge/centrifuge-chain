@@ -20,9 +20,8 @@ use cfg_types::{
 };
 use frame_support::{
 	ensure,
-	traits::fungibles::Mutate,
+	traits::{fungibles::Mutate, tokens::Preservation},
 };
-use frame_support::traits::tokens::Preservation;
 use sp_core::Get;
 use sp_runtime::{
 	traits::{Convert, Zero},

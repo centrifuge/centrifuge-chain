@@ -56,7 +56,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = [
   "tuples-96",
-] , branch = "polkadot-v0.9.43" }
+], branch = "polkadot-v0.9.43" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }

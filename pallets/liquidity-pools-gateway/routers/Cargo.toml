@@ -43,10 +43,10 @@ pallet-liquidity-pools-gateway = { path = "../.", default-features = false }
 [dev-dependencies]
 lazy_static = "1.4.0"
 
-cumulus-primitives-core = { git = "https://github.com/moonbeam-foundation/cumulus", default-features = false , branch = "moonbeam-polkadot-v0.9.43" }
+cumulus-primitives-core = { git = "https://github.com/moonbeam-foundation/cumulus", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
-xcm-builder = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false , branch = "moonbeam-polkadot-v0.9.43" }
-xcm-executor = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false , branch = "moonbeam-polkadot-v0.9.43" }
+xcm-builder = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+xcm-executor = { git = "https://github.com/moonbeam-foundation/polkadot", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }

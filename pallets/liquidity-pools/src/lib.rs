@@ -125,8 +125,10 @@ pub mod pallet {
 		EVMChainId,
 	};
 	use codec::HasCompact;
-	use frame_support::{pallet_prelude::*, traits::UnixTime};
-	use frame_support::traits::tokens::Preservation;
+	use frame_support::{
+		pallet_prelude::*,
+		traits::{tokens::Preservation, UnixTime},
+	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
@@ -215,7 +217,8 @@ pub mod pallet {
 			+ Inspect<
 				Self::AccountId,
 				AssetId = CurrencyIdOf<Self>,
-				Balance = <Self as Config>::Balance>;
+				Balance = <Self as Config>::Balance,
+			>;
 
 		/// The currency type of investments.
 		type TrancheCurrency: TrancheCurrency<Self::PoolId, Self::TrancheId>

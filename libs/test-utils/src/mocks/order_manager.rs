@@ -20,10 +20,12 @@ pub mod pallet {
 	use cfg_types::orders::{FulfillmentWithPrice, TotalOrder};
 	use frame_support::{
 		pallet_prelude::*,
-		traits::fungibles::{Inspect, Mutate},
+		traits::{
+			fungibles::{Inspect, Mutate},
+			tokens::Preservation,
+		},
 		PalletId,
 	};
-	use frame_support::traits::tokens::Preservation;
 	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 
