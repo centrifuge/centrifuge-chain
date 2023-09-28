@@ -2347,21 +2347,12 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
 			list_benchmark!(list, extra, pallet_balances, Balances);
-			// TODO: Not working as benches expect everybody to be whitelisted to register
-			//       as collator. But our runtimes restrict this. A PR to the cumulus
-			//       benches is needed or benchmarks allow some kind of pre-setup logic
-			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			// TODO: Not working as benches depend on pallet-staking which we don't use
-			//       Not sure how to fix TBH.
-			// use pallet_session_benchmarking::Pallet as SessionBench;
-			// list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_multisig, Multisig);
 			list_benchmark!(list, extra, pallet_proxy, Proxy);
 			list_benchmark!(list, extra, pallet_utility, Utility);
 			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
 			list_benchmark!(list, extra, pallet_collective, Council);
-			// TODO: Fails for reason: Error: Input("failed to submit candidacy")
-			// list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
+			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
 			list_benchmark!(list, extra, pallet_democracy, Democracy);
 			list_benchmark!(list, extra, pallet_identity, Identity);
 			list_benchmark!(list, extra, pallet_vesting, Vesting);
@@ -2387,6 +2378,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 			list_benchmark!(list, extra, pallet_investments, Investments);
+			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
+			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2435,6 +2428,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
 			add_benchmark!(params, batches, pallet_collective, Council);
 			add_benchmark!(params, batches, pallet_democracy, Democracy);
+			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
 			add_benchmark!(params, batches, pallet_identity, Identity);
 			add_benchmark!(params, batches, pallet_vesting, Vesting);
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
@@ -2459,6 +2453,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
 			add_benchmark!(params, batches, pallet_investments, Investments);
+			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
+			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
