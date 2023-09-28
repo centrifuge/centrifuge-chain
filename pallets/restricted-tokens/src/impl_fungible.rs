@@ -15,6 +15,8 @@ use frame_support::traits::{
 	fungible::{Inspect, InspectHold, Mutate, MutateHold},
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
+use frame_support::traits::fungible::{Dust, Unbalanced};
+use frame_support::traits::tokens::{Fortitude, Precision, Preservation, Restriction};
 
 use super::*;
 
@@ -125,13 +127,34 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	fn burn_from(
 		who: &T::AccountId,
 		amount: Self::Balance,
+		precision: Precision,
+		force: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutate::check(FungibleMutateEffects::BurnFrom(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as Mutate<T::AccountId>>::burn_from(who, amount)
+		<T::NativeFungible as Mutate<T::AccountId>>::burn_from(who, amount, precision, force)
+	}
+
+	fn transfer(
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Balance,
+		preservation: Preservation,
+	) -> Result<Self::Balance, DispatchError> {
+		ensure!(
+			T::PreFungibleTransfer::check(FungibleTransferEffects::Transfer(
+				source.clone(),
+				dest.clone(),
+				amount.clone(),
+				preservation.clone()
+			)),
+			Error::<T>::PreConditionsNotMet
+		);
+
+		<T::NativeFungible as Mutate<T::AccountId>>::transfer(source, dest, amount, preservation)
 	}
 }
 
@@ -165,20 +188,41 @@ pub enum FungibleMutateHoldEffects<AccountId, Balance> {
 	TransferHeld(AccountId, AccountId, Balance, bool, bool),
 }
 
+impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
+	fn handle_dust(dust: Dust<T::AccountId, Self>) {
+		todo!("nuno")
+	}
+
+	fn write_balance(who: &T::AccountId, amount: Self::Balance) -> Result<Option<Self::Balance>, DispatchError> {
+		todo!("nuno")
+	}
+
+	fn set_total_issuance(amount: Self::Balance) {
+		todo!("nuno")
+	}
+}
+
+impl<T: Config> fungible::hold::Unbalanced<T::AccountId> for Pallet<T> {
+	fn set_balance_on_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> sp_runtime::DispatchResult {
+		todo!("nuno")
+	}
+}
+
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
-	fn hold(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Hold(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::hold(who, amount)
+		<T::NativeFungible as MutateHold<T::AccountId>>::hold(reason, who, amount)
 	}
 
 	fn release(
+		reason: &Self::Reason,
 		who: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
+		precision: Precision,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Release(
@@ -189,15 +233,17 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::release(who, amount, best_effort)
+		<T::NativeFungible as MutateHold<T::AccountId>>::release(reason, who, amount, precision)
 	}
 
-	fn transfer_held(
+	fn transfer_on_hold(
+		reason: &Self::Reason,
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
-		on_held: bool,
+		precision: Precision,
+		mode: Restriction,
+		force: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::TransferHeld(
@@ -210,12 +256,14 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::transfer_held(
+		<T::NativeFungible as MutateHold<T::AccountId>>::transfer_on_hold(
+			reason,
 			source,
 			dest,
 			amount,
-			best_effort,
-			on_held,
+			precision,
+			mode,
+			force,
 		)
 	}
 }
@@ -230,26 +278,6 @@ pub enum FungibleTransferEffects<AccountId, Balance> {
 	/// * tuple.1 = `recv`. The receiver of the tokens.
 	/// * tuple.2 = `amount`. The amount that should be transferred.
 	/// * tuple.3 = `keep_alive`. The lifeness requirements.
-	Transfer(AccountId, AccountId, Balance, bool),
+	Transfer(AccountId, AccountId, Balance, Preservation),
 }
 
-impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
-	fn transfer(
-		source: &T::AccountId,
-		dest: &T::AccountId,
-		amount: Self::Balance,
-		keep_alive: bool,
-	) -> Result<Self::Balance, DispatchError> {
-		ensure!(
-			T::PreFungibleTransfer::check(FungibleTransferEffects::Transfer(
-				source.clone(),
-				dest.clone(),
-				amount,
-				keep_alive
-			)),
-			Error::<T>::PreConditionsNotMet
-		);
-
-		<T::NativeFungible as Transfer<T::AccountId>>::transfer(source, dest, amount, keep_alive)
-	}
-}

@@ -81,7 +81,7 @@ use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		fungibles::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
+		fungibles::{Inspect, InspectHold, Mutate, MutateHold},
 		tokens::AssetId,
 	},
 	PalletId,
@@ -98,7 +98,7 @@ type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::B
 
 #[frame_support::pallet]
 pub mod pallet {
-
+	use frame_support::traits::tokens::Preservation;
 	use super::*;
 
 	#[pallet::config]
@@ -308,7 +308,7 @@ pub mod pallet {
 				Group::<T, I>::try_mutate(group_id, |group| {
 					StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if !T::Currency::can_hold(currency_id, account_id, amount) {
-							Err(TokenError::NoFunds)?;
+							Err(TokenError::FundsUnavailable)?;
 						}
 
 						T::RewardMechanism::deposit_stake(account, currency, group, amount)?;
@@ -339,7 +339,7 @@ pub mod pallet {
 				Group::<T, I>::try_mutate(group_id, |group| {
 					StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if T::RewardMechanism::account_stake(account) < amount {
-							Err(TokenError::NoFunds)?;
+							Err(TokenError::FundsUnavailable)?;
 						}
 
 						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
@@ -378,7 +378,7 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let (group_id, currency) = Currency::<T, I>::get(currency_id);
+			let (group_id, currency) = Currency::<T, I>::get(currency_id.clone());
 			let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
 			let group = Group::<T, I>::get(group_id);
@@ -390,7 +390,7 @@ pub mod pallet {
 					&T::PalletId::get().into_account_truncating(),
 					account_id,
 					reward,
-					true,
+					Preservation::Protect,
 				)?;
 
 				Self::deposit_event(Event::RewardClaimed {

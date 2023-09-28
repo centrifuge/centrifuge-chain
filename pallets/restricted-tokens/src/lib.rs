@@ -71,6 +71,9 @@ pub mod pallet {
 			ArithmeticError, FixedPointOperand,
 		},
 	};
+	use frame_support::traits::ExistenceRequirement;
+	use frame_support::traits::fungibles::Mutate;
+	use frame_support::traits::tokens::{Fortitude, Preservation};
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
@@ -153,8 +156,7 @@ pub mod pallet {
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ fungibles::InspectHold<Self::AccountId>
 			+ fungibles::Mutate<Self::AccountId>
-			+ fungibles::MutateHold<Self::AccountId>
-			+ fungibles::Transfer<Self::AccountId>;
+			+ fungibles::MutateHold<Self::AccountId>;
 
 		/// Checks the pre conditions for trait Currency calls
 		type PreCurrency: PreConditions<
@@ -204,8 +206,7 @@ pub mod pallet {
 			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
 			+ fungible::InspectHold<Self::AccountId>
 			+ fungible::Mutate<Self::AccountId>
-			+ fungible::MutateHold<Self::AccountId>
-			+ fungible::Transfer<Self::AccountId>;
+			+ fungible::MutateHold<Self::AccountId>;
 
 		type NativeToken: Get<Self::CurrencyId>;
 
@@ -265,18 +266,18 @@ pub mod pallet {
 			);
 
 			let token = if T::NativeToken::get() == currency_id {
-				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
-					&from, &to, amount, false,
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
+					&from, &to, amount, Preservation::Protect,
 				)?;
 
 				TokenType::Native
 			} else {
-				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::transfer(
 					currency_id,
 					&from,
 					&to,
 					amount,
-					false,
+					Preservation::Protect,
 				)?;
 
 				TokenType::Other
@@ -304,20 +305,21 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
-			keep_alive: bool,
+			preservation: Preservation,
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
 			let reducible_balance = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Inspect<T::AccountId>>::reducible_balance(
-					&from, keep_alive,
+					&from, preservation.clone(), Fortitude::Polite
 				)
 			} else {
 				<T::Fungibles as fungibles::Inspect<T::AccountId>>::reducible_balance(
 					currency_id,
 					&from,
-					keep_alive,
+					preservation,
+					Fortitude::Polite,
 				)
 			};
 
@@ -332,7 +334,7 @@ pub mod pallet {
 			);
 
 			let token = if T::NativeToken::get() == currency_id {
-				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
 					&from,
 					&to,
 					reducible_balance,
@@ -341,7 +343,7 @@ pub mod pallet {
 
 				TokenType::Native
 			} else {
-				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::transfer(
 					currency_id,
 					&from,
 					&to,
@@ -390,18 +392,18 @@ pub mod pallet {
 			);
 
 			let token = if T::NativeToken::get() == currency_id {
-				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
-					&from, &to, amount, true,
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
+					&from, &to, amount, ExistenceRequirement::KeepAlive,
 				)?;
 
 				TokenType::Native
 			} else {
-				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::transfer(
 					currency_id,
 					&from,
 					&to,
 					amount,
-					true,
+					Preservation::Protect,
 				)?;
 
 				TokenType::Other
@@ -437,18 +439,18 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			let token = if T::NativeToken::get() == currency_id {
-				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
 					&from, &to, amount, false,
 				)?;
 
 				TokenType::Native
 			} else {
-				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::transfer(
 					currency_id,
 					&from,
 					&to,
 					amount,
-					false,
+					Preservation::Protect,
 				)?;
 
 				TokenType::Other

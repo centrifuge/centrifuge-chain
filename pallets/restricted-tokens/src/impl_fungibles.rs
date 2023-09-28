@@ -16,6 +16,8 @@ use frame_support::traits::{
 	fungibles::{Inspect, InspectHold, Mutate, MutateHold},
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
+use frame_support::traits::fungibles::{Dust, Unbalanced};
+use frame_support::traits::tokens::{Fortitude, Precision, Preservation, Restriction};
 
 use super::*;
 
@@ -210,6 +212,8 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 		asset: Self::AssetId,
 		who: &T::AccountId,
 		amount: Self::Balance,
+		precision: Precision,
+		force: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::Mutate<T::AccountId>>::burn_from(who, amount)
@@ -223,7 +227,36 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as Mutate<T::AccountId>>::burn_from(asset, who, amount)
+			<T::Fungibles as Mutate<T::AccountId>>::burn_from(asset, who, amount, precision, force)
+		}
+	}
+
+	fn transfer(
+		asset: Self::AssetId,
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Balance,
+		preservation: Preservation,
+	) -> Result<Self::Balance, DispatchError> {
+		if asset == T::NativeToken::get() {
+			<Pallet<T> as fungible::Mutate<T::AccountId>>::transfer(
+				source, dest, amount, preservation.clone()
+			).map_err(|e| e.error)
+		} else {
+			ensure!(
+				T::PreFungiblesTransfer::check(FungiblesTransferEffects::Transfer(
+					asset,
+					source.clone(),
+					dest.clone(),
+					amount,
+					keep_alive
+				)),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			<T::Fungibles as Mutate<T::AccountId>>::transfer(
+				asset, source, dest, amount, preservation,
+			).map(|_| ())
 		}
 	}
 }
@@ -262,10 +295,16 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 	TransferHeld(AssetId, AccountId, AccountId, Balance, bool, bool),
 }
 
+impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
+	fn set_balance_on_hold(asset: Self::AssetId, reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> sp_runtime::DispatchResult {
+		todo!("nuno")
+	}
+}
+
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
-	fn hold(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn hold(asset: Self::AssetId, reason: Self::Reason, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(who, amount)
+			<Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(reason, who, amount)
 		} else {
 			ensure!(
 				T::PreFungiblesMutateHold::check(FungiblesMutateHoldEffects::Hold(
@@ -276,15 +315,16 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::hold(asset, who, amount)
+			<T::Fungibles as MutateHold<T::AccountId>>::hold(asset, reason, who, amount)
 		}
 	}
 
 	fn release(
 		asset: Self::AssetId,
+		reason: &Self::Reason,
 		who: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
+		precision: Precision,
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::release(who, amount, best_effort)
@@ -299,21 +339,25 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::release(asset, who, amount, best_effort)
+			<T::Fungibles as MutateHold<T::AccountId>>::release(asset, reason, who, amount, precision)
 		}
 	}
 
-	fn transfer_held(
+	fn transfer_on_hold(
 		asset: Self::AssetId,
+		reason: Self::Reason,
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
-		on_hold: bool,
+		precision: Precision,
+		mode: Restriction,
+		force: Fortitude,
+
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::MutateHold<T::AccountId>>::transfer_held(
+			<Pallet<T> as fungible::MutateHold<T::AccountId>>::transfer_on_hold(
 				source,
+				reason,
 				dest,
 				amount,
 				best_effort,
@@ -332,13 +376,14 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::transfer_held(
+			<T::Fungibles as MutateHold<T::AccountId>>::transfer_on_hold(
 				asset,
+				reason,
 				source,
 				dest,
 				amount,
-				best_effort,
-				on_hold,
+				precision,
+				mode,
 			)
 		}
 	}
@@ -359,33 +404,16 @@ pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
 	Transfer(AssetId, AccountId, AccountId, Balance, bool),
 }
 
-impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
-	fn transfer(
-		asset: Self::AssetId,
-		source: &T::AccountId,
-		dest: &T::AccountId,
-		amount: Self::Balance,
-		keep_alive: bool,
-	) -> Result<Self::Balance, DispatchError> {
-		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::Transfer<T::AccountId>>::transfer(
-				source, dest, amount, keep_alive,
-			)
-		} else {
-			ensure!(
-				T::PreFungiblesTransfer::check(FungiblesTransferEffects::Transfer(
-					asset,
-					source.clone(),
-					dest.clone(),
-					amount,
-					keep_alive
-				)),
-				Error::<T>::PreConditionsNotMet
-			);
+impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
+	fn handle_dust(dust: Dust<T::AccountId, Self>) {
+		todo!("nuno")
+	}
 
-			<T::Fungibles as Transfer<T::AccountId>>::transfer(
-				asset, source, dest, amount, keep_alive,
-			)
-		}
+	fn write_balance(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> Result<Option<Self::Balance>, DispatchError> {
+		todo!("nuno")
+	}
+
+	fn set_total_issuance(asset: Self::AssetId, amount: Self::Balance) {
+		todo!("nuno")
 	}
 }
