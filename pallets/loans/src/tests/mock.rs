@@ -33,7 +33,7 @@ use sp_runtime::{
 	DispatchError, FixedU128,
 };
 
-use crate::{pallet as pallet_loans, ChangeOf};
+use crate::{entities::changes::Change, pallet as pallet_loans};
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
@@ -55,6 +55,7 @@ pub const ASSET_AA: Asset = (COLLECTION_A, 1);
 pub const ASSET_AB: Asset = (COLLECTION_A, 2);
 pub const ASSET_BA: Asset = (COLLECTION_B, 1);
 pub const ASSET_BB: Asset = (COLLECTION_B, 2);
+pub const ASSET_BC: Asset = (COLLECTION_B, 3);
 pub const NO_ASSET: Asset = (42, 1);
 
 pub const POOL_A: PoolId = 1;
@@ -218,7 +219,7 @@ impl pallet_mock_data::Config for Runtime {
 }
 
 impl pallet_mock_change_guard::Config for Runtime {
-	type Change = ChangeOf<Runtime>;
+	type Change = Change<Runtime>;
 	type ChangeId = H256;
 	type PoolId = PoolId;
 }
@@ -242,7 +243,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceRegistry = MockPrices;
 	type Quantity = Quantity;
 	type Rate = Rate;
-	type RuntimeChange = ChangeOf<Runtime>;
+	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();
@@ -264,6 +265,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BA.1, &BORROWER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BB.1, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_B, &ASSET_BC.1, &OTHER_BORROWER).unwrap();
 	});
 	ext
 }

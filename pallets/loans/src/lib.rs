@@ -26,6 +26,8 @@
 //! | [`Pallet::admin_write_off()`]       | LoanAdmin |
 //! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
 //! | [`Pallet::apply_loan_mutation()`]   |           |
+//! | [`Pallet::propose_transfer_debt()`] | Borrower  |
+//! | [`Pallet::apply_transfer_debt()`]   |           |
 //! | [`Pallet::close()`]                 | Borrower  |
 //!
 //! The following actions are performed over an entire pool of loans:
@@ -42,6 +44,8 @@
 
 /// High level types that uses `pallet::Config`
 pub mod entities {
+	pub mod changes;
+	pub mod input;
 	pub mod interest;
 	pub mod loans;
 	pub mod pricing;
@@ -77,8 +81,9 @@ pub mod pallet {
 	};
 	use codec::HasCompact;
 	use entities::{
+		changes::{Change, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::{self, ActiveLoan, ActiveLoanInfo, LoanInfo},
-		pricing::{PricingAmount, RepaidPricingAmount},
 	};
 	use frame_support::{
 		pallet_prelude::*,
@@ -103,8 +108,8 @@ pub mod pallet {
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
-		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
-		RepayLoanError, WrittenOffError,
+		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
+		WrittenOffError,
 	};
 
 	use super::*;
@@ -112,8 +117,6 @@ pub mod pallet {
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
-	pub type ChangeOf<T> =
-		Change<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::MaxWriteOffPolicySize>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
@@ -127,7 +130,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Represent a runtime change
-		type RuntimeChange: From<ChangeOf<Self>> + TryInto<ChangeOf<Self>>;
+		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
@@ -301,13 +304,13 @@ pub mod pallet {
 		Borrowed {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: PricingAmount<T>,
+			amount: PrincipalInput<T>,
 		},
 		/// An amount was repaid for a loan
 		Repaid {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidPricingAmount<T>,
+			amount: RepaidInput<T>,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -327,15 +330,23 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
 		},
-		/// The Portfolio Valuation for a pool was updated.
+		/// The portfolio valuation for a pool was updated.
 		PortfolioValuationUpdated {
 			pool_id: T::PoolId,
 			valuation: T::Balance,
 			update_type: PortfolioValuationUpdateType,
 		},
+		/// The write off policy for a pool was updated.
 		WriteOffPolicyUpdated {
 			pool_id: T::PoolId,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		},
+		/// Debt has been transfered between loans
+		DebtTransferred {
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			amount: T::Balance,
 		},
 	}
 
@@ -376,6 +387,10 @@ pub mod pallet {
 		CloseLoanError(CloseLoanError),
 		/// Emits when the loan can not be mutated
 		MutationError(MutationError),
+		/// Emits when debt is transfered to the same loan
+		TransferDebtToSameLoan,
+		/// Emits when debt is transfered with different repaid/borrow amounts
+		TransferDebtAmountMismatched,
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {
@@ -463,27 +478,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: PricingAmount<T>,
+			amount: PrincipalInput<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _count = match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(created_loan) => {
-					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
-
-					let mut active_loan = created_loan.activate(pool_id, amount.clone())?;
-					active_loan.borrow(&amount, pool_id)?;
-
-					Self::insert_active_loan(pool_id, loan_id, active_loan)?
-				}
-				None => {
-					Self::update_active_loan(pool_id, loan_id, |loan| {
-						Self::ensure_loan_borrower(&who, loan.borrower())?;
-						loan.borrow(&amount, pool_id)
-					})?
-					.1
-				}
-			};
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
 
 			T::Pool::withdraw(pool_id, who, amount.balance()?)?;
 
@@ -512,14 +511,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			amount: RepaidPricingAmount<T>,
+			amount: RepaidInput<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount, pool_id)
-			})?;
+			let (amount, _count) = Self::repay_action(&who, pool_id, loan_id, &amount, false)?;
 
 			T::Pool::deposit(pool_id, who, amount.repaid_amount()?.total()?)?;
 
@@ -770,6 +766,174 @@ pub mod pallet {
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
+
+		/// Transfer debt from one loan to another loan,
+		/// repaying from the first loan and borrowing the same amount from the
+		/// second loan. `from_loan_id` is the loan used to repay.
+		/// `to_loan_id` is the loan used to borrow.
+		/// The repaid and borrow amount must match.
+		#[pallet::weight(T::WeightInfo::propose_transfer_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(11)]
+		pub fn propose_transfer_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			transactional::with_transaction(|| {
+				let result = Self::transfer_debt_action(
+					&who,
+					pool_id,
+					from_loan_id,
+					to_loan_id,
+					repaid_amount.clone(),
+					borrow_amount.clone(),
+					false,
+				);
+
+				// We do not want to apply the mutation,
+				// only check if there is no error in applying it
+				TransactionOutcome::Rollback(result)
+			})?;
+
+			T::ChangeGuard::note(
+				pool_id,
+				Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount).into(),
+			)?;
+
+			Ok(())
+		}
+
+		/// Transfer debt from one loan to another loan,
+		/// repaying from the first loan and borrowing the same amount from the
+		/// second loan. `from_loan_id` is the loan used to repay.
+		/// `to_loan_id` is the loan used to borrow.
+		/// The repaid and borrow amount must match.
+		#[pallet::weight(T::WeightInfo::apply_transfer_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(12)]
+		pub fn apply_transfer_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount) =
+                Self::get_released_change(pool_id, change_id)? else {
+                    Err(Error::<T>::UnrelatedChangeId)?
+                };
+
+			let (amount, _count) = Self::transfer_debt_action(
+				&who,
+				pool_id,
+				from_loan_id,
+				to_loan_id,
+				repaid_amount,
+				borrow_amount,
+				true,
+			)?;
+
+			Self::deposit_event(Event::<T>::DebtTransferred {
+				pool_id,
+				from_loan_id,
+				to_loan_id,
+				amount,
+			});
+
+			Ok(())
+		}
+	}
+
+	// Loan actions
+	impl<T: Config> Pallet<T> {
+		fn borrow_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &PrincipalInput<T>,
+			permissionless: bool,
+		) -> Result<u32, DispatchError> {
+			Ok(match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => {
+					if !permissionless {
+						Self::ensure_loan_borrower(who, created_loan.borrower())?;
+					}
+
+					let mut active_loan = created_loan.activate(pool_id, amount.clone())?;
+					active_loan.borrow(amount, pool_id)?;
+
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
+				}
+				None => {
+					Self::update_active_loan(pool_id, loan_id, |loan| {
+						if !permissionless {
+							Self::ensure_loan_borrower(who, loan.borrower())?;
+						}
+
+						loan.borrow(amount, pool_id)
+					})?
+					.1
+				}
+			})
+		}
+
+		fn repay_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: &RepaidInput<T>,
+			permissionless: bool,
+		) -> Result<(RepaidInput<T>, u32), DispatchError> {
+			Self::update_active_loan(pool_id, loan_id, |loan| {
+				if !permissionless {
+					Self::ensure_loan_borrower(who, loan.borrower())?;
+				}
+
+				loan.repay(amount.clone(), pool_id)
+			})
+		}
+
+		fn transfer_debt_action(
+			who: &T::AccountId,
+			pool_id: T::PoolId,
+			from_loan_id: T::LoanId,
+			to_loan_id: T::LoanId,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
+			permissionless: bool,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			ensure!(
+				from_loan_id != to_loan_id,
+				Error::<T>::TransferDebtToSameLoan
+			);
+
+			let repaid_amount =
+				Self::repay_action(who, pool_id, from_loan_id, &repaid_amount, permissionless)?.0;
+
+			ensure!(
+				borrow_amount.balance()? == repaid_amount.repaid_amount()?.total()?,
+				Error::<T>::TransferDebtAmountMismatched
+			);
+
+			let count =
+				Self::borrow_action(who, pool_id, to_loan_id, &borrow_amount, permissionless)?;
+
+			Ok((repaid_amount.repaid_amount()?.total()?, count))
+		}
+
+		/// Set the maturity date of the loan to this instant.
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn expire_action(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
+			Self::update_active_loan(pool_id, loan_id, |loan| {
+				loan.set_maturity(T::Time::now().as_secs());
+				Ok(())
+			})?;
+			Ok(())
+		}
 	}
 
 	/// Utility methods
@@ -842,7 +1006,7 @@ pub mod pallet {
 		fn get_released_change(
 			pool_id: T::PoolId,
 			change_id: T::Hash,
-		) -> Result<ChangeOf<T>, DispatchError> {
+		) -> Result<Change<T>, DispatchError> {
 			T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::NoLoanChangeId.into())
@@ -990,16 +1154,6 @@ pub mod pallet {
 				.find(|(id, _)| *id == loan_id)
 				.map(|(_, loan)| (pool_id, loan).try_into())
 				.transpose()
-		}
-
-		/// Set the maturity date of the loan to this instant.
-		#[cfg(feature = "runtime-benchmarks")]
-		pub fn expire(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
-			Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.set_maturity(T::Time::now().as_secs());
-				Ok(())
-			})?;
-			Ok(())
 		}
 	}
 
