@@ -393,7 +393,8 @@ pub mod usdc {
 		hex_literal::hex!("07865c6e87b9f70255377e024ace6630c1eaa37f");
 	pub const CONTRACT_BASE_USDC: [u8; 20] =
 		hex_literal::hex!("833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
-	pub const CONTRACT_ARBITRUM_USDC: [u8; 20] = hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
+	pub const CONTRACT_ARBITRUM_USDC: [u8; 20] =
+		hex_literal::hex!("af88d065e77c8cC2239327C5EDb3A432268e5831");
 	pub const CONTRACT_CELO_USDC: [u8; 20] =
 		hex_literal::hex!("37f750B7cC259A2f741AF45294f6a16572CF5cAd");
 
