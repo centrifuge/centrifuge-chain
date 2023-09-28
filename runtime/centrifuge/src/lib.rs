@@ -2401,6 +2401,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 			list_benchmark!(list, extra, pallet_investments, Investments);
+			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2473,6 +2474,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches,	pallet_order_book, OrderBook);
 			add_benchmark!(params, batches,	pallet_investments, Investments);
+			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
