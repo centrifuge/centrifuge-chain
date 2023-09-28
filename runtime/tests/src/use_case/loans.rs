@@ -1,10 +1,9 @@
 use cfg_primitives::PoolId;
 
-mod generic;
-mod setup;
-
-use generic::Config;
-use setup::new_ext;
+use crate::{
+	setup::{self, new_ext},
+	Config,
+};
 
 const POOL_A: PoolId = 23;
 
@@ -16,4 +15,4 @@ fn loan_lifetime<T: Config>() {
 	// ... actual loan testing part
 }
 
-crate::test_for_all_runtimes!(new_ext, loan_lifetime);
+crate::test_all_runtimes!(new_ext, loan_lifetime);

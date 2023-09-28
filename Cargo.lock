@@ -11146,6 +11146,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime-tests"
+version = "0.1.0"
+dependencies = [
+ "altair-runtime",
+ "centrifuge-runtime",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "development-runtime",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-investments",
+ "pallet-loans",
+ "pallet-permissions",
+ "pallet-pool-registry",
+ "pallet-pool-system",
+ "runtime-common",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"

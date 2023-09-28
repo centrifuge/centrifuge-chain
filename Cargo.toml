@@ -68,6 +68,7 @@ members = [
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/common",
+  "runtime/tests",
   "runtime/integration-tests",
 ]
 
