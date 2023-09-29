@@ -77,8 +77,6 @@ pub mod pallet {
 	>;
 	pub type BalanceOf<T> = <T as Config>::Balance;
 
-	type ReasonOf<T: Config> = <T::TradeableAsset as InspectHold<<T as frame_system::Config>::AccountId>>::Reason;
-
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -134,7 +132,7 @@ pub mod pallet {
 
 		/// Type for currency orders can be made for
 		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
-			+ InspectHold<Self::AccountId>
+			+ InspectHold<Self::AccountId, Reason = ()>
 			+ MutateHold<Self::AccountId>
 			+ Mutate<Self::AccountId>;
 
@@ -408,7 +406,6 @@ pub mod pallet {
 			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
 			price: T::SellRatio,
-			reason: ReasonOf<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			Self::inner_update_order(
@@ -434,7 +431,6 @@ pub mod pallet {
 						min_amount,
 					)
 				},
-				reason,
 			)
 		}
 
@@ -462,12 +458,12 @@ pub mod pallet {
 		/// Fill an existing order, fulfilling the entire order.
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::Weights::fill_order_full())]
-		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce, reason: ReasonOf<T>) -> DispatchResult {
+		pub fn fill_order_full(origin: OriginFor<T>, order_id: T::OrderIdNonce) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 			let buy_amount = order.buy_amount;
 
-			Self::fulfill_order_with_amount(order, buy_amount, account_id, reason)
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
 		}
 
 		/// Adds a valid trading pair.
@@ -555,12 +551,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
-			reason: ReasonOf<T>,
+			
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
 
-			Self::fulfill_order_with_amount(order, buy_amount, account_id, reason)
+			Self::fulfill_order_with_amount(order, buy_amount, account_id)
 		}
 	}
 
@@ -569,7 +565,7 @@ pub mod pallet {
 			order: OrderOf<T>,
 			buy_amount: T::Balance,
 			account_id: T::AccountId,
-			reason: ReasonOf<T>,
+			
 		) -> DispatchResult {
 			ensure!(
 				buy_amount >= order.min_fulfillment_amount,
@@ -577,7 +573,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &reason, &account_id, buy_amount),
+				T::TradeableAsset::can_hold(order.asset_in_id, &(), &account_id, buy_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
 
@@ -604,7 +600,7 @@ pub mod pallet {
 			} else {
 				T::TradeableAsset::release(
 					order.asset_out_id,
-					&reason,
+					&(),
 					&order.placing_account,
 					sell_amount,
 					Precision::Exact,
@@ -664,10 +660,10 @@ pub mod pallet {
 
 		/// Unreserve funds for an order that is finished either
 		/// through fulfillment or cancellation.
-		pub fn unreserve_order(order: &OrderOf<T>, reason: ReasonOf<T>) -> Result<BalanceOf<T>, DispatchError> {
+		pub fn unreserve_order(order: &OrderOf<T>) -> Result<BalanceOf<T>, DispatchError> {
 			T::TradeableAsset::release(
 				order.asset_out_id,
-				&reason,
+				&(),
 				&order.placing_account,
 				order.max_sell_amount,
 				Precision::Exact,
@@ -751,7 +747,7 @@ pub mod pallet {
 			sell_rate_limit: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
 			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
-			reason: ReasonOf<T>,
+			
 		) -> DispatchResult {
 			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
@@ -774,7 +770,7 @@ pub mod pallet {
 								max_sell_amount.ensure_sub(order.max_sell_amount)?;
 							T::TradeableAsset::hold(
 								order.asset_out_id,
-								&reason,
+								&(),
 								&account,
 								sell_reserve_diff,
 							)?;
@@ -783,7 +779,7 @@ pub mod pallet {
 								order.max_sell_amount.ensure_sub(max_sell_amount)?;
 							T::TradeableAsset::release(
 								order.asset_out_id,
-									&reason,
+									&(),
 								&account,
 								sell_reserve_diff,
 								Precision::Exact,
@@ -841,7 +837,7 @@ pub mod pallet {
 			let max_sell_amount =
 				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
-			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
+			T::TradeableAsset::hold(currency_out, &(), &account, max_sell_amount)?;
 
 			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {
@@ -950,7 +946,7 @@ pub mod pallet {
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
-			reason: ReasonOf<T>,
+			
 		) -> DispatchResult {
 			Self::inner_update_order(
 				account,
@@ -972,7 +968,6 @@ pub mod pallet {
 						T::Balance::zero(),
 					)
 				},
-				reason,
 			)
 		}
 
