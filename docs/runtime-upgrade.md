@@ -43,7 +43,7 @@ This must be done before releasing a new version of any of our runtimes to ensur
 
     - Click on **propose**
 
-1. Voting phase. You should make 3 votes in favor of 3 different people (modify the CFG amount before to a low number).
+1. Voting phase. The appropriate threshold of votes should be placed in favour of the proposal.
     **Warning**, once the proposal appears, you will have `10 * 12` (`votingPeriod * secons_per_block`) seconds to perform
     all votes in favor.
 
