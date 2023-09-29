@@ -61,6 +61,8 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 	}
 }
 
+type ReasonOf<P, T> = <P as fungibles::InspectHold<<T as frame_system::Config>::AccountId>>::Reason;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::PreConditions;
@@ -73,7 +75,7 @@ pub mod pallet {
 	};
 	use frame_support::traits::ExistenceRequirement;
 	use frame_support::traits::fungibles::Mutate;
-	use frame_support::traits::tokens::{Fortitude, Preservation};
+	use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
@@ -305,20 +307,19 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
-			preservation: Preservation,
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
 			let reducible_balance = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Inspect<T::AccountId>>::reducible_balance(
-					&from, preservation.clone(), Fortitude::Polite
+					&from, Preservation::Protect, Fortitude::Polite
 				)
 			} else {
 				<T::Fungibles as fungibles::Inspect<T::AccountId>>::reducible_balance(
 					currency_id,
 					&from,
-					preservation,
+					Preservation::Protect,
 					Fortitude::Polite,
 				)
 			};
@@ -338,7 +339,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					keep_alive,
+					Preservation::Protect,
 				)?;
 
 				TokenType::Native
@@ -348,7 +349,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					keep_alive,
+					Preservation::Protect,
 				)?;
 
 				TokenType::Other
@@ -393,7 +394,7 @@ pub mod pallet {
 
 			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
-					&from, &to, amount, ExistenceRequirement::KeepAlive,
+					&from, &to, amount, Preservation::Preserve,
 				)?;
 
 				TokenType::Native
@@ -440,7 +441,7 @@ pub mod pallet {
 
 			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Mutate<T::AccountId>>::transfer(
-					&from, &to, amount, false,
+					&from, &to, amount, Preservation::Protect,
 				)?;
 
 				TokenType::Native
@@ -476,6 +477,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		pub fn set_balance(
 			origin: OriginFor<T>,
+			reason: ReasonOf<Pallet<T>, T>,
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] new_free: T::Balance,
@@ -491,17 +493,20 @@ pub mod pallet {
 			let token = if T::NativeToken::get() == currency_id {
 				let old_reserved =
 					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
+						&reason,
 						&who,
 					);
 				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::release(
+					&reason,
 					&who,
 					old_reserved,
-					false,
+					Precision::Exact,
 				)?;
 				let to_burn = <T::NativeFungible as fungible::Inspect<T::AccountId>>::balance(&who);
-				<T::NativeFungible as fungible::Mutate<T::AccountId>>::burn_from(&who, to_burn)?;
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::burn_from(&who, to_burn, Precision::Exact, Fortitude::Polite)?;
 				<T::NativeFungible as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
 				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::hold(
+					&reason,
 					&who,
 					new_reserved,
 				)?;
@@ -511,13 +516,15 @@ pub mod pallet {
 				let old_reserved =
 					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
 						currency_id,
+						reason,
 						&who,
 					);
 				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::release(
 					currency_id,
+					reason,
 					&who,
 					old_reserved,
-					false,
+					Precision::BestEffort,
 				)?;
 				let to_burn =
 					<T::Fungibles as fungibles::Inspect<T::AccountId>>::balance(currency_id, &who);
@@ -525,6 +532,8 @@ pub mod pallet {
 					currency_id,
 					&who,
 					to_burn,
+					Precision::Exact,
+					Fortitude::Polite,
 				)?;
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
 					currency_id,
@@ -533,6 +542,7 @@ pub mod pallet {
 				)?;
 				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::hold(
 					currency_id,
+					reason,
 					&who,
 					new_reserved,
 				)?;

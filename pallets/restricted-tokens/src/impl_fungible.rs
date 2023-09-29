@@ -16,7 +16,7 @@ use frame_support::traits::{
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
 use frame_support::traits::fungible::{Dust, Unbalanced};
-use frame_support::traits::tokens::{Fortitude, Precision, Preservation, Restriction};
+use frame_support::traits::tokens::{Fortitude, Precision, Preservation, Provenance, Restriction};
 
 use super::*;
 
@@ -58,20 +58,24 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		<T::NativeFungible as Inspect<T::AccountId>>::minimum_balance()
 	}
 
+	fn total_balance(who: &T::AccountId) -> Self::Balance {
+		<T::NativeFungible as Inspect<T::AccountId>>::total_balance(who)
+	}
+
 	fn balance(who: &T::AccountId) -> Self::Balance {
 		<T::NativeFungible as Inspect<T::AccountId>>::balance(who)
 	}
 
-	fn reducible_balance(who: &T::AccountId, keep_alive: bool) -> Self::Balance {
+	fn reducible_balance(who: &T::AccountId, preservation: Preservation, force: Fortitude) -> Self::Balance {
 		T::PreFungibleInspect::check(FungibleInspectEffects::ReducibleBalance(
 			who.clone(),
-			keep_alive,
-			<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance(who, keep_alive),
+			preservation != Preservation::Expendable,
+			<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance(who, preservation, force),
 		))
 	}
 
-	fn can_deposit(who: &T::AccountId, amount: Self::Balance, mint: bool) -> DepositConsequence {
-		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount, mint)
+	fn can_deposit(who: &T::AccountId, amount: Self::Balance, provenance: Provenance) -> DepositConsequence {
+		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount, provenance)
 	}
 
 	fn can_withdraw(
@@ -96,15 +100,29 @@ pub enum FungibleInspectHoldEffects<AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	fn balance_on_hold(who: &T::AccountId) -> Self::Balance {
-		<T::NativeFungible as InspectHold<T::AccountId>>::balance_on_hold(who)
+	type Reason = <T::NativeFungible as InspectHold<T::AccountId>>::Reason;
+
+	fn total_balance_on_hold(who: &T::AccountId) -> Self::Balance {
+		todo!("nuno")
 	}
 
-	fn can_hold(who: &T::AccountId, amount: Self::Balance) -> bool {
+	fn reducible_total_balance_on_hold(who: &T::AccountId, force: Fortitude) -> Self::Balance {
+		todo!("nuno")
+	}
+
+	fn balance_on_hold(reason: &Self::Reason, who: &T::AccountId) -> Self::Balance {
+		<T::NativeFungible as InspectHold<T::AccountId>>::balance_on_hold(reason, who)
+	}
+
+	fn hold_available(reason: &Self::Reason, who: &T::AccountId) -> bool {
+		todo!("nuno")
+	}
+
+	fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
 		T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
 			who.clone(),
 			amount,
-			<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(who, amount),
+			<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who, amount),
 		))
 	}
 }
@@ -115,7 +133,7 @@ pub enum FungibleMutateEffects<AccountId, Balance> {
 }
 
 impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
-	fn mint_into(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn mint_into(who: &T::AccountId, amount: Self::Balance) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutate::check(FungibleMutateEffects::MintInto(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
@@ -228,7 +246,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Release(
 				who.clone(),
 				amount,
-				best_effort
+				precision == Precision::BestEffort,
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
@@ -250,8 +268,8 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				source.clone(),
 				dest.clone(),
 				amount,
-				best_effort,
-				on_held
+				precision == Precision::BestEffort,
+				mode == Restriction::OnHold,
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
