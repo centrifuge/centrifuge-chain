@@ -13,11 +13,12 @@
 use cfg_traits::PreConditions;
 use frame_support::traits::{
 	fungible,
-	fungibles::{Inspect, InspectHold, Mutate, MutateHold},
-	tokens::{DepositConsequence, WithdrawConsequence},
+	fungibles::{Dust, Inspect, InspectHold, Mutate, MutateHold, Unbalanced},
+	tokens::{
+		DepositConsequence, Fortitude, Precision, Preservation, Provenance, Restriction,
+		WithdrawConsequence,
+	},
 };
-use frame_support::traits::fungibles::{Dust, Unbalanced};
-use frame_support::traits::tokens::{Fortitude, Precision, Preservation, Provenance, Restriction};
 
 use super::*;
 
@@ -93,13 +94,22 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		force: Fortitude,
 	) -> Self::Balance {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(who, preservation, force)
+			<Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(
+				who,
+				preservation,
+				force,
+			)
 		} else {
 			T::PreFungiblesInspect::check(FungiblesInspectEffects::ReducibleBalance(
 				asset,
 				who.clone(),
 				preservation != Preservation::Expendable,
-				<T::Fungibles as Inspect<T::AccountId>>::reducible_balance(asset, who, preservation, force),
+				<T::Fungibles as Inspect<T::AccountId>>::reducible_balance(
+					asset,
+					who,
+					preservation,
+					force,
+				),
 			))
 		}
 	}
@@ -150,17 +160,27 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	type Reason = T::Reason; //<T::Fungibles as InspectHold<T::AccountId>>::Reason;
+	type Reason = T::Reason;
+
+	//<T::Fungibles as InspectHold<T::AccountId>>::Reason;
 
 	fn total_balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")
 	}
 
-	fn reducible_total_balance_on_hold(asset: Self::AssetId, who: &T::AccountId, force: Fortitude) -> Self::Balance {
+	fn reducible_total_balance_on_hold(
+		asset: Self::AssetId,
+		who: &T::AccountId,
+		force: Fortitude,
+	) -> Self::Balance {
 		todo!("nuno")
 	}
 
-	fn balance_on_hold(asset: Self::AssetId, reason: &Self::Reason, who: &T::AccountId) -> Self::Balance {
+	fn balance_on_hold(
+		asset: Self::AssetId,
+		reason: &Self::Reason,
+		who: &T::AccountId,
+	) -> Self::Balance {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::balance_on_hold(reason, who)
 		} else {
@@ -172,7 +192,12 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		todo!("nuno")
 	}
 
-	fn can_hold(asset: Self::AssetId, reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
+	fn can_hold(
+		asset: Self::AssetId,
+		reason: &Self::Reason,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> bool {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::can_hold(reason, who, amount)
 		} else {
@@ -263,7 +288,10 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::Mutate<T::AccountId>>::transfer(
-				source, dest, amount, preservation.clone()
+				source,
+				dest,
+				amount,
+				preservation.clone(),
 			)
 		} else {
 			ensure!(
@@ -278,7 +306,11 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 			);
 
 			<T::Fungibles as Mutate<T::AccountId>>::transfer(
-				asset, source, dest, amount, preservation,
+				asset,
+				source,
+				dest,
+				amount,
+				preservation,
 			)
 		}
 	}
@@ -319,13 +351,23 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
-	fn set_balance_on_hold(asset: Self::AssetId, reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> sp_runtime::DispatchResult {
+	fn set_balance_on_hold(
+		asset: Self::AssetId,
+		reason: &Self::Reason,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> sp_runtime::DispatchResult {
 		todo!("nuno")
 	}
 }
 
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
-	fn hold(asset: Self::AssetId, reason: &T::Reason, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn hold(
+		asset: Self::AssetId,
+		reason: &T::Reason,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(reason, who, amount)
 		} else {
@@ -350,7 +392,9 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 		precision: Precision,
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::MutateHold<T::AccountId>>::release(reason, who, amount, precision)
+			<Pallet<T> as fungible::MutateHold<T::AccountId>>::release(
+				reason, who, amount, precision,
+			)
 		} else {
 			ensure!(
 				T::PreFungiblesMutateHold::check(FungiblesMutateHoldEffects::Release(
@@ -362,7 +406,9 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			<T::Fungibles as MutateHold<T::AccountId>>::release(asset, reason, who, amount, precision)
+			<T::Fungibles as MutateHold<T::AccountId>>::release(
+				asset, reason, who, amount, precision,
+			)
 		}
 	}
 
@@ -375,7 +421,6 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 		precision: Precision,
 		mode: Restriction,
 		force: Fortitude,
-
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::transfer_on_hold(
@@ -401,14 +446,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			);
 
 			<T::Fungibles as MutateHold<T::AccountId>>::transfer_on_hold(
-				asset,
-				reason,
-				source,
-				dest,
-				amount,
-				precision,
-				mode,
-				force,
+				asset, reason, source, dest, amount, precision, mode, force,
 			)
 		}
 	}
@@ -434,7 +472,11 @@ impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
 		todo!("nuno")
 	}
 
-	fn write_balance(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> Result<Option<Self::Balance>, DispatchError> {
+	fn write_balance(
+		asset: Self::AssetId,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> Result<Option<Self::Balance>, DispatchError> {
 		todo!("nuno")
 	}
 

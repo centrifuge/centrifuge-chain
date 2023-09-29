@@ -47,11 +47,10 @@ pub mod pallet {
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
 			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold},
-			tokens::AssetId,
+			tokens::{AssetId, Precision, Preservation},
 		},
 		Twox64Concat,
 	};
-	use frame_support::traits::tokens::{Precision, Preservation};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
@@ -551,7 +550,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
-			
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = <Orders<T>>::get(order_id)?;
@@ -565,7 +563,6 @@ pub mod pallet {
 			order: OrderOf<T>,
 			buy_amount: T::Balance,
 			account_id: T::AccountId,
-			
 		) -> DispatchResult {
 			ensure!(
 				buy_amount >= order.min_fulfillment_amount,
@@ -747,7 +744,6 @@ pub mod pallet {
 			sell_rate_limit: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
 			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
-			
 		) -> DispatchResult {
 			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
@@ -779,7 +775,7 @@ pub mod pallet {
 								order.max_sell_amount.ensure_sub(max_sell_amount)?;
 							T::TradeableAsset::release(
 								order.asset_out_id,
-									&(),
+								&(),
 								&account,
 								sell_reserve_diff,
 								Precision::Exact,
@@ -946,7 +942,6 @@ pub mod pallet {
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
-			
 		) -> DispatchResult {
 			Self::inner_update_order(
 				account,

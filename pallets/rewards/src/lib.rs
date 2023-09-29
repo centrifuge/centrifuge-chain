@@ -99,6 +99,7 @@ type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::B
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::traits::tokens::Preservation;
+
 	use super::*;
 
 	#[pallet::config]
