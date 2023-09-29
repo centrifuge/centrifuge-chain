@@ -18,6 +18,7 @@ use std::{
 
 use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
+use frame_benchmarking::baseline::mock::RuntimeEvent;
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
@@ -461,6 +462,18 @@ pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 // NOTE: Nonce management is a known issue when interacting with a chain and
 // wanting       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
+	pub fn last_event_centrifuge(&self) -> Option<centrifuge::RuntimeEvent> {
+		self.centrifuge
+			.with_state_at(BlockId::Number(at), || {
+				frame_system::Pallet::<centrifuge::Runtime>::events()
+			})
+			.map_err(|_| ())
+			.map(|events| events.first())
+			.ok()
+			.flatten()
+			.map(|event| event.clone)
+	}
+
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
 	where
 		sp_runtime::generic::Block<Header, UncheckedExtrinsic>: sp_runtime::traits::Block,

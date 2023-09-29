@@ -400,6 +400,7 @@ mod with_ext {
 	use cfg_traits::PoolNAV;
 
 	use super::*;
+	use crate::utils::accounts::Sr25519;
 
 	/// Whitelists 10 tranche-investors per tranche.
 	///
@@ -449,7 +450,7 @@ mod with_ext {
 	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
 		let now = Timestamp::now();
 		let mut details = PoolSystem::pool(pool).expect("POOLS: Getting pool failed.");
-		Loans::update_portfolio_valuation(Keyring::Admin.into(), pool)
+		Loans::update_portfolio_valuation(Keyring::<Sr25519>::Admin.into(), pool)
 			.expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
 			<Loans as PoolNAV<PoolId, Balance>>::nav(pool).expect("LOANS: Getting NAV failed");
@@ -479,11 +480,19 @@ mod with_ext {
 	///
 	/// **Needs: Mut Externalities to persist**
 	pub fn permit_admin(id: PoolId) {
-		permission_for(Keyring::Admin.into(), id, PoolRole::PricingAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::LiquidityAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::LoanAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::InvestorAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::Borrower);
+		permission_for(Keyring::<Sr25519>::Admin.into(), id, PoolRole::PricingAdmin);
+		permission_for(
+			Keyring::<Sr25519>::Admin.into(),
+			id,
+			PoolRole::LiquidityAdmin,
+		);
+		permission_for(Keyring::<Sr25519>::Admin.into(), id, PoolRole::LoanAdmin);
+		permission_for(
+			Keyring::<Sr25519>::Admin.into(),
+			id,
+			PoolRole::InvestorAdmin,
+		);
+		permission_for(Keyring::<Sr25519>::Admin.into(), id, PoolRole::Borrower);
 	}
 
 	/// Add a `PoolRole::TrancheInvestor to a Keyring::TrancheInvestor(u32)
@@ -492,7 +501,7 @@ mod with_ext {
 	/// **Needs: Mut Externalities to persist**
 	pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {
 		permission_for(
-			Keyring::TrancheInvestor(investor).into(),
+			Keyring::<Sr25519>::TrancheInvestor(investor).into(),
 			pool,
 			PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
 		)

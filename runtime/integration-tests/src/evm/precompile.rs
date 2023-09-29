@@ -23,7 +23,7 @@ use cfg_types::{
 use codec::Encode;
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
-use frame_support::{assert_err, assert_ok, dispatch::RawOrigin};
+use frame_support::{assert_err, assert_ok, dispatch::RawOrigin, traits::GenesisBuild};
 use fudge::primitives::Chain;
 use hex::ToHex;
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
@@ -38,7 +38,7 @@ use xcm::{v3::MultiLocation, VersionedMultiLocation};
 use crate::{
 	chain::centrifuge::{
 		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
-		RuntimeEvent, RuntimeOrigin, PARA_ID,
+		RuntimeEvent, RuntimeOrigin, CHAIN_ID, PARA_ID,
 	},
 	evm::{ethereum_transaction::TEST_CONTRACT_CODE, prepare_evm},
 	utils::{
@@ -55,8 +55,19 @@ async fn axelar_precompile_execute() {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
 		genesis::register_default_asset::<Runtime>(&mut genesis);
+		<pallet_evm_chain_id::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
+			&pallet_evm_chain_id::GenesisConfig { chain_id: CHAIN_ID },
+			&mut genesis,
+		)
+		.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
 	};
+
+	let chain_id = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pallet_evm_chain_id::Pallet::<Runtime>::get()
+		})
+		.unwrap();
 
 	env.evolve().unwrap();
 
@@ -240,7 +251,23 @@ async fn axelar_precompile_execute() {
 
 #[tokio::test]
 async fn axelar_precompile_execute_2() {
-	let mut env = env::test_env_default(Handle::current());
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		genesis::register_default_asset::<Runtime>(&mut genesis);
+		<pallet_evm_chain_id::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
+			&pallet_evm_chain_id::GenesisConfig { chain_id: CHAIN_ID },
+			&mut genesis,
+		)
+		.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	let chain_id = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pallet_evm_chain_id::Pallet::<Runtime>::get()
+		})
+		.unwrap();
 
 	prepare_evm(&mut env);
 }

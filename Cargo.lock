@@ -1548,7 +1548,7 @@ version = "4.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54a9bb5758fc5dfe728d1019941681eccaf0cf8a4189b692a0ee2f2ecf90a050"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn 2.0.29",
@@ -3025,7 +3025,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9720bba047d567ffc8a3cba48bf19126600e249ab7f128e9233e6376976a116"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -3140,6 +3140,8 @@ checksum = "a4c98847055d934070b90e806e12d3936b787d0a115068981c1d8dfd5dfef5a5"
 dependencies = [
  "ethereum-types 0.12.1",
  "hex",
+ "serde",
+ "serde_json",
  "sha3 0.9.1",
  "thiserror",
  "uint",
@@ -3160,6 +3162,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethabi-contract"
+version = "16.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4632b1b766fbf59872eb7a41e7ebaa10727b7f7000aef5bb626b87e472041c83"
+
+[[package]]
+name = "ethabi-derive"
+version = "16.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6766474553be4cd1042a20e5c67bb067846c7796975e67fc59147faf1020f467"
+dependencies = [
+ "ethabi 16.0.0",
+ "heck 0.3.3",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "ethbloom"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3167,6 +3188,8 @@ checksum = "bfb684ac8fa8f6c5759f788862bb22ec6fe3cb392f6bfd08e3c64b603661e3f8"
 dependencies = [
  "crunchy",
  "fixed-hash 0.7.0",
+ "impl-rlp",
+ "impl-serde 0.3.2",
  "tiny-keccak",
 ]
 
@@ -3180,7 +3203,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec 0.6.0",
  "impl-rlp",
- "impl-serde",
+ "impl-serde 0.4.0",
  "scale-info",
  "tiny-keccak",
 ]
@@ -3211,6 +3234,8 @@ checksum = "05136f7057fe789f06e6d41d07b34e6f70d8c86e5693b60f97aaa6553553bdaf"
 dependencies = [
  "ethbloom 0.11.1",
  "fixed-hash 0.7.0",
+ "impl-rlp",
+ "impl-serde 0.3.2",
  "primitive-types 0.10.1",
  "uint",
 ]
@@ -3225,7 +3250,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec 0.6.0",
  "impl-rlp",
- "impl-serde",
+ "impl-serde 0.4.0",
  "primitive-types 0.12.1",
  "scale-info",
  "uint",
@@ -4436,6 +4461,15 @@ checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
 
 [[package]]
 name = "heck"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
@@ -4726,6 +4760,15 @@ dependencies = [
 
 [[package]]
 name = "impl-serde"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4551f042f3438e64dbd6226b20527fc84a6e1fe65688b58746a2f53623f25f5c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "impl-serde"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc88fc67028ae3db0c853baa36269d398d5f45b6982f95549ff5def78c935cd"
@@ -4971,7 +5014,7 @@ version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baa6da1e4199c10d7b1d0a6e5e8bd8e55f351163b6f4b3cbb044672a69bd4c1c"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -5563,7 +5606,7 @@ version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d527d5827582abd44a6d80c07ff8b50b4ee238a8979e05998474179e79dc400"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "quote",
  "syn 1.0.109",
 ]
@@ -10233,6 +10276,8 @@ checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
 dependencies = [
  "fixed-hash 0.7.0",
  "impl-codec 0.5.1",
+ "impl-rlp",
+ "impl-serde 0.3.2",
  "uint",
 ]
 
@@ -10245,7 +10290,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec 0.6.0",
  "impl-rlp",
- "impl-serde",
+ "impl-serde 0.4.0",
  "scale-info",
  "uint",
 ]
@@ -10373,7 +10418,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "119533552c9a7ffacc21e099c24a0ac8bb19c2a2a3f363de84cd9b844feab270"
 dependencies = [
  "bytes",
- "heck",
+ "heck 0.4.1",
  "itertools",
  "lazy_static",
  "log",
@@ -11072,6 +11117,8 @@ dependencies = [
  "cumulus-primitives-core",
  "development-runtime",
  "ethabi 16.0.0",
+ "ethabi-contract",
+ "ethabi-derive",
  "ethereum",
  "frame-benchmarking",
  "frame-support",
@@ -11127,6 +11174,7 @@ dependencies = [
  "sc-executor",
  "sc-service",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-consensus-aura",
  "sp-consensus-babe",
@@ -12648,9 +12696,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.105"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693151e1ac27563d6dbcec9dee9fbd5da8539b20fa14ad3752b2e6d363ace360"
+checksum = "6b420ce6e3d8bd882e9b243c6eed35dbc9a6110c9769e74b584e0d68d1f20c65"
 dependencies = [
  "itoa",
  "ryu",
@@ -13108,7 +13156,7 @@ dependencies = [
  "futures",
  "hash-db",
  "hash256-std-hasher",
- "impl-serde",
+ "impl-serde 0.4.0",
  "lazy_static",
  "libsecp256k1",
  "log",
@@ -13455,7 +13503,7 @@ name = "sp-storage"
 version = "7.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=bcff60a227d455d95b4712b6cb356ce56b1ff672#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
- "impl-serde",
+ "impl-serde 0.4.0",
  "parity-scale-codec 3.6.4",
  "ref-cast",
  "serde",
@@ -13543,7 +13591,7 @@ name = "sp-version"
 version = "5.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=bcff60a227d455d95b4712b6cb356ce56b1ff672#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
- "impl-serde",
+ "impl-serde 0.4.0",
  "parity-scale-codec 3.6.4",
  "parity-wasm",
  "scale-info",
@@ -13724,7 +13772,7 @@ version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e385be0d24f186b4ce2f9982191e7101bb737312ad61c1f2f984f34bcf85d59"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro2",
  "quote",
  "rustversion",
@@ -14681,6 +14729,12 @@ checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
 
 [[package]]
 name = "unicode-width"

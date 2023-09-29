@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
 use crate::utils::{
-	accounts::{default_accounts, Keyring, Sr25519},
+	accounts::{all_accounts, sr25519, Keyring, Sr25519},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 	AUSD_CURRENCY_ID, RELAY_ASSET_ID,
 };
@@ -31,14 +31,9 @@ where
 	Runtime::AccountId: From<AccountId32>,
 {
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: default_accounts()
+		balances: all_accounts()
 			.into_iter()
-			.map(|acc| {
-				(
-					AccountId32::from(acc).into(),
-					(100_000 * DECIMAL_BASE_18).into(),
-				)
-			})
+			.map(|acc| (acc.into(), (100_000 * DECIMAL_BASE_18).into()))
 			.collect(),
 	}
 	.assimilate_storage(storage)
@@ -55,7 +50,7 @@ where
 	Runtime::CurrencyId: From<CurrencyId>,
 {
 	orml_tokens::GenesisConfig::<Runtime> {
-		balances: default_accounts()
+		balances: all_accounts()
 			.into_iter()
 			.map(|acc| {
 				(
@@ -166,7 +161,7 @@ where
 	<Runtime as pallet_session::Config>::Keys: From<development_runtime::SessionKeys>, /* <Runtime as pallet_session::Config>::Keys: From<sp_core::sr25519::Public>, */
 {
 	pallet_session::GenesisConfig::<Runtime> {
-		keys: default_accounts()
+		keys: sr25519::default_accounts()
 			.into_iter()
 			.map(|acc| {
 				(
@@ -229,7 +224,7 @@ where
 	Runtime: pallet_collective::Config<Instance>,
 	Runtime::AccountId: From<AccountId32>,
 {
-	council_members::<Runtime, Instance>(default_accounts(), storage)
+	council_members::<Runtime, Instance>(sr25519::default_accounts(), storage)
 }
 
 /// Sets the provided account IDs as council members.

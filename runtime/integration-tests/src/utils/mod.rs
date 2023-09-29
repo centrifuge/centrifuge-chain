@@ -41,3 +41,6 @@ pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
 /// Type that can not be instantiated.
 #[derive(Debug, Copy, PartialEq, Eq, Clone, Hash)]
 pub enum Never {}
+
+const ESSENTIAL: &str =
+	"Essential part of the test codebase failed. Assumed infallible under sane circumstances";
