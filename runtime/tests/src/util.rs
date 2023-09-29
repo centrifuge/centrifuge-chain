@@ -23,7 +23,7 @@ use crate::{Config, RuntimeKind};
 pub const MUSD_DECIMALS: u32 = 6;
 pub const MUSD_UNIT: Balance = 10u128.pow(MUSD_DECIMALS);
 pub const MUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(23);
-pub const POOL_FUNDS: Balance = 100_000_000 * MUSD_UNIT;
+pub const MAX_POOL_RESERVE: Balance = 100_000_000 * MUSD_UNIT;
 pub const MAX_FUNDED_ACCOUNTS: u8 = 20;
 
 pub const fn account(value: u8) -> AccountId32 {
@@ -180,7 +180,7 @@ pub fn create_pool<T: Config>(admin: AccountId32, pool_id: PoolId) {
 			},
 		],
 		MUSD_CURRENCY_ID,
-		POOL_FUNDS,
+		MAX_POOL_RESERVE,
 		None,
 		BoundedVec::default(),
 	)

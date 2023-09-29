@@ -2,7 +2,7 @@ use cfg_primitives::{CollectionId, ItemId, PoolId};
 use sp_runtime::{traits::Get, AccountId32};
 
 use crate::{
-	util::{self, genesis, MUSD_UNIT},
+	util::{self, genesis, MAX_POOL_RESERVE},
 	Config,
 };
 
@@ -19,13 +19,12 @@ fn borrow_from_pool<T: Config>() {
 	util::create_pool::<T>(POOL_ADMIN, POOL_A);
 
 	// Funding a pool
-	let funds = 100_000 * MUSD_UNIT;
 	let tranche_id = util::get::default_tranche_id::<T>(POOL_A);
-	util::give_musd_to::<T>(INVESTOR, funds);
+	util::give_musd_to::<T>(INVESTOR, MAX_POOL_RESERVE);
 	util::give_investor_role::<T>(INVESTOR, POOL_A, tranche_id);
-	util::invest::<T>(INVESTOR, POOL_A, tranche_id, funds);
+	util::invest::<T>(INVESTOR, POOL_A, tranche_id, MAX_POOL_RESERVE);
 	util::emulate::advance_secs::<T>(T::DefaultMinEpochTime::get());
-	//util::close_pool_epoch::<T>(POOL_ADMIN, POOL_A);
+	util::close_pool_epoch::<T>(POOL_ADMIN, POOL_A);
 
 	// Borrowing from a pool
 	util::give_borrower_role::<T>(BORROWER, POOL_A);
