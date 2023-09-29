@@ -276,16 +276,31 @@ async fn axelar_precompile_execute_2() {
 	let source = Keyring::<Ecdsa>::Alice.to_h160();
 
 	let (forwarder, forwarder_contract) = env.try_get_contract("forwarder").expect(ESSENTIAL);
+
 	let info = evm::call_from_source(
 		&mut env,
 		source,
-		forwarder,
-		forwarder_contract,
+		LP_AXELAR_GATEWAY.into(),
+		&forwarder_contract,
 		"execute",
 		&[
 			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
 			Token::String("ethereum-2".to_string()),
-			Token::String(String::from_utf8(source.0.to_vec()).expect(ESSENTIAL)),
+			Token::String(format!("0x{}", hex::encode(source.0))),
+			Token::Bytes(vec![0u8]),
+		],
+	);
+
+	let info = evm::call_from_source(
+		&mut env,
+		source,
+		forwarder,
+		&forwarder_contract,
+		"execute",
+		&[
+			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
+			Token::String("ethereum-2".to_string()),
+			Token::String(format!("0x{}", hex::encode(source.0))),
 			Token::Bytes(vec![0u8]),
 		],
 	);

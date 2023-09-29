@@ -143,13 +143,13 @@ where
 // H160 cannot be used in a match statement due to its hand-rolled
 // PartialEq implementation. This just gives a nice name to the
 // internal array of bytes that an H160 wraps.
-type Addr = [u8; 20];
+pub type Addr = [u8; 20];
 
 // This is a reimplementation of the upstream u64->H160 conversion
 // function, made `const` to make our precompile address `const`s a
 // bit cleaner. It can be removed when upstream has a const conversion
 // function.
-const fn addr(a: u64) -> Addr {
+pub const fn addr(a: u64) -> Addr {
 	let b = a.to_be_bytes();
 	[
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],

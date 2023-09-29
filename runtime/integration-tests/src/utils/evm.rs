@@ -85,7 +85,7 @@ pub fn view_from_source(
 	env: &mut TestEnv,
 	caller: H160,
 	contract_address: H160,
-	contract: Contract,
+	contract: &Contract,
 	function: &str,
 	args: &[Token],
 ) -> ExecutionInfo<Vec<u8>> {
@@ -132,7 +132,7 @@ pub fn call_from_source(
 	env: &mut TestEnv,
 	caller: H160,
 	contract_address: H160,
-	contract: Contract,
+	contract: &Contract,
 	function: &str,
 	args: &[Token],
 ) -> ExecutionInfo<Vec<u8>> {
@@ -198,7 +198,8 @@ pub fn deploy_from_source(
 		(Some(constructor), Some(args)) => {
 			constructor.encode_input(bytecode, args).expect(ESSENTIAL)
 		}
-		_ => panic!("{ESSENTIAL}"),
+		(Some(constructor), None) => constructor.encode_input(bytecode, &[]).expect(ESSENTIAL),
+		(None, Some(_)) => panic!("{ESSENTIAL}"),
 	};
 
 	(deploy_contract(env, creator, init).value, contract)
@@ -219,7 +220,11 @@ pub fn prepare_full_evm(env: &mut TestEnv) {
 
 	let (gateway, gateway_contract) = deploy_from_source(
 		env,
-		path(&[LP_SOL_SOURCES, "LocalGateway", "PassthroughGateway"]),
+		path(&[
+			LP_SOL_SOURCES,
+			"LocalGateway.sol",
+			"PassthroughGateway.json",
+		]),
 		source,
 		None,
 	);
@@ -228,7 +233,7 @@ pub fn prepare_full_evm(env: &mut TestEnv) {
 
 	let (forwarder, forwarder_contract) = deploy_from_source(
 		env,
-		path(&[LP_SOL_SOURCES, "Forwarder", "Forwarder"]),
+		path(&[LP_SOL_SOURCES, "Forwarder.sol", "AxelarForwarder.json"]),
 		source,
 		Some(&[Token::Address(ethabi::Address::from(gateway.0))]),
 	);
