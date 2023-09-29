@@ -11,7 +11,6 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
-use sp_core::{sr25519::Pair, Pair as _};
 use sp_runtime::{
 	traits::{One, StaticLookup},
 	AccountId32, Perquintill,

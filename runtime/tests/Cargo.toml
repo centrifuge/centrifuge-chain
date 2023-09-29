@@ -7,7 +7,7 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
-[dependencies]
+[dev-dependencies]
 # Common
 cfg-primitives = { path = "../../libs/primitives" }
 cfg-traits = { path = "../../libs/traits" }
@@ -21,9 +21,9 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 runtime-common = { path = "../common" }
 
 # Runtimes
-altair-runtime = { path = "../altair", optional = true}
-centrifuge-runtime = { path = "../centrifuge", optional = true}
-development-runtime = { path = "../development", optional = true }
+altair-runtime = { path = "../altair"}
+centrifuge-runtime = { path = "../centrifuge"}
+development-runtime = { path = "../development"}
 
 # Pallets
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
@@ -36,9 +36,3 @@ pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-
-[features]
-# Boost your tests compilation incrementing the feedback loop using --no-default-features flag
-# Tests will be compiled much faster without runtimes, but not executed.
-default = ["compile-runtimes"]
-compile-runtimes = ["development-runtime", "altair-runtime", "centrifuge-runtime"]
