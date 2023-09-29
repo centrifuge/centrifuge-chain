@@ -71,7 +71,13 @@ fn main() {
 			.expect("OsStr is utf-8. qed");
 
 		match Command::new("forge")
-			.args(&["build", "--out", out_dir_build])
+			.args(&[
+				"build",
+				"--extra-output-files",
+				"abi",
+				"--out",
+				out_dir_build,
+			])
 			.output()
 		{
 			Ok(o) if o.status.success() => {

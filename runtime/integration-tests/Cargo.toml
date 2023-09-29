@@ -15,6 +15,7 @@ lazy_static = "1.4.0"
 serde = { version = "1.0.119" }
 tokio = { version = "1.15", features = ["macros"] }
 tracing-subscriber = "0.2"
+serde_json = "1.0.107"
 
 # Substrate
 ## Substrate-Frame
@@ -81,16 +82,16 @@ cfg-traits = { path = "../../libs/traits" }
 development-runtime = { path = "../development" }
 runtime-common = { path = "../common" }
 
-[dev-dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-hex = { version = "0.4.3", default_features = false }
+hex = { version = "0.4.3" }
 
-cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
 
-ethabi = { version = "16.0", default-features = false }
-ethereum = { version = "0.14.0", default-features = false }
+ethabi = { version = "16.0" }
+ethabi-contract = { version = "16.0" }
+ethabi-derive = { version = "16.0" }
+ethereum = { version = "0.14.0" }
 
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
@@ -113,7 +114,6 @@ pallet-rewards = { path = "../../pallets/rewards" }
 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.38" }
 
