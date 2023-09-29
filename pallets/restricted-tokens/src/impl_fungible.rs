@@ -100,7 +100,7 @@ pub enum FungibleInspectHoldEffects<AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	type Reason = <T::NativeFungible as InspectHold<T::AccountId>>::Reason;
+	type Reason = T::Reason; // <T::NativeFungible as InspectHold<T::AccountId>>::Reason;
 
 	fn total_balance_on_hold(who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")

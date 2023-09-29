@@ -46,7 +46,7 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
-			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold, Transfer},
+			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold},
 			tokens::AssetId,
 		},
 		Twox64Concat,

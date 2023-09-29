@@ -150,7 +150,7 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	type Reason = <T::Fungibles as InspectHold<T::AccountId>>::Reason;
+	type Reason = T::Reason; //<T::Fungibles as InspectHold<T::AccountId>>::Reason;
 
 	fn total_balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")
@@ -325,7 +325,7 @@ impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
-	fn hold(asset: Self::AssetId, reason: &crate::ReasonOf<Pallet<T>, T>, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn hold(asset: Self::AssetId, reason: &T::Reason, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(reason, who, amount)
 		} else {
@@ -368,7 +368,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 
 	fn transfer_on_hold(
 		asset: Self::AssetId,
-		reason: &ReasonOf<Pallet<T>, T>,
+		reason: &T::Reason,
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
