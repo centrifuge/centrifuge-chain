@@ -40,12 +40,14 @@ use crate::{
 		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
 		RuntimeEvent, RuntimeOrigin, CHAIN_ID, PARA_ID,
 	},
-	evm::{ethereum_transaction::TEST_CONTRACT_CODE, prepare_evm},
+	evm::ethereum_transaction::TEST_CONTRACT_CODE,
 	utils::{
+		accounts::{Ecdsa, Keyring},
 		env,
 		env::{ChainState, EventRange, TestEnv},
-		evm::{deploy_contract, mint_balance_into_derived_account},
-		genesis,
+		evm,
+		evm::{deploy_contract, mint_balance_into_derived_account, prepare_full_evm},
+		genesis, ESSENTIAL,
 	},
 };
 
@@ -269,5 +271,24 @@ async fn axelar_precompile_execute_2() {
 		})
 		.unwrap();
 
-	prepare_evm(&mut env);
+	prepare_full_evm(&mut env);
+
+	let source = Keyring::<Ecdsa>::Alice.to_h160();
+
+	let (forwarder, forwarder_contract) = env.try_get_contract("forwarder").expect(ESSENTIAL);
+	let info = evm::call_from_source(
+		&mut env,
+		source,
+		forwarder,
+		forwarder_contract,
+		"execute",
+		&[
+			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
+			Token::String("ethereum-2".to_string()),
+			Token::String(String::from_utf8(source.0.to_vec()).expect(ESSENTIAL)),
+			Token::Bytes(vec![0u8]),
+		],
+	);
+
+	panic!("{:?}", info);
 }

@@ -15,9 +15,13 @@ use std::{fs, path::PathBuf};
 use ethabi::{Contract, Token};
 use frame_support::{dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
-use pallet_evm::FeeCalculator;
+use pallet_evm::{ExecutionInfo, FeeCalculator, Runner};
 use runtime_common::account_conversion::AccountConverter;
 use sp_core::{Get, H160, U256};
+
+const GAS_LIMIT: u64 = 5_000_000;
+const VALIDATE: bool = true;
+const TRANSACTIONAL: bool = true;
 
 use crate::{
 	chain::{
@@ -47,50 +51,81 @@ pub fn mint_balance_into_derived_account(env: &mut TestEnv, address: H160, balan
 	.unwrap();
 }
 
-pub fn view_contract(env: &mut TestEnv, caller: H160, contract_address: H160, input: Vec<u8>) {
-	let info = <Runtime as pallet_evm::Config>::Runner::call(
-		source,
-		target,
-		input,
-		value,
-		gas_limit,
-		Some(max_fee_per_gas),
-		max_priority_fee_per_gas,
-		nonce,
-		access_list,
-		// NOTE: Taken from pallet-evm implementation
-		true,
-		// NOTE: Taken from pallet-evm implementation
-		true,
-		<Runtime as pallet_evm::Config>::config(),
-	)
-	.expect(ESSENTIAL);
-}
-
-pub fn call_contract(env: &mut TestEnv, caller: H160, contract_address: H160, input: Vec<u8>) {
-	env.with_mut_state(Chain::Para(PARA_ID), || {
-		let derived_address = AccountConverter::<Runtime, ()>::convert_evm_address(
-			CHAIN_ID,
-			address.to_fixed_bytes(),
-		);
-
+pub fn view_contract(
+	env: &mut TestEnv,
+	caller: H160,
+	contract_address: H160,
+	input: Vec<u8>,
+) -> ExecutionInfo<Vec<u8>> {
+	env.with_state(Chain::Para(PARA_ID), || {
 		let (base_fee, _) = <Runtime as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
-		pallet_evm::Pallet::<Runtime>::call(
-			RawOrigin::from(Some(derived_address)).into(),
-			address,
+		<Runtime as pallet_evm::Config>::Runner::call(
+			caller,
 			contract_address,
 			input,
 			U256::zero(),
-			5_000_000,
-			U256::from(base_fee),
+			GAS_LIMIT,
+			Some(base_fee),
 			None,
 			None,
 			Vec::new(),
+			// NOTE: Taken from pallet-evm implementation
+			VALIDATE,
+			// NOTE: Taken from pallet-evm implementation
+			TRANSACTIONAL,
+			<Runtime as pallet_evm::Config>::config(),
 		)
-		.expect(ESSENTIAL);
+		.expect(ESSENTIAL)
 	})
-	.expect(ESSENTIAL);
+	.expect(ESSENTIAL)
+}
+
+pub fn view_from_source(
+	env: &mut TestEnv,
+	caller: H160,
+	contract_address: H160,
+	contract: Contract,
+	function: &str,
+	args: &[Token],
+) -> ExecutionInfo<Vec<u8>> {
+	let input = contract
+		.function(function)
+		.expect(ESSENTIAL)
+		.encode_input(args)
+		.expect(ESSENTIAL);
+
+	view_contract(env, caller, contract_address, input)
+}
+
+pub fn call_contract(
+	env: &mut TestEnv,
+	caller: H160,
+	contract_address: H160,
+	input: Vec<u8>,
+) -> ExecutionInfo<Vec<u8>> {
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		let (base_fee, _) = <Runtime as pallet_evm::Config>::FeeCalculator::min_gas_price();
+
+		<Runtime as pallet_evm::Config>::Runner::call(
+			caller,
+			contract_address,
+			input,
+			U256::zero(),
+			GAS_LIMIT,
+			Some(base_fee),
+			None,
+			None,
+			Vec::new(),
+			// NOTE: Taken from pallet-evm implementation
+			VALIDATE,
+			// NOTE: Taken from pallet-evm implementation
+			TRANSACTIONAL,
+			<Runtime as pallet_evm::Config>::config(),
+		)
+		.expect(ESSENTIAL)
+	})
+	.expect(ESSENTIAL)
 }
 
 pub fn call_from_source(
@@ -100,7 +135,7 @@ pub fn call_from_source(
 	contract: Contract,
 	function: &str,
 	args: &[Token],
-) {
+) -> ExecutionInfo<Vec<u8>> {
 	let input = contract
 		.function(function)
 		.expect(ESSENTIAL)
@@ -110,29 +145,28 @@ pub fn call_from_source(
 	call_contract(env, caller, contract_address, input)
 }
 
-pub fn deploy_contract(env: &mut TestEnv, address: H160, code: Vec<u8>) {
+pub fn deploy_contract(env: &mut TestEnv, address: H160, code: Vec<u8>) -> ExecutionInfo<H160> {
 	env.with_mut_state(Chain::Para(PARA_ID), || {
-		let derived_address = AccountConverter::<Runtime, ()>::convert_evm_address(
-			CHAIN_ID,
-			address.to_fixed_bytes(),
-		);
-
 		let (base_fee, _) = <Runtime as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
-		pallet_evm::Pallet::<Runtime>::create(
-			RawOrigin::from(Some(derived_address)).into(),
+		<Runtime as pallet_evm::Config>::Runner::create(
 			address,
 			code,
 			U256::from(0),
 			5_000_000,
-			U256::from(base_fee),
+			Some(U256::from(base_fee)),
 			None,
 			None,
 			Vec::new(),
+			// NOTE: Taken from pallet-evm implementation
+			VALIDATE,
+			// NOTE: Taken from pallet-evm implementation
+			TRANSACTIONAL,
+			<Runtime as pallet_evm::Config>::config(),
 		)
-		.expect(ESSENTIAL);
+		.expect(ESSENTIAL)
 	})
-	.expect(ESSENTIAL);
+	.expect(ESSENTIAL)
 }
 
 pub fn deploy_from_source(
@@ -164,21 +198,10 @@ pub fn deploy_from_source(
 		(Some(constructor), Some(args)) => {
 			constructor.encode_input(bytecode, args).expect(ESSENTIAL)
 		}
-		_ => panic!(ESSENTIAL),
+		_ => panic!("{ESSENTIAL}"),
 	};
 
-	deploy_contract(env, creator, init);
-
-	match env.last_event_centrifuge().expect(ESSENTIAL) {
-		centrifuge::RuntimeEvent(pallet_evm::Event::<centrifuge::Runtime>::Created { address }) => {
-			(address, contract)
-		}
-		centrifuge::RuntimeEvent(pallet_evm::Event::<centrifuge::Runtime>::CreatedFailed {
-			..
-		}) => {
-			panic!(ESSENTIAL)
-		}
-	}
+	(deploy_contract(env, creator, init).value, contract)
 }
 
 fn path(sections: &[&str]) -> PathBuf {
@@ -194,10 +217,21 @@ fn path(sections: &[&str]) -> PathBuf {
 pub fn prepare_full_evm(env: &mut TestEnv) {
 	let source = Keyring::<Ecdsa>::Alice.to_h160();
 
-	let (contract_address, contract) = deploy_from_source(
+	let (gateway, gateway_contract) = deploy_from_source(
 		env,
-		path(&[LP_SOL_SOURCES, "Router", "AxelarForwarder"]),
+		path(&[LP_SOL_SOURCES, "LocalGateway", "PassthroughGateway"]),
 		source,
-		Some(&[Token::Address(ethabi::Address::from(source.0))]),
+		None,
 	);
+
+	env.insert_contract("passthrough_gateway", (gateway.clone(), gateway_contract));
+
+	let (forwarder, forwarder_contract) = deploy_from_source(
+		env,
+		path(&[LP_SOL_SOURCES, "Forwarder", "Forwarder"]),
+		source,
+		Some(&[Token::Address(ethabi::Address::from(gateway.0))]),
+	);
+
+	env.insert_contract("forwarder", (forwarder, forwarder_contract));
 }

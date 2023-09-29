@@ -18,7 +18,7 @@ use std::{
 
 use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
-use frame_benchmarking::baseline::mock::RuntimeEvent;
+use ethabi::Contract;
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
@@ -40,7 +40,7 @@ use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_runtime::{generic::BlockId, traits::Extrinsic, DigestItem, Storage};
 use tokio::runtime::Handle;
 
@@ -453,6 +453,7 @@ pub struct TestEnv {
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
+	pub evm_contracts: HashMap<&'static str, (H160, Contract)>,
 }
 
 pub type Header = cfg_primitives::Header;
@@ -462,16 +463,16 @@ pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 // NOTE: Nonce management is a known issue when interacting with a chain and
 // wanting       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
-	pub fn last_event_centrifuge(&self) -> Option<centrifuge::RuntimeEvent> {
-		self.centrifuge
-			.with_state_at(BlockId::Number(at), || {
-				frame_system::Pallet::<centrifuge::Runtime>::events()
-			})
-			.map_err(|_| ())
-			.map(|events| events.first())
-			.ok()
-			.flatten()
-			.map(|event| event.clone)
+	pub fn try_get_contract(&self, name: &str) -> Option<(H160, Contract)> {
+		self.evm_contracts.get(name).map(|data| data.clone())
+	}
+
+	pub fn insert_contract(
+		&mut self,
+		name: &'static str,
+		info: (H160, Contract),
+	) -> Option<(H160, Contract)> {
+		self.evm_contracts.insert(name, info)
 	}
 
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
@@ -944,6 +945,7 @@ fn test_env(
 		centrifuge,
 		Arc::new(Mutex::new(NonceManager::new())),
 		Arc::new(Mutex::new(EventsStorage::new())),
+		HashMap::new(),
 	)
 	.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
