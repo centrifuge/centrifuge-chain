@@ -1,5 +1,7 @@
-use cfg_primitives::Moment;
-use cfg_traits::interest::{InterestRate, RateCollection};
+use cfg_traits::{
+	interest::{InterestRate, RateCollection},
+	Seconds,
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -85,8 +87,8 @@ impl<T: Config> InternalActivePricing<T> {
 	fn compute_present_value(
 		&self,
 		debt: T::Balance,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlow(dcf) => {
@@ -105,8 +107,8 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn present_value(
 		&self,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		let debt = self.interest.current_debt()?;
 		self.compute_present_value(debt, origination_date, maturity_date)
@@ -115,8 +117,8 @@ impl<T: Config> InternalActivePricing<T> {
 	pub fn present_value_cached<Rates>(
 		&self,
 		cache: &Rates,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,

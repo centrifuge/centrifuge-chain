@@ -22,6 +22,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
+	traits::UnixTime,
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
@@ -631,3 +632,12 @@ pub trait ConversionFromAssetBalance<AssetBalance, AssetId, OutBalance> {
 		asset_id: AssetId,
 	) -> Result<OutBalance, Self::Error>;
 }
+
+pub type Seconds = u64;
+pub trait TimeAsSecs: UnixTime {
+	fn now() -> Seconds {
+		<Self as UnixTime>::now().as_secs()
+	}
+}
+
+impl<T: UnixTime> TimeAsSecs for T {}

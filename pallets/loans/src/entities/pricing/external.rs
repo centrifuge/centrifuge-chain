@@ -1,8 +1,8 @@
-use cfg_primitives::Moment;
 use cfg_traits::{
 	self,
 	data::{DataCollection, DataRegistry},
 	interest::InterestRate,
+	Seconds,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -132,7 +132,7 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok((self.info, self.interest.deactivate()?))
 	}
 
-	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Moment, DispatchError> {
+	pub fn last_updated(&self, pool_id: T::PoolId) -> Result<Seconds, DispatchError> {
 		Ok(T::PriceRegistry::get(&self.info.price_id, &pool_id)?.1)
 	}
 

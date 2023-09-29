@@ -1,5 +1,4 @@
-use cfg_primitives::Moment;
-use cfg_traits::interest::InterestRate;
+use cfg_traits::{interest::InterestRate, Seconds};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_vec::BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -26,7 +25,7 @@ pub enum InternalMutation<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
-	MaturityExtension(Moment),
+	MaturityExtension(Seconds),
 	InterestRate(InterestRate<Rate>),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
