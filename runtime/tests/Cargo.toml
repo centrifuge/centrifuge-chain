@@ -34,9 +34,10 @@ pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 [features]
-# Boost your compilation of the tests to increment the feedback loop using --no-default-features flag
-# Tests will be compiled but not executed.
+# Boost your tests compilation incrementing the feedback loop using --no-default-features flag
+# Tests will be compiled much faster without runtimes, but not executed.
 default = ["compile-runtimes"]
 compile-runtimes = ["development-runtime", "altair-runtime", "centrifuge-runtime"]

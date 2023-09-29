@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use cfg_primitives::{Balance, PoolId, TrancheId};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -29,13 +29,17 @@ pub trait Config:
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
-	+ pallet_loans::Config<Balance = Balance, PoolId = PoolId>
-	+ orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_loans::Config<
+		Balance = Balance,
+		PoolId = PoolId,
+		CollectionId = CollectionId,
+		ItemId = ItemId,
+	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ orml_asset_registry::Config<
 		AssetId = CurrencyId,
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
-	>
+	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 {
 	const KIND: RuntimeKind;
 }
