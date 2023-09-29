@@ -30,8 +30,8 @@ use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
 		usdc::{
-			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI_USDC,
-			CURRENCY_ID_LP_ETH_GOERLI_USDC,
+			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI,
+			CURRENCY_ID_LP_ETH_GOERLI,
 		},
 		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
 	},
@@ -1002,13 +1002,13 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			CURRENCY_ID_LP_ETH_GOERLI_USDC,
+			CURRENCY_ID_LP_ETH_GOERLI,
 			lp_wrapped_usdc_metadata(
 				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
 				"LpEthUSDC".as_bytes().to_vec(),
 				development_runtime::liquidity_pools::LiquidityPoolsPalletIndex::get(),
 				CHAIN_ID_ETH_GOERLI_TESTNET,
-				CONTRACT_ETH_GOERLI_USDC,
+				CONTRACT_ETH_GOERLI,
 				true,
 			)
 			.encode(),

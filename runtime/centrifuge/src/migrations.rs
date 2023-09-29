@@ -18,7 +18,7 @@ pub type UpgradeCentrifuge1021 = (anemoy_pool::Migration, add_wrapped_usdc_varia
 mod anemoy_pool {
 	use cfg_primitives::PoolId;
 	use cfg_traits::PoolInspect;
-	use cfg_types::tokens::usdc::{CURRENCY_ID_DOT_NATIVE_USDC, CURRENCY_ID_LP_ETH_USDC};
+	use cfg_types::tokens::usdc::{CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LP_ETH};
 	#[cfg(feature = "try-runtime")]
 	use codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
@@ -44,7 +44,7 @@ mod anemoy_pool {
 				PoolSystem::pool(ANEMOY_POOL_ID).ok_or("Could not find Anemoy Pool")?;
 
 			ensure!(
-				pool_details.currency == CURRENCY_ID_LP_ETH_USDC,
+				pool_details.currency == CURRENCY_ID_LP_ETH,
 				"anemoy_pool::Migration: pre_upgrade failing as Anemoy's currency should be LpEthUSDC"
 			);
 
@@ -66,10 +66,13 @@ mod anemoy_pool {
 				return weight;
 			}
 
-			pallet_pool_system::Pool::<Runtime>::mutate(ANEMOY_POOL_ID, |details| {
-				let details = details.as_mut().unwrap();
-				details.currency = CURRENCY_ID_DOT_NATIVE_USDC;
-				log::info!("anemoy_pool::Migration: currency set to USDC ✓");
+			pallet_pool_system::Pool::<Runtime>::mutate(ANEMOY_POOL_ID, |maybe_details| {
+				if let Some(details) = maybe_details {
+					details.currency = CURRENCY_ID_DOT_NATIVE;
+					log::info!("anemoy_pool::Migration: currency set to USDC ✓");
+				} else {
+					log::warn!("anemoy_pool::Migration: Pool details empty, skipping migration");
+				}
 			});
 
 			weight.saturating_add(
@@ -86,7 +89,7 @@ mod anemoy_pool {
 				PoolSystem::pool(ANEMOY_POOL_ID).ok_or("Could not find Anemoy Pool")?;
 
 			// Ensure the currency set to USDC is the only mutation performed
-			old_pool_details.currency = CURRENCY_ID_DOT_NATIVE_USDC;
+			old_pool_details.currency = CURRENCY_ID_DOT_NATIVE;
 			ensure!(
 				old_pool_details == pool_details,
 				"Corrupted migration: Only the currency of the Anemoy pool should have changed"
@@ -100,7 +103,7 @@ mod anemoy_pool {
 	fn verify_sanity_checks() -> (bool, Weight) {
 		let res =
 			crate::Tokens::balance(
-				CURRENCY_ID_LP_ETH_USDC,
+				CURRENCY_ID_LP_ETH,
 				&<PoolSystem as PoolInspect<_, _>>::account_for(ANEMOY_POOL_ID),
 			) == 0 && pallet_investments::ActiveInvestOrders::<Runtime>::iter_keys()
 				.filter(|investment| investment.pool_id == ANEMOY_POOL_ID)
@@ -136,9 +139,9 @@ pub mod add_wrapped_usdc_variants {
 	use cfg_types::tokens::{
 		usdc::{
 			lp_wrapped_usdc_metadata, CHAIN_ID_ARBITRUM_MAINNET, CHAIN_ID_BASE_MAINNET,
-			CHAIN_ID_CELO_MAINNET, CONTRACT_ARBITRUM_USDC, CONTRACT_BASE_USDC, CONTRACT_CELO_USDC,
-			CURRENCY_ID_DOT_NATIVE_USDC, CURRENCY_ID_LP_ARB_USDC, CURRENCY_ID_LP_BASE_USDC,
-			CURRENCY_ID_LP_CELO_USDC, CURRENCY_ID_LP_ETH_USDC, MIN_SWAP_ORDER_AMOUNT_USDC,
+			CHAIN_ID_CELO_MAINNET, CONTRACT_ARBITRUM, CONTRACT_BASE, CONTRACT_CELO,
+			CURRENCY_ID_DOT_NATIVE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_CELO,
+			CURRENCY_ID_LP_ETH, MIN_SWAP_ORDER_AMOUNT,
 		},
 		CurrencyId, CustomMetadata,
 	};
@@ -182,28 +185,28 @@ pub mod add_wrapped_usdc_variants {
 							currency_id
 						);
 						pallet_order_book::TradingPair::<Runtime>::insert(
-							CURRENCY_ID_DOT_NATIVE_USDC,
+							CURRENCY_ID_DOT_NATIVE,
 							currency_id,
-							MIN_SWAP_ORDER_AMOUNT_USDC,
+							MIN_SWAP_ORDER_AMOUNT,
 						);
 						pallet_order_book::TradingPair::<Runtime>::insert(
 							currency_id,
-							CURRENCY_ID_DOT_NATIVE_USDC,
-							MIN_SWAP_ORDER_AMOUNT_USDC,
+							CURRENCY_ID_DOT_NATIVE,
+							MIN_SWAP_ORDER_AMOUNT,
 						);
 					})
 					.ok();
 			}
 			// Add trading pair for already registered LpEthUsdc
 			pallet_order_book::TradingPair::<Runtime>::insert(
-				CURRENCY_ID_DOT_NATIVE_USDC,
-				CURRENCY_ID_LP_ETH_USDC,
-				MIN_SWAP_ORDER_AMOUNT_USDC,
+				CURRENCY_ID_DOT_NATIVE,
+				CURRENCY_ID_LP_ETH,
+				MIN_SWAP_ORDER_AMOUNT,
 			);
 			pallet_order_book::TradingPair::<Runtime>::insert(
-				CURRENCY_ID_LP_ETH_USDC,
-				CURRENCY_ID_DOT_NATIVE_USDC,
-				MIN_SWAP_ORDER_AMOUNT_USDC,
+				CURRENCY_ID_LP_ETH,
+				CURRENCY_ID_DOT_NATIVE,
+				MIN_SWAP_ORDER_AMOUNT,
 			);
 
 			log::info!("add_wrapped_usdc_variants::Migration: on_runtime_upgrade succeeded ✓");
@@ -240,7 +243,7 @@ pub mod add_wrapped_usdc_variants {
                 Self::get_tradeable_ids()
                     .into_iter()
                     .all(|wrapped_usdc_id| {
-                        OrderBook::valid_pair(CURRENCY_ID_DOT_NATIVE_USDC, wrapped_usdc_id)
+                        OrderBook::valid_pair(CURRENCY_ID_DOT_NATIVE, wrapped_usdc_id)
                     }),
                 "At least one of the wrapped USDC variants is not enabled as trading pair into DOT native USDC"
             );
@@ -249,7 +252,7 @@ pub mod add_wrapped_usdc_variants {
                 Self::get_tradeable_ids()
                     .into_iter()
                     .all(|wrapped_usdc_id| {
-                        OrderBook::valid_pair(wrapped_usdc_id, CURRENCY_ID_DOT_NATIVE_USDC)
+                        OrderBook::valid_pair(wrapped_usdc_id, CURRENCY_ID_DOT_NATIVE)
                     }),
                 "At least one of the wrapped USDC variants is not enabled as trading pair from DOT native USDC"
             );
@@ -261,20 +264,16 @@ pub mod add_wrapped_usdc_variants {
 
 	impl Migration {
 		fn get_unregistered_ids() -> Vec<CurrencyId> {
-			vec![
-				CURRENCY_ID_LP_BASE_USDC,
-				CURRENCY_ID_LP_ARB_USDC,
-				CURRENCY_ID_LP_CELO_USDC,
-			]
+			vec![CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO]
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn get_tradeable_ids() -> Vec<CurrencyId> {
 			vec![
-				CURRENCY_ID_LP_ETH_USDC,
-				CURRENCY_ID_LP_BASE_USDC,
-				CURRENCY_ID_LP_ARB_USDC,
-				CURRENCY_ID_LP_CELO_USDC,
+				CURRENCY_ID_LP_ETH,
+				CURRENCY_ID_LP_BASE,
+				CURRENCY_ID_LP_ARB,
+				CURRENCY_ID_LP_CELO,
 			]
 		}
 
@@ -282,35 +281,35 @@ pub mod add_wrapped_usdc_variants {
 		{
 			vec![
 				(
-					CURRENCY_ID_LP_BASE_USDC,
+					CURRENCY_ID_LP_BASE,
 					lp_wrapped_usdc_metadata(
 						"LP Base Wrapped USDC".as_bytes().to_vec(),
 						"LpBaseUSDC".as_bytes().to_vec(),
 						LiquidityPoolsPalletIndex::get(),
 						CHAIN_ID_BASE_MAINNET,
-						CONTRACT_BASE_USDC,
+						CONTRACT_BASE,
 						true,
 					),
 				),
 				(
-					CURRENCY_ID_LP_ARB_USDC,
+					CURRENCY_ID_LP_ARB,
 					lp_wrapped_usdc_metadata(
 						"LP Arbitrum Wrapped USDC".as_bytes().to_vec(),
 						"LpArbUSDC".as_bytes().to_vec(),
 						LiquidityPoolsPalletIndex::get(),
 						CHAIN_ID_ARBITRUM_MAINNET,
-						CONTRACT_ARBITRUM_USDC,
+						CONTRACT_ARBITRUM,
 						true,
 					),
 				),
 				(
-					CURRENCY_ID_LP_CELO_USDC,
+					CURRENCY_ID_LP_CELO,
 					lp_wrapped_usdc_metadata(
 						"LP Celo Wrapped USDC".as_bytes().to_vec(),
 						"LpCeloUSDC".as_bytes().to_vec(),
 						LiquidityPoolsPalletIndex::get(),
 						CHAIN_ID_CELO_MAINNET,
-						CONTRACT_CELO_USDC,
+						CONTRACT_CELO,
 						true,
 					),
 				),
