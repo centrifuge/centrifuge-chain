@@ -24,6 +24,8 @@ fn borrow_from_pool<T: Config>() {
 	util::give_musd_to::<T>(INVESTOR, funds);
 	util::give_investor_role::<T>(INVESTOR, POOL_A, tranche_id);
 	util::invest::<T>(INVESTOR, POOL_A, tranche_id, funds);
+	//util::emulate::advance_time::<T>(T::DefaultMinEpochTime::get());
+	//util::close_pool_epoch::<T>(POOL_ADMIN, POOL_A);
 
 	// Borrowing from a pool
 	util::give_borrower_role::<T>(BORROWER, POOL_A);

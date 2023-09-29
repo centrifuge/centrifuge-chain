@@ -11165,6 +11165,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
+ "pallet-timestamp",
  "pallet-uniques",
  "runtime-common",
  "sp-core",

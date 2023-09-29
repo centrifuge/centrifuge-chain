@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, TrancheId};
+use cfg_primitives::{Balance, CollectionId, ItemId, Moment, PoolId, TrancheId};
 use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -40,6 +40,7 @@ pub trait Config:
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
 	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
+	+ pallet_timestamp::Config<Moment = Moment>
 {
 	const KIND: RuntimeKind;
 }

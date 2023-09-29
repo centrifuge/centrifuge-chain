@@ -186,6 +186,11 @@ pub fn create_pool<T: Config>(admin: AccountId32, pool_id: PoolId) {
 	.unwrap();
 }
 
+pub fn close_pool_epoch<T: Config>(admin: AccountId32, pool_id: PoolId) {
+	pallet_pool_system::Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id)
+		.unwrap();
+}
+
 pub fn invest<T: Config>(
 	investor: AccountId32,
 	pool_id: PoolId,
@@ -210,5 +215,15 @@ pub mod get {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.unwrap()
+	}
+}
+
+// Utilities that modify the system without using an extrinsic
+pub mod emulate {
+	use super::*;
+
+	pub fn advance_time<T: Config>(advance: Moment) {
+		let current = pallet_timestamp::Pallet::<T>::get();
+		pallet_timestamp::Pallet::<T>::set_timestamp(current + advance);
 	}
 }
