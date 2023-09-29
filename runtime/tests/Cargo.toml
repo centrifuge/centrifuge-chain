@@ -12,12 +12,14 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 cfg-primitives = { path = "../../libs/primitives" }
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 runtime-common = { path = "../common" }
 
 # Runtimes
@@ -36,3 +38,4 @@ pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

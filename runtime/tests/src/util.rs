@@ -5,15 +5,17 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata, TrancheCurrency},
 };
+use codec::Encode;
 use frame_support::{
-	traits::{GenesisBuild, Get},
+	traits::{GenesisBuild, Get, Hooks},
 	BoundedVec,
 };
 use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
+use sp_consensus_aura::AURA_ENGINE_ID;
 use sp_runtime::{
 	traits::{One, StaticLookup},
-	AccountId32, Perquintill,
+	AccountId32, DigestItem, Perquintill,
 };
 
 use crate::{Config, RuntimeKind};
@@ -221,8 +223,15 @@ pub mod get {
 pub mod emulate {
 	use super::*;
 
-	pub fn advance_time<T: Config>(advance: Moment) {
+	pub fn advance_secs<T: Config>(secs: Moment) {
 		let current = pallet_timestamp::Pallet::<T>::get();
-		pallet_timestamp::Pallet::<T>::set_timestamp(current + advance);
+		let new_timestamp = current + secs * 1_000;
+
+		frame_system::Pallet::<T>::deposit_log(DigestItem::PreRuntime(
+			AURA_ENGINE_ID,
+			(new_timestamp / pallet_aura::Pallet::<T>::slot_duration()).encode(),
+		));
+		pallet_aura::Pallet::<T>::on_initialize(Default::default());
+		pallet_timestamp::Pallet::<T>::set_timestamp(new_timestamp);
 	}
 }

@@ -41,6 +41,7 @@ pub trait Config:
 		Balance = Balance,
 	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 	+ pallet_timestamp::Config<Moment = Moment>
+	+ pallet_aura::Config<Moment = Moment>
 {
 	const KIND: RuntimeKind;
 }
