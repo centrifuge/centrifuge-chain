@@ -105,7 +105,7 @@ pub trait Investment<AccountId> {
 pub trait InvestmentCollector<AccountId> {
 	type Error: Debug;
 	type InvestmentId;
-	type Result: Debug;
+	type Result;
 
 	/// Collect the results of a user's invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
@@ -186,7 +186,7 @@ pub trait OrderManager {
 pub trait InvestmentAccountant<AccountId> {
 	type Error;
 	type InvestmentId;
-	type InvestmentInfo: InvestmentProperties<AccountId, Id = Self::InvestmentId>;
+	type InvestmentInfo;
 	type Amount;
 
 	/// Information about an asset. Must allow to derive
@@ -219,55 +219,6 @@ pub trait InvestmentAccountant<AccountId> {
 	) -> Result<(), Self::Error>;
 }
 
-/// A trait that allows to retrieve information
-/// about an investment class.
-pub trait InvestmentProperties<AccountId> {
-	/// The overarching Currency that payments
-	/// for this class are made in
-	type Currency;
-	/// Who the investment class can be identified
-	type Id;
-
-	/// Returns the owner of the investment class
-	fn owner(&self) -> AccountId;
-
-	/// Returns the id of the investment class
-	fn id(&self) -> Self::Id;
-
-	/// Returns the currency in which the investment class
-	/// can be bought.
-	fn payment_currency(&self) -> Self::Currency;
-
-	/// Returns the account a payment for the investment class
-	/// must be made to.
-	///
-	/// Defaults to owner.
-	fn payment_account(&self) -> AccountId {
-		self.owner()
-	}
-}
-
-impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<AccountId> for &T {
-	type Currency = T::Currency;
-	type Id = T::Id;
-
-	fn owner(&self) -> AccountId {
-		(*self).owner()
-	}
-
-	fn id(&self) -> Self::Id {
-		(*self).id()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		(*self).payment_currency()
-	}
-
-	fn payment_account(&self) -> AccountId {
-		(*self).payment_account()
-	}
-}
-
 /// Trait to handle Investment Portfolios for accounts
 pub trait InvestmentsPortfolio<Account> {
 	type InvestmentId;
@@ -297,7 +248,6 @@ pub trait ForeignInvestment<AccountId> {
 	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
-	type CollectInvestResult;
 
 	/// Initiates the increment of a foreign investment amount in
 	/// `foreign_payment_currency` of who into the investment class
@@ -365,8 +315,7 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
-	) -> Result<Self::CollectInvestResult, Self::Error>;
+	) -> Result<(), Self::Error>;
 
 	/// Collect the results of a user's foreign redeem orders for the given
 	/// investment. If any amounts are not fulfilled they are directly

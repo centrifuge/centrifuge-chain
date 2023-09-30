@@ -584,3 +584,138 @@ where
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
+
+	use super::*;
+
+	#[derive(Clone, Copy, PartialEq, Debug)]
+	enum CurrencyId {
+		Foreign,
+		Pool,
+	}
+
+	type RedeemState = super::RedeemState<u128, CurrencyId>;
+	type RedeemTransition = super::RedeemTransition<u128, CurrencyId>;
+
+	impl RedeemState {
+		fn get_done_amount(&self) -> u128 {
+			match *self {
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount, ..
+				} => done_amount,
+				Self::RedeemingAndActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount,
+					..
+				} => done_amount,
+				Self::SwapIntoForeignDone { done_swap } => done_swap.amount,
+				Self::RedeemingAndSwapIntoForeignDone { done_swap, .. } => done_swap.amount,
+				_ => 0,
+			}
+		}
+
+		fn get_swap_amount(&self) -> u128 {
+			self.get_active_swap().map(|swap| swap.amount).unwrap_or(0)
+		}
+
+		fn total(&self) -> u128 {
+			self.get_redeeming_amount() + self.get_done_amount() + self.get_swap_amount()
+		}
+	}
+
+	struct Checker {
+		old_state: RedeemState,
+	}
+
+	impl Checker {
+		fn new(initial_state: RedeemState, use_case: &[RedeemTransition]) -> Self {
+			println!("Testing use case: {:#?}", use_case);
+
+			Self {
+				old_state: initial_state,
+			}
+		}
+
+		/// Invariants from: https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Without-storage
+		fn check_delta_invariant(&self, transition: &RedeemTransition, new_state: &RedeemState) {
+			println!("Transition: {:#?}", transition);
+			println!("New state: {:#?}", new_state);
+
+			match *transition {
+				RedeemTransition::IncreaseRedeemOrder(amount) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, amount);
+				}
+				RedeemTransition::DecreaseRedeemOrder(amount) => {
+					let diff = self.old_state.total() - new_state.total();
+					assert_eq!(diff, amount);
+				}
+				RedeemTransition::FulfillSwapOrder(swap) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, 0);
+
+					let done_diff = new_state.get_done_amount() - self.old_state.get_done_amount();
+					assert_eq!(done_diff, swap.amount)
+				}
+				RedeemTransition::CollectRedemption(value, swap) => {
+					if self.old_state.get_redeeming_amount() == 0 {
+						assert_eq!(new_state.get_redeeming_amount(), 0)
+					} else {
+						assert_eq!(new_state.get_redeeming_amount(), value);
+					}
+
+					let swap_diff = new_state.get_swap_amount() - self.old_state.get_swap_amount();
+					assert_eq!(swap_diff, swap.amount)
+				}
+			};
+		}
+	}
+
+	#[test]
+	fn fuzzer() {
+		let foreign_swap_big = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 120,
+		};
+		let foreign_swap_small = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 60,
+		};
+
+		let transitions = [
+			RedeemTransition::IncreaseRedeemOrder(120),
+			RedeemTransition::IncreaseRedeemOrder(60),
+			RedeemTransition::DecreaseRedeemOrder(120),
+			RedeemTransition::DecreaseRedeemOrder(60),
+			RedeemTransition::FulfillSwapOrder(foreign_swap_big),
+			RedeemTransition::FulfillSwapOrder(foreign_swap_small),
+			RedeemTransition::CollectRedemption(30, foreign_swap_big),
+			RedeemTransition::CollectRedemption(30, foreign_swap_small),
+		];
+
+		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
+
+		for _ in 0..100000 {
+			let mut use_case = transitions.clone();
+			let use_case = use_case.partial_shuffle(&mut rng, 8).0;
+			let mut state = RedeemState::NoState;
+			let mut checker = Checker::new(state.clone(), &use_case);
+
+			for transition in use_case {
+				state = match state.transition(transition.clone()) {
+					Ok(state) => {
+						checker.check_delta_invariant(&transition, &state);
+						checker.old_state = state.clone();
+						state
+					}
+					// We skip the imposible transition and continues with the use case
+					Err(_) => state,
+				}
+			}
+		}
+	}
+}

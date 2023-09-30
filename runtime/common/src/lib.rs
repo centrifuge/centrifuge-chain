@@ -232,21 +232,21 @@ pub mod asset_registry {
 pub mod changes {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans::ChangeOf as LoansChangeOf;
+	use pallet_loans::entities::changes::Change as LoansChange;
 	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoansChangeOf<T>),
+		Loan(LoansChange<T>),
 	}
 
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
 		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
 			use cfg_primitives::SECONDS_PER_WEEK;
-			use pallet_loans::types::{InternalMutation, LoanMutation};
+			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
 			use pallet_pool_system::pool_types::changes::Requirement;
 			use sp_std::vec;
 
@@ -257,7 +257,7 @@ pub mod changes {
 			let requirements = match loans_change {
 				// Requirements gathered from
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChangeOf::<T>::Loan(_, loan_mutation) => match loan_mutation {
+				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
 					LoanMutation::Maturity(_) => vec![week, blocked],
 					LoanMutation::MaturityExtension(_) => vec![],
 					LoanMutation::InterestPayments(_) => vec![week, blocked],
@@ -270,7 +270,8 @@ pub mod changes {
 						InternalMutation::DiscountRate(_) => vec![epoch],
 					},
 				},
-				LoansChangeOf::<T>::Policy(_) => vec![week, blocked],
+				LoansChange::<T>::Policy(_) => vec![week, blocked],
+				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![epoch, blocked],
 			};
 
 			PoolChangeProposal::new(requirements)
@@ -291,17 +292,17 @@ pub mod changes {
 	}
 
 	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
 			RuntimeChange::Loan(loan_change)
 		}
 	}
 
 	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
 		type Error = DispatchError;
 
-		fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
 			let RuntimeChange::Loan(loan_change) = self;
 			Ok(loan_change)
 		}
@@ -331,17 +332,17 @@ pub mod changes {
 		}
 
 		/// Used for building CfgChanges in pallet-loans
-		impl<T: pallet_loans::Config> From<LoansChangeOf<T>> for RuntimeChange<T> {
-			fn from(loan_change: LoansChangeOf<T>) -> RuntimeChange<T> {
+		impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
+			fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
 				Self(loan_change.into())
 			}
 		}
 
 		/// Used for recovering LoanChange in pallet-loans
-		impl<T: pallet_loans::Config> TryInto<LoansChangeOf<T>> for RuntimeChange<T> {
+		impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
 			type Error = DispatchError;
 
-			fn try_into(self) -> Result<LoansChangeOf<T>, DispatchError> {
+			fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
 				self.0.try_into()
 			}
 		}
@@ -423,7 +424,9 @@ pub mod xcm_transactor {
 
 pub mod foreign_investments {
 	use cfg_primitives::{conversion::convert_balance_decimals, Balance};
-	use cfg_traits::IdentityCurrencyConversion;
+	use cfg_traits::{
+		ConversionFromAssetBalance, ConversionToAssetBalance, IdentityCurrencyConversion,
+	};
 	use cfg_types::tokens::CurrencyId;
 	use frame_support::pallet_prelude::PhantomData;
 	use orml_traits::asset_registry::Inspect;
@@ -477,6 +480,80 @@ pub mod foreign_investments {
 						from_metadata.decimals,
 						to_metadata.decimals,
 						amount_out,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+
+	/// Provides means of applying the decimals of an incoming currency to the
+	/// amount of an outgoing currency.
+	///
+	/// NOTE: Either the incoming (in case of `ConversionFromAssetBalance`) or
+	/// outgoing currency (in case of `ConversionToAssetBalance`) is assumed
+	/// to be `CurrencyId::Native`.
+	pub struct NativeBalanceDecimalConverter<AssetRegistry>(PhantomData<AssetRegistry>);
+
+	impl<AssetRegistry> ConversionToAssetBalance<Balance, CurrencyId, Balance>
+		for NativeBalanceDecimalConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Error = DispatchError;
+
+		fn to_asset_balance(
+			balance: Balance,
+			currency_in: CurrencyId,
+		) -> Result<Balance, DispatchError> {
+			match currency_in {
+				CurrencyId::Native => Ok(balance),
+				CurrencyId::ForeignAsset(_) => {
+					let to_decimals = AssetRegistry::metadata(&currency_in)
+						.ok_or(DispatchError::CannotLookup)?
+						.decimals;
+					convert_balance_decimals(
+						cfg_primitives::currency_decimals::NATIVE,
+						to_decimals,
+						balance,
+					)
+					.map_err(DispatchError::from)
+				}
+				_ => Err(DispatchError::Token(sp_runtime::TokenError::Unsupported)),
+			}
+		}
+	}
+
+	impl<AssetRegistry> ConversionFromAssetBalance<Balance, CurrencyId, Balance>
+		for NativeBalanceDecimalConverter<AssetRegistry>
+	where
+		AssetRegistry: Inspect<
+			AssetId = CurrencyId,
+			Balance = Balance,
+			CustomMetadata = cfg_types::tokens::CustomMetadata,
+		>,
+	{
+		type Error = DispatchError;
+
+		fn from_asset_balance(
+			balance: Balance,
+			currency_out: CurrencyId,
+		) -> Result<Balance, DispatchError> {
+			match currency_out {
+				CurrencyId::Native => Ok(balance),
+				CurrencyId::ForeignAsset(_) => {
+					let from_decimals = AssetRegistry::metadata(&currency_out)
+						.ok_or(DispatchError::CannotLookup)?
+						.decimals;
+					convert_balance_decimals(
+						from_decimals,
+						cfg_primitives::currency_decimals::NATIVE,
+						balance,
 					)
 					.map_err(DispatchError::from)
 				}

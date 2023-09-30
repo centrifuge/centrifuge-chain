@@ -49,6 +49,10 @@ pub mod liquidity_pools;
 /// Traits related to rewards.
 pub mod rewards;
 
+#[cfg(feature = "runtime-benchmarks")]
+/// Traits related to benchmarking tooling.
+pub mod benchmarking;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -128,8 +132,10 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 	type TrancheId;
 	type Moment;
 
-	/// check if the pool exists
+	/// Check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
+
+	/// Check if the tranche exists for the given pool
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
 
 	/// Get the account used for the given `pool_id`.
@@ -255,20 +261,6 @@ pub trait PoolWriteOffPolicyMutate<PoolId> {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn worst_case_policy() -> Self::Policy;
-}
-
-/// Utility to benchmark pools easily
-#[cfg(feature = "runtime-benchmarks")]
-pub trait PoolBenchmarkHelper {
-	type PoolId;
-	type AccountId;
-	type Balance;
-
-	/// Create a benchmark pool giving the id and the admin.
-	fn benchmark_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
-
-	/// Give AUSD to the account
-	fn benchmark_give_ausd(account: &Self::AccountId, balance: Self::Balance);
 }
 
 /// A trait that can be used to retrieve the current price for a currency
@@ -480,11 +472,15 @@ pub trait TokenSwaps<Account> {
 	/// `sell_rate_limit` defines the highest price acceptable for
 	/// `currency_in` currency when buying with `currency_out`. This
 	/// protects order placer if market changes unfavourably for swap order.
-	/// For example, with a `sell_rate_limit` of `3/2` one asset in should never
-	/// cost more than 1.5 units of asset out. Returns `Result` with `OrderId`
-	/// upon successful order creation.
+	/// For example, with a `sell_rate_limit` of `3/2`, one `asset_in`
+	/// should never cost more than 1.5 units of `asset_out`. Returns `Result`
+	/// with `OrderId` upon successful order creation.
 	///
-	/// Example usage with pallet_order_book impl:
+	/// NOTE: The minimum fulfillment amount is implicitly set by the
+	/// implementor.
+	///
+	/// Example usage with `pallet_order_book` impl:
+	/// ```ignore
 	/// OrderBook::place_order(
 	///     {AccountId},
 	///     CurrencyId::ForeignAsset(0),
@@ -493,8 +489,9 @@ pub trait TokenSwaps<Account> {
 	///     Quantity::checked_from_rational(3u32, 2u32).unwrap(),
 	///     100 * FOREIGN_ASSET_0_DECIMALS
 	/// )
-	/// Would return Ok({OrderId})
-	/// and create the following order in storage:
+	/// ```
+	/// Would return `Ok({OrderId}` and create the following order in storage:
+	/// ```ignore
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
@@ -502,31 +499,31 @@ pub trait TokenSwaps<Account> {
 	///     asset_out_id: CurrencyId::ForeignAsset(1),
 	///     buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
-	///     sell_rate_limit: Quantity::checked_from_rational(3u32,
-	/// 2u32).unwrap(),     min_fulfillment_amount: 100 *
-	/// FOREIGN_ASSET_0_DECIMALS,     max_sell_amount: 150 *
-	/// FOREIGN_ASSET_1_DECIMALS }
+	///     sell_rate_limit: Quantity::checked_from_rational(3u32, 2u32).unwrap(),
+	///     max_sell_amount: 150 * FOREIGN_ASSET_1_DECIMALS,
+	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
+	/// }
+	/// ```
 	fn place_order(
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fulfillment_amount: Self::Balance,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
-	/// As with create order `sell_rate_limit` defines the highest price
-	/// acceptable for `currency_in` currency when buying with `currency_out`.
-	/// Returns a Dispatch result.
+	/// As with creating an order, the `sell_rate_limit` defines the highest
+	/// price acceptable for `currency_in` currency when buying with
+	/// `currency_out`. Returns a Dispatch result.
 	///
-	/// This Can fail for various reasons
+	/// NOTE: The minimum fulfillment amount is implicitly set by the
+	/// implementor.
 	///
-	/// E.g. min_fulfillment_amount is lower and
-	///      the system has already fulfilled up to the previous
-	///      one.
+	/// This Can fail for various reasons.
 	///
-	/// Example usage with pallet_order_book impl:
+	/// Example usage with `pallet_order_book` impl:
+	/// ```ignore
 	/// OrderBook::update_order(
 	///     {AccountId},
 	///     {OrderId},
@@ -534,8 +531,9 @@ pub trait TokenSwaps<Account> {
 	///     Quantity::checked_from_integer(2u32).unwrap(),
 	///     6 * FOREIGN_ASSET_0_DECIMALS
 	/// )
-	/// Would return Ok(())
-	/// and update the following order in storage:
+	/// ```
+	/// Would return `Ok(())` and update the following order in storage:
+	/// ```ignore
 	/// Order {
 	///     order_id: {OrderId},
 	///     placing_account: {AccountId},
@@ -544,15 +542,15 @@ pub trait TokenSwaps<Account> {
 	///     buy_amount: 15 * FOREIGN_ASSET_0_DECIMALS,
 	///     initial_buy_amount: 100 * FOREIGN_ASSET_0_DECIMALS,
 	///     sell_rate_limit: Quantity::checked_from_integer(2u32).unwrap(),
-	///     min_fulfillment_amount: 6 * FOREIGN_ASSET_0_DECIMALS,
 	///     max_sell_amount: 30 * FOREIGN_ASSET_1_DECIMALS
+	///     min_fulfillment_amount: 10 * CFG * FOREIGN_ASSET_0_DECIMALS,
 	/// }
+	/// ```
 	fn update_order(
 		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
 		sell_rate_limit: Self::SellRatio,
-		min_fulfillment_amount: Self::Balance,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair
@@ -604,11 +602,32 @@ pub trait IdentityCurrencyConversion {
 }
 
 /// A trait for trying to convert between two types.
-// TODO: Remove usage for the one from Polkadot once we are on the same version
+// TODO: Remove usage for the one from sp_runtime::traits once we are on
+// the same Polkadot version
 pub trait TryConvert<A, B> {
 	type Error;
 
 	/// Attempt to make conversion. If returning [Result::Err], the inner must
 	/// always be `a`.
 	fn try_convert(a: A) -> Result<B, Self::Error>;
+}
+
+/// Converts a balance value into an asset balance.
+// TODO: Remove usage for the one from frame_support::traits::tokens once we are
+// on the same Polkadot version
+pub trait ConversionToAssetBalance<InBalance, AssetId, AssetBalance> {
+	type Error;
+	fn to_asset_balance(balance: InBalance, asset_id: AssetId)
+		-> Result<AssetBalance, Self::Error>;
+}
+
+/// Converts an asset balance value into balance.
+// TODO: Remove usage for the one from frame_support::traits::tokens once we are
+// on the same Polkadot version
+pub trait ConversionFromAssetBalance<AssetBalance, AssetId, OutBalance> {
+	type Error;
+	fn from_asset_balance(
+		balance: AssetBalance,
+		asset_id: AssetId,
+	) -> Result<OutBalance, Self::Error>;
 }

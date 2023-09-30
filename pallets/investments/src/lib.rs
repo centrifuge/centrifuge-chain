@@ -16,8 +16,7 @@
 use cfg_primitives::OrderId;
 use cfg_traits::{
 	investments::{
-		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties,
-		InvestmentsPortfolio, OrderManager,
+		Investment, InvestmentAccountant, InvestmentCollector, InvestmentsPortfolio, OrderManager,
 	},
 	PreConditions, StatusNotificationHook,
 };
@@ -46,6 +45,7 @@ use sp_std::{
 	vec::Vec,
 };
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -108,7 +108,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_types::investments::ForeignInvestmentInfo;
+	use cfg_types::investments::{ForeignInvestmentInfo, InvestmentInfo};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -116,11 +116,7 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it
 	/// depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config
-	where
-		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
-			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
-	{
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's
 		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -135,6 +131,7 @@ pub mod pallet {
 			Error = DispatchError,
 			InvestmentId = Self::InvestmentId,
 			Amount = Self::Amount,
+			InvestmentInfo = InvestmentInfo<Self::AccountId, CurrencyOf<Self>, Self::InvestmentId>,
 		>;
 
 		/// A representation for an investment or redemption. Usually this
@@ -162,7 +159,8 @@ pub mod pallet {
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
-		type MaxOutstandingCollects: Get<u64>;
+		#[pallet::constant]
+		type MaxOutstandingCollects: Get<u32>;
 
 		/// Something that can handle payments and transfers of
 		/// currencies
@@ -206,13 +204,6 @@ pub mod pallet {
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>
-	{
-	}
-
 	#[pallet::storage]
 	#[pallet::getter(fn invest_order_id)]
 	pub(crate) type InvestOrderId<T: Config> =
@@ -224,7 +215,7 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(crate) type InvestOrders<T: Config> = StorageDoubleMap<
+	pub type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -234,7 +225,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub(crate) type RedeemOrders<T: Config> = StorageDoubleMap<
+	pub type RedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -245,12 +236,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub(crate) type ActiveInvestOrders<T: Config> =
+	pub type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub(crate) type ActiveRedeemOrders<T: Config> =
+	pub type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
@@ -287,11 +278,7 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config>
-	where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
+	pub enum Event<T: Config> {
 		/// Fulfilled orders were collected.
 		/// [investment_id, who, collected_orders, Collection, CollectOutcome]
 		InvestOrdersCollected {
@@ -410,11 +397,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Update an order to invest into a given investment.
 		///
 		/// If the requested amount is greater than the current
@@ -423,7 +406,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		#[pallet::call_index(0)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
@@ -443,7 +426,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		#[pallet::call_index(1)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
@@ -458,7 +441,7 @@ pub mod pallet {
 		/// Collect the results of a user's invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_investments(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(2)]
 		pub fn collect_investments(
 			origin: OriginFor<T>,
@@ -472,7 +455,7 @@ pub mod pallet {
 		/// Collect the results of a user's redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_redemptions(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(3)]
 		pub fn collect_redemptions(
 			origin: OriginFor<T>,
@@ -486,7 +469,7 @@ pub mod pallet {
 		/// Collect the results of another users invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_investments(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(4)]
 		pub fn collect_investments_for(
 			origin: OriginFor<T>,
@@ -501,7 +484,7 @@ pub mod pallet {
 		/// Collect the results of another users redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
-		#[pallet::weight(5_000_000_000)]
+		#[pallet::weight(T::WeightInfo::collect_redemptions(T::MaxOutstandingCollects::get()))]
 		#[pallet::call_index(5)]
 		pub fn collect_redemptions_for(
 			origin: OriginFor<T>,
@@ -515,11 +498,7 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> Pallet<T> {
 	pub(crate) fn do_update_investment(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -554,7 +533,7 @@ where
 							total_order,
 							&who,
 							investment_id,
-							info,
+							info.payment_currency,
 							order,
 							amount,
 						)?;
@@ -593,7 +572,7 @@ where
 			amount,
 		})?;
 
-		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let _ = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
 			investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
@@ -616,7 +595,6 @@ where
 							total_order,
 							&who,
 							investment_id,
-							info,
 							order,
 							amount,
 						)?;
@@ -660,7 +638,7 @@ where
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
-		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let _ = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let (collected_investment, post_dispatch_info) = InvestOrders::<T>::try_mutate(
 			&who,
 			investment_id,
@@ -676,8 +654,7 @@ where
 						who: who.clone(),
 						investment_id,
 					});
-					// TODO: Return correct weight
-					//       - Accountant::info() + Storage::read() + Storage::write()
+					// TODO: Return correct weight + Storage::read() + Storage::write()
 					return Ok((Default::default(), ().into()));
 				};
 
@@ -687,7 +664,7 @@ where
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
-						.saturating_add(T::MaxOutstandingCollects::get()),
+						.saturating_add(T::MaxOutstandingCollects::get().into()),
 					cur_order_id,
 				);
 
@@ -697,8 +674,7 @@ where
 						who: who.clone(),
 						investment_id,
 					});
-					// TODO: Return correct weight
-					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					// TODO: Return correct weight 2 * Storage::read() + Storage::write()
 					return Ok((Default::default(), ().into()));
 				}
 
@@ -726,7 +702,7 @@ where
 				);
 
 				T::Accountant::transfer(
-					info.id(),
+					investment_id,
 					&InvestmentAccount { investment_id }.into_account_truncating(),
 					&who,
 					collection.payout_investment_invest,
@@ -814,7 +790,7 @@ where
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
-						.saturating_add(T::MaxOutstandingCollects::get()),
+						.saturating_add(T::MaxOutstandingCollects::get().into()),
 					cur_order_id,
 				);
 
@@ -860,7 +836,7 @@ where
 				let investment_account =
 					InvestmentAccount { investment_id }.into_account_truncating();
 				T::Tokens::transfer(
-					info.payment_currency(),
+					info.payment_currency,
 					&investment_account,
 					&who,
 					collection.payout_investment_redeem,
@@ -920,7 +896,7 @@ where
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
+		payment_currency: CurrencyOf<T>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {
@@ -933,14 +909,13 @@ where
 			&mut total_order.amount,
 		)?;
 
-		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
+		T::Tokens::transfer(payment_currency, send, recv, transfer_amount, false).map(|_| ())
 	}
 
 	pub(crate) fn do_update_redeem_order(
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {
@@ -953,7 +928,7 @@ where
 			&mut total_order.amount,
 		)?;
 
-		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
+		T::Accountant::transfer(investment_id, send, recv, transfer_amount)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -1122,11 +1097,7 @@ where
 	}
 }
 
-impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T> {
 	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
 	type Balance = T::Amount;
 	type CurrencyId = CurrencyOf<T>;
@@ -1138,7 +1109,7 @@ where
 		investment_id: T::InvestmentId,
 	) -> Result<CurrencyOf<T>, DispatchError> {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		Ok(info.payment_currency())
+		Ok(info.payment_currency)
 	}
 
 	/// Get the investments and associated payment currencies and balances for
@@ -1157,11 +1128,7 @@ where
 		Ok(investments_currency)
 	}
 }
-impl<T: Config> Investment<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	type Amount = T::Amount;
 	type CurrencyId = CurrencyOf<T>;
 	type Error = DispatchError;
@@ -1180,7 +1147,7 @@ where
 		currency: Self::CurrencyId,
 	) -> bool {
 		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency() == currency)
+			.map(|info| info.payment_currency == currency)
 			.unwrap_or(false)
 	}
 
@@ -1205,7 +1172,7 @@ where
 		currency: Self::CurrencyId,
 	) -> bool {
 		T::Accountant::info(investment_id)
-			.map(|info| info.payment_currency() == currency)
+			.map(|info| info.payment_currency == currency)
 			.unwrap_or(false)
 	}
 
@@ -1242,11 +1209,7 @@ where
 	}
 }
 
-impl<T: Config> OrderManager for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> OrderManager for Pallet<T> {
 	type Error = DispatchError;
 	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 	type InvestmentId = T::InvestmentId;
@@ -1379,9 +1342,9 @@ where
 				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
-					info.payment_currency(),
+					info.payment_currency,
 					&investment_account,
-					&info.payment_account(),
+					&info.owner,
 					invest_amount,
 					false,
 				)?;
@@ -1396,7 +1359,7 @@ where
 					.checked_mul_int(invest_amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
-				T::Accountant::deposit(&investment_account, info.id(), amount_of_investment_units)?;
+				T::Accountant::deposit(&investment_account, info.id, amount_of_investment_units)?;
 
 				// The previous OrderId is always 1 away
 				//
@@ -1471,14 +1434,14 @@ where
 				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
-					info.payment_currency(),
-					&info.payment_account(),
+					info.payment_currency,
+					&info.owner,
 					&investment_account,
 					redeem_amount_payment,
 					false,
 				)?;
 
-				T::Accountant::withdraw(&investment_account, info.id(), redeem_amount)?;
+				T::Accountant::withdraw(&investment_account, info.id, redeem_amount)?;
 
 				// The previous OrderId is always 1 away
 				//
@@ -1522,11 +1485,7 @@ where
 	}
 }
 
-impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T>
-where
-	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-{
+impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 	type Result = ();

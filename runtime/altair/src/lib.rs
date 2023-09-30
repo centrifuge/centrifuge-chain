@@ -1389,11 +1389,14 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultTokenSellRate: Ratio = Ratio::one();
+	pub DefaultTokenSellRatio: Ratio = Ratio::one();
 }
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
+	type BalanceRatio = Ratio;
+	type CollectedForeignInvestmentHook =
+		pallet_liquidity_pools::hooks::CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook =
 		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
 	type CurrencyConverter =
@@ -1401,12 +1404,11 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook =
 		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultTokenSellRate = DefaultTokenSellRate;
+	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type Rate = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type TokenSwapOrderId = u64;
 	type TokenSwaps = OrderBook;
@@ -1702,7 +1704,7 @@ impl pallet_investments::Config for Runtime {
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_investments::WeightInfo<Runtime>;
 }
 
 /// Checks whether the given `who` has the role
@@ -1743,7 +1745,7 @@ impl<
 			),
 		};
 
-		if is_tranche_investor {
+		if is_tranche_investor || cfg!(feature = "runtime-benchmarks") {
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error
@@ -1773,6 +1775,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 
 parameter_types! {
 	pub const OrderPairVecSize: u32 = 1_000_000u32;
+	pub MinFulfillmentAmountNative: Balance = 10 * CFG;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1780,7 +1783,10 @@ impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type DecimalConverter =
+		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
@@ -2455,6 +2461,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
+			list_benchmark!(list, extra, pallet_investments, Investments);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2526,6 +2533,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
+			add_benchmark!(params, batches, pallet_investments, Investments);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

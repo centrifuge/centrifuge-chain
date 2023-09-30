@@ -54,6 +54,12 @@ pub mod hooks;
 pub mod impls;
 pub mod types;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
@@ -68,12 +74,12 @@ pub mod pallet {
 		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
-		CollectedAmount, ExecutedForeignCollectRedeem, ExecutedForeignDecreaseInvest,
+		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 	};
 	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::{InvestState, RedeemState};
+	use types::{InvestState, InvestStateConfig, RedeemState};
 
 	use super::*;
 
@@ -100,13 +106,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency type of transferrable tokens
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
 		type PoolId: Member
@@ -118,17 +118,10 @@ pub mod pallet {
 			+ core::fmt::Debug;
 
 		/// The tranche id type required for the investment identifier
-		type TrancheId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<[u8; 16]>;
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
 
 		/// The investment identifying type required for the investment type
 		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Into<Self::CurrencyId>
 			+ Clone
 			+ Member
 			+ Parameter
@@ -152,7 +145,7 @@ pub mod pallet {
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
-		type Rate: Parameter
+		type BalanceRatio: Parameter
 			+ Member
 			+ sp_runtime::FixedPointNumber
 			+ sp_runtime::traits::EnsureMul
@@ -171,7 +164,7 @@ pub mod pallet {
 		/// more sophisticated swap price discovery. For now, this should be set
 		/// to one.
 		#[pallet::constant]
-		type DefaultTokenSellRate: Get<Self::Rate>;
+		type DefaultTokenSellRatio: Get<Self::BalanceRatio>;
 
 		/// The token swap order identifying type
 		type TokenSwapOrderId: Parameter
@@ -190,7 +183,7 @@ pub mod pallet {
 			Balance = Self::Balance,
 			OrderId = Self::TokenSwapOrderId,
 			OrderDetails = Swap<Self::Balance, Self::CurrencyId>,
-			SellRatio = Self::Rate,
+			SellRatio = Self::BalanceRatio,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.
@@ -211,7 +204,18 @@ pub mod pallet {
 				Self::InvestmentId,
 				(),
 			>,
-			Status = ExecutedForeignCollectRedeem<Self::Balance, Self::CurrencyId>,
+			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
+			Error = DispatchError,
+		>;
+
+		/// The hook type which acts upon a finalized redemption collection.
+		type CollectedForeignInvestmentHook: StatusNotificationHook<
+			Id = cfg_types::investments::ForeignInvestmentInfo<
+				Self::AccountId,
+				Self::InvestmentId,
+				(),
+			>,
+			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
@@ -238,6 +242,16 @@ pub mod pallet {
 		>;
 	}
 
+	/// Aux type for configurations that inherents from `Config`
+	#[derive(PartialEq)]
+	pub struct Of<T: Config>(PhantomData<T>);
+
+	impl<T: Config> InvestStateConfig for Of<T> {
+		type Balance = T::Balance;
+		type CurrencyConverter = T::CurrencyConverter;
+		type CurrencyId = T::CurrencyId;
+	}
+
 	/// Maps an investor and their `InvestmentId` to the corresponding
 	/// `InvestState`.
 	///
@@ -252,7 +266,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		InvestState<T>,
+		InvestState<Of<T>>,
 		ValueQuery,
 	>;
 
@@ -318,7 +332,7 @@ pub mod pallet {
 	/// NOTE: The lifetime of this storage starts with receiving a notification
 	/// of an executed investment via the `CollectedInvestmentHook`. It ends
 	/// with transferring the collected tranche tokens by executing
-	/// `transfer_collected_investment` which is part of
+	/// `notify_executed_collect_invest` which is part of
 	/// `collect_foreign_investment`.
 	#[pallet::storage]
 	pub type CollectedInvestment<T: Config> = StorageDoubleMap<
@@ -351,12 +365,27 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Maps an investor and their investment id to the foreign payment currency
+	/// provided on the initial investment increment.
+	///
+	/// The lifetime is synchronized with the one of
+	/// `InvestmentState`.
+	#[pallet::storage]
+	pub type InvestmentPaymentCurrency<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		T::CurrencyId,
+		ResultQuery<Error<T>::InvestmentPaymentCurrencyNotFound>,
+	>;
+
 	/// Maps an investor and their investment id to the foreign payout currency
 	/// requested on the initial redemption increment.
 	///
-	/// TODO(future): The lifetime of this storage is currently defensively
-	/// indefinite. It should most likely mirror the one of `RedemptionState`
-	/// though right now it
+	/// The lifetime is synchronized with the one of
+	/// `RedemptionState`.
 	#[pallet::storage]
 	pub type RedemptionPayoutCurrency<T: Config> = StorageDoubleMap<
 		_,
@@ -365,6 +394,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::InvestmentId,
 		T::CurrencyId,
+		ResultQuery<Error<T>::RedemptionPayoutCurrencyNotFound>,
 	>;
 
 	#[pallet::event]
@@ -373,7 +403,7 @@ pub mod pallet {
 		ForeignInvestmentUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: InvestState<T>,
+			state: InvestState<Of<T>>,
 		},
 		ForeignInvestmentCleared {
 			investor: T::AccountId,
@@ -392,15 +422,23 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Failed to retrieve the foreign payment currency for a collected
+		/// investment.
+		///
+		/// NOTE: This error can only occur, if a user tries to collect before
+		/// having increased their investment as this would store the payment
+		/// currency.
+		InvestmentPaymentCurrencyNotFound,
+		/// Failed to retrieve the foreign payout currency for a collected
+		/// redemption.
+		///
+		/// NOTE: This error can only occur, if a user tries to collect before
+		/// having increased their redemption as this would store the payout
+		/// currency.
+		RedemptionPayoutCurrencyNotFound,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		InvestmentInfoNotFound,
-		/// The provided currency does not match the one provided when the first
-		/// redemption increase was triggered.
-		///
-		/// NOTE: As long as the `RedemptionState` has not been cleared, the
-		/// payout currency cannot change from the initially provided one.
-		InvalidRedemptionPayoutCurrency,
 		/// Failed to retrieve the `TokenSwapReason` from the given
 		/// `TokenSwapOrderId`.
 		TokenSwapReasonNotFound,
@@ -412,17 +450,7 @@ pub mod pallet {
 		InvestError(InvestError),
 		/// Failed to transition the `RedeemState.`
 		RedeemError(RedeemError),
+		/// Failed to retrieve the pool for the given pool id.
+		PoolNotFound,
 	}
-
-	// 	impl<T> From<InvestError> for Error<T> {
-	// 		fn from(error: InvestError) -> Self {
-	// 			Error::<T>::InvestError(error)
-	// 		}
-	// 	}
-
-	// 	impl<T> From<RedeemError> for Error<T> {
-	// 		fn from(error: RedeemError) -> Self {
-	// 			Error::<T>::RedeemError(error)
-	// 		}
-	// 	}
 }

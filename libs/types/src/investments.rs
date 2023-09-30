@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::OrderId;
-use cfg_traits::investments::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -33,29 +32,6 @@ pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
 	pub owner: AccountId,
 	pub id: InvestmentId,
 	pub payment_currency: Currency,
-}
-
-impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
-	for InvestmentInfo<AccountId, Currency, InvestmentId>
-where
-	AccountId: Clone,
-	Currency: Clone,
-	InvestmentId: Clone,
-{
-	type Currency = Currency;
-	type Id = InvestmentId;
-
-	fn owner(&self) -> AccountId {
-		self.owner.clone()
-	}
-
-	fn id(&self) -> Self::Id {
-		self.id.clone()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		self.payment_currency.clone()
-	}
 }
 
 /// The outstanding collections for an account
@@ -138,7 +114,7 @@ impl<Balance: Zero + Copy> RedeemCollection<Balance> {
 
 /// The collected investment/redemption amount for an account
 #[derive(Encode, Default, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct CollectedAmount<Balance: Default + MaxEncodedLen> {
+pub struct CollectedAmount<Balance> {
 	/// The amount which was collected
 	/// * If investment: Tranche tokens
 	/// * If redemption: Payment currency
@@ -185,7 +161,7 @@ pub struct Swap<
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
-	/// The amount of outgoing currency which shall be exchanged.
+	/// The amount of incoming currency which shall be bought.
 	pub amount: Balance,
 }
 
@@ -237,30 +213,29 @@ pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 	pub amount_remaining: Balance,
 }
 
-/// A representation of an executed collected investment.
+/// A representation of an executed collected foreign investment or redemption.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 
-pub struct ExecutedForeignCollectInvest<Balance> {
-	/// The amount that was actually collected
-	pub amount_currency_payout: Balance,
-	/// The amount of tranche tokens received for the investment made
-	pub amount_tranche_tokens_payout: Balance,
-	/// The unprocessed plus processed but not yet collected investment amount
-	/// denominated in foreign currency
-	pub amount_remaining_invest: Balance,
-}
-
-/// A representation of an executed collected redemption.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-
-pub struct ExecutedForeignCollectRedeem<Balance, Currency> {
-	/// The foreign currency in which the payout takes place
+pub struct ExecutedForeignCollect<Balance, Currency> {
+	/// The foreign currency in which ...
+	/// * If investment: the payment took place
+	/// * If redemption: the payout takes place
 	pub currency: Currency,
-	/// The amount of `currency` being paid out to the investor
+
+	/// The amount of `currency`...
+	/// * If investment: that was collected
+	/// * If redemption: paid out to the investor
 	pub amount_currency_payout: Balance,
-	/// How many tranche tokens were actually redeemed
+
+	/// The amount of tranche tokens...
+	/// * If investment: received for the investment made
+	/// * If redemption: which were actually redeemed
 	pub amount_tranche_tokens_payout: Balance,
-	/// The unprocessed plus processed but not yet collected redemption amount
-	/// of tranche tokens
-	pub amount_remaining_redeem: Balance,
+
+	/// The unprocessed ...
+	/// * If investment: investment amount of `currency` (denominated in foreign
+	///   currency)
+	/// * If redemption: redemption amount of tranche tokens (denominated in
+	///   pool currency)
+	pub amount_remaining: Balance,
 }

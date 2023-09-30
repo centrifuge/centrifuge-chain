@@ -1,24 +1,32 @@
 mod change_guard;
+mod currency_conversion;
 mod data;
 mod fees;
+mod investment;
 mod liquidity_pools;
 mod liquidity_pools_gateway_routers;
 mod permissions;
 mod pools;
 mod rewards;
+mod status_notification;
 mod time;
+mod token_swaps;
 mod try_convert;
 mod write_off_policy;
 
 pub use change_guard::pallet_mock_change_guard;
+pub use currency_conversion::pallet as pallet_mock_currency_conversion;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
+pub use investment::pallet as pallet_mock_investment;
 pub use liquidity_pools::{pallet as pallet_mock_liquidity_pools, MessageMock};
 pub use liquidity_pools_gateway_routers::{pallet as pallet_mock_routers, RouterMock};
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
 pub use rewards::pallet as pallet_mock_rewards;
+pub use status_notification::pallet as pallet_mock_status_notification;
 pub use time::pallet as pallet_mock_time;
+pub use token_swaps::pallet as pallet_mock_token_swaps;
 pub use try_convert::pallet as pallet_mock_try_convert;
 pub use write_off_policy::pallet as pallet_mock_write_off_policy;
 

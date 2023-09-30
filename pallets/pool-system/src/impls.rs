@@ -444,7 +444,10 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
-	use cfg_traits::{investments::Investment, PoolBenchmarkHelper};
+	use cfg_traits::{
+		benchmarking::{InvestmentIdBenchmarkHelper, PoolBenchmarkHelper},
+		investments::Investment,
+	};
 	use cfg_types::{
 		pools::TrancheMetadata,
 		tokens::{CurrencyId, CustomMetadata},
@@ -456,7 +459,7 @@ mod benchmarks_utils {
 
 	use super::*;
 
-	const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
 
 	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
 	where
@@ -467,16 +470,17 @@ mod benchmarks_utils {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
+			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 
-			if T::AssetRegistry::metadata(&AUSD_CURRENCY_ID).is_none() {
-				T::AssetRegistry::register_asset(
-					Some(AUSD_CURRENCY_ID),
+			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
+				frame_support::assert_ok!(T::AssetRegistry::register_asset(
+					Some(POOL_CURRENCY),
 					orml_asset_registry::AssetMetadata {
 						decimals: 12,
-						name: "MOCK AUSD".as_bytes().to_vec(),
-						symbol: "MOCKAUSD".as_bytes().to_vec(),
+						name: "MOCK POOL CURRENCY".as_bytes().to_vec(),
+						symbol: "MOCKPCUR".as_bytes().to_vec(),
 						existential_deposit: Zero::zero(),
 						location: None,
 						additional: CustomMetadata {
@@ -484,13 +488,12 @@ mod benchmarks_utils {
 							..CustomMetadata::default()
 						},
 					},
-				)
-				.unwrap();
+				));
 			}
 
-			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get());
 			// Pool creation
-			Pallet::<T>::create(
+			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get());
+			frame_support::assert_ok!(Pallet::<T>::create(
 				admin.clone(),
 				admin.clone(),
 				pool_id,
@@ -515,33 +518,29 @@ mod benchmarks_utils {
 						},
 					},
 				],
-				AUSD_CURRENCY_ID,
+				POOL_CURRENCY,
 				FUNDS.into(),
-			)
-			.unwrap();
+			));
+
+			// Fund pool account
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
+			frame_support::assert_ok!(T::Tokens::mint_into(
+				POOL_CURRENCY,
+				&pool_account,
+				POOL_ACCOUNT_BALANCE.into()
+			));
 
 			// Investment in pool
 			let investor = account::<T::AccountId>("investor_benchmark_pool", 0, 0);
-			let tranche = Pallet::<T>::pool(pool_id)
-				.unwrap()
-				.tranches
-				.tranche_id(TrancheLoc::Index(0))
-				.unwrap();
-
-			T::Permission::add(
-				PermissionScope::Pool(pool_id),
-				investor.clone(),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche, u64::MAX)),
-			)
-			.unwrap();
-
-			T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor, FUNDS.into()).unwrap();
-			T::Investments::update_investment(
+			Self::bench_investor_setup(pool_id, investor.clone(), FUNDS.into());
+			let tranche =
+				<Self as InvestmentIdBenchmarkHelper>::bench_default_investment_id(pool_id)
+					.of_tranche();
+			frame_support::assert_ok!(T::Investments::update_investment(
 				&investor,
 				T::TrancheCurrency::generate(pool_id.into(), tranche),
 				FUNDS.into(),
-			)
-			.unwrap();
+			));
 
 			// Close epoch
 			Pool::<T>::mutate(pool_id, |pool| {
@@ -550,12 +549,38 @@ mod benchmarks_utils {
 				pool.parameters.max_nav_age = 999_999_999_999;
 			});
 
-			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
+			frame_support::assert_ok!(Pallet::<T>::close_epoch(
+				RawOrigin::Signed(admin.clone()).into(),
+				pool_id
+			));
 		}
 
-		fn benchmark_give_ausd(account: &T::AccountId, balance: T::Balance) {
-			T::Tokens::mint_into(AUSD_CURRENCY_ID, account, balance).unwrap();
-			T::Currency::make_free_balance_be(account, balance);
+		fn bench_investor_setup(pool_id: T::PoolId, account: T::AccountId, balance: T::Balance) {
+			T::Tokens::mint_into(POOL_CURRENCY, &account, balance).unwrap();
+			T::Currency::make_free_balance_be(&account, balance);
+
+			let tranche =
+				<Self as InvestmentIdBenchmarkHelper>::bench_default_investment_id(pool_id)
+					.of_tranche();
+			frame_support::assert_ok!(T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				account,
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche, u64::MAX)),
+			));
+		}
+	}
+
+	impl<T: Config<CurrencyId = CurrencyId>> InvestmentIdBenchmarkHelper for Pallet<T> {
+		type InvestmentId = T::TrancheCurrency;
+		type PoolId = T::PoolId;
+
+		fn bench_default_investment_id(pool_id: Self::PoolId) -> T::TrancheCurrency {
+			let tranche_id = Pallet::<T>::pool(pool_id)
+				.expect("Pool should exist")
+				.tranches
+				.tranche_id(TrancheLoc::Index(0))
+				.expect("Tranche at index 0 should exist");
+			T::TrancheCurrency::generate(pool_id, tranche_id)
 		}
 	}
 }

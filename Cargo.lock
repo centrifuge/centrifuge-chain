@@ -2688,7 +2688,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.29"
+version = "0.10.30"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -7519,6 +7519,7 @@ dependencies = [
 name = "pallet-foreign-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -7527,6 +7528,7 @@ dependencies = [
  "frame-system",
  "log",
  "parity-scale-codec 3.6.4",
+ "rand 0.8.5",
  "scale-info",
  "sp-core",
  "sp-io",

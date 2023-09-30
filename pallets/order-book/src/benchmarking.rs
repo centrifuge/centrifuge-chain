@@ -12,18 +12,23 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use cfg_primitives::CFG;
+use cfg_traits::benchmarking::OrderBookBenchmarkHelper;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_benchmarking::*;
-use frame_support::traits::fungibles::Mutate as FungiblesMutate;
 use frame_system::RawOrigin;
 use orml_traits::asset_registry::{Inspect, Mutate};
 use sp_runtime::FixedPointNumber;
 
-// use pallet_pool_system::benchmarking::prepare_asset_registry;
 use super::*;
 
-const CURRENCY_0: u128 = 1_000_000;
-const CURRENCY_1: u128 = 1_000_000_000_000;
+const AMOUNT_IN: u128 = 100 * CFG;
+const AMOUNT_OUT: u128 = 100_000_000 * CFG;
+const BUY_AMOUNT: u128 = 100 * AMOUNT_IN;
+const ASSET_IN: CurrencyId = CurrencyId::ForeignAsset(1);
+const ASSET_OUT: CurrencyId = CurrencyId::ForeignAsset(2);
+const DECIMALS_IN: u32 = 12;
+const DECIMALS_OUT: u32 = 6;
 
 benchmarks! {
 	where_clause {
@@ -33,110 +38,99 @@ benchmarks! {
 	}
 
 	create_order {
-		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:create_order(RawOrigin::Signed(account_0.clone()), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2))
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		}:create_order(RawOrigin::Signed(account_out.clone()), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2))
 
 
 	user_update_order {
-		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
-		}:user_update_order(RawOrigin::Signed(account_0.clone()), order_id, 150 * CURRENCY_0, T::SellRatio::saturating_from_integer(1))
+		}:user_update_order(RawOrigin::Signed(account_out.clone()), order_id, 10 * BUY_AMOUNT, T::SellRatio::saturating_from_integer(1))
 
 	user_cancel_order {
-		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
-	}:user_cancel_order(RawOrigin::Signed(account_0.clone()), order_id)
+	}:user_cancel_order(RawOrigin::Signed(account_out.clone()), order_id)
 
 	fill_order_full {
-		let (account_0, account_1, asset_0, asset_1) = set_up_users_currencies::<T>()?;
+		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
 
-		let order_id = Pallet::<T>::place_order(account_0.clone(), asset_0, asset_1, 100 * CURRENCY_0, T::SellRatio::saturating_from_integer(2).into(), 100 * CURRENCY_0)?;
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
 
-	}:fill_order_full(RawOrigin::Signed(account_1.clone()), order_id)
+	}:fill_order_full(RawOrigin::Signed(account_in.clone()), order_id)
+
+	fill_order_partial {
+		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+
+		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
+
+	}:fill_order_partial(RawOrigin::Signed(account_in.clone()), order_id, BUY_AMOUNT / 2)
 
 	add_trading_pair {
-		let asset_0 = CurrencyId::ForeignAsset(1);
-		let asset_1 = CurrencyId::ForeignAsset(2);
-		}:add_trading_pair(RawOrigin::Root, asset_0, asset_1, 100 * CURRENCY_0)
+		}:add_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT, BUY_AMOUNT)
 
 	rm_trading_pair {
-		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:rm_trading_pair(RawOrigin::Root, asset_0, asset_1)
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		}:rm_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT)
 
 	update_min_order {
-		let (account_0, _, asset_0, asset_1) = set_up_users_currencies::<T>()?;
-		}:update_min_order(RawOrigin::Root, asset_0, asset_1, 1 * CURRENCY_0)
-
-
+		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
+		}:update_min_order(RawOrigin::Root, ASSET_IN, ASSET_OUT, AMOUNT_IN)
 }
 
-fn set_up_users_currencies<T: Config<AssetCurrencyId = CurrencyId, Balance = u128>>() -> Result<
-	(
-		T::AccountId,
-		T::AccountId,
-		T::AssetCurrencyId,
-		T::AssetCurrencyId,
-	),
-	&'static str,
->
-where
-	<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
-{
-	let account_0: T::AccountId = account::<T::AccountId>("Account0", 1, 0);
-	let account_1: T::AccountId = account::<T::AccountId>("Account1", 2, 0);
-	let asset_0 = CurrencyId::ForeignAsset(1);
-	let asset_1 = CurrencyId::ForeignAsset(2);
-	prepare_asset_registry::<T>();
-	T::TradeableAsset::mint_into(asset_0, &account_0, 1_000 * CURRENCY_0)?;
-	T::TradeableAsset::mint_into(asset_1, &account_0, 1_000 * CURRENCY_1)?;
-	T::TradeableAsset::mint_into(asset_0, &account_1, 1_000 * CURRENCY_0)?;
-	T::TradeableAsset::mint_into(asset_1, &account_1, 1_000 * CURRENCY_1)?;
-	TradingPair::<T>::insert(asset_0, asset_1, 1 * CURRENCY_0);
-	Ok((account_0, account_1, asset_0, asset_1))
-}
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
 
-pub fn prepare_asset_registry<T: Config>()
-where
-	T::AssetRegistry: Mutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
-{
-	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(1)) {
-		Some(_) => (),
-		None => {
-			T::AssetRegistry::register_asset(
-				Some(CurrencyId::ForeignAsset(1)),
-				orml_asset_registry::AssetMetadata {
-					decimals: 12,
-					name: "MOCK TOKEN".as_bytes().to_vec(),
-					symbol: "MOCK".as_bytes().to_vec(),
-					existential_deposit: 0,
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			)
-			.expect("Registering Pool asset must work");
-		}
-	}
+pub(crate) struct Helper<T>(sp_std::marker::PhantomData<T>);
 
-	match T::AssetRegistry::metadata(&CurrencyId::ForeignAsset(2)) {
-		Some(_) => (),
-		None => {
-			T::AssetRegistry::register_asset(
-				Some(CurrencyId::ForeignAsset(2)),
-				orml_asset_registry::AssetMetadata {
-					decimals: 6,
-					name: "MOCK TOKEN 1".as_bytes().to_vec(),
-					symbol: "MOCK1".as_bytes().to_vec(),
-					existential_deposit: 0,
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			)
-			.expect("Registering Pool asset must work");
+impl<T: Config> Helper<T>
+where
+	T::AssetRegistry:
+		Mutate<AssetId = T::AssetCurrencyId, Balance = T::Balance, CustomMetadata = CustomMetadata>,
+{
+	pub fn register_trading_assets(
+		asset_in: T::AssetCurrencyId,
+		asset_out: T::AssetCurrencyId,
+		decimals_in: u32,
+		decimals_out: u32,
+	) {
+		match T::AssetRegistry::metadata(&asset_in) {
+			Some(_) => (),
+			None => {
+				T::AssetRegistry::register_asset(
+					Some(asset_in),
+					orml_asset_registry::AssetMetadata {
+						decimals: decimals_in,
+						name: "ASSET IN".as_bytes().to_vec(),
+						symbol: "INC".as_bytes().to_vec(),
+						existential_deposit: T::Balance::zero(),
+						location: None,
+						additional: CustomMetadata::default(),
+					},
+				)
+				.expect("Registering Pool asset must work");
+			}
+		}
+
+		match T::AssetRegistry::metadata(&asset_out) {
+			Some(_) => (),
+			None => {
+				T::AssetRegistry::register_asset(
+					Some(asset_out),
+					orml_asset_registry::AssetMetadata {
+						decimals: decimals_out,
+						name: "ASSET OUT".as_bytes().to_vec(),
+						symbol: "OUT".as_bytes().to_vec(),
+						existential_deposit: T::Balance::zero(),
+						location: None,
+						additional: CustomMetadata::default(),
+					},
+				)
+				.expect("Registering Pool asset must work");
+			}
 		}
 	}
 }

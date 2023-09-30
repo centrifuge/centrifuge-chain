@@ -18,7 +18,7 @@ use cfg_primitives::*;
 use cfg_traits::{investments::OrderManager, PreConditions};
 use cfg_types::{
 	fixed_point::Rate,
-	investments::InvestmentAccount,
+	investments::{InvestmentAccount, InvestmentInfo},
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
@@ -152,7 +152,7 @@ impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 }
 
 parameter_types! {
-	pub const MaxOutstandingCollect: u64 = 10;
+	pub const MaxOutstandingCollect: u32 = 10;
 }
 
 impl pallet_investments::Config for MockRuntime {
@@ -201,6 +201,15 @@ pub enum InvestmentId {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 	},
+}
+
+impl Default for InvestmentId {
+	fn default() -> Self {
+		Self::PoolTranche {
+			pool_id: Default::default(),
+			tranche_id: Default::default(),
+		}
+	}
 }
 
 impl From<InvestmentId> for CurrencyId {
@@ -285,8 +294,7 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		use accountant_mock::InvestmentInfo;
-		accountant_mock::GenesisConfig {
+		MockAccountant::<OrmlTokens>::init(accountant_mock::Genesis {
 			infos: vec![
 				(
 					INVESTMENT_0_0,
@@ -305,9 +313,7 @@ impl TestExternalitiesBuilder {
 					},
 				),
 			],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
+		});
 
 		let mut externalities = TestExternalities::new(storage);
 		externalities.execute_with(|| {
@@ -366,7 +372,7 @@ pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
 }
 
 /// Redeem amount into INVESTMENT_0_0
-///  
+///
 /// User accounts are the default TrancheHolder{A,B,C}
 pub(crate) fn redeem_x_per_investor(amount: Balance) -> DispatchResult {
 	Investments::update_redeem_order(
