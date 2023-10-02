@@ -87,7 +87,7 @@ where
 		}
 	}
 
-	fn is_precompile(&self, address: H160, remaining_gas_: u64) -> IsPrecompileResult {
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
 		IsPrecompileResult::Answer {
 			is_precompile: matches!(
 				address.0,
