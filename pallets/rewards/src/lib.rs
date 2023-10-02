@@ -98,7 +98,7 @@ type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::B
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::traits::tokens::Preservation;
+	use frame_support::traits::tokens::{Precision, Preservation};
 
 	use super::*;
 
@@ -123,7 +123,7 @@ pub mod pallet {
 		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + Debug;
 
 		/// Type used to handle currency transfers and reservations.
-		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
+		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>, Reason = ()>
 			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>;
 
@@ -303,18 +303,18 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			Currency::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
+			Currency::<T, I>::try_mutate(currency_id.clone(), |(group_id, currency)| {
 				let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
 				Group::<T, I>::try_mutate(group_id, |group| {
-					StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
-						if !T::Currency::can_hold(currency_id, account_id, amount) {
+					StakeAccount::<T, I>::try_mutate(account_id, currency_id.clone(), |account| {
+						if !T::Currency::can_hold(currency_id.clone(), &(),account_id, amount) {
 							Err(TokenError::FundsUnavailable)?;
 						}
 
 						T::RewardMechanism::deposit_stake(account, currency, group, amount)?;
 
-						T::Currency::hold(currency_id, account_id, amount)?;
+						T::Currency::hold(currency_id.clone(), &(), account_id, amount)?;
 
 						Self::deposit_event(Event::StakeDeposited {
 							group_id,
@@ -334,18 +334,18 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			Currency::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
+			Currency::<T, I>::try_mutate(currency_id.clone(), |(group_id, currency)| {
 				let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
 				Group::<T, I>::try_mutate(group_id, |group| {
-					StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
+					StakeAccount::<T, I>::try_mutate(account_id, currency_id.clone(), |account| {
 						if T::RewardMechanism::account_stake(account) < amount {
 							Err(TokenError::FundsUnavailable)?;
 						}
 
 						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
 
-						T::Currency::release(currency_id, account_id, amount, false)?;
+						T::Currency::release(currency_id.clone(), &(), account_id, amount, Precision::Exact)?;
 
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
@@ -364,7 +364,7 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let (group_id, currency) = Currency::<T, I>::get(currency_id);
+			let (group_id, currency) = Currency::<T, I>::get(currency_id.clone());
 			let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
 			let group = Group::<T, I>::get(group_id);
@@ -383,7 +383,7 @@ pub mod pallet {
 			let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
 			let group = Group::<T, I>::get(group_id);
-			StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
+			StakeAccount::<T, I>::try_mutate(account_id, currency_id.clone(), |account| {
 				let reward = T::RewardMechanism::claim_reward(account, &currency, &group)?;
 
 				T::Currency::transfer(
@@ -426,7 +426,7 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
-			Currency::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
+			Currency::<T, I>::try_mutate(currency_id.clone(), |(group_id, currency)| {
 				if let Some(prev_group_id) = *group_id {
 					if prev_group_id == next_group_id {
 						Err(Error::<T, I>::CurrencyInSameGroup)?;
