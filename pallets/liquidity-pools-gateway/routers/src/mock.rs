@@ -211,7 +211,7 @@ impl PrecompileSet for MockPrecompileSet {
 	/// Check if the given address is a precompile. Should only be called to
 	/// perform the check while not executing the precompile afterward, since
 	/// `execute` already performs a check internally.
-	fn is_precompile(&self, address: H160) -> bool {
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> bool {
 		address == H160::from_low_u64_be(1)
 	}
 }

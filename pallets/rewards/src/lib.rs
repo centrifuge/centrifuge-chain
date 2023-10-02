@@ -123,8 +123,12 @@ pub mod pallet {
 		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + Debug;
 
 		/// Type used to handle currency transfers and reservations.
-		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>, Reason = ()>
-			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
+		type Currency: MutateHold<
+				Self::AccountId,
+				AssetId = Self::CurrencyId,
+				Balance = BalanceOf<Self, I>,
+				Reason = (),
+			> + Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>;
 
 		/// Specify the internal reward mechanism used by this pallet.
@@ -308,7 +312,7 @@ pub mod pallet {
 
 				Group::<T, I>::try_mutate(group_id, |group| {
 					StakeAccount::<T, I>::try_mutate(account_id, currency_id.clone(), |account| {
-						if !T::Currency::can_hold(currency_id.clone(), &(),account_id, amount) {
+						if !T::Currency::can_hold(currency_id.clone(), &(), account_id, amount) {
 							Err(TokenError::FundsUnavailable)?;
 						}
 
@@ -345,7 +349,13 @@ pub mod pallet {
 
 						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
 
-						T::Currency::release(currency_id.clone(), &(), account_id, amount, Precision::Exact)?;
+						T::Currency::release(
+							currency_id.clone(),
+							&(),
+							account_id,
+							amount,
+							Precision::Exact,
+						)?;
 
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
