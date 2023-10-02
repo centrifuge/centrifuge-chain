@@ -21,6 +21,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
@@ -39,6 +40,8 @@ sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polk
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 ## Substrate-Client
 node-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
