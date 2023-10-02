@@ -1059,6 +1059,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-system",
+ "frame-system-benchmarking",
  "futures",
  "getrandom 0.2.10",
  "hex-literal 0.3.4",

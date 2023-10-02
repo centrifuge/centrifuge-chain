@@ -152,7 +152,7 @@ runtime-common = { path = "runtime/common" }
 
 # benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.43" }
-
+frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 # integration testing
 runtime-integration-tests = { path = "runtime/integration-tests", optional = true, default-features = false }
 
@@ -201,6 +201,7 @@ std = [
   "fp-storage/std",
   "futures/std",
   "frame-benchmarking/std",
+  "frame-system-benchmarking/std",
   "log/std",
   "pallet-anchors/std",
   "pallet-pool-system/std",
@@ -232,6 +233,7 @@ std = [
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
+  "frame-system-benchmarking/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "altair-runtime/runtime-benchmarks",
   "centrifuge-runtime/runtime-benchmarks",
