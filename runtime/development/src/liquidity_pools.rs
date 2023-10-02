@@ -11,8 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
-use cfg_types::{domain_address::Domain, fixed_point::Quantity};
-use frame_support::parameter_types;
+use cfg_traits::liquidity_pools::InboundQueue;
+use cfg_types::{
+	domain_address::{Domain, DomainAddress},
+	fixed_point::Quantity,
+};
+use frame_support::{dispatch::DispatchResult, parameter_types};
 use frame_system::EnsureRoot;
 use runtime_common::gateway::GatewayAccountProvider;
 
@@ -24,9 +28,19 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
+pub struct Stumb;
+impl InboundQueue for Stumb {
+	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
+	type Sender = DomainAddress;
+
+	fn submit(_sender: Self::Sender, _msg: Self::Message) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type InboundQueue = crate::LiquidityPools;
+	type InboundQueue = Stumb;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;

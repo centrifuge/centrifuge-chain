@@ -17,7 +17,7 @@ use cfg_primitives::{Balance, PoolId, TrancheId, CFG};
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Codec};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	fixed_point::Rate,
+	fixed_point::{Quantity, Rate},
 	tokens::{CurrencyId, CustomMetadata, GeneralCurrencyIndex},
 };
 use codec::Encode;
@@ -36,9 +36,12 @@ use tokio::runtime::Handle;
 use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::{
-	chain::centrifuge::{
-		AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime, RuntimeCall,
-		RuntimeEvent, RuntimeOrigin, CHAIN_ID, PARA_ID,
+	chain::{
+		centrifuge,
+		centrifuge::{
+			AccountId, CouncilCollective, FastTrackVotingPeriod, MinimumDeposit, Runtime,
+			RuntimeCall, RuntimeEvent, RuntimeOrigin, CHAIN_ID, PARA_ID,
+		},
 	},
 	evm::ethereum_transaction::TEST_CONTRACT_CODE,
 	utils::{
@@ -265,43 +268,61 @@ async fn axelar_precompile_execute_2() {
 		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
 	};
 
-	let chain_id = env
-		.with_state(Chain::Para(PARA_ID), || {
-			pallet_evm_chain_id::Pallet::<Runtime>::get()
-		})
-		.unwrap();
-
 	prepare_full_evm(&mut env);
 
 	let source = Keyring::<Ecdsa>::Alice.to_h160();
-
 	let (forwarder, forwarder_contract) = env.try_get_contract("forwarder").expect(ESSENTIAL);
 
-	let info = evm::call_from_source(
-		&mut env,
-		source,
-		LP_AXELAR_GATEWAY.into(),
-		&forwarder_contract,
-		"execute",
-		&[
-			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
-			Token::String("ethereum-2".to_string()),
-			Token::String(format!("0x{}", hex::encode(source.0))),
-			Token::Bytes(vec![0u8]),
-		],
-	);
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		axelar_gateway_precompile::Pallet::<Runtime>::set_gateway(
+			centrifuge::RuntimeOrigin::root(),
+			forwarder,
+			//source,
+		)
+		.unwrap();
+
+		axelar_gateway_precompile::Pallet::<Runtime>::set_converter(
+			centrifuge::RuntimeOrigin::root(),
+			BlakeTwo256::hash("ethereum-2".as_bytes()),
+			SourceConverter {
+				domain: Domain::EVM(5),
+			},
+		)
+		.unwrap();
+
+		pallet_liquidity_pools_gateway::Pallet::<Runtime>::add_instance(
+			centrifuge::RuntimeOrigin::root(),
+			DomainAddress::EVM(5, source.0),
+		)
+		.unwrap();
+	});
+
+	let prec = LP_AXELAR_GATEWAY;
 
 	let info = evm::call_from_source(
 		&mut env,
 		source,
 		forwarder,
+		//LP_AXELAR_GATEWAY.into(),
 		&forwarder_contract,
 		"execute",
 		&[
 			Token::FixedBytes(H256::from_low_u64_be(5678).0.to_vec()),
 			Token::String("ethereum-2".to_string()),
 			Token::String(format!("0x{}", hex::encode(source.0))),
-			Token::Bytes(vec![0u8]),
+			Token::Bytes(
+				pallet_liquidity_pools::Message::<Domain,
+				PoolId,
+				TrancheId,
+				Balance,
+				Quantity>::Transfer {
+						currency: 1,
+						sender: [0u8; 32],
+						receiver: [0u8; 32],
+						amount: 0,
+					}
+					.serialize(),
+			),
 		],
 	);
 

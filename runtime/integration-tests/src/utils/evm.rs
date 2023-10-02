@@ -192,6 +192,17 @@ pub fn deploy_from_source(
 			.trim_start_matches("0x"),
 	)
 	.expect(ESSENTIAL);
+	let deployed_bytecode = hex::decode(
+		contract_json
+			.get("deployedBytecode")
+			.expect(ESSENTIAL)
+			.get("object")
+			.expect(ESSENTIAL)
+			.as_str()
+			.expect(ESSENTIAL)
+			.trim_start_matches("0x"),
+	)
+	.expect(ESSENTIAL);
 
 	let init = match (contract.constructor(), args) {
 		(None, None) => bytecode,
@@ -202,7 +213,17 @@ pub fn deploy_from_source(
 		(None, Some(_)) => panic!("{ESSENTIAL}"),
 	};
 
-	(deploy_contract(env, creator, init).value, contract)
+	let info = deploy_contract(env, creator, init);
+
+	let runtime_code = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pallet_evm::AccountCodes::<Runtime>::get(info.value)
+		})
+		.expect(ESSENTIAL);
+
+	assert_eq!(runtime_code, deployed_bytecode);
+
+	(info.value, contract)
 }
 
 fn path(sections: &[&str]) -> PathBuf {

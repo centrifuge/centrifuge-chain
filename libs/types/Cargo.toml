@@ -23,6 +23,8 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-featu
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-keystore = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
@@ -35,6 +37,7 @@ cfg-utils = { path = "../utils", default-features = false }
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 hex = { version = "0.4.3", default_features = false }
+sc-keystore = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 [features]
 default = ["std"]
@@ -61,6 +64,9 @@ std = [
   "xcm/std",
   "cfg-utils/std",
   "sp-core/std",
+  "sp-io/std",
+  "sp-keystore/std"
+
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

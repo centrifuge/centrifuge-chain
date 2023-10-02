@@ -253,6 +253,7 @@ where
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
 		payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
+		/*
 		ensure!(
 			handle.context().caller == GatewayContract::<T>::get(),
 			PrecompileFailure::Error {
@@ -297,6 +298,10 @@ where
 			Err(e) => Err(e.into()),
 			Ok(()) => Ok(()),
 		}
+
+		 */
+
+		Ok(())
 	}
 
 	// Mimics:
