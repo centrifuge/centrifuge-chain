@@ -46,7 +46,6 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Authorship: pallet_authorship,
 		Balances: pallet_balances,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
 		Aura: pallet_aura,
 		MockFees: pallet_mock_fees,
 		Anchors: pallet_anchors,
@@ -83,8 +82,6 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type Version = ();
 }
-
-impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;

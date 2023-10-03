@@ -284,8 +284,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type XcmpMessageHandler = XcmpQueue;
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
-
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
@@ -1883,7 +1881,6 @@ construct_runtime!(
 		// basic system stuff
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Config, Storage, Inherent, Event<T>} = 1,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 2,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 3,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
 
