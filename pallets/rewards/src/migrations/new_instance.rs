@@ -14,6 +14,7 @@ use frame_support::traits::{
 	fungibles::{Inspect, Mutate},
 	Get, OnRuntimeUpgrade,
 };
+use sp_runtime::DispatchError;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
@@ -45,7 +46,7 @@ where
 	ED: Get<BalanceOf<T, I>>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		assert!(!pallet_is_funded::<T, I, Currency, ED>());
 
 		log::info!("💶 Rewards: Pre funding ED checks successful");
@@ -73,7 +74,7 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_pre_state: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_pre_state: Vec<u8>) -> Result<(), DispatchError> {
 		assert!(pallet_is_funded::<T, I, Currency, ED>());
 
 		log::info!("💶 Rewards: Post funding ED checks successful");

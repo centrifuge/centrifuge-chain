@@ -59,7 +59,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn update_invest_order() {
+	fn update_invest_order() -> Result<(), BenchmarkError>{
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency();
@@ -68,10 +68,12 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		update_invest_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn update_redeem_order() {
+	fn update_redeem_order() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
@@ -80,10 +82,12 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		update_redeem_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn collect_investments(n: Linear<1, 10>) {
+	fn collect_investments(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)
@@ -106,10 +110,12 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		collect_investments(RawOrigin::Signed(caller), investment_id);
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn collect_redemptions(n: Linear<1, 10>) {
+	fn collect_redemptions(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
@@ -130,6 +136,8 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		collect_redemptions(RawOrigin::Signed(caller), investment_id);
+
+		Ok(())
 	}
 
 	impl_benchmark_test_suite!(

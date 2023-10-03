@@ -88,7 +88,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> DataFeeder<T::DataId, T::DataElem, T::AccountId> for Pallet<T> {
-		fn feed_value(a: T::AccountId, b: T::DataId, c: T::DataElem) -> DispatchResult {
+		fn feed_value(a: Option<T::AccountId>, b: T::DataId, c: T::DataElem) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

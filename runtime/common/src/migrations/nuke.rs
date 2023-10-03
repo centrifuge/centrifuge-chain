@@ -19,6 +19,7 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
 	weights::{RuntimeDbWeight, Weight},
 };
+use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;
 
@@ -40,7 +41,7 @@ where
 	DbWeight: Get<RuntimeDbWeight>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		ensure!(
 			Pallet::on_chain_storage_version() == StorageVersion::new(ON_CHAIN_VERSION),
 			"Pallet on-chain version must match with ON_CHAIN_VERSION"
@@ -108,7 +109,7 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
 		assert_eq!(
 			Pallet::on_chain_storage_version(),
 			Pallet::current_storage_version(),

@@ -214,6 +214,7 @@ mod orml_tokens_migration {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use orml_tokens::AccountData;
+	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;
 
 	use super::*;
@@ -236,7 +237,7 @@ mod orml_tokens_migration {
 
 	impl OnRuntimeUpgrade for CurrencyIdRefactorMigration {
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			let total_issuance =
 				orml_tokens::TotalIssuance::<Runtime>::get(DEPRECATED_AUSD_CURRENCY_ID);
 			let entries: Vec<(AccountId, AccountData<Balance>)> =
@@ -255,7 +256,7 @@ mod orml_tokens_migration {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+		fn post_upgrade(state: Vec<u8>) -> Result<(), DispatchError> {
 			use crate::OrmlTokens;
 
 			let old_state = OldState::decode(&mut state.as_ref())

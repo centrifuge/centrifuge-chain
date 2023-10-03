@@ -24,6 +24,7 @@ mod anemoy_pool {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::traits::{fungibles::Inspect, OnRuntimeUpgrade};
+	use sp_runtime::DispatchError;
 	#[cfg(feature = "try-runtime")]
 	use pallet_pool_system::PoolDetailsOf;
 	use sp_std::vec;
@@ -41,7 +42,7 @@ mod anemoy_pool {
 
 	impl OnRuntimeUpgrade for Migration {
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			let pool_details: PoolDetailsOf<Runtime> =
 				PoolSystem::pool(ANEMOY_POOL_ID).ok_or("Could not find Anemoy Pool")?;
 
@@ -80,7 +81,7 @@ mod anemoy_pool {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(old_state: Vec<u8>) -> Result<(), &'static str> {
+		fn post_upgrade(old_state: Vec<u8>) -> Result<(), DispatchError> {
 			let mut old_pool_details = PoolDetailsOf::<Runtime>::decode(&mut old_state.as_ref())
 				.map_err(|_| "Error decoding pre-upgrade state")?;
 

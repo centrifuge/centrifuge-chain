@@ -156,9 +156,9 @@ pub mod pallet {
 		>;
 
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ fungibles::InspectHold<Self::AccountId>
+			+ fungibles::InspectHold<Self::AccountId, Reason = ()>
 			+ fungibles::Mutate<Self::AccountId>
-			+ fungibles::MutateHold<Self::AccountId, Reason = Self::Reason>;
+			+ fungibles::MutateHold<Self::AccountId>;
 
 		/// Checks the pre conditions for trait Currency calls
 		type PreCurrency: PreConditions<
@@ -206,21 +206,13 @@ pub mod pallet {
 			+ LockableCurrency<Self::AccountId>
 			+ ReservableCurrency<Self::AccountId>
 			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
-			+ fungible::InspectHold<Self::AccountId, Reason = Self::Reason>
+			+ fungible::InspectHold<Self::AccountId, Reason = ()>
 			+ fungible::Mutate<Self::AccountId>
 			+ fungible::MutateHold<Self::AccountId>;
 
 		type NativeToken: Get<Self::CurrencyId>;
 
 		type WeightInfo: WeightInfo;
-
-		type Reason: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
 	}
 
 	#[pallet::pallet]
@@ -496,7 +488,6 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		pub fn set_balance(
 			origin: OriginFor<T>,
-			reason: T::Reason,
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] new_free: T::Balance,
@@ -512,10 +503,10 @@ pub mod pallet {
 			let token = if T::NativeToken::get() == currency_id {
 				let old_reserved =
 					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
-						&reason, &who,
+						&(), &who,
 					);
 				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::release(
-					&reason,
+					&(),
 					&who,
 					old_reserved,
 					Precision::Exact,
@@ -529,7 +520,7 @@ pub mod pallet {
 				)?;
 				<T::NativeFungible as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
 				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::hold(
-					&reason,
+					&(),
 					&who,
 					new_reserved,
 				)?;
@@ -539,12 +530,12 @@ pub mod pallet {
 				let old_reserved =
 					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
 						currency_id,
-						&reason,
+						&(),
 						&who,
 					);
 				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::release(
 					currency_id,
-					&reason,
+					&(),
 					&who,
 					old_reserved,
 					Precision::BestEffort,
@@ -565,7 +556,7 @@ pub mod pallet {
 				)?;
 				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::hold(
 					currency_id,
-					&reason,
+					&(),
 					&who,
 					new_reserved,
 				)?;

@@ -14,6 +14,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 };
+use sp_std::vec::Vec;
 pub use pallet::*;
 
 #[cfg(test)]

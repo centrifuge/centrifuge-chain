@@ -233,7 +233,7 @@ pub mod pallet {
 			T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
 		{
 			fn feed_value(
-				account_id: T::AccountId,
+				account_id: Option<T::AccountId>,
 				data_id: T::DataId,
 				data: T::Data,
 			) -> DispatchResult {

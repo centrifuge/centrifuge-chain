@@ -16,7 +16,8 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_benchmarking::{account, benchmarks, Zero};
-use frame_support::traits::{fungibles, Get};
+use sp_std::default::Default;
+use frame_support::traits::{fungibles, Get, tokens::{Preservation, Fortitude}};
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
 use sp_runtime::traits::StaticLookup;
@@ -31,7 +32,7 @@ fn make_free_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
@@ -56,18 +57,19 @@ fn reserve_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
-		>,
+		>
 {
 	if T::NativeToken::get() == currency_id {
-		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(account, balance)
+		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(&Default::default(), account, balance)
 			.expect("should not fail to hold existing tokens");
 	} else {
 		<orml_tokens::Pallet<T> as fungibles::MutateHold<T::AccountId>>::hold(
 			currency_id,
+			&Default::default(),
 			account,
 			balance,
 		)
@@ -127,12 +129,13 @@ fn set_up_account<T>(
 ) -> T::AccountId
 where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		> + pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	<T as Config>::CurrencyId: Into<CurrencyId>,
+
 {
 	let acc = get_account::<T>(name, true);
 	make_free_balance::<T>(currency, &acc, amount);
@@ -168,7 +171,7 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config
-			+ pallet_balances::Config<Balance = <T as Config>::Balance>
+			+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 			+ orml_tokens::Config<Balance = <T as Config>::Balance, CurrencyId = <T as Config>::CurrencyId>
 			+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		<T as Config>::Balance: From<u128> + Zero,
@@ -199,8 +202,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
 	transfer_keep_alive_native {
@@ -229,8 +232,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_keep_alive(RawOrigin::Signed(send.clone()), recv_loopup, currency, send_amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false)  == send_amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false)  == amount - send_amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite)  == send_amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite)  == amount - send_amount);
 	}
 
 	// We transfer into non-existing accounts in order to get worst-case scenarios
@@ -242,7 +245,7 @@ benchmarks! {
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency, false)
+	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency)
 	verify {
 		assert!(pallet_balances::Pallet::<T>::free_balance(&recv) == amount);
 		assert!(pallet_balances::Pallet::<T>::free_balance(&send) == Zero::zero());
@@ -257,10 +260,10 @@ benchmarks! {
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), false)
+	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone())
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
 	// We transfer into non-existing accounts in order to get worst-case scenarios
@@ -291,8 +294,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:force_transfer(RawOrigin::Root, send_loopup, recv_loopup, currency.clone(), amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
 	// We transfer into non-existing accounts in order to get worst-case scenarios
@@ -306,7 +309,7 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
 	verify {
-		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, false) == free);
+		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, Preservation::Protect, Fortitude::Polite) == free);
 		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::balance(&recv) == (free + reserved));
 	}
 
@@ -321,7 +324,7 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == free);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == free);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free + reserved));
 	}
 }

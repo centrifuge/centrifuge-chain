@@ -17,7 +17,7 @@ use frame_support::{
 	pallet_prelude::{StorageVersion, Weight},
 	traits::{Get, OnRuntimeUpgrade},
 };
-use sp_runtime::{BoundedVec, SaturatedConversion};
+use sp_runtime::{BoundedVec, DispatchError, SaturatedConversion};
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
 use {
@@ -54,7 +54,7 @@ where
 	TotalReward: Get<u128>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		assert_eq!(
 			Pallet::<T>::on_chain_storage_version(),
 			StorageVersion::new(0),
@@ -118,7 +118,7 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(pre_state: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(pre_state: Vec<u8>) -> Result<(), DispatchError> {
 		assert_eq!(
 			Pallet::<T>::on_chain_storage_version(),
 			StorageVersion::new(1),

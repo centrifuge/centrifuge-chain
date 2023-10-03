@@ -160,7 +160,7 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	type Reason = T::Reason;
+	type Reason = ();
 
 	//<T::Fungibles as InspectHold<T::AccountId>>::Reason;
 
@@ -364,7 +364,7 @@ impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 	fn hold(
 		asset: Self::AssetId,
-		reason: &T::Reason,
+		reason: &Self::Reason,
 		who: &T::AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult {
@@ -414,7 +414,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 
 	fn transfer_on_hold(
 		asset: Self::AssetId,
-		reason: &T::Reason,
+		reason: &Self::Reason,
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
