@@ -14,12 +14,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unit_arg)]
 
-use std::path::Path;
-
-use frame_support::sp_io;
-use sp_core::crypto::KeyTypeId;
-use sp_runtime::Storage;
-
 ///! Common-types of the Centrifuge chain.
 pub mod adjustments;
 pub mod consts;
@@ -44,21 +38,3 @@ pub type EVMChainId = u64;
 
 /// A raw para ID
 pub type ParaId = u32;
-
-#[test]
-fn _test() {
-	let mut ext = sp_io::TestExternalities::new(Storage::default());
-	ext.register_extension(sp_keystore::KeystoreExt::from(Into::<
-		sp_keystore::SyncCryptoStorePtr,
-	>::into(
-		sc_keystore::LocalKeystore::open(
-			Path::new("/Users/frederikgartenmeister/Projects/centrifuge-chain/data"),
-			None,
-		)
-		.unwrap(),
-	)));
-
-	ext.execute_with(|| {
-		sp_io::crypto::sr25519_generate(KeyTypeId([255, 255, 255, 255]), None);
-	})
-}

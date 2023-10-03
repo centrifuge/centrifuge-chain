@@ -16,7 +16,10 @@ use ethabi::{Contract, Token};
 use frame_support::{dispatch::RawOrigin, traits::fungible::Mutate};
 use fudge::primitives::Chain;
 use pallet_evm::{ExecutionInfo, FeeCalculator, Runner};
-use runtime_common::account_conversion::AccountConverter;
+use runtime_common::{
+	account_conversion::AccountConverter,
+	evm::{precompile::LP_AXELAR_GATEWAY, PRECOMPILE_CODE_STORAGE},
+};
 use sp_core::{Get, H160, U256};
 
 const GAS_LIMIT: u64 = 5_000_000;
@@ -237,6 +240,15 @@ fn path(sections: &[&str]) -> PathBuf {
 }
 
 pub fn prepare_full_evm(env: &mut TestEnv) {
+	// This should probably happen for all precompiles.
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		pallet_evm::AccountCodes::<centrifuge::Runtime>::set(
+			H160::from(LP_AXELAR_GATEWAY),
+			PRECOMPILE_CODE_STORAGE.to_vec(),
+		);
+	})
+	.expect(ESSENTIAL);
+
 	let source = Keyring::<Ecdsa>::Alice.to_h160();
 
 	let (gateway, gateway_contract) = deploy_from_source(
