@@ -81,6 +81,10 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 impl pallet_mock_liquidity_pools::Config for Runtime {

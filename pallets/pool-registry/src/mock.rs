@@ -423,6 +423,10 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 type AccountId = u64;

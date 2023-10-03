@@ -653,6 +653,7 @@ mod fill_order_partial {
 			let total_balance = OrmlTokens::balance(DEV_AUSD_CURRENCY_ID, &ACCOUNT_1);
 			assert_ok!(OrmlTokens::hold(
 				DEV_AUSD_CURRENCY_ID,
+				&(),
 				&ACCOUNT_1,
 				total_balance
 			));

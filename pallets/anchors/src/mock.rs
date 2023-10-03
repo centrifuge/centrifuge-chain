@@ -100,6 +100,10 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = ();
 	type RuntimeEvent = ();
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 pub struct AuthorGiven;

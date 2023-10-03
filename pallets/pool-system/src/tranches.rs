@@ -2561,6 +2561,7 @@ pub mod test {
 		}
 
 		mod calculate_prices {
+			use frame_support::traits::tokens::{Fortitude, Preservation, Provenance};
 			use super::*;
 
 			/// Implements only `total_issuance` required for
@@ -2591,6 +2592,10 @@ pub mod test {
 					todo!()
 				}
 
+				fn total_balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+					todo!()
+				}
+
 				fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
 					todo!()
 				}
@@ -2598,7 +2603,8 @@ pub mod test {
 				fn reducible_balance(
 					_asset: Self::AssetId,
 					_who: &TrancheCurrency,
-					_keep_alive: bool,
+					_preservation: Preservation,
+					_force: Fortitude,
 				) -> Self::Balance {
 					todo!()
 				}
@@ -2607,7 +2613,7 @@ pub mod test {
 					_asset: Self::AssetId,
 					_who: &TrancheCurrency,
 					_amount: Self::Balance,
-					_mint: bool,
+					_provenance: Provenance,
 				) -> frame_support::traits::tokens::DepositConsequence {
 					todo!()
 				}
@@ -2698,6 +2704,10 @@ pub mod test {
 						todo!()
 					}
 
+					fn total_balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+						todo!()
+					}
+
 					fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
 						todo!()
 					}
@@ -2705,7 +2715,8 @@ pub mod test {
 					fn reducible_balance(
 						_asset: Self::AssetId,
 						_who: &TrancheCurrency,
-						_keep_alive: bool,
+						_preservation: Preservation,
+						_force: Fortitude,
 					) -> Self::Balance {
 						todo!()
 					}
@@ -2714,7 +2725,7 @@ pub mod test {
 						_asset: Self::AssetId,
 						_who: &TrancheCurrency,
 						_amount: Self::Balance,
-						_mint: bool,
+						_p: Provenance,
 					) -> frame_support::traits::tokens::DepositConsequence {
 						todo!()
 					}

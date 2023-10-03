@@ -130,6 +130,10 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 cfg_test_utils::mocks::accountant::impl_mock_accountant!(

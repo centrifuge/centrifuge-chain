@@ -126,6 +126,10 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -252,7 +256,7 @@ pub(crate) fn assert_staked(who: &AccountId) {
 	);
 	assert_eq!(
 		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrencyId::get(), who, 1),
-		WithdrawConsequence::NoFunds
+		WithdrawConsequence::BalanceLow
 	);
 }
 

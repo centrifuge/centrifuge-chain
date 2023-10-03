@@ -643,7 +643,7 @@ fn epoch() {
 		// Borrow more than pool reserve should fail NoFunds error
 		assert_noop!(
 			PoolSystem::do_withdraw(borrower.clone(), 0, pool.reserve.total + 1),
-			TokenError::NoFunds
+			TokenError::FundsUnavailable
 		);
 
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));

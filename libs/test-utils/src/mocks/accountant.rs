@@ -74,6 +74,7 @@ macro_rules! impl_mock_accountant {
 
 		mod accountant_mock {
 			use std::borrow::{Borrow as _, BorrowMut as _};
+			use frame_support::traits::tokens::{Preservation, Fortitude, Precision};
 
 			use __private::STATE as __private_STATE;
 
@@ -108,7 +109,7 @@ macro_rules! impl_mock_accountant {
 			impl<Tokens> cfg_traits::investments::InvestmentAccountant<$account_id> for $name<Tokens>
 			where
 				Tokens: frame_support::traits::tokens::fungibles::Mutate<$account_id>
-					+ frame_support::traits::tokens::fungibles::Transfer<$account_id>
+					// + frame_support::traits::tokens::fungibles::Transfer<$account_id>
 					+ frame_support::traits::tokens::fungibles::Inspect<
 						$account_id,
 						Balance = $balance,
@@ -142,7 +143,7 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::transfer(id.into(), source, dest, amount, false).map(|_| ())
+					Tokens::transfer(id.into(), source, dest, amount, Preservation::Protect).map(|_| ())
 				}
 
 				fn deposit(
@@ -152,7 +153,7 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::mint_into(id.into(), buyer, amount)
+					Tokens::mint_into(id.into(), buyer, amount).map(|_| ())
 				}
 
 				fn withdraw(
@@ -162,7 +163,7 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::burn_from(id.into(), seller, amount).map(|_| ())
+					Tokens::burn_from(id.into(), seller, amount, Precision::Exact, Fortitude::Polite).map(|_| ())
 				}
 			}
 

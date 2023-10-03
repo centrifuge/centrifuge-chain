@@ -33,7 +33,7 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn transfer() -> Weight {
+	fn transfer_allow_death() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1829`
 		//  Estimated: `2603`
@@ -55,7 +55,7 @@ impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 	}
 	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn set_balance_creating() -> Weight {
+	fn force_set_balance_creating() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1863`
 		//  Estimated: `2603`
@@ -66,7 +66,7 @@ impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 	}
 	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn set_balance_killing() -> Weight {
+	fn force_set_balance_killing() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1863`
 		//  Estimated: `2603`

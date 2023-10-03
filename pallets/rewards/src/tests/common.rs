@@ -54,7 +54,7 @@ macro_rules! stake_common_tests {
 					assert_ok!($pallet::attach_currency(CURRENCY_X, GROUP_1));
 					assert_noop!(
 						$pallet::deposit_stake(CURRENCY_X, &USER_A, USER_INITIAL_BALANCE + 1),
-						TokenError::NoFunds
+						TokenError::FundsUnavailable
 					);
 				});
 			}
@@ -97,14 +97,14 @@ macro_rules! unstake_common_tests {
 					assert_ok!($pallet::attach_currency(CURRENCY_X, GROUP_1));
 					assert_noop!(
 						$pallet::withdraw_stake(CURRENCY_X, &USER_A, 1),
-						TokenError::NoFunds
+						TokenError::FundsUnavailable
 					);
 
 					assert_ok!($pallet::deposit_stake(CURRENCY_X, &USER_A, 1000));
 
 					assert_noop!(
 						$pallet::withdraw_stake(CURRENCY_X, &USER_A, 2000),
-						TokenError::NoFunds
+						TokenError::FundsUnavailable
 					);
 				});
 			}
@@ -152,11 +152,11 @@ macro_rules! unstake_common_tests {
 					// DISTRIBUTION 2
 					assert_noop!(
 						$pallet::withdraw_stake(CURRENCY_X, &USER_A, 1),
-						TokenError::NoFunds
+						TokenError::FundsUnavailable
 					);
 					assert_noop!(
 						$pallet::withdraw_stake(CURRENCY_X, &USER_B, 1),
-						TokenError::NoFunds
+						TokenError::FundsUnavailable
 					);
 				});
 			}

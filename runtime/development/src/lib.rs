@@ -341,6 +341,11 @@ impl pallet_balances::Config for Runtime {
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
+	//todo(nuno)
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 parameter_types! {

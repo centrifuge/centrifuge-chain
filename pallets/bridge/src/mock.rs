@@ -134,6 +134,10 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = ();
+	type MaxFreezes = ();
 }
 
 // Required as a tight dependency from pallet_fees, but not used for it in the
