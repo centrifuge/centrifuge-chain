@@ -478,8 +478,10 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
 
 	apply_transfer_debt {
+		let n in 2..Helper::<T>::max_active_loans() - 2;
+
 		let any = account("any", 0, 0);
-		let pool_id = Helper::<T>::prepare_benchmark();
+		let pool_id = Helper::<T>::initialize_active_state(n);
 		let change_id = Helper::<T>::propose_transfer_debt(pool_id);
 
 	}: _(RawOrigin::Signed(any), pool_id, change_id)

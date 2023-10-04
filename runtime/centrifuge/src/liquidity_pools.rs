@@ -11,21 +11,21 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{
-	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, EnsureRootOr, HalfOfCouncil,
-	PalletIndex, PoolId, TrancheId,
+	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, EnsureRootOr, PalletIndex, PoolId,
+	TrancheId, TwoThirdOfCouncil,
 };
 use cfg_types::{
 	fixed_point::Ratio,
 	tokens::{CurrencyId, TrancheCurrency},
 };
 use frame_support::{parameter_types, traits::PalletInfoAccess};
-use frame_system::EnsureRoot;
 use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
+	origin::EnsureAccountOrRootOr,
 };
 use sp_runtime::traits::One;
 
@@ -65,7 +65,9 @@ parameter_types! {
 }
 
 impl pallet_liquidity_pools::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	// NOTE: No need to adapt that. The Router is an artifact and will be removed
+	// with FI PR
+	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
@@ -93,8 +95,24 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
+parameter_types! {
+	// A temporary admin account for the LP logic
+	// This is a multi-sig controlled pure proxy on mainnet
+	// - address: "4eEqmbQMbFfNUg6bQnqi9zgUvQvSpNbUgstEM64Xq9FW58Xv" (on Centrifuge)
+	//             (pub key 0x80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57)
+	//
+	// This account is besides Root and 2/3-council able to
+	// - add valid relayer contracts
+	// - rm valid relayer contracts
+	// - add valid LP instance contracts
+	// - rm valid LP instance contracts
+	// - add conversions from Axelar `sourceChain` strings to `DomainAddress`
+	// - set the Axelar gateway contract in the Axelar gateway precompile
+	pub LpAdminAccount: AccountId = AccountId::new(hex_literal::hex!("80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57"));
+}
+
 impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
 	type InboundQueue = LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
