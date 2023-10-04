@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.21"
+version = "0.10.22"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -147,6 +147,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
+testnet
 std = [
   "log/std",
   "cfg-primitives/std",
@@ -423,3 +424,6 @@ on-chain-release-build = [
 
 # Set timing constants (e.g. session period) to faster versions to speed up testing.
 fast-runtime = []
+
+# Allow to handle Catalyst and Centrifuge differently
+testnet-runtime = []
