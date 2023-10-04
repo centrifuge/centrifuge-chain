@@ -13,12 +13,12 @@
 use cfg_primitives::{AccountId, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use frame_system::EnsureRoot;
+use pallet_ethereum::PostLogContent;
 use pallet_evm::EnsureAddressTruncated;
 use runtime_common::{
 	account_conversion::AccountConverter,
 	evm::{precompile::Development, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
-use pallet_ethereum::PostLogContent;
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
@@ -68,6 +68,8 @@ impl pallet_evm::Config for Runtime {
 	type Currency = crate::Balances;
 	type FeeCalculator = crate::BaseFee;
 	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -75,12 +77,10 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
-	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type Timestamp = crate::Timestamp;
 	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -104,10 +104,10 @@ parameter_types! {
 }
 
 impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
-	type PostLogContent = PostBlockAndTxnHashes;
-	type ExtraDataLength = ExtraDataLength;
 }
 
 impl pallet_ethereum_transaction::Config for Runtime {}

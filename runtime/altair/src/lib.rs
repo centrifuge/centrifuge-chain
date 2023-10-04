@@ -1339,6 +1339,7 @@ parameter_types! {
 
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
+	type MaxFeedValues = MaxFeedValues;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Members = PriceOracleMembership;
@@ -1353,7 +1354,6 @@ impl orml_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
-	type MaxFeedValues = MaxFeedValues;
 }
 
 impl pallet_data_collector::Config for Runtime {
@@ -2306,8 +2306,22 @@ impl_runtime_apis! {
 			let mut config = <Runtime as pallet_evm::Config>::config().clone();
 			config.estimate = estimate;
 
+			let gas_limit = gas_limit.min(u64::MAX.into()).low_u64();
+					let without_base_extrinsic_weight = true;
+
 			let is_transactional = false;
 			let validate = true;
+			let (weight_limit, proof_size_base_cost) =
+				match <Runtime as pallet_evm::Config>::GasWeightMapping::gas_to_weight(
+					gas_limit,
+					without_base_extrinsic_weight
+				) {
+					weight_limit if weight_limit.proof_size() > 0 => {
+						(Some(weight_limit), Some(estimated_transaction_len as u64))
+					}
+					_ => (None, None),
+				};
+
 			<Runtime as pallet_evm::Config>::Runner::call(
 				from,
 				to,

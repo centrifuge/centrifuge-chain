@@ -66,6 +66,8 @@ impl pallet_evm::Config for crate::Runtime {
 	type Currency = crate::Balances;
 	type FeeCalculator = crate::BaseFee;
 	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -73,12 +75,10 @@ impl pallet_evm::Config for crate::Runtime {
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;
-	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
-	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type Timestamp = crate::Timestamp;
 	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
 }
 
 impl pallet_evm_chain_id::Config for crate::Runtime {}
@@ -95,7 +95,15 @@ impl pallet_base_fee::Config for crate::Runtime {
 	type Threshold = BaseFeeThreshold;
 }
 
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	//todo(nuno): revisit this
+	pub const ExtraDataLength: u32 = 30;
+}
+
 impl pallet_ethereum::Config for crate::Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = crate::RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }

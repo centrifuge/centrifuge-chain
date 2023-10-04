@@ -14,7 +14,8 @@ use frame_support::{
 	assert_noop, assert_ok,
 	traits::{
 		tokens::{
-			fungible, fungibles, DepositConsequence, ExistenceRequirement, WithdrawConsequence,
+			fungible, fungibles, DepositConsequence, ExistenceRequirement, Fortitude, Precision,
+			Preservation, Restriction, WithdrawConsequence,
 		},
 		BalanceStatus, Currency, LockableCurrency, ReservableCurrency, WithdrawReasons,
 	},
@@ -443,16 +444,16 @@ fn fungible_transfer_held() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&1, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_held(&1, &9, DISTR_PER_ACCOUNT, false, true).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), 0);
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::BestEffort, Restriction::OnHold, ).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Protect, Fortitude::Polite), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Protect, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 
 
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&2, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &2, DISTR_PER_ACCOUNT).is_ok());
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_held(&2, &9, DISTR_PER_ACCOUNT, false, false).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, false), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Protect, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, Preservation::Protect, Fortitude::Polite), 0);
 		})
 }
 

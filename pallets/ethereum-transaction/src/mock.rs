@@ -2,8 +2,12 @@ use std::str::FromStr;
 
 use fp_evm::{FeeCalculator, Precompile, PrecompileResult};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight};
-use pallet_ethereum::{PostLogContent,IntermediateStateRoot};
-use pallet_evm::{runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot, FixedGasWeightMapping, PrecompileHandle, PrecompileSet, SubstrateBlockHashMapping, IsPrecompileResult};
+use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
+use pallet_evm::{
+	runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot,
+	FixedGasWeightMapping, IsPrecompileResult, PrecompileHandle, PrecompileSet,
+	SubstrateBlockHashMapping,
+};
 use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256};
 use sp_runtime::{
 	testing::Header,
@@ -181,6 +185,8 @@ impl pallet_evm::Config for Runtime {
 	type Currency = Balances;
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -188,12 +194,10 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = MockPrecompiles;
 	type Runner = Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
-	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
 }
 
 parameter_types! {
@@ -203,10 +207,10 @@ parameter_types! {
 }
 
 impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = IntermediateStateRoot<Self>;
-	type PostLogContent = PostBlockAndTxnHashes;
-	type ExtraDataLength = ExtraDataLength;
 }
 
 impl pallet_ethereum_transaction::Config for Runtime {}

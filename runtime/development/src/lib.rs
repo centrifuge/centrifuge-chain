@@ -72,7 +72,7 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
-use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner, GasWeightMapping};
+use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -1314,6 +1314,7 @@ parameter_types! {
 
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
+	type MaxFeedValues = MaxFeedValues;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Members = PriceOracleMembership;
@@ -1328,7 +1329,6 @@ impl orml_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
-	type MaxFeedValues = MaxFeedValues;
 }
 
 impl pallet_data_collector::Config for Runtime {

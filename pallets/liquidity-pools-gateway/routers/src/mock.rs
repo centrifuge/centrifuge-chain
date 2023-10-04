@@ -14,7 +14,11 @@ use frame_support::{
 };
 use frame_system::EnsureRoot;
 use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
-use pallet_evm::{runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, FixedGasWeightMapping, Precompile, PrecompileHandle, PrecompileResult, PrecompileSet, SubstrateBlockHashMapping, IsPrecompileResult};
+use pallet_evm::{
+	runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
+	FixedGasWeightMapping, IsPrecompileResult, Precompile, PrecompileHandle, PrecompileResult,
+	PrecompileSet, SubstrateBlockHashMapping,
+};
 use pallet_liquidity_pools_gateway::EnsureLocal;
 use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256};
 use sp_runtime::{
@@ -244,6 +248,8 @@ impl pallet_evm::Config for Runtime {
 	type Currency = Balances;
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -251,12 +257,10 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = MockPrecompiles;
 	type Runner = Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
-	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
 }
 
 parameter_types! {
@@ -266,10 +270,10 @@ parameter_types! {
 }
 
 impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = IntermediateStateRoot<Self>;
-	type PostLogContent = PostBlockAndTxnHashes;
-	type ExtraDataLength = ExtraDataLength;
 }
 ///////////////////////////
 // XCM transactor mocks. //

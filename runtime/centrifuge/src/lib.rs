@@ -65,7 +65,7 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
-use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner, GasWeightMapping};
+use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},

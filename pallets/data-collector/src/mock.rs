@@ -117,6 +117,7 @@ impl DataProviderExtended<(DataId, CollectionId), (Data, Moment)> for DataProvid
 
 impl orml_oracle::Config for Runtime {
 	type CombineData = LastData;
+	type MaxFeedValues = ();
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type Members = IsInVec<Members>;
 	type OnNewData = DataCollector;
@@ -126,7 +127,6 @@ impl orml_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();
-	type MaxFeedValues = ();
 }
 
 impl pallet_data_collector::Config for Runtime {
