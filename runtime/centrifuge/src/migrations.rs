@@ -12,10 +12,10 @@
 use crate::{Runtime, Weight};
 
 pub type UpgradeCentrifuge1022 = (
-	anemoy_pool::Migration,
-	add_wrapped_usdc_variants::Migration,
+	anemoy_pool::Migration<crate::Runtime, 1021>,
+	add_wrapped_usdc_variants::Migration<crate::Runtime, 1021>,
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime, 1020>,
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime, 1022>,
 );
 
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
@@ -40,9 +40,11 @@ mod anemoy_pool {
 
 	const ANEMOY_POOL_ID: PoolId = 4_139_607_887;
 
-	pub struct Migration;
+	pub struct Migration<T, const BEFORE_VERSION: u32>(sp_std::marker::PhantomData<T>);
 
-	impl OnRuntimeUpgrade for Migration {
+	impl<T: frame_system::Config, const BEFORE_VERSION: u32> OnRuntimeUpgrade
+		for Migration<T, BEFORE_VERSION>
+	{
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			let pool_details: PoolDetailsOf<Runtime> =
@@ -57,10 +59,13 @@ mod anemoy_pool {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			// To be executed at 1021, reject higher spec_versions
-			if crate::VERSION.spec_version >= 1022 {
-				log::error!(
-					"anemoy_pool::Migration: NOT execution since VERSION.spec_version >= 1022"
+			let last_version = frame_system::LastRuntimeUpgrade::<T>::get()
+				.map(|v| v.spec_version.0)
+				.unwrap_or(<T::Version as frame_support::traits::Get<_>>::get().spec_version);
+
+			if last_version >= BEFORE_VERSION {
+				log::warn!(
+					"anemoy_pool::Migration: NOT execution since current version higher than BEFORE_VERSION"
 				);
 				return Weight::zero();
 			}
@@ -160,14 +165,19 @@ pub mod add_wrapped_usdc_variants {
 	use crate::OrderBook;
 	use crate::{liquidity_pools::LiquidityPoolsPalletIndex, Balance, OrmlAssetRegistry, Runtime};
 
-	pub struct Migration;
+	pub struct Migration<T, const BEFORE_VERSION: u32>(sp_std::marker::PhantomData<T>);
 
-	impl OnRuntimeUpgrade for Migration {
+	impl<T: frame_system::Config, const BEFORE_VERSION: u32> OnRuntimeUpgrade
+		for Migration<T, BEFORE_VERSION>
+	{
 		fn on_runtime_upgrade() -> Weight {
-			// To be executed at 1021, reject higher spec_versions
-			if crate::VERSION.spec_version >= 1022 {
-				log::error!(
-					"add_wrapped_usdc_variants::Migration: NOT executing since VERSION.spec_version >= 1022"
+			let last_version = frame_system::LastRuntimeUpgrade::<T>::get()
+				.map(|v| v.spec_version.0)
+				.unwrap_or(<T::Version as frame_support::traits::Get<_>>::get().spec_version);
+
+			if last_version >= BEFORE_VERSION {
+				log::warn!(
+					"add_wrapped_usdc_variants::Migration: NOT execution since current version higher than BEFORE_VERSION"
 				);
 				return Weight::zero();
 			}
@@ -267,7 +277,7 @@ pub mod add_wrapped_usdc_variants {
 		}
 	}
 
-	impl Migration {
+	impl<T, const BEFORE_VERSION: u32> Migration<T, BEFORE_VERSION> {
 		fn get_unregistered_ids() -> Vec<CurrencyId> {
 			vec![CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO]
 		}

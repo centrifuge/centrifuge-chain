@@ -19,10 +19,10 @@ use sp_core::H160;
 
 use crate::evm::precompile::PRECOMPILE_CODE_STORAGE;
 
-pub struct Migration<T, const WITH_VERSION: u32>(sp_std::marker::PhantomData<T>);
+pub struct Migration<T, const BEFORE_VERSION: u32>(sp_std::marker::PhantomData<T>);
 
-impl<T: pallet_evm::Config, const WITH_VERSION: u32> OnRuntimeUpgrade
-	for Migration<T, WITH_VERSION>
+impl<T: pallet_evm::Config, const BEFORE_VERSION: u32> OnRuntimeUpgrade
+	for Migration<T, BEFORE_VERSION>
 {
 	fn on_runtime_upgrade() -> Weight {
 		log::info!("precompile::AccountCodes: Inserting precompile account codes: on_runtime_upgrade: started");
@@ -31,7 +31,7 @@ impl<T: pallet_evm::Config, const WITH_VERSION: u32> OnRuntimeUpgrade
 			.map(|v| v.spec_version.0)
 			.unwrap_or(<T::Version as frame_support::traits::Get<_>>::get().spec_version);
 
-		if last_version > WITH_VERSION {
+		if last_version >= BEFORE_VERSION {
 			log::warn!("[precompile::AccountCodes: Current runtime version too high. Skipping migration. Migration can probably be removed.");
 			return Weight::zero();
 		}
