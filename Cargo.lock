@@ -1075,6 +1075,7 @@ dependencies = [
  "fc-rpc",
  "fc-rpc-core",
  "fp-consensus",
+ "fp-evm",
  "fp-rpc",
  "fp-storage",
  "frame-benchmarking",
@@ -1086,6 +1087,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "pallet-anchors",
+ "pallet-evm",
  "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -1139,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.21"
+version = "0.10.22"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
