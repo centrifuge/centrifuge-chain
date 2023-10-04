@@ -55,7 +55,6 @@ pub type UpgradeAltair1034 = (
 	runtime_common::migrations::precompile_account_codes::Migration<
 		crate::Runtime,
 		{ crate::VERSION.spec_version },
-		{ crate::VERSION.spec_version },
 	>,
 );
 
@@ -65,7 +64,6 @@ pub type UpgradeAltair1034 = (
 #[cfg(feature = "testnet-runtime")]
 pub type UpgradeAltair1034 = (runtime_common::migrations::precompile_account_codes::Migration<
 	crate::Runtime,
-	{ crate::VERSION.spec_version },
 	{ crate::VERSION.spec_version },
 >);
 

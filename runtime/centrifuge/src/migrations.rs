@@ -15,11 +15,7 @@ pub type UpgradeCentrifuge1022 = (
 	anemoy_pool::Migration,
 	add_wrapped_usdc_variants::Migration,
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<
-		crate::Runtime,
-		{ crate::VERSION.spec_version },
-		1020,
-	>,
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime, 1020>,
 );
 
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
