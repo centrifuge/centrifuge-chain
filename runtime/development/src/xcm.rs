@@ -26,6 +26,7 @@ use frame_support::{
 	sp_std::marker::PhantomData,
 	traits::{fungibles, fungibles::Mutate},
 };
+use frame_system::EnsureRoot;
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
@@ -294,6 +295,9 @@ impl pallet_xcm::Config for Runtime {
 	type XcmTeleportFilter = Everything;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type MaxRemoteLockConsumers = ConstU32<0>;
+	type RemoteLockConsumerIdentifier = ();
 }
 
 parameter_types! {
