@@ -2,11 +2,8 @@ use std::str::FromStr;
 
 use fp_evm::{FeeCalculator, Precompile, PrecompileResult};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight};
-use pallet_ethereum::IntermediateStateRoot;
-use pallet_evm::{
-	runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot,
-	FixedGasWeightMapping, PrecompileHandle, PrecompileSet, SubstrateBlockHashMapping,
-};
+use pallet_ethereum::{PostLogContent,IntermediateStateRoot};
+use pallet_evm::{runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot, FixedGasWeightMapping, PrecompileHandle, PrecompileSet, SubstrateBlockHashMapping, IsPrecompileResult};
 use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256};
 use sp_runtime::{
 	testing::Header,
@@ -151,15 +148,28 @@ impl PrecompileSet for MockPrecompileSet {
 	/// Check if the given address is a precompile. Should only be called to
 	/// perform the check while not executing the precompile afterward, since
 	/// `execute` already performs a check internally.
-	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> bool {
-		address == H160::from_low_u64_be(1)
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		IsPrecompileResult::Answer {
+			is_precompile: address == H160::from_low_u64_be(1),
+			extra_cost: 0,
+		}
 	}
 }
+
+const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
+/// Block storage limit in bytes. Set to 40 KB.
+const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::max_value();
 	pub WeightPerGas: Weight = Weight::from_ref_time(20_000);
 	pub MockPrecompiles: MockPrecompileSet = MockPrecompileSet;
+	pub GasLimitPovSizeRatio: u64 = {
+		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
+		block_gas_limit.saturating_div(MAX_POV_SIZE)
+	};
+	pub GasLimitStorageGrowthRatio: u64 =
+		BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
 }
 
 impl pallet_evm::Config for Runtime {
@@ -180,11 +190,23 @@ impl pallet_evm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	//todo(nuno): revisit this
+	pub const ExtraDataLength: u32 = 30;
 }
 
 impl pallet_ethereum::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = IntermediateStateRoot<Self>;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type ExtraDataLength = ExtraDataLength;
 }
 
 impl pallet_ethereum_transaction::Config for Runtime {}
