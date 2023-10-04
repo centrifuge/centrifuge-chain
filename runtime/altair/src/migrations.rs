@@ -52,15 +52,22 @@ pub type UpgradeAltair1034 = (
 	// Sets currently unset safe XCM version to v2
 	xcm_v2_to_v3::SetSafeXcmVersion,
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
+	runtime_common::migrations::precompile_account_codes::Migration<
+		crate::Runtime,
+		{ crate::VERSION.spec_version },
+		{ crate::VERSION.spec_version },
+	>,
 );
 
 /// The Upgrade set for Algol - it excludes the migrations already executed in
 /// the side releases that only landed on Algol (1028 to 1031) but not yet on
 /// Altair.
 #[cfg(feature = "testnet-runtime")]
-pub type UpgradeAltair1034 =
-	(runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>);
+pub type UpgradeAltair1034 = (runtime_common::migrations::precompile_account_codes::Migration<
+	crate::Runtime,
+	{ crate::VERSION.spec_version },
+	{ crate::VERSION.spec_version },
+>);
 
 mod asset_registry {
 	use cfg_primitives::Balance;

@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.21"
+version = "0.10.22"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",

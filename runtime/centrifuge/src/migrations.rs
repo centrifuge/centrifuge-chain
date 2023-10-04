@@ -11,17 +11,16 @@
 // GNU General Public License for more details.
 use crate::{Runtime, Weight};
 
-#[cfg(not(feature = "testnet-runtime"))]
 pub type UpgradeCentrifuge1022 = (
 	anemoy_pool::Migration,
 	add_wrapped_usdc_variants::Migration,
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
+	runtime_common::migrations::precompile_account_codes::Migration<
+		crate::Runtime,
+		{ crate::VERSION.spec_version },
+		1020,
+	>,
 );
-
-#[cfg(feature = "testnet-runtime")]
-pub type UpgradeCentrifuge1022 =
-	(runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>);
 
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
 /// native on Polkadot's AssetHub.

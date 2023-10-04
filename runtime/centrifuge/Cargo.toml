@@ -147,7 +147,6 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
-testnet
 std = [
   "log/std",
   "cfg-primitives/std",
@@ -424,6 +423,3 @@ on-chain-release-build = [
 
 # Set timing constants (e.g. session period) to faster versions to speed up testing.
 fast-runtime = []
-
-# Allow to handle Catalyst and Centrifuge differently
-testnet-runtime = []

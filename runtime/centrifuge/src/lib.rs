@@ -1952,7 +1952,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1021,
+	migrations::UpgradeCentrifuge1022,
 >;
 
 pub struct TransactionConverter;
