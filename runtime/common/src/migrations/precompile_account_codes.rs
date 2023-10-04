@@ -15,7 +15,6 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade},
 	weights::Weight,
 };
-use sp_arithmetic::traits::{EnsureAdd, EnsureMul};
 use sp_core::H160;
 
 use crate::evm::precompile::PRECOMPILE_CODE_STORAGE;
