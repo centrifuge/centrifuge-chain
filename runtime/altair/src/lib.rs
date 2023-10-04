@@ -2348,14 +2348,14 @@ impl_runtime_apis! {
 			let is_transactional = false;
 			let validate = true;
 			let mut estimated_transaction_len = data.len() +
-						// from: 20
-						// value: 32
-						// gas_limit: 32
-						// nonce: 32
-						// 1 byte transaction action variant
-						// chain id 8 bytes
-						// 65 bytes signature
-						190;
+				// from: 20
+				// value: 32
+				// gas_limit: 32
+				// nonce: 32
+				// 1 byte transaction action variant
+				// chain id 8 bytes
+				// 65 bytes signature
+				190;
 
 					if max_fee_per_gas.is_some() {
 						estimated_transaction_len += 32;
@@ -2393,6 +2393,7 @@ impl_runtime_apis! {
 				proof_size_base_cost,
 				evm_config,
 			).map_err(|err| err.error.into())
+		}
 
 		fn current_transaction_statuses() -> Option<Vec<TransactionStatus>> {
 			pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()

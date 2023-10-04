@@ -64,7 +64,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::Transaction as EthTransaction;
+use pallet_ethereum::{Call::transact, Transaction as EthTransaction};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner, GasWeightMapping};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -2543,7 +2543,7 @@ impl_runtime_apis! {
 			xts: Vec<<Block as BlockT>::Extrinsic>,
 		) -> Vec<EthereumTransaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
-				RuntimeCall::Ethereum(pallet_ethereum::Call::<Runtime>::transact { transaction }) => Some(transaction),
+				RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
 				_ => None
 			}).collect::<Vec<EthereumTransaction>>()
 		}
