@@ -11,18 +11,10 @@
 // GNU General Public License for more details.
 
 use frame_support::weights::constants::WEIGHT_REF_TIME_PER_SECOND;
-use hex_literal::hex;
 use pallet_ethereum::{Transaction, TransactionAction};
 use sp_runtime::Permill;
 
 pub mod precompile;
-
-/// `pallet_evm::AccountCodes` must be populated for precompiles as
-/// otherwise `OPCODE::EXTCODESIZE` will make the EVM error upon calling an
-/// precompile.
-///
-/// The following bytes represent: `PUSH1 00`, `PUSH1 00`, `REVERT`.
-pub const PRECOMPILE_CODE_STORAGE: [u8; 5] = hex!("60006000fd");
 
 // From Moonbeam:
 //
