@@ -150,15 +150,15 @@ impl pallet_balances::Config for Runtime {
 	type Balance = u64;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU64<1>;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 parameter_types! {

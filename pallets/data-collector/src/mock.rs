@@ -126,6 +126,7 @@ impl orml_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
 	type WeightInfo = ();
+	type MaxFeedValues = ();
 }
 
 impl pallet_data_collector::Config for Runtime {

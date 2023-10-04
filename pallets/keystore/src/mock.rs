@@ -102,15 +102,15 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 // Build genesis storage according to the mock runtime.

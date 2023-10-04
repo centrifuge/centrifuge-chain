@@ -2562,6 +2562,7 @@ pub mod test {
 
 		mod calculate_prices {
 			use frame_support::traits::tokens::{Fortitude, Preservation, Provenance};
+
 			use super::*;
 
 			/// Implements only `total_issuance` required for
@@ -2704,7 +2705,10 @@ pub mod test {
 						todo!()
 					}
 
-					fn total_balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+					fn total_balance(
+						_asset: Self::AssetId,
+						_who: &TrancheCurrency,
+					) -> Self::Balance {
 						todo!()
 					}
 

@@ -59,7 +59,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn update_invest_order() -> Result<(), BenchmarkError>{
+	fn update_invest_order() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency();

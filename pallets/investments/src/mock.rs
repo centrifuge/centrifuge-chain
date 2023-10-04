@@ -125,15 +125,15 @@ impl pallet_balances::Config for MockRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 cfg_test_utils::mocks::accountant::impl_mock_accountant!(

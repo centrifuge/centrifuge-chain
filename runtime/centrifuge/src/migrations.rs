@@ -24,9 +24,9 @@ mod anemoy_pool {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::traits::{fungibles::Inspect, OnRuntimeUpgrade};
-	use sp_runtime::DispatchError;
 	#[cfg(feature = "try-runtime")]
 	use pallet_pool_system::PoolDetailsOf;
+	use sp_runtime::DispatchError;
 	use sp_std::vec;
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;

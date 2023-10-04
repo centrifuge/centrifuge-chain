@@ -129,15 +129,15 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ();
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 // Required as a tight dependency from pallet_fees, but not used for it in the

@@ -14,8 +14,8 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 };
-use sp_std::vec::Vec;
 pub use pallet::*;
+use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;

@@ -322,17 +322,17 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	//todo(nuno)
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Runtime>;
-	//todo(nuno)
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -1332,6 +1332,11 @@ impl pallet_membership::Config for Runtime {
 	type WeightInfo = pallet_membership::weights::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	//todo(nuno): check this value
+	pub const MaxFeedValues: u32 = 10;
+}
+
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
@@ -1348,6 +1353,7 @@ impl orml_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
+	type MaxFeedValues = MaxFeedValues;
 }
 
 impl pallet_data_collector::Config for Runtime {
@@ -2339,6 +2345,36 @@ impl_runtime_apis! {
 
 			let is_transactional = false;
 			let validate = true;
+			let mut estimated_transaction_len = data.len() +
+						// from: 20
+						// value: 32
+						// gas_limit: 32
+						// nonce: 32
+						// 1 byte transaction action variant
+						// chain id 8 bytes
+						// 65 bytes signature
+						190;
+
+					if max_fee_per_gas.is_some() {
+						estimated_transaction_len += 32;
+					}
+					if max_priority_fee_per_gas.is_some() {
+						estimated_transaction_len += 32;
+					}
+					if access_list.is_some() {
+						estimated_transaction_len += access_list.encoded_size();
+					}
+			let without_base_extrinsic_weight = true; let (weight_limit, proof_size_base_cost) =
+
+				match <Runtime as pallet_evm::Config>::GasWeightMapping::gas_to_weight(
+					gas_limit,
+					without_base_extrinsic_weight
+				) {
+					weight_limit if weight_limit.proof_size() > 0 => {
+						(Some(weight_limit), Some(estimated_transaction_len as u64))
+					}
+					_ => (None, None),
+				};
 			let evm_config = config.as_ref().unwrap_or_else(|| <Runtime as pallet_evm::Config>::config());
 			<Runtime as pallet_evm::Config>::Runner::create(
 				from,
@@ -2351,9 +2387,10 @@ impl_runtime_apis! {
 				access_list.unwrap_or_default(),
 				is_transactional,
 				validate,
+				weight_limit,
+				proof_size_base_cost,
 				evm_config,
 			).map_err(|err| err.error.into())
-		}
 
 		fn current_transaction_statuses() -> Option<Vec<TransactionStatus>> {
 			Ethereum::current_transaction_statuses()

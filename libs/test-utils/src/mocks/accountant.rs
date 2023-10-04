@@ -74,9 +74,9 @@ macro_rules! impl_mock_accountant {
 
 		mod accountant_mock {
 			use std::borrow::{Borrow as _, BorrowMut as _};
-			use frame_support::traits::tokens::{Preservation, Fortitude, Precision};
 
 			use __private::STATE as __private_STATE;
+			use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
 
 			use super::*;
 
@@ -143,7 +143,8 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::transfer(id.into(), source, dest, amount, Preservation::Protect).map(|_| ())
+					Tokens::transfer(id.into(), source, dest, amount, Preservation::Protect)
+						.map(|_| ())
 				}
 
 				fn deposit(
@@ -163,7 +164,14 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::burn_from(id.into(), seller, amount, Precision::Exact, Fortitude::Polite).map(|_| ())
+					Tokens::burn_from(
+						id.into(),
+						seller,
+						amount,
+						Precision::Exact,
+						Fortitude::Polite,
+					)
+					.map(|_| ())
 				}
 			}
 

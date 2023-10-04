@@ -503,7 +503,8 @@ pub mod pallet {
 			let token = if T::NativeToken::get() == currency_id {
 				let old_reserved =
 					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
-						&(), &who,
+						&(),
+						&who,
 					);
 				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::release(
 					&(),

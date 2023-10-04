@@ -602,17 +602,17 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	//todo(nuno)
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Runtime>;
-	//todo(nuno)
-	type HoldIdentifier = ();
-	type FreezeIdentifier = ();
-	type MaxHolds = ();
-	type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -929,16 +929,19 @@ parameter_types! {
 	pub CouncilMotionDuration: BlockNumber = prod_or_fast!(5 * DAYS, 1 * MINUTES, "CFG_MOTION_DURATION");
 	pub const CouncilMaxProposals: u32 = 100;
 	pub const CouncilMaxMembers: u32 = 100;
+	pub MaxProposalWeight: Weight = Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type MaxMembers = CouncilMaxMembers;
+	type MaxProposalWeight = ();
 	type MaxProposals = CouncilMaxProposals;
 	type MotionDuration = CouncilMotionDuration;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
@@ -950,6 +953,8 @@ parameter_types! {
 	pub const DesiredMembers: u32 = 9;
 	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
+	// todo(nuno)
+	pub const MaxVotesPerVoter: u32 = 5;
 }
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via
@@ -970,6 +975,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type LoserCandidate = Treasury;
 	type MaxCandidates = MaxCandidates;
 	type MaxVoters = MaxVoters;
+	type MaxVotesPerVoter = MaxVotesPerVoter;
 	type PalletId = ElectionsPhragmenModuleId;
 	type RuntimeEvent = RuntimeEvent;
 	/// How long each seat is kept. This defines the next block number at which
@@ -1045,6 +1051,7 @@ impl pallet_democracy::Config for Runtime {
 	type Scheduler = Scheduler;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = Treasury;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 	// Any single council member may veto a coming council proposal, however they
 	// can only do it once and it lasts only for the cooloff period.
 	type VetoOrigin = EnsureMember<AccountId, CouncilCollective>;
@@ -1809,8 +1816,14 @@ impl pallet_membership::Config for Runtime {
 	type WeightInfo = pallet_membership::weights::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	//todo(nuno): check this value
+	pub const MaxFeedValues: u32 = 10;
+}
+
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
+	type MaxFeedValues = MaxFeedValues;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Members = PriceOracleMembership;
@@ -2133,6 +2146,9 @@ impl_runtime_apis! {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
 		}
+
+		fn metadata_at_version(_: u32) -> Option<sp_core::OpaqueMetadata> { todo!("nuno") }
+		fn metadata_versions() -> frame_benchmarking::Vec<u32> { todo!("nuno") }
 	}
 
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
@@ -2413,6 +2429,35 @@ impl_runtime_apis! {
 
 			let is_transactional = false;
 			let validate = true;
+			let mut estimated_transaction_len = data.len() +
+						// from: 20
+						// value: 32
+						// gas_limit: 32
+						// nonce: 32
+						// 1 byte transaction action variant
+						// chain id 8 bytes
+						// 65 bytes signature
+						190;
+
+					if max_fee_per_gas.is_some() {
+						estimated_transaction_len += 32;
+					}
+					if max_priority_fee_per_gas.is_some() {
+						estimated_transaction_len += 32;
+					}
+					if access_list.is_some() {
+						estimated_transaction_len += access_list.encoded_size();
+					}
+			let without_base_extrinsic_weight = true; let (weight_limit, proof_size_base_cost) =
+				match <Runtime as pallet_evm::Config>::GasWeightMapping::gas_to_weight(
+					gas_limit,
+					without_base_extrinsic_weight
+				) {
+					weight_limit if weight_limit.proof_size() > 0 => {
+						(Some(weight_limit), Some(estimated_transaction_len as u64))
+					}
+					_ => (None, None),
+				};
 			let evm_config = config.as_ref().unwrap_or_else(|| <Runtime as pallet_evm::Config>::config());
 			<Runtime as pallet_evm::Config>::Runner::create(
 				from,
@@ -2425,6 +2470,8 @@ impl_runtime_apis! {
 				access_list.unwrap_or_default(),
 				is_transactional,
 				validate,
+				weight_limit,
+				proof_size_base_cost,
 				evm_config,
 			).map_err(|err| err.error.into())
 		}
@@ -2467,6 +2514,23 @@ impl_runtime_apis! {
 		}
 
 		fn gas_limit_multiplier_support() {}
+
+		fn pending_block(
+					xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
+				) -> (
+					Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
+				) {
+					for ext in xts.into_iter() {
+						let _ = Executive::apply_extrinsic(ext);
+					}
+
+					Ethereum::on_finalize(System::block_number() + 1);
+
+					(
+						pallet_ethereum::CurrentBlock::<Runtime>::get(),
+						pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
+					)
+				 }
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {

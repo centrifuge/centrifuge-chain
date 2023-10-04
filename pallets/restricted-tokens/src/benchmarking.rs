@@ -16,11 +16,15 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_benchmarking::{account, benchmarks, Zero};
-use sp_std::default::Default;
-use frame_support::traits::{fungibles, Get, tokens::{Preservation, Fortitude}};
+use frame_support::traits::{
+	fungibles,
+	tokens::{Fortitude, Preservation},
+	Get,
+};
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
 use sp_runtime::traits::StaticLookup;
+use sp_std::default::Default;
 
 use super::*;
 
@@ -61,11 +65,15 @@ fn reserve_balance<T>(
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
-		>
+		>,
 {
 	if T::NativeToken::get() == currency_id {
-		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(&Default::default(), account, balance)
-			.expect("should not fail to hold existing tokens");
+		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(
+			&Default::default(),
+			account,
+			balance,
+		)
+		.expect("should not fail to hold existing tokens");
 	} else {
 		<orml_tokens::Pallet<T> as fungibles::MutateHold<T::AccountId>>::hold(
 			currency_id,
@@ -135,7 +143,6 @@ where
 			CurrencyId = <T as Config>::CurrencyId,
 		> + pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	<T as Config>::CurrencyId: Into<CurrencyId>,
-
 {
 	let acc = get_account::<T>(name, true);
 	make_free_balance::<T>(currency, &acc, amount);
