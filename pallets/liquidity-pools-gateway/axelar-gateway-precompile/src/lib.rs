@@ -287,16 +287,12 @@ where
 				exit_status: ExitError::Other("account bytes mismatch for domain".into()),
 			})?;
 
-		match pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
+		pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
 			pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),
 			msg,
 		)
-		.map(|_| ())
 		.map_err(TryDispatchError::Substrate)
-		{
-			Err(e) => Err(e.into()),
-			Ok(()) => Ok(()),
-		}
+		.map_err(Into::into)
 	}
 
 	// Mimics:

@@ -28,19 +28,9 @@ parameter_types! {
 	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
 }
 
-pub struct Stumb;
-impl InboundQueue for Stumb {
-	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
-	type Sender = DomainAddress;
-
-	fn submit(_sender: Self::Sender, _msg: Self::Message) -> DispatchResult {
-		Ok(())
-	}
-}
-
 impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type InboundQueue = Stumb;
+	type InboundQueue = crate::LiquidityPools;
 	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
