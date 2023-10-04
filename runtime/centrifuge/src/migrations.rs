@@ -11,7 +11,11 @@
 // GNU General Public License for more details.
 use crate::{Runtime, Weight};
 
-pub type UpgradeCentrifuge1021 = (anemoy_pool::Migration, add_wrapped_usdc_variants::Migration);
+pub type UpgradeCentrifuge1021 = (
+	anemoy_pool::Migration,
+	add_wrapped_usdc_variants::Migration,
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
+);
 
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
 /// native on Polkadot's AssetHub.
