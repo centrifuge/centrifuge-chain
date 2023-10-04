@@ -10,3 +10,23 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+pub struct Migration<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: pallet_evm::Config> OnRuntimeUpgrade for Migration<T> {
+	fn on_runtime_upgrade() -> Weight {
+		todo!()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+		todo!()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+		todo!()
+	}
+}
