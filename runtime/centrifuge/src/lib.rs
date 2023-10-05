@@ -935,7 +935,7 @@ parameter_types! {
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type MaxMembers = CouncilMaxMembers;
-	type MaxProposalWeight = ();
+	type MaxProposalWeight = MaxProposalWeight;
 	type MaxProposals = CouncilMaxProposals;
 	type MotionDuration = CouncilMotionDuration;
 	type Proposal = RuntimeCall;
@@ -2413,7 +2413,6 @@ impl_runtime_apis! {
 			if access_list.is_some() {
 				estimated_transaction_len += access_list.encoded_size();
 			}
-
 
 			let gas_limit = gas_limit.min(u64::MAX.into()).low_u64();
 			let without_base_extrinsic_weight = true;
