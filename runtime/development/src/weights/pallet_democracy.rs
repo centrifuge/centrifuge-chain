@@ -227,7 +227,7 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(r.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(2676).saturating_mul(r.into()))
+			.saturating_add(Weight::from_parts(0, 2676).saturating_mul(r.into()))
 	}
 	/// Storage: Democracy LowestUnbaked (r:1 w:1)
 	/// Proof: Democracy LowestUnbaked (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
@@ -253,7 +253,7 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(r.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(2676).saturating_mul(r.into()))
+			.saturating_add(Weight::from_parts(0, 2676).saturating_mul(r.into()))
 	}
 	/// Storage: Democracy VotingOf (r:3 w:3)
 	/// Proof: Democracy VotingOf (max_values: None, max_size: Some(3795), added: 6270, mode: MaxEncodedLen)
@@ -274,7 +274,7 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(r.into())))
 			.saturating_add(T::DbWeight::get().writes(4))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(r.into())))
-			.saturating_add(Weight::from_proof_size(2676).saturating_mul(r.into()))
+			.saturating_add(Weight::from_parts(0, 2676).saturating_mul(r.into()))
 	}
 	/// Storage: Democracy VotingOf (r:2 w:2)
 	/// Proof: Democracy VotingOf (max_values: None, max_size: Some(3795), added: 6270, mode: MaxEncodedLen)
@@ -293,7 +293,7 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(r.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(r.into())))
-			.saturating_add(Weight::from_proof_size(2676).saturating_mul(r.into()))
+			.saturating_add(Weight::from_parts(0, 2676).saturating_mul(r.into()))
 	}
 	/// Storage: Democracy PublicProps (r:0 w:1)
 	/// Proof: Democracy PublicProps (max_values: Some(1), max_size: Some(16702), added: 17197, mode: MaxEncodedLen)

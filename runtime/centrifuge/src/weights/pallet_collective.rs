@@ -56,8 +56,8 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(p.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p.into())))
-			.saturating_add(Weight::from_proof_size(7809).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(10238).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 7809).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 10238).saturating_mul(p.into()))
 	}
 	/// Storage: Council Members (r:1 w:0)
 	/// Proof Skipped: Council Members (max_values: Some(1), max_size: None, mode: Measured)
@@ -72,7 +72,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			// Standard Error: 430
 			.saturating_add(Weight::from_parts(1_344, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(Weight::from_proof_size(32).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 32).saturating_mul(m.into()))
 	}
 	/// Storage: Council Members (r:1 w:0)
 	/// Proof Skipped: Council Members (max_values: Some(1), max_size: None, mode: Measured)
@@ -91,7 +91,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			// Standard Error: 1_251
 			.saturating_add(Weight::from_parts(34_391, 0).saturating_mul(m.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
-			.saturating_add(Weight::from_proof_size(64).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 64).saturating_mul(m.into()))
 	}
 	/// Storage: Council Members (r:1 w:0)
 	/// Proof Skipped: Council Members (max_values: Some(1), max_size: None, mode: Measured)
@@ -120,8 +120,8 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(196_263, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
-			.saturating_add(Weight::from_proof_size(165).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(180).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 165).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 180).saturating_mul(p.into()))
 	}
 	/// Storage: Council Members (r:1 w:0)
 	/// Proof Skipped: Council Members (max_values: Some(1), max_size: None, mode: Measured)
@@ -138,7 +138,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(48_491, 0).saturating_mul(m.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(128).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 128).saturating_mul(m.into()))
 	}
 	/// Storage: Council Voting (r:1 w:1)
 	/// Proof Skipped: Council Voting (max_values: None, max_size: None, mode: Measured)
@@ -162,8 +162,8 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(178_059, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(260).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(144).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 260).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 144).saturating_mul(p.into()))
 	}
 	/// Storage: Council Voting (r:1 w:1)
 	/// Proof Skipped: Council Voting (max_values: None, max_size: None, mode: Measured)
@@ -190,9 +190,9 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(227_600, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(4).saturating_mul(b.into()))
-			.saturating_add(Weight::from_proof_size(264).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(160).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 4).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(0, 264).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 160).saturating_mul(p.into()))
 	}
 	/// Storage: Council Voting (r:1 w:1)
 	/// Proof Skipped: Council Voting (max_values: None, max_size: None, mode: Measured)
@@ -218,8 +218,8 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(183_713, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(325).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(180).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 325).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 180).saturating_mul(p.into()))
 	}
 	/// Storage: Council Voting (r:1 w:1)
 	/// Proof Skipped: Council Voting (max_values: None, max_size: None, mode: Measured)
@@ -248,9 +248,9 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(221_396, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(5).saturating_mul(b.into()))
-			.saturating_add(Weight::from_proof_size(330).saturating_mul(m.into()))
-			.saturating_add(Weight::from_proof_size(200).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 5).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(0, 330).saturating_mul(m.into()))
+			.saturating_add(Weight::from_parts(0, 200).saturating_mul(p.into()))
 	}
 	/// Storage: Council Proposals (r:1 w:1)
 	/// Proof Skipped: Council Proposals (max_values: Some(1), max_size: None, mode: Measured)
@@ -269,6 +269,6 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(171_643, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(96).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 96).saturating_mul(p.into()))
 	}
 }

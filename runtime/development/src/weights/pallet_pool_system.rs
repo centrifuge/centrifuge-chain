@@ -85,7 +85,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((8_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((8_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(20298).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 20298).saturating_mul(n.into()))
 	}
 	/// Storage: PoolSystem Pool (r:1 w:1)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
@@ -122,7 +122,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((7_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((6_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(17694).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 17694).saturating_mul(n.into()))
 	}
 	/// Storage: PoolSystem Pool (r:1 w:1)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
@@ -167,7 +167,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((8_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(7))
 			.saturating_add(T::DbWeight::get().writes((8_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(20298).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 20298).saturating_mul(n.into()))
 	}
 	/// Storage: PoolSystem EpochExecution (r:1 w:1)
 	/// Proof: PoolSystem EpochExecution (max_values: None, max_size: Some(770), added: 3245, mode: MaxEncodedLen)
@@ -226,6 +226,6 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((7_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(8))
 			.saturating_add(T::DbWeight::get().writes((6_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(n.into()))
 	}
 }

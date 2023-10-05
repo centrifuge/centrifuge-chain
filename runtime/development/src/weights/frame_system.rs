@@ -107,6 +107,6 @@ impl<T: frame_system::Config> frame_system::WeightInfo for WeightInfo<T> {
 			// Standard Error: 1_161
 			.saturating_add(Weight::from_parts(1_283_958, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p.into())))
-			.saturating_add(Weight::from_proof_size(70).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 70).saturating_mul(p.into()))
 	}
 }

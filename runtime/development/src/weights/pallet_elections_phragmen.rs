@@ -52,7 +52,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(107_010, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(Weight::from_proof_size(320).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
 	}
 	/// Storage: Elections Candidates (r:1 w:0)
 	/// Proof Skipped: Elections Candidates (max_values: Some(1), max_size: None, mode: Measured)
@@ -75,7 +75,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(197_853, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(Weight::from_proof_size(320).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
 	}
 	/// Storage: Elections Candidates (r:1 w:0)
 	/// Proof Skipped: Elections Candidates (max_values: Some(1), max_size: None, mode: Measured)
@@ -98,7 +98,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(53_074, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(Weight::from_proof_size(320).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
 	}
 	/// Storage: Elections Voting (r:1 w:1)
 	/// Proof Skipped: Elections Voting (max_values: None, max_size: None, mode: Measured)
@@ -130,7 +130,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(110_947, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(144).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(0, 144).saturating_mul(c.into()))
 	}
 	/// Storage: Elections Candidates (r:1 w:1)
 	/// Proof Skipped: Elections Candidates (max_values: Some(1), max_size: None, mode: Measured)
@@ -145,7 +145,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(65_167, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(48).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(0, 48).saturating_mul(c.into()))
 	}
 	/// Storage: Elections Members (r:1 w:1)
 	/// Proof Skipped: Elections Members (max_values: Some(1), max_size: None, mode: Measured)
@@ -232,7 +232,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(v.into())))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(v.into())))
-			.saturating_add(Weight::from_proof_size(12348).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(0, 12348).saturating_mul(v.into()))
 	}
 	/// Storage: Elections Candidates (r:1 w:1)
 	/// Proof Skipped: Elections Candidates (max_values: Some(1), max_size: None, mode: Measured)
@@ -270,8 +270,8 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(v.into())))
 			.saturating_add(T::DbWeight::get().writes(6))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
-			.saturating_add(Weight::from_proof_size(5450).saturating_mul(v.into()))
-			.saturating_add(Weight::from_proof_size(106).saturating_mul(e.into()))
-			.saturating_add(Weight::from_proof_size(2372).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(0, 5450).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(0, 106).saturating_mul(e.into()))
+			.saturating_add(Weight::from_parts(0, 2372).saturating_mul(c.into()))
 	}
 }

@@ -62,7 +62,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(7))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(2475).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(n.into()))
 	}
 	/// Storage: Permissions Permission (r:1 w:0)
 	/// Proof: Permissions Permission (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)
@@ -88,7 +88,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(2531).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2531).saturating_mul(n.into()))
 	}
 	/// Storage: Permissions Permission (r:1 w:0)
 	/// Proof: Permissions Permission (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)
@@ -116,7 +116,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(2699).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2699).saturating_mul(n.into()))
 	}
 	/// Storage: PoolSystem Pool (r:1 w:1)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
@@ -142,7 +142,7 @@ impl<T: frame_system::Config> pallet_pool_registry::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(2725).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2725).saturating_mul(n.into()))
 	}
 	/// Storage: Permissions Permission (r:1 w:0)
 	/// Proof: Permissions Permission (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)

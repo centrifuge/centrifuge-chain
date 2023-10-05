@@ -113,6 +113,6 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(p.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(2583).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(0, 2583).saturating_mul(p.into()))
 	}
 }

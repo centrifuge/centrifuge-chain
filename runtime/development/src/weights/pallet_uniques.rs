@@ -94,7 +94,7 @@ impl<T: frame_system::Config> pallet_uniques::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(m.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_proof_size(2613).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2613).saturating_mul(n.into()))
 	}
 	/// Storage: Uniques Asset (r:1 w:1)
 	/// Proof: Uniques Asset (max_values: None, max_size: Some(138), added: 2613, mode: MaxEncodedLen)
@@ -164,7 +164,7 @@ impl<T: frame_system::Config> pallet_uniques::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(i.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(i.into())))
-			.saturating_add(Weight::from_proof_size(2613).saturating_mul(i.into()))
+			.saturating_add(Weight::from_parts(0, 2613).saturating_mul(i.into()))
 	}
 	/// Storage: Uniques Asset (r:1 w:1)
 	/// Proof: Uniques Asset (max_values: None, max_size: Some(138), added: 2613, mode: MaxEncodedLen)

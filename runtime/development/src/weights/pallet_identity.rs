@@ -81,7 +81,7 @@ impl<T: frame_system::Config> pallet_identity::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(s.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(s.into())))
-			.saturating_add(Weight::from_proof_size(2589).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(0, 2589).saturating_mul(s.into()))
 	}
 	/// Storage: Identity IdentityOf (r:1 w:0)
 	/// Proof: Identity IdentityOf (max_values: None, max_size: Some(7538), added: 10013, mode: MaxEncodedLen)

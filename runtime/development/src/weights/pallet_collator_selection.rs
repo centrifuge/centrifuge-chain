@@ -49,7 +49,7 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(5_694_808, 0).saturating_mul(b.into()))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(b.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
-			.saturating_add(Weight::from_proof_size(5127).saturating_mul(b.into()))
+			.saturating_add(Weight::from_parts(0, 5127).saturating_mul(b.into()))
 	}
 	/// Storage: CollatorSelection DesiredCandidates (r:0 w:1)
 	/// Proof: CollatorSelection DesiredCandidates (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
@@ -97,7 +97,7 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 			.saturating_add(Weight::from_parts(124_788, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(Weight::from_proof_size(53).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(0, 53).saturating_mul(c.into()))
 	}
 	/// Storage: CollatorSelection Candidates (r:1 w:1)
 	/// Proof: CollatorSelection Candidates (max_values: Some(1), max_size: Some(4802), added: 5297, mode: MaxEncodedLen)
@@ -157,7 +157,7 @@ impl<T: frame_system::Config> pallet_collator_selection::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
-			.saturating_add(Weight::from_proof_size(2597).saturating_mul(r.into()))
-			.saturating_add(Weight::from_proof_size(2519).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(0, 2597).saturating_mul(r.into()))
+			.saturating_add(Weight::from_parts(0, 2519).saturating_mul(c.into()))
 	}
 }

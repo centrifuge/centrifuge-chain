@@ -91,7 +91,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(9909).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 9909).saturating_mul(n.into()))
 	}
 	/// Storage: Migration Status (r:1 w:1)
 	/// Proof: Migration Status (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)

@@ -78,7 +78,7 @@ impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(1_091, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(Weight::from_proof_size(1).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(0, 1).saturating_mul(s.into()))
 	}
 	/// Storage: Scheduler Lookup (r:0 w:1)
 	/// Proof: Scheduler Lookup (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)

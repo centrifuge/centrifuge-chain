@@ -95,6 +95,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 }

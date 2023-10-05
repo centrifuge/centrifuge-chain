@@ -35,7 +35,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn add_pool() -> Weight {
@@ -46,7 +46,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn add_tranche() -> Weight {
@@ -57,7 +57,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn update_token_price() -> Weight {
@@ -68,7 +68,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn update_member() -> Weight {
@@ -79,7 +79,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn transfer() -> Weight {
@@ -90,6 +90,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 }

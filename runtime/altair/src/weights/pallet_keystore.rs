@@ -52,7 +52,7 @@ impl<T: frame_system::Config> pallet_keystore::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(2595).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2595).saturating_mul(n.into()))
 	}
 	/// Storage: Keystore Keys (r:10 w:10)
 	/// Proof: Keystore Keys (max_values: None, max_size: Some(120), added: 2595, mode: MaxEncodedLen)
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> pallet_keystore::WeightInfo for WeightInfo<T> {
 			.saturating_add(Weight::from_parts(12_387_370, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(2595).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2595).saturating_mul(n.into()))
 	}
 	/// Storage: Keystore KeyDeposit (r:0 w:1)
 	/// Proof: Keystore KeyDeposit (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
