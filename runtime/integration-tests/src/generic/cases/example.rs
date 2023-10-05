@@ -3,7 +3,7 @@ use frame_support::{assert_ok, traits::Get};
 
 use crate::{
 	generic::{
-		env::{self, Config, Env},
+		env::{self, Blocks, Config, Env},
 		envs::runtime_env::RuntimeEnv,
 		utils::genesis::Genesis,
 	},
@@ -14,6 +14,7 @@ const TRANSFER: Balance = 1000 * CFG;
 const FEES: Balance = 1 * CFG;
 
 fn transfer_balance<T: Config>() {
+	// Set up all GenesisConfig for your initial state
 	let mut env = RuntimeEnv::<T>::from_genesis(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
@@ -35,9 +36,11 @@ fn transfer_balance<T: Config>() {
 		},
 	));
 
-	// Pass one block or more block
+	// Pass blocks to evolve the system
 	// This call can be called several times in different test places
-	env.pass(1);
+	// You can choose between evolve the runtime by time or by blocks
+	// env.pass(Blocks::BySeconds(60));
+	env.pass(Blocks::ByNumber(1));
 
 	// Check the state
 	// This call can be called several times in different test places

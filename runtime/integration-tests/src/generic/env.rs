@@ -28,7 +28,7 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 
-use crate::utils::accounts::Keyring;
+use crate::{generic::utils::genesis::Genesis, utils::accounts::Keyring};
 
 pub enum RuntimeKind {
 	Development,
@@ -122,15 +122,14 @@ pub trait Config:
 	fn finalize_block() -> <Self::Block as Block>::Header;
 }
 
-/*
 pub enum Blocks {
 	ByNumber(BlockNumber),
-	ByTime(Moment),
+	BySeconds(Moment),
 }
-*/
 
 pub trait Env<T: Config> {
+	fn from_genesis(genesis: Genesis) -> Self;
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult;
-	fn pass(&mut self, blocks: u32);
+	fn pass(&mut self, blocks: Blocks);
 	fn state(&mut self, f: impl FnOnce());
 }

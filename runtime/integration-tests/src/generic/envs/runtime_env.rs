@@ -37,7 +37,7 @@ use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		env::{Config, Env},
+		env::{Blocks, Config, Env},
 		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,
@@ -50,6 +50,18 @@ pub struct RuntimeEnv<T: Config> {
 }
 
 impl<T: Config> Env<T> for RuntimeEnv<T> {
+	fn from_genesis(builder: Genesis) -> Self {
+		let mut ext = sp_io::TestExternalities::new(builder.storage());
+
+		ext.execute_with(|| Self::prepare_block(1));
+
+		Self {
+			nonce: 0,
+			ext,
+			_config: PhantomData,
+		}
+	}
+
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult {
 		self.ext.execute_with(|| {
 			let runtime_call = call.into();
@@ -80,11 +92,23 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 		})
 	}
 
-	fn pass(&mut self, blocks: BlockNumber) {
+	fn pass(&mut self, blocks: Blocks) {
 		self.ext.execute_with(|| {
 			let next = frame_system::Pallet::<T>::block_number() + 1;
 
-			for i in next..(next + blocks) {
+			let last_block = match blocks {
+				Blocks::ByNumber(n) => next + n,
+				Blocks::BySeconds(secs) => {
+					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
+					if blocks % pallet_aura::Pallet::<T>::slot_duration() != 0 {
+						blocks as BlockNumber + 1
+					} else {
+						blocks as BlockNumber
+					}
+				}
+			};
+
+			for i in next..last_block {
 				T::finalize_block();
 				Self::prepare_block(i);
 			}
@@ -97,63 +121,6 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 }
 
 impl<T: Config> RuntimeEnv<T> {
-	pub fn empty() -> Self {
-		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<T>()
-			.unwrap();
-
-		pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Public([0u8; 32]))],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
-
-		pallet_balances::GenesisConfig::<T> {
-			balances: vec![
-				(
-					Keyring::Alice.to_account_id(),
-					/*
-					WeightToFee::weight_to_fee(
-						&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
-						+ T::BlockWeights::get()
-						.get(DispatchClass::Normal)
-						.base_extrinsic)
-					) + 1000 + T::ExistentialDeposit::get()
-					*/
-					T::ExistentialDeposit::get() + 1_000_000_000_000_000_000 + 1000,
-				),
-				(Keyring::Bob.to_account_id(), T::ExistentialDeposit::get()),
-			],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
-
-		dbg!(WeightToFee::weight_to_fee(
-					&<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer(),
-				) + 1000);
-
-		let mut ext = sp_io::TestExternalities::new(storage);
-		ext.execute_with(|| Self::prepare_block(1));
-
-		Self {
-			nonce: 0,
-			ext,
-			_config: PhantomData,
-		}
-	}
-
-	pub fn from_genesis(builder: Genesis) -> Self {
-		let mut ext = sp_io::TestExternalities::new(builder.storage());
-
-		ext.execute_with(|| Self::prepare_block(1));
-
-		Self {
-			nonce: 0,
-			ext,
-			_config: PhantomData,
-		}
-	}
-
 	fn prepare_block(i: BlockNumber) {
 		let slot = Slot::from(i as u64);
 		let digest = Digest {
@@ -227,3 +194,12 @@ impl<T: Config> RuntimeEnv<T> {
 			.into()
 	}
 }
+
+/*
+WeightToFee::weight_to_fee(
+	&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
+	+ T::BlockWeights::get()
+	.get(DispatchClass::Normal)
+	.base_extrinsic)
+) + 1000 + T::ExistentialDeposit::get()
+*/
