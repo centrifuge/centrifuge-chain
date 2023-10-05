@@ -44,6 +44,7 @@ use frame_support::{
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
+		OnFinalize,
 		AsEnsureOriginWithArg, ConstU32, Contains, EqualPrivilegeOnly, InstanceFilter,
 		LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
 	},

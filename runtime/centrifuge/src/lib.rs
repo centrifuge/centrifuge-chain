@@ -47,6 +47,7 @@ use frame_support::{
 	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
+		OnFinalize,
 		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
 		PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
 	},
