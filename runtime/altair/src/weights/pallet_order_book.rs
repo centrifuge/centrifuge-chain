@@ -116,7 +116,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 9_000 nanoseconds.
-		Weight::from_ref_time(9_000_000)
+		Weight::from_parts(9_000_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: OrderBook TradingPair (r:0 w:1)
@@ -126,7 +126,7 @@ impl<T: frame_system::Config> pallet_order_book::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 9_000 nanoseconds.
-		Weight::from_ref_time(9_000_000)
+		Weight::from_parts(9_000_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: OrderBook TradingPair (r:1 w:1)

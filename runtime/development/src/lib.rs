@@ -688,6 +688,8 @@ parameter_types! {
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
+	// todo(nuno)
+	pub const MaxVotesPerVoter: u32 = 5;
 }
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via
@@ -720,6 +722,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = weights::pallet_elections_phragmen::WeightInfo<Runtime>;
+	type MaxVotesPerVoter = MaxVotesPerVoter;
 }
 
 #[cfg(feature = "instant-voting")]
@@ -798,6 +801,7 @@ impl pallet_democracy::Config for Runtime {
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
 	type WeightInfo = weights::pallet_democracy::WeightInfo<Runtime>;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 parameter_types! {
@@ -1665,6 +1669,7 @@ impl pallet_nft::Config for Runtime {
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 parameter_types! {

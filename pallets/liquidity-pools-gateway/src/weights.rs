@@ -90,7 +90,7 @@ impl WeightInfo for () {
 		//       * Maximum weight { ref_time: 500000000000, proof_size: 5242880 }
 		//
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))

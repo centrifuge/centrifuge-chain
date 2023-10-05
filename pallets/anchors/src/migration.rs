@@ -26,7 +26,7 @@ pub mod fix_evict_date {
 			return T::DbWeight::get().writes(1);
 		}
 
-		Weight::from_ref_time(0)
+		Weight::from_parts(0, 0)
 	}
 
 	#[cfg(feature = "try-runtime")]

@@ -37,8 +37,8 @@ impl<T: frame_system::Config> pallet_interest_accrual::WeightInfo for WeightInfo
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 671 nanoseconds.
-		Weight::from_ref_time(181_268)
+		Weight::from_parts(181_268, 0)
 			// Standard Error: 392
-			.saturating_add(Weight::from_ref_time(645_249).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(645_249, 0).saturating_mul(n.into()))
 	}
 }

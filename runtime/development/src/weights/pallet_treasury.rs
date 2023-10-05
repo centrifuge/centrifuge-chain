@@ -36,7 +36,7 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 311 nanoseconds.
-		Weight::from_ref_time(391_000)
+		Weight::from_parts(391_000, 0)
 	}
 	/// Storage: Treasury ProposalCount (r:1 w:1)
 	/// Proof: Treasury ProposalCount (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
@@ -76,7 +76,7 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 14_577 nanoseconds.
 		Weight::from_parts(18_158_350, 3480)
 			// Standard Error: 1_368
-			.saturating_add(Weight::from_ref_time(53_682).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(53_682, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -109,7 +109,7 @@ impl<T: frame_system::Config> pallet_treasury::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 41_407 nanoseconds.
 		Weight::from_parts(39_128_676, 4522)
 			// Standard Error: 7_831
-			.saturating_add(Weight::from_ref_time(3_744_536).saturating_mul(p.into()))
+			.saturating_add(Weight::from_parts(3_744_536, 0).saturating_mul(p.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(p.into())))
 			.saturating_add(T::DbWeight::get().writes(3))

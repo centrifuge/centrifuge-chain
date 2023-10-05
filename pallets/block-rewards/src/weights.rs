@@ -41,19 +41,19 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn claim_reward() -> Weight {
-		Weight::from_ref_time(49_000_000)
+		Weight::from_parts(49_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn set_collator_reward() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_total_reward() -> Weight {
-		Weight::from_ref_time(9_000_000)
+		Weight::from_parts(9_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -62,19 +62,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn claim_reward() -> Weight {
-		Weight::from_ref_time(49_000_000)
+		Weight::from_parts(49_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 
 	fn set_collator_reward() -> Weight {
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 
 	fn set_total_reward() -> Weight {
-		Weight::from_ref_time(9_000_000)
+		Weight::from_parts(9_000_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(2 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}

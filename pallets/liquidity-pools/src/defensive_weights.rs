@@ -30,7 +30,7 @@ impl WeightInfo for () {
 	fn set_domain_router() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
@@ -41,7 +41,7 @@ impl WeightInfo for () {
 	fn add_pool() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
@@ -52,7 +52,7 @@ impl WeightInfo for () {
 	fn add_tranche() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
@@ -63,7 +63,7 @@ impl WeightInfo for () {
 	fn update_token_price() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
@@ -74,7 +74,7 @@ impl WeightInfo for () {
 	fn update_member() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
@@ -85,7 +85,7 @@ impl WeightInfo for () {
 	fn transfer() -> Weight {
 		// TODO: BENCHMARK AND USE REAL WEIGHTS
 		Weight::from_parts(78_019_565, 19974)
-			.saturating_add(Weight::from_ref_time(38_884_782).saturating_mul(N))
+			.saturating_add(Weight::from_parts(38_884_782, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))

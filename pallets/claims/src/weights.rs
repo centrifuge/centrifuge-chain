@@ -21,17 +21,17 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
 	fn claim(hashes_length: usize) -> Weight {
-		(Weight::from_ref_time(195_000_000)).saturating_add(
-			Weight::from_ref_time(hashes_length.saturating_mul(1_000_000) as u64)
+		(Weight::from_parts(195_000_000, 0)).saturating_add(
+			Weight::from_parts(hashes_length.saturating_mul(1_000_000) as u64, 0)
 				+ RocksDbWeight::get().reads_writes(2, 2),
 		)
 	}
 
 	fn set_upload_account() -> Weight {
-		Weight::from_ref_time(190_000_000)
+		Weight::from_parts(190_000_000, 0)
 	}
 
 	fn store_root_hash() -> Weight {
-		Weight::from_ref_time(185_000_000)
+		Weight::from_parts(185_000_000, 0)
 	}
 }

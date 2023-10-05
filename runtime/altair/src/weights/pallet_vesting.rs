@@ -44,9 +44,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 37_199 nanoseconds.
 		Weight::from_parts(37_164_502, 7306)
 			// Standard Error: 1_575
-			.saturating_add(Weight::from_ref_time(31_267).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(31_267, 0).saturating_mul(l.into()))
 			// Standard Error: 2_803
-			.saturating_add(Weight::from_ref_time(78_671).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(78_671, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -63,9 +63,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 37_029 nanoseconds.
 		Weight::from_parts(36_905_678, 7306)
 			// Standard Error: 1_227
-			.saturating_add(Weight::from_ref_time(24_900).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(24_900, 0).saturating_mul(l.into()))
 			// Standard Error: 2_183
-			.saturating_add(Weight::from_ref_time(70_717).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(70_717, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
@@ -84,9 +84,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 40_646 nanoseconds.
 		Weight::from_parts(40_147_372, 9909)
 			// Standard Error: 1_320
-			.saturating_add(Weight::from_ref_time(33_153).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(33_153, 0).saturating_mul(l.into()))
 			// Standard Error: 2_349
-			.saturating_add(Weight::from_ref_time(87_082).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(87_082, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -105,9 +105,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 40_676 nanoseconds.
 		Weight::from_parts(40_308_306, 9909)
 			// Standard Error: 1_330
-			.saturating_add(Weight::from_ref_time(29_765).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(29_765, 0).saturating_mul(l.into()))
 			// Standard Error: 2_367
-			.saturating_add(Weight::from_ref_time(73_503).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(73_503, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -126,9 +126,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 60_854 nanoseconds.
 		Weight::from_parts(62_016_980, 9909)
 			// Standard Error: 4_300
-			.saturating_add(Weight::from_ref_time(35_984).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(35_984, 0).saturating_mul(l.into()))
 			// Standard Error: 7_650
-			.saturating_add(Weight::from_ref_time(45_184).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(45_184, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -147,9 +147,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 64_861 nanoseconds.
 		Weight::from_parts(66_489_132, 12512)
 			// Standard Error: 3_639
-			.saturating_add(Weight::from_ref_time(22_379).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(22_379, 0).saturating_mul(l.into()))
 			// Standard Error: 6_474
-			.saturating_add(Weight::from_ref_time(28_188).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(28_188, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
@@ -168,9 +168,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 42_189 nanoseconds.
 		Weight::from_parts(41_721_083, 9909)
 			// Standard Error: 1_263
-			.saturating_add(Weight::from_ref_time(35_062).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(35_062, 0).saturating_mul(l.into()))
 			// Standard Error: 2_332
-			.saturating_add(Weight::from_ref_time(87_442).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(87_442, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -189,9 +189,9 @@ impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 42_288 nanoseconds.
 		Weight::from_parts(41_956_062, 9909)
 			// Standard Error: 1_286
-			.saturating_add(Weight::from_ref_time(34_042).saturating_mul(l.into()))
+			.saturating_add(Weight::from_parts(34_042, 0).saturating_mul(l.into()))
 			// Standard Error: 2_376
-			.saturating_add(Weight::from_ref_time(80_324).saturating_mul(s.into()))
+			.saturating_add(Weight::from_parts(80_324, 0).saturating_mul(s.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}

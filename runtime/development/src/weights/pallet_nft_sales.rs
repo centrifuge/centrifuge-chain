@@ -33,19 +33,19 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_nft_sales::weights::WeightInfo for WeightInfo<T> {
 	fn add() -> Weight {
-		Weight::from_ref_time(86_530_000)
+		Weight::from_parts(86_530_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn remove() -> Weight {
-		Weight::from_ref_time(80_303_000)
+		Weight::from_parts(80_303_000, 0)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
 	}
 
 	fn buy() -> Weight {
-		Weight::from_ref_time(133_521_000)
+		Weight::from_parts(133_521_000, 0)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(8 as u64))
 	}

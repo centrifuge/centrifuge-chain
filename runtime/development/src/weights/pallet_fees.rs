@@ -38,7 +38,7 @@ impl<T: frame_system::Config> pallet_fees::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 12_212 nanoseconds.
-		Weight::from_ref_time(12_674_000)
+		Weight::from_parts(12_674_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

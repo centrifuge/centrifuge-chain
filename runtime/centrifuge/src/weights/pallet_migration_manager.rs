@@ -54,7 +54,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 18_645 nanoseconds.
 		Weight::from_parts(18_361_813, 496)
 			// Standard Error: 1_647
-			.saturating_add(Weight::from_ref_time(1_082_059).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(1_082_059, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 66_404 nanoseconds.
 		Weight::from_parts(33_512_133, 496)
 			// Standard Error: 83_617
-			.saturating_add(Weight::from_ref_time(36_066_009).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(36_066_009, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -105,7 +105,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 35_276 nanoseconds.
 		Weight::from_parts(36_808_128, 496)
 			// Standard Error: 76_342
-			.saturating_add(Weight::from_ref_time(7_400_912).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(7_400_912, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
