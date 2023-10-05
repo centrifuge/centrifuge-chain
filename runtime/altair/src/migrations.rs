@@ -213,6 +213,7 @@ mod orml_tokens_migration {
 	use codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
+	use frame_support::traits::tokens::{Fortitude, Precision};
 	use orml_tokens::AccountData;
 	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;
@@ -295,6 +296,8 @@ mod orml_tokens_migration {
 						DEPRECATED_AUSD_CURRENCY_ID,
 						&account,
 						balance,
+						Precision::Exact,
+						Fortitude::Force,
 					)
 					.map_err(|e| {
 						log::error!(

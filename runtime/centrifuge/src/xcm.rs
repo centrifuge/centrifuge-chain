@@ -203,7 +203,7 @@ where
 	Assets: fungibles::Inspect<AccountId>,
 {
 	fn contains(id: &<Assets as fungibles::Inspect<AccountId>>::AssetId) -> bool {
-		!Assets::total_issuance(*id).is_zero()
+		!Assets::total_issuance(id.clone()).is_zero()
 	}
 }
 
@@ -271,13 +271,16 @@ parameter_types! {
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to
 /// configure and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 	type Currency = crate::Balances;
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
 	type MaxLockers = ConstU32<8>;
+	type MaxRemoteLockConsumers = ConstU32<0>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
+	type RemoteLockConsumerIdentifier = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
@@ -294,9 +297,6 @@ impl pallet_xcm::Config for Runtime {
 	type XcmTeleportFilter = Everything;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type MaxRemoteLockConsumers = ConstU32<0>;
-	type RemoteLockConsumerIdentifier = ();
 }
 
 parameter_types! {

@@ -12,8 +12,8 @@
 
 use cfg_primitives::{TwoThirdOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
-use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use pallet_ethereum::PostLogContent;
+use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},

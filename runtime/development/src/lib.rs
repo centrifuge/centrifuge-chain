@@ -113,6 +113,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
+use frame_support::traits::OnFinalize;
 
 pub mod evm;
 mod weights;
@@ -250,6 +251,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 					unimplemented!()
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_suspension { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
@@ -670,14 +672,14 @@ parameter_types! {
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type MaxMembers = CouncilMaxMembers;
+	type MaxProposalWeight = MaxProposalWeight;
 	type MaxProposals = CouncilMaxProposals;
 	type MotionDuration = CouncilMotionDuration;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type MaxProposalWeight = MaxProposalWeight;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -711,6 +713,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type LoserCandidate = ();
 	type MaxCandidates = MaxCandidates;
 	type MaxVoters = MaxVoters;
+	type MaxVotesPerVoter = MaxVotesPerVoter;
 	type PalletId = ElectionsPhragmenModuleId;
 	type RuntimeEvent = RuntimeEvent;
 	/// How long each seat is kept. This defines the next block number at which
@@ -722,7 +725,6 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = weights::pallet_elections_phragmen::WeightInfo<Runtime>;
-	type MaxVotesPerVoter = MaxVotesPerVoter;
 }
 
 #[cfg(feature = "instant-voting")]
@@ -794,6 +796,7 @@ impl pallet_democracy::Config for Runtime {
 	type Scheduler = Scheduler;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = ();
+	type SubmitOrigin = EnsureSigned<AccountId>;
 	// Any single council member may veto a coming council proposal, however they
 	// can only do it once and it lasts only for the cooloff period.
 	type VetoOrigin = EnsureMember<AccountId, CouncilCollective>;
@@ -801,7 +804,6 @@ impl pallet_democracy::Config for Runtime {
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
 	type WeightInfo = weights::pallet_democracy::WeightInfo<Runtime>;
-	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 parameter_types! {

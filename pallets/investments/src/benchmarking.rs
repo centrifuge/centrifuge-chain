@@ -97,7 +97,7 @@ mod benchmarks {
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
 
 		Pallet::<T>::update_investment(&caller, investment_id, 1u32.into())?;
-		for i in 0..n {
+		for _ in 0..n {
 			Pallet::<T>::process_invest_orders(investment_id)?;
 
 			let fulfillment = FulfillmentWithPrice {
@@ -123,7 +123,7 @@ mod benchmarks {
 		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
 
 		Pallet::<T>::update_redemption(&caller, investment_id, 1u32.into())?;
-		for i in 0..n {
+		for _ in 0..n {
 			Pallet::<T>::process_redeem_orders(investment_id)?;
 
 			let fulfillment = FulfillmentWithPrice {

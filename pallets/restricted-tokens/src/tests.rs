@@ -15,12 +15,11 @@ use frame_support::{
 	traits::{
 		tokens::{
 			fungible, fungibles, DepositConsequence, ExistenceRequirement, Fortitude, Precision,
-			Preservation, Restriction, WithdrawConsequence,
+			Preservation, Provenance, Restriction, WithdrawConsequence,
 		},
 		BalanceStatus, Currency, LockableCurrency, ReservableCurrency, WithdrawReasons,
 	},
 };
-use frame_support::traits::tokens::Provenance;
 use orml_traits::GetByKey;
 
 use crate::{
@@ -160,21 +159,18 @@ fn transfer_all_works() {
 				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
-				false
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
-				false
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(100),
 				101,
 				CurrencyId::RestrictedCoin,
-				false
 			));
 			assert!(
 				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).free
@@ -329,8 +325,8 @@ fn fungible_reducible_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, true), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 		})
 }
 
@@ -339,7 +335,7 @@ fn fungible_can_deposit() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, false) == DepositConsequence::Success);
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, Provenance::Extant) == DepositConsequence::Success);
 		})
 }
 
@@ -369,7 +365,7 @@ fn fungible_balance_on_hold() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
-				>>::balance_on_hold(&1,),
+				>>::balance_on_hold(&(), &1),
 				0
 			);
 		})
@@ -383,7 +379,7 @@ fn fungible_can_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
-				>>::can_hold(&1, DISTR_PER_ACCOUNT)
+				>>::can_hold(&(), &1, DISTR_PER_ACCOUNT)
 			);
 		})
 }
@@ -402,7 +398,7 @@ fn fungible_burn_from() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Mutate<AccountId>>::burn_from(&1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Mutate<AccountId>>::burn_from(&1, DISTR_PER_ACCOUNT, Precision::Exact, Fortitude::Force).is_ok());
 		})
 }
 
@@ -414,7 +410,7 @@ fn fungible_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::hold(&1, DISTR_PER_ACCOUNT)
+				>>::hold(&(), &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 		})
@@ -428,13 +424,13 @@ fn fungible_release() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::hold(&1, DISTR_PER_ACCOUNT)
+				>>::hold(&(), &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
-				>>::release(&1, DISTR_PER_ACCOUNT, false)
+				>>::release(&(), &1, DISTR_PER_ACCOUNT, Precision::Exact)
 				.is_ok()
 			);
 		})
@@ -446,7 +442,7 @@ fn fungible_transfer_on_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &1, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::BestEffort, Restriction::OnHold, ).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::BestEffort, Restriction::OnHold, Fortitude::Polite).is_ok());
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Protect, Fortitude::Polite), 0);
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Protect, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 
@@ -472,9 +468,9 @@ fn fungible_transfer() {
 			);
 			Timer::pass(MIN_HOLD_PERIOD);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Mutate<
 					AccountId,
-				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
+				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, Preservation::Expendable)
 				.is_ok()
 			);
 		})
@@ -625,7 +621,7 @@ fn fungibles_can_hold() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::Cfg, &1, DISTR_PER_ACCOUNT)
+				>>::can_hold(CurrencyId::Cfg, &(), &1, DISTR_PER_ACCOUNT)
 			);
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
@@ -683,14 +679,14 @@ fn fungibles_hold() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, 1),,
+				>>::hold(CurrencyId::AUSD, &(), &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::AUSD, &(), &1, 1),,
+				>>::hold(CurrencyId::AUSD, &(), &1, 1),
 				Error::<Runtime>::PreConditionsNotMet,
 			);
 		})
@@ -776,13 +772,15 @@ fn fungibles_transfer_held() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
-				>>::transfer_held(
+				>>::transfer_on_hold(
 					CurrencyId::RestrictedCoin,
+					&(),
 					&2,
 					&9,
 					DISTR_PER_ACCOUNT,
-					false,
-					false
+					Precision::Exact,
+					Restriction::Free,
+					Fortitude::Polite,
 				)
 				.is_ok()
 			);
@@ -808,27 +806,27 @@ fn fungibles_transfer() {
 		.execute_with(|| {
 			// Min holding period is not over
 			assert!(
-				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<
 					AccountId,
-				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
+				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, Preservation::Expendable)
 				.is_err()
 			);
 			Timer::pass(MIN_HOLD_PERIOD);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<
 					AccountId,
-				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
+				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, Preservation::Expendable)
 				.is_ok()
 			);
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<
 					AccountId,
 				>>::transfer(
 					CurrencyId::RestrictedCoin,
 					&1,
 					&100,
 					DISTR_PER_ACCOUNT,
-					false
+					Preservation::Expendable,
 				),
 				Error::<Runtime>::PreConditionsNotMet
 			);

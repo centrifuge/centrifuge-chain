@@ -39,7 +39,6 @@ use cfg_types::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use constants::currency::*;
 use fp_rpc::TransactionStatus;
-use pallet_ethereum::Call::transact;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -62,6 +61,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
+use pallet_ethereum::Call::transact;
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -69,6 +69,7 @@ use pallet_pool_system::{
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
+use pallet_evm::GasWeightMapping;
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
@@ -240,6 +241,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 					unimplemented!()
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_suspension { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
@@ -657,15 +659,14 @@ parameter_types! {
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type MaxMembers = CouncilMaxMembers;
+	type MaxProposalWeight = MaxProposalWeight;
 	type MaxProposals = CouncilMaxProposals;
 	type MotionDuration = CouncilMotionDuration;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type WeightInfo = weights::pallet_collective::WeightInfo<Self>;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type MaxProposalWeight = MaxProposalWeight;
-
+	type WeightInfo = weights::pallet_collective::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -699,6 +700,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type LoserCandidate = Treasury;
 	type MaxCandidates = MaxCandidates;
 	type MaxVoters = MaxVoters;
+	type MaxVotesPerVoter = MaxVotesPerVoter;
 	type PalletId = ElectionsPhragmenModuleId;
 	type RuntimeEvent = RuntimeEvent;
 	/// How long each seat is kept. This defines the next block number at which
@@ -710,7 +712,6 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
-	type MaxVotesPerVoter = MaxVotesPerVoter;
 }
 
 parameter_types! {
@@ -773,6 +774,7 @@ impl pallet_democracy::Config for Runtime {
 	type Scheduler = Scheduler;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = Treasury;
+	type SubmitOrigin = EnsureSigned<AccountId>;
 	// Any single council member may veto a coming council proposal, however they
 	// can only do it once and it lasts only for the cooloff period.
 	type VetoOrigin = EnsureMember<AccountId, CouncilCollective>;
@@ -780,7 +782,6 @@ impl pallet_democracy::Config for Runtime {
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
 	type WeightInfo = weights::pallet_democracy::WeightInfo<Runtime>;
-	type SubmitOrigin = EnsureSigned<AccountId>;
 }
 
 parameter_types! {
