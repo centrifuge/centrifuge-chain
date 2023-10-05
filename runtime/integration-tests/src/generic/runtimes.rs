@@ -5,7 +5,6 @@ use crate::generic::env::{Config, RuntimeKind};
 
 impl Config for development_runtime::Runtime {
 	type Block = development_runtime::Block;
-	type Extrinsic = development_runtime::UncheckedExtrinsic;
 	type RuntimeCallExt = development_runtime::RuntimeCall;
 
 	const KIND: RuntimeKind = RuntimeKind::Development;

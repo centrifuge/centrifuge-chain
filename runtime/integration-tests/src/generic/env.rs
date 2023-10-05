@@ -12,18 +12,18 @@ use codec::Codec;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use fp_self_contained::UncheckedExtrinsic;
+use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, PostDispatchInfo, UnfilteredDispatchable},
 	inherent::{InherentData, ProvideInherent},
 	Parameter,
 };
-use frame_system::RawOrigin;
+use frame_system::{ChainContext, RawOrigin};
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::fees::{DealWithFees, WeightToFee};
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{AccountIdLookup, Block, Dispatchable, Extrinsic},
+	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup},
 	ApplyExtrinsicResult,
 };
 use sp_timestamp::Timestamp;
@@ -87,41 +87,47 @@ pub trait Config:
 	// tests.
 	type RuntimeCallExt: Parameter
 		+ Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
+		+ SelfContainedCall
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>;
 
-	// Actual extrinsic type used by the runtime
-	type Extrinsic: Extrinsic<
-			Call = Self::RuntimeCallExt,
-			SignaturePayload = (
-				Address,
-				Signature,
-				(
-					frame_system::CheckNonZeroSender<Self>,
-					frame_system::CheckSpecVersion<Self>,
-					frame_system::CheckTxVersion<Self>,
-					frame_system::CheckGenesis<Self>,
-					frame_system::CheckEra<Self>,
-					frame_system::CheckNonce<Self>,
-					frame_system::CheckWeight<Self>,
-					pallet_transaction_payment::ChargeTransactionPayment<Self>,
-				),
-			),
-		> + Debug;
-
 	// Block used by the runtime
-	type Block: Block<Header = Header, Extrinsic = Self::Extrinsic>;
+	type Block: Block<
+		Header = Header,
+		Extrinsic = UncheckedExtrinsic<
+			Address,
+			Self::RuntimeCallExt,
+			Signature,
+			(
+				frame_system::CheckNonZeroSender<Self>,
+				frame_system::CheckSpecVersion<Self>,
+				frame_system::CheckTxVersion<Self>,
+				frame_system::CheckGenesis<Self>,
+				frame_system::CheckEra<Self>,
+				frame_system::CheckNonce<Self>,
+				frame_system::CheckWeight<Self>,
+				pallet_transaction_payment::ChargeTransactionPayment<Self>,
+			),
+		>,
+	>;
 
 	// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
 
 	fn execute_block(header: Self::Block);
 	fn initialize_block(header: &<Self::Block as Block>::Header);
-	fn apply_extrinsic(extrinsic: Self::Extrinsic) -> ApplyExtrinsicResult;
+	fn apply_extrinsic(extrinsic: <Self::Block as Block>::Extrinsic) -> ApplyExtrinsicResult;
 	fn finalize_block() -> <Self::Block as Block>::Header;
 }
+
+/*
+pub enum Blocks {
+	ByNumber(BlockNumber),
+	ByTime(Moment),
+}
+*/
 
 pub trait Env<T: Config> {
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult;

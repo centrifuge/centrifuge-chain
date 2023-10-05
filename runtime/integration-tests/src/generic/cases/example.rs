@@ -1,64 +1,61 @@
-use frame_support::assert_ok;
+use cfg_primitives::{AuraId, Balance, CFG};
+use frame_support::{assert_ok, traits::Get};
 
 use crate::{
 	generic::{
 		env::{self, Config, Env},
 		envs::runtime_env::RuntimeEnv,
+		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,
 };
 
-fn roundtrip_alice_bob<T: Config>() {
-	/*
-	let genesis = Genesis::new()
-		.add(pallet_balances::GenesisConfig::<T> {
-			balances: (0..MAX_FUNDED_ACCOUNTS)
-				.into_iter()
-				.map(|i| (account(i), T::ExistentialDeposit::get()))
-				.collect(),
-			}
-		);
-		.add(orml_tokens::GenesisConfig::<T> {
-			balances: (0..MAX_FUNDED_ACCOUNTS)
-				.into_iter()
-				.map(|i| (account(i), MUSD_CURRENCY_ID, T::ExistentialDeposit::get()))
-				.collect(),
-		})
-	*/
+const TRANSFER: Balance = 1000 * CFG;
+const FEES: Balance = 1 * CFG;
 
-	let mut env = RuntimeEnv::<T>::empty();
+fn transfer_balance<T: Config>() {
+	let mut env = RuntimeEnv::<T>::from_genesis(
+		Genesis::default()
+			.add(pallet_aura::GenesisConfig::<T> {
+				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
+			})
+			.add(pallet_balances::GenesisConfig::<T> {
+				balances: vec![(
+					Keyring::Alice.to_account_id(),
+					T::ExistentialDeposit::get() + FEES + TRANSFER,
+				)],
+			}),
+	);
 
 	assert_ok!(env.submit(
 		Keyring::Alice,
 		pallet_balances::Call::<T>::transfer {
 			dest: Keyring::Bob.into(),
-			value: 1000,
+			value: TRANSFER,
 		},
 	));
 
-	// Make the submitted extrinsics effective by computing a block.
+	// Pass one block or more block
+	// This call can be called several times in different test places
 	env.pass(1);
 
-	/*
+	// Check the state
+	// This call can be called several times in different test places
 	env.state(|| {
-		assert_eq!(pallet_balances::Pallet::<T>::total_issuance(), 1);
+		/*
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			T::ExistentialDeposit::get() + FEES
+		);
+		*/
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			TRANSFER
+		);
 	});
-	*/
-
-	assert_ok!(env.submit(
-		Keyring::Alice,
-		pallet_balances::Call::<T>::transfer {
-			dest: Keyring::Alice.into(),
-			value: 1000,
-		},
-	));
-
-	env.pass(1);
-
-	env.state(|| {});
 }
 
 #[test]
-fn test_roundtrip_alice_bob() {
-	roundtrip_alice_bob::<development_runtime::Runtime>();
+fn test_transfer_balance() {
+	transfer_balance::<development_runtime::Runtime>();
 }

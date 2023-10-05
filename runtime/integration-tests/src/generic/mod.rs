@@ -4,6 +4,9 @@ pub mod envs {
 	pub mod runtime_env;
 }
 pub mod runtimes;
+pub mod utils {
+	pub mod genesis;
+}
 
 // Test cases
 mod cases {

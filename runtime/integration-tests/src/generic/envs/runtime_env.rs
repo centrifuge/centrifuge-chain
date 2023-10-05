@@ -1,6 +1,8 @@
+use std::marker::PhantomData;
+
 use cfg_primitives::{
-	Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, Moment, PoolId,
-	TrancheId,
+	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, Moment,
+	PoolId, TrancheId,
 };
 use cfg_types::{
 	permissions::{PermissionScope, Role},
@@ -13,31 +15,38 @@ use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use fp_self_contained::UncheckedExtrinsic;
 use frame_support::{
 	assert_ok,
-	dispatch::UnfilteredDispatchable,
+	dispatch::{DispatchClass, UnfilteredDispatchable},
 	inherent::{InherentData, ProvideInherent},
 	traits::{GenesisBuild, Hooks},
+	weights::WeightToFee as _,
 };
-use frame_system::RawOrigin;
+use frame_system::{ChainContext, RawOrigin};
+use runtime_common::fees::WeightToFee;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
-	traits::{Block, Dispatchable, Extrinsic, Verify},
+	traits::{
+		Block, Checkable, Dispatchable, Extrinsic, Get, Lookup, SignedExtension, StaticLookup,
+		Verify,
+	},
 	ApplyExtrinsicResult, Digest, DigestItem, MultiSignature,
 };
-use sp_std::vec;
 use sp_timestamp::Timestamp;
 
 use crate::{
-	generic::env::{Config, Env},
+	generic::{
+		env::{Config, Env},
+		utils::genesis::Genesis,
+	},
 	utils::accounts::Keyring,
 };
 
 pub struct RuntimeEnv<T: Config> {
 	nonce: Index,
 	ext: sp_io::TestExternalities,
-	_config: std::marker::PhantomData<T>,
+	_config: PhantomData<T>,
 }
 
 impl<T: Config> Env<T> for RuntimeEnv<T> {
@@ -54,30 +63,18 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 				frame_system::CheckWeight::<T>::new(),
 				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
 			);
-			// let additional = ((), 0, 0, Default::default(), Default::default(), (), (),
-			// ());
 
-			//let raw_payload =
-			//SignedPayload::from_raw(runtime_call.clone(), signed_extra.clone(),
-			// additional);
-
-			let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone());
+			let raw_payload =
+				SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
 			let signature =
 				MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
 
-			let signed = who.to_account_id();
-			assert!(raw_payload.using_encoded(|payload| signature.verify(payload, &signed)));
-
-			dbg!("verified!");
-
 			let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
-			let extrinsic = Extrinsic::new(runtime_call, Some(multi_address)).unwrap();
+
+			let extrinsic =
+				<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap();
 
 			self.nonce += 1;
-
-			dbg!(frame_system::Pallet::<T>::account_nonce(
-				who.to_account_id()
-			));
 
 			T::apply_extrinsic(extrinsic)
 		})
@@ -111,13 +108,49 @@ impl<T: Config> RuntimeEnv<T> {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
+		pallet_balances::GenesisConfig::<T> {
+			balances: vec![
+				(
+					Keyring::Alice.to_account_id(),
+					/*
+					WeightToFee::weight_to_fee(
+						&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
+						+ T::BlockWeights::get()
+						.get(DispatchClass::Normal)
+						.base_extrinsic)
+					) + 1000 + T::ExistentialDeposit::get()
+					*/
+					T::ExistentialDeposit::get() + 1_000_000_000_000_000_000 + 1000,
+				),
+				(Keyring::Bob.to_account_id(), T::ExistentialDeposit::get()),
+			],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		dbg!(WeightToFee::weight_to_fee(
+					&<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer(),
+				) + 1000);
+
 		let mut ext = sp_io::TestExternalities::new(storage);
 		ext.execute_with(|| Self::prepare_block(1));
 
 		Self {
-			nonce: 1,
+			nonce: 0,
 			ext,
-			_config: std::marker::PhantomData::default(),
+			_config: PhantomData,
+		}
+	}
+
+	pub fn from_genesis(builder: Genesis) -> Self {
+		let mut ext = sp_io::TestExternalities::new(builder.storage());
+
+		ext.execute_with(|| Self::prepare_block(1));
+
+		Self {
+			nonce: 0,
+			ext,
+			_config: PhantomData,
 		}
 	}
 
@@ -147,12 +180,6 @@ impl<T: Config> RuntimeEnv<T> {
 			T::apply_extrinsic(extrinsic).unwrap();
 		}
 	}
-
-	/*
-	pub fn genesis(builder: GenesisBuilder) {
-		todo!()
-	}
-	*/
 
 	fn cumulus_inherent() -> T::RuntimeCall {
 		let mut inherent_data = InherentData::default();
