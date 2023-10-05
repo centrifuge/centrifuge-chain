@@ -118,6 +118,7 @@ pub use crate::xcm::*;
 
 pub mod evm;
 pub mod liquidity_pools;
+mod migrations;
 mod weights;
 pub mod xcm;
 
@@ -1980,8 +1981,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	// We don't run migrations on the development runtime
-	(),
+	crate::migrations::UpgradeDevelopment1031,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
