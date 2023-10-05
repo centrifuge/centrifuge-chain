@@ -28,6 +28,9 @@ fn transfer_balance<T: Config>() {
 			}),
 	);
 
+	// Call an extrinsics
+	// This call can be called several times in different test places
+	// The extrinsic would be processed immediately
 	assert_ok!(env.submit(
 		Keyring::Alice,
 		pallet_balances::Call::<T>::transfer {
@@ -58,7 +61,20 @@ fn transfer_balance<T: Config>() {
 	});
 }
 
-#[test]
-fn test_transfer_balance() {
-	transfer_balance::<development_runtime::Runtime>();
-}
+// Generate tests for all runtimes
+crate::test_with_all_runtimes!(transfer_balance);
+
+/*
+WeightToFee::weight_to_fee(
+	&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
+	+ T::BlockWeights::get()
+	.get(DispatchClass::Normal)
+	.base_extrinsic)
+) + 1000 + T::ExistentialDeposit::get()
+*/
+
+// TODO:
+// - Fix test for altair
+// - Fix test for centrifuge
+// - An utility to know the weights easily
+//    - Check if DispatchInfo works

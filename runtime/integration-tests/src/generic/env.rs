@@ -73,7 +73,7 @@ pub trait Config:
 	+ pallet_timestamp::Config<Moment = Moment>
 	+ pallet_aura::Config<Moment = Moment, AuthorityId = AuraId>
 	+ pallet_authorship::Config
-	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
+	+ pallet_treasury::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
 		WeightToFee = WeightToFee,
 		OnChargeTransaction = CurrencyAdapter<pallet_balances::Pallet<Self>, DealWithFees<Self>>,
@@ -116,7 +116,6 @@ pub trait Config:
 	// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
 
-	fn execute_block(header: Self::Block);
 	fn initialize_block(header: &<Self::Block as Block>::Header);
 	fn apply_extrinsic(extrinsic: <Self::Block as Block>::Extrinsic) -> ApplyExtrinsicResult;
 	fn finalize_block() -> <Self::Block as Block>::Header;

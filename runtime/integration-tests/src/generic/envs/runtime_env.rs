@@ -194,12 +194,3 @@ impl<T: Config> RuntimeEnv<T> {
 			.into()
 	}
 }
-
-/*
-WeightToFee::weight_to_fee(
-	&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
-	+ T::BlockWeights::get()
-	.get(DispatchClass::Normal)
-	.base_extrinsic)
-) + 1000 + T::ExistentialDeposit::get()
-*/
