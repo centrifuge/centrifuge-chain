@@ -47,7 +47,7 @@ use xcm::{
 	latest::{Error::BadOrigin, Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
 	VersionedMultiLocation,
 };
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 use xcm_executor::traits::Convert as C1;
 
 use crate::{

@@ -31,7 +31,6 @@ fn setup_blocks(blocks: u64) {
 
 	for i in 1..(blocks + 1) {
 		System::initialize(&i, &parent_hash, &Default::default());
-		RandomnessCollectiveFlip::on_initialize(i);
 
 		let header = System::finalize();
 		parent_hash = header.hash();

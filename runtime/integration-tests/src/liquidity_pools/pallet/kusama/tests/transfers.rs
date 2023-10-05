@@ -39,7 +39,7 @@ use xcm::{
 	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId, WeightLimit},
 	VersionedMultiLocation,
 };
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 
 use crate::{
 	liquidity_pools::pallet::{

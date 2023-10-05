@@ -48,7 +48,7 @@ use sp_runtime::{
 	BoundedVec, DispatchError,
 };
 use xcm::{latest::MultiLocation, VersionedMultiLocation};
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 
 use crate::{
 	liquidity_pools::pallet::development::{

@@ -66,7 +66,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, WeakBoundedVec,
 };
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 
 use crate::{
 	liquidity_pools::pallet::development::{

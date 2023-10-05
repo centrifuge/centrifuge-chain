@@ -32,7 +32,7 @@ use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
 use pallet_liquidity_pools::Message;
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::{bounded::BoundedVec, H160};
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 
 use crate::{
 	chain::centrifuge::{

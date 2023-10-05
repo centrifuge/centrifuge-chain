@@ -42,7 +42,7 @@ use xcm::{
 	v2::{Instruction::WithdrawAsset, Xcm},
 	VersionedMultiLocation,
 };
-use xcm_emulator::TestExt;
+use xcm_simulator::TestExt;
 
 use crate::liquidity_pools::pallet::polkadot::{
 	setup::{
