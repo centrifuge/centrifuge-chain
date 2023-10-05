@@ -44,9 +44,9 @@ use frame_support::{
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
-		OnFinalize,
 		AsEnsureOriginWithArg, ConstU32, Contains, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
+		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -63,14 +63,13 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_ethereum::Call::transact;
-use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
+use pallet_evm::{Account as EVMAccount, FeeCalculator, GasWeightMapping, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
-use pallet_evm::GasWeightMapping;
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};

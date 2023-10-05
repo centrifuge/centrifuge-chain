@@ -54,7 +54,7 @@ use frame_support::{
 	sp_std::marker::PhantomData,
 	traits::{
 		AsEnsureOriginWithArg, ConstU32, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		InstanceFilter, LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
 	weights::{
@@ -113,7 +113,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
-use frame_support::traits::OnFinalize;
 
 pub mod evm;
 mod weights;
