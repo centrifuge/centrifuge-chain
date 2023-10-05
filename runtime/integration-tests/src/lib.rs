@@ -15,8 +15,8 @@
 #![allow(unused)]
 
 mod evm;
+mod generic;
 mod liquidity_pools;
-mod option_b;
 mod pools;
 mod rewards;
 mod runtime_apis;

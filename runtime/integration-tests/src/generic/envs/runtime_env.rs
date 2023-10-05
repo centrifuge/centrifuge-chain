@@ -29,16 +29,18 @@ use sp_runtime::{
 use sp_std::vec;
 use sp_timestamp::Timestamp;
 
-use super::env::{Config, Env};
-use crate::utils::accounts::Keyring;
+use crate::{
+	generic::env::{Config, Env},
+	utils::accounts::Keyring,
+};
 
-pub struct TestEnv<T: Config> {
+pub struct RuntimeEnv<T: Config> {
 	nonce: Index,
 	ext: sp_io::TestExternalities,
 	_config: std::marker::PhantomData<T>,
 }
 
-impl<T: Config> Env<T> for TestEnv<T> {
+impl<T: Config> Env<T> for RuntimeEnv<T> {
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult {
 		self.ext.execute_with(|| {
 			let runtime_call = call.into();
@@ -73,6 +75,10 @@ impl<T: Config> Env<T> for TestEnv<T> {
 
 			self.nonce += 1;
 
+			dbg!(frame_system::Pallet::<T>::account_nonce(
+				who.to_account_id()
+			));
+
 			T::apply_extrinsic(extrinsic)
 		})
 	}
@@ -93,7 +99,7 @@ impl<T: Config> Env<T> for TestEnv<T> {
 	}
 }
 
-impl<T: Config> TestEnv<T> {
+impl<T: Config> RuntimeEnv<T> {
 	pub fn empty() -> Self {
 		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<T>()

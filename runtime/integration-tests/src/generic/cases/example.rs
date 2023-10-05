@@ -1,10 +1,12 @@
 use frame_support::assert_ok;
 
-use super::{
-	env::{self, Config, Env},
-	test_env::TestEnv,
+use crate::{
+	generic::{
+		env::{self, Config, Env},
+		envs::runtime_env::RuntimeEnv,
+	},
+	utils::accounts::Keyring,
 };
-use crate::utils::accounts::Keyring;
 
 fn roundtrip_alice_bob<T: Config>() {
 	/*
@@ -24,7 +26,7 @@ fn roundtrip_alice_bob<T: Config>() {
 		})
 	*/
 
-	let mut env = TestEnv::<T>::empty();
+	let mut env = RuntimeEnv::<T>::empty();
 
 	assert_ok!(env.submit(
 		Keyring::Alice,
