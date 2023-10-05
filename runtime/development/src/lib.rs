@@ -2162,6 +2162,9 @@ impl_runtime_apis! {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
 		}
+
+		fn metadata_at_version(_: u32) -> Option<sp_core::OpaqueMetadata> { todo!("nuno") }
+		fn metadata_versions() -> frame_benchmarking::Vec<u32> { todo!("nuno") }
 	}
 
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
@@ -2569,6 +2572,23 @@ impl_runtime_apis! {
 		}
 
 		fn gas_limit_multiplier_support() {}
+
+		fn pending_block(
+					xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
+				) -> (
+					Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
+				) {
+					for ext in xts.into_iter() {
+						let _ = Executive::apply_extrinsic(ext);
+					}
+
+					Ethereum::on_finalize(System::block_number() + 1);
+
+					(
+						pallet_ethereum::CurrentBlock::<Runtime>::get(),
+						pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
+					)
+				 }
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {

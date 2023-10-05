@@ -39,6 +39,7 @@ use cfg_types::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use constants::currency::*;
 use fp_rpc::TransactionStatus;
+use pallet_ethereum::Call::transact;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -2073,6 +2074,9 @@ impl_runtime_apis! {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
 		}
+
+		fn metadata_at_version(_: u32) -> Option<sp_core::OpaqueMetadata> { todo!("nuno") }
+		fn metadata_versions() -> frame_benchmarking::Vec<u32> { todo!("nuno") }
 	}
 
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
@@ -2319,6 +2323,25 @@ impl_runtime_apis! {
 
 			let is_transactional = false;
 			let validate = true;
+			let mut estimated_transaction_len = data.len() +
+				// from: 20
+				// value: 32
+				// gas_limit: 32
+				// nonce: 32
+				// 1 byte transaction action variant
+				// chain id 8 bytes
+				// 65 bytes signature
+				190;
+
+			if max_fee_per_gas.is_some() {
+				estimated_transaction_len += 32;
+			}
+			if max_priority_fee_per_gas.is_some() {
+				estimated_transaction_len += 32;
+			}
+			if access_list.is_some() {
+				estimated_transaction_len += access_list.encoded_size();
+			}
 			let (weight_limit, proof_size_base_cost) =
 				match <Runtime as pallet_evm::Config>::GasWeightMapping::gas_to_weight(
 					gas_limit,
@@ -2455,6 +2478,23 @@ impl_runtime_apis! {
 		}
 
 		fn gas_limit_multiplier_support() {}
+
+		fn pending_block(
+					xts: Vec<<Block as sp_api::BlockT>::Extrinsic>
+				) -> (
+					Option<pallet_ethereum::Block>, Option<sp_std::prelude::Vec<TransactionStatus>>
+				) {
+					for ext in xts.into_iter() {
+						let _ = Executive::apply_extrinsic(ext);
+					}
+
+					Ethereum::on_finalize(System::block_number() + 1);
+
+					(
+						pallet_ethereum::CurrentBlock::<Runtime>::get(),
+						pallet_ethereum::CurrentTransactionStatuses::<Runtime>::get()
+					)
+				 }
 	}
 
 	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
