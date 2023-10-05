@@ -139,7 +139,7 @@ impl<T: Config> RuntimeEnv<T> {
 
 		let timestamp = i as u64 * pallet_aura::Pallet::<T>::slot_duration();
 		let inherent_extrinsics = vec![
-			Extrinsic::new(Self::cumulus_inherent(), None).unwrap(),
+			Extrinsic::new(Self::cumulus_inherent(i), None).unwrap(),
 			Extrinsic::new(Self::timestamp_inherent(timestamp), None).unwrap(),
 		];
 
@@ -148,7 +148,7 @@ impl<T: Config> RuntimeEnv<T> {
 		}
 	}
 
-	fn cumulus_inherent() -> T::RuntimeCall {
+	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCall {
 		let mut inherent_data = InherentData::default();
 
 		// Cumulus inherent
@@ -159,7 +159,7 @@ impl<T: Config> RuntimeEnv<T> {
 		let cumulus_inherent = ParachainInherentData {
 			validation_data: PersistedValidationData {
 				parent_head: vec![].into(),
-				relay_parent_number: Default::default(),
+				relay_parent_number: i,
 				max_pov_size: Default::default(),
 				relay_parent_storage_root,
 			},
