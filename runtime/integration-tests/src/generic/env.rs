@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, Moment,
-	PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, LoanId,
+	Moment, PoolId, Signature, TrancheId,
 };
 use cfg_types::{
 	permissions::{PermissionScope, Role},
@@ -25,7 +25,10 @@ use frame_support::{
 };
 use frame_system::{ChainContext, RawOrigin};
 use pallet_transaction_payment::CurrencyAdapter;
-use runtime_common::fees::{DealWithFees, WeightToFee};
+use runtime_common::{
+	apis,
+	fees::{DealWithFees, WeightToFee},
+};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup, Member},
@@ -89,6 +92,16 @@ pub trait Config:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
+
+    // APIS:
+    + sp_api::runtime_decl_for_Core::CoreV4<Self::Block>
+    + sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<Self::Block>
+	+ apis::runtime_decl_for_LoansApi::LoansApiV1<
+		Self::Block,
+		PoolId,
+		LoanId,
+		pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -137,10 +150,6 @@ pub trait Config:
 
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
-
-	fn initialize_block(header: &<Self::Block as Block>::Header);
-	fn apply_extrinsic(extrinsic: <Self::Block as Block>::Extrinsic) -> ApplyExtrinsicResult;
-	fn finalize_block() -> <Self::Block as Block>::Header;
 }
 
 /// Used by Env::pass() to determine how many blocks should be passed

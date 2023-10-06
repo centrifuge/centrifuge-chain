@@ -4,34 +4,20 @@ use sp_runtime::{traits::Block, ApplyExtrinsicResult};
 use crate::generic::env::{Config, RuntimeKind};
 
 macro_rules! impl_config {
-	($runtime:ident) => {
+	($runtime:ident, $kind:ident) => {
 		impl Config for $runtime::Runtime {
 			type Block = $runtime::Block;
 			type RuntimeCallExt = $runtime::RuntimeCall;
 			type RuntimeEventExt = $runtime::RuntimeEvent;
 
-			const KIND: RuntimeKind = RuntimeKind::Development;
-
-			fn initialize_block(header: &<Self::Block as Block>::Header) {
-				$runtime::Executive::initialize_block(header);
-			}
-
-			fn apply_extrinsic(
-				extrinsic: <Self::Block as Block>::Extrinsic,
-			) -> ApplyExtrinsicResult {
-				$runtime::Executive::apply_extrinsic(extrinsic)
-			}
-
-			fn finalize_block() -> <Self::Block as Block>::Header {
-				$runtime::Executive::finalize_block()
-			}
+			const KIND: RuntimeKind = RuntimeKind::$kind;
 		}
 	};
 }
 
-impl_config!(development_runtime);
-impl_config!(altair_runtime);
-impl_config!(centrifuge_runtime);
+impl_config!(development_runtime, Development);
+impl_config!(altair_runtime, Altair);
+impl_config!(centrifuge_runtime, Centrifuge);
 
 #[macro_export]
 macro_rules! test_with_all_runtimes {

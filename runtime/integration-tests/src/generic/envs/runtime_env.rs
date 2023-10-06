@@ -177,7 +177,6 @@ impl<T: Config> RuntimeEnv<T> {
 	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCall {
 		let mut inherent_data = InherentData::default();
 
-		// Cumulus inherent
 		let sproof_builder = RelayStateSproofBuilder::default();
 		let (relay_parent_storage_root, relay_chain_state) =
 			sproof_builder.into_state_root_and_proof();
