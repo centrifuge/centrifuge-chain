@@ -32,25 +32,27 @@ impl_config!(altair_runtime, Altair);
 impl_config!(centrifuge_runtime, Centrifuge);
 
 #[macro_export]
-macro_rules! test_with_all_runtimes {
-	($name:ident) => {
+macro_rules! test_for_runtimes {
+	( ( $($runtime:ident),* ), $name:ident ) => {
 		mod $name {
 			use super::*;
+            use development_runtime as development;
+            use altair_runtime as altair;
+            use centrifuge_runtime as centrifuge;
 
-			#[test]
-			fn development() {
-				$name::<development_runtime::Runtime>()
-			}
-
-			#[test]
-			fn altair() {
-				$name::<altair_runtime::Runtime>();
-			}
-
-			#[test]
-			fn centrifuge() {
-				$name::<centrifuge_runtime::Runtime>();
-			}
+            $(
+                #[test]
+                fn $runtime() {
+                    $name::<$runtime::Runtime>()
+                }
+            )*
 		}
+	};
+}
+
+#[macro_export]
+macro_rules! test_for_all_runtimes {
+	( $name:ident ) => {
+		$crate::test_for_runtimes!((development, altair, centrifuge), $name);
 	};
 }

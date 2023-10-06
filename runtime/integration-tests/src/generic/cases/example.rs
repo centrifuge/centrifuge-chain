@@ -73,8 +73,8 @@ fn call_api<T: Runtime>() {
 }
 
 // Generate tests for all runtimes
-crate::test_with_all_runtimes!(transfer_balance);
-crate::test_with_all_runtimes!(call_api);
+crate::test_for_runtimes!((development, altair, centrifuge), transfer_balance);
+crate::test_for_all_runtimes!(call_api);
 
 // Output: for `cargo test -p runtime-integration-tests generic`
 // running 6 tests
