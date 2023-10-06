@@ -12,10 +12,10 @@
 use crate::{Runtime, Weight};
 
 pub type UpgradeCentrifuge1022 = (
-	anemoy_pool::Migration<crate::Runtime, 1021>,
-	add_wrapped_usdc_variants::Migration<crate::Runtime, 1021>,
+	anemoy_pool::Migration<crate::Runtime>,
+	add_wrapped_usdc_variants::Migration<crate::Runtime>,
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime, 1022>,
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
 
 /// Migrate the Anemoy Pool's currency from LpEthUSC to Circle's USDC,
@@ -40,11 +40,9 @@ mod anemoy_pool {
 
 	const ANEMOY_POOL_ID: PoolId = 4_139_607_887;
 
-	pub struct Migration<T, const BEFORE_VERSION: u32>(sp_std::marker::PhantomData<T>);
+	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T: frame_system::Config, const BEFORE_VERSION: u32> OnRuntimeUpgrade
-		for Migration<T, BEFORE_VERSION>
-	{
+	impl<T: frame_system::Config> OnRuntimeUpgrade for Migration<T> {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 			let pool_details: PoolDetailsOf<Runtime> =
@@ -59,17 +57,6 @@ mod anemoy_pool {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			let last_version = frame_system::LastRuntimeUpgrade::<T>::get()
-				.map(|v| v.spec_version.0)
-				.unwrap_or(<T::Version as frame_support::traits::Get<_>>::get().spec_version);
-
-			if last_version >= BEFORE_VERSION {
-				log::warn!(
-					"anemoy_pool::Migration: NOT execution since current version higher than BEFORE_VERSION"
-				);
-				return Weight::zero();
-			}
-
 			let (sanity_checks, weight) = verify_sanity_checks();
 			if !sanity_checks {
 				log::error!("anemoy_pool::Migration: Sanity checks FAILED");
@@ -165,27 +152,19 @@ pub mod add_wrapped_usdc_variants {
 	use crate::OrderBook;
 	use crate::{liquidity_pools::LiquidityPoolsPalletIndex, Balance, OrmlAssetRegistry, Runtime};
 
-	pub struct Migration<T, const BEFORE_VERSION: u32>(sp_std::marker::PhantomData<T>);
+	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
-	impl<T: frame_system::Config, const BEFORE_VERSION: u32> OnRuntimeUpgrade
-		for Migration<T, BEFORE_VERSION>
-	{
+	impl<T: frame_system::Config> OnRuntimeUpgrade for Migration<T> {
 		fn on_runtime_upgrade() -> Weight {
-			let last_version = frame_system::LastRuntimeUpgrade::<T>::get()
-				.map(|v| v.spec_version.0)
-				.unwrap_or(<T::Version as frame_support::traits::Get<_>>::get().spec_version);
-
-			if last_version >= BEFORE_VERSION {
-				log::warn!(
-					"add_wrapped_usdc_variants::Migration: NOT execution since current version higher than BEFORE_VERSION"
-				);
-				return Weight::zero();
-			}
-
+			let mut writes = 0u64;
 			// Register assets
 			for (currency_id, metadata) in Self::get_unregistered_metadata().into_iter() {
-				log::debug!("Registering asset {:?}", currency_id);
-				OrmlAssetRegistry::do_register_asset_without_asset_processor(metadata, currency_id)
+				log::info!("Registering asset {:?}", currency_id);
+				if OrmlAssetRegistry::metadata(currency_id).is_none() {
+					OrmlAssetRegistry::do_register_asset_without_asset_processor(
+						metadata,
+						currency_id,
+					)
 					.map_err(|e| {
 						log::error!(
 							"Failed to register asset {:?} due to error {:?}",
@@ -195,7 +174,7 @@ pub mod add_wrapped_usdc_variants {
 					})
 					// Add trading pairs if asset was registered successfully
 					.map(|_| {
-						log::debug!(
+						log::info!(
 							"Adding bidirectional USDC trading pair for asset {:?}",
 							currency_id
 						);
@@ -209,27 +188,61 @@ pub mod add_wrapped_usdc_variants {
 							CURRENCY_ID_DOT_NATIVE,
 							MIN_SWAP_ORDER_AMOUNT,
 						);
+						// 2 from updating metadata and location, 2 from trading pairs
+						writes = writes.saturating_add(4);
 					})
 					.ok();
+				} else {
+					log::warn!("Skipping registration of asset {:?}", currency_id);
+				}
 			}
-			// Add trading pair for already registered LpEthUsdc
-			pallet_order_book::TradingPair::<Runtime>::insert(
+			// Add trading pair for already registered LpEthUsdc if it does not exist yet
+			if !pallet_order_book::TradingPair::<Runtime>::contains_key(
 				CURRENCY_ID_DOT_NATIVE,
 				CURRENCY_ID_LP_ETH,
-				MIN_SWAP_ORDER_AMOUNT,
-			);
-			pallet_order_book::TradingPair::<Runtime>::insert(
+			) {
+				log::info!(
+					"Adding trading pair from asset {:?} to USDC",
+					CURRENCY_ID_LP_ETH
+				);
+				pallet_order_book::TradingPair::<Runtime>::insert(
+					CURRENCY_ID_DOT_NATIVE,
+					CURRENCY_ID_LP_ETH,
+					MIN_SWAP_ORDER_AMOUNT,
+				);
+				writes = writes.saturating_add(1);
+			} else {
+				log::warn!(
+					"Skipping adding trading pair from asset {:?} to USDC",
+					CURRENCY_ID_LP_ETH
+				);
+			}
+			if !pallet_order_book::TradingPair::<Runtime>::contains_key(
 				CURRENCY_ID_LP_ETH,
 				CURRENCY_ID_DOT_NATIVE,
-				MIN_SWAP_ORDER_AMOUNT,
-			);
+			) {
+				log::info!(
+					"Adding trading pair from USDC to asset {:?}",
+					CURRENCY_ID_LP_ETH
+				);
+				pallet_order_book::TradingPair::<Runtime>::insert(
+					CURRENCY_ID_LP_ETH,
+					CURRENCY_ID_DOT_NATIVE,
+					MIN_SWAP_ORDER_AMOUNT,
+				);
+				writes = writes.saturating_add(1);
+			} else {
+				log::warn!(
+					"Skipping adding trading pair from USDC to asset {:?}",
+					CURRENCY_ID_LP_ETH
+				);
+			}
 
 			log::info!("add_wrapped_usdc_variants::Migration: on_runtime_upgrade succeeded ✓");
 
-			// 2 writes for registering, 2 writes for adding trading pair
 			let new_assets: u64 = Self::get_unregistered_ids().len().saturated_into();
 			<Runtime as frame_system::Config>::DbWeight::get()
-				.reads_writes(1, new_assets.saturating_mul(4).saturating_add(2))
+				.reads_writes(new_assets.saturating_add(2), writes)
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -277,7 +290,7 @@ pub mod add_wrapped_usdc_variants {
 		}
 	}
 
-	impl<T, const BEFORE_VERSION: u32> Migration<T, BEFORE_VERSION> {
+	impl<T> Migration<T> {
 		fn get_unregistered_ids() -> Vec<CurrencyId> {
 			vec![CURRENCY_ID_LP_BASE, CURRENCY_ID_LP_ARB, CURRENCY_ID_LP_CELO]
 		}
