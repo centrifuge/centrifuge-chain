@@ -18,7 +18,7 @@ fn transfer_balance<T: Config>() {
 	let mut env = RuntimeEnv::<T>::from_genesis(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
+				authorities: vec![AuraId::from(Keyring::Charlie.public())],
 			})
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(

@@ -199,14 +199,7 @@ pub trait Env<T: Config> {
 			};
 
 			match dispatch_info.pays_fee {
-				Pays::Yes => {
-					let weight = dispatch_info.weight
-						+ T::BlockWeights::get()
-							.get(DispatchClass::Normal)
-							.base_extrinsic;
-
-					WeightToFee::weight_to_fee(&weight)
-				}
+				Pays::Yes => WeightToFee::weight_to_fee(&dispatch_info.weight),
 				Pays::No => 0,
 			}
 		})
