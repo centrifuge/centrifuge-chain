@@ -36,8 +36,6 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 
-use crate::{generic::utils::genesis::Genesis, utils::accounts::Keyring};
-
 /// Kind of runtime to check in runtime time
 pub enum RuntimeKind {
 	Development,
@@ -46,7 +44,7 @@ pub enum RuntimeKind {
 }
 
 /// Runtime configuration
-pub trait Config:
+pub trait Runtime:
 	Send
 	+ Sync
 	+ frame_system::Config<
@@ -150,71 +148,4 @@ pub trait Config:
 
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
-}
-
-/// Used by Env::pass() to determine how many blocks should be passed
-#[derive(Clone)]
-pub enum Blocks<T: Config> {
-	/// Pass X blocks
-	ByNumber(BlockNumber),
-
-	/// Pass a number of blocks proportional to these seconds
-	BySeconds(Moment),
-
-	/// Pass a number of block until find an event or reach the limit
-	UntilEvent {
-		event: T::RuntimeEventExt,
-		limit: BlockNumber,
-	},
-}
-
-/// Define an environment behavior
-pub trait Env<T: Config> {
-	/// Loan the environment from a genesis
-	fn from_genesis(genesis: Genesis) -> Self;
-
-	/// Submit an extrinsic mutating the state
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
-
-	/// Pass any number of blocks
-	fn pass(&mut self, blocks: Blocks<T>);
-
-	/// Allows to mutate the storage state through the closure
-	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
-
-	/// Allows to read the storage state through the closure
-	/// If storage is modified, it would not be applied.
-	fn state<R>(&self, f: impl FnOnce() -> R) -> R;
-
-	/// Check for an event introduced in the current block
-	fn has_event(&self, event: impl Into<T::RuntimeEventExt>) -> bool {
-		self.state(|| {
-			let event = event.into();
-			frame_system::Pallet::<T>::events()
-				.into_iter()
-				.find(|record| record.event == event)
-				.is_some()
-		})
-	}
-
-	/// Retrieve the fees used in the last submit call
-	fn last_xt_fees(&self) -> Balance {
-		self.state(|| {
-			let runtime_event = frame_system::Pallet::<T>::events()
-				.last()
-				.unwrap()
-				.clone()
-				.event;
-
-			let dispatch_info = match runtime_event.try_into() {
-				Ok(frame_system::Event::<T>::ExtrinsicSuccess { dispatch_info }) => dispatch_info,
-				_ => panic!("expected to be called after a successful extrinsic"),
-			};
-
-			match dispatch_info.pays_fee {
-				Pays::Yes => WeightToFee::weight_to_fee(&dispatch_info.weight),
-				Pays::No => 0,
-			}
-		})
-	}
 }

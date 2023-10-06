@@ -39,19 +39,20 @@ use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		env::{Blocks, Config, Env},
+		environment::{Blocks, Env},
+		runtime::Runtime,
 		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,
 };
 
-pub struct RuntimeEnv<T: Config> {
+pub struct RuntimeEnv<T: Runtime> {
 	nonce: Index,
 	ext: Rc<RefCell<sp_io::TestExternalities>>,
 	_config: PhantomData<T>,
 }
 
-impl<T: Config> Env<T> for RuntimeEnv<T> {
+impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	fn from_genesis(builder: Genesis) -> Self {
 		let mut ext = sp_io::TestExternalities::new(builder.storage());
 
@@ -146,7 +147,7 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 	}
 }
 
-impl<T: Config> RuntimeEnv<T> {
+impl<T: Runtime> RuntimeEnv<T> {
 	fn prepare_block(i: BlockNumber) {
 		let slot = Slot::from(i as u64);
 		let digest = Digest {

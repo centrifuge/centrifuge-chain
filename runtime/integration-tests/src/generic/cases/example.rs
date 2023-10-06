@@ -3,14 +3,15 @@ use frame_support::{assert_ok, traits::Get};
 
 use crate::{
 	generic::{
-		env::{self, Blocks, Config, Env},
+		environment::{self, Blocks, Env},
 		envs::runtime_env::RuntimeEnv,
+		runtime::Runtime,
 		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,
 };
 
-fn transfer_balance<T: Config>() {
+fn transfer_balance<T: Runtime>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
 
@@ -58,7 +59,7 @@ fn transfer_balance<T: Config>() {
 	});
 }
 
-fn call_api<T: Config>() {
+fn call_api<T: Runtime>() {
 	// Set up all GenesisConfig for your initial state
 	let mut env =
 		RuntimeEnv::<T>::from_genesis(Genesis::default().add(pallet_aura::GenesisConfig::<T> {
