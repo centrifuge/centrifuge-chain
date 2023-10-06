@@ -11,7 +11,7 @@ use crate::{
 };
 
 const TRANSFER: Balance = 1000 * CFG;
-const FEES: Balance = 1 * CFG;
+const FOR_FEES: Balance = 1 * CFG;
 
 fn transfer_balance<T: Config>() {
 	// Set up all GenesisConfig for your initial state
@@ -23,14 +23,13 @@ fn transfer_balance<T: Config>() {
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
 					Keyring::Alice.to_account_id(),
-					T::ExistentialDeposit::get() + FEES + TRANSFER,
+					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
 			}),
 	);
 
-	// Call an extrinsics
+	// Call an extrinsic that would be processed immediately
 	// This call can be called several times in different test places
-	// The extrinsic would be processed immediately
 	assert_ok!(env.submit(
 		Keyring::Alice,
 		pallet_balances::Call::<T>::transfer {
@@ -39,21 +38,26 @@ fn transfer_balance<T: Config>() {
 		},
 	));
 
+	// Check for an even occurred in this block
+	assert!(env.has_event(pallet_balances::Event::Transfer {
+		from: Keyring::Alice.to_account_id(),
+		to: Keyring::Bob.to_account_id(),
+		amount: TRANSFER,
+	}));
+
+	// Extracting last extrinsic fees
+	let fees = env.last_xt_fees();
+
 	// Pass blocks to evolve the system
-	// This call can be called several times in different test places
-	// You can choose between evolve the runtime by time or by blocks
-	// env.pass(Blocks::BySeconds(60));
 	env.pass(Blocks::ByNumber(1));
 
 	// Check the state
 	// This call can be called several times in different test places
 	env.state(|| {
-		/*
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
-			T::ExistentialDeposit::get() + FEES
+			T::ExistentialDeposit::get() + FOR_FEES - fees
 		);
-		*/
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
 			TRANSFER
@@ -63,18 +67,3 @@ fn transfer_balance<T: Config>() {
 
 // Generate tests for all runtimes
 crate::test_with_all_runtimes!(transfer_balance);
-
-/*
-WeightToFee::weight_to_fee(
-	&(<<T as pallet_balances::Config>::WeightInfo as pallet_balances::weights::WeightInfo>::transfer()
-	+ T::BlockWeights::get()
-	.get(DispatchClass::Normal)
-	.base_extrinsic)
-) + 1000 + T::ExistentialDeposit::get()
-*/
-
-// TODO:
-// - Fix test for altair
-// - Fix test for centrifuge
-// - An utility to know the weights easily
-//    - Check if DispatchInfo works

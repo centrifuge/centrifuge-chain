@@ -14,8 +14,13 @@ use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
-	dispatch::{DispatchInfo, PostDispatchInfo, UnfilteredDispatchable},
+	dispatch::{
+		DispatchClass, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo,
+		UnfilteredDispatchable,
+	},
 	inherent::{InherentData, ProvideInherent},
+	traits::{Get, IsType},
+	weights::WeightToFee as _,
 	Parameter,
 };
 use frame_system::{ChainContext, RawOrigin};
@@ -23,19 +28,21 @@ use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::fees::{DealWithFees, WeightToFee};
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup},
-	ApplyExtrinsicResult,
+	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup, Member},
+	ApplyExtrinsicResult, DispatchResult,
 };
 use sp_timestamp::Timestamp;
 
 use crate::{generic::utils::genesis::Genesis, utils::accounts::Keyring};
 
+/// Kind of runtime to check in runtime time
 pub enum RuntimeKind {
 	Development,
 	Altair,
 	Centrifuge,
 }
 
+/// Runtime configuration
 pub trait Config:
 	Send
 	+ Sync
@@ -43,6 +50,7 @@ pub trait Config:
 		Index = Index,
 		AccountId = AccountId,
 		RuntimeCall = Self::RuntimeCallExt,
+		RuntimeEvent = Self::RuntimeEventExt,
 		BlockNumber = BlockNumber,
 		Lookup = AccountIdLookup<AccountId, ()>,
 	> + pallet_pool_system::Config<
@@ -82,18 +90,32 @@ pub trait Config:
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
 {
-	// Just the RuntimeCall type, but redefined with extra bounds.
-	// You can add `From` bounds in order to convert pallet calls to RuntimeCall in
-	// tests.
+	/// Just the RuntimeCall type, but redefined with extra bounds.
+	/// You can add `From` bounds in order to convert pallet calls to
+	/// RuntimeCall in tests.
 	type RuntimeCallExt: Parameter
 		+ Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
+		+ GetDispatchInfo
 		+ SelfContainedCall
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>;
 
-	// Block used by the runtime
+	/// Just the RuntimeEvent type, but redefined with extra bounds.
+	/// You can add `TryInto` and `From` bounds in order to convert pallet
+	/// events to RuntimeEvent in tests.
+	type RuntimeEventExt: Parameter
+		+ Member
+		+ From<frame_system::Event<Self>>
+		+ Debug
+		+ IsType<<Self as frame_system::Config>::RuntimeEvent>
+		+ TryInto<frame_system::Event<Self>>
+		+ TryInto<pallet_balances::Event<Self>>
+		+ From<frame_system::Event<Self>>
+		+ From<pallet_balances::Event<Self>>;
+
+	/// Block used by the runtime
 	type Block: Block<
 		Header = Header,
 		Extrinsic = UncheckedExtrinsic<
@@ -113,7 +135,7 @@ pub trait Config:
 		>,
 	>;
 
-	// Value to differentiate the runtime in tests.
+	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;
 
 	fn initialize_block(header: &<Self::Block as Block>::Header);
@@ -121,14 +143,72 @@ pub trait Config:
 	fn finalize_block() -> <Self::Block as Block>::Header;
 }
 
-pub enum Blocks {
+/// Used by Env::pass() to determine how many blocks should be passed
+#[derive(Clone)]
+pub enum Blocks<T: Config> {
+	/// Pass X blocks
 	ByNumber(BlockNumber),
+
+	/// Pass a number of blocks proportional to these seconds
 	BySeconds(Moment),
+
+	/// Pass a number of block until find an event or reach the limit
+	UntilEvent {
+		event: T::RuntimeEventExt,
+		limit: BlockNumber,
+	},
 }
 
+/// Define an environment behavior
 pub trait Env<T: Config> {
+	/// Loan the environment from a genesis
 	fn from_genesis(genesis: Genesis) -> Self;
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult;
-	fn pass(&mut self, blocks: Blocks);
-	fn state(&mut self, f: impl FnOnce());
+
+	/// Submit an extrinsic mutating the state
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
+
+	/// Pass any number of blocks
+	fn pass(&mut self, blocks: Blocks<T>);
+
+	/// Allows to mutate the storage state through the closure
+	fn state<R>(&mut self, f: impl FnOnce() -> R) -> R;
+
+	/// Check for an event introduced in the current block
+	fn has_event(&mut self, event: impl Into<T::RuntimeEventExt>) -> bool {
+		self.state(|| {
+			let event = event.into();
+			frame_system::Pallet::<T>::events()
+				.into_iter()
+				.find(|record| record.event == event)
+				.is_some()
+		})
+	}
+
+	/// Retrieve the fees used in the last submit call
+	fn last_xt_fees(&mut self) -> Balance {
+		self.state(|| {
+			let runtime_event = frame_system::Pallet::<T>::events()
+				.last()
+				.unwrap()
+				.clone()
+				.event;
+
+			let dispatch_info = match runtime_event.try_into() {
+				Ok(frame_system::Event::<T>::ExtrinsicSuccess { dispatch_info }) => dispatch_info,
+				_ => panic!("expected to be called after a successful extrinsic"),
+			};
+
+			match dispatch_info.pays_fee {
+				Pays::Yes => {
+					let weight = dispatch_info.weight
+						+ T::BlockWeights::get()
+							.get(DispatchClass::Normal)
+							.base_extrinsic;
+
+					WeightToFee::weight_to_fee(&weight)
+				}
+				Pays::No => 0,
+			}
+		})
+	}
 }

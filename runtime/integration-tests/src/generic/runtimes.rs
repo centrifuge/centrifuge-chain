@@ -8,6 +8,7 @@ macro_rules! impl_config {
 		impl Config for $runtime::Runtime {
 			type Block = $runtime::Block;
 			type RuntimeCallExt = $runtime::RuntimeCall;
+			type RuntimeEventExt = $runtime::RuntimeEvent;
 
 			const KIND: RuntimeKind = RuntimeKind::Development;
 

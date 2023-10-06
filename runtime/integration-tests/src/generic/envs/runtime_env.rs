@@ -15,7 +15,7 @@ use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use fp_self_contained::UncheckedExtrinsic;
 use frame_support::{
 	assert_ok,
-	dispatch::{DispatchClass, UnfilteredDispatchable},
+	dispatch::{DispatchClass, GetDispatchInfo, Pays, UnfilteredDispatchable},
 	inherent::{InherentData, ProvideInherent},
 	traits::{GenesisBuild, Hooks},
 	weights::WeightToFee as _,
@@ -31,7 +31,7 @@ use sp_runtime::{
 		Block, Checkable, Dispatchable, Extrinsic, Get, Lookup, SignedExtension, StaticLookup,
 		Verify,
 	},
-	ApplyExtrinsicResult, Digest, DigestItem, MultiSignature,
+	ApplyExtrinsicResult, Digest, DigestItem, DispatchResult, MultiSignature,
 };
 use sp_timestamp::Timestamp;
 
@@ -62,9 +62,11 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 		}
 	}
 
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> ApplyExtrinsicResult {
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
 		self.ext.execute_with(|| {
 			let runtime_call = call.into();
+			let info = runtime_call.get_dispatch_info();
+
 			let signed_extra = (
 				frame_system::CheckNonZeroSender::<T>::new(),
 				frame_system::CheckSpecVersion::<T>::new(),
@@ -88,11 +90,11 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 
 			self.nonce += 1;
 
-			T::apply_extrinsic(extrinsic)
+			T::apply_extrinsic(extrinsic).unwrap()
 		})
 	}
 
-	fn pass(&mut self, blocks: Blocks) {
+	fn pass(&mut self, blocks: Blocks<T>) {
 		self.ext.execute_with(|| {
 			let next = frame_system::Pallet::<T>::block_number() + 1;
 
@@ -106,16 +108,28 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 						blocks as BlockNumber
 					}
 				}
+				Blocks::UntilEvent { limit, .. } => limit,
 			};
 
 			for i in next..last_block {
 				T::finalize_block();
 				Self::prepare_block(i);
+
+				if let Blocks::UntilEvent { event, .. } = blocks.clone() {
+					let event: T::RuntimeEventExt = event.into();
+					if frame_system::Pallet::<T>::events()
+						.into_iter()
+						.find(|record| record.event == event)
+						.is_some()
+					{
+						return;
+					}
+				}
 			}
 		})
 	}
 
-	fn state(&mut self, f: impl FnOnce()) {
+	fn state<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.ext.execute_with(f)
 	}
 }
