@@ -33,7 +33,7 @@ use sp_runtime::{
 		Verify,
 	},
 	ApplyExtrinsicResult, Digest, DigestItem, DispatchError, DispatchResult, MultiSignature,
-	TransactionOutcome,
+	Storage, TransactionOutcome,
 };
 use sp_timestamp::Timestamp;
 
@@ -53,8 +53,8 @@ pub struct RuntimeEnv<T: Runtime> {
 }
 
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_genesis(builder: Genesis) -> Self {
-		let mut ext = sp_io::TestExternalities::new(builder.storage());
+	fn from_storage(storage: Storage) -> Self {
+		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| Self::prepare_block(1));
 

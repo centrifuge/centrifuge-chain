@@ -32,7 +32,7 @@ use runtime_common::{
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup, Member},
-	ApplyExtrinsicResult, DispatchResult,
+	ApplyExtrinsicResult, DispatchResult, Storage,
 };
 use sp_timestamp::Timestamp;
 
@@ -60,7 +60,7 @@ pub enum Blocks<T: Runtime> {
 /// Define an environment behavior
 pub trait Env<T: Runtime> {
 	/// Loan the environment from a genesis
-	fn from_genesis(genesis: Genesis) -> Self;
+	fn from_storage(storage: Storage) -> Self;
 
 	/// Submit an extrinsic mutating the state
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
@@ -76,13 +76,15 @@ pub trait Env<T: Runtime> {
 	fn state<R>(&self, f: impl FnOnce() -> R) -> R;
 
 	/// Check for an event introduced in the current block
-	fn has_event(&self, event: impl Into<T::RuntimeEventExt>) -> bool {
+	/// Returns an Option to unwrap it from the tests and have good panic
+	/// message with the line
+	fn check_event(&self, event: impl Into<T::RuntimeEventExt>) -> Option<()> {
 		self.state(|| {
 			let event = event.into();
 			frame_system::Pallet::<T>::events()
 				.into_iter()
 				.find(|record| record.event == event)
-				.is_some()
+				.map(|_| ())
 		})
 	}
 

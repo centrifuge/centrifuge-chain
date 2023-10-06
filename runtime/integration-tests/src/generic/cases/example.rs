@@ -16,7 +16,7 @@ fn transfer_balance<T: Runtime>() {
 	const FOR_FEES: Balance = 1 * CFG;
 
 	// Set up all GenesisConfig for your initial state
-	let mut env = RuntimeEnv::<T>::from_genesis(
+	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
 				authorities: vec![AuraId::from(Keyring::Charlie.public())],
@@ -26,24 +26,27 @@ fn transfer_balance<T: Runtime>() {
 					Keyring::Alice.to_account_id(),
 					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
 				)],
-			}),
+			})
+			.storage(),
 	);
 
 	// Call an extrinsic that would be processed immediately
-	assert_ok!(env.submit(
+	env.submit(
 		Keyring::Alice,
 		pallet_balances::Call::<T>::transfer {
 			dest: Keyring::Bob.into(),
 			value: TRANSFER,
 		},
-	));
+	)
+	.unwrap();
 
 	// Check for an even occurred in this block
-	assert!(env.has_event(pallet_balances::Event::Transfer {
+	env.check_event(pallet_balances::Event::Transfer {
 		from: Keyring::Alice.to_account_id(),
 		to: Keyring::Bob.to_account_id(),
 		amount: TRANSFER,
-	}));
+	})
+	.unwrap();
 
 	// Pass blocks to evolve the system
 	env.pass(Blocks::ByNumber(1));
@@ -58,11 +61,13 @@ fn transfer_balance<T: Runtime>() {
 }
 
 fn call_api<T: Runtime>() {
-	// Set up all GenesisConfig for your initial state
-	let mut env =
-		RuntimeEnv::<T>::from_genesis(Genesis::default().add(pallet_aura::GenesisConfig::<T> {
-			authorities: vec![AuraId::from(Keyring::Charlie.public())],
-		}));
+	let mut env = RuntimeEnv::<T>::from_storage(
+		Genesis::default()
+			.add(pallet_aura::GenesisConfig::<T> {
+				authorities: vec![AuraId::from(Keyring::Charlie.public())],
+			})
+			.storage(),
+	);
 
 	env.state(|| {
 		// Call to Core::version() API.
@@ -72,15 +77,42 @@ fn call_api<T: Runtime>() {
 	})
 }
 
+fn check_fees<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::from_storage(
+		Genesis::default()
+			.add(pallet_aura::GenesisConfig::<T> {
+				authorities: vec![AuraId::from(Keyring::Charlie.public())],
+			})
+			.add(pallet_balances::GenesisConfig::<T> {
+				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+			})
+			.storage(),
+	);
+
+	env.submit(
+		Keyring::Alice,
+		frame_system::Call::<T>::remark { remark: vec![] },
+	)
+	.unwrap();
+
+	// Get the fees of the last submitted extrinsic
+	let fees = env.last_xt_fees();
+
+	env.state(|| {
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			1 * CFG - fees
+		);
+	});
+}
+
 // Generate tests for all runtimes
 crate::test_for_runtimes!((development, altair, centrifuge), transfer_balance);
 crate::test_for_all_runtimes!(call_api);
+crate::test_for_all_runtimes!(check_fees);
 
-// Output: for `cargo test -p runtime-integration-tests generic`
+// Output: for `cargo test -p runtime-integration-tests transfer_balance`
 // running 6 tests
-// test generic::cases::example::call_api::centrifuge ... ok
-// test generic::cases::example::call_api::altair ... ok
-// test generic::cases::example::call_api::development ... ok
 // test generic::cases::example::transfer_balance::altair ... ok
 // test generic::cases::example::transfer_balance::development ... ok
 // test generic::cases::example::transfer_balance::centrifuge ... ok
