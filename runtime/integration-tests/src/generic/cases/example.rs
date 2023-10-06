@@ -30,7 +30,6 @@ fn transfer_balance<T: Runtime>() {
 	);
 
 	// Call an extrinsic that would be processed immediately
-	// This call can be called several times in different test places
 	assert_ok!(env.submit(
 		Keyring::Alice,
 		pallet_balances::Call::<T>::transfer {
@@ -50,7 +49,6 @@ fn transfer_balance<T: Runtime>() {
 	env.pass(Blocks::ByNumber(1));
 
 	// Check the state
-	// This call can be called several times in different test places
 	env.state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
@@ -77,3 +75,12 @@ fn call_api<T: Runtime>() {
 // Generate tests for all runtimes
 crate::test_with_all_runtimes!(transfer_balance);
 crate::test_with_all_runtimes!(call_api);
+
+// Output: for `cargo test -p runtime-integration-tests generic`
+// running 6 tests
+// test generic::cases::example::call_api::centrifuge ... ok
+// test generic::cases::example::call_api::altair ... ok
+// test generic::cases::example::call_api::development ... ok
+// test generic::cases::example::transfer_balance::altair ... ok
+// test generic::cases::example::transfer_balance::development ... ok
+// test generic::cases::example::transfer_balance::centrifuge ... ok
