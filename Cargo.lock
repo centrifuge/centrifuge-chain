@@ -1141,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.22"
+version = "0.10.23"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2690,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.31"
+version = "0.10.32"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
