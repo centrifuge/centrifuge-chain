@@ -171,10 +171,14 @@ pub trait Env<T: Config> {
 	fn pass(&mut self, blocks: Blocks<T>);
 
 	/// Allows to mutate the storage state through the closure
-	fn state<R>(&mut self, f: impl FnOnce() -> R) -> R;
+	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
+
+	/// Allows to read the storage state through the closure
+	/// If storage is modified, it would not be applied.
+	fn state<R>(&self, f: impl FnOnce() -> R) -> R;
 
 	/// Check for an event introduced in the current block
-	fn has_event(&mut self, event: impl Into<T::RuntimeEventExt>) -> bool {
+	fn has_event(&self, event: impl Into<T::RuntimeEventExt>) -> bool {
 		self.state(|| {
 			let event = event.into();
 			frame_system::Pallet::<T>::events()
@@ -185,7 +189,7 @@ pub trait Env<T: Config> {
 	}
 
 	/// Retrieve the fees used in the last submit call
-	fn last_xt_fees(&mut self) -> Balance {
+	fn last_xt_fees(&self) -> Balance {
 		self.state(|| {
 			let runtime_event = frame_system::Pallet::<T>::events()
 				.last()

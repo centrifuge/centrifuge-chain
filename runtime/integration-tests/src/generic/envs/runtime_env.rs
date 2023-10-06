@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, Moment,
@@ -17,6 +17,7 @@ use frame_support::{
 	assert_ok,
 	dispatch::{DispatchClass, GetDispatchInfo, Pays, UnfilteredDispatchable},
 	inherent::{InherentData, ProvideInherent},
+	storage::transactional,
 	traits::{GenesisBuild, Hooks},
 	weights::WeightToFee as _,
 };
@@ -31,7 +32,8 @@ use sp_runtime::{
 		Block, Checkable, Dispatchable, Extrinsic, Get, Lookup, SignedExtension, StaticLookup,
 		Verify,
 	},
-	ApplyExtrinsicResult, Digest, DigestItem, DispatchResult, MultiSignature,
+	ApplyExtrinsicResult, Digest, DigestItem, DispatchError, DispatchResult, MultiSignature,
+	TransactionOutcome,
 };
 use sp_timestamp::Timestamp;
 
@@ -45,7 +47,7 @@ use crate::{
 
 pub struct RuntimeEnv<T: Config> {
 	nonce: Index,
-	ext: sp_io::TestExternalities,
+	ext: Rc<RefCell<sp_io::TestExternalities>>,
 	_config: PhantomData<T>,
 }
 
@@ -57,13 +59,13 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 
 		Self {
 			nonce: 0,
-			ext,
+			ext: Rc::new(RefCell::new(ext)),
 			_config: PhantomData,
 		}
 	}
 
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		self.ext.execute_with(|| {
+		self.ext.borrow_mut().execute_with(|| {
 			let runtime_call = call.into();
 			let info = runtime_call.get_dispatch_info();
 
@@ -95,7 +97,7 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 	}
 
 	fn pass(&mut self, blocks: Blocks<T>) {
-		self.ext.execute_with(|| {
+		self.ext.borrow_mut().execute_with(|| {
 			let next = frame_system::Pallet::<T>::block_number() + 1;
 
 			let last_block = match blocks {
@@ -129,8 +131,18 @@ impl<T: Config> Env<T> for RuntimeEnv<T> {
 		})
 	}
 
-	fn state<R>(&mut self, f: impl FnOnce() -> R) -> R {
-		self.ext.execute_with(f)
+	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.ext.borrow_mut().execute_with(f)
+	}
+
+	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.ext.borrow_mut().execute_with(|| {
+			transactional::with_transaction(|| {
+				// We revert all changes done by the closure to offer an inmutable state method
+				TransactionOutcome::Rollback::<Result<R, DispatchError>>(Ok(f()))
+			})
+			.unwrap()
+		})
 	}
 }
 
