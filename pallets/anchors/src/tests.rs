@@ -582,7 +582,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// create 1000 anchors one per day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
@@ -739,7 +739,7 @@ fn test_remove_anchor_indexes() {
 		// create MAX_LOOP_IN_TX * 4 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 4 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let _anchor_id =
@@ -810,7 +810,7 @@ fn test_same_day_many_anchors() {
 		// create MAX_LOOP_IN_TX * 2 + 1 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 + 1 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
@@ -904,7 +904,7 @@ fn basic_commit_perf() {
 			.as_millis() as u64;
 
 		for i in 0..100000 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
