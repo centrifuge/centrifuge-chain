@@ -159,7 +159,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 			digest,
 			state_root: H256::default(),
 			extrinsics_root: H256::default(),
-			parent_hash: [69u8; 32].into(),
+			parent_hash: H256::default(),
 		};
 
 		T::initialize_block(&header);

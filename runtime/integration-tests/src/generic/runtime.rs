@@ -84,6 +84,7 @@ pub trait Runtime:
 	+ pallet_authorship::Config
 	+ pallet_treasury::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
+        AccountId = AccountId,
 		WeightToFee = WeightToFee,
 		OnChargeTransaction = CurrencyAdapter<pallet_balances::Pallet<Self>, DealWithFees<Self>>,
 	> + pallet_restricted_tokens::Config<
@@ -123,8 +124,10 @@ pub trait Runtime:
 		+ IsType<<Self as frame_system::Config>::RuntimeEvent>
 		+ TryInto<frame_system::Event<Self>>
 		+ TryInto<pallet_balances::Event<Self>>
+		+ TryInto<pallet_transaction_payment::Event<Self>>
 		+ From<frame_system::Event<Self>>
-		+ From<pallet_balances::Event<Self>>;
+		+ From<pallet_balances::Event<Self>>
+		+ From<pallet_transaction_payment::Event<Self>>;
 
 	/// Block used by the runtime
 	type Block: Block<

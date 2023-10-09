@@ -47,7 +47,9 @@ pub enum Blocks<T: Runtime> {
 	/// Pass X blocks
 	ByNumber(BlockNumber),
 
-	/// Pass a number of blocks proportional to these seconds
+	/// Pass a number of blocks enough to emulate the given passage of time.
+	/// i.e. choosing 1 sec would pass 1 block to emulate such change in the
+	/// time.
 	BySeconds(Moment),
 
 	/// Pass a number of block until find an event or reach the limit
@@ -59,7 +61,7 @@ pub enum Blocks<T: Runtime> {
 
 /// Define an environment behavior
 pub trait Env<T: Runtime> {
-	/// Loan the environment from a genesis
+	/// Load the environment from a storage
 	fn from_storage(storage: Storage) -> Self;
 
 	/// Submit an extrinsic mutating the state
@@ -75,37 +77,47 @@ pub trait Env<T: Runtime> {
 	/// If storage is modified, it would not be applied.
 	fn state<R>(&self, f: impl FnOnce() -> R) -> R;
 
-	/// Check for an event introduced in the current block
+	/// Check for an exact event introduced in the current block.
+	/// Starting from last event introduced
 	/// Returns an Option to unwrap it from the tests and have good panic
-	/// message with the line
+	/// message with the error test line
 	fn check_event(&self, event: impl Into<T::RuntimeEventExt>) -> Option<()> {
 		self.state(|| {
 			let event = event.into();
 			frame_system::Pallet::<T>::events()
 				.into_iter()
+				.rev()
 				.find(|record| record.event == event)
 				.map(|_| ())
 		})
 	}
 
-	/// Retrieve the fees used in the last submit call
-	fn last_xt_fees(&self) -> Balance {
+	/// Find an event introduced in the current block
+	/// Starting from last event introduced
+	/// Returns an Option to unwrap it from the tests and have good panic
+	/// message with the error test line
+	fn find_event<E, R>(&self, f: impl Fn(E) -> Option<R>) -> Option<R>
+	where
+		T::RuntimeEventExt: TryInto<E>,
+	{
 		self.state(|| {
-			let runtime_event = frame_system::Pallet::<T>::events()
-				.last()
-				.unwrap()
-				.clone()
-				.event;
-
-			let dispatch_info = match runtime_event.try_into() {
-				Ok(frame_system::Event::<T>::ExtrinsicSuccess { dispatch_info }) => dispatch_info,
-				_ => panic!("expected to be called after a successful extrinsic"),
-			};
-
-			match dispatch_info.pays_fee {
-				Pays::Yes => WeightToFee::weight_to_fee(&dispatch_info.weight),
-				Pays::No => 0,
-			}
+			frame_system::Pallet::<T>::events()
+				.into_iter()
+				.rev()
+				.map(|record| record.event.try_into().ok())
+				.find_map(|event| event.map(|e| f(e)))
+				.flatten()
 		})
+	}
+
+	/// Retrieve the fees used in the last submit call
+	fn last_fee(&self) -> Balance {
+		self.find_event(|e| match e {
+			pallet_transaction_payment::Event::TransactionFeePaid { actual_fee, .. } => {
+				Some(actual_fee)
+			}
+			_ => None,
+		})
+		.expect("Expected transaction")
 	}
 }

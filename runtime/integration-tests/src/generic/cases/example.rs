@@ -33,7 +33,7 @@ fn transfer_balance<T: Runtime>() {
 	// Call an extrinsic that would be processed immediately
 	env.submit(
 		Keyring::Alice,
-		pallet_balances::Call::<T>::transfer {
+		pallet_balances::Call::transfer {
 			dest: Keyring::Bob.into(),
 			value: TRANSFER,
 		},
@@ -77,7 +77,7 @@ fn call_api<T: Runtime>() {
 	})
 }
 
-fn check_fees<T: Runtime>() {
+fn check_fee<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
@@ -91,17 +91,17 @@ fn check_fees<T: Runtime>() {
 
 	env.submit(
 		Keyring::Alice,
-		frame_system::Call::<T>::remark { remark: vec![] },
+		frame_system::Call::remark { remark: vec![] },
 	)
 	.unwrap();
 
-	// Get the fees of the last submitted extrinsic
-	let fees = env.last_xt_fees();
+	// Get the fee of the last submitted extrinsic
+	let fee = env.last_fee();
 
 	env.state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
-			1 * CFG - fees
+			1 * CFG - fee
 		);
 	});
 }
@@ -109,7 +109,7 @@ fn check_fees<T: Runtime>() {
 // Generate tests for all runtimes
 crate::test_for_runtimes!((development, altair, centrifuge), transfer_balance);
 crate::test_for_all_runtimes!(call_api);
-crate::test_for_all_runtimes!(check_fees);
+crate::test_for_all_runtimes!(check_fee);
 
 // Output: for `cargo test -p runtime-integration-tests transfer_balance`
 // running 6 tests
