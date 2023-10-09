@@ -12,5 +12,5 @@
 
 pub type UpgradeDevelopment1031 = (
 	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime, 1031>,
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
