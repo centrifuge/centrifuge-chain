@@ -29,7 +29,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
 use fc_consensus::Error;
-use fc_db::Backend as FrontierBackend;
+use fc_db::kv::Backend as FrontierBackend;
 use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
@@ -162,14 +162,13 @@ where
 impl<B: BlockT, I, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
 
 fn db_config_dir(config: &Configuration) -> PathBuf {
-	config
-		.base_path
-		.as_ref()
-		.map(|base_path| base_path.config_dir(config.chain_spec.id()))
-		.unwrap_or_else(|| {
-			BasePath::from_project("", "", &Cli::executable_name())
-				.config_dir(config.chain_spec.id())
-		})
+	config.base_path.config_dir(config.chain_spec.id())
+
+	// todo!("nuno: not sure when this unwrap_or_else was ever called if `config.base_path` always returns?
+	// .unwrap_or_else(|| {
+	// 	BasePath::from_project("", "", &Cli::executable_name())
+	// 		.config_dir(config.chain_spec.id())
+	// })
 }
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -564,6 +563,11 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	overrides: Arc<OverrideHandle<Block>>,
 	fee_history_cache: FeeHistoryCache,
 	fee_history_cache_limit: FeeHistoryCacheLimit,
+	sync: Arc<sc_network_sync::SyncingService<Block>>,
+	pubsub_notification_sinks: Arc<
+		fc_mapping_sync::EthereumBlockNotificationSinks<
+			fc_mapping_sync::EthereumBlockNotification<Block>,
+		>>,
 ) where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
@@ -586,12 +590,27 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 			Duration::new(6, 0),
 			client.clone(),
 			backend,
+			overrides,
 			frontier_backend,
 			3,
 			0,
 			SyncStrategy::Parachain,
+			sync,
+			pubsub_notification_sinks,
 		)
 		.for_each(|()| future::ready(())),
+
+
+
+		// substrate_backend: Arc<BE>,
+		// overrides: Arc<OverrideHandle<Block>>,
+		// frontier_backend: Arc<fc_db::kv::Backend<Block>>,
+		// retry_times: usize,
+		// sync_from: <Block::Header as HeaderT>::Number,
+		// strategy: SyncStrategy,
+		// sync_oracle: Arc<dyn SyncOracle + Send + Sync + 'static>,
+		// pubsub_notification_sinks: Arc<
+		// 	crate::EthereumBlockNotificationSinks<crate::EthereumBlockNotification<Block>>,
 	);
 
 	// Spawn Frontier EthFilterApi maintenance task.

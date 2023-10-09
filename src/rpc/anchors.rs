@@ -49,11 +49,7 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<AnchorData<cfg_primitives::Hash, BlockNumber>> {
 		let api = self.client.runtime_api();
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
-		};
+		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
 
 		api.get_anchor_by_id(at.hash())
 			.ok()

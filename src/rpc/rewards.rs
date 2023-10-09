@@ -61,13 +61,12 @@ where
 	) -> RpcResult<Vec<CurrencyId>> {
 		let api = self.client.runtime_api();
 
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
+		let hash = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
 		};
 
-		api.list_currencies(&at, domain, account_id)
+		api.list_currencies(hash, domain, account_id)
 			.map_err(|e| runtime_error("Unable to list currencies", e))
 	}
 
@@ -80,13 +79,9 @@ where
 	) -> RpcResult<Balance> {
 		let api = self.client.runtime_api();
 
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
-		};
+		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
 
-		api.compute_reward(&at, domain, currency_id, account_id)
+		api.compute_reward(at, domain, currency_id, account_id)
 			.map_err(|e| runtime_error("Unable to compute reward", e))?
 			.ok_or_else(|| invalid_params_error("Reward not found"))
 	}
