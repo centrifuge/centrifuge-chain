@@ -1,5 +1,4 @@
-use cfg_primitives::Moment;
-use cfg_traits::liquidity_pools::Codec;
+use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
 use frame_support::RuntimeDebug;
@@ -90,7 +89,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		member: Address,
-		valid_until: Moment,
+		valid_until: Seconds,
 	},
 	/// Transfer non-tranche tokens fungibles. For v2, it will only support
 	/// stable-coins.

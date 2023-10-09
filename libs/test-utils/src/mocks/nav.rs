@@ -14,8 +14,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::Moment;
-	use cfg_traits::PoolNAV;
+	use cfg_traits::{PoolNAV, Seconds};
 	use codec::HasCompact;
 	use frame_support::pallet_prelude::*;
 	use sp_runtime::traits::{AtLeast32BitUnsigned, Zero};
@@ -40,7 +39,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, (T::Balance, Moment)>;
+	pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, (T::Balance, Seconds)>;
 
 	impl<T: Config> Pallet<T> {
 		pub fn value(pool_id: T::PoolId) -> T::Balance {
@@ -49,11 +48,11 @@ pub mod pallet {
 				.unwrap_or_else(T::Balance::zero)
 		}
 
-		pub fn update(pool_id: T::PoolId, balance: T::Balance, now: Moment) {
+		pub fn update(pool_id: T::PoolId, balance: T::Balance, now: Seconds) {
 			Nav::<T>::insert(pool_id, (balance, now));
 		}
 
-		pub fn latest(pool_id: T::PoolId) -> (T::Balance, Moment) {
+		pub fn latest(pool_id: T::PoolId) -> (T::Balance, Seconds) {
 			Nav::<T>::get(pool_id).unwrap_or((T::Balance::zero(), 0))
 		}
 	}
@@ -62,7 +61,7 @@ pub mod pallet {
 		type ClassId = T::ClassId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
-		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Moment)> {
+		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Seconds)> {
 			Some(Self::latest(pool_id))
 		}
 

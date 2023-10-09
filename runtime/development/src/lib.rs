@@ -25,7 +25,8 @@ pub use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert as _,
+	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
+	TryConvert as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -1122,7 +1123,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		_now: Self::Seconds,
+		_now: Self::Moment,
 	) -> bool {
 		// - We check whether between the submission of the update this call there has
 		//   been an epoch close event.
@@ -1354,6 +1355,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perquintill;
 	type Permissions = Permissions;

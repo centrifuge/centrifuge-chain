@@ -29,7 +29,7 @@ use crate::{
 };
 
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolId = T::PoolId;
 	type TrancheId = T::TrancheId;
 
@@ -54,14 +54,14 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type BalanceRatio = T::BalanceRatio;
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolId = T::PoolId;
 	type TrancheId = T::TrancheId;
 
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
+	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Seconds>> {
 		let now = T::Time::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 

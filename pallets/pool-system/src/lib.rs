@@ -14,7 +14,6 @@
 #![allow(clippy::or_fun_call)]
 #![feature(thread_local)]
 
-use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, Seconds, TimeAsSecs};
 use cfg_types::{
 	orders::SummarizedOrders,

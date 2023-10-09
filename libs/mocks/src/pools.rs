@@ -1,7 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::Moment;
-	use cfg_traits::{PoolInspect, PoolReserve, PriceValue, TrancheTokenPrice};
+	use cfg_traits::{PoolInspect, PoolReserve, PriceValue, Seconds, TrancheTokenPrice};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
@@ -85,7 +84,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
-		type Moment = Moment;
+		type Moment = Seconds;
 		type PoolId = T::PoolId;
 		type TrancheId = T::TrancheId;
 
@@ -108,14 +107,14 @@ pub mod pallet {
 
 	impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 		type BalanceRatio = T::BalanceRatio;
-		type Moment = Moment;
+		type Moment = Seconds;
 		type PoolId = T::PoolId;
 		type TrancheId = T::TrancheId;
 
 		fn get(
 			a: T::PoolId,
 			b: T::TrancheId,
-		) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
+		) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Seconds>> {
 			execute_call!((a, b))
 		}
 	}

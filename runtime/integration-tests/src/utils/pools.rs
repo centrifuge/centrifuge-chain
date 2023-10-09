@@ -12,7 +12,7 @@
 
 //! Utilities around creating a pool
 
-use cfg_primitives::{AccountId, Balance, Moment, PoolId, TrancheId};
+use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::Permissions as PermissionsT;
 use cfg_types::{
 	consts::pools::*,
@@ -355,10 +355,10 @@ pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: Tranche
 
 /// Creates a permission xt with the given input
 pub fn permission_call(
-	with_role: PoolRole<TrancheId, Moment>,
+	with_role: PoolRole<TrancheId>,
 	to: AccountId,
 	pool_id: PoolId,
-	role: PoolRole<TrancheId, Moment>,
+	role: PoolRole<TrancheId>,
 ) -> RuntimeCall {
 	RuntimeCall::Permissions(PermissionsCall::add {
 		to,
@@ -465,7 +465,7 @@ mod with_ext {
 	/// Add a permission for who, at pool with role.
 	///
 	/// **Needs: Mut Externalities to persist**
-	pub fn permission_for(who: AccountId, pool_id: PoolId, role: PoolRole<TrancheId, Moment>) {
+	pub fn permission_for(who: AccountId, pool_id: PoolId, role: PoolRole<TrancheId>) {
 		<Permissions as PermissionsT<AccountId>>::add(
 			PermissionScope::Pool(pool_id),
 			who,

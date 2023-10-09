@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use cfg_primitives::{Moment, PoolEpochId};
+use cfg_primitives::PoolEpochId;
 use cfg_traits::investments::TrancheCurrency as _;
 use cfg_types::{
 	pools::TrancheMetadata,
@@ -68,7 +68,6 @@ benchmarks! {
 			  MaxTokenNameLength = <T as Config>::MaxTokenNameLength,
 			  MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength,
 			  MaxTranches = <T as Config>::MaxTranches>,
-		T: pallet_timestamp::Config<Moment = Moment>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
