@@ -114,10 +114,9 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::Moment;
 	use cfg_traits::{
 		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, TrancheTokenPrice,
+		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -125,7 +124,7 @@ pub mod pallet {
 		EVMChainId,
 	};
 	use codec::HasCompact;
-	use frame_support::{pallet_prelude::*, traits::UnixTime};
+	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
@@ -200,13 +199,13 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, CurrencyIdOf<Self>>,
-			Role = Role<Self::TrancheId, Moment>,
+			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
 
 		/// The UNIX timestamp provider type required for checking the validity
 		/// of investments.
-		type Time: UnixTime;
+		type Time: TimeAsSecs;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
@@ -490,7 +489,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			valid_until: Moment,
+			valid_until: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -503,7 +502,7 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 			ensure!(
-				valid_until > Self::now(),
+				valid_until > T::Time::now(),
 				Error::<T>::InvalidTrancheInvestorValidity
 			);
 
@@ -554,7 +553,7 @@ pub mod pallet {
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					T::DomainAddressToAccountId::convert(domain_address.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
 			);
@@ -811,10 +810,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn now() -> Moment {
-			T::Time::now().as_secs()
-		}
-
 		/// Returns the `u128` general index of a currency as the concatenation
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.
