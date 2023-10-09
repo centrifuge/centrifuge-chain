@@ -82,11 +82,10 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerScope = MaxRoles;
-	type Role = Role<TrancheId, Seconds>;
+	type Role = Role<TrancheId>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Seconds>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
 	type WeightInfo = ();
 }
 

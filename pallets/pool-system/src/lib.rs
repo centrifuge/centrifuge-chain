@@ -295,7 +295,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId, Seconds>,
+			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
 
