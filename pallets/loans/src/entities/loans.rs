@@ -2,7 +2,7 @@ use cfg_traits::{
 	self,
 	data::DataCollection,
 	interest::{InterestAccrual, InterestRate, RateCollection},
-	Seconds, TimeAsSecs,
+	IntoSeconds, Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -255,9 +255,11 @@ impl<T: Config> ActiveLoan<T> {
 				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
-				ActivePricing::External(pricing) => {
-					Ok(now >= pricing.last_updated(pool_id)?.ensure_add(*secs)?)
-				}
+				ActivePricing::External(pricing) => Ok(now
+					>= pricing
+						.last_updated(pool_id)?
+						.into_seconds()
+						.ensure_add(*secs)?),
 				ActivePricing::Internal(_) => Ok(false),
 			},
 		}

@@ -16,7 +16,7 @@ use std::time::Duration;
 use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_data, pallet_mock_permissions, pallet_mock_pools,
 };
-use cfg_primitives::Moment;
+use cfg_traits::Millis;
 use cfg_types::{permissions::PermissionScope, tokens::TrancheCurrency};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
@@ -39,7 +39,7 @@ pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
 pub const DAY: Duration = Duration::from_secs(24 * 3600);
 
-const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
+pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -148,7 +148,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ConstU64<BLOCK_TIME_MS>;
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
 }
@@ -211,7 +211,7 @@ impl pallet_mock_permissions::Config for Runtime {
 impl pallet_mock_data::Config for Runtime {
 	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
 	type CollectionId = PoolId;
-	type Data = (Balance, Moment);
+	type Data = (Balance, Millis);
 	type DataElem = Balance;
 	type DataId = PriceId;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -234,6 +234,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perbill;
 	type Permissions = MockPermissions;

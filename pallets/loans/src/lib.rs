@@ -71,8 +71,9 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
-		PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate, Seconds, TimeAsSecs,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, IntoSeconds,
+		Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate, Seconds,
+		TimeAsSecs,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -112,7 +113,7 @@ pub mod pallet {
 
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Balance, Seconds);
+	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
@@ -164,6 +165,9 @@ pub mod pallet {
 
 		/// Fetching method for the time of the current block
 		type Time: TimeAsSecs;
+
+		/// Generic time type
+		type Moment: Parameter + Member + IntoSeconds;
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>

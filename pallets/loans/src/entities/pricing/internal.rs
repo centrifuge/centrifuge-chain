@@ -1,12 +1,10 @@
 use cfg_traits::{
 	interest::{InterestRate, RateCollection},
-	Seconds,
+	Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	ensure, pallet_prelude::DispatchResult, traits::UnixTime, RuntimeDebug, RuntimeDebugNoBound,
-};
+use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
@@ -92,7 +90,7 @@ impl<T: Config> InternalActivePricing<T> {
 	) -> Result<T::Balance, DispatchError> {
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlow(dcf) => {
-				let now = T::Time::now().as_secs();
+				let now = T::Time::now();
 				Ok(dcf.compute_present_value(
 					debt,
 					now,

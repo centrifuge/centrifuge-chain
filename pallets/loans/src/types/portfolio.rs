@@ -1,9 +1,6 @@
-use cfg_primitives::Moment;
+use cfg_traits::{Seconds, TimeAsSecs};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	traits::{Get, UnixTime},
-	BoundedVec, RuntimeDebug,
-};
+use frame_support::{traits::Get, BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureSub, Zero},
@@ -26,7 +23,7 @@ pub struct PortfolioValuation<Balance, ElemId, MaxElems: Get<u32>> {
 
 	/// Last time when the portfolio valuation was calculated for the entire
 	/// pool.
-	last_updated: Moment,
+	last_updated: Seconds,
 
 	/// Individual valuation of each element that compose the value of the
 	/// portfolio
@@ -39,7 +36,7 @@ where
 	ElemId: Eq,
 	MaxElems: Get<u32>,
 {
-	pub fn new(when: Moment) -> Self {
+	pub fn new(when: Seconds) -> Self {
 		Self {
 			value: Balance::zero(),
 			last_updated: when,
@@ -48,7 +45,7 @@ where
 	}
 
 	pub fn from_values(
-		when: Moment,
+		when: Seconds,
 		values: Vec<(ElemId, Balance)>,
 	) -> Result<Self, DispatchError> {
 		Ok(Self {
@@ -67,7 +64,7 @@ where
 		self.value
 	}
 
-	pub fn last_updated(&self) -> Moment {
+	pub fn last_updated(&self) -> Seconds {
 		self.last_updated
 	}
 
@@ -133,11 +130,11 @@ impl<Balance, ElemId, MaxElems, Timer> Get<PortfolioValuation<Balance, ElemId, M
 where
 	Balance: Zero + EnsureAdd + EnsureSub + Ord + Copy,
 	MaxElems: Get<u32>,
-	Timer: UnixTime,
+	Timer: TimeAsSecs,
 	ElemId: Eq,
 {
 	fn get() -> PortfolioValuation<Balance, ElemId, MaxElems> {
-		PortfolioValuation::new(Timer::now().as_secs())
+		PortfolioValuation::new(<Timer as TimeAsSecs>::now())
 	}
 }
 
