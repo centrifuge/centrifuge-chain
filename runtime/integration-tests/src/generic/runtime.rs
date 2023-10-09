@@ -67,7 +67,7 @@ pub trait Runtime:
 	+ pallet_timestamp::Config<Moment = Moment>
 	+ pallet_aura::Config<Moment = Moment, AuthorityId = AuraId>
 	+ pallet_authorship::Config
-	+ pallet_treasury::Config<Currency = pallet_balances::Pallet<Self>>
+	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
         AccountId = AccountId,
 		WeightToFee = WeightToFee,
