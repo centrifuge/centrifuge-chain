@@ -1,9 +1,9 @@
 use cfg_primitives::{AuraId, Balance, CFG};
-use frame_support::{assert_ok, traits::Get};
+use frame_support::traits::Get;
 
 use crate::{
 	generic::{
-		environment::{self, Blocks, Env},
+		environment::{Blocks, Env},
 		envs::runtime_env::RuntimeEnv,
 		runtime::Runtime,
 		utils::genesis::Genesis,
@@ -61,7 +61,7 @@ fn transfer_balance<T: Runtime>() {
 }
 
 fn call_api<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::from_storage(
+	let env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
 				authorities: vec![AuraId::from(Keyring::Charlie.public())],

@@ -1,3 +1,8 @@
+// For generic modules we can reactive the unused warn disabled on lib.rs
+#![warn(unused)]
+// Allow dead code for utilities not used yet
+#![allow(dead_code)]
+
 pub mod environment;
 pub mod envs {
 	pub mod fudge_env;

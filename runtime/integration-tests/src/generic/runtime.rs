@@ -8,33 +8,18 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Codec;
-use cumulus_primitives_core::PersistedValidationData;
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
-	dispatch::{
-		DispatchClass, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo,
-		UnfilteredDispatchable,
-	},
-	inherent::{InherentData, ProvideInherent},
-	traits::{Get, IsType},
-	weights::WeightToFee as _,
+	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo},
+	traits::IsType,
 	Parameter,
 };
-use frame_system::{ChainContext, RawOrigin};
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
 };
-use sp_io::TestExternalities;
-use sp_runtime::{
-	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup, Member},
-	ApplyExtrinsicResult, DispatchResult,
-};
-use sp_timestamp::Timestamp;
+use sp_runtime::traits::{AccountIdLookup, Block, Dispatchable, Member};
 
 /// Kind of runtime to check in runtime time
 pub enum RuntimeKind {

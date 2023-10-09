@@ -1,45 +1,7 @@
-use std::fmt::Debug;
+use cfg_primitives::{Balance, BlockNumber, Moment};
+use sp_runtime::{DispatchResult, Storage};
 
-use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, LoanId,
-	Moment, PoolId, Signature, TrancheId,
-};
-use cfg_types::{
-	permissions::{PermissionScope, Role},
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
-};
-use codec::Codec;
-use cumulus_primitives_core::PersistedValidationData;
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
-use frame_support::{
-	dispatch::{
-		DispatchClass, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo,
-		UnfilteredDispatchable,
-	},
-	inherent::{InherentData, ProvideInherent},
-	traits::{Get, IsType},
-	weights::WeightToFee as _,
-	Parameter,
-};
-use frame_system::{ChainContext, RawOrigin};
-use pallet_transaction_payment::CurrencyAdapter;
-use runtime_common::{
-	apis,
-	fees::{DealWithFees, WeightToFee},
-};
-use sp_io::TestExternalities;
-use sp_runtime::{
-	traits::{AccountIdLookup, Block, Checkable, Dispatchable, Extrinsic, Lookup, Member},
-	ApplyExtrinsicResult, DispatchResult, Storage,
-};
-use sp_timestamp::Timestamp;
-
-use crate::{
-	generic::{runtime::Runtime, utils::genesis::Genesis},
-	utils::accounts::Keyring,
-};
+use crate::{generic::runtime::Runtime, utils::accounts::Keyring};
 
 /// Used by Env::pass() to determine how many blocks should be passed
 #[derive(Clone)]
