@@ -10,10 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
-pub use cfg_primitives::{Moment, PoolEpochId, TrancheWeight};
+pub use cfg_primitives::{PoolEpochId, TrancheWeight};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds,
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
@@ -74,7 +74,7 @@ frame_support::construct_runtime!(
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 0;
+	pub const MinDelay: Seconds = 0;
 	pub const MaxRoles: u32 = u32::MAX;
 }
 
@@ -82,11 +82,11 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerScope = MaxRoles;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role<TrancheId, Seconds>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
 	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
+		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Seconds>;
 	type WeightInfo = ();
 }
 
@@ -130,7 +130,7 @@ impl system::Config for Runtime {
 
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
 }
@@ -366,7 +366,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		TrancheCurrency,
@@ -507,7 +507,7 @@ pub fn next_block() {
 	next_block_after(12)
 }
 
-pub fn next_block_after(seconds: u64) {
+pub fn next_block_after(seconds: Seconds) {
 	Timestamp::on_finalize(System::block_number());
 	System::on_finalize(System::block_number());
 	System::set_block_number(System::block_number() + 1);
@@ -542,7 +542,7 @@ pub fn test_nav_down(pool_id: u64, amount: Balance) {
 	);
 }
 
-pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
+pub fn test_nav_update(pool_id: u64, amount: Balance, now: Seconds) {
 	FakeNav::update(pool_id, amount, now)
 }
 
