@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use std::{
-	collections::{BTreeMap, HashMap},
+	collections::BTreeMap,
 	marker::PhantomData,
 	path::PathBuf,
 	sync::{Arc, Mutex},
@@ -30,7 +30,7 @@ use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
 use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
-use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
+use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_consensus::ensure_log;
@@ -49,9 +49,9 @@ use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TaskM
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
-use sp_blockchain::{well_known_cache_keys::Id as CacheKeyId, HeaderBackend};
+use sp_blockchain::{HeaderBackend};
 use sp_consensus::Error as ConsensusError;
-use sp_keystore::SyncCryptoStorePtr;
+use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
@@ -146,7 +146,6 @@ where
 	async fn import_block(
 		&mut self,
 		block: BlockImportParams<B, Self::Transaction>,
-		new_cache: HashMap<CacheKeyId, Vec<u8>>,
 	) -> Result<ImportResult, Self::Error> {
 		// Validate that there is one and exactly one frontier log,
 		// but only on blocks created after frontier was enabled.
@@ -154,7 +153,7 @@ where
 			ensure_log(block.header.digest()).map_err(Error::from)?;
 		}
 		self.inner
-			.import_block(block, new_cache)
+			.import_block(block)
 			.await
 			.map_err(Into::into)
 	}
@@ -373,7 +372,7 @@ where
 		Arc<dyn RelayChainInterface>,
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 		Arc<NetworkService<Block, Hash>>,
-		SyncCryptoStorePtr,
+		KeystorePtr,
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
@@ -412,9 +411,12 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
-	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+
+	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),
@@ -422,7 +424,7 @@ where
 			block_announce_validator_builder: Some(Box::new(|_| {
 				Box::new(block_announce_validator)
 			})),
-			warp_sync: None,
+			warp_sync_params: None
 		})?;
 
 	let rpc_client = client.clone();
@@ -465,11 +467,12 @@ where
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
 		config: parachain_config,
-		keystore: params.keystore_container.sync_keystore(),
+		keystore: params.keystore_container.keystore(),
 		backend: backend.clone(),
 		network: network.clone(),
 		system_rpc_tx,
 		tx_handler_controller,
+		sync_service: sync_service.clone(),
 		telemetry: telemetry.as_mut(),
 	})?;
 
@@ -485,15 +488,15 @@ where
 	);
 
 	let announce_block = {
-		let network = network.clone();
-		Arc::new(move |hash, data| network.announce_block(hash, data))
+		let sync_service = sync_service.clone();
+		Arc::new(move |hash, data| sync_service.announce_block(hash, data))
 	};
-
 	let relay_chain_slot_duration = Duration::from_secs(6);
-
 	let _overseer_handle = relay_chain_interface
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
+
+	let recovery_handle = Box::new(_overseer_handle);
 
 	if validator {
 		let parachain_consensus = build_consensus(
@@ -505,7 +508,7 @@ where
 			relay_chain_interface.clone(),
 			transaction_pool,
 			network,
-			params.keystore_container.sync_keystore(),
+			params.keystore_container.keystore(),
 			force_authoring,
 		)?;
 
@@ -525,6 +528,8 @@ where
 				sc_service::error::Error::Other("Collator Key is None".to_string())
 			})?,
 			relay_chain_slot_duration,
+			recovery_handle,
+			sync_service,
 		};
 
 		start_collator(params).await?;
@@ -537,6 +542,8 @@ where
 			relay_chain_interface,
 			relay_chain_slot_duration,
 			import_queue: import_queue_service,
+			recovery_handle,
+			sync_service,
 		};
 
 		start_full_node(params)?;

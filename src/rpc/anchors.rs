@@ -55,7 +55,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.get_anchor_by_id(&at, id)
+		api.get_anchor_by_id(at.hash())
 			.ok()
 			.unwrap()
 			.ok_or_else(|| invalid_params_error("Unable to find anchor"))
