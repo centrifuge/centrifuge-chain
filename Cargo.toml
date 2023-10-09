@@ -280,10 +280,6 @@ fast-runtime = [
   "runtime-integration-tests/fast-runtime",
 ]
 
-testnet-runtime = [
-  "altair-runtime/testnet-runtime",
-]
-
 #
 # Cargo patch rules for all the paritytech/ based crates.
 #

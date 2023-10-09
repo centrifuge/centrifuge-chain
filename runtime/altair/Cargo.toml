@@ -412,6 +412,3 @@ on-chain-release-build = [
 
 # Set timing constants (e.g. session period) to faster versions to speed up testing.
 fast-runtime = []
-
-# Allow to handle Algol and Altair differently
-testnet-runtime = []
