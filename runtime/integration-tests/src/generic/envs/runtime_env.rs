@@ -79,7 +79,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		self.ext.borrow_mut().execute_with(|| {
 			let next = frame_system::Pallet::<T>::block_number() + 1;
 
-			let last_block = match blocks {
+			let end_block = match blocks {
 				Blocks::ByNumber(n) => next + n,
 				Blocks::BySeconds(secs) => {
 					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
@@ -92,7 +92,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 				Blocks::UntilEvent { limit, .. } => limit,
 			};
 
-			for i in next..last_block {
+			for i in next..end_block {
 				T::finalize_block();
 				Self::prepare_block(i);
 
@@ -103,7 +103,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 						.find(|record| record.event == event)
 						.is_some()
 					{
-						return;
+						break;
 					}
 				}
 			}
