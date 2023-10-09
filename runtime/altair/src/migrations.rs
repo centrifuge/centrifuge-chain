@@ -11,10 +11,8 @@
 // GNU General Public License for more details.
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
-/// The migration set for Altair 1031 @ Kusama. It includes all the migrations
-/// that have to be applied on that chain, which includes migrations that have
-/// already been executed on Algol (1028 & 1029).
-#[cfg(not(feature = "testnet-runtime"))]
+/// The migration set for Altair 1034 @ Kusama. It includes all the migrations
+/// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
@@ -54,13 +52,6 @@ pub type UpgradeAltair1034 = (
 	// Sets account codes for all precompiles
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
-
-/// The Upgrade set for Algol - it excludes the migrations already executed in
-/// the side releases that only landed on Algol (1028 to 1031) but not yet on
-/// Altair.
-#[cfg(feature = "testnet-runtime")]
-pub type UpgradeAltair1034 =
-	(runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>);
 
 mod asset_registry {
 	use cfg_primitives::Balance;
