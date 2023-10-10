@@ -97,7 +97,7 @@ pub trait Runtime:
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
-		+ From<cumulus_pallet_parachain_system::Call<Self>>;
+		+ From<cumulus_pallet_parachain_system::Call<Self>> + Sync + Send;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet

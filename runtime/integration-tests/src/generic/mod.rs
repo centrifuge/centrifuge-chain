@@ -78,28 +78,24 @@ mod fudge_handles {
 
 	const DEVELOPMENT_PARA_ID: u32 = 2000;
 
-	type Relaychain = RelaychainBuilder<rococo_runtime::RuntimeApi, rococo_runtime::Runtime>;
-	type Parachain = ParachainBuilder<development_runtime::Block, development_runtime::RuntimeApi>;
-
 	#[fudge::companion]
 	pub struct DevelopmentFudge {
 		#[fudge::relaychain]
-		pub relay: Relaychain,
+		pub relay: RelaychainBuilder<rococo_runtime::RuntimeApi, rococo_runtime::Runtime>,
 
 		#[fudge::parachain(DEVELOPMENT_PARA_ID)]
-		pub parachain: Parachain,
+		pub parachain:
+			ParachainBuilder<development_runtime::Block, development_runtime::RuntimeApi>,
 	}
 
 	// TODO: Implement for T only once when fudge::companion
 	// supports generic in the struct signature.
-	impl FudgeHandle for DevelopmentFudge {
+	impl FudgeHandle<development_runtime::Runtime> for DevelopmentFudge {
 		type ParachainApi = <development_runtime::RuntimeApi as ConstructRuntimeApi<
 			development_runtime::Block,
 			ParachainClient<development_runtime::Block, Self::ParachainConstructApi>,
 		>>::RuntimeApi;
-		type ParachainBlock = development_runtime::Block;
 		type ParachainConstructApi = development_runtime::RuntimeApi;
-		type ParachainRuntime = development_runtime::Runtime;
 		type RelayApi = <rococo_runtime::RuntimeApi as ConstructRuntimeApi<
 			RelayBlock,
 			RelayClient<Self::RelayConstructApi>,
@@ -118,19 +114,25 @@ mod fudge_handles {
 			Self { relay, parachain }
 		}
 
-		fn relay(&self) -> &Relaychain {
+		fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
 			&self.relay
 		}
 
-		fn relay_mut(&mut self) -> &mut Relaychain {
+		fn relay_mut(
+			&mut self,
+		) -> &mut RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
 			&mut self.relay
 		}
 
-		fn parachain(&self) -> &Parachain {
+		fn parachain(
+			&self,
+		) -> &ParachainBuilder<development_runtime::Block, Self::ParachainConstructApi> {
 			&self.parachain
 		}
 
-		fn parachain_mut(&mut self) -> &mut Parachain {
+		fn parachain_mut(
+			&mut self,
+		) -> &mut ParachainBuilder<development_runtime::Block, Self::ParachainConstructApi> {
 			&mut self.parachain
 		}
 

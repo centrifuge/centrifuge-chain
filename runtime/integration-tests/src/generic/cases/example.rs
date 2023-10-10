@@ -99,14 +99,29 @@ fn check_fee<T: Runtime>() {
 	});
 }
 
-fn fudge_example<T: Runtime + FudgeSupport>() {
-	let _env = FudgeEnv::<T>::from_storage(
+fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
+	const TRANSFER: Balance = 1000 * CFG;
+	const FOR_FEES: Balance = 1 * CFG;
+
+	let mut env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
-				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+				balances: vec![(
+					Keyring::Alice.to_account_id(),
+					T::ExistentialDeposit::get() + FOR_FEES + TRANSFER,
+				)],
 			})
 			.storage(),
 	);
+
+	env.submit(
+		Keyring::Alice,
+		pallet_balances::Call::transfer {
+			dest: Keyring::Bob.into(),
+			value: TRANSFER,
+		},
+	)
+	.unwrap();
 
 	//TODO
 }
@@ -131,7 +146,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
 crate::test_for_runtimes!(all, check_fee);
-crate::test_for_runtimes!([development], fudge_example);
+crate::test_for_runtimes!([development], fudge_transfer_balance);
 crate::test_for_runtimes!([development], fudge_call_api);
 
 // Output: for `cargo test -p runtime-integration-tests transfer_balance`
