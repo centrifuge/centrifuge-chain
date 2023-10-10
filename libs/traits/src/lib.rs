@@ -653,11 +653,11 @@ impl<T: UnixTime> TimeAsSecs for T {}
 
 /// Trait to convert into seconds
 pub trait IntoSeconds {
-	fn into_seconds(&self) -> Seconds;
+	fn into_seconds(self) -> Seconds;
 }
 
 impl IntoSeconds for Millis {
-	fn into_seconds(&self) -> Seconds {
+	fn into_seconds(self) -> Seconds {
 		self / 1000
 	}
 }
