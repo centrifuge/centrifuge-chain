@@ -1,4 +1,4 @@
-use cfg_primitives::{AuraId, Balance, CFG};
+use cfg_primitives::{Balance, CFG};
 use frame_support::traits::Get;
 
 use crate::{
@@ -23,9 +23,6 @@ fn transfer_balance<T: Runtime>() {
 	// environment.
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
-			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(Keyring::Charlie.public())],
-			})
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
 					Keyring::Alice.to_account_id(),
@@ -66,13 +63,7 @@ fn transfer_balance<T: Runtime>() {
 }
 
 fn call_api<T: Runtime>() {
-	let env = RuntimeEnv::<T>::from_storage(
-		Genesis::default()
-			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(Keyring::Charlie.public())],
-			})
-			.storage(),
-	);
+	let env = RuntimeEnv::<T>::from_storage(Default::default());
 
 	env.state(|| {
 		// Call to Core::version() API.
@@ -85,9 +76,6 @@ fn call_api<T: Runtime>() {
 fn check_fee<T: Runtime>() {
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
-			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(Keyring::Charlie.public())],
-			})
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 			})
@@ -114,9 +102,6 @@ fn check_fee<T: Runtime>() {
 fn fudge_example<T: Runtime + FudgeSupport>() {
 	let _env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
-			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(Keyring::Charlie.public())],
-			})
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 			})
@@ -127,13 +112,7 @@ fn fudge_example<T: Runtime + FudgeSupport>() {
 }
 
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
-	let env = FudgeEnv::<T>::from_storage(
-		Genesis::default()
-			.add(pallet_aura::GenesisConfig::<T> {
-				authorities: vec![AuraId::from(Keyring::Charlie.public())],
-			})
-			.storage(),
-	);
+	let env = FudgeEnv::<T>::from_storage(Default::default());
 
 	// Exclusive from fudge environment.
 	// It uses a client to access the runtime api.

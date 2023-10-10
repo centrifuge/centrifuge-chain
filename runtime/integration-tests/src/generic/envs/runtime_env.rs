@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use cfg_primitives::{Address, BlockNumber, Header, Index};
+use cfg_primitives::{Address, AuraId, BlockNumber, Header, Index};
 use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
@@ -8,9 +8,10 @@ use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	inherent::{InherentData, ProvideInherent},
 	storage::transactional,
+	traits::GenesisBuild,
 };
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::H256;
+use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -32,7 +33,14 @@ pub struct RuntimeEnv<T: Runtime> {
 }
 
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_storage(storage: Storage) -> Self {
+	fn from_storage(mut storage: Storage) -> Self {
+		// Needed for the aura usage
+		pallet_aura::GenesisConfig::<T> {
+			authorities: vec![AuraId::from(Public([0; 32]))],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| Self::prepare_block(1));
