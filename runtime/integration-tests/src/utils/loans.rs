@@ -16,7 +16,10 @@ use std::{collections::HashMap, time::Duration};
 use cfg_primitives::{
 	AccountId, Address, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_YEAR,
 };
-use cfg_traits::interest::{CompoundingSchedule, InterestRate, Seconds};
+use cfg_traits::{
+	interest::{CompoundingSchedule, InterestRate},
+	Seconds,
+};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
 	entities::{
