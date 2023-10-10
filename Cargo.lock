@@ -1049,7 +1049,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.28"
+version = "0.10.34"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1075,6 +1075,7 @@ dependencies = [
  "fc-rpc",
  "fc-rpc-core",
  "fp-consensus",
+ "fp-evm",
  "fp-rpc",
  "fp-storage",
  "frame-benchmarking",
@@ -1086,6 +1087,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "pallet-anchors",
+ "pallet-evm",
  "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -1139,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.20"
+version = "0.10.23"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2688,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.30"
+version = "0.10.32"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",

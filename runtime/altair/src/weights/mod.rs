@@ -9,6 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+pub mod cumulus_pallet_xcmp_queue;
 pub mod frame_system;
 pub mod pallet_anchors;
 pub mod pallet_balances;
@@ -19,6 +20,7 @@ pub mod pallet_collective;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
 pub mod pallet_democracy;
+pub mod pallet_elections_phragmen;
 pub mod pallet_fees;
 pub mod pallet_identity;
 pub mod pallet_interest_accrual;

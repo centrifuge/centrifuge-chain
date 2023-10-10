@@ -14,6 +14,7 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
+use hex_literal::hex;
 use pallet_evm::{Precompile, PrecompileHandle, PrecompileResult, PrecompileSet};
 use pallet_evm_precompile_blake2::Blake2F;
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
@@ -23,22 +24,29 @@ use pallet_evm_precompile_sha3fips::Sha3FIPS256;
 use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
 use sp_core::H160;
 
+/// `pallet_evm::AccountCodes` must be populated for precompiles as
+/// otherwise `OPCODE::EXTCODESIZE` will make the EVM error upon calling an
+/// precompile.
+///
+/// The following bytes represent: `PUSH1 00`, `PUSH1 00`, `REVERT`.
+pub const PRECOMPILE_CODE_STORAGE: [u8; 5] = hex!("60006000fd");
+
 // 0000->1023: Standard Ethereum precompiles
-const ECRECOVER_ADDR: Addr = addr(1);
-const SHA256_ADDR: Addr = addr(2);
-const RIPEMD160_ADDR: Addr = addr(3);
-const IDENTITY_ADDR: Addr = addr(4);
-const MODEXP_ADDR: Addr = addr(5);
-const BN128ADD_ADDR: Addr = addr(6);
-const BN128MUL_ADDR: Addr = addr(7);
-const BN128PAIRING_ADDR: Addr = addr(8);
-const BLAKE2F_ADDR: Addr = addr(9);
+pub const ECRECOVER_ADDR: Addr = addr(1);
+pub const SHA256_ADDR: Addr = addr(2);
+pub const RIPEMD160_ADDR: Addr = addr(3);
+pub const IDENTITY_ADDR: Addr = addr(4);
+pub const MODEXP_ADDR: Addr = addr(5);
+pub const BN128ADD_ADDR: Addr = addr(6);
+pub const BN128MUL_ADDR: Addr = addr(7);
+pub const BN128PAIRING_ADDR: Addr = addr(8);
+pub const BLAKE2F_ADDR: Addr = addr(9);
 // 1024->2047: Nonstandard precompiles shared with other chains (such
 // as Moonbeam). See
 // https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
-const SHA3FIPS256_ADDR: Addr = addr(1024);
-const DISPATCH_ADDR: Addr = addr(1025);
-const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
+pub const SHA3FIPS256_ADDR: Addr = addr(1024);
+pub const DISPATCH_ADDR: Addr = addr(1025);
+pub const ECRECOVERPUBLICKEY_ADDR: Addr = addr(1026);
 // 2048-XXXX: Nonstandard precompiles that are specific to our chain.
 
 /// The address of our local Axelar gateway. This is the address that
@@ -102,43 +110,13 @@ where
 
 /// Altair's precompiles
 /// For now, Altair uses the exact same set of precompiles used in Development.
-pub type Altair<R> = Development<R>;
+pub type Altair<R> = CentrifugePrecompiles<R>;
 
 /// A set of precompiles. This set might contain
 /// not yet mainnet ready precompiles in order to test
 /// those in development or staging environment without touching
 /// the mainnet set.
-pub struct Development<R>(CentrifugePrecompiles<R>);
-
-impl<R> Development<R> {
-	#[allow(clippy::new_without_default)] // We'll never use Default and can't derive it.
-	pub fn new() -> Self {
-		Self(CentrifugePrecompiles::new())
-	}
-}
-
-impl<R> PrecompileSet for Development<R>
-where
-	R: pallet_evm::Config + axelar_gateway_precompile::Config + frame_system::Config,
-	R::RuntimeCall: Dispatchable<PostInfo = PostDispatchInfo> + GetDispatchInfo + Decode,
-	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
-	axelar_gateway_precompile::Pallet<R>: Precompile,
-{
-	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		self.0
-			.execute(handle)
-			.or_else(|| match handle.code_address().0 {
-				LP_AXELAR_GATEWAY => {
-					Some(<axelar_gateway_precompile::Pallet<R> as Precompile>::execute(handle))
-				}
-				_ => None,
-			})
-	}
-
-	fn is_precompile(&self, address: H160) -> bool {
-		self.0.is_precompile(address) | matches!(address.0, LP_AXELAR_GATEWAY)
-	}
-}
+pub type Development<R> = CentrifugePrecompiles<R>;
 
 // H160 cannot be used in a match statement due to its hand-rolled
 // PartialEq implementation. This just gives a nice name to the

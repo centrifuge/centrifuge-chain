@@ -1860,7 +1860,7 @@ mod same_currencies {
 mod mismatching_currencies {
 	use cfg_traits::investments::ForeignInvestment;
 	use cfg_types::investments::{ForeignInvestmentInfo, Swap};
-	use development_runtime::{DefaultTokenSellRatio, OrderBook};
+	use development_runtime::OrderBook;
 	use pallet_foreign_investments::{types::TokenSwapReason, InvestmentState};
 
 	use super::*;

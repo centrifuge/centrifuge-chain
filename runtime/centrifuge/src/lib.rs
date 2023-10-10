@@ -28,7 +28,6 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
-	domain_address::Domain,
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
@@ -91,7 +90,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -106,6 +105,7 @@ use xcm_executor::XcmExecutor;
 use crate::xcm::{MultiAsset, MultiLocation, XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod evm;
+pub mod liquidity_pools;
 mod migrations;
 mod weights;
 pub mod xcm;
@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1020,
+	spec_version: 1023,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -426,131 +426,6 @@ impl orml_asset_registry::Config for Runtime {
 	// NOTE: Need no weights as spamming is not possible as the
 	//       calls are only callable by `AuthorityOrigin`. In our
 	//       case, pallet-pools and democracy
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub DefaultTokenSellRatio: Ratio = Ratio::one();
-}
-
-impl pallet_foreign_investments::Config for Runtime {
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
-	type CollectedForeignInvestmentHook =
-		pallet_liquidity_pools::hooks::CollectedForeignInvestmentHook<Runtime>;
-	type CollectedForeignRedemptionHook =
-		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter =
-		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
-	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook =
-		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultTokenSellRatio = DefaultTokenSellRatio;
-	type Investment = Investments;
-	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
-	type TokenSwapOrderId = u64;
-	type TokenSwaps = OrderBook;
-	type TrancheId = TrancheId;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	// To be used if we want to register a particular asset in the chain spec, when running the chain locally.
-	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
-}
-
-impl pallet_liquidity_pools::Config for Runtime {
-	// NOTE: No need to adapt that. The Router is an artifact and will be removed
-	// with FI PR
-	type AdminOrigin = EnsureRootOr<TwoThirdOfCouncil>;
-	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
-	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
-	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
-	type ForeignInvestment = ForeignInvestments;
-	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
-	type OutboundQueue = FilteredOutboundQueue;
-	type Permission = Permissions;
-	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
-	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
-	type TrancheId = TrancheId;
-	type TrancheTokenPrice = PoolSystem;
-	type TreasuryAccount = TreasuryAccount;
-	type WeightInfo = ();
-}
-
-type LiquidityPoolsMessage =
-	pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Quantity>;
-
-/// The FilteredOutboundQueue serves as a filter for outbound LP messages that
-/// we want to allow initially.
-pub struct FilteredOutboundQueue;
-
-impl OutboundQueue for FilteredOutboundQueue {
-	type Destination = Domain;
-	type Message = LiquidityPoolsMessage;
-	type Sender = AccountId;
-
-	fn submit(
-		sender: Self::Sender,
-		destination: Self::Destination,
-		msg: Self::Message,
-	) -> DispatchResult {
-		match msg {
-			LiquidityPoolsMessage::AddCurrency { .. }
-			| LiquidityPoolsMessage::UpdateMember { .. }
-			| LiquidityPoolsMessage::AddPool { .. }
-			| LiquidityPoolsMessage::AddTranche { .. }
-			| LiquidityPoolsMessage::UpdateTrancheTokenPrice { .. } => {
-				<LiquidityPoolsGateway as OutboundQueue>::submit(sender, destination, msg)
-			}
-			_ => Err(DispatchError::Other("unsupported outbound message")),
-		}
-	}
-}
-
-parameter_types! {
-	pub const MaxIncomingMessageSize: u32 = 1024;
-	pub Sender: AccountId = GatewayAccountProvider::<Runtime, LocationToAccountId>::get_gateway_account();
-}
-
-parameter_types! {
-	// A temporary admin account for the LP logic
-	// This is a multi-sig controlled pure proxy on mainnet
-	// - address: "4eEqmbQMbFfNUg6bQnqi9zgUvQvSpNbUgstEM64Xq9FW58Xv" (on Centrifuge)
-	//             (pub key 0x80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57)
-	//
-	// This account is besides Root and 2/3-council able to
-	// - add valid relayer contracts
-	// - rm valid relayer contracts
-	// - add valid LP instance contracts
-	// - rm valid LP instance contracts
-	// - add conversions from Axelar `sourceChain` strings to `DomainAddress`
-	// - set the Axelar gateway contract in the Axelar gateway precompile
-	pub LpAdminAccount: AccountId = AccountId::new(hex_literal::hex!("80339e91a87b9c082705fd1a6d39b3e00b46e445ad8c80c127f6a56941c6aa57"));
-}
-
-impl pallet_liquidity_pools_gateway::Config for Runtime {
-	type AdminOrigin = EnsureAccountOrRootOr<LpAdminAccount, TwoThirdOfCouncil>;
-	type InboundQueue =
-		runtime_common::gateway::stump_queue::StumpInboundQueue<Runtime, RuntimeEvent>;
-	type LocalEVMOrigin = pallet_liquidity_pools_gateway::EnsureLocal;
-	type MaxIncomingMessageSize = MaxIncomingMessageSize;
-	type Message = LiquidityPoolsMessage;
-	type OriginRecovery = crate::LiquidityPoolsAxelarGateway;
-	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type Sender = Sender;
 	type WeightInfo = ();
 }
 
@@ -1785,7 +1660,7 @@ parameter_types! {
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
 		MaxPriceOracleMembers::get(),
 		// For benchmarking we need a number of members equal to the active loans.
-		// The benchmark distintion can be removed once
+		// The benchmark distinction can be removed once
 		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 		MaxActiveLoansPerPool::get()
 	);
@@ -2079,7 +1954,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1021,
+	migrations::UpgradeCentrifuge1022,
 >;
 
 pub struct TransactionConverter;
@@ -2114,7 +1989,6 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::{gateway::GatewayAccountProvider, origin::EnsureAccountOrRootOr};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2529,6 +2403,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
 			list_benchmark!(list, extra, pallet_investments, Investments);
+			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
+			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2601,6 +2477,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches,	pallet_order_book, OrderBook);
 			add_benchmark!(params, batches,	pallet_investments, Investments);
+			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
+			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

@@ -24,7 +24,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(17_000_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
@@ -35,7 +35,7 @@ impl WeightInfo for () {
 		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
 		//       This one has one read and one write for sure and possible one
 		//       read for `AdminOrigin`
-		Weight::from_parts(17_000_000, 5991)
+		Weight::from_parts(30_117_000, 5991)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
