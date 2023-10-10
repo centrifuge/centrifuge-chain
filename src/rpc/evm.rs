@@ -26,7 +26,9 @@ use sc_client_api::{
 	client::BlockchainEvents,
 };
 use sc_network::NetworkService;
+use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
+use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool::{ChainApi, Pool};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
@@ -34,6 +36,8 @@ use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
+use cfg_primitives::{Block, Hash};
+use cfg_types::ParaId;
 
 /// Extra dependencies for Ethereum compatibility.
 pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
@@ -147,82 +151,108 @@ where
 		EthPubSubApiServer, EthSigner, Net, NetApiServer, Web3, Web3ApiServer,
 	};
 
-	let Deps {
-		client,
-		pool,
-		graph,
-		converter,
-		is_authority,
-		enable_dev_signer,
-		network,
-		frontier_backend,
-		overrides,
-		block_data_cache,
-		filter_pool,
-		max_past_logs,
-		fee_history_cache,
-		fee_history_cache_limit,
-		execute_gas_limit_multiplier,
-	} = deps;
 
-	let mut signers = Vec::new();
-	if enable_dev_signer {
-		signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
-	}
+	// todo(nuno): fix this below; do we need to use FullDeps like Moonbeam? Does that mean
+	// that this outter function's signature need to evolve to be like Moonbeam's `create_full`?
 
-	io.merge(
-		Eth::new(
-			client.clone(),
-			pool.clone(),
-			graph,
-			converter,
-			network.clone(),
-			vec![],
-			overrides.clone(),
-			frontier_backend.clone(),
-			is_authority,
-			block_data_cache.clone(),
-			fee_history_cache,
-			fee_history_cache_limit,
-			execute_gas_limit_multiplier,
-		)
-		.into_rpc(),
-	)?;
+	// let FullDeps { //todo(nuno): full deps here
+	// 	client,
+	// 	pool,
+	// 	graph,
+	// 	deny_unsafe,
+	// 	is_authority,
+	// 	network,
+	// 	sync,
+	// 	filter_pool,
+	// 	ethapi_cmd,
+	// 	command_sink,
+	// 	frontier_backend,
+	// 	backend: _,
+	// 	max_past_logs,
+	// 	fee_history_limit,
+	// 	fee_history_cache,
+	// 	xcm_senders,
+	// 	overrides,
+	// 	block_data_cache,
+	// 	forced_parent_hashes,
+	// } = deps;
+	//
+	// let mut signers = Vec::new();
+	// if enable_dev_signer {
+	// 	signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
+	// }
+	//
+	// // io.merge(
+	// // 	Eth::new(
+	// //
+	// // 		Arc::clone(&client),
+	// // 		Arc::clone(&pool),
+	// // 		graph.clone(),
+	// // 		convert_transaction,
+	// // 		todo!("nuno: pass sync here"), // Arc::clone(&sync),
+	// // 		signers,
+	// // 		Arc::clone(&overrides),
+	// // 		Arc::clone(&frontier_backend),
+	// // 		is_authority,
+	// // 		Arc::clone(&block_data_cache),
+	// // 		fee_history_cache,
+	// // 		fee_history_cache_limit,
+	// // 		execute_gas_limit_multiplier,
+	// // 		forced_parent_hashes,
+	// // 	)
+	// // 	.into_rpc(),
+	// // )?;
+	// //
+	// // io.merge(
+	// // 	EthFilter::new(
+	// // 		client.clone(),
+	// // 		frontier_backend.clone(),
+	// // 		fc_rpc::TxPool::new(client.clone(), graph.clone()),
+	// // 		filter_pool,
+	// // 		500_usize, // max stored filters
+	// // 		max_past_logs,
+	// // 		block_data_cache,
+	// // 	)
+	// // 	.into_rpc(),
+	// //
+	// // )?;
+	// //
+	// // io.merge(
+	// // 	EthPubSub::new(
+	// // 		pool,
+	// // 		Arc::clone(&client),
+	// // 		todo!("nuno: pass sync here"),
+	// // 		subscription_task_executor,
+	// // 		overrides,
+	// // 		pubsub_notification_sinks.clone(),
+	// // 	)
+	// // 	.into_rpc(),
+	// //
+	// // 	/*
+	// //
+	// // 	EthPubSub::new(
+	// // 		pool,
+	// // 		Arc::clone(&client),
+	// // 		sync.clone(),
+	// // 		subscription_task_executor,
+	// // 		overrides,
+	// // 		pubsub_notification_sinks.clone(),
+	// // 	)
+	// //
+	// // 	 */
+	// // )?;
 
-	io.merge(
-		EthFilter::new(
-			client.clone(),
-			frontier_backend,
-			filter_pool,
-			500_usize, // max stored filters
-			max_past_logs,
-			block_data_cache,
-		)
-		.into_rpc(),
-	)?;
-
-	io.merge(
-		EthPubSub::new(
-			pool,
-			client.clone(),
-			network.clone(),
-			subscription_task_executor,
-			overrides,
-		)
-		.into_rpc(),
-	)?;
-
-	io.merge(
-		Net::new(
-			client.clone(),
-			network,
-			// Whether to format the `peer_count` response as Hex (default) or not.
-			true,
-		)
-		.into_rpc(),
-	)?;
-
-	io.merge(Web3::new(client).into_rpc())?;
+	// io.merge(
+	// 	Net::new(
+	// 		client.clone(),
+	// 		network,
+	// 		// Whether to format the `peer_count` response as Hex (default) or not.
+	// 		true,
+	// 	)
+	// 	.into_rpc(),
+	// )?;
+	//
+	// io.merge(Web3::new(client).into_rpc())?;
 
 	Ok(io)
 }

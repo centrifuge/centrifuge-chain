@@ -29,7 +29,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
 use fc_consensus::Error;
-use fc_db::kv::Backend as FrontierBackend;
+use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
@@ -604,7 +604,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 
 		// substrate_backend: Arc<BE>,
 		// overrides: Arc<OverrideHandle<Block>>,
-		// frontier_backend: Arc<fc_db::kv::Backend<Block>>,
+		// frontier_backend: Arc<fc_db::Backend<Block>>,
 		// retry_times: usize,
 		// sync_from: <Block::Header as HeaderT>::Number,
 		// strategy: SyncStrategy,
