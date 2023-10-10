@@ -19,10 +19,7 @@ use sp_runtime::{
 use sp_timestamp::Timestamp;
 
 use crate::{
-	generic::{
-		environment::{Blocks, Env},
-		runtime::Runtime,
-	},
+	generic::{environment::Env, runtime::Runtime},
 	utils::accounts::Keyring,
 };
 
@@ -77,41 +74,6 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		})
 	}
 
-	fn pass(&mut self, blocks: Blocks<T>) {
-		self.ext.borrow_mut().execute_with(|| {
-			let next = frame_system::Pallet::<T>::block_number() + 1;
-
-			let end_block = match blocks {
-				Blocks::ByNumber(n) => next + n,
-				Blocks::BySeconds(secs) => {
-					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
-					if blocks % pallet_aura::Pallet::<T>::slot_duration() != 0 {
-						blocks as BlockNumber + 1
-					} else {
-						blocks as BlockNumber
-					}
-				}
-				Blocks::UntilEvent { limit, .. } => limit,
-			};
-
-			for i in next..end_block {
-				T::finalize_block();
-				Self::prepare_block(i);
-
-				if let Blocks::UntilEvent { event, .. } = blocks.clone() {
-					let event: T::RuntimeEventExt = event.into();
-					if frame_system::Pallet::<T>::events()
-						.into_iter()
-						.find(|record| record.event == event)
-						.is_some()
-					{
-						break;
-					}
-				}
-			}
-		})
-	}
-
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.ext.borrow_mut().execute_with(f)
 	}
@@ -124,6 +86,13 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			})
 			.unwrap()
 		})
+	}
+
+	fn __priv_build_block(&mut self, i: BlockNumber) {
+		self.state_mut(|| {
+			T::finalize_block();
+			Self::prepare_block(i);
+		});
 	}
 }
 

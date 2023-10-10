@@ -66,6 +66,7 @@ macro_rules! test_for_runtimes {
 
 /// TODO generate this for all runtimes with a macro
 mod fudge_handles {
+	use fudge::primitives::Chain;
 	use polkadot_core_primitives::Block as RelayBlock;
 	use sp_api::ConstructRuntimeApi;
 	use sp_runtime::Storage;
@@ -132,6 +133,16 @@ mod fudge_handles {
 		fn parachain_mut(&mut self) -> &mut Parachain {
 			&mut self.parachain
 		}
+
+		fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
+			self.with_state(chain, f).unwrap()
+		}
+
+		fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
+			self.with_mut_state(chain, f).unwrap()
+		}
+
+		fn evolve(&mut self) {}
 	}
 
 	impl FudgeSupport for development_runtime::Runtime {

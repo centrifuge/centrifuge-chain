@@ -8,6 +8,7 @@ use fudge::{
 		CreateInherentDataProviders, FudgeDummyInherentRelayParachain, FudgeInherentParaParachain,
 		FudgeInherentTimestamp,
 	},
+	primitives::Chain,
 	state::StateProvider,
 	TWasmExecutor,
 };
@@ -122,6 +123,10 @@ pub trait FudgeHandle {
 	fn parachain_mut(
 		&mut self,
 	) -> &mut ParachainBuilder<Self::ParachainBlock, Self::ParachainConstructApi>;
+
+	fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R;
+	fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R;
+	fn evolve(&mut self);
 
 	fn build(relay_storage: Storage, parachain_storage: Storage) -> Self;
 

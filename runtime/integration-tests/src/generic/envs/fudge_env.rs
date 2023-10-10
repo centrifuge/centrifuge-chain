@@ -1,13 +1,12 @@
 pub mod handle;
 
+use cfg_primitives::BlockNumber;
+use fudge::primitives::Chain;
 use handle::FudgeHandle;
 use sp_runtime::{DispatchResult, Storage};
 
 use crate::{
-	generic::{
-		environment::{Blocks, Env},
-		runtime::Runtime,
-	},
+	generic::{environment::Env, runtime::Runtime},
 	utils::accounts::Keyring,
 };
 
@@ -34,18 +33,17 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		todo!()
 	}
 
-	fn pass(&mut self, _blocks: Blocks<T>) {
-		// Access to the handle to do everything
-		todo!()
+	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.handle
+			.with_mut_state(Chain::Para(T::FudgeHandle::PARA_ID), f)
 	}
 
-	fn state_mut<R>(&mut self, _f: impl FnOnce() -> R) -> R {
-		// Access to the handle to do everything
-		todo!()
+	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.handle
+			.with_state(Chain::Para(T::FudgeHandle::PARA_ID), f)
 	}
 
-	fn state<R>(&self, _f: impl FnOnce() -> R) -> R {
-		// Access to the handle to do everything
-		todo!()
+	fn __priv_build_block(&mut self, _i: BlockNumber) {
+		self.handle.evolve();
 	}
 }

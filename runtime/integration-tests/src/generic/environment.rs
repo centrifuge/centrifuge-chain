@@ -30,7 +30,44 @@ pub trait Env<T: Runtime> {
 	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
 
 	/// Pass any number of blocks
-	fn pass(&mut self, blocks: Blocks<T>);
+	fn pass(&mut self, blocks: Blocks<T>) {
+		let (next, end_block) = self.state(|| {
+			let next = frame_system::Pallet::<T>::block_number() + 1;
+
+			let end_block = match blocks {
+				Blocks::ByNumber(n) => next + n,
+				Blocks::BySeconds(secs) => {
+					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
+					if blocks % pallet_aura::Pallet::<T>::slot_duration() != 0 {
+						blocks as BlockNumber + 1
+					} else {
+						blocks as BlockNumber
+					}
+				}
+				Blocks::UntilEvent { limit, .. } => limit,
+			};
+
+			(next, end_block)
+		});
+
+		for i in next..end_block {
+			self.__priv_build_block(i);
+
+			if let Blocks::UntilEvent { event, .. } = blocks.clone() {
+				let found = self.state(|| {
+					let event: T::RuntimeEventExt = event.into();
+					frame_system::Pallet::<T>::events()
+						.into_iter()
+						.find(|record| record.event == event)
+						.is_some()
+				});
+
+				if found {
+					break;
+				}
+			}
+		}
+	}
 
 	/// Allows to mutate the storage state through the closure
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
@@ -82,4 +119,6 @@ pub trait Env<T: Runtime> {
 		})
 		.expect("Expected transaction")
 	}
+
+	fn __priv_build_block(&mut self, i: BlockNumber);
 }
