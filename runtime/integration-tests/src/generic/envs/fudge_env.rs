@@ -2,8 +2,10 @@ pub mod handle;
 
 use cfg_primitives::BlockNumber;
 use fudge::primitives::Chain;
-use handle::FudgeHandle;
-use sp_runtime::{DispatchResult, Storage};
+use handle::{FudgeHandle, ParachainClient};
+use sc_client_api::HeaderBackend;
+use sp_api::{ApiRef, ProvideRuntimeApi};
+use sp_runtime::{generic::BlockId, DispatchResult, Storage};
 
 use crate::{
 	generic::{environment::Env, runtime::Runtime},
@@ -45,5 +47,31 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 
 	fn __priv_build_block(&mut self, _i: BlockNumber) {
 		self.handle.evolve();
+	}
+}
+
+type ApiRefOf<'a, T> =
+	ApiRef<
+		'a,
+		<ParachainClient<
+			<T as FudgeHandle>::ParachainBlock,
+			<T as FudgeHandle>::ParachainConstructApi,
+		> as sp_api::ProvideRuntimeApi<<T as FudgeHandle>::ParachainBlock>>::Api,
+	>;
+
+impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
+	pub fn with_api<F>(&self, exec: F)
+	where
+		F: FnOnce(
+			ApiRefOf<T::FudgeHandle>,
+			BlockId<<T::FudgeHandle as FudgeHandle>::ParachainBlock>,
+		),
+	{
+		let client = self.handle.parachain().client();
+		let best_hash = client.info().best_hash;
+		let api = client.runtime_api();
+		let best_hash = BlockId::hash(best_hash);
+
+		exec(api, best_hash);
 	}
 }

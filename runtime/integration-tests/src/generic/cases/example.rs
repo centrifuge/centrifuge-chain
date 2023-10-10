@@ -111,7 +111,7 @@ fn check_fee<T: Runtime>() {
 	});
 }
 
-fn using_fudge<T: Runtime + FudgeSupport>() {
+fn fudge_example<T: Runtime + FudgeSupport>() {
 	let _env = FudgeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
@@ -126,11 +126,34 @@ fn using_fudge<T: Runtime + FudgeSupport>() {
 	//TODO
 }
 
+fn fudge_call_api<T: Runtime + FudgeSupport>() {
+	let env = FudgeEnv::<T>::from_storage(
+		Genesis::default()
+			.add(pallet_aura::GenesisConfig::<T> {
+				authorities: vec![AuraId::from(Keyring::Charlie.public())],
+			})
+			.storage(),
+	);
+
+	// Exclusive from fudge environment.
+	// It uses a client to access the runtime api.
+	env.with_api(|api, latest| {
+		// We include the API we want to use
+		use sp_api::Core;
+
+		assert_eq!(
+			api.version(&latest).unwrap(),
+			<T as frame_system::Config>::Version::get()
+		);
+	})
+}
+
 // Generate tests for all runtimes
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
 crate::test_for_runtimes!(all, check_fee);
-crate::test_for_runtimes!([development], using_fudge);
+crate::test_for_runtimes!([development], fudge_example);
+crate::test_for_runtimes!([development], fudge_call_api);
 
 // Output: for `cargo test -p runtime-integration-tests transfer_balance`
 // running 6 tests
