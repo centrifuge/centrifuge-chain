@@ -36,6 +36,7 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = 
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 #sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -50,6 +51,7 @@ fp-self-contained = { git = "https://github.com/PureStake/frontier", branch = "m
 ## Substrate-Client
 node-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sc-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 #sc-consensus-uncles = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sc-service = { git = "https://github.com/paritytech/substrate", features = ["rocksdb", "test-helpers"], branch = "polkadot-v0.9.38" }

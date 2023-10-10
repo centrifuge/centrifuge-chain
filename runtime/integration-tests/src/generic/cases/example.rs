@@ -4,7 +4,10 @@ use frame_support::traits::Get;
 use crate::{
 	generic::{
 		environment::{Blocks, Env},
-		envs::runtime_env::RuntimeEnv,
+		envs::{
+			fudge_env::{FudgeEnv, FudgeSupport},
+			runtime_env::RuntimeEnv,
+		},
 		runtime::Runtime,
 		utils::genesis::Genesis,
 	},
@@ -16,6 +19,8 @@ fn transfer_balance<T: Runtime>() {
 	const FOR_FEES: Balance = 1 * CFG;
 
 	// Set up all GenesisConfig for your initial state
+	// You can choose `RuntimeEnv` by `FudgeEnv` to make it working with fudge
+	// environment.
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::default()
 			.add(pallet_aura::GenesisConfig::<T> {
@@ -106,10 +111,26 @@ fn check_fee<T: Runtime>() {
 	});
 }
 
+fn using_fudge<T: Runtime + FudgeSupport>() {
+	let _env = FudgeEnv::<T>::from_storage(
+		Genesis::default()
+			.add(pallet_aura::GenesisConfig::<T> {
+				authorities: vec![AuraId::from(Keyring::Charlie.public())],
+			})
+			.add(pallet_balances::GenesisConfig::<T> {
+				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+			})
+			.storage(),
+	);
+
+	//TODO
+}
+
 // Generate tests for all runtimes
-crate::test_for_runtimes!((development, altair, centrifuge), transfer_balance);
-crate::test_for_all_runtimes!(call_api);
-crate::test_for_all_runtimes!(check_fee);
+crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
+crate::test_for_runtimes!(all, call_api);
+crate::test_for_runtimes!(all, check_fee);
+crate::test_for_runtimes!([development], using_fudge);
 
 // Output: for `cargo test -p runtime-integration-tests transfer_balance`
 // running 6 tests

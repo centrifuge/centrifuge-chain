@@ -26,6 +26,8 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
+/// Evironment that interact directly with the runtime,
+/// without the usage of a client.
 pub struct RuntimeEnv<T: Runtime> {
 	nonce: Index,
 	ext: Rc<RefCell<sp_io::TestExternalities>>,
