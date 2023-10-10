@@ -31,18 +31,19 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	}
 
 	fn submit(&mut self, _who: Keyring, _call: impl Into<T::RuntimeCall>) -> DispatchResult {
+		// TODO: create extrinsic
+		// self.handle.parachain_mut().append_extrinsic(extrinsic)
+
 		// Access to the handle to do everything
 		todo!()
 	}
 
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
-		self.handle
-			.with_mut_state(Chain::Para(T::FudgeHandle::PARA_ID), f)
+		self.handle.parachain_mut().with_mut_state(f).unwrap()
 	}
 
 	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
-		self.handle
-			.with_state(Chain::Para(T::FudgeHandle::PARA_ID), f)
+		self.handle.parachain().with_state(f).unwrap()
 	}
 
 	fn __priv_build_block(&mut self, _i: BlockNumber) {
@@ -59,7 +60,16 @@ type ApiRefOf<'a, T> =
 		> as sp_api::ProvideRuntimeApi<<T as FudgeHandle>::ParachainBlock>>::Api,
 	>;
 
+/// Specialized fudge methods
 impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
+	pub fn chain_state_mut<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
+		self.handle.with_mut_state(chain, f)
+	}
+
+	pub fn chain_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
+		self.handle.with_state(chain, f)
+	}
+
 	pub fn with_api<F>(&self, exec: F)
 	where
 		F: FnOnce(

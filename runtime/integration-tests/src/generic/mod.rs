@@ -134,6 +134,10 @@ mod fudge_handles {
 			&mut self.parachain
 		}
 
+		fn append_extrinsic(&mut self, chain: Chain, extrinsic: Vec<u8>) -> Result<(), ()> {
+			self.append_extrinsic(chain, extrinsic)
+		}
+
 		fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
 			self.with_state(chain, f).unwrap()
 		}
@@ -142,7 +146,9 @@ mod fudge_handles {
 			self.with_mut_state(chain, f).unwrap()
 		}
 
-		fn evolve(&mut self) {}
+		fn evolve(&mut self) {
+			self.evolve().unwrap()
+		}
 	}
 
 	impl FudgeSupport for development_runtime::Runtime {

@@ -124,6 +124,8 @@ pub trait FudgeHandle {
 		&mut self,
 	) -> &mut ParachainBuilder<Self::ParachainBlock, Self::ParachainConstructApi>;
 
+	fn append_extrinsic(&mut self, chain: Chain, extrinsic: Vec<u8>) -> Result<(), ()>;
+
 	fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R;
 	fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R;
 	fn evolve(&mut self);
