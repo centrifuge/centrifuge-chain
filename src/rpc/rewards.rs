@@ -79,7 +79,10 @@ where
 	) -> RpcResult<Balance> {
 		let api = self.client.runtime_api();
 
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.compute_reward(at, domain, currency_id, account_id)
 			.map_err(|e| runtime_error("Unable to compute reward", e))?

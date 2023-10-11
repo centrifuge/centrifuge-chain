@@ -97,7 +97,10 @@ where
 {
 	fn currency(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.currency(at, pool_id)
 			.map_err(|e| runtime_error("Unable to query pool currency", e))?
@@ -111,7 +114,10 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<EpochSolution<Balance, MaxTranches>> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.inspect_epoch_solution(at, pool_id, solution)
 			.map_err(|e| runtime_error("Unable to query inspection for epoch solution", e))?
@@ -125,7 +131,10 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<BalanceRatio> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.tranche_token_price(at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche token price", e))?
@@ -138,7 +147,10 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<Vec<BalanceRatio>> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.tranche_token_prices(at, pool_id)
 			.map_err(|e| runtime_error("Unable to query tranche token prices.", e))?
@@ -147,7 +159,10 @@ where
 
 	fn tranche_ids(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Vec<TrancheId>> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.tranche_ids(at, pool_id)
 			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
@@ -161,7 +176,10 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<TrancheId> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.tranche_id(at, pool_id, tranche_index)
 			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
@@ -175,7 +193,10 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
-		let at = match at { Some(hash) => hash, None => self.client.info().best_hash, };
+		let at = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
+		};
 
 		api.tranche_currency(at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche currency.", e))?

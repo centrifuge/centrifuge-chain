@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{io::Write};
+use std::io::Write;
 
 use cfg_primitives::Block;
 use codec::Encode;
@@ -74,7 +74,8 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 #[cfg(feature = "try-runtime")]
 use try_runtime_cli::block_building_info::substrate_info;
 #[cfg(feature = "try-runtime")]
-/// The time internavel for block production on our chain in milliseconds (12 seconds to millis)
+/// The time internavel for block production on our chain in milliseconds (12
+/// seconds to millis)
 const BLOCK_TIME_MILLIS: u64 = 12 * 1_000;
 
 fn load_spec(
@@ -396,13 +397,10 @@ pub fn run() -> Result<()> {
 								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
 							})?;
 					Ok((
-						cmd.run::<
-						Block,
-						ExtendedHostFunctions<
+						cmd.run::<Block, ExtendedHostFunctions<
 							sp_io::SubstrateHostFunctions,
 							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-						>,
-						_>(Some(substrate_info(BLOCK_TIME_MILLIS))),
+						>, _>(Some(substrate_info(BLOCK_TIME_MILLIS))),
 						task_manager,
 					))
 				})
@@ -548,7 +546,6 @@ impl DefaultConfigurationValues for RelayChainCli {
 	fn prometheus_listen_port() -> u16 {
 		9616
 	}
-
 }
 
 impl CliConfiguration<Self> for RelayChainCli {

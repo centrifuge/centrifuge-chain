@@ -221,7 +221,12 @@ pub async fn start_altair_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
+			let module = rpc::evm::create(
+				module,
+				eth_deps,
+				subscription_task_executor,
+				Arc::new(Default::default()),
+			)?;
 			Ok(module)
 		},
 		build_altair_import_queue,
@@ -407,7 +412,12 @@ pub async fn start_centrifuge_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
+			let module = rpc::evm::create(
+				module,
+				eth_deps,
+				subscription_task_executor,
+				Arc::new(Default::default()),
+			)?;
 			Ok(module)
 		},
 		build_centrifuge_import_queue,
@@ -600,7 +610,12 @@ pub async fn start_development_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
+			let module = rpc::evm::create(
+				module,
+				eth_deps,
+				subscription_task_executor,
+				Arc::new(Default::default()),
+			)?;
 			Ok(module)
 		},
 		build_development_import_queue,

@@ -50,7 +50,7 @@ use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TaskM
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
-use sp_blockchain::{HeaderBackend};
+use sp_blockchain::HeaderBackend;
 use sp_consensus::Error as ConsensusError;
 use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
@@ -153,10 +153,7 @@ where
 		if *block.header.number() >= self.first_evm_block {
 			ensure_log(block.header.digest()).map_err(Error::from)?;
 		}
-		self.inner
-			.import_block(block)
-			.await
-			.map_err(Into::into)
+		self.inner.import_block(block).await.map_err(Into::into)
 	}
 }
 
@@ -165,8 +162,8 @@ impl<B: BlockT, I, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
 fn db_config_dir(config: &Configuration) -> PathBuf {
 	config.base_path.config_dir(config.chain_spec.id())
 
-	// todo!("nuno: not sure when this unwrap_or_else was ever called if `config.base_path` always returns?
-	// .unwrap_or_else(|| {
+	// todo!("nuno: not sure when this unwrap_or_else was ever called if
+	// `config.base_path` always returns? .unwrap_or_else(|| {
 	// 	BasePath::from_project("", "", &Cli::executable_name())
 	// 		.config_dir(config.chain_spec.id())
 	// })
@@ -424,7 +421,7 @@ where
 			block_announce_validator_builder: Some(Box::new(|_| {
 				Box::new(block_announce_validator)
 			})),
-			warp_sync_params: None
+			warp_sync_params: None,
 		})?;
 
 	let rpc_client = client.clone();
@@ -487,7 +484,7 @@ where
 		fee_history_cache.clone(),
 		eth_config.fee_history_limit,
 		sync_service.clone(),
-		Arc::new(Default::default())
+		Arc::new(Default::default()),
 	);
 
 	let announce_block = {
@@ -571,7 +568,8 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	pubsub_notification_sinks: Arc<
 		fc_mapping_sync::EthereumBlockNotificationSinks<
 			fc_mapping_sync::EthereumBlockNotification<Block>,
-		>>,
+		>,
+	>,
 ) where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
@@ -586,7 +584,6 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
-
 	match frontier_backend {
 		FrontierBackend::KeyValue(fb) => {
 			task_manager.spawn_essential_handle().spawn(
@@ -605,9 +602,9 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 					sync,
 					pubsub_notification_sinks,
 				)
-					.for_each(|()| future::ready(())),
+				.for_each(|()| future::ready(())),
 			);
-		},
+		}
 		// nuno: do we want to handle this?
 		#[cfg(feature = "sql")]
 		fc_db::Backend::Sql(fb) => {
@@ -630,7 +627,6 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 			);
 		}
 	}
-
 
 	// Spawn Frontier EthFilterApi maintenance task.
 	// Each filter is allowed to stay in the pool for 100 blocks.

@@ -12,6 +12,8 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
+use cfg_primitives::{Block, Hash};
+use cfg_types::ParaId;
 use fc_db::Backend as FrontierBackend;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
@@ -36,8 +38,6 @@ use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
-use cfg_primitives::{Block, Hash};
-use cfg_types::ParaId;
 
 /// Extra dependencies for Ethereum compatibility.
 pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
@@ -131,8 +131,8 @@ where
 }
 
 /// Instantiate Ethereum-compatible RPC extensions.
-//todo(nuno): Moonbeam calls this `create_full` and has the following signature:
-// pub fn create_full<C, P, BE, A>(
+//todo(nuno): Moonbeam calls this `create_full` and has the following
+// signature: pub fn create_full<C, P, BE, A>(
 // 	deps: FullDeps<C, P, A, BE>,
 // 	subscription_task_executor: SubscriptionTaskExecutor,
 // 	maybe_tracing_config: Option<TracingConfig>,
@@ -201,8 +201,8 @@ where
 	impl<T> fp_rpc::ConvertTransaction<T> for Never {
 		fn convert_transaction(&self, _transaction: pallet_ethereum::Transaction) -> T {
 			// The Never type is not instantiable, but this method requires the type to be
-			// instantiated to be called (`&self` parameter), so if the code compiles we have the
-			// guarantee that this function will never be called.
+			// instantiated to be called (`&self` parameter), so if the code compiles we
+			// have the guarantee that this function will never be called.
 			unreachable!()
 		}
 	}
@@ -210,7 +210,6 @@ where
 
 	io.merge(
 		Eth::new(
-
 			Arc::clone(&client),
 			Arc::clone(&pool),
 			graph.clone(),
