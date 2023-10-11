@@ -267,7 +267,6 @@ where
 
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
-	// nuno
 	let frontier_backend = FrontierBackend::KeyValue(fc_db::kv::Backend::open(
 		Arc::clone(&client),
 		&config.database,
@@ -453,7 +452,6 @@ where
 				deny,
 				subscription_task_executor,
 				network.clone(),
-				// nuno make this arc?
 				Arc::new(frontier_backend.clone()),
 				filter_pool.clone(),
 				fee_history_cache.clone(),
