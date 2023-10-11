@@ -20,37 +20,34 @@ mod cases {
 
 use runtime::{Runtime, RuntimeKind};
 
-macro_rules! impl_config {
-	($runtime:ident, $kind:ident) => {
-		impl Runtime for $runtime::Runtime {
-			type Block = $runtime::Block;
-			type RuntimeCallExt = $runtime::RuntimeCall;
-			type RuntimeEventExt = $runtime::RuntimeEvent;
-
-			const KIND: RuntimeKind = RuntimeKind::$kind;
-		}
-	};
-}
-
-impl_config!(development_runtime, Development);
-impl_config!(altair_runtime, Altair);
-impl_config!(centrifuge_runtime, Centrifuge);
-
-/// Generate tests for all runtimes
-/// See `example.rs` file for the usage
+/// Generate tests for the specified runtimes or all runtimes.
+/// Usage
 ///
-/// ```sh
-/// Output: for `cargo test -p runtime-integration-tests transfer_balance`
-/// running 3 tests
+/// ```rust
+/// use crate::generic::runtime::Runtime;
 ///
-/// test generic::cases::example::transfer_balance::altair ... ok
-/// test generic::cases::example::transfer_balance::development ... ok
-/// test generic::cases::example::transfer_balance::centrifuge ... ok
+/// fn foo<T: Runtime> {
+///     /// Your test here...
+/// }
+///
+/// crate::test_for_runtimes!([development, altair, centrifuge], foo);
 /// ```
+/// For the following command: `cargo test -p runtime-integration-tests foo`,
+/// it will generate the following output:
+///
+/// ```text
+/// test generic::foo::altair ... ok
+/// test generic::foo::development ... ok
+/// test generic::foo::centrifuge ... ok
+/// ```
+///
+/// Available input  for the first argument is:
+/// - Any combination of `development`, `altair`, `centrifuge` inside `[]`.
+/// - The world `all`.
 #[macro_export]
 macro_rules! test_for_runtimes {
-	( [ $($runtime:ident),* ], $name:ident ) => {
-		mod $name {
+	( [ $($runtime_name:ident),* ], $test_name:ident ) => {
+		mod $test_name {
 			use super::*;
 
             #[allow(unused)]
@@ -64,108 +61,137 @@ macro_rules! test_for_runtimes {
 
             $(
                 #[tokio::test]
-                async fn $runtime() {
-                    $name::<$runtime::Runtime>()
+                async fn $runtime_name() {
+                    $test_name::<$runtime_name::Runtime>()
                 }
             )*
 		}
 	};
-	( all , $name:ident ) => {
-		$crate::test_for_runtimes!([development, altair, centrifuge], $name);
+	( all , $test_name:ident ) => {
+		$crate::test_for_runtimes!([development, altair, centrifuge], $test_name);
     };
 }
 
-/// TODO generate this for all runtimes with a macro
-mod fudge_handles {
-	use fudge::primitives::Chain;
-	use polkadot_core_primitives::Block as RelayBlock;
-	use sp_api::ConstructRuntimeApi;
-	use sp_runtime::Storage;
+/// Implements the `Runtime` trait for a runtime
+macro_rules! impl_runtime {
+	($runtime_path:ident, $kind:ident) => {
+		impl Runtime for $runtime_path::Runtime {
+			type Block = $runtime_path::Block;
+			type RuntimeCallExt = $runtime_path::RuntimeCall;
+			type RuntimeEventExt = $runtime_path::RuntimeEvent;
 
-	use crate::generic::envs::fudge_env::{
-		handle::{FudgeHandle, ParachainBuilder, ParachainClient, RelayClient, RelaychainBuilder},
-		FudgeSupport,
+			const KIND: RuntimeKind = RuntimeKind::$kind;
+		}
 	};
-
-	const DEVELOPMENT_PARA_ID: u32 = 2000;
-
-	#[fudge::companion]
-	pub struct DevelopmentFudge {
-		#[fudge::relaychain]
-		pub relay: RelaychainBuilder<rococo_runtime::RuntimeApi, rococo_runtime::Runtime>,
-
-		#[fudge::parachain(DEVELOPMENT_PARA_ID)]
-		pub parachain:
-			ParachainBuilder<development_runtime::Block, development_runtime::RuntimeApi>,
-	}
-
-	// Implement for T only once when fudge::companion
-	// supports generic in the struct signature.
-	// Issue: https://github.com/centrifuge/fudge/issues/21
-	impl FudgeHandle<development_runtime::Runtime> for DevelopmentFudge {
-		type ParachainApi = <development_runtime::RuntimeApi as ConstructRuntimeApi<
-			development_runtime::Block,
-			ParachainClient<development_runtime::Block, Self::ParachainConstructApi>,
-		>>::RuntimeApi;
-		type ParachainConstructApi = development_runtime::RuntimeApi;
-		type RelayApi = <rococo_runtime::RuntimeApi as ConstructRuntimeApi<
-			RelayBlock,
-			RelayClient<Self::RelayConstructApi>,
-		>>::RuntimeApi;
-		type RelayConstructApi = rococo_runtime::RuntimeApi;
-		type RelayRuntime = rococo_runtime::Runtime;
-
-		const PARACHAIN_CODE: Option<&'static [u8]> = development_runtime::WASM_BINARY;
-		const PARA_ID: u32 = DEVELOPMENT_PARA_ID;
-		const RELAY_CODE: Option<&'static [u8]> = rococo_runtime::WASM_BINARY;
-
-		fn build(relay_storage: Storage, parachain_storage: Storage) -> Self {
-			let relay = Self::build_relay(relay_storage);
-			let parachain = Self::build_parachain(&relay, parachain_storage);
-
-			Self::new(relay, parachain).unwrap()
-		}
-
-		fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
-			&self.relay
-		}
-
-		fn relay_mut(
-			&mut self,
-		) -> &mut RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
-			&mut self.relay
-		}
-
-		fn parachain(
-			&self,
-		) -> &ParachainBuilder<development_runtime::Block, Self::ParachainConstructApi> {
-			&self.parachain
-		}
-
-		fn parachain_mut(
-			&mut self,
-		) -> &mut ParachainBuilder<development_runtime::Block, Self::ParachainConstructApi> {
-			&mut self.parachain
-		}
-
-		fn append_extrinsic(&mut self, chain: Chain, extrinsic: Vec<u8>) -> Result<(), ()> {
-			self.append_extrinsic(chain, extrinsic)
-		}
-
-		fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
-			self.with_state(chain, f).unwrap()
-		}
-
-		fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
-			self.with_mut_state(chain, f).unwrap()
-		}
-
-		fn evolve(&mut self) {
-			self.evolve().unwrap()
-		}
-	}
-
-	impl FudgeSupport for development_runtime::Runtime {
-		type FudgeHandle = DevelopmentFudge;
-	}
 }
+
+impl_runtime!(development_runtime, Development);
+impl_runtime!(altair_runtime, Altair);
+impl_runtime!(centrifuge_runtime, Centrifuge);
+
+/// Implements fudge support for a runtime
+macro_rules! impl_fudge_support {
+	(
+        $fudge_companion_type:ident,
+        $relay_path:ident,
+        $parachain_path:ident,
+        $parachain_id:literal
+    ) => {
+		const _: () = {
+			use fudge::primitives::Chain;
+			use polkadot_core_primitives::Block as RelayBlock;
+			use sp_api::ConstructRuntimeApi;
+			use sp_runtime::Storage;
+
+			use crate::generic::envs::fudge_env::{
+				handle::{
+					FudgeHandle, ParachainBuilder, ParachainClient, RelayClient, RelaychainBuilder,
+				},
+				FudgeSupport,
+			};
+
+			#[fudge::companion]
+			pub struct $fudge_companion_type {
+				#[fudge::relaychain]
+				pub relay: RelaychainBuilder<$relay_path::RuntimeApi, $relay_path::Runtime>,
+
+				#[fudge::parachain($parachain_id)]
+				pub parachain:
+					ParachainBuilder<$parachain_path::Block, $parachain_path::RuntimeApi>,
+			}
+
+			// Implement for T only one time when fudge::companion
+			// supports generic in the struct signature.
+			impl FudgeHandle<$parachain_path::Runtime> for $fudge_companion_type {
+				type ParachainApi = <$parachain_path::RuntimeApi as ConstructRuntimeApi<
+					$parachain_path::Block,
+					ParachainClient<$parachain_path::Block, Self::ParachainConstructApi>,
+				>>::RuntimeApi;
+				type ParachainConstructApi = $parachain_path::RuntimeApi;
+				type RelayApi = <$relay_path::RuntimeApi as ConstructRuntimeApi<
+					RelayBlock,
+					RelayClient<Self::RelayConstructApi>,
+				>>::RuntimeApi;
+				type RelayConstructApi = $relay_path::RuntimeApi;
+				type RelayRuntime = $relay_path::Runtime;
+
+				const PARACHAIN_CODE: Option<&'static [u8]> = $parachain_path::WASM_BINARY;
+				const PARA_ID: u32 = $parachain_id;
+				const RELAY_CODE: Option<&'static [u8]> = $relay_path::WASM_BINARY;
+
+				fn build(relay_storage: Storage, parachain_storage: Storage) -> Self {
+					let relay = Self::build_relay(relay_storage);
+					let parachain = Self::build_parachain(&relay, parachain_storage);
+
+					Self::new(relay, parachain).unwrap()
+				}
+
+				fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
+					&self.relay
+				}
+
+				fn relay_mut(
+					&mut self,
+				) -> &mut RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
+					&mut self.relay
+				}
+
+				fn parachain(
+					&self,
+				) -> &ParachainBuilder<$parachain_path::Block, Self::ParachainConstructApi> {
+					&self.parachain
+				}
+
+				fn parachain_mut(
+					&mut self,
+				) -> &mut ParachainBuilder<$parachain_path::Block, Self::ParachainConstructApi> {
+					&mut self.parachain
+				}
+
+				fn append_extrinsic(&mut self, chain: Chain, extrinsic: Vec<u8>) -> Result<(), ()> {
+					self.append_extrinsic(chain, extrinsic)
+				}
+
+				fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
+					self.with_state(chain, f).unwrap()
+				}
+
+				fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R {
+					self.with_mut_state(chain, f).unwrap()
+				}
+
+				fn evolve(&mut self) {
+					self.evolve().unwrap()
+				}
+			}
+
+			impl FudgeSupport for $parachain_path::Runtime {
+				type FudgeHandle = $fudge_companion_type;
+			}
+		};
+	};
+}
+
+impl_fudge_support!(FudgeDevelopment, rococo_runtime, development_runtime, 2000);
+impl_fudge_support!(FudgeAltair, kusama_runtime, altair_runtime, 2088);
+impl_fudge_support!(CentrifugeAltair, polkadot_runtime, centrifuge_runtime, 2031);

@@ -42,9 +42,6 @@ fn transfer_balance<T: Runtime>() {
 	)
 	.unwrap();
 
-	// Pass blocks to evolve the system
-	env.pass(Blocks::ByNumber(1));
-
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
 		from: Keyring::Alice.to_account_id(),
@@ -52,6 +49,9 @@ fn transfer_balance<T: Runtime>() {
 		amount: TRANSFER,
 	})
 	.unwrap();
+
+	// Pass blocks to evolve the system
+	env.pass(Blocks::ByNumber(1));
 
 	// Check the state
 	env.state(|| {
@@ -162,5 +162,5 @@ fn check_fee<T: Runtime>() {
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
 crate::test_for_runtimes!(all, check_fee);
-crate::test_for_runtimes!([development], fudge_transfer_balance);
-crate::test_for_runtimes!([development], fudge_call_api);
+crate::test_for_runtimes!(all, fudge_transfer_balance);
+crate::test_for_runtimes!(all, fudge_call_api);
