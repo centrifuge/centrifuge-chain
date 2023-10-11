@@ -64,10 +64,7 @@ pub trait Env<T: Runtime> {
 	}
 
 	/// Submit an extrinsic mutating the state
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		let extrinsic = self.create_extrinsic(who, call);
-		self.__priv_apply_extrinsic(extrinsic)
-	}
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T>) {
@@ -152,9 +149,4 @@ pub trait Env<T: Runtime> {
 	}
 
 	fn __priv_build_block(&mut self, i: BlockNumber);
-
-	fn __priv_apply_extrinsic(
-		&mut self,
-		extrinsic: <T::Block as Block>::Extrinsic,
-	) -> DispatchResult;
 }

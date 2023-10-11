@@ -99,8 +99,9 @@ mod fudge_handles {
 			ParachainBuilder<development_runtime::Block, development_runtime::RuntimeApi>,
 	}
 
-	// TODO: Implement for T only once when fudge::companion
+	// Implement for T only once when fudge::companion
 	// supports generic in the struct signature.
+	// Issue: https://github.com/centrifuge/fudge/issues/21
 	impl FudgeHandle<development_runtime::Runtime> for DevelopmentFudge {
 		type ParachainApi = <development_runtime::RuntimeApi as ConstructRuntimeApi<
 			development_runtime::Block,

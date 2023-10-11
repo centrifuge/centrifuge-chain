@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use cfg_primitives::{AuraId, BlockNumber, Header, Index};
+use cfg_primitives::{AuraId, BlockNumber, Header};
 use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
@@ -13,12 +13,15 @@ use frame_support::{
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
-	traits::{Block, Extrinsic},
-	Digest, DigestItem, DispatchError, DispatchResult, Storage, TransactionOutcome,
+	traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage,
+	TransactionOutcome,
 };
 use sp_timestamp::Timestamp;
 
-use crate::generic::{environment::Env, runtime::Runtime};
+use crate::{
+	generic::{environment::Env, runtime::Runtime},
+	utils::accounts::Keyring,
+};
 
 /// Evironment that interact directly with the runtime,
 /// without the usage of a client.
@@ -46,6 +49,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		}
 	}
 
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+		let extrinsic = self.create_extrinsic(who, call);
+		self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap())
+	}
+
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.ext.borrow_mut().execute_with(f)
 	}
@@ -65,13 +73,6 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			T::finalize_block();
 			Self::prepare_block(i);
 		});
-	}
-
-	fn __priv_apply_extrinsic(
-		&mut self,
-		extrinsic: <T::Block as Block>::Extrinsic,
-	) -> DispatchResult {
-		self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap())
 	}
 }
 

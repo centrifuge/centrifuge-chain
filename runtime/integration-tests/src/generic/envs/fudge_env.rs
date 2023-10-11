@@ -5,9 +5,12 @@ use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
-use sp_runtime::{generic::BlockId, traits::Block, DispatchError, DispatchResult, Storage};
+use sp_runtime::{generic::BlockId, DispatchError, DispatchResult, Storage};
 
-use crate::generic::{environment::Env, runtime::Runtime};
+use crate::{
+	generic::{environment::Env, runtime::Runtime},
+	utils::accounts::Keyring,
+};
 
 /// Trait that represent a runtime with Fudge support
 pub trait FudgeSupport: Runtime {
@@ -29,6 +32,19 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		Self { handle }
 	}
 
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+		let extrinsic = self.create_extrinsic(who, call);
+
+		self.handle
+			.parachain_mut()
+			.append_extrinsic(extrinsic)
+			.map(|_| ())
+			.map_err(|_| {
+				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
+				// More information, issue: https://github.com/centrifuge/fudge/issues/67
+			})
+	}
+
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.handle.parachain_mut().with_mut_state(f).unwrap()
 	}
@@ -39,20 +55,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 
 	fn __priv_build_block(&mut self, _i: BlockNumber) {
 		self.handle.evolve();
-	}
-
-	fn __priv_apply_extrinsic(
-		&mut self,
-		extrinsic: <T::Block as Block>::Extrinsic,
-	) -> DispatchResult {
-		self.handle
-			.parachain_mut()
-			.append_extrinsic(extrinsic)
-			.map(|_| ())
-			.map_err(|_| {
-				// More information, issue: https://github.com/centrifuge/fudge/issues/67
-				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
-			})
 	}
 }
 
