@@ -187,6 +187,7 @@ pub async fn start_altair_node(
 		      deny_unsafe,
 		      subscription_task_executor,
 		      network,
+			  sync_service,
 		      frontier_backend,
 		      filter_pool,
 		      fee_history_cache,
@@ -207,6 +208,7 @@ pub async fn start_altair_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
+				sync: sync_service.clone(),
 				frontier_backend: match frontier_backend.clone() {
 					fc_db::Backend::KeyValue(b) => Arc::new(b),
 					#[cfg(feature = "sql")]
@@ -377,6 +379,7 @@ pub async fn start_centrifuge_node(
 		      deny_unsafe,
 		      subscription_task_executor,
 		      network,
+			  sync_service,
 		      frontier_backend,
 		      filter_pool,
 		      fee_history_cache,
@@ -397,7 +400,7 @@ pub async fn start_centrifuge_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
-				// nuno
+				sync: sync_service.clone(),
 				frontier_backend: match frontier_backend.clone() {
 					fc_db::Backend::KeyValue(b) => Arc::new(b),
 					#[cfg(feature = "sql")]
@@ -572,6 +575,7 @@ pub async fn start_development_node(
 		      deny_unsafe,
 		      subscription_task_executor,
 		      network,
+			  sync_service,
 		      frontier_backend,
 		      filter_pool,
 		      fee_history_cache,
@@ -595,7 +599,7 @@ pub async fn start_development_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
-				//nuno
+				sync: sync_service.clone(),
 				frontier_backend: match frontier_backend.clone() {
 					fc_db::Backend::KeyValue(b) => Arc::new(b),
 					#[cfg(feature = "sql")]

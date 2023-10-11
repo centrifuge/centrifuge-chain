@@ -341,6 +341,7 @@ where
 			DenyUnsafe,
 			SubscriptionTaskExecutor,
 			Arc<NetworkService<Block, Hash>>,
+			Arc<SyncingService<Block>>,
 			FrontierBackend<Block>,
 			FilterPool,
 			FeeHistoryCache,
@@ -442,6 +443,7 @@ where
 		let fee_history_cache = fee_history_cache.clone();
 		let filter_pool = filter_pool.clone();
 		let overrides = overrides.clone();
+		let sync_service = sync_service.clone();
 		move |deny, subscription_task_executor| {
 			rpc_ext_builder(
 				rpc_client.clone(),
@@ -449,6 +451,7 @@ where
 				deny,
 				subscription_task_executor,
 				network.clone(),
+				sync_service.clone(),
 				frontier_backend.clone(),
 				filter_pool.clone(),
 				fee_history_cache.clone(),

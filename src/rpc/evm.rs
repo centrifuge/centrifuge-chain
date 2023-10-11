@@ -55,6 +55,8 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	pub enable_dev_signer: bool,
 	/// Network service
 	pub network: Arc<NetworkService<B, B::Hash>>,
+	/// Chain syncing service
+	pub sync: Arc<SyncingService<B>>,
 	/// Frontier Backend.
 	pub frontier_backend: Arc<dyn fc_db::BackendReader<B> + Send + Sync>,
 	/// Ethereum data access overrides.
@@ -86,6 +88,7 @@ impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
 			is_authority: self.is_authority,
 			enable_dev_signer: self.enable_dev_signer,
 			network: self.network.clone(),
+			sync: self.sync.clone(),
 			frontier_backend: self.frontier_backend.clone(),
 			overrides: self.overrides.clone(),
 			block_data_cache: self.block_data_cache.clone(),
@@ -130,25 +133,10 @@ where
 	})
 }
 
-/// Instantiate Ethereum-compatible RPC extensions.
-//todo(nuno): Moonbeam calls this `create_full` and has the following
-// signature: pub fn create_full<C, P, BE, A>(
-// 	deps: FullDeps<C, P, A, BE>,
-// 	subscription_task_executor: SubscriptionTaskExecutor,
-// 	maybe_tracing_config: Option<TracingConfig>,
-// 	pubsub_notification_sinks: Arc<
-// 		fc_mapping_sync::EthereumBlockNotificationSinks<
-// 			fc_mapping_sync::EthereumBlockNotification<Block>,
-// 		>,
-// 	>,
-// 	pending_consenus_data_provider: Box<dyn ConsensusDataProvider<Block>>,
-// ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
-//
 pub fn create<C, BE, P, A, CT, B>(
 	mut io: RpcModule<()>,
 	deps: Deps<C, P, A, CT, B>,
 	subscription_task_executor: SubscriptionTaskExecutor,
-	// nuno: add pubsub_notification_sinks
 	pubsub_notification_sinks: Arc<
 		fc_mapping_sync::EthereumBlockNotificationSinks<
 			fc_mapping_sync::EthereumBlockNotification<B>,
@@ -181,6 +169,7 @@ where
 		is_authority,
 		enable_dev_signer,
 		network,
+		sync,
 		frontier_backend,
 		overrides,
 		block_data_cache,
@@ -214,7 +203,7 @@ where
 			Arc::clone(&pool),
 			graph.clone(),
 			convert_transaction,
-			todo!("nuno: pass sync here"), // Arc::clone(&sync),
+			Arc::clone(&sync),
 			signers,
 			Arc::clone(&overrides),
 			Arc::clone(&frontier_backend),
@@ -234,7 +223,7 @@ where
 			frontier_backend.clone(),
 			fc_rpc::TxPool::new(client.clone(), graph.clone()),
 			filter_pool,
-			500_usize, // max stored filters
+			500_usize,
 			max_past_logs,
 			block_data_cache,
 		)
@@ -245,7 +234,7 @@ where
 		EthPubSub::new(
 			pool,
 			Arc::clone(&client),
-			todo!("nuno: pass sync here"),
+			Arc::clone(&sync),
 			subscription_task_executor,
 			overrides,
 			pubsub_notification_sinks.clone(),
