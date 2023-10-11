@@ -148,6 +148,12 @@ pub fn create<C, BE, P, A, CT, B>(
 	mut io: RpcModule<()>,
 	deps: Deps<C, P, A, CT, B>,
 	subscription_task_executor: SubscriptionTaskExecutor,
+	// nuno: add pubsub_notification_sinks
+	pubsub_notification_sinks: Arc<
+		fc_mapping_sync::EthereumBlockNotificationSinks<
+			fc_mapping_sync::EthereumBlockNotification<B>,
+		>,
+	>,
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
 	B: BlockT<Hash = H256>,
@@ -222,45 +228,44 @@ where
 		)
 		.into_rpc(),
 	)?;
-	// //
-	// // io.merge(
-	// // 	EthFilter::new(
-	// // 		client.clone(),
-	// // 		frontier_backend.clone(),
-	// // 		fc_rpc::TxPool::new(client.clone(), graph.clone()),
-	// // 		filter_pool,
-	// // 		500_usize, // max stored filters
-	// // 		max_past_logs,
-	// // 		block_data_cache,
-	// // 	)
-	// // 	.into_rpc(),
-	// //
-	// // )?;
-	// //
-	// // io.merge(
-	// // 	EthPubSub::new(
-	// // 		pool,
-	// // 		Arc::clone(&client),
-	// // 		todo!("nuno: pass sync here"),
-	// // 		subscription_task_executor,
-	// // 		overrides,
-	// // 		pubsub_notification_sinks.clone(),
-	// // 	)
-	// // 	.into_rpc(),
-	// //
-	// // 	/*
-	// //
-	// // 	EthPubSub::new(
-	// // 		pool,
-	// // 		Arc::clone(&client),
-	// // 		sync.clone(),
-	// // 		subscription_task_executor,
-	// // 		overrides,
-	// // 		pubsub_notification_sinks.clone(),
-	// // 	)
-	// //
-	// // 	 */
-	// // )?;
+
+	io.merge(
+		EthFilter::new(
+			client.clone(),
+			frontier_backend.clone(),
+			fc_rpc::TxPool::new(client.clone(), graph.clone()),
+			filter_pool,
+			500_usize, // max stored filters
+			max_past_logs,
+			block_data_cache,
+		)
+		.into_rpc(),
+	)?;
+
+	io.merge(
+		EthPubSub::new(
+			pool,
+			Arc::clone(&client),
+			todo!("nuno: pass sync here"),
+			subscription_task_executor,
+			overrides,
+			pubsub_notification_sinks.clone(),
+		)
+		.into_rpc(),
+
+		/*
+
+		EthPubSub::new(
+			pool,
+			Arc::clone(&client),
+			sync.clone(),
+			subscription_task_executor,
+			overrides,
+			pubsub_notification_sinks.clone(),
+		)
+
+		 */
+	)?;
 
 	// io.merge(
 	// 	Net::new(

@@ -461,10 +461,6 @@ where
 		}
 	};
 
-	let pubsub_notification_sinks: fc_mapping_sync::EthereumBlockNotificationSinks<
-		fc_mapping_sync::EthereumBlockNotification<Block>,
-	> = Default::default();
-
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
@@ -491,7 +487,7 @@ where
 		fee_history_cache.clone(),
 		eth_config.fee_history_limit,
 		sync_service.clone(),
-		Arc::new(pubsub_notification_sinks)
+		Arc::new(Default::default())
 	);
 
 	let announce_block = {

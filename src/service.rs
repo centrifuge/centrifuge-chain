@@ -221,7 +221,7 @@ pub async fn start_altair_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
 			Ok(module)
 		},
 		build_altair_import_queue,
@@ -407,7 +407,7 @@ pub async fn start_centrifuge_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
 			Ok(module)
 		},
 		build_centrifuge_import_queue,
@@ -549,6 +549,7 @@ pub async fn start_development_node(
 	Arc<FullClient<development_runtime::RuntimeApi>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
+
 	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -599,7 +600,8 @@ pub async fn start_development_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
+			// nuno pass pubsub_notification_sinks
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
 			Ok(module)
 		},
 		build_development_import_queue,
