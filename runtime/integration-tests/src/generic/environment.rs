@@ -40,13 +40,14 @@ pub trait Env<T: Runtime> {
 	) -> <T::Block as Block>::Extrinsic {
 		self.state(|| {
 			let runtime_call = call.into();
+			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 			let signed_extra = (
 				frame_system::CheckNonZeroSender::<T>::new(),
 				frame_system::CheckSpecVersion::<T>::new(),
 				frame_system::CheckTxVersion::<T>::new(),
 				frame_system::CheckGenesis::<T>::new(),
 				frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
-				frame_system::CheckNonce::<T>::from(0),
+				frame_system::CheckNonce::<T>::from(nonce),
 				frame_system::CheckWeight::<T>::new(),
 				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
 			);

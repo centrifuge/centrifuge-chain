@@ -23,7 +23,6 @@ use crate::generic::{environment::Env, runtime::Runtime};
 /// Evironment that interact directly with the runtime,
 /// without the usage of a client.
 pub struct RuntimeEnv<T: Runtime> {
-	nonce: Index,
 	ext: Rc<RefCell<sp_io::TestExternalities>>,
 	_config: PhantomData<T>,
 }
@@ -42,7 +41,6 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		ext.execute_with(|| Self::prepare_block(1));
 
 		Self {
-			nonce: 0,
 			ext: Rc::new(RefCell::new(ext)),
 			_config: PhantomData,
 		}
