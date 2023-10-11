@@ -267,11 +267,12 @@ where
 
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
-	let frontier_backend = Arc::new(FrontierBackend::open(
+	// nuno
+	let frontier_backend = Arc::new(FrontierBackend::KeyValue(fc_db::kv::Backend::open(
 		Arc::clone(&client),
 		&config.database,
 		&db_config_dir(config),
-	)?);
+	)?));
 
 	let import_queue = build_import_queue(
 		client.clone(),
