@@ -603,7 +603,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 					Duration::new(6, 0),
 					client.clone(),
 					backend,
-					overrides,
+					overrides.clone(),
 					Arc::new(fb),
 					3,
 					0,

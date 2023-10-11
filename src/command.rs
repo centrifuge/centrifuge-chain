@@ -71,6 +71,12 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 	}
 }
 
+#[cfg(feature = "try-runtime")]
+use try_runtime_cli::block_building_info::substrate_info;
+#[cfg(feature = "try-runtime")]
+/// The time internavel for block production on our chain in milliseconds (12 seconds to millis)
+const BLOCK_TIME_MILLIS: u64 = 12 * 1_000;
+
 fn load_spec(
 	id: &str,
 	para_id: ParaId,
@@ -372,6 +378,35 @@ pub fn run() -> Result<()> {
 			}
 
 			Ok(())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
+
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			with_runtime!(chain_spec, {
+				runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager =
+						sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
+							.map_err(|e| {
+								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
+							})?;
+					Ok((
+						cmd.run::<
+						Block,
+						ExtendedHostFunctions<
+							sp_io::SubstrateHostFunctions,
+							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
+						>,
+						_>(Some(substrate_info(BLOCK_TIME_MILLIS))),
+						task_manager,
+					))
+				})
+			})
 		}
 
 		Some(Subcommand::Benchmark(cmd)) => {
