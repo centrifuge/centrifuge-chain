@@ -19,6 +19,7 @@ use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
 };
+use sp_core::H256;
 use sp_runtime::traits::{AccountIdLookup, Block, Dispatchable, Member};
 
 /// Kind of runtime to check in runtime time
@@ -116,6 +117,7 @@ pub trait Runtime:
 
 	/// Block used by the runtime
 	type Block: Block<
+        Hash = H256,
 		Header = Header,
 		Extrinsic = UncheckedExtrinsic<
 			Address,

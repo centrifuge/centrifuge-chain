@@ -123,7 +123,23 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	)
 	.unwrap();
 
-	//TODO
+	env.pass(Blocks::ByNumber(1));
+
+	// Check the state
+	env.state(|| {
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			TRANSFER
+		);
+	});
+
+	// Check for an even occurred in this block
+	env.check_event(pallet_balances::Event::Transfer {
+		from: Keyring::Alice.to_account_id(),
+		to: Keyring::Bob.to_account_id(),
+		amount: TRANSFER,
+	})
+	.unwrap();
 }
 
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
@@ -142,15 +158,8 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	})
 }
 
-// Generate tests for all runtimes
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
 crate::test_for_runtimes!(all, check_fee);
 crate::test_for_runtimes!([development], fudge_transfer_balance);
 crate::test_for_runtimes!([development], fudge_call_api);
-
-// Output: for `cargo test -p runtime-integration-tests transfer_balance`
-// running 6 tests
-// test generic::cases::example::transfer_balance::altair ... ok
-// test generic::cases::example::transfer_balance::development ... ok
-// test generic::cases::example::transfer_balance::centrifuge ... ok

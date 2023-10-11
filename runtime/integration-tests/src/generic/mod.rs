@@ -36,6 +36,17 @@ impl_config!(development_runtime, Development);
 impl_config!(altair_runtime, Altair);
 impl_config!(centrifuge_runtime, Centrifuge);
 
+/// Generate tests for all runtimes
+/// See `example.rs` file for the usage
+///
+/// ```sh
+/// Output: for `cargo test -p runtime-integration-tests transfer_balance`
+/// running 3 tests
+///
+/// test generic::cases::example::transfer_balance::altair ... ok
+/// test generic::cases::example::transfer_balance::development ... ok
+/// test generic::cases::example::transfer_balance::centrifuge ... ok
+/// ```
 #[macro_export]
 macro_rules! test_for_runtimes {
 	( [ $($runtime:ident),* ], $name:ident ) => {
@@ -111,7 +122,7 @@ mod fudge_handles {
 			let relay = Self::build_relay(relay_storage);
 			let parachain = Self::build_parachain(&relay, parachain_storage);
 
-			Self { relay, parachain }
+			Self::new(relay, parachain).unwrap()
 		}
 
 		fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {

@@ -1,5 +1,10 @@
-use cfg_primitives::{Balance, BlockNumber, Moment};
-use sp_runtime::{DispatchResult, Storage};
+use cfg_primitives::{Address, Balance, BlockNumber, Moment};
+use codec::Encode;
+use sp_runtime::{
+	generic::{Era, SignedPayload},
+	traits::{Block, Extrinsic},
+	DispatchResult, MultiSignature, Storage,
+};
 
 use crate::{generic::runtime::Runtime, utils::accounts::Keyring};
 
@@ -26,8 +31,42 @@ pub trait Env<T: Runtime> {
 	/// Load the environment from a storage
 	fn from_storage(storage: Storage) -> Self;
 
+	/// Creates an extrinsic, used by mainly by the own environment.
+	/// To create and submit an extrinsic, see `submit()`
+	fn create_extrinsic(
+		&self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCall>,
+	) -> <T::Block as Block>::Extrinsic {
+		self.state(|| {
+			let runtime_call = call.into();
+			let signed_extra = (
+				frame_system::CheckNonZeroSender::<T>::new(),
+				frame_system::CheckSpecVersion::<T>::new(),
+				frame_system::CheckTxVersion::<T>::new(),
+				frame_system::CheckGenesis::<T>::new(),
+				frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
+				frame_system::CheckNonce::<T>::from(0),
+				frame_system::CheckWeight::<T>::new(),
+				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
+			);
+
+			let raw_payload =
+				SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
+			let signature =
+				MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
+
+			let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
+
+			<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap()
+		})
+	}
+
 	/// Submit an extrinsic mutating the state
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
+	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+		let extrinsic = self.create_extrinsic(who, call);
+		self.__priv_apply_extrinsic(extrinsic)
+	}
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T>) {
@@ -54,15 +93,7 @@ pub trait Env<T: Runtime> {
 			self.__priv_build_block(i);
 
 			if let Blocks::UntilEvent { event, .. } = blocks.clone() {
-				let found = self.state(|| {
-					let event: T::RuntimeEventExt = event.into();
-					frame_system::Pallet::<T>::events()
-						.into_iter()
-						.find(|record| record.event == event)
-						.is_some()
-				});
-
-				if found {
+				if self.check_event(event).is_some() {
 					break;
 				}
 			}
@@ -103,8 +134,7 @@ pub trait Env<T: Runtime> {
 			frame_system::Pallet::<T>::events()
 				.into_iter()
 				.rev()
-				.map(|record| record.event.try_into().ok())
-				.find_map(|event| event.map(|e| f(e)))
+				.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
 				.flatten()
 		})
 	}
@@ -121,4 +151,9 @@ pub trait Env<T: Runtime> {
 	}
 
 	fn __priv_build_block(&mut self, i: BlockNumber);
+
+	fn __priv_apply_extrinsic(
+		&mut self,
+		extrinsic: <T::Block as Block>::Extrinsic,
+	) -> DispatchResult;
 }

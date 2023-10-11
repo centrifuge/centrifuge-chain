@@ -225,7 +225,7 @@ pub trait FudgeHandle<T: Runtime> {
 			Some(std::time::Duration::from_millis(START_DATE)),
 		);
 
-		let cidp = Box::new(move |_parent, ()| {
+		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
 				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)

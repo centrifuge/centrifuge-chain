@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use cfg_primitives::{Address, AuraId, BlockNumber, Header, Index};
+use cfg_primitives::{AuraId, BlockNumber, Header, Index};
 use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
@@ -13,16 +13,12 @@ use frame_support::{
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{
-	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
-	Digest, DigestItem, DispatchError, DispatchResult, MultiSignature, Storage, TransactionOutcome,
+	Digest, DigestItem, DispatchError, DispatchResult, Storage, TransactionOutcome,
 };
 use sp_timestamp::Timestamp;
 
-use crate::{
-	generic::{environment::Env, runtime::Runtime},
-	utils::accounts::Keyring,
-};
+use crate::generic::{environment::Env, runtime::Runtime};
 
 /// Evironment that interact directly with the runtime,
 /// without the usage of a client.
@@ -52,36 +48,6 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		}
 	}
 
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		self.ext.borrow_mut().execute_with(|| {
-			let runtime_call = call.into();
-			let signed_extra = (
-				frame_system::CheckNonZeroSender::<T>::new(),
-				frame_system::CheckSpecVersion::<T>::new(),
-				frame_system::CheckTxVersion::<T>::new(),
-				frame_system::CheckGenesis::<T>::new(),
-				frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
-				frame_system::CheckNonce::<T>::from(self.nonce),
-				frame_system::CheckWeight::<T>::new(),
-				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
-			);
-
-			let raw_payload =
-				SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
-			let signature =
-				MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
-
-			let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
-
-			let extrinsic =
-				<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap();
-
-			self.nonce += 1;
-
-			T::apply_extrinsic(extrinsic).unwrap()
-		})
-	}
-
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.ext.borrow_mut().execute_with(f)
 	}
@@ -101,6 +67,13 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			T::finalize_block();
 			Self::prepare_block(i);
 		});
+	}
+
+	fn __priv_apply_extrinsic(
+		&mut self,
+		extrinsic: <T::Block as Block>::Extrinsic,
+	) -> DispatchResult {
+		self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap())
 	}
 }
 

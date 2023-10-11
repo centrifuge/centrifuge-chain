@@ -1,21 +1,13 @@
 pub mod handle;
 
-use cfg_primitives::{Address, BlockNumber};
-use codec::Encode;
+use cfg_primitives::BlockNumber;
 use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
-use sp_runtime::{
-	generic::{BlockId, Era, SignedPayload},
-	traits::{Block, Extrinsic},
-	DispatchResult, MultiSignature, Storage,
-};
+use sp_runtime::{generic::BlockId, traits::Block, DispatchError, DispatchResult, Storage};
 
-use crate::{
-	generic::{environment::Env, runtime::Runtime},
-	utils::accounts::Keyring,
-};
+use crate::generic::{environment::Env, runtime::Runtime};
 
 /// Trait that represent a runtime with Fudge support
 pub trait FudgeSupport: Runtime {
@@ -30,39 +22,11 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn from_storage(storage: Storage) -> Self {
-		Self {
-			handle: T::FudgeHandle::build(Storage::default(), storage),
-		}
-	}
+		let mut handle = T::FudgeHandle::build(Storage::default(), storage);
 
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		let runtime_call = call.into();
-		let signed_extra = (
-			frame_system::CheckNonZeroSender::<T>::new(),
-			frame_system::CheckSpecVersion::<T>::new(),
-			frame_system::CheckTxVersion::<T>::new(),
-			frame_system::CheckGenesis::<T>::new(),
-			frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
-			frame_system::CheckNonce::<T>::from(0),
-			frame_system::CheckWeight::<T>::new(),
-			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
-		);
+		handle.evolve();
 
-		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
-		let signature =
-			MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
-
-		let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
-
-		let extrinsic =
-			<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap();
-
-		self.handle
-			.parachain_mut()
-			.append_extrinsic(extrinsic)
-			.unwrap();
-
-		Ok(())
+		Self { handle }
 	}
 
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
@@ -75,6 +39,20 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 
 	fn __priv_build_block(&mut self, _i: BlockNumber) {
 		self.handle.evolve();
+	}
+
+	fn __priv_apply_extrinsic(
+		&mut self,
+		extrinsic: <T::Block as Block>::Extrinsic,
+	) -> DispatchResult {
+		self.handle
+			.parachain_mut()
+			.append_extrinsic(extrinsic)
+			.map(|_| ())
+			.map_err(|_| {
+				// More information, issue: https://github.com/centrifuge/fudge/issues/67
+				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
+			})
 	}
 }
 
