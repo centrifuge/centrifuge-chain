@@ -151,7 +151,7 @@ development-runtime = { path = "runtime/development", default-features = false }
 runtime-common = { path = "runtime/common" }
 
 # benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.43" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 # integration testing
 runtime-integration-tests = { path = "runtime/integration-tests", optional = true, default-features = false }
