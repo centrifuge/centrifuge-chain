@@ -192,7 +192,7 @@ pub fn new_partial<RuntimeApi, BIQ>(
 			ParachainBlockImport<RuntimeApi>,
 			Option<Telemetry>,
 			Option<TelemetryWorkerHandle>,
-			Arc<FrontierBackend<Block>>,
+			FrontierBackend<Block>,
 			FilterPool,
 			FeeHistoryCache,
 		),
@@ -268,11 +268,11 @@ where
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
 	// nuno
-	let frontier_backend = Arc::new(FrontierBackend::KeyValue(fc_db::kv::Backend::open(
+	let frontier_backend = FrontierBackend::KeyValue(fc_db::kv::Backend::open(
 		Arc::clone(&client),
 		&config.database,
 		&db_config_dir(config),
-	)?));
+	)?);
 
 	let import_queue = build_import_queue(
 		client.clone(),
@@ -280,7 +280,7 @@ where
 		config,
 		telemetry.as_ref().map(|telemetry| telemetry.handle()),
 		&task_manager,
-		frontier_backend.clone(),
+		Arc::new(frontier_backend.clone()),
 		first_evm_block,
 	)?;
 
@@ -372,8 +372,6 @@ where
 		&TaskManager,
 		Arc<dyn RelayChainInterface>,
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
-		// nuno: this below becomes SyncingService
-		// Arc<NetworkService<Block, Hash>>,
 		Arc<SyncingService<Block>>,
 		KeystorePtr,
 		bool,
@@ -455,7 +453,8 @@ where
 				deny,
 				subscription_task_executor,
 				network.clone(),
-				frontier_backend.clone(),
+				// nuno make this arc?
+				Arc::new(frontier_backend.clone()),
 				filter_pool.clone(),
 				fee_history_cache.clone(),
 				overrides.clone(),
@@ -463,6 +462,10 @@ where
 			)
 		}
 	};
+
+	let pubsub_notification_sinks: fc_mapping_sync::EthereumBlockNotificationSinks<
+		fc_mapping_sync::EthereumBlockNotification<Block>,
+	> = Default::default();
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),
@@ -479,6 +482,7 @@ where
 		telemetry: telemetry.as_mut(),
 	})?;
 
+	// do we need this at all?
 	spawn_frontier_tasks::<RuntimeApi, Executor>(
 		&task_manager,
 		client.clone(),
@@ -488,6 +492,8 @@ where
 		overrides,
 		fee_history_cache.clone(),
 		eth_config.fee_history_limit,
+		sync_service.clone(),
+		Arc::new(pubsub_notification_sinks)
 	);
 
 	let announce_block = {
@@ -562,12 +568,12 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	client: Arc<FullClient<RuntimeApi>>,
 	backend: Arc<TFullBackend<Block>>,
-	frontier_backend: Arc<FrontierBackend<Block>>,
+	frontier_backend: FrontierBackend<Block>,
 	filter_pool: FilterPool,
 	overrides: Arc<OverrideHandle<Block>>,
 	fee_history_cache: FeeHistoryCache,
 	fee_history_cache_limit: FeeHistoryCacheLimit,
-	sync: Arc<sc_network_sync::SyncingService<Block>>,
+	sync: Arc<SyncingService<Block>>,
 	pubsub_notification_sinks: Arc<
 		fc_mapping_sync::EthereumBlockNotificationSinks<
 			fc_mapping_sync::EthereumBlockNotification<Block>,
@@ -586,36 +592,51 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
-	task_manager.spawn_essential_handle().spawn(
-		"frontier-mapping-sync-worker",
-		None,
-		MappingSyncWorker::new(
-			client.import_notification_stream(),
-			Duration::new(6, 0),
-			client.clone(),
-			backend,
-			overrides,
-			frontier_backend,
-			3,
-			0,
-			SyncStrategy::Parachain,
-			sync,
-			pubsub_notification_sinks,
-		)
-		.for_each(|()| future::ready(())),
 
+	match frontier_backend {
+		FrontierBackend::KeyValue(fb) => {
+			task_manager.spawn_essential_handle().spawn(
+				"frontier-mapping-sync-worker",
+				None,
+				MappingSyncWorker::new(
+					client.import_notification_stream(),
+					Duration::new(6, 0),
+					client.clone(),
+					backend,
+					overrides,
+					Arc::new(fb),
+					3,
+					0,
+					SyncStrategy::Parachain,
+					sync,
+					pubsub_notification_sinks,
+				)
+					.for_each(|()| future::ready(())),
+			);
+		},
+		// nuno: do we want to handle this?
+		#[cfg(feature = "sql")]
+		fc_db::Backend::Sql(fb) => {
+			task_manager.spawn_essential_handle().spawn_blocking(
+				"frontier-mapping-sync-worker",
+				Some("frontier"),
+				fc_mapping_sync::sql::SyncWorker::run(
+					client.clone(),
+					backend.clone(),
+					Arc::new(fb),
+					client.import_notification_stream(),
+					fc_mapping_sync::sql::SyncWorkerConfig {
+						read_notification_timeout: Duration::from_secs(10),
+						check_indexed_blocks_interval: Duration::from_secs(60),
+					},
+					fc_mapping_sync::SyncStrategy::Parachain,
+					sync.clone(),
+					pubsub_notification_sinks.clone(),
+				),
+			);
+		}
+	}
 
-
-		// substrate_backend: Arc<BE>,
-		// overrides: Arc<OverrideHandle<Block>>,
-		// frontier_backend: Arc<fc_db::Backend<Block>>,
-		// retry_times: usize,
-		// sync_from: <Block::Header as HeaderT>::Number,
-		// strategy: SyncStrategy,
-		// sync_oracle: Arc<dyn SyncOracle + Send + Sync + 'static>,
-		// pubsub_notification_sinks: Arc<
-		// 	crate::EthereumBlockNotificationSinks<crate::EthereumBlockNotification<Block>>,
-	);
 
 	// Spawn Frontier EthFilterApi maintenance task.
 	// Each filter is allowed to stay in the pool for 100 blocks.
