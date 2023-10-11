@@ -162,7 +162,7 @@ impl<B: BlockT, I, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
 fn db_config_dir(config: &Configuration) -> PathBuf {
 	config.base_path.config_dir(config.chain_spec.id())
 
-	// todo!("nuno: not sure when this unwrap_or_else was ever called if
+	// todo!("nuno/reviews: not sure when this unwrap_or_else was ever called if
 	// `config.base_path` always returns? .unwrap_or_else(|| {
 	// 	BasePath::from_project("", "", &Cli::executable_name())
 	// 		.config_dir(config.chain_spec.id())
