@@ -56,7 +56,7 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	/// Network service
 	pub network: Arc<NetworkService<B, B::Hash>>,
 	/// Frontier Backend.
-	pub frontier_backend: Arc<FrontierBackend<B>>,
+	pub frontier_backend: Arc<dyn fc_db::BackendReader<B> + Send + Sync>,
 	/// Ethereum data access overrides.
 	pub overrides: Arc<OverrideHandle<B>>,
 	/// Cache for Ethereum block data.
@@ -72,6 +72,8 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	/// Maximum allowed gas limit will be ` block.gas_limit *
 	/// execute_gas_limit_multiplier` when using eth_call/eth_estimateGas.
 	pub execute_gas_limit_multiplier: u64,
+	/// Mandated parent hashes for a given block hash.
+	pub forced_parent_hashes: Option<BTreeMap<H256, H256>>,
 }
 
 impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
@@ -92,6 +94,7 @@ impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
 			fee_history_cache: self.fee_history_cache.clone(),
 			fee_history_cache_limit: self.fee_history_cache_limit,
 			execute_gas_limit_multiplier: self.execute_gas_limit_multiplier,
+			forced_parent_hashes: self.forced_parent_hashes.clone(),
 		}
 	}
 }
@@ -128,6 +131,19 @@ where
 }
 
 /// Instantiate Ethereum-compatible RPC extensions.
+//todo(nuno): Moonbeam calls this `create_full` and has the following signature:
+// pub fn create_full<C, P, BE, A>(
+// 	deps: FullDeps<C, P, A, BE>,
+// 	subscription_task_executor: SubscriptionTaskExecutor,
+// 	maybe_tracing_config: Option<TracingConfig>,
+// 	pubsub_notification_sinks: Arc<
+// 		fc_mapping_sync::EthereumBlockNotificationSinks<
+// 			fc_mapping_sync::EthereumBlockNotification<Block>,
+// 		>,
+// 	>,
+// 	pending_consenus_data_provider: Box<dyn ConsensusDataProvider<Block>>,
+// ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
+//
 pub fn create<C, BE, P, A, CT, B>(
 	mut io: RpcModule<()>,
 	deps: Deps<C, P, A, CT, B>,
@@ -151,57 +167,61 @@ where
 		EthPubSubApiServer, EthSigner, Net, NetApiServer, Web3, Web3ApiServer,
 	};
 
+	let Deps {
+		client,
+		pool,
+		graph,
+		converter,
+		is_authority,
+		enable_dev_signer,
+		network,
+		frontier_backend,
+		overrides,
+		block_data_cache,
+		filter_pool,
+		max_past_logs,
+		fee_history_cache,
+		fee_history_cache_limit,
+		execute_gas_limit_multiplier,
+		forced_parent_hashes,
+	} = deps;
 
-	// todo(nuno): fix this below; do we need to use FullDeps like Moonbeam? Does that mean
-	// that this outter function's signature need to evolve to be like Moonbeam's `create_full`?
+	let mut signers = Vec::new();
+	if enable_dev_signer {
+		signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
+	}
 
-	// let FullDeps { //todo(nuno): full deps here
-	// 	client,
-	// 	pool,
-	// 	graph,
-	// 	deny_unsafe,
-	// 	is_authority,
-	// 	network,
-	// 	sync,
-	// 	filter_pool,
-	// 	ethapi_cmd,
-	// 	command_sink,
-	// 	frontier_backend,
-	// 	backend: _,
-	// 	max_past_logs,
-	// 	fee_history_limit,
-	// 	fee_history_cache,
-	// 	xcm_senders,
-	// 	overrides,
-	// 	block_data_cache,
-	// 	forced_parent_hashes,
-	// } = deps;
-	//
-	// let mut signers = Vec::new();
-	// if enable_dev_signer {
-	// 	signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
-	// }
-	//
-	// // io.merge(
-	// // 	Eth::new(
-	// //
-	// // 		Arc::clone(&client),
-	// // 		Arc::clone(&pool),
-	// // 		graph.clone(),
-	// // 		convert_transaction,
-	// // 		todo!("nuno: pass sync here"), // Arc::clone(&sync),
-	// // 		signers,
-	// // 		Arc::clone(&overrides),
-	// // 		Arc::clone(&frontier_backend),
-	// // 		is_authority,
-	// // 		Arc::clone(&block_data_cache),
-	// // 		fee_history_cache,
-	// // 		fee_history_cache_limit,
-	// // 		execute_gas_limit_multiplier,
-	// // 		forced_parent_hashes,
-	// // 	)
-	// // 	.into_rpc(),
-	// // )?;
+	enum Never {}
+	impl<T> fp_rpc::ConvertTransaction<T> for Never {
+		fn convert_transaction(&self, _transaction: pallet_ethereum::Transaction) -> T {
+			// The Never type is not instantiable, but this method requires the type to be
+			// instantiated to be called (`&self` parameter), so if the code compiles we have the
+			// guarantee that this function will never be called.
+			unreachable!()
+		}
+	}
+	let convert_transaction: Option<Never> = None;
+
+	io.merge(
+		Eth::new(
+
+			Arc::clone(&client),
+			Arc::clone(&pool),
+			graph.clone(),
+			convert_transaction,
+			todo!("nuno: pass sync here"), // Arc::clone(&sync),
+			signers,
+			Arc::clone(&overrides),
+			Arc::clone(&frontier_backend),
+			is_authority,
+			Arc::clone(&block_data_cache),
+			fee_history_cache,
+			fee_history_cache_limit,
+			execute_gas_limit_multiplier,
+			forced_parent_hashes,
+		)
+		.into_rpc(),
+	)?;
 	// //
 	// // io.merge(
 	// // 	EthFilter::new(

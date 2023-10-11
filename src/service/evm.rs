@@ -214,7 +214,7 @@ where
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
+		FrontierBackend<Block>,
 		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
@@ -279,7 +279,7 @@ where
 		config,
 		telemetry.as_ref().map(|telemetry| telemetry.handle()),
 		&task_manager,
-		Arc::new(frontier_backend.clone()),
+		frontier_backend.clone(),
 		first_evm_block,
 	)?;
 
@@ -344,7 +344,7 @@ where
 			DenyUnsafe,
 			SubscriptionTaskExecutor,
 			Arc<NetworkService<Block, Hash>>,
-			Arc<FrontierBackend<Block>>,
+			FrontierBackend<Block>,
 			FilterPool,
 			FeeHistoryCache,
 			Arc<OverrideHandle<Block>>,
@@ -357,7 +357,7 @@ where
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
+		FrontierBackend<Block>,
 		BlockNumber,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
@@ -452,7 +452,7 @@ where
 				deny,
 				subscription_task_executor,
 				network.clone(),
-				Arc::new(frontier_backend.clone()),
+				frontier_backend.clone(),
 				filter_pool.clone(),
 				fee_history_cache.clone(),
 				overrides.clone(),

@@ -168,6 +168,7 @@ fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default
 fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -199,6 +200,7 @@ std = [
   "fp-consensus/std",
   "fp-rpc/std",
   "fp-storage/std",
+  "pallet-ethereum/std",
   "futures/std",
   "frame-benchmarking/std",
   "frame-system-benchmarking/std",
@@ -225,7 +227,6 @@ std = [
   "cumulus-pallet-session-benchmarking/std",
   "fp-consensus/std",
   "fp-rpc/std",
-  "fp-storage/std",
   "futures/std",
   "sp-io/std",
   "getrandom/std",
@@ -252,6 +253,7 @@ runtime-benchmarks = [
   "runtime-integration-tests/runtime-benchmarks",
   "sc-service/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
 ]
 cli = [
   "try-runtime-cli",
@@ -269,7 +271,8 @@ try-runtime = [
   "polkadot-cli/try-runtime",
   "polkadot-service/try-runtime",
   "runtime-common/try-runtime",
-  'sp-runtime/try-runtime',
+  "sp-runtime/try-runtime",
+  "pallet-ethereum/try-runtime",
 ]
 
 fast-runtime = [

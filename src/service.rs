@@ -123,7 +123,7 @@ pub fn build_altair_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	frontier_backend: Arc<FrontierBackend<Block>>,
+	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
@@ -134,7 +134,7 @@ pub fn build_altair_import_queue(
 		block_import,
 		first_evm_block,
 		client.clone(),
-		frontier_backend,
+		Arc::new(frontier_backend),
 	);
 
 	cumulus_client_consensus_aura::import_queue::<
@@ -207,7 +207,11 @@ pub async fn start_altair_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
-				frontier_backend,
+				frontier_backend: match frontier_backend.clone() {
+					fc_db::Backend::KeyValue(b) => Arc::new(b),
+					#[cfg(feature = "sql")]
+					fc_db::Backend::Sql(b) => Arc::new(b),
+				},
 				overrides,
 				block_data_cache,
 				filter_pool,
@@ -215,6 +219,7 @@ pub async fn start_altair_node(
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
+				forced_parent_hashes: None,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
@@ -303,7 +308,7 @@ pub fn build_centrifuge_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	frontier_backend: Arc<FrontierBackend<Block>>,
+	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
@@ -314,7 +319,7 @@ pub fn build_centrifuge_import_queue(
 		block_import,
 		first_evm_block,
 		client.clone(),
-		frontier_backend,
+		Arc::new(frontier_backend),
 	);
 
 	cumulus_client_consensus_aura::import_queue::<
@@ -387,7 +392,12 @@ pub async fn start_centrifuge_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
-				frontier_backend,
+				// nuno
+				frontier_backend: match frontier_backend.clone() {
+					fc_db::Backend::KeyValue(b) => Arc::new(b),
+					#[cfg(feature = "sql")]
+					fc_db::Backend::Sql(b) => Arc::new(b),
+				},
 				overrides,
 				block_data_cache,
 				filter_pool,
@@ -395,6 +405,7 @@ pub async fn start_centrifuge_node(
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
+				forced_parent_hashes: None,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
@@ -483,7 +494,7 @@ pub fn build_development_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	frontier_backend: Arc<FrontierBackend<Block>>,
+	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<development_runtime::RuntimeApi>>,
@@ -494,7 +505,7 @@ pub fn build_development_import_queue(
 		block_import,
 		first_evm_block,
 		client.clone(),
-		frontier_backend,
+		Arc::new(frontier_backend),
 	);
 
 	cumulus_client_consensus_aura::import_queue::<
@@ -573,7 +584,12 @@ pub async fn start_development_node(
 				is_authority,
 				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
-				frontier_backend,
+				//nuno
+				frontier_backend: match frontier_backend.clone() {
+					fc_db::Backend::KeyValue(b) => Arc::new(b),
+					#[cfg(feature = "sql")]
+					fc_db::Backend::Sql(b) => Arc::new(b),
+				},
 				overrides,
 				block_data_cache,
 				filter_pool,
@@ -581,6 +597,7 @@ pub async fn start_development_node(
 				fee_history_cache,
 				fee_history_cache_limit: eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
+				forced_parent_hashes: None,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
