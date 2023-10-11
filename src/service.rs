@@ -600,7 +600,6 @@ pub async fn start_development_node(
 				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 				forced_parent_hashes: None,
 			};
-			// nuno pass pubsub_notification_sinks
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor, Arc::new(Default::default()))?;
 			Ok(module)
 		},

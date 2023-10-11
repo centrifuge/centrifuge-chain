@@ -252,32 +252,19 @@ where
 			pubsub_notification_sinks.clone(),
 		)
 		.into_rpc(),
-
-		/*
-
-		EthPubSub::new(
-			pool,
-			Arc::clone(&client),
-			sync.clone(),
-			subscription_task_executor,
-			overrides,
-			pubsub_notification_sinks.clone(),
-		)
-
-		 */
 	)?;
 
-	// io.merge(
-	// 	Net::new(
-	// 		client.clone(),
-	// 		network,
-	// 		// Whether to format the `peer_count` response as Hex (default) or not.
-	// 		true,
-	// 	)
-	// 	.into_rpc(),
-	// )?;
-	//
-	// io.merge(Web3::new(client).into_rpc())?;
+	io.merge(
+		Net::new(
+			client.clone(),
+			network,
+			// Whether to format the `peer_count` response as Hex (default) or not.
+			true,
+		)
+		.into_rpc(),
+	)?;
+
+	io.merge(Web3::new(client).into_rpc())?;
 
 	Ok(io)
 }
