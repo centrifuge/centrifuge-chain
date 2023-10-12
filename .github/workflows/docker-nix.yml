@@ -1,31 +1,31 @@
-name: docker
-on:
-  push:
-    branches: [main, parachain, 'release-v**']
-jobs:
-  docker:
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-        target: [".#dockerImage", ".#dockerImageFastRuntime"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: cachix/install-nix-action@v17
-        with:
-          install_url: https://releases.nixos.org/nix/nix-2.10.3/install
-      - name: Build Docker image
-        run: |
-          nix build --no-allow-dirty -L ${{ matrix.target }}
-          docker load < result
-      - name: Login to Docker Hub
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - name: List images
-        run: docker images
-      - name: Push image to Docker Hub
-        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+# name: docker
+# on:
+#   push:
+#     branches: [main, parachain, 'release-v**']
+# jobs:
+#   docker:
+#     strategy:
+#       matrix:
+#         os: [ ubuntu-latest ]
+#         target: [".#dockerImage", ".#dockerImageFastRuntime"]
+#     runs-on: ${{ matrix.os }}
+#     steps:
+#       - uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
+#       - uses: cachix/install-nix-action@v17
+#         with:
+#           install_url: https://releases.nixos.org/nix/nix-2.10.3/install
+#       - name: Build Docker image
+#         run: |
+#           nix build --no-allow-dirty -L ${{ matrix.target }}
+#           docker load < result
+#       - name: Login to Docker Hub
+#         uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
+#         with:
+#           username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#           password: ${{ secrets.DOCKER_HUB_TOKEN }}
+#       - name: List images
+#         run: docker images
+#       - name: Push image to Docker Hub
+#         run: docker push --all-tags --quiet centrifugeio/centrifuge-chain

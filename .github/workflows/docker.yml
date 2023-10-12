@@ -1,7 +1,10 @@
 name: docker
 on:
   push:
-    branches: [main, parachain, 'release-v**']
+    branches: [main, 'release-v**']
+  pull_request:
+    paths:
+      - ".github/workflows/docker.yml"
   workflow_dispatch:
     inputs:
       docker_tag:
@@ -14,7 +17,7 @@ jobs:
   docker:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest-4-cores ]
         target: [ release, test ]
     runs-on: ${{ matrix.os }}
     env:
@@ -23,23 +26,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Free Space
+      - name: Free space
+      # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
         run: |
-          echo "Listing 100 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: check available docker space
+        run: |
+          docker volume ls
           df -h
-          echo "Removing large packages"
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y 'mysql.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          rm -rf /usr/share/dotnet/
-          df -h
+
       - name: Set docker tag
         run: |
           if [ "${WORKFLOW_TAG}" != "" ]; then
@@ -53,6 +50,11 @@ jobs:
       - if: matrix.target == 'test'
         name: Build docker test
         run: docker build --build-arg RUST_TOOLCHAIN=${{ env.RUST_TOOLCHAIN }} --build-arg OPTS="--features=fast-runtime" -t centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest .
+      - if: failure()
+        name: Check available space after build failed
+        run: |
+          docker volume ls
+          df -h
       - name: Login to Docker Hub
         uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
         with:
@@ -68,3 +70,4 @@ jobs:
         run: docker images
       - name: Push image to Docker Hub
         run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+        if: contains(github.ref, 'refs/tags/release-v') || github.ref == 'refs/heads/main'
