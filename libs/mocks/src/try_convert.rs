@@ -14,8 +14,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T, I = ()>(_);
+		pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::storage]
 	pub(super) type CallIds<T: Config<I>, I: 'static = ()> = StorageMap<

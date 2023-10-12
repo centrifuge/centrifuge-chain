@@ -102,7 +102,7 @@ pub mod pallet {
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -246,7 +246,7 @@ where
 	//       liquidity-pools-gateway with a special runtime local origin
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		handle: &mut impl PrecompileHandle,
+		handle: &impl PrecompileHandle,
 		_command_id: H256,
 		source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,

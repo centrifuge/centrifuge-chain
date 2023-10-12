@@ -24,8 +24,7 @@ pub mod pallet_mock_test {
 	pub trait Config: frame_system::Config {}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+		pub struct Pallet<T>(_);
 
 	#[pallet::storage]
 	pub(super) type CallIds<T: Config> = StorageMap<
@@ -118,8 +117,7 @@ pub mod my_pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+		pub struct Pallet<T>(_);
 
 	impl<T: Config> Pallet<T> {
 		pub fn my_call(name: &str, value: u64) -> Result<(), String> {

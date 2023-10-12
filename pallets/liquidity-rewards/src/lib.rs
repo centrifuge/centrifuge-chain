@@ -162,8 +162,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+		pub struct Pallet<T>(_);
 
 	/// Contains the timestamp when the current epoch is finalized.
 	//

@@ -73,7 +73,7 @@ pub mod pallet {
 	use crate::weights::WeightInfo;
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]

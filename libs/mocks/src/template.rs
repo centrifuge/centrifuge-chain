@@ -7,8 +7,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+		pub struct Pallet<T>(_);
 
 	#[pallet::storage]
 	pub(super) type CallIds<T: Config> = StorageMap<

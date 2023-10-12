@@ -192,8 +192,7 @@ mod dummy {
 		}
 
 		#[pallet::pallet]
-		#[pallet::generate_store(pub(super) trait Store)]
-		pub struct Pallet<T>(_);
+				pub struct Pallet<T>(_);
 
 		#[pallet::call]
 		impl<T: Config> Pallet<T> {
