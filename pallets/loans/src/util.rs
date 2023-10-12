@@ -38,7 +38,7 @@ impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
 	}
 
 	fn collection(_: &T::PoolId) -> Self::Collection {
-		NoPriceCollection(PhantomData::default())
+		NoPriceCollection(PhantomData)
 	}
 
 	fn register_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {

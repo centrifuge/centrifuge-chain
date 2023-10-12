@@ -14,7 +14,6 @@
 use cfg_types::domain_address::{Domain, DomainAddress};
 use fp_evm::PrecompileHandle;
 use frame_support::ensure;
-use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
 use sp_runtime::{
@@ -246,7 +245,7 @@ where
 	//       liquidity-pools-gateway with a special runtime local origin
 	#[precompile::public("execute(bytes32,string,string,bytes)")]
 	fn execute(
-		handle: &impl PrecompileHandle,
+		handle: &mut impl PrecompileHandle,
 		_command_id: H256,
 		source_chain: String<MAX_SOURCE_CHAIN_BYTES>,
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
