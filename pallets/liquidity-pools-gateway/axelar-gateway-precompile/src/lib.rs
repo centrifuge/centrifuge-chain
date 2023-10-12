@@ -20,6 +20,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	DispatchError,
 };
+use fp_evm::{ExitError, PrecompileFailure};
 use sp_std::vec::Vec;
 
 pub use crate::weights::WeightInfo;
