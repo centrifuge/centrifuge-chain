@@ -19,6 +19,7 @@ use runtime_common::apis::RewardDomain;
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
+use development_runtime::BlockId;
 
 use super::ApiEnv;
 use crate::utils::accounts::Keyring;
@@ -81,15 +82,20 @@ where
 			}
 		})
 		.with_api(|api, latest| {
+			let hash = match latest {
+				BlockId::Hash(hash) => hash,
+				BlockId::Number(n) => todo!("nuno"),
+			};
+
 			let currencies = api
-				.list_currencies(&latest, domain, staker.clone())
+				.list_currencies(hash.clone(), domain, staker.clone())
 				.expect("There should be staked currencies");
 			assert_eq!(currencies.clone().len(), 1);
 
 			let currency_id = currencies[0];
 
 			let reward = api
-				.compute_reward(&latest, domain, currency_id, staker)
+				.compute_reward(hash, domain, currency_id, staker)
 				.unwrap();
 			assert_eq!(reward, Some(expected_reward));
 		});

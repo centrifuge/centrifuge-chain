@@ -58,9 +58,8 @@ pub fn xt_centrifuge(
 		.block_hash(0)
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
 		.unwrap();
-	let best_block_id = centrifuge::BlockId::number(client.chain_info().best_number);
 	let (spec_version, tx_version) = {
-		let version = client.runtime_version_at(&best_block_id).unwrap();
+		let version = client.runtime_version_at(client.chain_info().best_hash).unwrap();
 		(version.spec_version, version.transaction_version)
 	};
 
@@ -85,9 +84,8 @@ pub fn xt_relay(
 		.block_hash(0)
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
 		.expect("ESSENTIAL: Genesis MUST be avilable.");
-	let best_block_id = RelayBlockId::number(client.chain_info().best_number);
 	let (spec_version, tx_version) = {
-		let version = client.runtime_version_at(&best_block_id).unwrap();
+		let version = client.runtime_version_at(client.chain_info().best_hash).unwrap();
 		(version.spec_version, version.transaction_version)
 	};
 

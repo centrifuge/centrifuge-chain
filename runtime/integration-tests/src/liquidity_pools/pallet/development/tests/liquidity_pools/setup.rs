@@ -30,6 +30,7 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
+use orml_traits::MultiCurrency;
 use cumulus_primitives_core::Junction::GlobalConsensus;
 use development_runtime::{
 	LiquidityPools, LiquidityPoolsGateway, OrmlAssetRegistry, OrmlTokens, PoolSystem,
@@ -72,6 +73,7 @@ use crate::{
 	},
 	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
 };
+
 // 10 GLMR (18 decimals)
 pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
 pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);

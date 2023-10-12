@@ -24,6 +24,7 @@ pallet-aura = { git = "https://github.com/paritytech/substrate", default-feature
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+pallet-message-queue  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-preimage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
@@ -61,6 +62,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.4
 
 # Cumulus
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
 parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
 
 # Orml pallets
@@ -129,6 +131,7 @@ std = [
   "centrifuge-runtime/std",
   "cfg-primitives/std",
   "cumulus-primitives-core/std",
+  "cumulus-primitives-parachain-inherent/std",
   "development-runtime/std",
   "frame-benchmarking/std",
   "frame-support/std",
@@ -147,6 +150,7 @@ std = [
   "pallet-transaction-payment/std",
   "pallet-uniques/std",
   "pallet-xcm/std",
+  "pallet-message-queue/std",
   "parachain-info/std",
   "codec/std",
   "polkadot-core-primitives/std",

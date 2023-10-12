@@ -35,7 +35,7 @@ use sp_core::{
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::{generic::BlockId, traits::IdentifyAccount, BuildStorage, Storage};
 use tokio::runtime::Handle;
-use xcm_simulator::ParachainInherentData;
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
 
 use crate::chain::{
 	centrifuge,

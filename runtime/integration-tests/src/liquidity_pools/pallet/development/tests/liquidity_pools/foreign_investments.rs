@@ -48,7 +48,7 @@ use development_runtime::{
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{
-		fungibles::{Inspect, Mutate, Transfer},
+		fungibles::{Inspect, Mutate},
 		Get, PalletInfo,
 	},
 };

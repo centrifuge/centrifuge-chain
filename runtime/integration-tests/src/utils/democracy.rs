@@ -14,6 +14,7 @@ use cfg_primitives::Balance;
 use chain::centrifuge::{
 	BlockNumber, CouncilCollective, Runtime, RuntimeCall, RuntimeEvent, PARA_ID,
 };
+use std::ops::Add;
 use codec::Encode;
 use frame_support::{dispatch::GetDispatchInfo, traits::Bounded};
 use fudge::primitives::Chain;
@@ -250,7 +251,7 @@ fn execute_collective_proposal(
 		council_members[0] => collective_close(
 			prop_hash,
 			prop_index,
-			proposal_weight.add(1),
+			proposal_weight.add(1.into()),
 			(proposal.encoded_size() + 1) as u32,
 		)
 	);
