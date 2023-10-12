@@ -849,7 +849,7 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = Burn;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
-	type Currency = Balances;
+	type Currency = Tokens;
 	type MaxApprovals = MaxApprovals;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
