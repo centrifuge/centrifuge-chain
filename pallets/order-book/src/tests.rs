@@ -853,7 +853,10 @@ fn ensure_nonce_updates_order_correctly() {
 		let [(order_id_0, _), (order_id_1, _)] = get_account_orders(ACCOUNT_0)
 			.unwrap()
 			.into_iter()
-			.collect::<Vec<_>>()[..] else {panic!("Unexpected order count")};
+			.collect::<Vec<_>>()[..]
+		else {
+			panic!("Unexpected order count")
+		};
 		assert_ne!(order_id_0, order_id_1)
 	})
 }

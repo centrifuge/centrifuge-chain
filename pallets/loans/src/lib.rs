@@ -658,8 +658,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Loan(loan_id, mutation) = Self::get_released_change(pool_id, change_id)? else {
-                Err(Error::<T>::UnrelatedChangeId)?
+			let Change::Loan(loan_id, mutation) = Self::get_released_change(pool_id, change_id)?
+			else {
+				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -746,7 +747,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let Change::Policy(policy) = Self::get_released_change(pool_id, change_id)? else {
-                Err(Error::<T>::UnrelatedChangeId)?
+				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
 			Self::update_write_off_policy(pool_id, policy)?;

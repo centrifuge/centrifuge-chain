@@ -230,8 +230,7 @@ where
 	//         string calldata sourceChain,
 	//         string calldata sourceAddress,
 	//         bytes calldata payload
-	//     ) external {
-	//       bytes32 payloadHash = keccak256(payload);
+	//     ) external { bytes32 payloadHash = keccak256(payload);
 	// 		 if (
 	//           !gateway.validateContractCall(
 	//              commandId,
@@ -308,8 +307,7 @@ where
 	//         bytes calldata payload,
 	//         string calldata tokenSymbol,
 	//         uint256 amount
-	//     ) external {
-	//       ...
+	//     ) external { ...
 	//     }
 	//
 	// Note: NOT SUPPORTED

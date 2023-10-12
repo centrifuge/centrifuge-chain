@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use std::ops::Add;
+
 use cfg_primitives::Balance;
 use chain::centrifuge::{
 	BlockNumber, CouncilCollective, Runtime, RuntimeCall, RuntimeEvent, PARA_ID,
 };
-use std::ops::Add;
 use codec::Encode;
 use frame_support::{dispatch::GetDispatchInfo, traits::Bounded};
 use fudge::primitives::Chain;

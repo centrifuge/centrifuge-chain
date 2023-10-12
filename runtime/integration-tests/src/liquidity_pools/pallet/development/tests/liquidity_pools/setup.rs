@@ -30,7 +30,6 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
-use orml_traits::MultiCurrency;
 use cumulus_primitives_core::Junction::GlobalConsensus;
 use development_runtime::{
 	LiquidityPools, LiquidityPoolsGateway, OrmlAssetRegistry, OrmlTokens, PoolSystem,
@@ -49,6 +48,7 @@ use liquidity_pools_gateway_routers::{
 	XcmTransactInfo, DEFAULT_PROOF_SIZE,
 };
 use orml_asset_registry::{AssetMetadata, Metadata};
+use orml_traits::MultiCurrency;
 use pallet_liquidity_pools::Message;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use runtime_common::{

@@ -14,6 +14,7 @@ mod rewards;
 use std::sync::Arc;
 
 use cfg_primitives::{AuraId, CFG};
+use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use frame_support::traits::GenesisBuild;
 use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest},
@@ -35,7 +36,6 @@ use sp_core::{
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::{generic::BlockId, traits::IdentifyAccount, BuildStorage, Storage};
 use tokio::runtime::Handle;
-use cumulus_primitives_parachain_inherent::ParachainInherentData;
 
 use crate::chain::{
 	centrifuge,

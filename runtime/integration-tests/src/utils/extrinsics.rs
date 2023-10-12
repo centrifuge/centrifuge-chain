@@ -59,7 +59,9 @@ pub fn xt_centrifuge(
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
 		.unwrap();
 	let (spec_version, tx_version) = {
-		let version = client.runtime_version_at(client.chain_info().best_hash).unwrap();
+		let version = client
+			.runtime_version_at(client.chain_info().best_hash)
+			.unwrap();
 		(version.spec_version, version.transaction_version)
 	};
 
@@ -85,7 +87,9 @@ pub fn xt_relay(
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
 		.expect("ESSENTIAL: Genesis MUST be avilable.");
 	let (spec_version, tx_version) = {
-		let version = client.runtime_version_at(client.chain_info().best_hash).unwrap();
+		let version = client
+			.runtime_version_at(client.chain_info().best_hash)
+			.unwrap();
 		(version.spec_version, version.transaction_version)
 	};
 

@@ -20,8 +20,7 @@ use frame_support::{traits::GenesisBuild, weights::Weight};
 use polkadot_primitives::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
-use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
-use xcm_simulator::TestExt;
+use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain, TestExt};
 
 use super::setup::{cfg, ExtBuilder, ALICE, BOB, PARA_ID_MOONBEAM};
 
