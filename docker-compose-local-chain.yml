@@ -21,9 +21,7 @@ services:
       --execution=wasm
       --rpc-external
       --rpc-cors all
-      --ws-external
       --rpc-methods=Unsafe
-      --state-cache-size=0
       --log="main,info,xcm=trace,xcm-executor=trace"
       -- 
       --wasm-execution=compiled 
