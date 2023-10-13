@@ -1,9 +1,9 @@
-use cfg_primitives::{Address, Balance, BlockNumber, Moment};
+use cfg_primitives::{Address, Balance, BlockNumber, Index, Moment};
 use codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
-	DispatchResult, MultiSignature, Storage,
+	DispatchError, DispatchResult, MultiSignature, Storage,
 };
 
 use crate::{generic::runtime::Runtime, utils::accounts::Keyring};
@@ -37,10 +37,10 @@ pub trait Env<T: Runtime> {
 		&self,
 		who: Keyring,
 		call: impl Into<T::RuntimeCall>,
+		nonce: Index,
 	) -> <T::Block as Block>::Extrinsic {
 		self.state(|| {
 			let runtime_call = call.into();
-			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 			let signed_extra = (
 				frame_system::CheckNonZeroSender::<T>::new(),
 				frame_system::CheckSpecVersion::<T>::new(),
@@ -63,8 +63,16 @@ pub trait Env<T: Runtime> {
 		})
 	}
 
-	/// Submit an extrinsic mutating the state
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
+	/// Submit an extrinsic mutating the state instantly and returning the
+	/// consumed fee
+	fn submit_now(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCall>,
+	) -> Result<Balance, DispatchError>;
+
+	/// Submit an extrinsic mutating the state when the block is finalized
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T>) {
@@ -135,17 +143,6 @@ pub trait Env<T: Runtime> {
 				.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
 				.flatten()
 		})
-	}
-
-	/// Retrieve the fees used in the last submit call
-	fn last_fee(&self) -> Balance {
-		self.find_event(|e| match e {
-			pallet_transaction_payment::Event::TransactionFeePaid { actual_fee, .. } => {
-				Some(actual_fee)
-			}
-			_ => None,
-		})
-		.expect("Expected transaction")
 	}
 
 	fn __priv_build_block(&mut self, i: BlockNumber);

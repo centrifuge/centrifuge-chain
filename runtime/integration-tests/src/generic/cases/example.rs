@@ -33,14 +33,15 @@ fn transfer_balance<T: Runtime>() {
 	);
 
 	// Call an extrinsic that would be processed immediately
-	env.submit(
-		Keyring::Alice,
-		pallet_balances::Call::transfer {
-			dest: Keyring::Bob.into(),
-			value: TRANSFER,
-		},
-	)
-	.unwrap();
+	let fee = env
+		.submit_now(
+			Keyring::Alice,
+			pallet_balances::Call::transfer {
+				dest: Keyring::Bob.into(),
+				value: TRANSFER,
+			},
+		)
+		.unwrap();
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
@@ -50,16 +51,20 @@ fn transfer_balance<T: Runtime>() {
 	})
 	.unwrap();
 
-	// Pass blocks to evolve the system
-	env.pass(Blocks::ByNumber(1));
-
 	// Check the state
 	env.state(|| {
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			T::ExistentialDeposit::get() + FOR_FEES - fee,
+		);
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
 			TRANSFER
 		);
 	});
+
+	// Pass blocks to evolve the system
+	env.pass(Blocks::ByNumber(1));
 }
 
 // Identical to `transfer_balance()` test but using fudge.
@@ -78,7 +83,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 			.storage(),
 	);
 
-	env.submit(
+	env.submit_later(
 		Keyring::Alice,
 		pallet_balances::Call::transfer {
 			dest: Keyring::Bob.into(),
@@ -87,15 +92,8 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	)
 	.unwrap();
 
+	// submit-later will only take effect if a block has passed
 	env.pass(Blocks::ByNumber(1));
-
-	// Check the state
-	env.state(|| {
-		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
-			TRANSFER
-		);
-	});
 
 	// Check for an even occurred in this block
 	env.check_event(pallet_balances::Event::Transfer {
@@ -104,6 +102,28 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 		amount: TRANSFER,
 	})
 	.unwrap();
+
+	// Look for the fee for the last transaction
+	let fee = env
+		.find_event(|e| match e {
+			pallet_transaction_payment::Event::TransactionFeePaid { actual_fee, .. } => {
+				Some(actual_fee)
+			}
+			_ => None,
+		})
+		.unwrap();
+
+	// Check the state
+	env.state(|| {
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
+			T::ExistentialDeposit::get() + FOR_FEES - fee,
+		);
+		assert_eq!(
+			pallet_balances::Pallet::<T>::free_balance(Keyring::Bob.to_account_id()),
+			TRANSFER
+		);
+	});
 }
 
 fn call_api<T: Runtime>() {
@@ -133,34 +153,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 	})
 }
 
-fn check_fee<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::from_storage(
-		Genesis::default()
-			.add(pallet_balances::GenesisConfig::<T> {
-				balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
-			})
-			.storage(),
-	);
-
-	env.submit(
-		Keyring::Alice,
-		frame_system::Call::remark { remark: vec![] },
-	)
-	.unwrap();
-
-	// Get the fee of the last submitted extrinsic
-	let fee = env.last_fee();
-
-	env.state(|| {
-		assert_eq!(
-			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
-			1 * CFG - fee
-		);
-	});
-}
-
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
-crate::test_for_runtimes!(all, check_fee);
 crate::test_for_runtimes!(all, fudge_transfer_balance);
 crate::test_for_runtimes!(all, fudge_call_api);

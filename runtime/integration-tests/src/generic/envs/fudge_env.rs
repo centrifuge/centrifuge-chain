@@ -1,6 +1,8 @@
 pub mod handle;
 
-use cfg_primitives::BlockNumber;
+use std::collections::HashMap;
+
+use cfg_primitives::{Balance, BlockNumber, Index};
 use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
@@ -21,6 +23,7 @@ pub trait FudgeSupport: Runtime {
 /// Evironment that uses fudge to interact with the runtime
 pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 	handle: T::FudgeHandle,
+	nonce_storage: HashMap<Keyring, Index>,
 }
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
@@ -29,11 +32,24 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 
 		handle.evolve();
 
-		Self { handle }
+		Self {
+			handle,
+			nonce_storage: HashMap::default(),
+		}
 	}
 
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		let extrinsic = self.create_extrinsic(who, call);
+	fn submit_now(
+		&mut self,
+		_who: Keyring,
+		_call: impl Into<T::RuntimeCall>,
+	) -> Result<Balance, DispatchError> {
+		unimplemented!("FudgeEnv does not support submit_now() try submit_later()")
+	}
+
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+		let nonce = *self.nonce_storage.entry(who).or_default();
+
+		let extrinsic = self.create_extrinsic(who, call, nonce);
 
 		self.handle
 			.parachain_mut()
@@ -42,7 +58,11 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 			.map_err(|_| {
 				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
 				// More information, issue: https://github.com/centrifuge/fudge/issues/67
-			})
+			})?;
+
+		self.nonce_storage.insert(who, nonce + 1);
+
+		Ok(())
 	}
 
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
@@ -87,4 +107,43 @@ impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 
 		exec(api, best_hash);
 	}
+}
+
+mod tests {
+	use cfg_primitives::CFG;
+
+	use super::*;
+	use crate::generic::{environment::Blocks, utils::genesis::Genesis};
+
+	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
+		let mut env = FudgeEnv::<T>::from_storage(
+			Genesis::default()
+				.add(pallet_balances::GenesisConfig::<T> {
+					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+				})
+				.storage(),
+		);
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+	}
+
+	crate::test_for_runtimes!(all, correct_nonce_for_submit_later);
 }
