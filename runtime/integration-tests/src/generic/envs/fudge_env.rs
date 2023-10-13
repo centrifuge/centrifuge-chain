@@ -44,12 +44,12 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn submit_now(
 		&mut self,
 		_who: Keyring,
-		_call: impl Into<T::RuntimeCall>,
+		_call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
 		unimplemented!("FudgeEnv does not support submit_now() try submit_later()")
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
 		let nonce = *self.nonce_storage.entry(who).or_default();
 
 		let extrinsic = self.state(|| utils::create_extrinsic::<T>(who, call, nonce));

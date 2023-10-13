@@ -36,11 +36,11 @@ pub trait Env<T: Runtime> {
 	fn submit_now(
 		&mut self,
 		who: Keyring,
-		call: impl Into<T::RuntimeCall>,
+		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError>;
 
 	/// Submit an extrinsic mutating the state when the block is finalized
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult;
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult;
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T>) {
@@ -123,7 +123,7 @@ pub mod utils {
 	/// To create and submit an extrinsic, see `submit()`
 	pub fn create_extrinsic<T: Runtime>(
 		who: Keyring,
-		call: impl Into<T::RuntimeCall>,
+		call: impl Into<T::RuntimeCallExt>,
 		nonce: Index,
 	) -> <T::Block as Block>::Extrinsic {
 		let runtime_call = call.into();

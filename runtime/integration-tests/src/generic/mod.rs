@@ -9,13 +9,12 @@ pub mod envs {
 	pub mod runtime_env;
 }
 pub mod runtime;
-pub mod utils {
-	pub mod genesis;
-}
+pub mod utils;
 
 // Test cases
 mod cases {
 	mod example;
+	mod loans;
 }
 
 use runtime::{Runtime, RuntimeKind};

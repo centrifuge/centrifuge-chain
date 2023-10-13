@@ -26,7 +26,7 @@ use crate::{
 /// without the usage of a client.
 pub struct RuntimeEnv<T: Runtime> {
 	ext: Rc<RefCell<sp_io::TestExternalities>>,
-	pending_extrinsics: Vec<(Keyring, T::RuntimeCall)>,
+	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
 	_config: PhantomData<T>,
 }
 
@@ -53,7 +53,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	fn submit_now(
 		&mut self,
 		who: Keyring,
-		call: impl Into<T::RuntimeCall>,
+		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
 		let extrinsic = self.state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
@@ -74,7 +74,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		Ok(fee)
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
 		self.pending_extrinsics.push((who, call.into()));
 		Ok(())
 	}
@@ -145,7 +145,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 		}
 	}
 
-	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCall {
+	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCallExt {
 		let mut inherent_data = InherentData::default();
 
 		let sproof_builder = RelayStateSproofBuilder::default();
@@ -176,7 +176,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 			.into()
 	}
 
-	fn timestamp_inherent(timestamp: u64) -> T::RuntimeCall {
+	fn timestamp_inherent(timestamp: u64) -> T::RuntimeCallExt {
 		let mut inherent_data = InherentData::default();
 
 		let timestamp_inherent = Timestamp::new(timestamp);
