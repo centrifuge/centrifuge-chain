@@ -10,10 +10,12 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }
+fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.43" }
 lazy_static = "1.4.0"
 serde = { version = "1.0.119" }
 tokio = { version = "1.15", features = ["macros"] }
 tracing-subscriber = "0.2"
+thiserror = "1.0.30"
 
 # Substrate
 ## Substrate-Frame

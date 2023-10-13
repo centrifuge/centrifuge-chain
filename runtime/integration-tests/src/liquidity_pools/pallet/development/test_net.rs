@@ -17,8 +17,12 @@ use cfg_primitives::{parachains, AccountId};
 use cfg_types::tokens::CurrencyId;
 use cumulus_primitives_core::ParaId;
 use frame_support::{traits::GenesisBuild, weights::Weight};
+use polkadot_parachain::primitives::Id;
 use polkadot_primitives::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
-use polkadot_runtime_parachains::configuration::HostConfiguration;
+use polkadot_runtime_parachains::{
+	configuration::HostConfiguration,
+	paras::{ParaGenesisArgs, ParaKind},
+};
 use sp_runtime::traits::AccountIdConversion;
 use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain, TestExt};
 
@@ -101,6 +105,27 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
+	<polkadot_runtime_parachains::paras::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(&polkadot_runtime_parachains::paras::GenesisConfig {
+		paras: vec![
+			(
+				Id::from(parachains::polkadot::centrifuge::ID),
+				ParaGenesisArgs {
+					genesis_head: Default::default(),
+					validation_code: vec![1].into(),
+					para_kind: ParaKind::Parachain,
+				},
+			),
+			(
+				Id::from(PARA_ID_MOONBEAM),
+				ParaGenesisArgs {
+					genesis_head: Default::default(),
+					validation_code: vec![2].into(),
+					para_kind: ParaKind::Parachain,
+				},
+			),
+		],
+	}, &mut t).unwrap();
+
 	<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
 		&pallet_xcm::GenesisConfig {
 			safe_xcm_version: Some(2),
@@ -110,7 +135,25 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
+
+	ext.execute_with(|| {
+		polkadot_runtime_parachains::hrmp::Pallet::<Runtime>::force_open_hrmp_channel(
+			polkadot_runtime::RuntimeOrigin::root(),
+			Id::from(parachains::polkadot::centrifuge::ID),
+			Id::from(PARA_ID_MOONBEAM),
+			10,
+			1024,
+		)
+		.unwrap();
+
+		polkadot_runtime_parachains::hrmp::Pallet::<Runtime>::force_process_hrmp_open(
+			polkadot_runtime::RuntimeOrigin::root(),
+			0,
+		)
+		.unwrap();
+
+		System::set_block_number(1);
+	});
 	ext
 }
 
