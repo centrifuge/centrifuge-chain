@@ -31,38 +31,6 @@ pub trait Env<T: Runtime> {
 	/// Load the environment from a storage
 	fn from_storage(storage: Storage) -> Self;
 
-	/// Creates an extrinsic, used by mainly by the own environment.
-	/// To create and submit an extrinsic, see `submit()`
-	fn create_extrinsic(
-		&self,
-		who: Keyring,
-		call: impl Into<T::RuntimeCall>,
-		nonce: Index,
-	) -> <T::Block as Block>::Extrinsic {
-		self.state(|| {
-			let runtime_call = call.into();
-			let signed_extra = (
-				frame_system::CheckNonZeroSender::<T>::new(),
-				frame_system::CheckSpecVersion::<T>::new(),
-				frame_system::CheckTxVersion::<T>::new(),
-				frame_system::CheckGenesis::<T>::new(),
-				frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
-				frame_system::CheckNonce::<T>::from(nonce),
-				frame_system::CheckWeight::<T>::new(),
-				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
-			);
-
-			let raw_payload =
-				SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
-			let signature =
-				MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
-
-			let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
-
-			<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap()
-		})
-	}
-
 	/// Submit an extrinsic mutating the state instantly and returning the
 	/// consumed fee
 	fn submit_now(
@@ -146,4 +114,36 @@ pub trait Env<T: Runtime> {
 	}
 
 	fn __priv_build_block(&mut self, i: BlockNumber);
+}
+
+pub mod utils {
+	use super::*;
+
+	/// Creates an extrinsic, used mainly by the environment implementations.
+	/// To create and submit an extrinsic, see `submit()`
+	pub fn create_extrinsic<T: Runtime>(
+		who: Keyring,
+		call: impl Into<T::RuntimeCall>,
+		nonce: Index,
+	) -> <T::Block as Block>::Extrinsic {
+		let runtime_call = call.into();
+		let signed_extra = (
+			frame_system::CheckNonZeroSender::<T>::new(),
+			frame_system::CheckSpecVersion::<T>::new(),
+			frame_system::CheckTxVersion::<T>::new(),
+			frame_system::CheckGenesis::<T>::new(),
+			frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
+			frame_system::CheckNonce::<T>::from(nonce),
+			frame_system::CheckWeight::<T>::new(),
+			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
+		);
+
+		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
+		let signature =
+			MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
+
+		let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
+
+		<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap()
+	}
 }

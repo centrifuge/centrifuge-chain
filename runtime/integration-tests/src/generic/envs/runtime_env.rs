@@ -15,7 +15,10 @@ use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchR
 use sp_timestamp::Timestamp;
 
 use crate::{
-	generic::{environment::Env, runtime::Runtime},
+	generic::{
+		environment::{utils, Env},
+		runtime::Runtime,
+	},
 	utils::accounts::Keyring,
 };
 
@@ -52,8 +55,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		who: Keyring,
 		call: impl Into<T::RuntimeCall>,
 	) -> Result<Balance, DispatchError> {
-		let nonce = self.state(|| frame_system::Pallet::<T>::account(who.to_account_id()).nonce);
-		let extrinsic = self.create_extrinsic(who, call, nonce);
+		let extrinsic = self.state(|| {
+			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+			utils::create_extrinsic::<T>(who, call, nonce)
+		});
+
 		self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap())?;
 
 		let fee = self
@@ -101,10 +107,13 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 impl<T: Runtime> RuntimeEnv<T> {
 	fn process_pending_extrinsics(&mut self) {
 		let pending_extrinsics = mem::replace(&mut self.pending_extrinsics, Vec::default());
+
 		for (who, call) in pending_extrinsics {
-			let nonce =
-				self.state(|| frame_system::Pallet::<T>::account(who.to_account_id()).nonce);
-			let extrinsic = self.create_extrinsic(who, call, nonce);
+			let extrinsic = self.state(|| {
+				let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+				utils::create_extrinsic::<T>(who, call, nonce)
+			});
+
 			self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap().unwrap());
 		}
 	}

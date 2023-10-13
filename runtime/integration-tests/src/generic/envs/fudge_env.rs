@@ -10,7 +10,10 @@ use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_runtime::{generic::BlockId, DispatchError, DispatchResult, Storage};
 
 use crate::{
-	generic::{environment::Env, runtime::Runtime},
+	generic::{
+		environment::{utils, Env},
+		runtime::Runtime,
+	},
 	utils::accounts::Keyring,
 };
 
@@ -49,7 +52,7 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
 		let nonce = *self.nonce_storage.entry(who).or_default();
 
-		let extrinsic = self.create_extrinsic(who, call, nonce);
+		let extrinsic = self.state(|| utils::create_extrinsic::<T>(who, call, nonce));
 
 		self.handle
 			.parachain_mut()
