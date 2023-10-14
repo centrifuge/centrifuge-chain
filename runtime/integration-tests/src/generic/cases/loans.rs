@@ -1,11 +1,14 @@
-use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, CFG};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, CFG};
 use frame_support::traits::Get;
 use orml_traits::GetByKey;
 
 use crate::{
 	generic::{
 		environment::{Blocks, Env},
-		envs::runtime_env::RuntimeEnv,
+		envs::{
+			fudge_env::{FudgeEnv, FudgeSupport},
+			runtime_env::RuntimeEnv,
+		},
 		runtime::Runtime,
 		utils::{
 			self,
@@ -24,7 +27,7 @@ const FOR_FEES: Balance = 1 * CFG;
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 
-fn borrow<T: Runtime>() {
+fn borrow<T: Runtime + FudgeSupport>() {
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::<T>::default()
 			.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
@@ -42,6 +45,11 @@ fn borrow<T: Runtime>() {
 	});
 
 	env.state(|| {
-		//pallet_uniques::Pallet::<T>::
+		assert_eq!(
+			pallet_uniques::Pallet::<T>::owner(NFT_A.0, NFT_A.1).unwrap(),
+			BORROWER.id(),
+		)
 	});
 }
+
+crate::test_for_runtimes!(all, borrow);

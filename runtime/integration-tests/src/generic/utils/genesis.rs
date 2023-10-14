@@ -72,9 +72,9 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 			MUSD_CURRENCY_ID,
 			AssetMetadata {
 				decimals: MUSD_DECIMALS,
-				name: "Mock USD".as_bytes().to_vec(),
+				name: "Mock Dollar".as_bytes().to_vec(),
 				symbol: "MUSD".as_bytes().to_vec(),
-				existential_deposit: 0,
+				existential_deposit: 0 as Balance,
 				location: None,
 				additional: CustomMetadata {
 					pool_currency: true,
@@ -89,7 +89,7 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 				decimals: 12,
 				name: "Acala Dollar".as_bytes().to_vec(),
 				symbol: "AUSD".as_bytes().to_vec(),
-				existential_deposit: 0,
+				existential_deposit: 0 as Balance,
 				location: None,
 				additional: CustomMetadata {
 					pool_currency: true,
