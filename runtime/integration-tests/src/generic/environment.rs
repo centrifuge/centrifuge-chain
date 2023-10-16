@@ -1,4 +1,5 @@
-use cfg_primitives::{Balance, BlockNumber, Moment};
+use cfg_primitives::{Balance, BlockNumber};
+use cfg_traits::Seconds;
 use sp_runtime::{DispatchResult, Storage};
 
 use crate::{generic::runtime::Runtime, utils::accounts::Keyring};
@@ -12,7 +13,7 @@ pub enum Blocks<T: Runtime> {
 	/// Pass a number of blocks enough to emulate the given passage of time.
 	/// i.e. choosing 1 sec would pass 1 block to emulate such change in the
 	/// time.
-	BySeconds(Moment),
+	BySeconds(Seconds),
 
 	/// Pass a number of block until find an event or reach the limit
 	UntilEvent {

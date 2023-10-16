@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Moment;
+use cfg_traits::Seconds;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -38,10 +38,10 @@ use strum::EnumCount;
 )]
 pub enum WriteOffTrigger {
 	/// Seconds after the maturity date has passed
-	PrincipalOverdue(Moment),
+	PrincipalOverdue(Seconds),
 
 	/// Seconds since the oracle valuation was last updated
-	PriceOutdated(Moment),
+	PriceOutdated(Seconds),
 }
 
 /// Wrapper type to identify equality berween kinds of triggers,

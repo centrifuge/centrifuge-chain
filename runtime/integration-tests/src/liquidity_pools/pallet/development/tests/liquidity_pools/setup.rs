@@ -22,8 +22,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{currency_decimals, Balance, Moment, PoolId, TrancheId};
-use cfg_traits::{investments::InvestmentAccountant, PoolMutate};
+use cfg_primitives::{currency_decimals, Balance, PoolId, TrancheId};
+use cfg_traits::{investments::InvestmentAccountant, PoolMutate, Seconds};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::{Quantity, Rate},
@@ -78,7 +78,7 @@ pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
-pub const DEFAULT_VALIDITY: Moment = 2555583502;
+pub const DEFAULT_VALIDITY: Seconds = 2555583502;
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 pub const DEFAULT_POOL_ID: u64 = 42;

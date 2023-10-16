@@ -11,8 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::interest::InterestRate;
+use cfg_primitives::SECONDS_PER_YEAR;
+use cfg_traits::{interest::InterestRate, Seconds};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
@@ -55,10 +55,10 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 	pub fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
-		when: Moment,
+		when: Seconds,
 		interest_rate: &InterestRate<Rate>,
-		maturity_date: Moment,
-		origination_date: Moment,
+		maturity_date: Seconds,
+		origination_date: Seconds,
 	) -> Result<Balance, ArithmeticError> {
 		// If the loan is overdue, there are no future cash flows to discount,
 		// hence we use the outstanding debt as the value.

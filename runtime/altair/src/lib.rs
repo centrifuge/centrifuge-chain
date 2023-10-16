@@ -23,7 +23,8 @@ use ::xcm::v3::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert,
+	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
+	TryConvert,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -280,12 +281,12 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-	pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
+	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
 }
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = Aura;
 	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
@@ -1019,7 +1020,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 10_000;
@@ -1029,11 +1030,10 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role<TrancheId>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Self>;
 }
 
@@ -1041,17 +1041,17 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<Role<TrancheId, Moment>>,
+		Option<Role<TrancheId>>,
 		PermissionScope<PoolId, CurrencyId>,
-		Role<TrancheId, Moment>,
+		Role<TrancheId>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<Role<TrancheId, Moment>>,
+			Option<Role<TrancheId>>,
 			PermissionScope<PoolId, CurrencyId>,
-			Role<TrancheId, Moment>,
+			Role<TrancheId>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
@@ -1260,7 +1260,7 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 20;
 	pub const LiquidityRewardsPalletId: PalletId = cfg_types::ids::LIQUIDITY_REWARDS_PALLET_ID;
-	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+	pub const InitialEpochDuration: Millis = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
 }
 
 impl pallet_rewards::mechanism::gap::Config for Runtime {
@@ -1357,7 +1357,7 @@ impl pallet_data_collector::Config for Runtime {
 		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
 	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
-	type Moment = Moment;
+	type Moment = Millis;
 }
 
 parameter_types! {
@@ -1411,6 +1411,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perquintill;
 	type Permissions = Permissions;
@@ -1544,7 +1545,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		TrancheCurrency,
