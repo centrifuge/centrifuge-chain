@@ -129,13 +129,13 @@ pub trait FudgeHandle<T: Runtime> {
 	) -> RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 
-		let code = Self::RELAY_CODE.unwrap();
+		let code = Self::RELAY_CODE.expect("ESSENTIAL: WASM is built.");
 		let mut state = StateProvider::new(code);
 
 		state.insert_storage(
 			polkadot_runtime_parachains::configuration::GenesisConfig::<Self::RelayRuntime>::default()
 				.build_storage()
-                .unwrap()
+                .expect("ESSENTIAL: GenesisBuild must not fail at this stage.")
 		);
 
 		state.insert_storage(
@@ -143,7 +143,7 @@ pub trait FudgeHandle<T: Runtime> {
 				code: code.to_vec(),
 			}
 			.build_storage::<Self::RelayRuntime>()
-			.unwrap(),
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
 		state.insert_storage(storage);
@@ -195,7 +195,7 @@ pub trait FudgeHandle<T: Runtime> {
 	) -> ParachainBuilder<T::Block, Self::ParachainConstructApi> {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
 
-		let code = Self::PARACHAIN_CODE.unwrap();
+		let code = Self::PARACHAIN_CODE.expect("ESSENTIAL: WASM is built.");
 		let mut state = StateProvider::new(code);
 
 		state.insert_storage(
@@ -203,14 +203,14 @@ pub trait FudgeHandle<T: Runtime> {
 				code: code.to_vec(),
 			}
 			.build_storage::<T>()
-			.unwrap(),
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 		state.insert_storage(
 			pallet_aura::GenesisConfig::<T> {
 				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
 			}
 			.build_storage()
-			.unwrap(),
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
 		state.insert_storage(storage);
