@@ -6111,14 +6111,9 @@ dependencies = [
 [[package]]
 name = "mock-builder"
 version = "0.0.1"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.38#9b315e2491f68f38a023bfd683c2615bac851910"
 dependencies = [
  "frame-support",
- "frame-system",
- "parity-scale-codec 3.6.4",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
