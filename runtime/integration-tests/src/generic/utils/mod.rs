@@ -1,6 +1,6 @@
-// Divide this utilties into files when they grow
+// Divide this utilties into files when it grows
 
-use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, Moment, PoolId, TrancheId};
+use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
@@ -52,26 +52,13 @@ pub fn give_token_to<T: Runtime>(dest: AccountId, currency_id: CurrencyId, amoun
 	.unwrap();
 }
 
-pub fn give_investor_role<T: Runtime>(investor: AccountId, pool_id: PoolId, tranche_id: TrancheId) {
-	let role = Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Moment::MAX));
+pub fn give_pool_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRole) {
 	pallet_permissions::Pallet::<T>::add(
 		RawOrigin::Root.into(),
-		role,
-		investor,
+		Role::PoolRole(role),
+		dest,
 		PermissionScope::Pool(pool_id),
-		role,
-	)
-	.unwrap();
-}
-
-pub fn give_borrower_role<T: Runtime>(borrower: AccountId, pool_id: PoolId) {
-	let role = Role::PoolRole(PoolRole::Borrower);
-	pallet_permissions::Pallet::<T>::add(
-		RawOrigin::Root.into(),
-		role,
-		borrower,
-		PermissionScope::Pool(pool_id),
-		role,
+		Role::PoolRole(role),
 	)
 	.unwrap();
 }

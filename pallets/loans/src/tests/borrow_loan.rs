@@ -11,7 +11,7 @@ fn config_mocks(withdraw_amount: Balance) {
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME_MS)),
 			_ => Err(PRICE_ID_NO_FOUND),
 		}
 	});
@@ -333,7 +333,7 @@ fn with_unregister_price_id_and_oracle_not_required() {
 		);
 
 		// Suddenty, the oracle set a value
-		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME.as_secs())));
+		MockPrices::mock_get(|_, _| Ok((PRICE_VALUE * 8, BLOCK_TIME_MS)));
 
 		assert_eq!(
 			(QUANTITY).saturating_mul_int(PRICE_VALUE * 8),

@@ -2,8 +2,9 @@ use std::fmt::Debug;
 
 use cfg_primitives::{
 	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, LoanId,
-	Moment, PoolId, Signature, TrancheId,
+	PoolId, Signature, TrancheId,
 };
+use cfg_traits::Millis;
 use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -65,8 +66,8 @@ pub trait Runtime:
 		CustomMetadata = CustomMetadata,
 		Balance = Balance,
 	> + pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
-	+ pallet_timestamp::Config<Moment = Moment>
-	+ pallet_aura::Config<Moment = Moment, AuthorityId = AuraId>
+	+ pallet_timestamp::Config<Moment = Millis>
+	+ pallet_aura::Config<Moment = Millis, AuthorityId = AuraId>
 	+ pallet_authorship::Config
 	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
 	+ pallet_transaction_payment::Config<

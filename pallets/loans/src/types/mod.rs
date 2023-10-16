@@ -13,7 +13,7 @@
 
 //! Contains base types without Config references
 
-use cfg_primitives::Moment;
+use cfg_traits::Seconds;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
@@ -92,30 +92,30 @@ pub enum Maturity {
 	/// Fixed point in time, in secs
 	Fixed {
 		/// Secs when maturity ends
-		date: Moment,
+		date: Seconds,
 		/// Extension in secs, without special permissions
-		extension: Moment,
+		extension: Seconds,
 	},
 }
 
 impl Maturity {
-	pub fn fixed(date: Moment) -> Self {
+	pub fn fixed(date: Seconds) -> Self {
 		Self::Fixed { date, extension: 0 }
 	}
 
-	pub fn date(&self) -> Moment {
+	pub fn date(&self) -> Seconds {
 		match self {
 			Maturity::Fixed { date, .. } => *date,
 		}
 	}
 
-	pub fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Seconds) -> bool {
 		match self {
 			Maturity::Fixed { date, .. } => *date > now,
 		}
 	}
 
-	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
+	pub fn extends(&mut self, value: Seconds) -> Result<(), ArithmeticError> {
 		match self {
 			Maturity::Fixed { date, extension } => {
 				date.ensure_add_assign(value)?;
@@ -155,7 +155,7 @@ pub struct RepaymentSchedule {
 }
 
 impl RepaymentSchedule {
-	pub fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Seconds) -> bool {
 		self.maturity.is_valid(now)
 	}
 }

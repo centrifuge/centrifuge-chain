@@ -5,8 +5,8 @@ set namespaceSeparator ::
 hide methods
 
 enum Maturity {
-    Fixed::date: Moment
-    Fixed::extension: Moment
+    Fixed::date: Seconds
+    Fixed::extension: Seconds
 }
 
 enum InterestPayments {
@@ -70,7 +70,7 @@ node traits {
 package portfolio {
     class PortfolioValuation {
         value: Balance
-        last_updated: Moment
+        last_updated: Seconds
         values: Vec<Tuple<LoanId, Balance>>
     }
 }
@@ -211,7 +211,7 @@ package loan {
         restrictions: LoanRestrictions
         pricing: ActivePricing
         write_off_percentage: Rate
-        origination_date: Moment
+        origination_date: Seconds
         total_borrowed: Balance
         total_repaid: RepaidAmount
     }

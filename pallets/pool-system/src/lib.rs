@@ -14,8 +14,7 @@
 #![allow(clippy::or_fun_call)]
 #![feature(thread_local)]
 
-use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
+use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, Seconds, TimeAsSecs};
 use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -26,7 +25,7 @@ use frame_support::{
 	ensure,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
-		ReservableCurrency, UnixTime,
+		ReservableCurrency,
 	},
 	transactional, BoundedVec, RuntimeDebug,
 };
@@ -277,7 +276,7 @@ pub mod pallet {
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
 			ScheduledUpdateDetails = ScheduledUpdateDetailsOf<Self>,
-			Moment = Moment,
+			Moment = Seconds,
 		>;
 
 		type AssetRegistry: OrmlMutate<
@@ -295,7 +294,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId, Moment>,
+			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
 
@@ -316,7 +315,7 @@ pub mod pallet {
 			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
 		>;
 
-		type Time: UnixTime;
+		type Time: TimeAsSecs;
 
 		/// Challenge time
 		#[pallet::constant]
@@ -324,24 +323,24 @@ pub mod pallet {
 
 		/// Pool parameter defaults
 		#[pallet::constant]
-		type DefaultMinEpochTime: Get<u64>;
+		type DefaultMinEpochTime: Get<Seconds>;
 
 		#[pallet::constant]
-		type DefaultMaxNAVAge: Get<u64>;
+		type DefaultMaxNAVAge: Get<Seconds>;
 
 		/// Pool parameter bounds
 		#[pallet::constant]
-		type MinEpochTimeLowerBound: Get<u64>;
+		type MinEpochTimeLowerBound: Get<Seconds>;
 
 		#[pallet::constant]
-		type MinEpochTimeUpperBound: Get<u64>;
+		type MinEpochTimeUpperBound: Get<Seconds>;
 
 		#[pallet::constant]
-		type MaxNAVAgeUpperBound: Get<u64>;
+		type MaxNAVAgeUpperBound: Get<Seconds>;
 
 		/// Pool update settings
 		#[pallet::constant]
-		type MinUpdateDelay: Get<u64>;
+		type MinUpdateDelay: Get<Seconds>;
 
 		/// Max length for a tranche token name
 		#[pallet::constant]
@@ -595,7 +594,7 @@ pub mod pallet {
 					Error::<T>::InSubmissionPeriod
 				);
 
-				let now = Self::now();
+				let now = T::Time::now();
 				ensure!(
 					now.saturating_sub(pool.epoch.last_closed) >= pool.parameters.min_epoch_time,
 					Error::<T>::MinEpochTimeHasNotPassed
@@ -876,10 +875,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn now() -> Moment {
-			T::Time::now().as_secs()
-		}
-
 		pub(crate) fn current_block() -> <T as frame_system::Config>::BlockNumber {
 			<frame_system::Pallet<T>>::block_number()
 		}
@@ -1036,7 +1031,7 @@ pub mod pallet {
 				}
 
 				if let Change::NewValue(tranches) = &changes.tranches {
-					let now = Self::now();
+					let now = T::Time::now();
 
 					pool.tranches.combine_with_mut_residual_top(
 						tranches.iter(),
@@ -1182,7 +1177,7 @@ pub mod pallet {
 			)?;
 
 			pool.tranches.rebalance_tranches(
-				Self::now(),
+				T::Time::now(),
 				pool.reserve.total,
 				epoch.nav,
 				tranche_ratios.as_slice(),
@@ -1202,7 +1197,7 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let now = Self::now();
+				let now = T::Time::now();
 
 				pool.reserve.total.ensure_add_assign(amount)?;
 
@@ -1245,7 +1240,7 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let now = Self::now();
+				let now = T::Time::now();
 
 				pool.reserve.total = pool
 					.reserve
