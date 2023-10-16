@@ -138,9 +138,9 @@ macro_rules! impl_fudge_support {
 				const PARA_ID: u32 = $parachain_id;
 				const RELAY_CODE: Option<&'static [u8]> = $relay_path::WASM_BINARY;
 
-				fn build(relay_storage: Storage, parachain_storage: Storage) -> Self {
-					let relay = Self::build_relay(relay_storage);
-					let parachain = Self::build_parachain(&relay, parachain_storage);
+				fn new(relay_storage: Storage, parachain_storage: Storage) -> Self {
+					let relay = Self::new_relay_builder(relay_storage);
+					let parachain = Self::new_parachain_builder(&relay, parachain_storage);
 
 					Self::new(relay, parachain).unwrap()
 				}

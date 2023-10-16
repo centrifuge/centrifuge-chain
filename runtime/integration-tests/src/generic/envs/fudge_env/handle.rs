@@ -122,9 +122,9 @@ pub trait FudgeHandle<T: Runtime> {
 	fn with_mut_state<R>(&mut self, chain: Chain, f: impl FnOnce() -> R) -> R;
 	fn evolve(&mut self);
 
-	fn build(relay_storage: Storage, parachain_storage: Storage) -> Self;
+	fn new(relay_storage: Storage, parachain_storage: Storage) -> Self;
 
-	fn build_relay(
+	fn new_relay_builder(
 		storage: Storage,
 	) -> RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
@@ -189,7 +189,7 @@ pub trait FudgeHandle<T: Runtime> {
 		RelaychainBuilder::new(init, |client| (cidp(client), dp))
 	}
 
-	fn build_parachain(
+	fn new_parachain_builder(
 		relay: &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime>,
 		storage: Storage,
 	) -> ParachainBuilder<T::Block, Self::ParachainConstructApi> {
