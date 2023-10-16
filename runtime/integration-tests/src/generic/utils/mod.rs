@@ -6,7 +6,7 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_system::RawOrigin;
-use sp_runtime::{traits::StaticLookup, AccountId};
+use sp_runtime::traits::StaticLookup;
 pub mod genesis;
 
 use crate::generic::runtime::Runtime;
