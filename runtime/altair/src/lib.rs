@@ -999,9 +999,9 @@ impl pallet_crowdloan_claim::Config for Runtime {
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
-	pub const MaxCandidates: u32 = 100;
+	pub const MaxCandidates: u32 = 20;
 	pub const MinCandidates: u32 = 5;
-	pub const MaxVoters: u32 = 1000;
+	pub const MaxVoters: u32 = 100;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
 }
