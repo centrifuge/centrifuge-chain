@@ -1,6 +1,6 @@
 use cfg_primitives::AccountId;
 use frame_support::{parameter_types, traits::FindAuthor, PalletId};
-use sp_core::H256;
+use sp_core::{ConstU64, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
@@ -60,7 +60,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = u64;
 	type DustRemoval = ();
-	type ExistentialDeposit = ();
+	type ExistentialDeposit = ConstU64<1>;
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();

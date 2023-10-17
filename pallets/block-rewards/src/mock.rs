@@ -155,7 +155,7 @@ orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
 			CurrencyId::Native => ExistentialDeposit::get(),
-			_ => 0,
+			_ => 1,
 		}
 	};
 }

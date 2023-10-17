@@ -72,7 +72,7 @@ parameter_types! {
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
-			_ => 0,
+			_ => 1,
 		}
 	};
 }
