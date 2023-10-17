@@ -62,31 +62,9 @@ mod asset_registry {
 	use sp_std::{vec, vec::Vec};
 	use xcm::{v3::prelude::*, VersionedMultiLocation};
 
-	pub const ALTAIR_ASSET_LOC_COUNT: u32 = 5;
-	pub const ALTAIR_ASSET_METADATA_COUNT: u32 = 5;
-
 	pub struct AltairAssets;
 	impl runtime_common::migrations::asset_registry_xcmv3::AssetsToMigrate for AltairAssets {
-		fn get_assets_to_migrate(
-			loc_count: u32,
-			meta_count: u32,
-		) -> Vec<(
-			CurrencyId,
-			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-		)> {
-			match (loc_count, meta_count) {
-				(loc, meta)
-					if (loc, meta) == (ALTAIR_ASSET_LOC_COUNT, ALTAIR_ASSET_METADATA_COUNT) =>
-				{
-					Self::get_altair_assets()
-				}
-				_ => vec![],
-			}
-		}
-	}
-
-	impl AltairAssets {
-		pub fn get_altair_assets() -> Vec<(
+		fn get_assets_to_migrate() -> Vec<(
 			CurrencyId,
 			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 		)> {
