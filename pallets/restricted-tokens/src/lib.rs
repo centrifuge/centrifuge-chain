@@ -316,14 +316,14 @@ pub mod pallet {
 			let reducible_balance = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Inspect<T::AccountId>>::reducible_balance(
 					&from,
-					Preservation::Protect,
+					Preservation::Expendable,
 					Fortitude::Polite,
 				)
 			} else {
 				<T::Fungibles as fungibles::Inspect<T::AccountId>>::reducible_balance(
 					currency_id,
 					&from,
-					Preservation::Protect,
+					Preservation::Expendable,
 					Fortitude::Polite,
 				)
 			};
@@ -343,7 +343,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Native
@@ -353,7 +353,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Other
@@ -451,7 +451,7 @@ pub mod pallet {
 					&from,
 					&to,
 					amount,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Native
@@ -461,7 +461,7 @@ pub mod pallet {
 					&from,
 					&to,
 					amount,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Other
