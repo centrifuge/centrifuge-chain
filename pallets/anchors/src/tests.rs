@@ -542,6 +542,7 @@ fn pre_commit_and_then_evict() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn anchor_evict_single_anchor_per_day_many_days() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
@@ -731,6 +732,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn test_remove_anchor_indexes() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
@@ -801,6 +803,7 @@ fn test_remove_anchor_indexes() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn test_same_day_many_anchors() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;

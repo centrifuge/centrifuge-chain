@@ -114,8 +114,15 @@ impl pallet_session::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	// the minimum fee for an anchor is 500,000ths of a CFG.
+	// This is set to a value so you can still get some return without getting your account removed.
+	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	pub const MaxHolds: u32 = 50;
+	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
 }
+
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
@@ -124,9 +131,9 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ();
-	type MaxLocks = ();
-	type MaxReserves = ();
+	type MaxHolds = MaxHolds;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -160,8 +167,8 @@ impl orml_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = ();
-	type MaxReserves = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
