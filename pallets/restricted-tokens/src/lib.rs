@@ -271,7 +271,7 @@ pub mod pallet {
 					&from,
 					&to,
 					amount,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Native
@@ -281,7 +281,7 @@ pub mod pallet {
 					&from,
 					&to,
 					amount,
-					Preservation::Protect,
+					Preservation::Expendable,
 				)?;
 
 				TokenType::Other

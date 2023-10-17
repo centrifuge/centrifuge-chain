@@ -443,14 +443,14 @@ fn fungible_transfer_on_hold() {
 		.execute_with(|| {
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &1, DISTR_PER_ACCOUNT).is_ok());
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::BestEffort, Restriction::OnHold, Fortitude::Polite).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Protect, Fortitude::Polite), 0);
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Protect, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Preserve, Fortitude::Polite), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			// nuno ^ this might be failing because of BestEffort or because ExistentialDeposit changed
 
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &2, DISTR_PER_ACCOUNT).is_ok());
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &2, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::Free,Fortitude::Polite).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Protect, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, Preservation::Protect, Fortitude::Polite), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, Preservation::Preserve, Fortitude::Polite), 0);
 		})
 }
 
@@ -641,12 +641,15 @@ fn fungibles_mint_into() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
+			let amount = 10;
+
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &1, 10),
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &1, amount.clone()),
 				Error::<Runtime>::PreConditionsNotMet
 			);
 
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, amount).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<AccountId>>::balance(CurrencyId::RestrictedCoin, &POOL_PALLET_ID), amount);
 		})
 }
 
