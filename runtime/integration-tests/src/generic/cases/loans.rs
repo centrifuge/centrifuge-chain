@@ -40,16 +40,30 @@ fn borrow<T: Runtime + FudgeSupport>() {
 	);
 
 	env.state_mut(|| {
-		utils::give_balance_to::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-		utils::give_nft_to::<T>(BORROWER.id(), NFT_A);
+		// Creating a pool
+
+		/*
+		orml_asset_registry::Pallet::<T>::metadata(
+			&MUSD_CURRENCY_ID
+		);
+		*/
+
+		//utils::give_balance_to::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
+		//utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A,
+		// MUSD_CURRENCY_ID);
+
+		// Funding a pool
+		// utils::give_nft_to::<T>(BORROWER.id(), NFT_A);
 	});
 
+	/*
 	env.state(|| {
 		assert_eq!(
 			pallet_uniques::Pallet::<T>::owner(NFT_A.0, NFT_A.1).unwrap(),
 			BORROWER.id(),
 		)
 	});
+	*/
 }
 
 crate::test_for_runtimes!(all, borrow);

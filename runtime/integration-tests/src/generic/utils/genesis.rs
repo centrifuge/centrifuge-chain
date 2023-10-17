@@ -86,7 +86,7 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 		(
 			AUSD_CURRENCY_ID,
 			AssetMetadata {
-				decimals: 12,
+				decimals: AUSD_DECIMALS,
 				name: "Acala Dollar".as_bytes().to_vec(),
 				symbol: "AUSD".as_bytes().to_vec(),
 				existential_deposit: 0 as Balance,
@@ -102,10 +102,10 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 	]);
 
 	orml_asset_registry::GenesisConfig::<T> {
-		assets: currency_ids
+		assets: dbg!(currency_ids
 			.into_iter()
 			.map(|id| (id, assets.get(&id).unwrap().clone()))
-			.collect(),
-		last_asset_id: Default::default(), // It seems deprecated
+			.collect()),
+		last_asset_id: AUSD_CURRENCY_ID, // It seems deprecated
 	}
 }
