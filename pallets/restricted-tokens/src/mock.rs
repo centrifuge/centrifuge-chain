@@ -29,6 +29,7 @@ use sp_runtime::{
 use sp_std::collections::btree_map::BTreeMap;
 
 pub use crate as pallet_restricted_tokens;
+use crate::ConstU32;
 
 pub const DISTR_PER_ACCOUNT: u64 = 1000;
 pub type AccountId = u64;
@@ -395,6 +396,7 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub const MaxLocks: u32 = 100;
+	pub const MaxReserves: u32 = 50;
 	pub const ExistentialDeposit: u64 = 1;
 }
 
@@ -405,17 +407,16 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
-	type MaxFreezes = ();
-	type MaxHolds = ();
+	type MaxFreezes = ConstU32<50>;
+	type MaxHolds = ConstU32<50>;
 	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for Runtime {
