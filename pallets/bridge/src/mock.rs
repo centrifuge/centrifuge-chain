@@ -56,7 +56,8 @@ pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
-pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = NATIVE_TOKEN_TRANSFER_FEE;
+//todo(nuno): if we AllowDeath in Fees::withdraw_fee, we don't need to add the ED here
+pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = NATIVE_TOKEN_TRANSFER_FEE + ExistentialDeposit::get();
 pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 
 // ----------------------------------------------------------------------------
@@ -124,12 +125,16 @@ impl frame_system::Config for Runtime {
 	type Version = ();
 }
 
+parameter_types! {
+	pub const ExistentialDeposit: u128 = 1;
+}
+
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ConstU128<1>;
+	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();

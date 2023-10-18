@@ -212,6 +212,7 @@ impl<T: Config> Pallet<T> {
 			from,
 			balance,
 			WithdrawReasons::FEE,
+			// todo(nuno): discuss whether we can make this AllowDeath instead
 			ExistenceRequirement::KeepAlive,
 		)
 	}
