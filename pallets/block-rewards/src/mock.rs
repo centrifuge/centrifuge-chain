@@ -10,7 +10,7 @@ use frame_support::{
 };
 use frame_system::EnsureRoot;
 use num_traits::{One, Zero};
-use sp_core::H256;
+use sp_core::{ConstU128, H256};
 use sp_runtime::{
 	impl_opaque_keys,
 	testing::{Header, UintAuthorityId},
@@ -242,6 +242,7 @@ impl pallet_block_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
+	type ExistentialDeposit = ExistentialDeposit;
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
@@ -258,24 +259,25 @@ impl pallet_block_rewards::Config for Test {
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
+		// nuno: this is failing since the balance at this point is the existential deposit
 		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
-		<Test as Config>::StakeAmount::get()
+		ExistentialDeposit::get()
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrencyId::get(), who, 1),
+		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrencyId::get(), who, ExistentialDeposit::get() * 2),
 		WithdrawConsequence::BalanceLow
 	);
 }
 
-pub(crate) fn assert_not_staked(who: &AccountId) {
+pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	assert!(<Test as Config>::Rewards::account_stake(
 		<Test as Config>::StakeCurrencyId::get(),
 		who
 	)
 	.is_zero());
-	assert!(
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who)
-			.is_zero()
+	assert_eq!(
+		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		if was_before { ExistentialDeposit::get() } else { 0 }
 	);
 }
 

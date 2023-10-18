@@ -135,6 +135,9 @@ pub mod pallet {
 			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
 			+ MaybeSerializeDeserialize;
 
+		#[pallet::constant]
+		type ExistentialDeposit: Get<Self::Balance>;
+
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
@@ -358,7 +361,7 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get())?;
+		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get() + T::ExistentialDeposit::get())?;
 		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
 
@@ -366,7 +369,7 @@ impl<T: Config> Pallet<T> {
 	/// it. Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
-		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
+		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount.clone())?;
 		T::Currency::burn_from(
 			T::StakeCurrencyId::get(),
 			who,

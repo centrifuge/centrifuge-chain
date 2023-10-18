@@ -167,7 +167,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128
+			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -182,13 +182,13 @@ fn joining_leaving_collators() {
 			vec![2, 3]
 		);
 		assert_staked(&1);
-		assert_not_staked(&2);
-		assert_not_staked(&3);
+		assert_not_staked(&2, false);
+		assert_not_staked(&3, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128
+			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -202,16 +202,16 @@ fn joining_leaving_collators() {
 			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![4, 5]
 		);
-		assert_not_staked(&1);
+		assert_not_staked(&1, true);
 		assert_staked(&2);
 		assert_staked(&3);
-		assert_not_staked(&4);
-		assert_not_staked(&5);
+		assert_not_staked(&4, false);
+		assert_not_staked(&5, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			2 * <Test as Config>::StakeAmount::get() as u128
+			2 * <Test as Config>::StakeAmount::get() as u128 + 3 * ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -225,17 +225,17 @@ fn joining_leaving_collators() {
 			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![6, 7]
 		);
-		assert_not_staked(&2);
+		assert_not_staked(&2, true);
 		assert_staked(&3);
 		assert_staked(&4);
 		assert_staked(&5);
-		assert_not_staked(&6);
-		assert_not_staked(&7);
+		assert_not_staked(&6, false);
+		assert_not_staked(&7, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			3 * <Test as Config>::StakeAmount::get() as u128
+			3 * <Test as Config>::StakeAmount::get() as u128 + 5 * ExistentialDeposit::get()
 		);
 	});
 }
