@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::marker::PhantomData;
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::{AssetMetadata, CurrencyId, CustomMetadata};
+use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use codec::Encode;
 use frame_support::traits::GenesisBuild;
 use sp_runtime::Storage;
@@ -58,54 +58,79 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 	}
 }
 
-pub const USD6_DECIMALS: u32 = 6;
-pub const USD6_UNIT: Balance = 10u128.pow(USD6_DECIMALS);
-pub const USD6_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-
-pub const USD12_DECIMALS: u32 = 12;
-pub const USD12_UNIT: Balance = 10u128.pow(USD12_DECIMALS);
-pub const USD12_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
-
 pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T> {
-	let assets = BTreeMap::from([
-		(
-			USD6_CURRENCY_ID,
-			AssetMetadata {
-				decimals: USD6_DECIMALS,
-				name: "Mock Dollar with 6 decimals".as_bytes().to_vec(),
-				symbol: "USD6".as_bytes().to_vec(),
-				existential_deposit: 0 as Balance,
-				location: None,
-				additional: CustomMetadata {
-					pool_currency: true,
-					..Default::default()
-				},
-			}
-			.encode(),
-		),
-		(
-			USD12_CURRENCY_ID,
-			AssetMetadata {
-				decimals: USD12_DECIMALS,
-				name: "Mock Dollar 12 with decimals".as_bytes().to_vec(),
-				symbol: "USD12".as_bytes().to_vec(),
-				existential_deposit: 0 as Balance,
-				location: None,
-				additional: CustomMetadata {
-					pool_currency: true,
-					..Default::default()
-				},
-			}
-			.encode(),
-		),
-		// Add new currencies here
-	]);
-
 	orml_asset_registry::GenesisConfig::<T> {
-		assets: dbg!(currency_ids
+		assets: currency_ids
 			.into_iter()
-			.map(|id| (id, assets.get(&id).unwrap().clone()))
-			.collect()),
+			.map(|currency_id| (currency_id, currency::find_metadata(currency_id).encode()))
+			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
+	}
+}
+
+pub mod currency {
+	use super::*;
+
+	pub trait CurrencyInfo {
+		const ID: CurrencyId;
+		const DECIMALS: u32;
+		const UNIT: Balance = 10u128.pow(Self::DECIMALS);
+		const SYMBOL: &'static str;
+		const NAME: &'static str = Self::SYMBOL;
+		const LOCATION: Option<xcm::VersionedMultiLocation> = None;
+		const CUSTOM: CustomMetadata;
+		const ED: Balance = 0;
+
+		fn metadata() -> AssetMetadata<Balance, CustomMetadata> {
+			AssetMetadata {
+				decimals: Self::DECIMALS,
+				name: Self::NAME.as_bytes().to_vec(),
+				symbol: Self::SYMBOL.as_bytes().to_vec(),
+				existential_deposit: Self::ED,
+				location: None,
+				additional: CustomMetadata {
+					pool_currency: true,
+					..Default::default()
+				},
+			}
+		}
+	}
+
+	pub struct Usd6;
+	impl CurrencyInfo for Usd6 {
+		const CUSTOM: CustomMetadata = CustomMetadata {
+			pool_currency: true,
+			..CONST_DEFAULT_CUSTOM
+		};
+		const DECIMALS: u32 = 6;
+		const ID: CurrencyId = CurrencyId::ForeignAsset(1);
+		const SYMBOL: &'static str = "USD6";
+	}
+
+	pub struct Usd12;
+	impl CurrencyInfo for Usd12 {
+		const CUSTOM: CustomMetadata = CustomMetadata {
+			pool_currency: true,
+			..CONST_DEFAULT_CUSTOM
+		};
+		const DECIMALS: u32 = 12;
+		const ID: CurrencyId = CurrencyId::ForeignAsset(2);
+		const SYMBOL: &'static str = "USD12";
+	}
+
+	/// Matches default() but for const support
+	const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
+		transferability: CrossChainTransferability::None,
+		mintable: false,
+		permissioned: false,
+		pool_currency: false,
+	};
+
+	pub fn find_metadata(currency: CurrencyId) -> AssetMetadata<Balance, CustomMetadata> {
+		match currency {
+			Usd6::ID => Usd6::metadata(),
+			Usd12::ID => Usd12::metadata(),
+			_ => panic!("Unsupported currency {currency:?}"),
+		}
 	}
 }

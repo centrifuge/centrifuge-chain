@@ -1,6 +1,5 @@
 use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, CFG};
 use frame_support::traits::Get;
-use orml_traits::GetByKey;
 
 use crate::{
 	generic::{
@@ -12,7 +11,11 @@ use crate::{
 		runtime::Runtime,
 		utils::{
 			self,
-			genesis::{self, Genesis, USD6_CURRENCY_ID},
+			genesis::{
+				self,
+				currency::{CurrencyInfo, Usd6},
+				Genesis,
+			},
 		},
 	},
 	utils::accounts::Keyring,
@@ -31,18 +34,15 @@ fn borrow<T: Runtime + FudgeSupport>() {
 	let mut env = RuntimeEnv::<T>::from_storage(
 		Genesis::<T>::default()
 			.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-			.add(genesis::assets(vec![USD6_CURRENCY_ID]))
-			.add(genesis::tokens(vec![(
-				USD6_CURRENCY_ID,
-				T::ExistentialDeposits::get(&USD6_CURRENCY_ID),
-			)]))
+			.add(genesis::assets(vec![Usd6::ID]))
+			.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
 			.storage(),
 	);
 
 	env.state_mut(|| {
 		// Creating a pool
 		utils::give_balance_to::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-		utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, USD6_CURRENCY_ID);
+		utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
 
 		// Funding a pool
 		utils::give_nft_to::<T>(BORROWER.id(), NFT_A);
