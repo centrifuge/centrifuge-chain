@@ -58,22 +58,22 @@ pub fn tokens<T: Runtime>(values: Vec<(CurrencyId, Balance)>) -> impl GenesisBui
 	}
 }
 
-pub const MUSD_DECIMALS: u32 = 6;
-pub const MUSD_UNIT: Balance = 10u128.pow(MUSD_DECIMALS);
-pub const MUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+pub const USD6_DECIMALS: u32 = 6;
+pub const USD6_UNIT: Balance = 10u128.pow(USD6_DECIMALS);
+pub const USD6_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
-pub const AUSD_DECIMALS: u32 = 12;
-pub const AUSD_UNIT: Balance = 10u128.pow(AUSD_DECIMALS);
-pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+pub const USD12_DECIMALS: u32 = 12;
+pub const USD12_UNIT: Balance = 10u128.pow(USD12_DECIMALS);
+pub const USD12_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T> {
 	let assets = BTreeMap::from([
 		(
-			MUSD_CURRENCY_ID,
+			USD6_CURRENCY_ID,
 			AssetMetadata {
-				decimals: MUSD_DECIMALS,
-				name: "Mock Dollar".as_bytes().to_vec(),
-				symbol: "MUSD".as_bytes().to_vec(),
+				decimals: USD6_DECIMALS,
+				name: "Mock Dollar with 6 decimals".as_bytes().to_vec(),
+				symbol: "USD6".as_bytes().to_vec(),
 				existential_deposit: 0 as Balance,
 				location: None,
 				additional: CustomMetadata {
@@ -84,11 +84,11 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 			.encode(),
 		),
 		(
-			AUSD_CURRENCY_ID,
+			USD12_CURRENCY_ID,
 			AssetMetadata {
-				decimals: AUSD_DECIMALS,
-				name: "Acala Dollar".as_bytes().to_vec(),
-				symbol: "AUSD".as_bytes().to_vec(),
+				decimals: USD12_DECIMALS,
+				name: "Mock Dollar 12 with decimals".as_bytes().to_vec(),
+				symbol: "USD12".as_bytes().to_vec(),
 				existential_deposit: 0 as Balance,
 				location: None,
 				additional: CustomMetadata {
@@ -106,6 +106,6 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 			.into_iter()
 			.map(|id| (id, assets.get(&id).unwrap().clone()))
 			.collect()),
-		last_asset_id: AUSD_CURRENCY_ID, // It seems deprecated
+		last_asset_id: Default::default(), // It seems deprecated
 	}
 }

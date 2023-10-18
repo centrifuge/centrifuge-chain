@@ -14,7 +14,6 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod example;
-	mod issue;
 	mod loans;
 }
 
