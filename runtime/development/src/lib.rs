@@ -68,7 +68,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::{currency::MutationHooks};
+use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
@@ -89,10 +89,10 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use runtime_common::*;
 use runtime_common::{
-    CurrencyEDs
 	account_conversion::AccountConverter,
 	fees::{DealWithFees, WeightToFee},
 	xcm::AccountIdToMultiLocation,
+	CurrencyEDs,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
