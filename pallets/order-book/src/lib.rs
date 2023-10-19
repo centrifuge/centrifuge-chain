@@ -796,7 +796,7 @@ pub mod pallet {
 				&account,
 				order_id,
 				|maybe_order| -> DispatchResult {
-					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 					order.buy_amount = buy_amount;
 					order.max_sell_rate = sell_rate_limit;
 					order.min_fulfillment_amount = min_fulfillment_amount;

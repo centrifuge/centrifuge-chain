@@ -21,6 +21,7 @@ use sp_runtime::{
 	traits::{BadOrigin, Zero},
 	DispatchError, FixedPointNumber, FixedU128,
 };
+use cfg_primitives::CFG;
 
 use super::*;
 use crate::mock::*;
@@ -702,6 +703,7 @@ mod fill_order_partial {
 #[test]
 fn fill_order_full_checks_asset_in_for_fulfiller() {
 	new_test_ext().execute_with(|| {
+		assert_eq!(Tokens::balance(CurrencyId::Native, &ACCOUNT_0), 0);
 		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::Native,
@@ -711,9 +713,10 @@ fn fill_order_full_checks_asset_in_for_fulfiller() {
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		// verify fulfill runs
+		assert_eq!(Tokens::balance(CurrencyId::Native, &ACCOUNT_1), 0);
 		assert_err!(
 			OrderBook::fill_order_full(RuntimeOrigin::signed(ACCOUNT_1), order_id),
-			pallet_balances::Error::<Runtime>::InsufficientBalance
+			crate::Error::<Runtime>::InsufficientAssetFunds
 		);
 	});
 }

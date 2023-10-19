@@ -131,16 +131,16 @@ impl pallet_balances::Config for Runtime {
 }
 
 cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
-		RegistryMock,
-		CurrencyId,
-		Balance,
-		CustomMetadata
+	RegistryMock,
+	CurrencyId,
+	Balance,
+	CustomMetadata
 }
 
 parameter_type_with_key! {
-		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-				Default::default()
-		};
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
 }
 
 impl orml_tokens::Config for Runtime {
