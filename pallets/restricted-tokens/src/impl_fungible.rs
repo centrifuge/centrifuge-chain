@@ -133,12 +133,20 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		todo!("nuno")
 	}
 
+	// fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
+	// 	T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
+	// 		who.clone(),
+	// 		amount,
+	// 		<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who, amount),
+	// 	))
+	// }
+
 	fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
 		T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
 			who.clone(),
 			amount,
 			<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who, amount),
-		))
+		)) && T::NativeFungible::can_hold(reason, who, amount)
 	}
 }
 
