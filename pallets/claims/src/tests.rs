@@ -21,8 +21,8 @@
 // ----------------------------------------------------------------------------
 
 use frame_support::{assert_noop, assert_ok};
-use pallet_balances::Error as BalancesError;
 use sp_core::H256;
+use sp_runtime::TokenError;
 use sp_runtime::traits::{BadOrigin, Hash};
 
 use crate::{mock::*, *};
@@ -278,7 +278,7 @@ fn claim() {
 					10001 * CFG,
 					one_sorted_hashes.to_vec()
 				),
-				BalancesError::<Runtime, _>::InsufficientBalance
+				TokenError::FundsUnavailable
 			);
 
 			// Ok
