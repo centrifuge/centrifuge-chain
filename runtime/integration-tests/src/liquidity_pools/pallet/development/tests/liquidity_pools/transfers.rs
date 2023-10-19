@@ -63,7 +63,7 @@ use crate::{
 			DEFAULT_POOL_ID,
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::{AUSD_CURRENCY_ID, AUSD_ED, MOONBEAM_EVM_CHAIN_ID},
 };
 
 #[test]
@@ -188,15 +188,21 @@ fn transfer_non_tranche_tokens_to_local() {
 			amount,
 		};
 
-		assert!(OrmlTokens::total_issuance(currency_id).is_zero());
+		assert_eq!(OrmlTokens::total_issuance(currency_id), AUSD_ED * 2);
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
 		// Verify that the correct amount was minted
-		assert_eq!(OrmlTokens::total_issuance(currency_id), amount);
-		assert_eq!(OrmlTokens::free_balance(currency_id, &receiver), amount);
+		assert_eq!(
+			OrmlTokens::total_issuance(currency_id),
+			amount + AUSD_ED * 2
+		);
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &receiver),
+			amount + AUSD_ED
+		);
 
 		// Verify empty transfers throw
 		assert_noop!(
