@@ -80,7 +80,7 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, CurrencyEDs,
+	xcm_transactor, CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1131,7 +1131,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type ExistentialDeposits = CurrencyEDs<Runtime>;
+	type ExistentialDeposits = CurrencyED<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];

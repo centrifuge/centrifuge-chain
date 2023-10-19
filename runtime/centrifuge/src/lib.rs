@@ -79,7 +79,7 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
-	account_conversion::AccountConverter, xcm::AccountIdToMultiLocation, CurrencyEDs,
+	account_conversion::AccountConverter, xcm::AccountIdToMultiLocation, CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -398,7 +398,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type ExistentialDeposits = CurrencyEDs<Runtime>;
+	type ExistentialDeposits = CurrencyED<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];

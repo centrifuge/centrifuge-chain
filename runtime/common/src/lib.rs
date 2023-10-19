@@ -43,8 +43,8 @@ macro_rules! production_or_benchmark {
 	}};
 }
 
-pub struct CurrencyEDs<T>(PhantomData<T>);
-impl<T> GetByKey<CurrencyId, Balance> for CurrencyEDs<T>
+pub struct CurrencyED<T>(PhantomData<T>);
+impl<T> GetByKey<CurrencyId, Balance> for CurrencyED<T>
 where
 	T: pallet_balances::Config<Balance = Balance>
 		+ orml_asset_registry::Config<AssetId = CurrencyId, Balance = Balance>,
