@@ -1,7 +1,23 @@
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId};
-use cfg_traits::Seconds;
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, SECONDS_PER_YEAR};
+use cfg_traits::{
+	interest::{CompoundingSchedule, InterestRate},
+	Seconds, TimeAsSecs,
+};
 use cfg_types::permissions::PoolRole;
 use frame_support::traits::Get;
+use pallet_loans::{
+	entities::{
+		loans::LoanInfo,
+		pricing::{
+			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
+			Pricing,
+		},
+	},
+	types::{
+		valuation::ValuationMethod, BorrowRestrictions, InterestPayments, LoanRestrictions,
+		Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+	},
+};
 use runtime_common::apis::runtime_decl_for_PoolsApi::PoolsApiV1;
 
 use crate::{
@@ -16,20 +32,20 @@ use crate::{
 				currency::{cfg, usd6, CurrencyInfo, Usd6},
 				Genesis,
 			},
+			POOL_MIN_EPOCH_TIME,
 		},
 	},
-	utils::accounts::Keyring,
+	utils::{accounts::Keyring, tokens::rate_from_percent},
 };
 
 const POOL_ADMIN: Keyring = Keyring::Admin;
 const INVESTOR: Keyring = Keyring::Alice;
 const BORROWER: Keyring = Keyring::Bob;
 
-const FOR_FEES: Balance = cfg(1);
-
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 
+const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 
 fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
@@ -54,7 +70,7 @@ fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment 
 		utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
 	});
 
-	env.pass(Blocks::BySeconds(T::DefaultMinEpochTime::get()));
+	env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
 
 	env.state_mut(|| {
 		// New epoch with the investor funds available
@@ -70,6 +86,45 @@ fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment 
 
 fn borrow<T: Runtime>() {
 	let mut env = initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	let info = env.state(|| {
+		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
+		LoanInfo {
+			schedule: RepaymentSchedule {
+				maturity: Maturity::Fixed {
+					date: now + SECONDS_PER_YEAR,
+					extension: SECONDS_PER_YEAR / 2,
+				},
+				interest_payments: InterestPayments::None,
+				pay_down_schedule: PayDownSchedule::None,
+			},
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: rate_from_percent(20),
+				compounding: CompoundingSchedule::Secondly,
+			},
+			collateral: NFT_A,
+			pricing: Pricing::Internal(InternalPricing {
+				collateral_value: 100_000,
+				max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
+					advance_rate: rate_from_percent(100),
+				},
+				valuation_method: ValuationMethod::OutstandingDebt,
+			}),
+			restrictions: LoanRestrictions {
+				borrows: BorrowRestrictions::NotWrittenOff,
+				repayments: RepayRestrictions::None,
+			},
+		}
+	});
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::create {
+			pool_id: POOL_A,
+			info: info,
+		},
+	)
+	.unwrap();
 
 	// Submit Loan::create()
 	// Submit Loan::borrow()

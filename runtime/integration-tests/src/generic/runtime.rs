@@ -6,7 +6,7 @@ use cfg_primitives::{
 };
 use cfg_traits::Millis;
 use cfg_types::{
-	fixed_point::Quantity,
+	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -68,6 +68,7 @@ pub trait Runtime:
 		PoolId = PoolId,
 		CollectionId = CollectionId,
 		ItemId = ItemId,
+		Rate = Rate,
 	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ orml_asset_registry::Config<
 		AssetId = CurrencyId,
@@ -100,6 +101,7 @@ pub trait Runtime:
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
 		+ From<pallet_investments::Call<Self>>
+		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.

@@ -1,7 +1,7 @@
 // Divide this utilties into files when it grows
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
-use cfg_traits::investments::TrancheCurrency as _;
+use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::{CurrencyId, TrancheCurrency},
@@ -13,9 +13,11 @@ pub mod genesis;
 use cfg_types::pools::TrancheMetadata;
 use frame_support::BoundedVec;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use sp_runtime::{traits::One, AccountId32, Perquintill};
+use sp_runtime::{traits::One, Perquintill};
 
 use crate::generic::runtime::{Runtime, RuntimeKind};
+
+pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 
 pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (CollectionId, ItemId)) {
 	pallet_uniques::Pallet::<T>::force_create(
@@ -69,7 +71,7 @@ pub fn give_pool_role<T: Runtime>(dest: AccountId, pool_id: PoolId, role: PoolRo
 	.unwrap();
 }
 
-pub fn create_empty_pool<T: Runtime>(admin: AccountId32, pool_id: PoolId, currency_id: CurrencyId) {
+pub fn create_empty_pool<T: Runtime>(admin: AccountId, pool_id: PoolId, currency_id: CurrencyId) {
 	pallet_pool_registry::Pallet::<T>::register(
 		match T::KIND {
 			RuntimeKind::Development => RawOrigin::Signed(admin.clone()).into(),
@@ -104,15 +106,23 @@ pub fn create_empty_pool<T: Runtime>(admin: AccountId32, pool_id: PoolId, curren
 		BoundedVec::default(),
 	)
 	.unwrap();
+
+	// In order to later close the epoch fastly,
+	// we mofify here that requirement to significalty reduce the testing time.
+	// The only way to do it is breaking the integration tests rules mutating
+	// this state directly.
+	pallet_pool_system::Pool::<T>::mutate(pool_id, |pool| {
+		pool.as_mut().unwrap().parameters.min_epoch_time = POOL_MIN_EPOCH_TIME;
+	});
 }
 
-pub fn close_pool_epoch<T: Runtime>(admin: AccountId32, pool_id: PoolId) {
+pub fn close_pool_epoch<T: Runtime>(admin: AccountId, pool_id: PoolId) {
 	pallet_pool_system::Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id)
 		.unwrap();
 }
 
 pub fn invest<T: Runtime>(
-	investor: AccountId32,
+	investor: AccountId,
 	pool_id: PoolId,
 	tranche_id: TrancheId,
 	amount: Balance,
