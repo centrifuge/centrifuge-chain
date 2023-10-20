@@ -35,27 +35,6 @@ pub enum RuntimeKind {
 	Centrifuge,
 }
 
-pub trait Api<T: Runtime>:
-	sp_api::runtime_decl_for_Core::CoreV4<T::Block>
-	+ sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<T::Block>
-	+ apis::runtime_decl_for_LoansApi::LoansApiV1<
-		T::Block,
-		PoolId,
-		LoanId,
-		pallet_loans::entities::loans::ActiveLoanInfo<T>,
-	> + apis::runtime_decl_for_PoolsApi::PoolsApiV1<
-		T::Block,
-		PoolId,
-		TrancheId,
-		Balance,
-		CurrencyId,
-		Quantity,
-		Self::MaxTranchesExt,
-	>
-{
-	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
-}
-
 /// Runtime configuration
 pub trait Runtime:
 	Send
@@ -73,13 +52,13 @@ pub trait Runtime:
 		PoolId = PoolId,
 		TrancheId = TrancheId,
 		BalanceRatio = Quantity,
-		MaxTranches = <Self::Api as Api<Self>>::MaxTranchesExt,
+		MaxTranches = Self::MaxTranchesExt,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
 		Balance = Balance,
-		MaxTranches = <Self::Api as Api<Self>>::MaxTranchesExt,
+		MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
@@ -115,12 +94,13 @@ pub trait Runtime:
 		+ Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ GetDispatchInfo
 		+ SelfContainedCall
+		+ Sync
+		+ Send
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
-		+ From<cumulus_pallet_parachain_system::Call<Self>>
-		+ Sync
-		+ Send;
+		+ From<pallet_investments::Call<Self>>
+		+ From<cumulus_pallet_parachain_system::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
@@ -158,7 +138,25 @@ pub trait Runtime:
 		>,
 	>;
 
-	type Api: Api<Self>;
+	/// You can extend this bounds to give extra API support
+	type Api: sp_api::runtime_decl_for_Core::CoreV4<Self::Block>
+		+ sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<Self::Block>
+		+ apis::runtime_decl_for_LoansApi::LoansApiV1<
+			Self::Block,
+			PoolId,
+			LoanId,
+			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+		> + apis::runtime_decl_for_PoolsApi::PoolsApiV1<
+			Self::Block,
+			PoolId,
+			TrancheId,
+			Balance,
+			CurrencyId,
+			Quantity,
+			Self::MaxTranchesExt,
+		>;
+
+	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
 
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;

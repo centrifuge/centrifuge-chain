@@ -30,7 +30,7 @@ const FOR_FEES: Balance = cfg(1);
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 
-const POOL_BALANCE: Balance = usd6(1_000_000);
+const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 
 fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
 	let mut env = Environment::from_storage(
@@ -50,8 +50,8 @@ fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment 
 		let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 		let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
 		utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
-		utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, POOL_BALANCE);
-		utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, POOL_BALANCE);
+		utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, EXPECTED_POOL_BALANCE);
+		utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
 	});
 
 	env.pass(Blocks::BySeconds(T::DefaultMinEpochTime::get()));

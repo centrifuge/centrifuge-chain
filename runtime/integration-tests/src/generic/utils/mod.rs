@@ -12,7 +12,7 @@ pub mod genesis;
 
 use cfg_types::pools::TrancheMetadata;
 use frame_support::BoundedVec;
-use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
+use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use sp_runtime::{traits::One, AccountId32, Perquintill};
 
 use crate::generic::runtime::{Runtime, RuntimeKind};
@@ -123,17 +123,4 @@ pub fn invest<T: Runtime>(
 		amount,
 	)
 	.unwrap();
-}
-
-// Utilities that does not modify the state
-pub mod get {
-	use super::*;
-
-	pub fn default_tranche_id<T: Runtime>(pool_id: PoolId) -> TrancheId {
-		pallet_pool_system::Pool::<T>::get(pool_id)
-			.unwrap()
-			.tranches
-			.tranche_id(TrancheLoc::Index(0))
-			.unwrap()
-	}
 }
