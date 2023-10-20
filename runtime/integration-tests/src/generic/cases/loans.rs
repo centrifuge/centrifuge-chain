@@ -2,6 +2,7 @@ use cfg_primitives::{Balance, CollectionId, ItemId, PoolId};
 use cfg_traits::Seconds;
 use cfg_types::permissions::PoolRole;
 use frame_support::traits::Get;
+use runtime_common::apis::runtime_decl_for_PoolsApi::PoolsApiV1;
 
 use crate::{
 	generic::{
@@ -46,7 +47,7 @@ fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment 
 		utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
 
 		// Funding a pool
-		let tranche_id = T::tranche_id(POOL_A, 0).unwrap();
+		let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 		let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
 		utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
 		utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, POOL_BALANCE);

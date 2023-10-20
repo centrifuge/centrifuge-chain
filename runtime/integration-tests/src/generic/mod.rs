@@ -17,7 +17,7 @@ mod cases {
 	mod loans;
 }
 
-use runtime::{Runtime, RuntimeKind};
+use runtime::{Api, Runtime, RuntimeKind};
 
 /// Generate tests for the specified runtimes or all runtimes.
 /// Usage
@@ -74,9 +74,13 @@ macro_rules! test_for_runtimes {
 /// Implements the `Runtime` trait for a runtime
 macro_rules! impl_runtime {
 	($runtime_path:ident, $kind:ident) => {
-		impl Runtime for $runtime_path::Runtime {
-			type Block = $runtime_path::Block;
+		impl Api<Self> for $runtime_path::Runtime {
 			type MaxTranchesExt = $runtime_path::MaxTranches;
+		}
+
+		impl Runtime for $runtime_path::Runtime {
+			type Api = Self;
+			type Block = $runtime_path::Block;
 			type RuntimeCallExt = $runtime_path::RuntimeCall;
 			type RuntimeEventExt = $runtime_path::RuntimeEvent;
 

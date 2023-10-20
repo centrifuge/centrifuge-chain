@@ -10,6 +10,7 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
+use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo},
@@ -34,7 +35,26 @@ pub enum RuntimeKind {
 	Centrifuge,
 }
 
-use codec::Codec;
+pub trait Api<T: Runtime>:
+	sp_api::runtime_decl_for_Core::CoreV4<T::Block>
+	+ sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<T::Block>
+	+ apis::runtime_decl_for_LoansApi::LoansApiV1<
+		T::Block,
+		PoolId,
+		LoanId,
+		pallet_loans::entities::loans::ActiveLoanInfo<T>,
+	> + apis::runtime_decl_for_PoolsApi::PoolsApiV1<
+		T::Block,
+		PoolId,
+		TrancheId,
+		Balance,
+		CurrencyId,
+		Quantity,
+		Self::MaxTranchesExt,
+	>
+{
+	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
+}
 
 /// Runtime configuration
 pub trait Runtime:
@@ -52,14 +72,14 @@ pub trait Runtime:
 		Balance = Balance,
 		PoolId = PoolId,
 		TrancheId = TrancheId,
-        BalanceRatio = Quantity,
-        MaxTranches = Self::MaxTranchesExt,
+		BalanceRatio = Quantity,
+		MaxTranches = <Self::Api as Api<Self>>::MaxTranchesExt,
 	> + pallet_balances::Config<Balance = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
 		Balance = Balance,
-        MaxTranches = Self::MaxTranchesExt,
+		MaxTranches = <Self::Api as Api<Self>>::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
@@ -80,27 +100,13 @@ pub trait Runtime:
 	+ pallet_authorship::Config
 	+ pallet_treasury::Config<Currency = pallet_restricted_tokens::Pallet<Self>>
 	+ pallet_transaction_payment::Config<
-        AccountId = AccountId,
+		AccountId = AccountId,
 		WeightToFee = WeightToFee,
 		OnChargeTransaction = CurrencyAdapter<pallet_balances::Pallet<Self>, DealWithFees<Self>>,
 	> + pallet_restricted_tokens::Config<
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
-
-    // APIS:
-    + sp_api::runtime_decl_for_Core::CoreV4<Self::Block>
-    + sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<Self::Block>
-	+ apis::runtime_decl_for_LoansApi::LoansApiV1<
-		Self::Block,
-		PoolId,
-		LoanId,
-		pallet_loans::entities::loans::ActiveLoanInfo<Self>,
-	>
-	+ apis::runtime_decl_for_PoolsApi::PoolsApiV1<
-		Self::Block,
-        PoolId, TrancheId, Balance, CurrencyId, Quantity, Self::MaxTranchesExt,
-	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -112,7 +118,9 @@ pub trait Runtime:
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
-		+ From<cumulus_pallet_parachain_system::Call<Self>> + Sync + Send;
+		+ From<cumulus_pallet_parachain_system::Call<Self>>
+		+ Sync
+		+ Send;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
@@ -131,7 +139,7 @@ pub trait Runtime:
 
 	/// Block used by the runtime
 	type Block: Block<
-        Hash = H256,
+		Hash = H256,
 		Header = Header,
 		Extrinsic = UncheckedExtrinsic<
 			Address,
@@ -150,7 +158,7 @@ pub trait Runtime:
 		>,
 	>;
 
-    type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
+	type Api: Api<Self>;
 
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;

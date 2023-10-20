@@ -9,6 +9,8 @@ use frame_support::{
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
+use sp_api::runtime_decl_for_Core::CoreV4;
+use sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage};
@@ -60,7 +62,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
 
-		self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap())?;
+		self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
 
 		let fee = self
 			.find_event(|e| match e {
@@ -98,7 +100,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 	fn __priv_build_block(&mut self, i: BlockNumber) {
 		self.process_pending_extrinsics();
 		self.state_mut(|| {
-			T::finalize_block();
+			T::Api::finalize_block();
 			Self::prepare_block(i);
 		});
 	}
@@ -114,7 +116,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 				utils::create_extrinsic::<T>(who, call, nonce)
 			});
 
-			self.state_mut(|| T::apply_extrinsic(extrinsic).unwrap().unwrap());
+			self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap().unwrap());
 		}
 	}
 
@@ -132,7 +134,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 			parent_hash: H256::default(),
 		};
 
-		T::initialize_block(&header);
+		T::Api::initialize_block(&header);
 
 		let timestamp = i as u64 * pallet_aura::Pallet::<T>::slot_duration();
 		let inherent_extrinsics = vec![
@@ -141,7 +143,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 		];
 
 		for extrinsic in inherent_extrinsics {
-			T::apply_extrinsic(extrinsic).unwrap().unwrap();
+			T::Api::apply_extrinsic(extrinsic).unwrap().unwrap();
 		}
 	}
 
