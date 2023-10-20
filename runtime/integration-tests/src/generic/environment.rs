@@ -1,9 +1,9 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
-use cfg_traits::Seconds;
+use cfg_traits::{IntoSeconds, Seconds};
 use codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
-	traits::{Block, Extrinsic},
+	traits::{Block, Extrinsic, Get},
 	DispatchError, DispatchResult, MultiSignature, Storage,
 };
 
@@ -48,18 +48,19 @@ pub trait Env<T: Runtime> {
 		let (next, end_block) = self.state(|| {
 			let next = frame_system::Pallet::<T>::block_number() + 1;
 
-			let end_block = match blocks {
-				Blocks::ByNumber(n) => next + n,
-				Blocks::BySeconds(secs) => {
-					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
-					if blocks % pallet_aura::Pallet::<T>::slot_duration() != 0 {
-						blocks as BlockNumber + 1
-					} else {
-						blocks as BlockNumber
+			let end_block = next
+				+ match blocks {
+					Blocks::ByNumber(n) => n,
+					Blocks::BySeconds(secs) => {
+						let n = secs / pallet_aura::Pallet::<T>::slot_duration().into_seconds();
+						if n % pallet_aura::Pallet::<T>::slot_duration() != 0 {
+							n as BlockNumber + 1
+						} else {
+							n as BlockNumber
+						}
 					}
-				}
-				Blocks::UntilEvent { limit, .. } => limit,
-			};
+					Blocks::UntilEvent { limit, .. } => limit,
+				};
 
 			(next, end_block)
 		});

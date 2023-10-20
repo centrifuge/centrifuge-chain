@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use cfg_primitives::Balance;
+use cfg_primitives::{Balance, CFG};
 use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use codec::Encode;
 use frame_support::traits::GenesisBuild;
@@ -71,6 +71,10 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 pub mod currency {
 	use super::*;
 
+	pub const fn cfg(amount: Balance) -> Balance {
+		amount * CFG
+	}
+
 	pub trait CurrencyInfo {
 		const ID: CurrencyId;
 		const DECIMALS: u32;
@@ -107,6 +111,10 @@ pub mod currency {
 		const SYMBOL: &'static str = "USD6";
 	}
 
+	pub const fn usd6(amount: Balance) -> Balance {
+		amount * Usd6::UNIT
+	}
+
 	pub struct Usd12;
 	impl CurrencyInfo for Usd12 {
 		const CUSTOM: CustomMetadata = CustomMetadata {
@@ -116,6 +124,10 @@ pub mod currency {
 		const DECIMALS: u32 = 12;
 		const ID: CurrencyId = CurrencyId::ForeignAsset(2);
 		const SYMBOL: &'static str = "USD12";
+	}
+
+	pub const fn usd12(amount: Balance) -> Balance {
+		amount * Usd12::UNIT
 	}
 
 	/// Matches default() but for const support

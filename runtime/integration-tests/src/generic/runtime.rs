@@ -6,6 +6,7 @@ use cfg_primitives::{
 };
 use cfg_traits::Millis;
 use cfg_types::{
+	fixed_point::Quantity,
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -21,7 +22,10 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 };
 use sp_core::H256;
-use sp_runtime::traits::{AccountIdLookup, Block, Dispatchable, Member};
+use sp_runtime::{
+	scale_info::TypeInfo,
+	traits::{AccountIdLookup, Block, Dispatchable, Get, Member},
+};
 
 /// Kind of runtime to check in runtime time
 pub enum RuntimeKind {
@@ -29,6 +33,8 @@ pub enum RuntimeKind {
 	Altair,
 	Centrifuge,
 }
+
+use codec::Codec;
 
 /// Runtime configuration
 pub trait Runtime:
@@ -46,15 +52,18 @@ pub trait Runtime:
 		Balance = Balance,
 		PoolId = PoolId,
 		TrancheId = TrancheId,
+        BalanceRatio = Quantity,
+        MaxTranches = Self::MaxTranchesExt,
 	> + pallet_balances::Config<Balance = Balance>
-	+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
 	+ pallet_pool_registry::Config<
 		CurrencyId = CurrencyId,
 		PoolId = PoolId,
 		Balance = Balance,
+        MaxTranches = Self::MaxTranchesExt,
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
+	+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
 	+ pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
@@ -87,6 +96,10 @@ pub trait Runtime:
 		PoolId,
 		LoanId,
 		pallet_loans::entities::loans::ActiveLoanInfo<Self>,
+	>
+	+ apis::runtime_decl_for_PoolsApi::PoolsApiV1<
+		Self::Block,
+        PoolId, TrancheId, Balance, CurrencyId, Quantity, Self::MaxTranchesExt,
 	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
@@ -136,6 +149,8 @@ pub trait Runtime:
 			),
 		>,
 	>;
+
+    type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
 
 	/// Value to differentiate the runtime in tests.
 	const KIND: RuntimeKind;

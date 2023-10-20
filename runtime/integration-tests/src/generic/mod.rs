@@ -76,6 +76,7 @@ macro_rules! impl_runtime {
 	($runtime_path:ident, $kind:ident) => {
 		impl Runtime for $runtime_path::Runtime {
 			type Block = $runtime_path::Block;
+			type MaxTranchesExt = $runtime_path::MaxTranches;
 			type RuntimeCallExt = $runtime_path::RuntimeCall;
 			type RuntimeEventExt = $runtime_path::RuntimeEvent;
 
