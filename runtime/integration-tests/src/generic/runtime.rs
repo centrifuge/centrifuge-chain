@@ -66,6 +66,7 @@ pub trait Runtime:
 	+ pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
+		LoanId = LoanId,
 		CollectionId = CollectionId,
 		ItemId = ItemId,
 		Rate = Rate,
@@ -115,9 +116,11 @@ pub trait Runtime:
 		+ TryInto<frame_system::Event<Self>>
 		+ TryInto<pallet_balances::Event<Self>>
 		+ TryInto<pallet_transaction_payment::Event<Self>>
+		+ TryInto<pallet_loans::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
-		+ From<pallet_transaction_payment::Event<Self>>;
+		+ From<pallet_transaction_payment::Event<Self>>
+		+ From<pallet_loans::Event<Self>>;
 
 	/// Block used by the runtime
 	type Block: Block<

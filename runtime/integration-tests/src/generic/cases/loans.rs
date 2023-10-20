@@ -7,6 +7,7 @@ use cfg_types::permissions::PoolRole;
 use frame_support::traits::Get;
 use pallet_loans::{
 	entities::{
+		input::PrincipalInput,
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
@@ -47,6 +48,7 @@ const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 
 const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
+const COLLATERAL_VALUE: Balance = usd6(100_000);
 
 fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
 	let mut env = Environment::from_storage(
@@ -84,50 +86,68 @@ fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment 
 	env
 }
 
+fn internal_priced_loan<T: Runtime>(now: Seconds) -> LoanInfo<T> {
+	LoanInfo {
+		schedule: RepaymentSchedule {
+			maturity: Maturity::Fixed {
+				date: now + SECONDS_PER_YEAR,
+				extension: SECONDS_PER_YEAR / 2,
+			},
+			interest_payments: InterestPayments::None,
+			pay_down_schedule: PayDownSchedule::None,
+		},
+		interest_rate: InterestRate::Fixed {
+			rate_per_year: rate_from_percent(20),
+			compounding: CompoundingSchedule::Secondly,
+		},
+		collateral: NFT_A,
+		pricing: Pricing::Internal(InternalPricing {
+			collateral_value: COLLATERAL_VALUE,
+			max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
+				advance_rate: rate_from_percent(100),
+			},
+			valuation_method: ValuationMethod::OutstandingDebt,
+		}),
+		restrictions: LoanRestrictions {
+			borrows: BorrowRestrictions::NotWrittenOff,
+			repayments: RepayRestrictions::None,
+		},
+	}
+}
+
 fn borrow<T: Runtime>() {
 	let mut env = initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		LoanInfo {
-			schedule: RepaymentSchedule {
-				maturity: Maturity::Fixed {
-					date: now + SECONDS_PER_YEAR,
-					extension: SECONDS_PER_YEAR / 2,
-				},
-				interest_payments: InterestPayments::None,
-				pay_down_schedule: PayDownSchedule::None,
-			},
-			interest_rate: InterestRate::Fixed {
-				rate_per_year: rate_from_percent(20),
-				compounding: CompoundingSchedule::Secondly,
-			},
-			collateral: NFT_A,
-			pricing: Pricing::Internal(InternalPricing {
-				collateral_value: 100_000,
-				max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: rate_from_percent(100),
-				},
-				valuation_method: ValuationMethod::OutstandingDebt,
-			}),
-			restrictions: LoanRestrictions {
-				borrows: BorrowRestrictions::NotWrittenOff,
-				repayments: RepayRestrictions::None,
-			},
-		}
+		internal_priced_loan::<T>(now)
 	});
 
 	env.submit_now(
 		BORROWER,
 		pallet_loans::Call::create {
 			pool_id: POOL_A,
-			info: info,
+			info,
 		},
 	)
 	.unwrap();
 
-	// Submit Loan::create()
-	// Submit Loan::borrow()
+	let loan_id = env
+		.find_event(|e| match e {
+			pallet_loans::Event::<T>::Created { loan_id, .. } => Some(loan_id),
+			_ => None,
+		})
+		.unwrap();
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::borrow {
+			pool_id: POOL_A,
+			loan_id,
+			amount: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
+		},
+	)
+	.unwrap();
 }
 
 crate::test_for_runtimes!(all, borrow);
