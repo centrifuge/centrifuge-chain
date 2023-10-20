@@ -11112,7 +11112,6 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-session",
- "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-treasury",

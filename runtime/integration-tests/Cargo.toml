@@ -30,7 +30,6 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate", default-feat
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 ## Substrate-Primitives
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
