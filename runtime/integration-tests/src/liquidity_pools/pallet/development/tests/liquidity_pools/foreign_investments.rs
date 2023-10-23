@@ -3639,7 +3639,7 @@ mod setup {
 		if currency_id == pool_currency {
 			assert_noop!(
 				LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-				DispatchError::Other("Account does not have the TrancheInvestor permission.")
+				DispatchError::Other("Account does not have the TrancheInvestor permission.") //
 			);
 		}
 
