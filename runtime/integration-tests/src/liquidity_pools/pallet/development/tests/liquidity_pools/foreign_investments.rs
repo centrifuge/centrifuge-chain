@@ -37,7 +37,7 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{
 		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
-		ForeignAssetId,
+		ForeignAssetId, TrancheCurrency,
 	},
 };
 use development_runtime::{
@@ -89,7 +89,7 @@ use crate::{
 			},
 		},
 	},
-	utils::AUSD_CURRENCY_ID,
+	utils::{AUSD_CURRENCY_ID, AUSD_ED},
 };
 
 mod same_currencies {
@@ -111,6 +111,9 @@ mod same_currencies {
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
+
+			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+			Tokens::mint_into(AUSD_CURRENCY_ID, &sending_domain_locator, AUSD_ED).unwrap();
 
 			// Create new pool
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -2739,10 +2742,6 @@ mod mismatching_currencies {
 					redeem_amount: invest_amount_pool_denominated / 2,
 				}
 			);
-			dbg!(System::events());
-			dbg!(min_fulfillment_amount(foreign_currency));
-			dbg!(invest_amount_pool_denominated / 8);
-			dbg!(min_fulfillment_amount(pool_currency));
 
 			assert!(System::events().iter().any(|e| {
 				e.event
@@ -3362,9 +3361,6 @@ mod mismatching_currencies {
 			);
 			let swap_amount =
 				invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
-			dbg!(System::events());
-			dbg!(swap_amount);
-			dbg!(MinFulfillmentAmountNative::get());
 			assert!(System::events().iter().any(|e| {
 				e.event
 					== pallet_order_book::Event::<DevelopmentRuntime>::OrderUpdated {
