@@ -114,6 +114,7 @@ mod same_currencies {
 
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 			Tokens::mint_into(AUSD_CURRENCY_ID, &sending_domain_locator, AUSD_ED).unwrap();
+			Tokens::mint_into(AUSD_CURRENCY_ID, &investor, AUSD_ED).unwrap();
 
 			// Create new pool
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
