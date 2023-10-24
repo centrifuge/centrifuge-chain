@@ -113,8 +113,12 @@ mod same_currencies {
 			let currency_decimals = currency_decimals::AUSD;
 
 			let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+			let pool_account =
+				pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+
 			Tokens::mint_into(AUSD_CURRENCY_ID, &sending_domain_locator, AUSD_ED).unwrap();
 			Tokens::mint_into(AUSD_CURRENCY_ID, &investor, AUSD_ED).unwrap();
+			Tokens::mint_into(AUSD_CURRENCY_ID, &pool_account, AUSD_ED).unwrap();
 
 			// Create new pool
 			create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -3640,7 +3644,7 @@ mod setup {
 		if currency_id == pool_currency {
 			assert_noop!(
 				LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg.clone()),
-				DispatchError::Other("Account does not have the TrancheInvestor permission.") //
+				DispatchError::Other("Account does not have the TrancheInvestor permission.")
 			);
 		}
 
