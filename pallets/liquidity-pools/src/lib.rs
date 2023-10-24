@@ -193,6 +193,7 @@ pub mod pallet {
 			BalanceRatio = Self::BalanceRatio,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
+			Moment = Seconds,
 		>;
 
 		/// The source of truth for investment permissions.
@@ -452,9 +453,8 @@ pub mod pallet {
 			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
 			// currencies, this price must be first converted into the currency_id and then
 			// re-denominated to 18 decimals (i.e. `Ratio` precision)
-			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?
-				.price;
+			let price_value = T::TrancheTokenPrice::get(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?;
 
 			// Check that the registered asset location matches the destination
 			match Self::try_get_wrapped_token(&currency_id)? {
@@ -474,7 +474,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					currency,
-					price,
+					price: price_value.price,
+					computed_at: price_value.last_updated,
 				},
 			)?;
 

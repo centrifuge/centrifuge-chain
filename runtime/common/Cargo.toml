@@ -8,9 +8,9 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+hex-literal = { version = "0.3.4", default-features = false }
 serde = { version = "1.0.119" }
 smallvec = "1.6.1"
-hex-literal = { version = "0.3.4", default-features = false }
 
 # Substrate dependencies
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
