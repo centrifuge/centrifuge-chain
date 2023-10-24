@@ -5,7 +5,7 @@ use sp_runtime::traits::BadOrigin;
 use super::*;
 use crate::mock::*;
 
-const REWARD: u128 = 100;
+const REWARD: u128 = 100 * crate::mock::ExistentialDeposit::get();
 
 #[test]
 fn check_special_privileges() {
@@ -273,6 +273,9 @@ fn single_claim_reward() {
 				),
 				Ok(REWARD)
 			);
+
+
+
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(2), 1));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
