@@ -80,6 +80,8 @@ where
 		tranche_id: TrancheId,
 		currency: u128,
 		price: Ratio,
+		/// The timestamp at which the price was computed
+		computed_at: Seconds,
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on
 	/// the target domain.
@@ -449,6 +451,7 @@ impl<
 				tranche_id,
 				currency,
 				price,
+				computed_at,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -456,6 +459,7 @@ impl<
 					tranche_id.encode(),
 					encode_be(currency),
 					encode_be(price),
+					computed_at.to_be_bytes().to_vec(),
 				],
 			),
 			Message::UpdateMember {
@@ -751,6 +755,7 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
+				computed_at: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			6 => Ok(Self::UpdateMember {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -1025,8 +1030,9 @@ mod tests {
 				tranche_id: default_tranche_id(),
 				currency: TOKEN_ID,
 				price: Ratio::one(),
+				computed_at: 1698131924,
 			},
-			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a7640000",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a76400000000000065376fd4",
 		)
 	}
 
