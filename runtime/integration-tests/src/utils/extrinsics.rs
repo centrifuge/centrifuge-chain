@@ -218,3 +218,90 @@ where
 {
 	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }
+
+mod tests {
+	use codec::Encode;
+	use fudge::primitives::Chain;
+	use pallet_balances::Call as BalancesCall;
+	use sp_runtime::Storage;
+	use tokio::runtime::Handle;
+
+	use super::{nonce_centrifuge, xt_centrifuge};
+	use crate::{
+		chain::{
+			centrifuge,
+			centrifuge::{Runtime, PARA_ID},
+		},
+		utils::{accounts::Keyring, env, genesis},
+	};
+
+	#[tokio::test]
+	async fn extrinsics_works() {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		let mut env = env::test_env_with_centrifuge_storage(Handle::current(), genesis);
+
+		let to: cfg_primitives::Address = Keyring::Bob.into();
+		let xt = xt_centrifuge(
+			&env,
+			Keyring::Alice,
+			nonce_centrifuge(&env, Keyring::Alice),
+			centrifuge::RuntimeCall::Balances(BalancesCall::transfer {
+				dest: to,
+				value: 100 * cfg_primitives::constants::CFG,
+			}),
+		)
+		.unwrap();
+		env.append_extrinsic(Chain::Para(PARA_ID), xt.encode())
+			.unwrap();
+
+		let (alice_before, bob_before) = env
+			.with_state(Chain::Para(PARA_ID), || {
+				(
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				)
+			})
+			.unwrap();
+
+		env.evolve().unwrap();
+
+		let (alice_after, bob_after) = env
+			.with_state(Chain::Para(PARA_ID), || {
+				(
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				)
+			})
+			.unwrap();
+
+		// Need to account for fees here
+		assert!(
+			alice_after.data.free <= alice_before.data.free - 100 * cfg_primitives::constants::CFG
+		);
+		assert_eq!(
+			bob_after.data.free,
+			bob_before.data.free + 100 * cfg_primitives::constants::CFG
+		);
+
+		env.evolve().unwrap();
+
+		let (alice_after, bob_after) = env
+			.with_state(Chain::Para(PARA_ID), || {
+				(
+					frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
+					frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+				)
+			})
+			.unwrap();
+
+		// Need to account for fees here
+		assert!(
+			alice_after.data.free <= alice_before.data.free - 100 * cfg_primitives::constants::CFG
+		);
+		assert_eq!(
+			bob_after.data.free,
+			bob_before.data.free + 100 * cfg_primitives::constants::CFG
+		);
+	}
+}
