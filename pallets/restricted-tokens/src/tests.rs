@@ -160,7 +160,10 @@ fn transfer_all_works() {
 				2,
 				CurrencyId::AUSD,
 			));
-			assert_eq!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free, 2000);
+			assert_eq!(
+				orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free,
+				2000
+			);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(1),
 				2,

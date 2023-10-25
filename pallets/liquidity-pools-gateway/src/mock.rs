@@ -4,7 +4,7 @@ use cfg_mocks::{
 };
 use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
-use sp_core::{crypto::AccountId32, ConstU16, ConstU32, ConstU64, H256, ConstU128};
+use sp_core::{crypto::AccountId32, ConstU128, ConstU16, ConstU32, ConstU64, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},

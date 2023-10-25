@@ -416,8 +416,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-}
+parameter_types! {}
 
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;

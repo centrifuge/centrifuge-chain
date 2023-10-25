@@ -12,7 +12,7 @@ pub mod pallet_mock_change_guard {
 	}
 
 	#[pallet::pallet]
-		pub struct Pallet<T>(_);
+	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
 	pub(super) type CallIds<T: Config> = StorageMap<

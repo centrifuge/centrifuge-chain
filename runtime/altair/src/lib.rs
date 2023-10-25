@@ -1252,6 +1252,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type Beneficiary = ();
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
+	type ExistentialDeposit = ExistentialDeposit;
 	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
 	type Rewards = BlockRewardsBase;
@@ -1261,7 +1262,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
-	type ExistentialDeposit = ExistentialDeposit;
 }
 
 // Liquidity rewards

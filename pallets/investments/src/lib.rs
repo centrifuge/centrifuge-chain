@@ -205,7 +205,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
-
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
@@ -620,11 +619,10 @@ where
 						// Remove order from storage if empty
 						if amount == T::Amount::zero() {
 							*maybe_order = None;
-						}
-						else {
-							// nuno: check that this is ok. Amount == 0 removes the order, so there's
-							// no point in processing a transfer of 0 which fails because it would
-							// kill the account (< ED)
+						} else {
+							// nuno: check that this is ok. Amount == 0 removes the order, so
+							// there's no point in processing a transfer of 0 which fails because it
+							// would kill the account (< ED)
 							Self::do_update_redeem_order(
 								total_order,
 								&who,

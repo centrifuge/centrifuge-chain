@@ -162,7 +162,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-		pub struct Pallet<T>(_);
+	pub struct Pallet<T>(_);
 
 	/// Contains the timestamp when the current epoch is finalized.
 	//

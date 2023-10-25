@@ -436,7 +436,10 @@ mod axelar_evm {
 			new_test_ext().execute_with(|| {
 				let mut test_data = get_test_data();
 
-				assert_ok!(Balances::mint_into(&test_data.derived_sender.clone(), 1_000_000 * CFG));
+				assert_ok!(Balances::mint_into(
+					&test_data.derived_sender.clone(),
+					1_000_000 * CFG
+				));
 
 				let transaction_call_cost =
 					<Runtime as pallet_evm::Config>::config().gas_transaction_call;

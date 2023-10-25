@@ -242,10 +242,10 @@ impl pallet_block_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AuthorityId = UintAuthorityId;
 	type Balance = Balance;
-	type ExistentialDeposit = ExistentialDeposit;
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
+	type ExistentialDeposit = ExistentialDeposit;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
@@ -264,7 +264,11 @@ pub(crate) fn assert_staked(who: &AccountId) {
 		ExistentialDeposit::get()
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrencyId::get(), who, ExistentialDeposit::get() * 2),
+		<Test as Config>::Currency::can_withdraw(
+			<Test as Config>::StakeCurrencyId::get(),
+			who,
+			ExistentialDeposit::get() * 2
+		),
 		WithdrawConsequence::BalanceLow
 	);
 }
@@ -277,7 +281,11 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	.is_zero());
 	assert_eq!(
 		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
-		if was_before { ExistentialDeposit::get() } else { 0 }
+		if was_before {
+			ExistentialDeposit::get()
+		} else {
+			0
+		}
 	);
 }
 

@@ -80,7 +80,7 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
-		#[pallet::storage_version(STORAGE_VERSION)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 
 	pub struct Pallet<T>(_);
 	#[pallet::config]

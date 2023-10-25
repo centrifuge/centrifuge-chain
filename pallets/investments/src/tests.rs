@@ -92,7 +92,10 @@ fn update_invest_works() {
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				2 * amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), ExistentialDeposit::get());
+			assert_eq!(
+				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
+				ExistentialDeposit::get()
+			);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -164,7 +167,10 @@ fn update_invest_works() {
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), amount + ExistentialDeposit::get());
+			assert_eq!(
+				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
+				amount + ExistentialDeposit::get()
+			);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -704,7 +710,7 @@ fn fulfillment_flow_for_everything_works() {
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
-				 0
+				0
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
@@ -791,7 +797,6 @@ fn fulfillment_flow_for_everything_works() {
 					- PRICE
 						.checked_mul_int(TOTAL_REDEEM_AMOUNT)
 						.expect("Unwrapping test checked_mul_int must work")
-
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
@@ -926,7 +931,8 @@ fn fulfillment_partially_works_low_price() {
 							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
 							.expect("Unwrapping checked_mul_int must work")
 					)
-					.expect("Unwrapping checked_sub must work") + ExistentialDeposit::get()
+					.expect("Unwrapping checked_sub must work")
+					+ ExistentialDeposit::get()
 			);
 			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
 		}
@@ -1611,7 +1617,8 @@ fn fulfillment_partially_works_high_price() {
 							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
 							.expect("Unwrapping checked_mul_int must work")
 					)
-					.expect("Unwrapping checked_sub must work") + ExistentialDeposit::get()
+					.expect("Unwrapping checked_sub must work")
+					+ ExistentialDeposit::get()
 			);
 			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
 		}

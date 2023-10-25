@@ -14,7 +14,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-		pub struct Pallet<T, I = ()>(_);
+	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::storage]
 	pub(super) type CallIds<T: Config<I>, I: 'static = ()> = StorageMap<

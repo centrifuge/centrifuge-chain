@@ -12,7 +12,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
-use fp_evm::PrecompileHandle;
+use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
 use frame_support::ensure;
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
@@ -20,7 +20,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	DispatchError,
 };
-use fp_evm::{ExitError, PrecompileFailure};
 use sp_std::vec::Vec;
 
 pub use crate::weights::WeightInfo;

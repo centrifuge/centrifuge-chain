@@ -71,7 +71,7 @@ pub mod pallet {
 	// This structure is a placeholder for traits and functions implementation
 	// for the pallet.
 	#[pallet::pallet]
-		pub struct Pallet<T>(_);
+	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------
 	// Pallet configuration

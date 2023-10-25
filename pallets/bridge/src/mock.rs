@@ -35,9 +35,8 @@ use sp_core::{blake2_128, ConstU64, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, ConstU128, IdentityLookup},
 };
-use sp_runtime::traits::ConstU128;
 
 use crate::{self as pallet_bridge, Config as BridgePalletConfig};
 
@@ -56,8 +55,10 @@ pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
-//todo(nuno): if we AllowDeath in Fees::withdraw_fee, we don't need to add the ED here
-pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = NATIVE_TOKEN_TRANSFER_FEE + ExistentialDeposit::get();
+//todo(nuno): if we AllowDeath in Fees::withdraw_fee, we don't need to add the
+// ED here
+pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance =
+	NATIVE_TOKEN_TRANSFER_FEE + ExistentialDeposit::get();
 pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 
 // ----------------------------------------------------------------------------

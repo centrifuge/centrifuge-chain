@@ -284,15 +284,51 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				// Owner holds enough capital to satisfy redemptions
-				(Owner::get(), AUSD_CURRENCY_ID, OWNER_START_BALANCE + ExistentialDeposit::get()),
-				(InvestorA::get(), AUSD_CURRENCY_ID, 100 * CURRENCY + ExistentialDeposit::get()),
-				(InvestorB::get(), AUSD_CURRENCY_ID, 100 * CURRENCY + ExistentialDeposit::get()),
-				(InvestorC::get(), AUSD_CURRENCY_ID, 100 * CURRENCY + ExistentialDeposit::get()),
-				(InvestorD::get(), AUSD_CURRENCY_ID, 100 * CURRENCY + ExistentialDeposit::get()),
-				(TrancheHolderA::get(), INVESTMENT_0_0.into(), 100 * CURRENCY + ExistentialDeposit::get()),
-				(TrancheHolderB::get(), INVESTMENT_0_0.into(), 100 * CURRENCY + ExistentialDeposit::get()),
-				(TrancheHolderC::get(), INVESTMENT_0_0.into(), 100 * CURRENCY + ExistentialDeposit::get()),
-				(TrancheHolderD::get(), INVESTMENT_0_0.into(), 100 * CURRENCY  + ExistentialDeposit::get()),
+				(
+					Owner::get(),
+					AUSD_CURRENCY_ID,
+					OWNER_START_BALANCE + ExistentialDeposit::get(),
+				),
+				(
+					InvestorA::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorB::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorC::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorD::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderA::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderB::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderC::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderD::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
 			],
 		}
 		.assimilate_storage(&mut storage)

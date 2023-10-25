@@ -8,7 +8,9 @@ use pallet_evm::{
 	FixedGasWeightMapping, IsPrecompileResult, PrecompileHandle, PrecompileSet,
 	SubstrateBlockHashMapping,
 };
-use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256, ConstU128};
+use sp_core::{
+	crypto::AccountId32, ByteArray, ConstU128, ConstU16, ConstU32, ConstU64, H160, H256, U256,
+};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},

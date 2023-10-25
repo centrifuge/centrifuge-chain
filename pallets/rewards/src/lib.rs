@@ -144,7 +144,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-		pub struct Pallet<T, I = ()>(_);
+	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>(core::marker::PhantomData<(T, I)>);

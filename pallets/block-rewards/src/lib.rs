@@ -202,7 +202,7 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-		#[pallet::storage_version(STORAGE_VERSION)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	/// Data associated to the current session.
@@ -361,7 +361,11 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get() + T::ExistentialDeposit::get())?;
+		T::Currency::mint_into(
+			T::StakeCurrencyId::get(),
+			who,
+			T::StakeAmount::get() + T::ExistentialDeposit::get(),
+		)?;
 		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
 

@@ -274,8 +274,6 @@ fn single_claim_reward() {
 				Ok(REWARD)
 			);
 
-
-
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(2), 1));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
