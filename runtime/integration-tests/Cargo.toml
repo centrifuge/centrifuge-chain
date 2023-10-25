@@ -34,7 +34,7 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate", default-feat
 ## Substrate-Primitives
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 #sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-fp-self-contained = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
+fp-self-contained = { git = "https://github.com/paritytech/frontier", branch = "polkadot-v0.9.38" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -103,9 +103,9 @@ cfg-utils = { path = "../../libs/utils" }
 ethabi = { version = "16.0", default-features = false }
 ethereum = { version = "0.14.0", default-features = false }
 
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 
 axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile" }
 liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers" }

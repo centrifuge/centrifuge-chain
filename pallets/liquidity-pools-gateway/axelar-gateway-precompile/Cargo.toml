@@ -19,8 +19,8 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 ethabi = { version = "18.0.0", default-features = false }
-fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 precompile-utils = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 cfg-traits = { path = "../../../libs/traits", default-features = false }

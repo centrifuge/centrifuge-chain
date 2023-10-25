@@ -26,9 +26,9 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 
 # Ethereum
 ethereum = { version = "0.14.0", default-features = false }
-fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Our custom traits
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
@@ -39,8 +39,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", branch = "moonbeam-polkadot-v0.9.38" }
-pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-precompile-simple = { git = "https://github.com/paritytech/frontier", branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 [features]
 default = ["std"]

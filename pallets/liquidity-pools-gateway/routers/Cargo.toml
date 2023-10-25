@@ -29,8 +29,8 @@ xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-featur
 
 # EVM
 ethabi = { version = "16.0", default-features = false }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Custom crates
 cfg-traits = { path = "../../../libs/traits", default-features = false }
@@ -43,19 +43,19 @@ pallet-liquidity-pools-gateway = { path = "../.", default-features = false }
 [dev-dependencies]
 lazy_static = "1.4.0"
 
-cumulus-primitives-core = { git = "https://github.com/purestake/cumulus", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.38", default-features = false }
 
-xcm-builder = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
-xcm-executor = { git = "https://github.com/purestake/polkadot", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38", default-features = false }
 
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-precompile-simple = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-timestamp = { git = "https://github.com/purestake/substrate", branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm-precompile-simple = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
-orml-traits = { git = "https://github.com/purestake/open-runtime-module-library", branch = "moonbeam-polkadot-v0.9.38", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.38", default-features = false }
 
 cfg-mocks = { path = "../../../libs/mocks" }
 cfg-primitives = { path = "../../../libs/primitives" }

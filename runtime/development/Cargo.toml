@@ -96,13 +96,13 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 # frontier pallets
-fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-rpc = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+fp-self-contained = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-base-fee = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v0.9.38" }
 
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }

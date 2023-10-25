@@ -9,10 +9,7 @@ for dep in ${deps[@]}; do
    for tml in ${tomls[@]}; do
       inner_deps=$(cat $tml | grep "${dep}" | awk '{print $1}')
       for indep in ${inner_deps}; do
-        if [[ $indep = "grandpa" ]]
-        then
-          parity_deps+=("sc-finality-grandpa")
-        elif [[ $indep = "grandpa-primitives" ]]
+        if [[ $indep = "grandpa-primitives" ]]
         then
           parity_deps+=("sp-finality-grandpa")
         else
