@@ -64,7 +64,7 @@ mod benchmarks {
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000u32.into())?;
 
 		#[extrinsic_call]
 		update_invest_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
@@ -78,7 +78,7 @@ mod benchmarks {
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000_u32.into())?;
 
 		#[extrinsic_call]
 		update_redeem_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
@@ -94,7 +94,7 @@ mod benchmarks {
 			.unwrap()
 			.payment_currency();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000u32.into())?;
 
 		Pallet::<T>::update_investment(&caller, investment_id, 1u32.into())?;
 		for _ in 0..n {
@@ -120,7 +120,7 @@ mod benchmarks {
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = T::Accountant::info(investment_id)?.id().into();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000u32.into())?;
 
 		Pallet::<T>::update_redemption(&caller, investment_id, 1u32.into())?;
 		for _ in 0..n {
