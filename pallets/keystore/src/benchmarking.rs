@@ -20,6 +20,8 @@ use sp_runtime::traits::Hash;
 
 use super::*;
 
+pub const ExistentialDeposit: u128 = 1;
+
 benchmarks! {
 	where_clause {
 	where
@@ -31,7 +33,7 @@ benchmarks! {
 		let n in 1..T::MaxKeys::get();
 		let caller: T::AccountId = account("acc_0", 0, 0);
 		let test_keys: Vec<AddKey<T::Hash>> = build_test_keys::<T>(n);
-		T::Currency::deposit_creating(&caller.clone().into(), T::DefaultKeyDeposit::get() * n as u128);
+		T::Currency::deposit_creating(&caller.clone().into(), ExistentialDeposit + T::DefaultKeyDeposit::get() * n as u128);
 		let origin = RawOrigin::Signed(caller.clone());
 	}: add_keys(origin, test_keys)
 	verify {
