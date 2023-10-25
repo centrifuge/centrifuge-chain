@@ -1,4 +1,4 @@
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, SECONDS_PER_YEAR};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, SECONDS_PER_HOUR};
 use cfg_traits::{
 	interest::{CompoundingSchedule, InterestRate},
 	Seconds, TimeAsSecs,
@@ -7,7 +7,7 @@ use cfg_types::permissions::PoolRole;
 use frame_support::traits::Get;
 use pallet_loans::{
 	entities::{
-		input::PrincipalInput,
+		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
@@ -19,7 +19,9 @@ use pallet_loans::{
 		Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
-use runtime_common::apis::runtime_decl_for_PoolsApi::PoolsApiV1;
+use runtime_common::apis::{
+	runtime_decl_for_LoansApi::LoansApiV1, runtime_decl_for_PoolsApi::PoolsApiV1,
+};
 
 use crate::{
 	generic::{
@@ -50,77 +52,86 @@ const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 const COLLATERAL_VALUE: Balance = usd6(100_000);
 
-fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
-	let mut env = Environment::from_storage(
-		Genesis::<T>::default()
-			.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
-			.add(genesis::assets(vec![Usd6::ID]))
-			.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
-			.storage(),
-	);
+mod common {
+	use super::*;
 
-	env.state_mut(|| {
-		// Creating a pool
-		utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
-		utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
+	pub fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
+		let mut env = Environment::from_storage(
+			Genesis::<T>::default()
+				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
+				.add(genesis::assets(vec![Usd6::ID]))
+				.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
+				.storage(),
+		);
 
-		// Funding a pool
-		let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
-		let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
-		utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
-		utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, EXPECTED_POOL_BALANCE);
-		utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
-	});
+		env.state_mut(|| {
+			// Creating a pool
+			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
+			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
 
-	env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
+			// Funding a pool
+			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
+			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
+			utils::give_pool_role::<T>(INVESTOR.id(), POOL_A, tranche_investor);
+			utils::give_tokens::<T>(INVESTOR.id(), Usd6::ID, EXPECTED_POOL_BALANCE);
+			utils::invest::<T>(INVESTOR.id(), POOL_A, tranche_id, EXPECTED_POOL_BALANCE);
+		});
 
-	env.state_mut(|| {
-		// New epoch with the investor funds available
-		utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
+		env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
 
-		// Preparing borrower
-		utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
-		utils::give_nft::<T>(BORROWER.id(), NFT_A);
-	});
+		env.state_mut(|| {
+			// New epoch with the investor funds available
+			utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
 
-	env
-}
+			// Preparing borrower
+			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
+			utils::give_nft::<T>(BORROWER.id(), NFT_A);
+		});
 
-fn internal_priced_loan<T: Runtime>(now: Seconds) -> LoanInfo<T> {
-	LoanInfo {
-		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed {
-				date: now + SECONDS_PER_YEAR,
-				extension: SECONDS_PER_YEAR / 2,
+		env
+	}
+
+	pub fn internal_priced_loan<T: Runtime>(now: Seconds) -> LoanInfo<T> {
+		LoanInfo {
+			schedule: RepaymentSchedule {
+				maturity: Maturity::Fixed {
+					date: now + SECONDS_PER_HOUR,
+					extension: SECONDS_PER_HOUR / 2,
+				},
+				interest_payments: InterestPayments::None,
+				pay_down_schedule: PayDownSchedule::None,
 			},
-			interest_payments: InterestPayments::None,
-			pay_down_schedule: PayDownSchedule::None,
-		},
-		interest_rate: InterestRate::Fixed {
-			rate_per_year: rate_from_percent(20),
-			compounding: CompoundingSchedule::Secondly,
-		},
-		collateral: NFT_A,
-		pricing: Pricing::Internal(InternalPricing {
-			collateral_value: COLLATERAL_VALUE,
-			max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
-				advance_rate: rate_from_percent(100),
+			interest_rate: InterestRate::Fixed {
+				rate_per_year: rate_from_percent(20),
+				compounding: CompoundingSchedule::Secondly,
 			},
-			valuation_method: ValuationMethod::OutstandingDebt,
-		}),
-		restrictions: LoanRestrictions {
-			borrows: BorrowRestrictions::NotWrittenOff,
-			repayments: RepayRestrictions::None,
-		},
+			collateral: NFT_A,
+			pricing: Pricing::Internal(InternalPricing {
+				collateral_value: COLLATERAL_VALUE,
+				max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
+					advance_rate: rate_from_percent(100),
+				},
+				valuation_method: ValuationMethod::OutstandingDebt,
+			}),
+			restrictions: LoanRestrictions {
+				borrows: BorrowRestrictions::NotWrittenOff,
+				repayments: RepayRestrictions::None,
+			},
+		}
 	}
 }
 
-fn borrow<T: Runtime>() {
-	let mut env = initialize_state_for_loans::<RuntimeEnv<T>, T>();
+/// Basic loan flow:
+/// - creating
+/// - borrowing
+/// - repaying
+/// - closing
+fn basic_loan_flow<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		internal_priced_loan::<T>(now)
+		common::internal_priced_loan::<T>(now)
 	});
 
 	env.submit_now(
@@ -148,6 +159,38 @@ fn borrow<T: Runtime>() {
 		},
 	)
 	.unwrap();
+
+	env.pass(Blocks::BySeconds(SECONDS_PER_HOUR / 2));
+
+	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+
+	env.state_mut(|| {
+		// Required to be able the borrower to repay the interest accrued
+		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+	});
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::repay {
+			pool_id: POOL_A,
+			loan_id,
+			amount: RepaidInput {
+				principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
+				interest: loan_portfolio.outstanding_interest,
+				unscheduled: 0,
+			},
+		},
+	)
+	.unwrap();
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::close {
+			pool_id: POOL_A,
+			loan_id,
+		},
+	)
+	.unwrap();
 }
 
-crate::test_for_runtimes!(all, borrow);
+crate::test_for_runtimes!(all, basic_loan_flow);
