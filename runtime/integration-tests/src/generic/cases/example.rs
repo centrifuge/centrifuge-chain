@@ -4,12 +4,12 @@ use sp_api::runtime_decl_for_Core::CoreV4;
 
 use crate::{
 	generic::{
-		environment::{Blocks, Env},
+		config::Runtime,
+		env::{Blocks, Env},
 		envs::{
 			fudge_env::{FudgeEnv, FudgeSupport},
 			runtime_env::RuntimeEnv,
 		},
-		runtime::Runtime,
 		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,

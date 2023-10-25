@@ -25,9 +25,9 @@ use runtime_common::apis::{
 
 use crate::{
 	generic::{
-		environment::{Blocks, Env},
+		config::Runtime,
+		env::{Blocks, Env},
 		envs::runtime_env::RuntimeEnv,
-		runtime::Runtime,
 		utils::{
 			self,
 			genesis::{

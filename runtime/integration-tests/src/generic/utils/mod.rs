@@ -15,7 +15,7 @@ use frame_support::BoundedVec;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use sp_runtime::{traits::One, Perquintill};
 
-use crate::generic::runtime::{Runtime, RuntimeKind};
+use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 

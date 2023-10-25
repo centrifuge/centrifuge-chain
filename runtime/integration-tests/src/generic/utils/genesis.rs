@@ -6,7 +6,7 @@ use codec::Encode;
 use frame_support::traits::GenesisBuild;
 use sp_runtime::Storage;
 
-use crate::{generic::runtime::Runtime, utils::accounts::default_accounts};
+use crate::{generic::config::Runtime, utils::accounts::default_accounts};
 
 pub struct Genesis<T> {
 	storage: Storage,

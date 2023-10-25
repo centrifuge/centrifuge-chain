@@ -18,8 +18,8 @@ use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		environment::{utils, Env},
-		runtime::Runtime,
+		config::Runtime,
+		env::{utils, Env},
 	},
 	utils::accounts::Keyring,
 };
@@ -197,7 +197,7 @@ mod tests {
 	use cfg_primitives::CFG;
 
 	use super::*;
-	use crate::generic::{environment::Blocks, utils::genesis::Genesis};
+	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_now<T: Runtime>() {
 		let mut env = RuntimeEnv::<T>::from_storage(

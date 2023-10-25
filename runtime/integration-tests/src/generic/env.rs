@@ -7,7 +7,7 @@ use sp_runtime::{
 	DispatchError, DispatchResult, MultiSignature, Storage,
 };
 
-use crate::{generic::runtime::Runtime, utils::accounts::Keyring};
+use crate::{generic::config::Runtime, utils::accounts::Keyring};
 
 /// Used by Env::pass() to determine how many blocks should be passed
 #[derive(Clone)]

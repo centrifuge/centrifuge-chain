@@ -11,8 +11,8 @@ use sp_runtime::{generic::BlockId, DispatchError, DispatchResult, Storage};
 
 use crate::{
 	generic::{
-		environment::{utils, Env},
-		runtime::Runtime,
+		config::Runtime,
+		env::{utils, Env},
 	},
 	utils::accounts::Keyring,
 };
@@ -116,7 +116,7 @@ mod tests {
 	use cfg_primitives::CFG;
 
 	use super::*;
-	use crate::generic::{environment::Blocks, utils::genesis::Genesis};
+	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_storage(
