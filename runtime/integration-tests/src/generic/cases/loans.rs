@@ -1,15 +1,18 @@
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, SECONDS_PER_HOUR};
+use cfg_primitives::{conversion, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_HOUR};
 use cfg_traits::{
 	interest::{CompoundingSchedule, InterestRate},
 	Seconds, TimeAsSecs,
 };
-use cfg_types::permissions::PoolRole;
+use cfg_types::{
+	fixed_point::Quantity, oracles::OracleKey, permissions::PoolRole, tokens::CurrencyId,
+};
 use frame_support::traits::Get;
 use pallet_loans::{
 	entities::{
 		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
+			external::{ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
 			Pricing,
 		},
@@ -32,7 +35,7 @@ use crate::{
 			self,
 			genesis::{
 				self,
-				currency::{cfg, usd6, CurrencyInfo, Usd6},
+				currency::{self, cfg, usd6, CurrencyInfo, Usd6},
 				Genesis,
 			},
 			POOL_MIN_EPOCH_TIME,
@@ -47,16 +50,19 @@ const BORROWER: Keyring = Keyring::Bob;
 
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
+const PRICE_A: OracleKey = OracleKey::Isin(*b"INE123456AB1");
+const PRICE_A_VALUE: Quantity = Quantity::from_integer(1_000);
 
 const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 const COLLATERAL_VALUE: Balance = usd6(100_000);
+const QUANTITY: Quantity = Quantity::from_integer(100);
 
 mod common {
 	use super::*;
 
-	pub fn initialize_state_for_loans<Environment: Env<T>, T: Runtime>() -> Environment {
-		let mut env = Environment::from_storage(
+	pub fn initialize_state_for_loans<E: Env<T>, T: Runtime>() -> E {
+		let mut env = E::from_storage(
 			Genesis::<T>::default()
 				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
 				.add(genesis::assets(vec![Usd6::ID]))
@@ -91,7 +97,15 @@ mod common {
 		env
 	}
 
-	pub fn internal_priced_loan<T: Runtime>(now: Seconds) -> LoanInfo<T> {
+	pub fn last_loan_id<E: Env<T>, T: Runtime>(env: &E) -> LoanId {
+		env.find_event(|e| match e {
+			pallet_loans::Event::<T>::Created { loan_id, .. } => Some(loan_id),
+			_ => None,
+		})
+		.unwrap()
+	}
+
+	pub fn default_loan<T: Runtime>(now: Seconds, pricing: Pricing<T>) -> LoanInfo<T> {
 		LoanInfo {
 			schedule: RepaymentSchedule {
 				maturity: Maturity::Fixed {
@@ -106,32 +120,49 @@ mod common {
 				compounding: CompoundingSchedule::Secondly,
 			},
 			collateral: NFT_A,
-			pricing: Pricing::Internal(InternalPricing {
-				collateral_value: COLLATERAL_VALUE,
-				max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: rate_from_percent(100),
-				},
-				valuation_method: ValuationMethod::OutstandingDebt,
-			}),
+			pricing: pricing,
 			restrictions: LoanRestrictions {
 				borrows: BorrowRestrictions::NotWrittenOff,
 				repayments: RepayRestrictions::None,
 			},
 		}
 	}
+
+	pub fn default_internal_pricing<T: Runtime>() -> Pricing<T> {
+		Pricing::Internal(InternalPricing {
+			collateral_value: COLLATERAL_VALUE,
+			max_borrow_amount: IntMaxBorrowAmount::UpToTotalBorrowed {
+				advance_rate: rate_from_percent(100),
+			},
+			valuation_method: ValuationMethod::OutstandingDebt,
+		})
+	}
+
+	pub fn default_external_pricing<T: Runtime>(curency_id: CurrencyId) -> Pricing<T> {
+		Pricing::External(ExternalPricing {
+			price_id: PRICE_A,
+			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
+			notional: conversion::fixed_point_to_balance(
+				PRICE_A_VALUE,
+				currency::find_metadata(curency_id).decimals as usize,
+			)
+			.unwrap(),
+			max_price_variation: rate_from_percent(0),
+		})
+	}
 }
 
-/// Basic loan flow:
-/// - creating
-/// - borrowing
-/// - repaying
-/// - closing
+/// Test the basic loan flow, which consist in:
+/// - create a loan
+/// - borrow from the loan
+/// - fully repay the loan until
+/// - close the loan
 fn basic_loan_flow<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::internal_priced_loan::<T>(now)
+		common::default_loan::<T>(now, common::default_internal_pricing())
 	});
 
 	env.submit_now(
@@ -143,12 +174,7 @@ fn basic_loan_flow<T: Runtime>() {
 	)
 	.unwrap();
 
-	let loan_id = env
-		.find_event(|e| match e {
-			pallet_loans::Event::<T>::Created { loan_id, .. } => Some(loan_id),
-			_ => None,
-		})
-		.unwrap();
+	let loan_id = common::last_loan_id(&env);
 
 	env.submit_now(
 		BORROWER,
@@ -165,7 +191,8 @@ fn basic_loan_flow<T: Runtime>() {
 	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
 
 	env.state_mut(|| {
-		// Required to be able the borrower to repay the interest accrued
+		// Give required tokens to the borrower to be able to repay the interest accrued
+		// until this moment
 		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
 	});
 
@@ -193,4 +220,30 @@ fn basic_loan_flow<T: Runtime>() {
 	.unwrap();
 }
 
+/// Test using oracles to price the loan
+fn oracle_priced_loan<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_A_VALUE)]));
+
+	let info = env.state(|| {
+		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
+		common::default_loan::<T>(now, common::default_external_pricing(Usd6::ID))
+	});
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::create {
+			pool_id: POOL_A,
+			info,
+		},
+	)
+	.unwrap();
+
+	let loan_id = common::last_loan_id(&env);
+
+	// TODO: in progress
+}
+
 crate::test_for_runtimes!(all, basic_loan_flow);
+crate::test_for_runtimes!(all, oracle_priced_loan);

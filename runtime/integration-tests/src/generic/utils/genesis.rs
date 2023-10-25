@@ -4,7 +4,7 @@ use cfg_primitives::{Balance, CFG};
 use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use codec::Encode;
 use frame_support::traits::GenesisBuild;
-use sp_runtime::Storage;
+use sp_runtime::{FixedPointNumber, Storage};
 
 use crate::{generic::config::Runtime, utils::accounts::default_accounts};
 
@@ -69,6 +69,8 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 }
 
 pub mod currency {
+	use cfg_primitives::conversion;
+
 	use super::*;
 
 	pub const fn cfg(amount: Balance) -> Balance {
@@ -97,6 +99,10 @@ pub mod currency {
 					..Default::default()
 				},
 			}
+		}
+
+		fn fixed_point_as_balance<N: FixedPointNumber<Inner = Balance>>(value: N) -> Balance {
+			conversion::fixed_point_to_balance(value, Self::DECIMALS as usize).unwrap()
 		}
 	}
 

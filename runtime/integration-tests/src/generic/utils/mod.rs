@@ -3,6 +3,8 @@
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
+	fixed_point::Quantity,
+	oracles::OracleKey,
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::{CurrencyId, TrancheCurrency},
 };
@@ -133,4 +135,8 @@ pub fn invest<T: Runtime>(
 		amount,
 	)
 	.unwrap();
+}
+
+pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
+	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values).unwrap();
 }

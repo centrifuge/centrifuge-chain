@@ -7,6 +7,7 @@ use cfg_primitives::{
 use cfg_traits::Millis;
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
+	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -70,6 +71,8 @@ pub trait Runtime:
 		CollectionId = CollectionId,
 		ItemId = ItemId,
 		Rate = Rate,
+		Quantity = Quantity,
+		PriceId = OracleKey,
 	> + orml_tokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ orml_asset_registry::Config<
 		AssetId = CurrencyId,
@@ -88,6 +91,7 @@ pub trait Runtime:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
+	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -103,7 +107,8 @@ pub trait Runtime:
 		+ From<pallet_balances::Call<Self>>
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
-		+ From<cumulus_pallet_parachain_system::Call<Self>>;
+		+ From<cumulus_pallet_parachain_system::Call<Self>>
+		+ From<orml_oracle::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
@@ -120,7 +125,8 @@ pub trait Runtime:
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
-		+ From<pallet_loans::Event<Self>>;
+		+ From<pallet_loans::Event<Self>>
+		+ From<orml_oracle::Event<Self>>;
 
 	/// Block used by the runtime
 	type Block: Block<

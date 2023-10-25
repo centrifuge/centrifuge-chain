@@ -623,6 +623,11 @@ impl<const DIV: u128> FixedU128<DIV> {
 	pub const fn from_inner(inner: u128) -> Self {
 		Self(inner)
 	}
+
+	/// const version of `FixedPointNumber::saturating_from_integer`.
+	pub const fn from_integer(n: u128) -> Self {
+		Self::from_inner(n * DIV)
+	}
 }
 
 impl<const DIV: u128> Saturating for FixedU128<DIV> {
