@@ -615,20 +615,24 @@ where
 							Error::<T>::CollectRequired
 						);
 
-						Self::do_update_redeem_order(
-							total_order,
-							&who,
-							investment_id,
-							info,
-							order,
-							amount,
-						)?;
-
 						order.update_submitted_at(cur_order_id);
 
 						// Remove order from storage if empty
 						if amount == T::Amount::zero() {
 							*maybe_order = None;
+						}
+						else {
+							// nuno: check that this is ok. Amount == 0 removes the order, so there's
+							// no point in processing a transfer of 0 which fails because it would
+							// kill the account (< ED)
+							Self::do_update_redeem_order(
+								total_order,
+								&who,
+								investment_id,
+								info,
+								order,
+								amount,
+							)?;
 						}
 
 						Ok(cur_order_id)
