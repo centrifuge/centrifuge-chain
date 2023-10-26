@@ -154,6 +154,11 @@ impl Keyring {
 		self.public().0.into()
 	}
 
+	/// Shorter alias for `to_account_id()`
+	pub fn id(self) -> AccountId32 {
+		self.to_account_id()
+	}
+
 	pub fn sign(self, msg: &[u8]) -> Signature {
 		Pair::from(self).sign(msg)
 	}

@@ -1,113 +1,84 @@
-use std::{cell::RefCell, marker::PhantomData, rc::Rc};
+use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
-use cfg_primitives::{Address, BlockNumber, Header, Index};
+use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	inherent::{InherentData, ProvideInherent},
-	storage::transactional,
+	traits::GenesisBuild,
 };
+use sp_api::runtime_decl_for_Core::CoreV4;
+use sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::H256;
-use sp_runtime::{
-	generic::{Era, SignedPayload},
-	traits::{Block, Extrinsic},
-	Digest, DigestItem, DispatchError, DispatchResult, MultiSignature, Storage, TransactionOutcome,
-};
+use sp_core::{sr25519::Public, H256};
+use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage};
 use sp_timestamp::Timestamp;
 
 use crate::{
 	generic::{
-		environment::{Blocks, Env},
+		environment::{utils, Env},
 		runtime::Runtime,
 	},
 	utils::accounts::Keyring,
 };
 
+/// Evironment that interact directly with the runtime,
+/// without the usage of a client.
 pub struct RuntimeEnv<T: Runtime> {
-	nonce: Index,
 	ext: Rc<RefCell<sp_io::TestExternalities>>,
+	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
 	_config: PhantomData<T>,
 }
 
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_storage(storage: Storage) -> Self {
+	fn from_storage(mut storage: Storage) -> Self {
+		// Needed for the aura usage
+		pallet_aura::GenesisConfig::<T> {
+			authorities: vec![AuraId::from(Public([0; 32]))],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| Self::prepare_block(1));
 
 		Self {
-			nonce: 0,
 			ext: Rc::new(RefCell::new(ext)),
+			pending_extrinsics: Vec::default(),
 			_config: PhantomData,
 		}
 	}
 
-	fn submit(&mut self, who: Keyring, call: impl Into<T::RuntimeCall>) -> DispatchResult {
-		self.ext.borrow_mut().execute_with(|| {
-			let runtime_call = call.into();
-			let signed_extra = (
-				frame_system::CheckNonZeroSender::<T>::new(),
-				frame_system::CheckSpecVersion::<T>::new(),
-				frame_system::CheckTxVersion::<T>::new(),
-				frame_system::CheckGenesis::<T>::new(),
-				frame_system::CheckEra::<T>::from(Era::mortal(256, 0)),
-				frame_system::CheckNonce::<T>::from(self.nonce),
-				frame_system::CheckWeight::<T>::new(),
-				pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
-			);
+	fn submit_now(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<Balance, DispatchError> {
+		let extrinsic = self.state(|| {
+			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+			utils::create_extrinsic::<T>(who, call, nonce)
+		});
 
-			let raw_payload =
-				SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();
-			let signature =
-				MultiSignature::Sr25519(raw_payload.using_encoded(|payload| who.sign(payload)));
+		self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
 
-			let multi_address = (Address::Id(who.to_account_id()), signature, signed_extra);
+		let fee = self
+			.find_event(|e| match e {
+				pallet_transaction_payment::Event::TransactionFeePaid { actual_fee, .. } => {
+					Some(actual_fee)
+				}
+				_ => None,
+			})
+			.unwrap();
 
-			let extrinsic =
-				<T::Block as Block>::Extrinsic::new(runtime_call, Some(multi_address)).unwrap();
-
-			self.nonce += 1;
-
-			T::apply_extrinsic(extrinsic).unwrap()
-		})
+		Ok(fee)
 	}
 
-	fn pass(&mut self, blocks: Blocks<T>) {
-		self.ext.borrow_mut().execute_with(|| {
-			let next = frame_system::Pallet::<T>::block_number() + 1;
-
-			let end_block = match blocks {
-				Blocks::ByNumber(n) => next + n,
-				Blocks::BySeconds(secs) => {
-					let blocks = secs / pallet_aura::Pallet::<T>::slot_duration();
-					if blocks % pallet_aura::Pallet::<T>::slot_duration() != 0 {
-						blocks as BlockNumber + 1
-					} else {
-						blocks as BlockNumber
-					}
-				}
-				Blocks::UntilEvent { limit, .. } => limit,
-			};
-
-			for i in next..end_block {
-				T::finalize_block();
-				Self::prepare_block(i);
-
-				if let Blocks::UntilEvent { event, .. } = blocks.clone() {
-					let event: T::RuntimeEventExt = event.into();
-					if frame_system::Pallet::<T>::events()
-						.into_iter()
-						.find(|record| record.event == event)
-						.is_some()
-					{
-						break;
-					}
-				}
-			}
-		})
+	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
+		self.pending_extrinsics.push((who, call.into()));
+		Ok(())
 	}
 
 	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
@@ -116,16 +87,39 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.ext.borrow_mut().execute_with(|| {
-			transactional::with_transaction(|| {
-				// We revert all changes done by the closure to offer an inmutable state method
-				TransactionOutcome::Rollback::<Result<R, DispatchError>>(Ok(f()))
-			})
-			.unwrap()
+			let version = frame_support::StateVersion::V1;
+			let hash = frame_support::storage_root(version);
+
+			let result = f();
+
+			assert_eq!(hash, frame_support::storage_root(version));
+			result
 		})
+	}
+
+	fn __priv_build_block(&mut self, i: BlockNumber) {
+		self.process_pending_extrinsics();
+		self.state_mut(|| {
+			T::Api::finalize_block();
+			Self::prepare_block(i);
+		});
 	}
 }
 
 impl<T: Runtime> RuntimeEnv<T> {
+	fn process_pending_extrinsics(&mut self) {
+		let pending_extrinsics = mem::replace(&mut self.pending_extrinsics, Vec::default());
+
+		for (who, call) in pending_extrinsics {
+			let extrinsic = self.state(|| {
+				let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
+				utils::create_extrinsic::<T>(who, call, nonce)
+			});
+
+			self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap().unwrap());
+		}
+	}
+
 	fn prepare_block(i: BlockNumber) {
 		let slot = Slot::from(i as u64);
 		let digest = Digest {
@@ -140,7 +134,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 			parent_hash: H256::default(),
 		};
 
-		T::initialize_block(&header);
+		T::Api::initialize_block(&header);
 
 		let timestamp = i as u64 * pallet_aura::Pallet::<T>::slot_duration();
 		let inherent_extrinsics = vec![
@@ -149,11 +143,11 @@ impl<T: Runtime> RuntimeEnv<T> {
 		];
 
 		for extrinsic in inherent_extrinsics {
-			T::apply_extrinsic(extrinsic).unwrap().unwrap();
+			T::Api::apply_extrinsic(extrinsic).unwrap().unwrap();
 		}
 	}
 
-	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCall {
+	fn cumulus_inherent(i: BlockNumber) -> T::RuntimeCallExt {
 		let mut inherent_data = InherentData::default();
 
 		let sproof_builder = RelayStateSproofBuilder::default();
@@ -184,7 +178,7 @@ impl<T: Runtime> RuntimeEnv<T> {
 			.into()
 	}
 
-	fn timestamp_inherent(timestamp: u64) -> T::RuntimeCall {
+	fn timestamp_inherent(timestamp: u64) -> T::RuntimeCallExt {
 		let mut inherent_data = InherentData::default();
 
 		let timestamp_inherent = Timestamp::new(timestamp);
@@ -197,4 +191,66 @@ impl<T: Runtime> RuntimeEnv<T> {
 			.unwrap()
 			.into()
 	}
+}
+
+mod tests {
+	use cfg_primitives::CFG;
+
+	use super::*;
+	use crate::generic::{environment::Blocks, utils::genesis::Genesis};
+
+	fn correct_nonce_for_submit_now<T: Runtime>() {
+		let mut env = RuntimeEnv::<T>::from_storage(
+			Genesis::default()
+				.add(pallet_balances::GenesisConfig::<T> {
+					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+				})
+				.storage(),
+		);
+
+		env.submit_now(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+
+		env.submit_now(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+	}
+
+	fn correct_nonce_for_submit_later<T: Runtime>() {
+		let mut env = RuntimeEnv::<T>::from_storage(
+			Genesis::default()
+				.add(pallet_balances::GenesisConfig::<T> {
+					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
+				})
+				.storage(),
+		);
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+
+		env.pass(Blocks::ByNumber(1));
+
+		env.submit_later(
+			Keyring::Alice,
+			frame_system::Call::remark { remark: vec![] },
+		)
+		.unwrap();
+	}
+
+	crate::test_for_runtimes!(all, correct_nonce_for_submit_now);
+	crate::test_for_runtimes!(all, correct_nonce_for_submit_later);
 }

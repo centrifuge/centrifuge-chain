@@ -8,9 +8,9 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+hex-literal = { version = "0.3.4", default-features = false }
 serde = { version = "1.0.119" }
 smallvec = "1.6.1"
-hex-literal = { version = "0.3.4", default-features = false }
 
 # Substrate dependencies
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
@@ -76,7 +76,7 @@ log = "0.4"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
+cfg-mocks = { path = "../../libs/mocks" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
@@ -157,6 +157,7 @@ runtime-benchmarks = [
   "xcm-executor/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -190,4 +191,5 @@ try-runtime = [
   "pallet-investments/try-runtime",
   "parachain-info/try-runtime",
   "orml-asset-registry/try-runtime",
+  "cfg-mocks/try-runtime",
 ]
