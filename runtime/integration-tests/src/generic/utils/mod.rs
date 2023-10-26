@@ -1,21 +1,24 @@
 // Divide this utilties into files when it grows
 
+pub mod currency;
+pub mod genesis;
+
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
 	fixed_point::Quantity,
 	oracles::OracleKey,
 	permissions::{PermissionScope, PoolRole, Role},
+	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_system::RawOrigin;
-use sp_runtime::traits::StaticLookup;
-pub mod genesis;
-
-use cfg_types::pools::TrancheMetadata;
 use frame_support::BoundedVec;
+use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use sp_runtime::{traits::One, Perquintill};
+use sp_runtime::{
+	traits::{One, StaticLookup},
+	Perquintill,
+};
 
 use crate::generic::config::{Runtime, RuntimeKind};
 

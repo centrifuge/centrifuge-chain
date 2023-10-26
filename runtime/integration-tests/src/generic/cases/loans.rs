@@ -1,18 +1,16 @@
-use cfg_primitives::{conversion, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_HOUR};
+use cfg_primitives::{Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_MINUTE};
 use cfg_traits::{
 	interest::{CompoundingSchedule, InterestRate},
 	Seconds, TimeAsSecs,
 };
-use cfg_types::{
-	fixed_point::Quantity, oracles::OracleKey, permissions::PoolRole, tokens::CurrencyId,
-};
+use cfg_types::{fixed_point::Quantity, oracles::OracleKey, permissions::PoolRole};
 use frame_support::traits::Get;
 use pallet_loans::{
 	entities::{
 		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
-			external::{ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
+			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
 			Pricing,
 		},
@@ -33,11 +31,8 @@ use crate::{
 		envs::runtime_env::RuntimeEnv,
 		utils::{
 			self,
-			genesis::{
-				self,
-				currency::{self, cfg, usd6, CurrencyInfo, Usd6},
-				Genesis,
-			},
+			currency::{self, cfg, usd6, CurrencyInfo, Usd6},
+			genesis::{self, Genesis},
 			POOL_MIN_EPOCH_TIME,
 		},
 	},
@@ -51,7 +46,8 @@ const BORROWER: Keyring = Keyring::Bob;
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
 const PRICE_A: OracleKey = OracleKey::Isin(*b"INE123456AB1");
-const PRICE_A_VALUE: Quantity = Quantity::from_integer(1_000);
+const PRICE_VALUE_A: Quantity = Quantity::from_integer(1_000);
+const PRICE_VALUE_B: Quantity = Quantity::from_integer(500);
 
 const FOR_FEES: Balance = cfg(1);
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
@@ -109,8 +105,8 @@ mod common {
 		LoanInfo {
 			schedule: RepaymentSchedule {
 				maturity: Maturity::Fixed {
-					date: now + SECONDS_PER_HOUR,
-					extension: SECONDS_PER_HOUR / 2,
+					date: now + SECONDS_PER_MINUTE,
+					extension: SECONDS_PER_MINUTE / 2,
 				},
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
@@ -138,17 +134,81 @@ mod common {
 		})
 	}
 
-	pub fn default_external_pricing<T: Runtime>(curency_id: CurrencyId) -> Pricing<T> {
+	pub fn default_external_pricing<T: Runtime>() -> Pricing<T> {
 		Pricing::External(ExternalPricing {
 			price_id: PRICE_A,
 			max_borrow_amount: ExtMaxBorrowAmount::Quantity(QUANTITY),
-			notional: conversion::fixed_point_to_balance(
-				PRICE_A_VALUE,
-				currency::find_metadata(curency_id).decimals as usize,
-			)
-			.unwrap(),
+			notional: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
 			max_price_variation: rate_from_percent(0),
 		})
+	}
+}
+
+mod call {
+	use super::*;
+
+	pub fn create<T: Runtime>(info: LoanInfo<T>) -> pallet_loans::Call<T> {
+		pallet_loans::Call::create {
+			pool_id: POOL_A,
+			info,
+		}
+	}
+
+	pub fn borrow_internal<T: Runtime>(loan_id: LoanId) -> pallet_loans::Call<T> {
+		pallet_loans::Call::borrow {
+			pool_id: POOL_A,
+			loan_id,
+			amount: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
+		}
+	}
+
+	pub fn borrow_external<T: Runtime>(loan_id: LoanId) -> pallet_loans::Call<T> {
+		pallet_loans::Call::borrow {
+			pool_id: POOL_A,
+			loan_id,
+			amount: PrincipalInput::External(ExternalAmount {
+				quantity: Quantity::from_integer(50),
+				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
+			}),
+		}
+	}
+
+	pub fn repay_internal<T: Runtime>(loan_id: LoanId, interest: Balance) -> pallet_loans::Call<T> {
+		pallet_loans::Call::repay {
+			pool_id: POOL_A,
+			loan_id,
+			amount: RepaidInput {
+				principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
+				interest,
+				unscheduled: 0,
+			},
+		}
+	}
+
+	pub fn repay_external<T: Runtime>(
+		loan_id: LoanId,
+		interest: Balance,
+		settlement_price: Quantity,
+	) -> pallet_loans::Call<T> {
+		pallet_loans::Call::repay {
+			pool_id: POOL_A,
+			loan_id,
+			amount: RepaidInput {
+				principal: PrincipalInput::External(ExternalAmount {
+					quantity: Quantity::from_integer(50),
+					settlement_price: currency::price_to_currency(settlement_price, Usd6::ID),
+				}),
+				interest,
+				unscheduled: 0,
+			},
+		}
+	}
+
+	pub fn close<T: Runtime>(loan_id: LoanId) -> pallet_loans::Call<T> {
+		pallet_loans::Call::close {
+			pool_id: POOL_A,
+			loan_id,
+		}
 	}
 }
 
@@ -157,7 +217,7 @@ mod common {
 /// - borrow from the loan
 /// - fully repay the loan until
 /// - close the loan
-fn basic_loan_flow<T: Runtime>() {
+fn internal_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	let info = env.state(|| {
@@ -186,10 +246,9 @@ fn basic_loan_flow<T: Runtime>() {
 	)
 	.unwrap();
 
-	env.pass(Blocks::BySeconds(SECONDS_PER_HOUR / 2));
+	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
 	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
-
 	env.state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
@@ -210,6 +269,7 @@ fn basic_loan_flow<T: Runtime>() {
 	)
 	.unwrap();
 
+	// Closing the loan succesfully means that the loan has been fully repaid
 	env.submit_now(
 		BORROWER,
 		pallet_loans::Call::close {
@@ -221,14 +281,14 @@ fn basic_loan_flow<T: Runtime>() {
 }
 
 /// Test using oracles to price the loan
-fn oracle_priced_loan<T: Runtime>() {
+fn oracle_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_A_VALUE)]));
+	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_A)]));
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan::<T>(now, common::default_external_pricing(Usd6::ID))
+		common::default_loan::<T>(now, common::default_external_pricing())
 	});
 
 	env.submit_now(
@@ -242,8 +302,57 @@ fn oracle_priced_loan<T: Runtime>() {
 
 	let loan_id = common::last_loan_id(&env);
 
-	// TODO: in progress
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::borrow {
+			pool_id: POOL_A,
+			loan_id,
+			amount: PrincipalInput::External(ExternalAmount {
+				quantity: Quantity::from_integer(50),
+				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
+			}),
+		},
+	)
+	.unwrap();
+
+	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
+
+	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_B)]));
+
+	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	env.state_mut(|| {
+		// Give required tokens to the borrower to be able to repay the interest accrued
+		// until this moment
+		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+	});
+
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::repay {
+			pool_id: POOL_A,
+			loan_id,
+			amount: RepaidInput {
+				principal: PrincipalInput::External(ExternalAmount {
+					quantity: Quantity::from_integer(50),
+					settlement_price: currency::price_to_currency(PRICE_VALUE_B, Usd6::ID),
+				}),
+				interest: loan_portfolio.outstanding_interest,
+				unscheduled: 0,
+			},
+		},
+	)
+	.unwrap();
+
+	// Closing the loan succesfully means that the loan has been fully repaid
+	env.submit_now(
+		BORROWER,
+		pallet_loans::Call::close {
+			pool_id: POOL_A,
+			loan_id,
+		},
+	)
+	.unwrap();
 }
 
-crate::test_for_runtimes!(all, basic_loan_flow);
-crate::test_for_runtimes!(all, oracle_priced_loan);
+crate::test_for_runtimes!(all, internal_priced);
+crate::test_for_runtimes!(all, oracle_priced);
