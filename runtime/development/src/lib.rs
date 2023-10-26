@@ -68,7 +68,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::{currency::MutationHooks, parameter_type_with_key};
+use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
@@ -92,6 +92,7 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	fees::{DealWithFees, WeightToFee},
 	xcm::AccountIdToMultiLocation,
+	CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1498,13 +1499,6 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		// every currency has a zero existential deposit
-		0
-	};
-}
-
 parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
@@ -1527,7 +1521,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type ExistentialDeposits = ExistentialDeposits;
+	type ExistentialDeposits = CurrencyED<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
