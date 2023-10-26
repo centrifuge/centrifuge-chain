@@ -122,10 +122,12 @@ pub trait Runtime:
 		+ TryInto<pallet_balances::Event<Self>>
 		+ TryInto<pallet_transaction_payment::Event<Self>>
 		+ TryInto<pallet_loans::Event<Self>>
+		+ TryInto<pallet_pool_system::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
+		+ From<pallet_pool_system::Event<Self>>
 		+ From<orml_oracle::Event<Self>>;
 
 	/// Block used by the runtime

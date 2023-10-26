@@ -1,4 +1,8 @@
-// Divide this utilties into files when it grows
+//! PLEASE be as much generic as possible because no domain or use cases are
+//! considered at util level and below modules. If you need utilities related to
+//! your use case, add them under `cases/<my_use_case.rs>`.
+//!
+//! Divide this utilities into files when it grows
 
 pub mod currency;
 pub mod genesis;

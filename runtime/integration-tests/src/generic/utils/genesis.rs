@@ -1,3 +1,6 @@
+//! PLEASE be as much generic as possible because no domain or use cases are
+//! considered at this level.
+
 use std::marker::PhantomData;
 
 use cfg_primitives::Balance;
@@ -35,6 +38,8 @@ impl<T: Runtime> Genesis<T> {
 		self.storage
 	}
 }
+
+// Add GenesisBuild functions for initialize your pallets
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	pallet_balances::GenesisConfig::<T> {

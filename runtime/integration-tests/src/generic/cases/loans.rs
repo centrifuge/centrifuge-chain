@@ -3,10 +3,15 @@ use cfg_traits::{
 	interest::{CompoundingSchedule, InterestRate},
 	Seconds, TimeAsSecs,
 };
-use cfg_types::{fixed_point::Quantity, oracles::OracleKey, permissions::PoolRole};
-use frame_support::traits::Get;
+use cfg_types::{
+	fixed_point::{Quantity, Rate},
+	oracles::OracleKey,
+	permissions::PoolRole,
+};
+use frame_support::{assert_err, traits::Get};
 use pallet_loans::{
 	entities::{
+		changes::LoanMutation,
 		input::{PrincipalInput, RepaidInput},
 		loans::LoanInfo,
 		pricing::{
@@ -16,8 +21,8 @@ use pallet_loans::{
 		},
 	},
 	types::{
-		valuation::ValuationMethod, BorrowRestrictions, InterestPayments, LoanRestrictions,
-		Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
+		valuation::ValuationMethod, BorrowLoanError, BorrowRestrictions, InterestPayments,
+		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
 use runtime_common::apis::{
@@ -42,6 +47,8 @@ use crate::{
 const POOL_ADMIN: Keyring = Keyring::Admin;
 const INVESTOR: Keyring = Keyring::Alice;
 const BORROWER: Keyring = Keyring::Bob;
+const LOAN_ADMIN: Keyring = Keyring::Charlie;
+const ANY: Keyring = Keyring::Dave;
 
 const POOL_A: PoolId = 23;
 const NFT_A: (CollectionId, ItemId) = (1, ItemId(10));
@@ -72,6 +79,13 @@ mod common {
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
 			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
 
+			// Setting borrower
+			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
+			utils::give_nft::<T>(BORROWER.id(), NFT_A);
+
+			// Setting a loan admin
+			utils::give_pool_role::<T>(LOAN_ADMIN.id(), POOL_A, PoolRole::LoanAdmin);
+
 			// Funding a pool
 			let tranche_id = T::Api::tranche_id(POOL_A, 0).unwrap();
 			let tranche_investor = PoolRole::TrancheInvestor(tranche_id, Seconds::MAX);
@@ -85,10 +99,6 @@ mod common {
 		env.state_mut(|| {
 			// New epoch with the investor funds available
 			utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
-
-			// Preparing borrower
-			utils::give_pool_role::<T>(BORROWER.id(), POOL_A, PoolRole::Borrower);
-			utils::give_nft::<T>(BORROWER.id(), NFT_A);
 		});
 
 		env
@@ -97,6 +107,14 @@ mod common {
 	pub fn last_loan_id<E: Env<T>, T: Runtime>(env: &E) -> LoanId {
 		env.find_event(|e| match e {
 			pallet_loans::Event::<T>::Created { loan_id, .. } => Some(loan_id),
+			_ => None,
+		})
+		.unwrap()
+	}
+
+	pub fn last_change_id<E: Env<T>, T: Runtime>(env: &E) -> T::Hash {
+		env.find_event(|e| match e {
+			pallet_pool_system::Event::<T>::ProposedChange { change_id, .. } => Some(change_id),
 			_ => None,
 		})
 		.unwrap()
@@ -212,6 +230,24 @@ mod call {
 			loan_id,
 		}
 	}
+
+	pub fn propose_loan_mutation<T: Runtime>(
+		loan_id: LoanId,
+		mutation: LoanMutation<Rate>,
+	) -> pallet_loans::Call<T> {
+		pallet_loans::Call::propose_loan_mutation {
+			pool_id: POOL_A,
+			loan_id,
+			mutation,
+		}
+	}
+
+	pub fn apply_loan_mutation<T: Runtime>(change_id: T::Hash) -> pallet_loans::Call<T> {
+		pallet_loans::Call::apply_loan_mutation {
+			pool_id: POOL_A,
+			change_id,
+		}
+	}
 }
 
 /// Test the basic loan flow, which consist in:
@@ -226,7 +262,6 @@ fn internal_priced<T: Runtime>() {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 		common::default_loan_info::<T>(now, common::default_internal_pricing())
 	});
-
 	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
 	let loan_id = common::last_loan_id(&env);
@@ -263,7 +298,6 @@ fn oracle_priced<T: Runtime>() {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 		common::default_loan_info::<T>(now, common::default_external_pricing())
 	});
-
 	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
 	let loan_id = common::last_loan_id(&env);
@@ -293,5 +327,42 @@ fn oracle_priced<T: Runtime>() {
 	env.submit_now(BORROWER, call::close(loan_id)).unwrap();
 }
 
+fn update_maturity_extension<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	let info = env.state(|| {
+		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
+		common::default_loan_info::<T>(now, common::default_internal_pricing())
+	});
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
+
+	let loan_id = common::last_loan_id(&env);
+
+	env.submit_now(BORROWER, call::borrow_internal(loan_id))
+		.unwrap();
+
+	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE));
+
+	// Loan at this point is overdue and trying to borrow it will fail
+	assert_err!(
+		env.submit_now(BORROWER, call::borrow_internal(loan_id)),
+		pallet_loans::Error::<T>::BorrowLoanError(BorrowLoanError::MaturityDatePassed),
+	);
+
+	env.submit_now(
+		LOAN_ADMIN,
+		call::propose_loan_mutation(loan_id, LoanMutation::MaturityExtension(12 /* seconds */)),
+	)
+	.unwrap();
+
+	let change_id = common::last_change_id(&env);
+	env.submit_now(LOAN_ADMIN, call::apply_loan_mutation(change_id))
+		.unwrap();
+
+	// Now the loan is no longer overdue and can be borrowed again
+	env.submit_now(ANY, call::borrow_internal(loan_id)).unwrap();
+}
+
 crate::test_for_runtimes!(all, internal_priced);
 crate::test_for_runtimes!(all, oracle_priced);
+crate::test_for_runtimes!(all, update_maturity_extension);

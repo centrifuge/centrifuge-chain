@@ -46,9 +46,9 @@ pub trait Env<T: Runtime> {
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T>) {
 		let (next, end_block) = self.state(|| {
-			let next = frame_system::Pallet::<T>::block_number() + 1;
+			let current = frame_system::Pallet::<T>::block_number();
 
-			let end_block = next
+			let end_block = current
 				+ match blocks {
 					Blocks::ByNumber(n) => n,
 					Blocks::BySeconds(secs) => {
@@ -62,7 +62,7 @@ pub trait Env<T: Runtime> {
 					Blocks::UntilEvent { limit, .. } => limit,
 				};
 
-			(next, end_block)
+			(current + 1, end_block)
 		});
 
 		for i in next..end_block {

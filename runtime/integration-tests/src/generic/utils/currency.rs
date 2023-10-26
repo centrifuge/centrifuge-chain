@@ -1,3 +1,6 @@
+//! PLEASE be as much generic as possible because no domain or use cases are
+//! considered at this level.
+
 use cfg_primitives::{conversion, Balance, CFG};
 use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
 use sp_runtime::FixedPointNumber;
