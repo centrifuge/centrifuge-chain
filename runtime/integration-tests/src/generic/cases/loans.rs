@@ -356,11 +356,12 @@ fn update_maturity_extension<T: Runtime>() {
 	.unwrap();
 
 	let change_id = common::last_change_id(&env);
-	env.submit_now(LOAN_ADMIN, call::apply_loan_mutation(change_id))
+	env.submit_now(ANY, call::apply_loan_mutation(change_id))
 		.unwrap();
 
 	// Now the loan is no longer overdue and can be borrowed again
-	env.submit_now(ANY, call::borrow_internal(loan_id)).unwrap();
+	env.submit_now(BORROWER, call::borrow_internal(loan_id))
+		.unwrap();
 }
 
 crate::test_for_runtimes!(all, internal_priced);
