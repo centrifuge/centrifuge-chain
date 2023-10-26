@@ -54,6 +54,7 @@ const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 const COLLATERAL_VALUE: Balance = usd6(100_000);
 const QUANTITY: Quantity = Quantity::from_integer(100);
 
+/// Common utilities for loan use cases
 mod common {
 	use super::*;
 
@@ -101,7 +102,7 @@ mod common {
 		.unwrap()
 	}
 
-	pub fn default_loan<T: Runtime>(now: Seconds, pricing: Pricing<T>) -> LoanInfo<T> {
+	pub fn default_loan_info<T: Runtime>(now: Seconds, pricing: Pricing<T>) -> LoanInfo<T> {
 		LoanInfo {
 			schedule: RepaymentSchedule {
 				maturity: Maturity::Fixed {
@@ -144,13 +145,14 @@ mod common {
 	}
 }
 
+/// Predefined loan calls for use cases
 mod call {
 	use super::*;
 
-	pub fn create<T: Runtime>(info: LoanInfo<T>) -> pallet_loans::Call<T> {
+	pub fn create<T: Runtime>(info: &LoanInfo<T>) -> pallet_loans::Call<T> {
 		pallet_loans::Call::create {
 			pool_id: POOL_A,
-			info,
+			info: info.clone(),
 		}
 	}
 
@@ -222,29 +224,15 @@ fn internal_priced<T: Runtime>() {
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan::<T>(now, common::default_internal_pricing())
+		common::default_loan_info::<T>(now, common::default_internal_pricing())
 	});
 
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::create {
-			pool_id: POOL_A,
-			info,
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
 	let loan_id = common::last_loan_id(&env);
 
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::borrow {
-			pool_id: POOL_A,
-			loan_id,
-			amount: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::borrow_internal(loan_id))
+		.unwrap();
 
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
@@ -257,27 +245,12 @@ fn internal_priced<T: Runtime>() {
 
 	env.submit_now(
 		BORROWER,
-		pallet_loans::Call::repay {
-			pool_id: POOL_A,
-			loan_id,
-			amount: RepaidInput {
-				principal: PrincipalInput::Internal(COLLATERAL_VALUE / 2),
-				interest: loan_portfolio.outstanding_interest,
-				unscheduled: 0,
-			},
-		},
+		call::repay_internal(loan_id, loan_portfolio.outstanding_interest),
 	)
 	.unwrap();
 
 	// Closing the loan succesfully means that the loan has been fully repaid
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::close {
-			pool_id: POOL_A,
-			loan_id,
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::close(loan_id)).unwrap();
 }
 
 /// Test using oracles to price the loan
@@ -288,70 +261,36 @@ fn oracle_priced<T: Runtime>() {
 
 	let info = env.state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
-		common::default_loan::<T>(now, common::default_external_pricing())
+		common::default_loan_info::<T>(now, common::default_external_pricing())
 	});
 
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::create {
-			pool_id: POOL_A,
-			info,
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
 
 	let loan_id = common::last_loan_id(&env);
 
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::borrow {
-			pool_id: POOL_A,
-			loan_id,
-			amount: PrincipalInput::External(ExternalAmount {
-				quantity: Quantity::from_integer(50),
-				settlement_price: currency::price_to_currency(PRICE_VALUE_A, Usd6::ID),
-			}),
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::borrow_external(loan_id))
+		.unwrap();
 
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
-
-	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_B)]));
 
 	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
 	env.state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
 		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
+
+		// Oracle modify the value
+		utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_B)])
 	});
 
 	env.submit_now(
 		BORROWER,
-		pallet_loans::Call::repay {
-			pool_id: POOL_A,
-			loan_id,
-			amount: RepaidInput {
-				principal: PrincipalInput::External(ExternalAmount {
-					quantity: Quantity::from_integer(50),
-					settlement_price: currency::price_to_currency(PRICE_VALUE_B, Usd6::ID),
-				}),
-				interest: loan_portfolio.outstanding_interest,
-				unscheduled: 0,
-			},
-		},
+		call::repay_external(loan_id, loan_portfolio.outstanding_interest, PRICE_VALUE_B),
 	)
 	.unwrap();
 
 	// Closing the loan succesfully means that the loan has been fully repaid
-	env.submit_now(
-		BORROWER,
-		pallet_loans::Call::close {
-			pool_id: POOL_A,
-			loan_id,
-		},
-	)
-	.unwrap();
+	env.submit_now(BORROWER, call::close(loan_id)).unwrap();
 }
 
 crate::test_for_runtimes!(all, internal_priced);
