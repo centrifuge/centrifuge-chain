@@ -52,7 +52,7 @@ use xcm_emulator::TestExt;
 
 use crate::{
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB},
+		setup::{dollar, ALICE, BOB, CHARLIE},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
@@ -73,13 +73,17 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Register GLMR and fund BOB
 		setup_pre_requirements();
 
-		let initial_balance = 100_000_000;
+		let initial_balance = 2 * AUSD_ED;
 		let amount = initial_balance / 2;
 		let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
 		let currency_id = AUSD_CURRENCY_ID;
-		let source_account = BOB;
+		let source_account = CHARLIE;
 
 		// Mint sufficient balance
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &source_account.into()),
+			0
+		);
 		assert_ok!(OrmlTokens::mint_into(
 			currency_id,
 			&source_account.into(),
