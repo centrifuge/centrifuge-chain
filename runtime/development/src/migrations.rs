@@ -10,7 +10,4 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeDevelopment1031 = (
-	// Sets account codes for all precompiles
-	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
-);
+pub type UpgradeDevelopment1033 = ();
