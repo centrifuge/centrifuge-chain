@@ -76,7 +76,11 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		self.handle.parachain().with_state(f).unwrap()
 	}
 
-	fn __priv_build_block(&mut self, _i: BlockNumber) {
+	fn __priv_build_block(&mut self, i: BlockNumber) {
+		let current = self.state(|| frame_system::Pallet::<T>::block_number());
+		if i > current + 1 {
+			panic!("Jump to future blocks is unsupported in fudge (maybe you've used Blocks::BySecondsFast?)");
+		}
 		self.handle.evolve();
 	}
 }

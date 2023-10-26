@@ -24,26 +24,37 @@ pub enum Blocks<Event> {
 
 	/// Pass a number of block until find an event or reach the limit
 	UntilEvent { event: Event, limit: BlockNumber },
+
+	/// Jumps to a block in the future to reach the requested time.
+	/// Only one real block is created in the process.
+	/// This can be used to emulate passing time during long periods
+	/// computationally very fast.
+	/// (i.e. years)
+	JumpBySeconds(Seconds),
 }
 
 impl<Event> Blocks<Event> {
 	fn range_for(&self, current: BlockNumber, slot_duration: Seconds) -> Range<BlockNumber> {
-		let blocks = match self {
-			Blocks::ByNumber(n) => *n,
+		let next = current + 1;
+		let (from, to) = match self {
+			Blocks::ByNumber(n) => (next, next + *n),
 			Blocks::BySeconds(secs) => {
-				let n = secs / slot_duration;
+				let mut blocks = (secs / slot_duration) as BlockNumber;
 				if secs % slot_duration != 0 {
-					n as BlockNumber + 1
-				} else {
-					n as BlockNumber
-				}
+					blocks += 1
+				};
+				(next, next + blocks)
 			}
-			Blocks::UntilEvent { limit, .. } => *limit,
+			Blocks::UntilEvent { limit, .. } => (next, next + *limit),
+			Blocks::JumpBySeconds(secs) => {
+				let mut blocks = (secs / slot_duration) as BlockNumber;
+				if secs % slot_duration != 0 {
+					blocks += 1
+				};
+				(next + blocks.saturating_sub(1), next + blocks)
+			}
 		};
-
-		dbg!(blocks);
-
-		(current + 1)..(current + 1 + blocks)
+		from..to
 	}
 }
 
@@ -162,6 +173,7 @@ mod tests {
 	struct MockEnv;
 
 	const SLOT_DURATION: Seconds = 12;
+	const EMPTY: [BlockNumber; 0] = [];
 
 	fn blocks_from(current: BlockNumber, blocks: Blocks<()>) -> Vec<BlockNumber> {
 		blocks
@@ -172,11 +184,21 @@ mod tests {
 
 	#[test]
 	fn by_seconds() {
-		assert_eq!(blocks_from(0, Blocks::BySeconds(0)), [] as [BlockNumber; 0]);
+		assert_eq!(blocks_from(0, Blocks::BySeconds(0)), EMPTY);
 		assert_eq!(blocks_from(0, Blocks::BySeconds(1)), [1]);
 		assert_eq!(blocks_from(0, Blocks::BySeconds(12)), [1]);
-		assert_eq!(blocks_from(5, Blocks::BySeconds(0)), [] as [BlockNumber; 0]);
+		assert_eq!(blocks_from(5, Blocks::BySeconds(0)), EMPTY);
 		assert_eq!(blocks_from(5, Blocks::BySeconds(12)), [6]);
 		assert_eq!(blocks_from(5, Blocks::BySeconds(60)), [6, 7, 8, 9, 10]);
+	}
+
+	#[test]
+	fn by_seconds_fast() {
+		assert_eq!(blocks_from(0, Blocks::JumpBySeconds(0)), EMPTY);
+		assert_eq!(blocks_from(0, Blocks::JumpBySeconds(1)), [1]);
+		assert_eq!(blocks_from(0, Blocks::JumpBySeconds(12)), [1]);
+		assert_eq!(blocks_from(5, Blocks::JumpBySeconds(0)), EMPTY);
+		assert_eq!(blocks_from(5, Blocks::JumpBySeconds(12)), [6]);
+		assert_eq!(blocks_from(5, Blocks::JumpBySeconds(60)), [10]);
 	}
 }
