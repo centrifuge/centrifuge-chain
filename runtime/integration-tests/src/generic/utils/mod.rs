@@ -8,10 +8,11 @@ use cfg_types::{
 };
 use frame_system::RawOrigin;
 use sp_runtime::traits::StaticLookup;
+
 pub mod genesis;
 
 use cfg_types::pools::TrancheMetadata;
-use frame_support::BoundedVec;
+use frame_support::{traits::fungible::Mutate, BoundedVec};
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use sp_runtime::{traits::One, Perquintill};
 
@@ -39,13 +40,7 @@ pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (Collecti
 
 pub fn give_balance<T: Runtime>(dest: AccountId, amount: Balance) {
 	let data = pallet_balances::Account::<T>::get(dest.clone());
-	pallet_balances::Pallet::<T>::set_balance(
-		RawOrigin::Root.into(),
-		T::Lookup::unlookup(dest),
-		data.free + amount,
-		data.reserved,
-	)
-	.unwrap();
+	pallet_balances::Pallet::<T>::set_balance(&dest, data.free + amount);
 }
 
 pub fn give_tokens<T: Runtime>(dest: AccountId, currency_id: CurrencyId, amount: Balance) {
