@@ -3,7 +3,7 @@
     "os": "ubuntu-latest",
     "target": "build-node",
     "run_on_event": "any",
-    "rust_toolchain": "nightly-2022-11-14"
+    "rust_toolchain": "nightly-2023-10-26"
   },
 
   {
