@@ -5,7 +5,7 @@ use sp_runtime::traits::BadOrigin;
 use super::*;
 use crate::mock::*;
 
-const REWARD: u128 = 100 * crate::mock::ExistentialDeposit::get();
+const REWARD: u128 = 100 + crate::mock::ExistentialDeposit::get();
 
 #[test]
 fn check_special_privileges() {
