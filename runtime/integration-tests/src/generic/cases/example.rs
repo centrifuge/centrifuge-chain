@@ -1,8 +1,11 @@
+use std::ptr::hash;
+
 use cfg_primitives::{Balance, CFG};
 use frame_support::traits::Get;
-use sp_api::runtime_decl_for_Core::CoreV4;
+use sp_api::runtime_decl_for_core::CoreV4;
 
 use crate::{
+	chain::centrifuge,
 	generic::{
 		environment::{Blocks, Env},
 		envs::{
@@ -131,7 +134,7 @@ fn call_api<T: Runtime>() {
 	let env = RuntimeEnv::<T>::from_storage(Default::default());
 
 	env.state(|| {
-		// If imported the trait: sp_api::runtime_decl_for_Core::CoreV4,
+		// If imported the trait: sp_api::runtime_decl_for_core::CoreV4,
 		// you can easily do: T::Api::version()
 		assert_eq!(
 			T::Api::version(),
@@ -149,7 +152,14 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 		// We include the API we want to use
 		use sp_api::Core;
 
-		let result = api.version(&latest).unwrap();
+		let hash = match latest {
+			sp_runtime::generic::BlockId::<T::Block>::Hash(hash) => hash,
+			sp_runtime::generic::BlockId::<T::Block>::Number(n) => {
+				todo!("convert block number into H256 hash")
+			}
+		};
+
+		let result = api.version(hash).unwrap();
 
 		assert_eq!(result, T::Api::version());
 		assert_eq!(result, <T as frame_system::Config>::Version::get());

@@ -9,8 +9,8 @@ use frame_support::{
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
-use sp_api::runtime_decl_for_Core::CoreV4;
-use sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6;
+use sp_api::runtime_decl_for_core::CoreV4;
+use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
 use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage};

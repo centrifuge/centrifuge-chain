@@ -11441,6 +11441,7 @@ dependencies = [
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
  "pallet-loans",
+ "pallet-message-queue",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",

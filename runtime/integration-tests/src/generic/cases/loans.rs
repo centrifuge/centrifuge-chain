@@ -19,7 +19,7 @@ use pallet_loans::{
 		Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
-use runtime_common::apis::runtime_decl_for_PoolsApi::PoolsApiV1;
+use runtime_common::apis::runtime_decl_for_pools_api::PoolsApiV1;
 
 use crate::{
 	generic::{
