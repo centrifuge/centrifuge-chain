@@ -51,7 +51,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_feed_value(
-			f: impl Fn(T::AccountId, T::DataId, T::DataElem) -> DispatchResult + 'static,
+			f: impl Fn(Option<T::AccountId>, T::DataId, T::DataElem) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}

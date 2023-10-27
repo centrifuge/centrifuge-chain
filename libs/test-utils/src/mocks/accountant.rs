@@ -143,7 +143,7 @@ macro_rules! impl_mock_accountant {
 				) -> Result<(), Self::Error> {
 					let _ = __private_STATE.with(|s| s.borrow().info(&id))?;
 
-					Tokens::transfer(id.into(), source, dest, amount, Preservation::Protect)
+					Tokens::transfer(id.into(), source, dest, amount, Preservation::Expendable)
 						.map(|_| ())
 				}
 
