@@ -1,5 +1,4 @@
-use cfg_primitives::Moment;
-use cfg_traits::liquidity_pools::Codec;
+use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
 use frame_support::RuntimeDebug;
@@ -81,6 +80,8 @@ where
 		tranche_id: TrancheId,
 		currency: u128,
 		price: Ratio,
+		/// The timestamp at which the price was computed
+		computed_at: Seconds,
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on
 	/// the target domain.
@@ -90,7 +91,7 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		member: Address,
-		valid_until: Moment,
+		valid_until: Seconds,
 	},
 	/// Transfer non-tranche tokens fungibles. For v2, it will only support
 	/// stable-coins.
@@ -358,15 +359,6 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
-	/// Update the investment limit of the specified tranche token. Disables
-	/// investment if the amount is set to zero.
-	///
-	/// Directionality: Centrifuge -> EVM Domain.
-	UpdateTrancheInvestmentLimit {
-		pool_id: PoolId,
-		tranche_id: TrancheId,
-		amount: Balance,
-	},
 }
 
 impl<
@@ -409,7 +401,6 @@ impl<
 			Self::ScheduleUpgrade { .. } => 21,
 			Self::CancelUpgrade { .. } => 22,
 			Self::UpdateTrancheTokenMetadata { .. } => 23,
-			Self::UpdateTrancheInvestmentLimit { .. } => 24,
 		}
 	}
 }
@@ -460,6 +451,7 @@ impl<
 				tranche_id,
 				currency,
 				price,
+				computed_at,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -467,6 +459,7 @@ impl<
 					tranche_id.encode(),
 					encode_be(currency),
 					encode_be(price),
+					computed_at.to_be_bytes().to_vec(),
 				],
 			),
 			Message::UpdateMember {
@@ -731,14 +724,6 @@ impl<
 					token_symbol.encode(),
 				],
 			),
-			Message::UpdateTrancheInvestmentLimit {
-				pool_id,
-				tranche_id,
-				amount,
-			} => encoded_message(
-				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), encode_be(amount)],
-			),
 		}
 	}
 
@@ -770,6 +755,7 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
+				computed_at: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			6 => Ok(Self::UpdateMember {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -888,11 +874,6 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
-			}),
-			24 => Ok(Self::UpdateTrancheInvestmentLimit {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1049,8 +1030,9 @@ mod tests {
 				tranche_id: default_tranche_id(),
 				currency: TOKEN_ID,
 				price: Ratio::one(),
+				computed_at: 1698131924,
 			},
-			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a7640000",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0000000000000000000000000eb5ec7b00000000000000000de0b6b3a76400000000000065376fd4",
 		)
 	}
 
@@ -1325,18 +1307,6 @@ mod tests {
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 			},
 			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
-		)
-	}
-
-	#[test]
-	fn update_tranche_investment_limit() {
-		test_encode_decode_identity(
-			LiquidityPoolsMessage::UpdateTrancheInvestmentLimit {
-				pool_id: 1,
-				tranche_id: default_tranche_id(),
-				amount: AMOUNT,
-			},
-			"180000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 

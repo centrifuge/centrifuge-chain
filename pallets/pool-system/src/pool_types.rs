@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Moment;
+use cfg_traits::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -94,7 +94,7 @@ where
 	MaxTranches: Get<u32>,
 {
 	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub submitted_at: Moment,
+	pub submitted_at: Seconds,
 }
 
 /// A representation of a pool identifier that can be converted to an account
@@ -142,9 +142,9 @@ pub enum PoolStatus {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolParameters {
 	/// Minimum duration for an epoch.
-	pub min_epoch_time: Moment,
+	pub min_epoch_time: Seconds,
 	/// Maximum time between the NAV update and the epoch closing.
-	pub max_nav_age: Moment,
+	pub max_nav_age: Seconds,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -157,8 +157,8 @@ where
 	pub tranches: Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>,
 	pub tranche_metadata:
 		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
-	pub min_epoch_time: Change<Moment>,
-	pub max_nav_age: Change<Moment>,
+	pub min_epoch_time: Change<Seconds>,
+	pub max_nav_age: Change<Seconds>,
 }
 
 // NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
@@ -173,7 +173,7 @@ where
 	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
 	BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>:
 		MaxEncodedLen,
-	Moment: MaxEncodedLen,
+	Seconds: MaxEncodedLen,
 {
 	fn max_encoded_len() -> usize {
 		// The tranches (default bound)
@@ -184,7 +184,7 @@ where
 				MaxTranches,
 			>::max_encoded_len())
 			// The min epoc time and max nav age (default bounds)
-			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
+			.saturating_add(Seconds::max_encoded_len().saturating_mul(2))
 			// From the `Change` enum which wraps all four fields of Self
 			.saturating_add(4)
 	}
@@ -216,9 +216,9 @@ pub struct PoolEssence<
 	/// The maximum allowed reserve on a given pool
 	pub max_reserve: Balance,
 	/// Maximum time between the NAV update and the epoch closing.
-	pub max_nav_age: Moment,
+	pub max_nav_age: Seconds,
 	/// Minimum duration for an epoch.
-	pub min_epoch_time: Moment,
+	pub min_epoch_time: Seconds,
 	/// Tranches on a pool
 	pub tranches:
 		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
@@ -257,7 +257,7 @@ impl<
 	Weight: Copy + From<u128>,
 	MaxTranches: Get<u32>,
 {
-	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
+	pub fn start_next_epoch(&mut self, now: Seconds) -> DispatchResult {
 		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
@@ -429,7 +429,7 @@ pub mod changes {
 	/// A PoolChangeProposal with extra information about when it was noted.
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub struct NotedPoolChange<ChangeProposal: Into<PoolChangeProposal>> {
-		pub submitted_time: Moment,
+		pub submitted_time: Seconds,
 		pub change: ChangeProposal,
 	}
 }

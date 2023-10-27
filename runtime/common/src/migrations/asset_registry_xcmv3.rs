@@ -66,6 +66,10 @@ impl<
 		// Complexity: 2 reads
 		let (loc_count, meta_count) = Self::get_key_counts();
 
+		if Self::check_key_counts(loc_count, meta_count).is_err() {
+			return RocksDbWeight::get().reads(loc_count.saturating_add(meta_count).into());
+		}
+
 		// Complexity: O(loc_count) writes
 		let result = orml_asset_registry::LocationToAssetId::<T>::clear(loc_count, None);
 		match result.maybe_cursor {
@@ -97,28 +101,26 @@ impl<
             result.loops,
         );
 
+		let assets = Assets::get_assets_to_migrate();
 		log::info!(
 			"💎 AssetRegistryMultilocationToXCMV3: Starting migration of {:?} assets",
-			Assets::get_assets_to_migrate(loc_count, meta_count)
-				.iter()
-				.len()
+			assets.iter().len()
 		);
+
 		// Complexity: O(meta_count + loc_count) writes
-		Assets::get_assets_to_migrate(loc_count, meta_count)
-			.into_iter()
-			.for_each(|(asset_id, asset_metadata)| {
-				log::debug!("Migrating asset: {:?}", asset_id);
-				orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
-					asset_metadata.into(),
-					asset_id.into(),
-				)
-				.map_err(|e| log::error!("Failed to register asset id: {:?}", e))
-				.ok();
-			});
+		assets.into_iter().for_each(|(asset_id, asset_metadata)| {
+			log::debug!("Migrating asset: {:?}", asset_id);
+			orml_asset_registry::Pallet::<T>::do_register_asset_without_asset_processor(
+				asset_metadata.into(),
+				asset_id.into(),
+			)
+			.map_err(|e| log::error!("Failed to register asset id: {:?}", e))
+			.ok();
+		});
 
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: on_runtime_upgrade: completed!");
 		RocksDbWeight::get().reads_writes(
-			2,
+			loc_count.saturating_add(meta_count).into(),
 			loc_count
 				.saturating_add(meta_count)
 				.saturating_mul(2)
@@ -131,19 +133,7 @@ impl<
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: pre-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
 
-		match (loc_count, meta_count) {
-			(loc, meta)
-				if (loc, meta) == (EXPECTED_MAINNET_LOC_COUNT, EXPECTED_MAINNET_META_COUNT) =>
-			{
-				Ok(())
-			}
-			(loc, meta)
-				if (loc, meta) == (EXPECTED_TESTNET_LOC_COUNT, EXPECTED_TESTNET_META_COUNT) =>
-			{
-				Ok(())
-			}
-			_ => Err("💎 AssetRegistryMultilocationToXCMV3: Unexpected counters"),
-		}?;
+		Self::check_key_counts(loc_count, meta_count)?;
 
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: pre-upgrade: done");
 		Ok((loc_count, meta_count).encode())
@@ -186,7 +176,7 @@ impl<
 {
 	fn get_key_counts() -> (u32, u32) {
 		// let loc_count =
-		// orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
+		//  orml_asset_registry::LocationToAssetId::<T>::iter_keys().count() as u32;
 		// let meta_count = orml_asset_registry::Metadata::<T>::iter_keys().count() as
 		// u32;
 		let loc_count = Self::count_storage_keys(
@@ -205,6 +195,22 @@ impl<
 		);
 
 		(loc_count, meta_count)
+	}
+
+	fn check_key_counts(loc_count: u32, meta_count: u32) -> Result<(), &'static str> {
+		match (loc_count, meta_count) {
+			(loc, meta)
+				if (loc, meta) == (EXPECTED_MAINNET_LOC_COUNT, EXPECTED_MAINNET_META_COUNT) =>
+			{
+				Ok(())
+			}
+			(loc, meta)
+				if (loc, meta) == (EXPECTED_TESTNET_LOC_COUNT, EXPECTED_TESTNET_META_COUNT) =>
+			{
+				Ok(())
+			}
+			_ => Err("💎 AssetRegistryMultilocationToXCMV3: Unexpected counters"),
+		}
 	}
 
 	pub fn count_storage_keys(prefix: &[u8]) -> u32 {
@@ -226,10 +232,7 @@ impl<
 }
 
 pub trait AssetsToMigrate {
-	fn get_assets_to_migrate(
-		loc_count: u32,
-		meta_count: u32,
-	) -> Vec<(
+	fn get_assets_to_migrate() -> Vec<(
 		CurrencyId,
 		orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 	)>;

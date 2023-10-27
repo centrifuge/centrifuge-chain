@@ -33,7 +33,7 @@ pub mod tokens;
 pub mod xcm;
 
 /// The EVM Chain ID
-/// The type should accomodate all chain ids listed on <https://chainlist.org/>.
+/// The type should accommodate all chain ids listed on <https://chainlist.org/>.
 pub type EVMChainId = u64;
 
 /// A raw para ID

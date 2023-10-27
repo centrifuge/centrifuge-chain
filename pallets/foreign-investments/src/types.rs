@@ -18,8 +18,6 @@ use frame_support::{dispatch::fmt::Debug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 
-use crate::Config;
-
 /// Reflects the reason for the last token swap update such that it can be
 /// updated accordingly if the last and current reason mismatch.
 #[derive(
@@ -41,12 +39,6 @@ pub trait InvestStateConfig {
 		Currency = Self::CurrencyId,
 		Error = sp_runtime::DispatchError,
 	>;
-}
-
-impl<T: Config> InvestStateConfig for T {
-	type Balance = T::Balance;
-	type CurrencyConverter = T::CurrencyConverter;
-	type CurrencyId = T::CurrencyId;
 }
 
 /// Reflects all states a foreign investment can have until it is processed as

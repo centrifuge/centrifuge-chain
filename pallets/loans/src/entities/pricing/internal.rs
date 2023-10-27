@@ -1,10 +1,10 @@
-use cfg_primitives::Moment;
-use cfg_traits::interest::{InterestRate, RateCollection};
+use cfg_traits::{
+	interest::{InterestRate, RateCollection},
+	Seconds, TimeAsSecs,
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	ensure, pallet_prelude::DispatchResult, traits::UnixTime, RuntimeDebug, RuntimeDebugNoBound,
-};
+use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebug, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
@@ -13,11 +13,11 @@ use sp_runtime::{
 };
 
 use crate::{
-	entities::interest::ActiveInterestRate,
+	entities::{changes::InternalMutation, interest::ActiveInterestRate},
 	pallet::{Config, Error},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		CreateLoanError, InternalMutation, MutationError,
+		CreateLoanError, MutationError,
 	},
 };
 
@@ -85,12 +85,12 @@ impl<T: Config> InternalActivePricing<T> {
 	fn compute_present_value(
 		&self,
 		debt: T::Balance,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlow(dcf) => {
-				let now = T::Time::now().as_secs();
+				let now = T::Time::now();
 				Ok(dcf.compute_present_value(
 					debt,
 					now,
@@ -105,8 +105,8 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn present_value(
 		&self,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		let debt = self.interest.current_debt()?;
 		self.compute_present_value(debt, origination_date, maturity_date)
@@ -115,8 +115,8 @@ impl<T: Config> InternalActivePricing<T> {
 	pub fn present_value_cached<Rates>(
 		&self,
 		cache: &Rates,
-		origination_date: Moment,
-		maturity_date: Moment,
+		origination_date: Seconds,
+		maturity_date: Seconds,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,

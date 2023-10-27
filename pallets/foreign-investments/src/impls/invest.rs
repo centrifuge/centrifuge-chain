@@ -1117,3 +1117,349 @@ where
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use cfg_traits::IdentityCurrencyConversion;
+	use frame_support::{assert_err, assert_ok};
+	use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
+
+	use super::*;
+
+	#[derive(Clone, Copy, PartialEq, Debug)]
+	enum CurrencyId {
+		Foreign,
+		Pool,
+	}
+
+	const CONVERSION_RATE: u128 = 3; // 300%
+
+	fn to_pool(foreign_amount: u128) -> u128 {
+		foreign_amount * CONVERSION_RATE
+	}
+
+	fn to_foreign(pool_amount: u128) -> u128 {
+		pool_amount / CONVERSION_RATE
+	}
+
+	struct TestCurrencyConverter;
+
+	impl IdentityCurrencyConversion for TestCurrencyConverter {
+		type Balance = u128;
+		type Currency = CurrencyId;
+		type Error = DispatchError;
+
+		fn stable_to_stable(
+			currency_in: Self::Currency,
+			currency_out: Self::Currency,
+			amount: Self::Balance,
+		) -> Result<Self::Balance, Self::Error> {
+			match (currency_out, currency_in) {
+				(CurrencyId::Foreign, CurrencyId::Pool) => Ok(to_pool(amount)),
+				(CurrencyId::Pool, CurrencyId::Foreign) => Ok(to_foreign(amount)),
+				_ => panic!("Same currency"),
+			}
+		}
+	}
+
+	#[derive(PartialEq)]
+	struct TestConfig;
+
+	impl InvestStateConfig for TestConfig {
+		type Balance = u128;
+		type CurrencyConverter = TestCurrencyConverter;
+		type CurrencyId = CurrencyId;
+	}
+
+	type InvestState = super::InvestState<TestConfig>;
+	type InvestTransition = super::InvestTransition<u128, CurrencyId>;
+
+	#[test]
+	fn increase_with_pool_swap() {
+		let done_amount = 60;
+		let invest_amount = 600;
+		let pool_swap = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 120,
+		};
+		let foreign_swap = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: 240,
+		};
+		let increase = InvestTransition::IncreaseInvestOrder(pool_swap);
+
+		assert_ok!(
+			InvestState::NoState.transition(increase.clone()),
+			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap }
+		);
+
+		assert_ok!(
+			InvestState::InvestmentOngoing { invest_amount }.transition(increase.clone()),
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: pool_swap,
+				invest_amount
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoPoolCurrency { swap: pool_swap }
+				.transition(increase.clone()),
+			InvestState::ActiveSwapIntoPoolCurrency {
+				swap: Swap {
+					amount: pool_swap.amount + pool_swap.amount,
+					..pool_swap
+				}
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoForeignCurrency { swap: foreign_swap }
+				.transition(increase.clone()),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: Swap {
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
+					..foreign_swap
+				},
+				done_amount: to_foreign(pool_swap.amount),
+				invest_amount: pool_swap.amount,
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: pool_swap,
+				invest_amount
+			}
+			.transition(increase.clone()),
+			InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
+				swap: Swap {
+					amount: pool_swap.amount + pool_swap.amount,
+					..pool_swap
+				},
+				invest_amount
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
+				swap: foreign_swap,
+				invest_amount
+			}
+			.transition(increase.clone()),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: Swap {
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
+					..foreign_swap
+				},
+				done_amount: to_foreign(pool_swap.amount),
+				invest_amount: invest_amount + pool_swap.amount,
+			}
+		);
+
+		assert_err!(
+			InvestState::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone {
+				swap: pool_swap,
+				done_amount,
+			}
+			.transition(increase.clone()),
+			DispatchError::Other(
+				"Invalid invest state, should automatically be transitioned into \
+				 ActiveSwapIntoPoolCurrencyAndInvestmentOngoing",
+			)
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+				swap: foreign_swap,
+				done_amount,
+			}
+			.transition(increase.clone()),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: Swap {
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
+					..foreign_swap
+				},
+				done_amount: done_amount + to_foreign(pool_swap.amount),
+				invest_amount: pool_swap.amount
+			}
+		);
+
+		assert_ok!(
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: foreign_swap,
+				done_amount,
+				invest_amount,
+			}
+			.transition(increase.clone()),
+			InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+				swap: Swap {
+					amount: foreign_swap.amount - to_foreign(pool_swap.amount),
+					..foreign_swap
+				},
+				done_amount: done_amount + to_foreign(pool_swap.amount),
+				invest_amount: invest_amount + pool_swap.amount
+			}
+		);
+	}
+
+	impl InvestState {
+		fn get_done_amount(&self) -> u128 {
+			match *self {
+				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDone { done_amount, .. } => {
+					to_pool(done_amount)
+				}
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
+					done_amount, ..
+				} => to_pool(done_amount),
+				Self::ActiveSwapIntoPoolCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+					done_amount,
+					..
+				} => to_pool(done_amount),
+				Self::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDoneAndInvestmentOngoing {
+					done_amount,
+					..
+				} => to_pool(done_amount),
+				Self::SwapIntoForeignDone { done_swap } => to_pool(done_swap.amount),
+				Self::SwapIntoForeignDoneAndInvestmentOngoing { done_swap, .. } => {
+					to_pool(done_swap.amount)
+				}
+				_ => 0,
+			}
+		}
+
+		fn get_swap_pool_amount(&self) -> u128 {
+			self.get_active_swap_amount_pool_denominated().unwrap()
+		}
+
+		fn has_active_pool_swap(&self) -> bool {
+			self.get_active_swap()
+				.map(|swap| swap.currency_in == CurrencyId::Pool)
+				.unwrap_or(false)
+		}
+
+		fn total(&self) -> u128 {
+			self.get_investing_amount() + self.get_done_amount() + self.get_swap_pool_amount()
+		}
+	}
+
+	struct Checker {
+		old_state: InvestState,
+	}
+
+	impl Checker {
+		fn new(initial_state: InvestState, use_case: &[InvestTransition]) -> Self {
+			println!("Testing use case: {:#?}", use_case);
+
+			Self {
+				old_state: initial_state,
+			}
+		}
+
+		/// Invariants from: https://centrifuge.hackmd.io/IPtRlOrOSrOF9MHjEY48BA?view#Without-storage
+		fn check_delta_invariant(&self, transition: &InvestTransition, new_state: &InvestState) {
+			println!("Transition: {:#?}", transition);
+			println!("New state: {:#?}, total: {}", new_state, new_state.total());
+
+			match *transition {
+				InvestTransition::IncreaseInvestOrder(swap) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, swap.amount);
+				}
+				InvestTransition::DecreaseInvestOrder(_) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, 0);
+				}
+				InvestTransition::FulfillSwapOrder(swap) => {
+					let diff = new_state.total() - self.old_state.total();
+					assert_eq!(diff, 0);
+
+					if self.old_state.has_active_pool_swap() {
+						let invest_diff = new_state.get_investing_amount()
+							- self.old_state.get_investing_amount();
+						assert_eq!(invest_diff, swap.amount)
+					} else {
+						let done_diff =
+							new_state.get_done_amount() - self.old_state.get_done_amount();
+						assert_eq!(done_diff, to_pool(swap.amount))
+					}
+				}
+				InvestTransition::CollectInvestment(value) => {
+					if self.old_state.get_investing_amount() == 0 {
+						assert_eq!(new_state.get_investing_amount(), 0)
+					} else {
+						assert_eq!(new_state.get_investing_amount(), value);
+
+						assert_eq!(
+							new_state.get_done_amount(),
+							self.old_state.get_done_amount()
+						);
+						assert_eq!(
+							new_state.get_swap_pool_amount(),
+							self.old_state.get_swap_pool_amount(),
+						);
+					}
+				}
+			}
+		}
+	}
+
+	#[test]
+	fn fuzzer() {
+		let pool_swap_big = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 120,
+		};
+		let pool_swap_small = Swap {
+			currency_in: CurrencyId::Pool,
+			currency_out: CurrencyId::Foreign,
+			amount: 60,
+		};
+		let foreign_swap_big = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: to_foreign(pool_swap_big.amount),
+		};
+		let foreign_swap_small = Swap {
+			currency_in: CurrencyId::Foreign,
+			currency_out: CurrencyId::Pool,
+			amount: to_foreign(pool_swap_small.amount),
+		};
+
+		let transitions = [
+			InvestTransition::IncreaseInvestOrder(pool_swap_big),
+			InvestTransition::IncreaseInvestOrder(pool_swap_small),
+			InvestTransition::DecreaseInvestOrder(foreign_swap_big),
+			InvestTransition::DecreaseInvestOrder(foreign_swap_small),
+			InvestTransition::FulfillSwapOrder(pool_swap_big),
+			InvestTransition::FulfillSwapOrder(pool_swap_small),
+			InvestTransition::FulfillSwapOrder(foreign_swap_big),
+			InvestTransition::FulfillSwapOrder(foreign_swap_small),
+			InvestTransition::CollectInvestment(60),
+			InvestTransition::CollectInvestment(120),
+		];
+
+		let mut rng = StdRng::seed_from_u64(42); // Determinism for reproduction
+
+		for _ in 0..100000 {
+			let mut use_case = transitions.clone();
+			let use_case = use_case.partial_shuffle(&mut rng, 8).0;
+			let mut state = InvestState::NoState;
+			let mut checker = Checker::new(state.clone(), use_case);
+
+			for transition in use_case {
+				state = match state.transition(transition.clone()) {
+					Ok(state) => {
+						checker.check_delta_invariant(&transition, &state);
+						checker.old_state = state.clone();
+						state
+					}
+					// We skip the imposible transition and continues with the use case
+					Err(_) => state,
+				}
+			}
+		}
+	}
+}

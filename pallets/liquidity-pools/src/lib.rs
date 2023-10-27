@@ -114,10 +114,9 @@ pub type GeneralCurrencyIndexOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::Moment;
 	use cfg_traits::{
 		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, TrancheTokenPrice,
+		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -125,10 +124,7 @@ pub mod pallet {
 		EVMChainId,
 	};
 	use codec::HasCompact;
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{tokens::Preservation, UnixTime},
-	};
+	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
@@ -137,7 +133,6 @@ pub mod pallet {
 	use crate::defensive_weights::WeightInfo;
 
 	#[pallet::pallet]
-
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -197,19 +192,20 @@ pub mod pallet {
 			BalanceRatio = Self::BalanceRatio,
 			PoolId = Self::PoolId,
 			TrancheId = Self::TrancheId,
+			Moment = Seconds,
 		>;
 
 		/// The source of truth for investment permissions.
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, CurrencyIdOf<Self>>,
-			Role = Role<Self::TrancheId, Moment>,
+			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
 
 		/// The UNIX timestamp provider type required for checking the validity
 		/// of investments.
-		type Time: UnixTime;
+		type Time: TimeAsSecs;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
@@ -217,7 +213,7 @@ pub mod pallet {
 			+ Inspect<
 				Self::AccountId,
 				AssetId = CurrencyIdOf<Self>,
-				Balance = <Self as Config>::Balance,
+				Balance = <Self as pallet::Config>::Balance,
 			>;
 
 		/// The currency type of investments.
@@ -456,9 +452,8 @@ pub mod pallet {
 			// TODO(future): Once we diverge from 1-to-1 conversions for foreign and pool
 			// currencies, this price must be first converted into the currency_id and then
 			// re-denominated to 18 decimals (i.e. `Ratio` precision)
-			let price = T::TrancheTokenPrice::get(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?
-				.price;
+			let price_value = T::TrancheTokenPrice::get(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?;
 
 			// Check that the registered asset location matches the destination
 			match Self::try_get_wrapped_token(&currency_id)? {
@@ -478,7 +473,8 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					currency,
-					price,
+					price: price_value.price,
+					computed_at: price_value.last_updated,
 				},
 			)?;
 
@@ -493,7 +489,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			domain_address: DomainAddress,
-			valid_until: Moment,
+			valid_until: Seconds,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
@@ -506,7 +502,7 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 			ensure!(
-				valid_until > Self::now(),
+				valid_until > T::Time::now(),
 				Error::<T>::InvalidTrancheInvestorValidity
 			);
 
@@ -557,7 +553,7 @@ pub mod pallet {
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					T::DomainAddressToAccountId::convert(domain_address.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
 			);
@@ -814,10 +810,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn now() -> Moment {
-			T::Time::now().as_secs()
-		}
-
 		/// Returns the `u128` general index of a currency as the concatenation
 		/// of the configured `GeneralCurrencyPrefix` and its local currency
 		/// identifier.

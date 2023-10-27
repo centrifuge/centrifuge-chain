@@ -9,21 +9,22 @@ use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
 	entities::{
+		changes::{Change, InternalMutation, LoanMutation},
+		input::{PrincipalInput, RepaidInput},
 		loans::{ActiveLoan, LoanInfo},
 		pricing::{
 			external::{ExternalAmount, ExternalPricing, MaxBorrowAmount as ExtMaxBorrowAmount},
 			internal::{InternalPricing, MaxBorrowAmount as IntMaxBorrowAmount},
-			ActivePricing, Pricing, PricingAmount, RepaidPricingAmount,
+			ActivePricing, Pricing,
 		},
 	},
-	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
+	pallet::{ActiveLoans, CreatedLoan, Error, LastLoanId, PortfolioValuation},
 	types::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		BorrowLoanError, BorrowRestrictions, Change, CloseLoanError, CreateLoanError,
-		InterestPayments, InternalMutation, LoanMutation, LoanRestrictions, Maturity,
-		MutationError, PayDownSchedule, RepayLoanError, RepayRestrictions, RepaymentSchedule,
-		WrittenOffError,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, InterestPayments,
+		LoanRestrictions, Maturity, MutationError, PayDownSchedule, RepayLoanError,
+		RepayRestrictions, RepaymentSchedule, WrittenOffError,
 	},
 };
 
@@ -37,5 +38,6 @@ mod mutate_loan;
 mod policy;
 mod portfolio_valuation;
 mod repay_loan;
+mod transfer_debt;
 mod util;
 mod write_off_loan;

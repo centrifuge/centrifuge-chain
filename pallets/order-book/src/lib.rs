@@ -40,7 +40,7 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::StatusNotificationHook;
+	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
 	use cfg_types::{investments::Swap, tokens::CustomMetadata};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
@@ -148,6 +148,25 @@ pub mod pallet {
 		/// Size of order id bounded vec in storage
 		#[pallet::constant]
 		type OrderPairVecSize: Get<u32>;
+
+		/// The default minimum fulfillment amount for orders.
+		///
+		/// NOTE: The amount is expected to be denominated in native currency.
+		/// When applying to a swap order, it will be re-denominated into the
+		/// target currency.
+		#[pallet::constant]
+		type MinFulfillmentAmountNative: Get<Self::Balance>;
+
+		/// Type which provides a decimal conversion from native to another
+		/// currency.
+		///
+		/// NOTE: Required for `MinFulfillmentAmountNative`.
+		type DecimalConverter: cfg_traits::ConversionToAssetBalance<
+			Self::Balance,
+			Self::AssetCurrencyId,
+			Self::Balance,
+			Error = DispatchError,
+		>;
 
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
@@ -360,8 +379,7 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
 	{
-		/// Create an order, with the minimum fulfillment amount set to the buy
-		/// amount, as the first iteration will not have partial fulfillment
+		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::Weights::create_order())]
 		pub fn create_order(
@@ -372,6 +390,10 @@ pub mod pallet {
 			price: T::SellRatio,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
+				T::MinFulfillmentAmountNative::get(),
+				asset_in,
+			)?;
 
 			Self::inner_place_order(
 				account_id,
@@ -379,7 +401,7 @@ pub mod pallet {
 				asset_out,
 				buy_amount,
 				price,
-				buy_amount,
+				min_fulfillment_amount,
 				|order| {
 					let min_amount = TradingPair::<T>::get(&asset_in, &asset_out)?;
 					Self::is_valid_order(
@@ -406,12 +428,18 @@ pub mod pallet {
 			price: T::SellRatio,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+			let order = Orders::<T>::get(order_id)?;
+			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
+				T::MinFulfillmentAmountNative::get(),
+				order.asset_in_id,
+			)?;
+
 			Self::inner_update_order(
 				account_id.clone(),
 				order_id,
 				buy_amount,
 				price,
-				buy_amount,
+				min_fulfillment_amount,
 				|order| {
 					ensure!(
 						account_id == order.placing_account,
@@ -586,7 +614,7 @@ pub mod pallet {
 			let partial_fulfillment = !remaining_buy_amount.is_zero();
 
 			if partial_fulfillment {
-				Self::update_order(
+				Self::update_order_with_fulfillment(
 					order.placing_account.clone(),
 					order.order_id,
 					remaining_buy_amount,
@@ -869,75 +897,14 @@ pub mod pallet {
 
 			Ok(order_id)
 		}
-	}
-
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
-		type Balance = T::Balance;
-		type CurrencyId = T::AssetCurrencyId;
-		type OrderDetails = Swap<T::Balance, T::AssetCurrencyId>;
-		type OrderId = T::OrderIdNonce;
-		type SellRatio = T::SellRatio;
-
-		/// Creates an order.
-		/// Verify funds available in, and reserve for  both chains fee currency
-		/// for storage fee, and amount of outgoing currency as determined by
-		/// the buy amount and price.
-		fn place_order(
-			account: T::AccountId,
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
-			min_fulfillment_amount: T::Balance,
-		) -> Result<Self::OrderId, DispatchError> {
-			Self::inner_place_order(
-				account,
-				currency_in,
-				currency_out,
-				buy_amount,
-				sell_rate_limit,
-				min_fulfillment_amount,
-				|order| {
-					// We only check if the trading pair exists not if the minimum amount is
-					// reached.
-					let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
-					Self::is_valid_order(
-						order.asset_in_id,
-						order.asset_out_id,
-						order.buy_amount,
-						order.max_sell_rate,
-						order.min_fulfillment_amount,
-						T::Balance::zero(),
-					)
-				},
-			)
-		}
-
-		/// Cancel an existing order.
-		/// Unreserve currency reserved for trade as well storage fee.
-		fn cancel_order(order: Self::OrderId) -> DispatchResult {
-			let order = <Orders<T>>::get(order)?;
-			let account_id = order.placing_account.clone();
-
-			Self::unreserve_order(&order)?;
-			Self::remove_order(order.order_id)?;
-			Self::deposit_event(Event::OrderCancelled {
-				account: account_id,
-				order_id: order.order_id,
-			});
-
-			Ok(())
-		}
 
 		/// Update an existing order.
+		///
 		/// Update outgoing asset currency reserved to match new amount or price
 		/// if either have changed.
-		fn update_order(
+		pub(crate) fn update_order_with_fulfillment(
 			account: T::AccountId,
-			order_id: Self::OrderId,
+			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
 			sell_rate_limit: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
@@ -964,8 +931,88 @@ pub mod pallet {
 				},
 			)
 		}
+	}
 
-		/// Check whether an order is active.
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
+	where
+		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
+	{
+		type Balance = T::Balance;
+		type CurrencyId = T::AssetCurrencyId;
+		type OrderDetails = Swap<T::Balance, T::AssetCurrencyId>;
+		type OrderId = T::OrderIdNonce;
+		type SellRatio = T::SellRatio;
+
+		fn place_order(
+			account: T::AccountId,
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+		) -> Result<Self::OrderId, DispatchError> {
+			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
+				T::MinFulfillmentAmountNative::get(),
+				currency_in,
+			)?;
+
+			Self::inner_place_order(
+				account,
+				currency_in,
+				currency_out,
+				buy_amount,
+				sell_rate_limit,
+				min_fulfillment_amount,
+				|order| {
+					// We only check if the trading pair exists not if the minimum amount is
+					// reached.
+					let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
+					Self::is_valid_order(
+						order.asset_in_id,
+						order.asset_out_id,
+						order.buy_amount,
+						order.max_sell_rate,
+						order.min_fulfillment_amount,
+						T::Balance::zero(),
+					)
+				},
+			)
+		}
+
+		fn cancel_order(order: Self::OrderId) -> DispatchResult {
+			let order = <Orders<T>>::get(order)?;
+			let account_id = order.placing_account.clone();
+
+			Self::unreserve_order(&order)?;
+			Self::remove_order(order.order_id)?;
+			Self::deposit_event(Event::OrderCancelled {
+				account: account_id,
+				order_id: order.order_id,
+			});
+
+			Ok(())
+		}
+
+		fn update_order(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			buy_amount: T::Balance,
+			sell_rate_limit: T::SellRatio,
+		) -> DispatchResult {
+			let order = Orders::<T>::get(order_id)?;
+			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
+				T::MinFulfillmentAmountNative::get(),
+				order.asset_in_id,
+			)?;
+
+			Self::update_order_with_fulfillment(
+				account,
+				order_id,
+				buy_amount,
+				sell_rate_limit,
+				min_fulfillment_amount,
+			)
+		}
+
 		fn is_active(order: Self::OrderId) -> bool {
 			<Orders<T>>::contains_key(order)
 		}

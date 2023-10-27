@@ -18,7 +18,7 @@ use cfg_primitives::*;
 use cfg_traits::{investments::OrderManager, PreConditions};
 use cfg_types::{
 	fixed_point::Rate,
-	investments::InvestmentAccount,
+	investments::{InvestmentAccount, InvestmentInfo},
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
@@ -334,8 +334,7 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		use accountant_mock::InvestmentInfo;
-		accountant_mock::GenesisConfig {
+		MockAccountant::<OrmlTokens>::init(accountant_mock::Genesis {
 			infos: vec![
 				(
 					INVESTMENT_0_0,
@@ -354,9 +353,7 @@ impl TestExternalitiesBuilder {
 					},
 				),
 			],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
+		});
 
 		let mut externalities = TestExternalities::new(storage);
 		externalities.execute_with(|| {

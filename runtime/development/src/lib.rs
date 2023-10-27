@@ -25,7 +25,8 @@ pub use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
-	Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, TryConvert as _,
+	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
+	TryConvert as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -67,7 +68,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::{currency::MutationHooks, parameter_type_with_key};
+use orml_traits::currency::MutationHooks;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
@@ -91,6 +92,7 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	fees::{DealWithFees, WeightToFee},
 	xcm::AccountIdToMultiLocation,
+	CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -102,7 +104,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
-		Dispatchable, One, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill, Perquintill,
@@ -114,12 +116,13 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-pub mod evm;
-mod weights;
-pub mod xcm;
 pub use crate::xcm::*;
 
+pub mod evm;
 pub mod liquidity_pools;
+mod migrations;
+mod weights;
+pub mod xcm;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -138,7 +141,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1030,
+	spec_version: 1033,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -288,12 +291,12 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-	pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
+	pub const MinimumPeriod: Millis = SLOT_DURATION / 2;
 }
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = Aura;
 	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
@@ -1111,7 +1114,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		TrancheCurrency,
@@ -1294,7 +1297,7 @@ parameter_types! {
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
 		MaxPriceOracleMembers::get(),
 		// For benchmarking we need a number of members equal to the active loans.
-		// The benchmark distintion can be removed once
+		// The benchmark distinction can be removed once
 		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
 		MaxActiveLoansPerPool::get()
 	);
@@ -1347,7 +1350,7 @@ impl pallet_data_collector::Config for Runtime {
 		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
 	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
-	type Moment = Moment;
+	type Moment = Millis;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
@@ -1371,6 +1374,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+	type Moment = Millis;
 	type NonFungible = Uniques;
 	type PerThing = Perquintill;
 	type Permissions = Permissions;
@@ -1393,7 +1397,7 @@ parameter_types! {
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
+	pub const MinDelay: Seconds = 7 * SECONDS_PER_DAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 1_000;
@@ -1403,11 +1407,10 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role<TrancheId>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches>;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
@@ -1415,17 +1418,17 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<Role<TrancheId, Moment>>,
+		Option<Role<TrancheId>>,
 		PermissionScope<PoolId, CurrencyId>,
-		Role<TrancheId, Moment>,
+		Role<TrancheId>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<Role<TrancheId, Moment>>,
+			Option<Role<TrancheId>>,
 			PermissionScope<PoolId, CurrencyId>,
-			Role<TrancheId, Moment>,
+			Role<TrancheId>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _scope, role) = t;
@@ -1513,13 +1516,6 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		// every currency has a zero existential deposit
-		0
-	};
-}
-
 parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
@@ -1542,7 +1538,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type ExistentialDeposits = ExistentialDeposits;
+	type ExistentialDeposits = CurrencyED<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -1558,62 +1554,6 @@ impl orml_asset_registry::Config for Runtime {
 	type Balance = Balance;
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub DefaultTokenSellRatio: Ratio = Ratio::one();
-}
-
-impl pallet_foreign_investments::Config for Runtime {
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
-	type CollectedForeignInvestmentHook =
-		pallet_liquidity_pools::hooks::CollectedForeignInvestmentHook<Runtime>;
-	type CollectedForeignRedemptionHook =
-		pallet_liquidity_pools::hooks::CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter =
-		runtime_common::foreign_investments::IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
-	type CurrencyId = CurrencyId;
-	type DecreasedForeignInvestOrderHook =
-		pallet_liquidity_pools::hooks::DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultTokenSellRatio = DefaultTokenSellRatio;
-	type Investment = Investments;
-	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
-	type TokenSwapOrderId = u64;
-	type TokenSwaps = OrderBook;
-	type TrancheId = TrancheId;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub LiquidityPoolsPalletIndex: PalletIndex = <LiquidityPools as PalletInfoAccess>::index() as u8;
-}
-
-impl pallet_liquidity_pools::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
-	type BalanceRatio = Ratio;
-	type CurrencyId = CurrencyId;
-	type DomainAccountToAccountId = AccountConverter<Runtime, LocationToAccountId>;
-	type DomainAddressToAccountId = AccountConverter<Runtime, LocationToAccountId>;
-	type ForeignInvestment = ForeignInvestments;
-	type GeneralCurrencyPrefix = cfg_primitives::liquidity_pools::GeneralCurrencyPrefix;
-	type OutboundQueue = LiquidityPoolsGateway;
-	type Permission = Permissions;
-	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
-	type Tokens = Tokens;
-	type TrancheCurrency = TrancheCurrency;
-	type TrancheId = TrancheId;
-	type TrancheTokenPrice = PoolSystem;
-	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 }
 
@@ -1767,7 +1707,7 @@ parameter_types! {
 	pub const MaxGroups: u32 = 20;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const InitialEpochDuration: Moment = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
+	pub const InitialEpochDuration: Millis = SECONDS_PER_MINUTE * 1000; // 1 min in milliseconds
 }
 
 impl pallet_rewards::mechanism::gap::Config for Runtime {
@@ -1869,6 +1809,7 @@ impl pallet_transfer_allowlist::Config for Runtime {
 
 parameter_types! {
 		pub const OrderPairVecSize: u32 = 1_000u32;
+		pub MinFulfillmentAmountNative: Balance = 10 * CFG;
 }
 
 impl pallet_order_book::Config for Runtime {
@@ -1876,7 +1817,10 @@ impl pallet_order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type DecimalConverter =
+		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
 	type RuntimeEvent = RuntimeEvent;
@@ -2050,8 +1994,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	// We don't run migrations on the development runtime
-	(),
+	crate::migrations::UpgradeDevelopment1033,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {

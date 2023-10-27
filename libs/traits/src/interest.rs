@@ -1,4 +1,4 @@
-use cfg_primitives::{Moment, SECONDS_PER_YEAR};
+use cfg_primitives::SECONDS_PER_YEAR;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::DispatchResult, scale_info::TypeInfo, Parameter, RuntimeDebug};
 use sp_arithmetic::{
@@ -9,6 +9,8 @@ use sp_runtime::{
 	traits::{Get, Member, One, Zero},
 	DispatchError,
 };
+
+use crate::Seconds;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum CompoundingSchedule {
@@ -80,7 +82,7 @@ pub trait InterestAccrual<Rate, Balance, Adjustment> {
 	fn calculate_debt(
 		interest_rate: &InterestRate<Rate>,
 		normalized_debt: Self::NormalizedDebt,
-		when: Moment,
+		when: Seconds,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt

@@ -8,6 +8,7 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+hex-literal = { version = "0.3.4", default-features = false }
 serde = { version = "1.0.119" }
 smallvec = "1.6.1"
 
@@ -157,6 +158,7 @@ runtime-benchmarks = [
   "xcm-executor/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -190,4 +192,5 @@ try-runtime = [
   "pallet-investments/try-runtime",
   "parachain-info/try-runtime",
   "orml-asset-registry/try-runtime",
+  "cfg-mocks/try-runtime",
 ]

@@ -10,7 +10,7 @@ fn config_mocks(pool_id: PoolId, policy: &BoundedVec<WriteOffRule<Rate>, MaxWrit
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
 		assert_eq!(*id, REGISTER_PRICE_ID);
-		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		Ok((PRICE_VALUE, BLOCK_TIME_MS))
 	});
 	MockChangeGuard::mock_note({
 		let policy = policy.clone();
@@ -128,7 +128,7 @@ fn with_price_outdated() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_external_loan());
 		let amount = ExternalAmount::new(QUANTITY, PRICE_VALUE);
-		util::borrow_loan(loan_id, PricingAmount::External(amount));
+		util::borrow_loan(loan_id, PrincipalInput::External(amount));
 
 		let policy: BoundedVec<_, _> = vec![WriteOffRule::new(
 			[WriteOffTrigger::PriceOutdated(10)],
@@ -177,7 +177,7 @@ fn with_price_outdated() {
 fn with_success() {
 	new_test_ext().execute_with(|| {
 		let loan_id = util::create_loan(util::base_internal_loan());
-		util::borrow_loan(loan_id, PricingAmount::Internal(COLLATERAL_VALUE));
+		util::borrow_loan(loan_id, PrincipalInput::Internal(COLLATERAL_VALUE));
 
 		let policy: BoundedVec<_, _> = vec![
 			WriteOffRule::new(

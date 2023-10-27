@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.28"
+version = "0.10.34"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
@@ -27,7 +27,6 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-  "libs/mock-builder",
   "libs/mocks",
   "libs/primitives",
   "libs/proofs",
@@ -54,6 +53,7 @@ members = [
   "pallets/liquidity-pools-gateway/routers",
   "pallets/liquidity-rewards",
   "pallets/loans",
+  "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/order-book",
@@ -69,6 +69,9 @@ members = [
   "runtime/common",
   "runtime/integration-tests",
 ]
+
+[workspace.dependencies]
+mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.43" }
 
 [dependencies]
 # third-party dependencies
@@ -166,8 +169,10 @@ fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", def
 fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 [build-dependencies]
@@ -227,6 +232,7 @@ std = [
   "cumulus-pallet-session-benchmarking/std",
   "fp-consensus/std",
   "fp-rpc/std",
+  "fp-storage/std",
   "futures/std",
   "sp-io/std",
   "getrandom/std",
@@ -280,10 +286,6 @@ fast-runtime = [
   "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
   "runtime-integration-tests/fast-runtime",
-]
-
-testnet-runtime = [
-  "altair-runtime/testnet-runtime",
 ]
 
 #

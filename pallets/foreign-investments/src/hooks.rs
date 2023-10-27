@@ -26,8 +26,8 @@ use sp_std::marker::PhantomData;
 use crate::{
 	errors::{InvestError, RedeemError},
 	types::{InvestState, InvestTransition, RedeemState, RedeemTransition, TokenSwapReason},
-	Config, Error, ForeignInvestmentInfo as ForeignInvestmentInfoStorage, InvestmentState, Pallet,
-	RedemptionState, SwapOf,
+	Config, Error, ForeignInvestmentInfo as ForeignInvestmentInfoStorage, InvestmentState, Of,
+	Pallet, RedemptionState, SwapOf,
 };
 
 /// The hook struct which acts upon a fulfilled swap order. Depending on the
@@ -79,18 +79,28 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 					Error::<T>::FulfilledTokenSwapAmountOverflow
 				);
 
-				let invest_swap = SwapOf::<T> {
-					amount: active_invest_swap_amount,
-					..status
-				};
-				let redeem_swap = SwapOf::<T> {
-					amount: status.amount.ensure_sub(active_invest_swap_amount)?,
-					..status
-				};
+				// Order was fulfilled at least for invest swap amount
+				if status.amount > active_invest_swap_amount {
+					let invest_swap = SwapOf::<T> {
+						amount: active_invest_swap_amount,
+						..status
+					};
+					let redeem_swap = SwapOf::<T> {
+						amount: status.amount.ensure_sub(active_invest_swap_amount)?,
+						..status
+					};
 
-				// NOTE: Fulfillment of invest swap before redeem one for no particular reason
-				Self::fulfill_invest_swap_order(&info.owner, info.id, invest_swap, false)?;
-				Self::fulfill_redeem_swap_order(&info.owner, info.id, redeem_swap)
+					// NOTE: Fulfillment of invest swap before redeem one for no particular reason.
+					// If we wanted to fulfill the min swap amount, we would have to add support for
+					// oppression of for swap updates to `fulfill_redeem_swap_order` as well in case
+					// redeem_swap.amount < status.amount < invest_swap.amount
+					Self::fulfill_invest_swap_order(&info.owner, info.id, invest_swap, false)?;
+					Self::fulfill_redeem_swap_order(&info.owner, info.id, redeem_swap)
+				}
+				// Order was fulfilled below invest swap amount
+				else {
+					Self::fulfill_invest_swap_order(&info.owner, info.id, status, true)
+				}
 			}
 			_ => {
 				log::debug!("Fulfilled token swap order id {:?} without advancing foreign investment because swap reason does not exist", id);
@@ -201,7 +211,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		let pre_state = InvestmentState::<T>::get(&investor, investment_id);
 
 		// Exit early if there is no foreign investment
-		if pre_state == InvestState::<T>::NoState {
+		if pre_state == InvestState::<Of<T>>::NoState {
 			return Ok(());
 		}
 

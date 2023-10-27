@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Moment;
 use cfg_traits::PreConditions;
 use frame_support::{
 	parameter_types,
@@ -37,18 +36,19 @@ pub type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const POOL_PALLET_ID: AccountId = 999u64;
-pub const MIN_HOLD_PERIOD: Moment = 10;
-static mut TIME: Moment = 0;
-static mut PERIOD_STORAGE: *mut BTreeMap<AccountId, Moment> =
-	0usize as *mut BTreeMap<AccountId, Moment>;
+type Time = u64;
+pub const MIN_HOLD_PERIOD: Time = 10;
+static mut TIME: Time = 0;
+static mut PERIOD_STORAGE: *mut BTreeMap<AccountId, Time> =
+	0usize as *mut BTreeMap<AccountId, Time>;
 pub const LOCK_ID: [u8; 8] = *b"roc/locs";
 
 struct HoldingPeriodChecker;
 impl HoldingPeriodChecker {
-	fn get() -> &'static mut BTreeMap<AccountId, Moment> {
+	fn get() -> &'static mut BTreeMap<AccountId, Time> {
 		unsafe {
 			if PERIOD_STORAGE.is_null() {
-				let map = Box::new(BTreeMap::<AccountId, Moment>::new());
+				let map = Box::new(BTreeMap::<AccountId, Time>::new());
 				PERIOD_STORAGE = Box::into_raw(map);
 
 				&mut *(PERIOD_STORAGE)
@@ -61,18 +61,18 @@ impl HoldingPeriodChecker {
 
 pub struct Timer;
 impl Timer {
-	pub fn now() -> Moment {
+	pub fn now() -> Time {
 		unsafe { TIME }
 	}
 
-	pub fn pass(time: Moment) {
+	pub fn pass(time: Time) {
 		unsafe {
 			TIME += time;
 		}
 	}
 
 	#[allow(dead_code)]
-	pub fn set(time: Moment) {
+	pub fn set(time: Time) {
 		unsafe {
 			TIME = time;
 		}

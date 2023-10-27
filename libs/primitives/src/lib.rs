@@ -110,9 +110,6 @@ pub mod types {
 	/// Aura consensus authority.
 	pub type AuraId = sp_consensus_aura::sr25519::AuthorityId;
 
-	/// Moment type
-	pub type Moment = u64;
-
 	// A vector of bytes, conveniently named like it is in Solidity.
 	pub type Bytes = Vec<u8>;
 

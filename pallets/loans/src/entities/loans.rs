@@ -1,14 +1,12 @@
-use cfg_primitives::Moment;
 use cfg_traits::{
 	self,
 	data::DataCollection,
 	interest::{InterestAccrual, InterestRate, RateCollection},
+	IntoSeconds, Seconds, TimeAsSecs,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	ensure, pallet_prelude::DispatchResult, traits::UnixTime, RuntimeDebugNoBound,
-};
+use frame_support::{ensure, pallet_prelude::DispatchResult, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
@@ -17,17 +15,20 @@ use sp_runtime::{
 	DispatchError,
 };
 
-use super::pricing::{
-	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
-	PricingAmount, RepaidPricingAmount,
-};
 use crate::{
+	entities::{
+		changes::LoanMutation,
+		input::{PrincipalInput, RepaidInput},
+		pricing::{
+			external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing,
+			Pricing,
+		},
+	},
 	pallet::{AssetOf, Config, Error, PriceOf},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
-		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
-		LoanRestrictions, MutationError, RepaidAmount, RepayLoanError, RepayRestrictions,
-		RepaymentSchedule,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
+		MutationError, RepaidAmount, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -59,7 +60,7 @@ impl<T: Config> LoanInfo<T> {
 	}
 
 	/// Validates the loan information.
-	pub fn validate(&self, now: Moment) -> DispatchResult {
+	pub fn validate(&self, now: Seconds) -> DispatchResult {
 		match &self.pricing {
 			Pricing::Internal(pricing) => pricing.validate()?,
 			Pricing::External(pricing) => pricing.validate()?,
@@ -99,14 +100,14 @@ impl<T: Config> CreatedLoan<T> {
 	pub fn activate(
 		self,
 		pool_id: T::PoolId,
-		initial_amount: PricingAmount<T>,
+		initial_amount: PrincipalInput<T>,
 	) -> Result<ActiveLoan<T>, DispatchError> {
 		ActiveLoan::new(
 			pool_id,
 			self.info,
 			self.borrower,
 			initial_amount,
-			T::Time::now().as_secs(),
+			T::Time::now(),
 		)
 	}
 
@@ -165,7 +166,7 @@ pub struct ActiveLoan<T: Config> {
 	write_off_percentage: T::Rate,
 
 	/// Date when the loans becomes active
-	origination_date: Moment,
+	origination_date: Seconds,
 
 	/// Pricing properties
 	pricing: ActivePricing<T>,
@@ -178,7 +179,7 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Until this date all principal & interest
 	/// payments occurred as scheduled.
-	repayments_on_schedule_until: Moment,
+	repayments_on_schedule_until: Seconds,
 }
 
 impl<T: Config> ActiveLoan<T> {
@@ -186,8 +187,8 @@ impl<T: Config> ActiveLoan<T> {
 		pool_id: T::PoolId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
-		initial_amount: PricingAmount<T>,
-		now: Moment,
+		initial_amount: PrincipalInput<T>,
+		now: Seconds,
 	) -> Result<Self, DispatchError> {
 		Ok(ActiveLoan {
 			schedule: info.schedule,
@@ -220,7 +221,7 @@ impl<T: Config> ActiveLoan<T> {
 		&self.borrower
 	}
 
-	pub fn maturity_date(&self) -> Moment {
+	pub fn maturity_date(&self) -> Seconds {
 		self.schedule.maturity.date()
 	}
 
@@ -248,15 +249,17 @@ impl<T: Config> ActiveLoan<T> {
 		trigger: &WriteOffTrigger,
 		pool_id: T::PoolId,
 	) -> Result<bool, DispatchError> {
-		let now = T::Time::now().as_secs();
+		let now = T::Time::now();
 		match trigger {
 			WriteOffTrigger::PrincipalOverdue(overdue_secs) => {
 				Ok(now >= self.maturity_date().ensure_add(*overdue_secs)?)
 			}
 			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
-				ActivePricing::External(pricing) => {
-					Ok(now >= pricing.last_updated(pool_id)?.ensure_add(*secs)?)
-				}
+				ActivePricing::External(pricing) => Ok(now
+					>= pricing
+						.last_updated(pool_id)?
+						.into_seconds()
+						.ensure_add(*secs)?),
 				ActivePricing::Internal(_) => Ok(false),
 			},
 		}
@@ -298,7 +301,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.write_down(value)
 	}
 
-	fn ensure_can_borrow(&self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+	fn ensure_can_borrow(&self, amount: &PrincipalInput<T>, pool_id: T::PoolId) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.internal()?;
@@ -331,7 +334,7 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::Restriction)
 		);
 
-		let now = T::Time::now().as_secs();
+		let now = T::Time::now();
 		ensure!(
 			self.schedule.maturity.is_valid(now),
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
@@ -340,7 +343,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn borrow(&mut self, amount: &PricingAmount<T>, pool_id: T::PoolId) -> DispatchResult {
+	pub fn borrow(&mut self, amount: &PrincipalInput<T>, pool_id: T::PoolId) -> DispatchResult {
 		self.ensure_can_borrow(amount, pool_id)?;
 
 		self.total_borrowed.ensure_add_assign(amount.balance()?)?;
@@ -365,9 +368,9 @@ impl<T: Config> ActiveLoan<T> {
 	/// - Checking repay restrictions
 	fn prepare_repayment(
 		&self,
-		mut amount: RepaidPricingAmount<T>,
+		mut amount: RepaidInput<T>,
 		pool_id: T::PoolId,
-	) -> Result<RepaidPricingAmount<T>, DispatchError> {
+	) -> Result<RepaidInput<T>, DispatchError> {
 		let (max_repay_principal, outstanding_interest) = match &self.pricing {
 			ActivePricing::Internal(inner) => {
 				amount.principal.internal()?;
@@ -409,9 +412,9 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn repay(
 		&mut self,
-		amount: RepaidPricingAmount<T>,
+		amount: RepaidInput<T>,
 		pool_id: T::PoolId,
-	) -> Result<RepaidPricingAmount<T>, DispatchError> {
+	) -> Result<RepaidInput<T>, DispatchError> {
 		let amount = self.prepare_repayment(amount, pool_id)?;
 
 		self.total_repaid
@@ -510,7 +513,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	pub fn set_maturity(&mut self, duration: Moment) {
+	pub fn set_maturity(&mut self, duration: Seconds) {
 		self.schedule.maturity = crate::types::Maturity::fixed(duration);
 	}
 }

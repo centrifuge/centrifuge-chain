@@ -27,6 +27,18 @@ pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 	}
 }
 
+pub fn borrower(loan_id: LoanId) -> AccountId {
+	match CreatedLoan::<Runtime>::get(POOL_A, loan_id) {
+		Some(created_loan) => *created_loan.borrower(),
+		None => *ActiveLoans::<Runtime>::get(POOL_A)
+			.into_iter()
+			.find(|(id, _)| *id == loan_id)
+			.expect("loan not found")
+			.1
+			.borrower(),
+	}
+}
+
 pub fn current_loan_pv(loan_id: LoanId) -> Balance {
 	get_loan(loan_id).present_value(POOL_A).unwrap()
 }
@@ -122,12 +134,16 @@ pub fn base_external_loan() -> LoanInfo<Runtime> {
 }
 
 pub fn create_loan(loan: LoanInfo<Runtime>) -> LoanId {
+	create_loan_by(loan, BORROWER)
+}
+
+pub fn create_loan_by(loan: LoanInfo<Runtime>, borrower: AccountId) -> LoanId {
 	MockPermissions::mock_has(|_, _, _| true);
 	MockPools::mock_pool_exists(|_| true);
 	MockPools::mock_account_for(|_| POOL_A_ACCOUNT);
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
 
-	Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan).expect("successful creation");
+	Loans::create(RuntimeOrigin::signed(borrower), POOL_A, loan).expect("successful creation");
 
 	MockPermissions::mock_has(|_, _, _| panic!("no has() mock"));
 	MockPools::mock_pool_exists(|_| panic!("no pool_exists() mock"));
@@ -137,13 +153,13 @@ pub fn create_loan(loan: LoanInfo<Runtime>) -> LoanId {
 	LastLoanId::<Runtime>::get(POOL_A)
 }
 
-pub fn borrow_loan(loan_id: LoanId, borrow_amount: PricingAmount<Runtime>) {
+pub fn borrow_loan(loan_id: LoanId, borrow_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 
 	Loans::borrow(
-		RuntimeOrigin::signed(BORROWER),
+		RuntimeOrigin::signed(borrower(loan_id)),
 		POOL_A,
 		loan_id,
 		borrow_amount,
@@ -155,15 +171,15 @@ pub fn borrow_loan(loan_id: LoanId, borrow_amount: PricingAmount<Runtime>) {
 	MockPrices::mock_register_id(|_, _| panic!("no register_id() mock"));
 }
 
-pub fn repay_loan(loan_id: LoanId, repay_amount: PricingAmount<Runtime>) {
+pub fn repay_loan(loan_id: LoanId, repay_amount: PrincipalInput<Runtime>) {
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
 
 	Loans::repay(
-		RuntimeOrigin::signed(BORROWER),
+		RuntimeOrigin::signed(borrower(loan_id)),
 		POOL_A,
 		loan_id,
-		RepaidPricingAmount {
+		RepaidInput {
 			principal: repay_amount,
 			interest: u128::MAX,
 			unscheduled: 0,
@@ -177,7 +193,7 @@ pub fn repay_loan(loan_id: LoanId, repay_amount: PricingAmount<Runtime>) {
 
 pub fn write_off_loan(loan_id: LoanId) {
 	set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
-	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
+	MockPrices::mock_get(|_, _| Ok((PRICE_VALUE, BLOCK_TIME_MS)));
 
 	Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id).expect("successful write off");
 
@@ -187,7 +203,8 @@ pub fn write_off_loan(loan_id: LoanId) {
 pub fn close_loan(loan_id: LoanId) {
 	MockPrices::mock_unregister_id(|_, _| Ok(()));
 
-	Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id).expect("successful clossing");
+	Loans::close(RuntimeOrigin::signed(borrower(loan_id)), POOL_A, loan_id)
+		.expect("successful clossing");
 
 	MockPrices::mock_get(|_, _| panic!("no unregister_id() mock"));
 }

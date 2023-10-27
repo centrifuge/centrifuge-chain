@@ -23,7 +23,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 [dev-dependencies]
 cfg-mocks = { path = "../mocks" }
 cfg-types = { path = "../types" }
-mock-builder = { path = "../../libs/mock-builder" }
+mock-builder = { workspace = true }
 
 [features]
 default = ["std"]
@@ -33,7 +33,6 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
-  "mock-builder/runtime-benchmarks",
 ]
 std = [
   "codec/std",
@@ -48,5 +47,4 @@ try-runtime = [
   "frame-support/try-runtime",
   "cfg-primitives/try-runtime",
   "sp-runtime/try-runtime",
-  "mock-builder/try-runtime",
 ]

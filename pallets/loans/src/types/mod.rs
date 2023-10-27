@@ -13,22 +13,18 @@
 
 //! Contains base types without Config references
 
-use cfg_primitives::Moment;
-use cfg_traits::interest::InterestRate;
+use cfg_traits::Seconds;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{storage::bounded_vec::BoundedVec, PalletError, RuntimeDebug};
+use frame_support::{PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, Get},
+	traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign},
 	ArithmeticError,
 };
 
 pub mod policy;
 pub mod portfolio;
 pub mod valuation;
-
-use policy::WriteOffRule;
-use valuation::ValuationMethod;
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -96,30 +92,30 @@ pub enum Maturity {
 	/// Fixed point in time, in secs
 	Fixed {
 		/// Secs when maturity ends
-		date: Moment,
+		date: Seconds,
 		/// Extension in secs, without special permissions
-		extension: Moment,
+		extension: Seconds,
 	},
 }
 
 impl Maturity {
-	pub fn fixed(date: Moment) -> Self {
+	pub fn fixed(date: Seconds) -> Self {
 		Self::Fixed { date, extension: 0 }
 	}
 
-	pub fn date(&self) -> Moment {
+	pub fn date(&self) -> Seconds {
 		match self {
 			Maturity::Fixed { date, .. } => *date,
 		}
 	}
 
-	pub fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Seconds) -> bool {
 		match self {
 			Maturity::Fixed { date, .. } => *date > now,
 		}
 	}
 
-	pub fn extends(&mut self, value: Moment) -> Result<(), ArithmeticError> {
+	pub fn extends(&mut self, value: Seconds) -> Result<(), ArithmeticError> {
 		match self {
 			Maturity::Fixed { date, extension } => {
 				date.ensure_add_assign(value)?;
@@ -159,7 +155,7 @@ pub struct RepaymentSchedule {
 }
 
 impl RepaymentSchedule {
-	pub fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Seconds) -> bool {
 		self.maturity.is_valid(now)
 	}
 }
@@ -196,33 +192,6 @@ pub struct LoanRestrictions {
 
 	/// How offen can be repaid
 	pub repayments: RepayRestrictions,
-}
-
-/// Active loan mutation for internal pricing
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum InternalMutation<Rate> {
-	ValuationMethod(ValuationMethod<Rate>),
-	ProbabilityOfDefault(Rate),
-	LossGivenDefault(Rate),
-	DiscountRate(InterestRate<Rate>),
-}
-
-/// Active loan mutation
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum LoanMutation<Rate> {
-	Maturity(Maturity),
-	MaturityExtension(Moment),
-	InterestRate(InterestRate<Rate>),
-	InterestPayments(InterestPayments),
-	PayDownSchedule(PayDownSchedule),
-	Internal(InternalMutation<Rate>),
-}
-
-/// Change description
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum Change<LoanId, Rate, MaxRules: Get<u32>> {
-	Loan(LoanId, LoanMutation<Rate>),
-	Policy(BoundedVec<WriteOffRule<Rate>, MaxRules>),
 }
 
 #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]

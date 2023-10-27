@@ -364,6 +364,7 @@ fn add_currency_should_fail() {
 				"TEST".into(),
 				12,
 				false,
+				1_000_000,
 				None,
 				CrossChainTransferability::LiquidityPools,
 			),
@@ -500,6 +501,7 @@ fn allow_pool_should_fail() {
 				"TEST".into(),
 				12,
 				true,
+				1_000_000,
 				None,
 				Default::default(),
 			),
@@ -629,6 +631,7 @@ fn allow_pool_should_fail() {
 				"AUSD".into(),
 				12,
 				true,
+				1_000_000,
 				None,
 				Default::default()
 			),

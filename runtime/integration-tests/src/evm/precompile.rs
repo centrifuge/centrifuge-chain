@@ -48,6 +48,8 @@ use crate::{
 	},
 };
 
+const ED: Balance = 1_234;
+
 #[tokio::test]
 async fn axelar_precompile_execute() {
 	let mut env = env::test_env_default(Handle::current());
@@ -90,7 +92,7 @@ async fn axelar_precompile_execute() {
 		decimals: 18,
 		name: "Test".into(),
 		symbol: "TST".into(),
-		existential_deposit: 1_000_000,
+		existential_deposit: ED,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::here())),
 		additional: CustomMetadata {
 			transferability: Default::default(),
@@ -114,6 +116,9 @@ async fn axelar_precompile_execute() {
 			1_000_000_000_000 * 10u128.saturating_pow(18),
 		)
 		.unwrap();
+
+		orml_tokens::Pallet::<Runtime>::deposit(currency_id, &derived_receiver_account, ED)
+			.unwrap();
 	})
 	.unwrap();
 
@@ -227,7 +232,7 @@ async fn axelar_precompile_execute() {
 		let derived_receiver_balance =
 			orml_tokens::Pallet::<Runtime>::free_balance(currency_id, &derived_receiver_account);
 
-		assert_eq!(derived_receiver_balance, transfer_amount)
+		assert_eq!(derived_receiver_balance, transfer_amount + ED)
 	})
 	.unwrap();
 }

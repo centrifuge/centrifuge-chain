@@ -13,6 +13,7 @@
 
 use cfg_traits::{
 	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, PoolInspect,
+	TimeAsSecs,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -69,7 +70,7 @@ where
 			T::Permission::has(
 				PermissionScope::Pool(pool_id),
 				receiver.clone(),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now())),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, T::Time::now())),
 			),
 			Error::<T>::UnauthorizedTransfer
 		);

@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.28"
+version = "0.10.34"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1054,6 +1054,7 @@ dependencies = [
  "fc-rpc",
  "fc-rpc-core",
  "fp-consensus",
+ "fp-evm",
  "fp-rpc",
  "fp-storage",
  "frame-benchmarking",
@@ -1067,6 +1068,7 @@ dependencies = [
  "log",
  "pallet-anchors",
  "pallet-ethereum",
+ "pallet-evm",
  "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -1120,7 +1122,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.20"
+version = "0.10.23"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2720,7 +2722,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.30"
+version = "0.10.32"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -6323,15 +6325,10 @@ dependencies = [
 
 [[package]]
 name = "mock-builder"
-version = "0.0.1"
+version = "0.1.1"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#8a67d0cf0e7c2544e918bb01ef9f70fc1c6108ec"
 dependencies = [
  "frame-support",
- "frame-system",
- "parity-scale-codec 3.6.5",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -7729,6 +7726,7 @@ dependencies = [
 name = "pallet-foreign-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -7737,6 +7735,7 @@ dependencies = [
  "frame-system",
  "log",
  "parity-scale-codec 3.6.5",
+ "rand 0.8.5",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -11404,11 +11403,14 @@ dependencies = [
  "cfg-traits",
  "cfg-types",
  "cfg-utils",
+ "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
+ "cumulus-test-relay-sproof-builder",
  "development-runtime",
  "ethabi 16.0.0",
  "ethereum",
+ "fp-self-contained",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -11424,6 +11426,7 @@ dependencies = [
  "orml-traits",
  "orml-xtokens",
  "pallet-aura",
+ "pallet-authorship",
  "pallet-balances",
  "pallet-block-rewards",
  "pallet-collator-selection",
@@ -11438,15 +11441,17 @@ dependencies = [
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",
  "pallet-loans",
- "pallet-message-queue",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
+ "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-session",
+ "pallet-timestamp",
  "pallet-transaction-payment",
+ "pallet-treasury",
  "pallet-uniques",
  "pallet-xcm",
  "pallet-xcm-transactor",
@@ -11460,11 +11465,13 @@ dependencies = [
  "polkadot-runtime-parachains",
  "rococo-runtime",
  "runtime-common",
+ "sc-block-builder",
  "sc-client-api",
  "sc-executor",
  "sc-service",
  "serde",
  "sp-api",
+ "sp-block-builder",
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-slots",
@@ -11473,7 +11480,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "sp-timestamp",
  "sp-tracing",
+ "sp-transaction-pool",
  "tokio",
  "tracing-subscriber",
  "xcm",

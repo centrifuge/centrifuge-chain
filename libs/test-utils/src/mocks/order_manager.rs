@@ -15,9 +15,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::investments::{
-		Investment, InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency,
+		Investment, InvestmentAccountant, OrderManager, TrancheCurrency,
 	};
-	use cfg_types::orders::{FulfillmentWithPrice, TotalOrder};
+	use cfg_types::{
+		investments::InvestmentInfo,
+		orders::{FulfillmentWithPrice, TotalOrder},
+	};
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
@@ -51,8 +54,6 @@ pub mod pallet {
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<Self::Tokens as Inspect<Self::AccountId>>::AssetId:
 			MaxEncodedLen + MaybeSerializeDeserialize,
-		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
-			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
 		type FundsAccount: Get<PalletId>;
 
@@ -61,6 +62,7 @@ pub mod pallet {
 			Amount = BalanceOf<Self>,
 			Error = DispatchError,
 			InvestmentId = Self::InvestmentId,
+			InvestmentInfo = InvestmentInfo<Self::AccountId, CurrencyOf<Self>, Self::InvestmentId>,
 		>;
 
 		type PoolId: Member + Parameter + Default + Copy + MaxEncodedLen;
@@ -89,8 +91,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		pub invest_orders: Vec<(T::InvestmentId, BalanceOf<T>)>,
 		pub redeem_orders: Vec<(T::InvestmentId, BalanceOf<T>)>,
@@ -102,8 +102,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		fn default() -> Self {
 			Self {
@@ -119,8 +117,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		fn build(&self) {
 			for (id, amount) in &self.invest_orders {
@@ -146,8 +142,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
 	}
@@ -157,8 +151,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
 	}
@@ -168,8 +160,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		/// **Test Method**
 		///
@@ -186,7 +176,7 @@ pub mod pallet {
 			let details = T::Accountant::info(investment_id)?;
 
 			T::Tokens::transfer(
-				details.payment_currency(),
+				details.payment_currency,
 				&T::FundsAccount::get().into_account_truncating(),
 				&OrderManagerAccount::get::<T>(),
 				amount,
@@ -220,8 +210,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		type Amount = BalanceOf<T>;
 		type CurrencyId = CurrencyOf<T>;
@@ -241,7 +229,7 @@ pub mod pallet {
 			currency: Self::CurrencyId,
 		) -> bool {
 			T::Accountant::info(investment_id)
-				.map(|info| info.payment_currency() == currency)
+				.map(|info| info.payment_currency == currency)
 				.unwrap_or(false)
 		}
 
@@ -267,7 +255,7 @@ pub mod pallet {
 			currency: Self::CurrencyId,
 		) -> bool {
 			T::Accountant::info(investment_id)
-				.map(|info| info.payment_currency() == currency)
+				.map(|info| info.payment_currency == currency)
 				.unwrap_or(false)
 		}
 
@@ -300,8 +288,6 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
-			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		type Error = DispatchError;
 		type Fulfillment = FulfillmentWithPrice<T::Rate>;
@@ -346,9 +332,9 @@ pub mod pallet {
 			let tokens_to_transfer_to_pool = fulfillment.of_amount.mul_floor(orders.amount);
 			let details = T::Accountant::info(asset_id)?;
 			T::Tokens::transfer(
-				details.payment_currency(),
+				details.payment_currency,
 				&OrderManagerAccount::get::<T>(),
-				&details.payment_account(),
+				&details.owner,
 				tokens_to_transfer_to_pool.clone(),
 				Preservation::Preserve,
 			)
@@ -412,8 +398,8 @@ pub mod pallet {
 				.unwrap();
 			let details = T::Accountant::info(asset_id)?;
 			T::Tokens::transfer(
-				details.payment_currency(),
-				&details.payment_account(),
+				details.payment_currency,
+				&details.owner,
 				&OrderManagerAccount::get::<T>(),
 				payment_currency_to_move_to_order_manager,
 				Preservation::Expendable,

@@ -89,7 +89,6 @@ fn load_spec(
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"altair-local" => Ok(Box::new(chain_spec::altair_local(para_id))),
-		"algol" => Ok(Box::new(chain_spec::algol_config())),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
 		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(para_id))),
 		"antares" => Ok(Box::new(chain_spec::antares_config())),

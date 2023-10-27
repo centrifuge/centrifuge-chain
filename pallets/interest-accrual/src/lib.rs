@@ -121,11 +121,15 @@
 //!   regarding zero-age rates.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::interest::{InterestAccrual, InterestRate, RateCollection};
+
+use cfg_primitives::SECONDS_PER_YEAR;
+use cfg_traits::{
+	interest::{InterestAccrual, InterestRate, RateCollection},
+	Seconds, TimeAsSecs,
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
+use frame_support::{BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
@@ -206,7 +210,7 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>
 			+ MaxEncodedLen;
 
-		type Time: UnixTime;
+		type Time: TimeAsSecs;
 
 		type MaxRateCount: Get<u32>;
 
@@ -220,7 +224,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn last_updated)]
-	pub(super) type LastUpdated<T: Config> = StorageValue<_, Moment, ValueQuery>;
+	pub(super) type LastUpdated<T: Config> = StorageValue<_, Seconds, ValueQuery>;
 
 	#[pallet::event]
 	pub enum Event<T: Config> {}
@@ -243,10 +247,10 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let then = LastUpdated::<T>::get();
-			let now = Self::now();
+			let now = T::Time::now();
 			LastUpdated::<T>::set(now);
 			let delta = now - then;
-			let bits = Moment::BITS - delta.leading_zeros();
+			let bits = Seconds::BITS - delta.leading_zeros();
 
 			// reads: timestamp, last updated, rates vec
 			// writes: last updated, rates vec
@@ -300,7 +304,7 @@ pub mod pallet {
 		pub fn get_debt(
 			interest_rate_per_year: &InterestRate<T::Rate>,
 			normalized_debt: T::Balance,
-			when: Moment,
+			when: Seconds,
 		) -> Result<T::Balance, DispatchError> {
 			let rate = Self::get_rate(interest_rate_per_year)?;
 			let now = LastUpdated::<T>::get();
@@ -379,18 +383,14 @@ pub mod pallet {
 		pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 			interest_rate_per_sec: Rate,
 			accumulated_rate: Rate,
-			last_updated: Moment,
-			now: Moment,
+			last_updated: Seconds,
+			now: Seconds,
 		) -> Result<Rate, ArithmeticError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
 			let time_difference_secs = now.ensure_sub(last_updated)?;
 			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
 				.ok_or(ArithmeticError::Overflow)? // TODO: This line can be remove once #1241 be merged
 				.ensure_mul(accumulated_rate)
-		}
-
-		pub fn now() -> Moment {
-			T::Time::now().as_secs()
 		}
 
 		pub fn reference_interest_rate(
@@ -492,7 +492,7 @@ impl<T: Config> InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>> for
 	fn calculate_debt(
 		interest_rate_per_year: &InterestRate<T::Rate>,
 		normalized_debt: Self::NormalizedDebt,
-		when: Moment,
+		when: Seconds,
 	) -> Result<T::Balance, DispatchError> {
 		Pallet::<T>::get_debt(interest_rate_per_year, normalized_debt, when)
 	}
