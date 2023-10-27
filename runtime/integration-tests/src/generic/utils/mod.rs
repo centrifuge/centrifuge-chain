@@ -1,21 +1,30 @@
-// Divide this utilties into files when it grows
+//! PLEASE be as much generic as possible because no domain or use cases are
+//! considered at util level and below modules. If you need utilities related to
+//! your use case, add them under `cases/<my_use_case.rs>`.
+//!
+//! Divide this utilities into files when it grows
+
+pub mod currency;
+pub mod genesis;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
+	fixed_point::Quantity,
+	oracles::OracleKey,
 	permissions::{PermissionScope, PoolRole, Role},
+	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
-use frame_system::RawOrigin;
-use sp_runtime::traits::StaticLookup;
-pub mod genesis;
-
-use cfg_types::pools::TrancheMetadata;
 use frame_support::BoundedVec;
+use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
-use sp_runtime::{traits::One, Perquintill};
+use sp_runtime::{
+	traits::{One, StaticLookup},
+	Perquintill,
+};
 
-use crate::generic::runtime::{Runtime, RuntimeKind};
+use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
 
@@ -133,4 +142,8 @@ pub fn invest<T: Runtime>(
 		amount,
 	)
 	.unwrap();
+}
+
+pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
+	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values).unwrap();
 }

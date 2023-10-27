@@ -523,16 +523,16 @@ impl<T: Config> ActiveLoan<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ActiveLoanInfo<T: Config> {
 	/// Related active loan
-	active_loan: ActiveLoan<T>,
+	pub active_loan: ActiveLoan<T>,
 
 	/// Present value of the loan
-	present_value: T::Balance,
+	pub present_value: T::Balance,
 
 	/// Current outstanding principal of this loan
-	outstanding_principal: T::Balance,
+	pub outstanding_principal: T::Balance,
 
 	/// Current outstanding interest of this loan
-	outstanding_interest: T::Balance,
+	pub outstanding_interest: T::Balance,
 }
 
 impl<T: Config> TryFrom<(T::PoolId, ActiveLoan<T>)> for ActiveLoanInfo<T> {
