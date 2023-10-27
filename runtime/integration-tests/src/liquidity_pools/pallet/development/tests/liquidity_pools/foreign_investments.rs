@@ -40,11 +40,6 @@ use cfg_types::{
 		ForeignAssetId, TrancheCurrency,
 	},
 };
-use development_runtime::{
-	Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
-	MinFulfillmentAmountNative, OrmlAssetRegistry, Permissions, PoolSystem,
-	Runtime as DevelopmentRuntime, RuntimeOrigin, System, Tokens, TreasuryAccount,
-};
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{
@@ -52,6 +47,7 @@ use frame_support::{
 		Get, PalletInfo,
 	},
 };
+use fudge::primitives::Chain;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_foreign_investments::{
 	types::{InvestState, RedeemState},
@@ -64,13 +60,20 @@ use runtime_common::{
 };
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
-	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, WeakBoundedVec,
+	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, Storage,
+	WeakBoundedVec,
 };
+use tokio::runtime::Handle;
 use xcm_simulator::TestExt;
 
 use crate::{
+	chain::centrifuge::{
+		Balances, ForeignInvestments, Investments, LiquidityPools, LocationToAccountId,
+		OrmlAssetRegistry, Permissions, PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin,
+		System, Tokens, PARA_ID,
+	},
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB},
+		setup::dollar,
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::{
 			foreign_investments::setup::{
@@ -84,12 +87,12 @@ use crate::{
 					default_investment_account, default_investment_id, default_tranche_id,
 					general_currency_index, investment_id,
 				},
-				setup_pre_requirements, LiquidityPoolMessage, DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+				setup_test_env, LiquidityPoolMessage, DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				DEFAULT_POOL_ID, DEFAULT_VALIDITY, DOMAIN_MOONBEAM,
 			},
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, AUSD_ED},
+	utils::{accounts::Keyring, env, genesis, AUSD_CURRENCY_ID},
 };
 
 mod same_currencies {
@@ -97,17 +100,23 @@ mod same_currencies {
 
 	use super::*;
 
-	#[test]
-	fn increase_invest_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn increase_invest_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -145,11 +154,17 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn decrease_invest_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn decrease_invest_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let invest_amount: u128 = 10 * dollar(12);
 			let decrease_amount = invest_amount / 3;
@@ -157,7 +172,7 @@ mod same_currencies {
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -227,17 +242,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn cancel_invest_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn cancel_invest_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let invest_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -288,7 +309,7 @@ mod same_currencies {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 				}
-				.into()
+					.into()
 			}));
 
 			// Verify investment was entirely drained from investment account
@@ -324,17 +345,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn collect_invest_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn collect_invest_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -396,11 +423,11 @@ mod same_currencies {
 			);
 			assert!(!events_since_collect.iter().any(|e| {
 				e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
-				.into()
+					.into()
 			}));
 
 			// Order should not have been updated since everything is collected
@@ -449,11 +476,11 @@ mod same_currencies {
 			// Clearing of foreign InvestState should be dispatched
 			assert!(events_since_collect.iter().any(|e| {
 				e.event
-				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 				}
-				.into()
+					.into()
 			}));
 
 			assert!(System::events().iter().any(|e| {
@@ -476,17 +503,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn partially_collect_investment_for_through_investments() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn partially_collect_investment_for_through_investments() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let invest_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -535,7 +568,7 @@ mod same_currencies {
 			// Collecting through Investments should denote amounts and transition
 			// state
 			assert_ok!(Investments::collect_investments_for(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -625,7 +658,7 @@ mod same_currencies {
 
 			// Collect remainder through Investments
 			assert_ok!(Investments::collect_investments_for(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -667,11 +700,11 @@ mod same_currencies {
 			);
 			assert!(!System::events().iter().any(|e| {
 				e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
+					== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
-				.into()
+					.into()
 			}));
 			assert!(System::events().iter().any(|e| {
 				e.event
@@ -710,11 +743,11 @@ mod same_currencies {
 					.iter()
 					.filter(|e| {
 						e.event
-					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
-						investor: investor.clone(),
-						investment_id: default_investment_id(),
-					}
-					.into()
+							== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentCleared {
+							investor: investor.clone(),
+							investment_id: default_investment_id(),
+						}
+							.into()
 					})
 					.count(),
 				1
@@ -734,17 +767,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn increase_redeem_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn increase_redeem_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -787,11 +826,17 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn decrease_redeem_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn decrease_redeem_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let redeem_amount = 10 * dollar(12);
 			let decrease_amount = redeem_amount / 3;
@@ -799,7 +844,7 @@ mod same_currencies {
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -854,14 +899,14 @@ mod same_currencies {
 			// Foreign RedemptionState should be updated
 			assert!(System::events().iter().any(|e| {
 				e.event
-				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionUpdated {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 					state: RedeemState::Redeeming {
-							redeem_amount: final_amount
+						redeem_amount: final_amount
 					}
 				}
-			.into()
+					.into()
 			}));
 
 			// Order should have been updated
@@ -900,17 +945,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn cancel_redeem_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn cancel_redeem_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let redeem_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -970,11 +1021,11 @@ mod same_currencies {
 			// Foreign RedemptionState should be updated
 			assert!(System::events().iter().any(|e| {
 				e.event
-				== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
+					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
 					investor: investor.clone(),
 					investment_id: default_investment_id(),
 				}
-				.into()
+					.into()
 			}));
 
 			// Order should have been updated
@@ -996,17 +1047,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn fully_collect_redeem_order() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn fully_collect_redeem_order() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -1076,11 +1133,11 @@ mod same_currencies {
 			);
 			assert!(!events_since_collect.iter().any(|e| {
 				e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
-				.into()
+					.into()
 			}));
 
 			// Order should not have been updated since everything is collected
@@ -1150,17 +1207,23 @@ mod same_currencies {
 		});
 	}
 
-	#[test]
-	fn partially_collect_redemption_for_through_investments() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn partially_collect_redemption_for_through_investments() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let redeem_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let currency_id = AUSD_CURRENCY_ID;
 			let currency_decimals = currency_decimals::AUSD;
@@ -1205,7 +1268,7 @@ mod same_currencies {
 			// Collecting through investments should denote amounts and transition
 			// state
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -1284,7 +1347,7 @@ mod same_currencies {
 
 			// Collect remainder through Investments
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -1302,11 +1365,11 @@ mod same_currencies {
 			));
 			assert!(!System::events().iter().any(|e| {
 				e.event
-				== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
+					== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
 					investment_id: default_investment_id(),
 					who: investor.clone(),
 				}
-				.into()
+					.into()
 			}));
 			assert!(System::events().iter().any(|e| {
 				e.event
@@ -1337,11 +1400,11 @@ mod same_currencies {
 					.iter()
 					.filter(|e| {
 						e.event
-					== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
-						investor: investor.clone(),
-						investment_id: default_investment_id(),
-					}
-					.into()
+							== pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignRedemptionCleared {
+							investor: investor.clone(),
+							investment_id: default_investment_id(),
+						}
+							.into()
 					})
 					.count(),
 				1
@@ -1374,18 +1437,24 @@ mod same_currencies {
 		mod decrease_should_underflow {
 			use super::*;
 
-			#[test]
-			fn invest_decrease_underflow() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn invest_decrease_underflow() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let invest_amount: u128 = 10 * dollar(12);
 					let decrease_amount = invest_amount + 1;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1416,18 +1485,24 @@ mod same_currencies {
 				});
 			}
 
-			#[test]
-			fn redeem_decrease_underflow() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn redeem_decrease_underflow() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let redeem_amount: u128 = 10 * dollar(12);
 					let decrease_amount = redeem_amount + 1;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1459,17 +1534,24 @@ mod same_currencies {
 
 		mod should_throw_requires_collect {
 			use super::*;
-			#[test]
-			fn invest_requires_collect() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+
+			#[tokio::test]
+			async fn invest_requires_collect() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let amount: u128 = 10 * dollar(12);
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1527,17 +1609,23 @@ mod same_currencies {
 				});
 			}
 
-			#[test]
-			fn redeem_requires_collect() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn redeem_requires_collect() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let amount: u128 = 10 * dollar(12);
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let currency_id: CurrencyId = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					create_currency_pool(pool_id, currency_id, currency_decimals.into());
@@ -1604,16 +1692,22 @@ mod same_currencies {
 				utils::USDT_CURRENCY_ID,
 			};
 
-			#[test]
-			fn invalid_invest_payment_currency() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn invalid_invest_payment_currency() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1672,16 +1766,22 @@ mod same_currencies {
 				});
 			}
 
-			#[test]
-			fn invalid_redeem_payout_currency() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn invalid_redeem_payout_currency() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1744,16 +1844,22 @@ mod same_currencies {
 				});
 			}
 
-			#[test]
-			fn invest_payment_currency_not_found() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn invest_payment_currency_not_found() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1795,16 +1901,22 @@ mod same_currencies {
 				});
 			}
 
-			#[test]
-			fn redeem_payout_currency_not_found() {
-				TestNet::reset();
-				Development::execute_with(|| {
-					setup_pre_requirements();
+			#[tokio::test]
+			async fn redeem_payout_currency_not_found() {
+				let mut env = {
+					let mut genesis = Storage::default();
+					genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+					env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+				};
+
+				setup_test_env(&mut env);
+
+				env.with_mut_state(Chain::Para(PARA_ID), || {
 					let pool_id = DEFAULT_POOL_ID;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
-					>::convert((DOMAIN_MOONBEAM, BOB));
+					>::convert((DOMAIN_MOONBEAM, Keyring::Bob.into()));
 					let pool_currency = AUSD_CURRENCY_ID;
 					let currency_decimals = currency_decimals::AUSD;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1865,28 +1977,31 @@ mod mismatching_currencies {
 
 	use super::*;
 	use crate::{
-		liquidity_pools::pallet::development::{
-			setup::CHARLIE,
-			tests::{
-				liquidity_pools::foreign_investments::setup::{
-					enable_usdt_trading, min_fulfillment_amount,
-				},
-				register_usdt,
+		liquidity_pools::pallet::development::tests::{
+			liquidity_pools::foreign_investments::setup::{
+				enable_usdt_trading, min_fulfillment_amount,
 			},
+			register_usdt,
 		},
 		utils::{GLMR_CURRENCY_ID, USDT_CURRENCY_ID},
 	};
 
-	#[test]
-	fn collect_foreign_investment_for() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn collect_foreign_investment_for() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -1935,7 +2050,7 @@ mod mismatching_currencies {
 				}
 			));
 			assert_ok!(Investments::collect_investments_for(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -1984,16 +2099,22 @@ mod mismatching_currencies {
 
 	/// Invest in pool currency, then increase in allowed foreign currency, then
 	/// decrease in same foreign currency multiple times.
-	#[test]
-	fn invest_increase_decrease() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn invest_increase_decrease() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
@@ -2057,7 +2178,7 @@ mod mismatching_currencies {
 						invest_amount: invest_amount_pool_denominated
 					},
 				}
-				.into()
+					.into()
 			}));
 
 			// Should be able to to decrease in the swapping foreign currency
@@ -2082,14 +2203,14 @@ mod mismatching_currencies {
 			);
 			assert!(System::events().iter().any(|e| {
 				e.event ==
-			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			{ 		investor: investor.clone(),
-					investment_id: default_investment_id(),
-					state: InvestState::InvestmentOngoing {
-						invest_amount: invest_amount_pool_denominated
-					},
-				}
-				.into()
+					pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+					{ 		investor: investor.clone(),
+						investment_id: default_investment_id(),
+						state: InvestState::InvestmentOngoing {
+							invest_amount: invest_amount_pool_denominated
+						},
+					}
+						.into()
 			}));
 
 			// Decrease partial investing amount
@@ -2120,12 +2241,12 @@ mod mismatching_currencies {
 			);
 			assert!(System::events().iter().any(|e| {
 				e.event ==
-			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			{ 		investor: investor.clone(),
-					investment_id: default_investment_id(),
-					state: expected_state.clone()
-				}
-				.into()
+					pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+					{ 		investor: investor.clone(),
+						investment_id: default_investment_id(),
+						state: expected_state.clone()
+					}
+						.into()
 			}));
 
 			/// Consume entire investing amount by sending same message
@@ -2146,12 +2267,12 @@ mod mismatching_currencies {
 			);
 			assert!(System::events().iter().any(|e| {
 				e.event ==
-			pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
-			{ 		investor: investor.clone(),
-					investment_id: default_investment_id(),
-					state: expected_state.clone()
-				}
-				.into()
+					pallet_foreign_investments::Event::<DevelopmentRuntime>::ForeignInvestmentUpdated
+					{ 		investor: investor.clone(),
+						investment_id: default_investment_id(),
+						state: expected_state.clone()
+					}
+						.into()
 			}));
 		});
 	}
@@ -2159,18 +2280,24 @@ mod mismatching_currencies {
 	/// Propagate swaps only via OrderBook fulfillments.
 	///
 	/// Flow: Increase, fulfill, decrease, fulfill
-	#[test]
-	fn invest_swaps_happy_path() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn invest_swaps_happy_path() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
-			let trader: AccountId = ALICE.into();
+			let trader: AccountId = Keyring::Alice.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
@@ -2330,19 +2457,24 @@ mod mismatching_currencies {
 	/// * Invest is swapping from pool to foreign after decreasing an
 	///   unprocessed investment
 	/// * Redeem is swapping from pool to foreign after collecting
-	#[test]
-	fn concurrent_swap_orders_same_direction() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			// Increase invest setup
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn concurrent_swap_orders_same_direction() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
-			let trader: AccountId = ALICE.into();
+			let trader: AccountId = Keyring::Alice.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
@@ -2597,19 +2729,24 @@ mod mismatching_currencies {
 	/// Verify handling concurrent swap orders works if
 	/// * Invest is swapping from foreign to pool after increasing
 	/// * Redeem is swapping from pool to foreign after collecting
-	#[test]
-	fn concurrent_swap_orders_opposite_direction() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			// Increase invest setup
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn concurrent_swap_orders_opposite_direction() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
-			let trader: AccountId = ALICE.into();
+			let trader: AccountId = Keyring::Alice.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
@@ -2946,19 +3083,24 @@ mod mismatching_currencies {
 	/// 2. increase invest in foreign
 	/// 3. process invest
 	/// 4. fulfill swap order
-	#[test]
-	fn fulfill_invest_swap_order_requires_collect() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			// Increase invest setup
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn fulfill_invest_swap_order_requires_collect() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
-			let trader: AccountId = ALICE.into();
+			let trader: AccountId = Keyring::Alice.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;
@@ -3050,19 +3192,24 @@ mod mismatching_currencies {
 	/// 3. collect
 	/// 4. process redemption
 	/// 5. fulfill swap order should implicitly collect
-	#[test]
-	fn fulfill_redeem_swap_order_requires_collect() {
-		TestNet::reset();
-		Development::execute_with(|| {
-			// Increase redeem setup
-			setup_pre_requirements();
+	#[tokio::test]
+	async fn fulfill_redeem_swap_order_requires_collect() {
+		let mut env = {
+			let mut genesis = Storage::default();
+			genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+			env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+		};
+
+		setup_test_env(&mut env);
+
+		env.with_mut_state(Chain::Para(PARA_ID), || {
 			let pool_id = DEFAULT_POOL_ID;
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
-					BOB,
+					Keyring::Bob.into(),
 				));
-			let trader: AccountId = ALICE.into();
+			let trader: AccountId = Keyring::Alice.into();
 			let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 			let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 			let pool_currency_decimals = currency_decimals::AUSD;

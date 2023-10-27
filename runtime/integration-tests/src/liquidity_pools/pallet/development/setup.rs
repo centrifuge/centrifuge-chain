@@ -16,6 +16,8 @@ use cfg_types::{domain_address::Domain, tokens::CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
 
+use crate::utils::env::PARA_ID_SIBLING;
+
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
@@ -110,7 +112,7 @@ pub fn dollar(decimals: u32) -> Balance {
 }
 
 pub fn moonbeam_account() -> AccountId {
-	parachain_account(PARA_ID_MOONBEAM)
+	parachain_account(PARA_ID_SIBLING)
 }
 
 pub fn centrifuge_account() -> AccountId {

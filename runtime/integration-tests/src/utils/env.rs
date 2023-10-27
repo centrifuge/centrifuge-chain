@@ -25,13 +25,14 @@ use fudge::{
 	},
 	primitives::{Chain, PoolState},
 	state::StateProvider,
-	ParachainBuilder, RelaychainBuilder, TWasmExecutor,
+	InherentBuilder, ParachainBuilder, RelaychainBuilder, TWasmExecutor,
 };
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_runtime_parachains::{configuration, configuration::HostConfiguration, dmp};
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullBackend, TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -436,6 +437,8 @@ pub enum EventRange {
 	Latest,
 }
 
+pub(crate) const PARA_ID_SIBLING: u32 = 2001;
+
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
@@ -443,6 +446,8 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
+	#[fudge::parachain(PARA_ID_SIBLING)]
+	pub sibling: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
 }
@@ -776,11 +781,23 @@ fn test_env(
 			)
 			.expect("ESSENTIAL: State provider can be created");
 
-		// We need to HostConfiguration and use the default here.
+		let mut configuration = configuration::GenesisConfig::<RelayRt>::default();
+
+		let mut host_config = HostConfiguration::<u32>::default();
+		host_config.max_downward_message_size = 1024;
+		host_config.hrmp_channel_max_capacity = 100;
+		host_config.hrmp_channel_max_message_size = 1024;
+		host_config.hrmp_channel_max_total_size = 1024;
+		host_config.hrmp_max_parachain_outbound_channels = 10;
+		host_config.hrmp_max_parachain_inbound_channels = 10;
+		host_config.hrmp_max_message_num_per_candidate = 100;
+
+		configuration.config = host_config;
+
 		state.insert_storage(
-			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
+			configuration
 				.build_storage()
-				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+				.expect("ESSENTIAL: Host Configuration GenesisBuild must not fail at this stage."),
 		);
 
 		state.insert_storage(
@@ -788,7 +805,7 @@ fn test_env(
 				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
 			}
 			.build_storage::<RelayRt>()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+			.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
 		);
 
 		if let Some(storage) = relay_storage {
@@ -844,95 +861,128 @@ fn test_env(
 		.expect("ESSENTIAL: Relay chain builder can be created.")
 	};
 
-	// Build parachain-builder
-	let centrifuge = {
-		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
-		let mut state =
-			StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(
-				Some(CentrifugeCode.expect("Wasm is build. Qed.")),
-			)
-			.expect("ESSENTIAL: State provider can be created.");
+	let para_inherent_builder = relay.inherent_builder(ParaId::from(PARA_ID));
+	let sibling_inherent_builder = relay.inherent_builder(ParaId::from(PARA_ID_SIBLING));
 
-		state.insert_storage(
-			frame_system::GenesisConfig {
-				code: CentrifugeCode
-					.expect("ESSENTIAL: Centrifuge WASM is some.")
-					.to_vec(),
-			}
-			.build_storage::<Runtime>()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
-		);
-		state.insert_storage(
-			pallet_aura::GenesisConfig::<Runtime> {
-				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
-			}
-			.build_storage()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
-		);
+	let para_builder = get_parachain_builder(
+		handle.clone(),
+		para_inherent_builder,
+		PARA_ID,
+		centrifuge_storage.clone(),
+	);
 
-		if let Some(storage) = centrifuge_storage {
-			state.insert_storage(storage);
-		}
-
-		let mut init = fudge::initiator::default(handle);
-		init.with_genesis(Box::new(state));
-
-		let para_id = ParaId::from(PARA_ID);
-		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance_id = FudgeInherentTimestamp::create_instance(
-			std::time::Duration::from_secs(12),
-			Some(std::time::Duration::from_millis(START_DATE)),
-		)
-		.expect("ESSENTIAL: Instance ID can be created.");
-
-		let cidp = Box::new(move |_parent: H256, ()| {
-			let inherent_builder_clone = inherent_builder.clone();
-			async move {
-				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
-					.expect("Instances is initialized");
-
-				let slot =
-					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						timestamp.current_time(),
-						SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
-					);
-				let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
-				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
-				Ok((timestamp, slot, relay_para_inherent))
-			}
-		});
-		let dp = |clone_client: Arc<
-			sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
-		>| {
-			Box::new(move |parent, inherents| {
-				let client = clone_client.clone();
-
-				async move {
-					let aura = FudgeAuraDigest::<
-						CentrifugeBlock,
-						sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
-					>::new(&*client)
-					.expect("ESSENTIAL: Aura digest can be created.");
-
-					let digest = aura.build_digest(parent, &inherents).await?;
-					Ok(digest)
-				}
-			})
-		};
-
-		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(init, |client| {
-			(cidp, dp(client))
-		})
-		.expect("ESSENTIAL: Parachain builder can be created.")
-	};
+	let sibling_builder = get_parachain_builder(
+		handle,
+		sibling_inherent_builder,
+		PARA_ID_SIBLING,
+		centrifuge_storage,
+	);
 
 	TestEnv::new(
 		relay,
-		centrifuge,
+		para_builder,
+		sibling_builder,
 		Arc::new(Mutex::new(NonceManager::new())),
 		Arc::new(Mutex::new(EventsStorage::new())),
 	)
 	.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
+}
+
+fn get_parachain_builder(
+	handle: Handle,
+	inherent_builder: InherentBuilder<
+		TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>,
+		TFullBackend<RelayBlock>,
+	>,
+	para_id: u32,
+	centrifuge_storage: Option<Storage>,
+) -> ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp> {
+	sp_tracing::enter_span!(sp_tracing::Level::INFO, "Parachain - StartUp");
+
+	let mut state =
+		StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(Some(
+			CentrifugeCode.expect("Wasm is build. Qed."),
+		))
+		.expect("ESSENTIAL: State provider can be created.");
+
+	state.insert_storage(
+		frame_system::GenesisConfig {
+			code: CentrifugeCode
+				.expect("ESSENTIAL: Centrifuge WASM is some.")
+				.to_vec(),
+		}
+		.build_storage::<Runtime>()
+		.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
+	);
+	state.insert_storage(
+		pallet_aura::GenesisConfig::<Runtime> {
+			authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
+		}
+		.build_storage()
+		.expect("ESSENTIAL: Pallet Aura GenesisBuild must not fail at this stage."),
+	);
+	state.insert_storage(
+		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::build_storage(
+			&parachain_info::GenesisConfig {
+				parachain_id: ParaId::from(para_id),
+			},
+		)
+		.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
+	);
+
+	if let Some(storage) = centrifuge_storage {
+		state.insert_storage(storage);
+	}
+
+	let mut init = fudge::initiator::default(handle);
+	init.with_genesis(Box::new(state));
+
+	let para_id = ParaId::from(para_id);
+	let instance_id = FudgeInherentTimestamp::create_instance(
+		std::time::Duration::from_secs(12),
+		Some(std::time::Duration::from_millis(START_DATE)),
+	)
+	.expect("ESSENTIAL: Instance ID can be created.");
+
+	let cidp = Box::new(move |_parent: H256, ()| {
+		let inherent_builder_clone = inherent_builder.clone();
+		async move {
+			let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
+				.expect("Instances is initialized");
+
+			let slot =
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+					timestamp.current_time(),
+					SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
+				);
+			let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
+			let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
+			Ok((timestamp, slot, relay_para_inherent))
+		}
+	});
+	let dp = |clone_client: Arc<
+		sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
+	>| {
+		Box::new(move |parent, inherents| {
+			let client = clone_client.clone();
+
+			async move {
+				let aura = FudgeAuraDigest::<
+					CentrifugeBlock,
+					sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
+				>::new(&*client)
+				.expect("ESSENTIAL: Aura digest can be created.");
+
+				let digest = aura.build_digest(parent, &inherents).await?;
+				Ok(digest)
+			}
+		})
+	};
+
+	ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(para_id, init, |client| {
+		(cidp, dp(client))
+	})
+	.expect("ESSENTIAL: Parachain builder can be created.")
 }
 
 /// Pass n_blocks on the parachain-side!
