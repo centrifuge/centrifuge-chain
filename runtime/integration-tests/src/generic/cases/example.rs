@@ -1,18 +1,16 @@
-use std::ptr::hash;
-
-use cfg_primitives::{Balance, CFG};
+use cfg_primitives::{Balance, CFG, SECONDS_PER_YEAR};
+use cfg_traits::IntoSeconds;
 use frame_support::traits::Get;
 use sp_api::runtime_decl_for_core::CoreV4;
 
 use crate::{
-	chain::centrifuge,
 	generic::{
-		environment::{Blocks, Env},
+		config::Runtime,
+		env::{Blocks, Env},
 		envs::{
 			fudge_env::{FudgeEnv, FudgeSupport},
 			runtime_env::RuntimeEnv,
 		},
-		runtime::Runtime,
 		utils::genesis::Genesis,
 	},
 	utils::accounts::Keyring,
@@ -152,21 +150,28 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 		// We include the API we want to use
 		use sp_api::Core;
 
-		let hash = match latest {
-			sp_runtime::generic::BlockId::<T::Block>::Hash(hash) => hash,
-			sp_runtime::generic::BlockId::<T::Block>::Number(n) => {
-				todo!("convert block number into H256 hash")
-			}
-		};
-
-		let result = api.version(hash).unwrap();
+		let result = api.version(latest).unwrap();
 
 		assert_eq!(result, T::Api::version());
 		assert_eq!(result, <T as frame_system::Config>::Version::get());
 	})
 }
 
+fn pass_time_one_block<T: Runtime>() {
+	let mut env = RuntimeEnv::<T>::from_storage(Default::default());
+
+	let before = env.state(|| pallet_timestamp::Pallet::<T>::get());
+
+	// Not supported in fudge
+	env.pass(Blocks::JumpBySeconds(SECONDS_PER_YEAR));
+
+	let after = env.state(|| pallet_timestamp::Pallet::<T>::get());
+
+	assert_eq!((after - before).into_seconds(), SECONDS_PER_YEAR)
+}
+
 crate::test_for_runtimes!([development, altair, centrifuge], transfer_balance);
 crate::test_for_runtimes!(all, call_api);
 crate::test_for_runtimes!(all, fudge_transfer_balance);
 crate::test_for_runtimes!(all, fudge_call_api);
+crate::test_for_runtimes!(all, pass_time_one_block);

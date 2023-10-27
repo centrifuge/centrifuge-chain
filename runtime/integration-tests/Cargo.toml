@@ -81,6 +81,7 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 
 # Misc
 xcm-simulator = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.43" }

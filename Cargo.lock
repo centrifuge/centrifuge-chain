@@ -11422,6 +11422,7 @@ dependencies = [
  "liquidity-pools-gateway-routers",
  "node-primitives",
  "orml-asset-registry",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xtokens",

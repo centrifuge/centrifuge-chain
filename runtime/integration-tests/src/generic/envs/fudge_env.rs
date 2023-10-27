@@ -7,12 +7,13 @@ use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
-use sp_runtime::{generic::BlockId, DispatchError, DispatchResult, Storage};
+use sp_core::H256;
+use sp_runtime::{DispatchError, DispatchResult, Storage};
 
 use crate::{
 	generic::{
-		environment::{utils, Env},
-		runtime::Runtime,
+		config::Runtime,
+		env::{utils, Env},
 	},
 	utils::accounts::Keyring,
 };
@@ -76,7 +77,11 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		self.handle.parachain().with_state(f).unwrap()
 	}
 
-	fn __priv_build_block(&mut self, _i: BlockNumber) {
+	fn __priv_build_block(&mut self, i: BlockNumber) {
+		let current = self.state(|| frame_system::Pallet::<T>::block_number());
+		if i > current + 1 {
+			panic!("Jump to future blocks is unsupported in fudge (maybe you've used Blocks::BySecondsFast?)");
+		}
 		self.handle.evolve();
 	}
 }
@@ -101,12 +106,11 @@ impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 
 	pub fn with_api<F>(&self, exec: F)
 	where
-		F: FnOnce(ApiRefOf<T>, BlockId<T::Block>),
+		F: FnOnce(ApiRefOf<T>, H256),
 	{
 		let client = self.handle.parachain().client();
 		let best_hash = client.info().best_hash;
 		let api = client.runtime_api();
-		let best_hash = BlockId::hash(best_hash);
 
 		exec(api, best_hash);
 	}
@@ -116,7 +120,7 @@ mod tests {
 	use cfg_primitives::CFG;
 
 	use super::*;
-	use crate::generic::{environment::Blocks, utils::genesis::Genesis};
+	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_storage(

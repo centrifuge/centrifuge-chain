@@ -99,7 +99,7 @@ package policy {
     }
 
     enum WriteOffTrigger {
-        PrincipalOverdueDays,
+        PrincipalOverdue,
         PriceOutdated,
     }
 

@@ -27,7 +27,7 @@ use sp_runtime::Storage;
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
 use tokio::runtime::Handle;
 
-use crate::{generic::runtime::Runtime, utils::time::START_DATE};
+use crate::{generic::config::Runtime, utils::time::START_DATE};
 
 type InherentCreator<Block, InherentParachain, InherentDataProvider> = Box<
 	dyn CreateInherentDataProviders<

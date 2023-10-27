@@ -1,12 +1,18 @@
+//! PLEASE be as much generic as possible because no domain or use cases are
+//! considered at this level.
+
 use std::marker::PhantomData;
 
-use cfg_primitives::{Balance, CFG};
-use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
+use cfg_primitives::Balance;
+use cfg_types::tokens::CurrencyId;
 use codec::Encode;
 use frame_support::traits::GenesisBuild;
 use sp_runtime::Storage;
 
-use crate::{generic::runtime::Runtime, utils::accounts::default_accounts};
+use crate::{
+	generic::{config::Runtime, utils::currency},
+	utils::accounts::default_accounts,
+};
 
 pub struct Genesis<T> {
 	storage: Storage,
@@ -32,6 +38,8 @@ impl<T: Runtime> Genesis<T> {
 		self.storage
 	}
 }
+
+// Add GenesisBuild functions for initialize your pallets
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	pallet_balances::GenesisConfig::<T> {
@@ -65,84 +73,5 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 			.map(|currency_id| (currency_id, currency::find_metadata(currency_id).encode()))
 			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
-	}
-}
-
-pub mod currency {
-	use super::*;
-
-	pub const fn cfg(amount: Balance) -> Balance {
-		amount * CFG
-	}
-
-	pub trait CurrencyInfo {
-		const ID: CurrencyId;
-		const DECIMALS: u32;
-		const UNIT: Balance = 10u128.pow(Self::DECIMALS);
-		const SYMBOL: &'static str;
-		const NAME: &'static str = Self::SYMBOL;
-		const LOCATION: Option<xcm::VersionedMultiLocation> = None;
-		const CUSTOM: CustomMetadata;
-		const ED: Balance = 0;
-
-		fn metadata() -> AssetMetadata<Balance, CustomMetadata> {
-			AssetMetadata {
-				decimals: Self::DECIMALS,
-				name: Self::NAME.as_bytes().to_vec(),
-				symbol: Self::SYMBOL.as_bytes().to_vec(),
-				existential_deposit: Self::ED,
-				location: None,
-				additional: CustomMetadata {
-					pool_currency: true,
-					..Default::default()
-				},
-			}
-		}
-	}
-
-	pub struct Usd6;
-	impl CurrencyInfo for Usd6 {
-		const CUSTOM: CustomMetadata = CustomMetadata {
-			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
-		};
-		const DECIMALS: u32 = 6;
-		const ID: CurrencyId = CurrencyId::ForeignAsset(1);
-		const SYMBOL: &'static str = "USD6";
-	}
-
-	pub const fn usd6(amount: Balance) -> Balance {
-		amount * Usd6::UNIT
-	}
-
-	pub struct Usd12;
-	impl CurrencyInfo for Usd12 {
-		const CUSTOM: CustomMetadata = CustomMetadata {
-			pool_currency: true,
-			..CONST_DEFAULT_CUSTOM
-		};
-		const DECIMALS: u32 = 12;
-		const ID: CurrencyId = CurrencyId::ForeignAsset(2);
-		const SYMBOL: &'static str = "USD12";
-	}
-
-	pub const fn usd12(amount: Balance) -> Balance {
-		amount * Usd12::UNIT
-	}
-
-	/// Matches default() but for const support
-	const CONST_DEFAULT_CUSTOM: CustomMetadata = CustomMetadata {
-		transferability: CrossChainTransferability::None,
-		mintable: false,
-		permissioned: false,
-		pool_currency: false,
-	};
-
-	pub fn find_metadata(currency: CurrencyId) -> AssetMetadata<Balance, CustomMetadata> {
-		match currency {
-			Usd6::ID => Usd6::metadata(),
-			Usd12::ID => Usd12::metadata(),
-			_ => panic!("Unsupported currency {currency:?}"),
-		}
 	}
 }
