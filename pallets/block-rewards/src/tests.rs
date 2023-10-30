@@ -5,7 +5,10 @@ use sp_runtime::traits::BadOrigin;
 use super::*;
 use crate::mock::*;
 
-const REWARD: u128 = 100 * crate::mock::ExistentialDeposit::get();
+// The Reward amount
+// NOTE: This value needs to be > ExistentialDeposit, otherwise the tests will fail
+// as it's not allowed to transfer a value below the ED threshold.
+const REWARD: u128 = 100 + ExistentialDeposit::get();
 
 #[test]
 fn check_special_privileges() {
