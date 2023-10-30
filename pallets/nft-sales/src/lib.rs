@@ -318,7 +318,7 @@ pub mod pallet {
 				sale.price.currency.clone(),
 				&buyer,
 				&sale.seller,
-				sale.price.amount.clone(),
+				sale.price.amount,
 				Preservation::Protect,
 			)?;
 

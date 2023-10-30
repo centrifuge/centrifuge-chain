@@ -170,7 +170,7 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let mut orders = InvestOrders::<T>::get(investment_id).unwrap_or_default();
-			orders.amount += amount.clone();
+			orders.amount += amount;
 			InvestOrders::<T>::insert(investment_id, orders);
 
 			let details = T::Accountant::info(investment_id)?;
@@ -335,7 +335,7 @@ pub mod pallet {
 				details.payment_currency,
 				&OrderManagerAccount::get::<T>(),
 				&details.owner,
-				tokens_to_transfer_to_pool.clone(),
+				tokens_to_transfer_to_pool,
 				Preservation::Preserve,
 			)
 			.expect("Transferring must work. Qed.");
@@ -344,7 +344,7 @@ pub mod pallet {
 			InvestOrders::<T>::insert(
 				asset_id,
 				TotalOrder {
-					amount: orders.amount.clone() - tokens_to_transfer_to_pool.clone(),
+					amount: orders.amount - tokens_to_transfer_to_pool,
 				},
 			);
 

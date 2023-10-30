@@ -373,7 +373,7 @@ impl<T: Config> Pallet<T> {
 	/// it. Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
-		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount.clone())?;
+		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
 		T::Currency::burn_from(
 			T::StakeCurrencyId::get(),
 			who,

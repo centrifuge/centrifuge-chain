@@ -10,7 +10,6 @@ use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
-	generic::BlockId,
 	traits::{Block as BlockT, Get},
 };
 

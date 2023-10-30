@@ -775,7 +775,7 @@ pub mod pallet {
 			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
 				|maybe_order| -> Result<T::Balance, DispatchError> {
-					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,

@@ -162,16 +162,14 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 	type Reason = ();
 
-	//<T::Fungibles as InspectHold<T::AccountId>>::Reason;
-
 	fn total_balance_on_hold(_asset: Self::AssetId, _who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")
 	}
 
 	fn reducible_total_balance_on_hold(
-		asset: Self::AssetId,
-		who: &T::AccountId,
-		force: Fortitude,
+		_asset: Self::AssetId,
+		_who: &T::AccountId,
+		_force: Fortitude,
 	) -> Self::Balance {
 		todo!("nuno")
 	}
@@ -208,7 +206,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 				asset,
 				who.clone(),
 				amount,
-				can_hold.clone(),
+				can_hold,
 			)) && can_hold
 		}
 	}
@@ -291,7 +289,7 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 				source,
 				dest,
 				amount,
-				preservation.clone(),
+				preservation,
 			)
 		} else {
 			ensure!(
@@ -352,10 +350,10 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 
 impl<T: Config> fungibles::hold::Unbalanced<T::AccountId> for Pallet<T> {
 	fn set_balance_on_hold(
-		asset: Self::AssetId,
-		reason: &Self::Reason,
-		who: &T::AccountId,
-		amount: Self::Balance,
+		_asset: Self::AssetId,
+		_reason: &Self::Reason,
+		_who: &T::AccountId,
+		_amount: Self::Balance,
 	) -> sp_runtime::DispatchResult {
 		todo!("nuno")
 	}
@@ -430,7 +428,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 				amount,
 				precision,
 				mode,
-				force.clone(),
+				force,
 			)
 		} else {
 			ensure!(
@@ -468,19 +466,19 @@ pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
-	fn handle_dust(dust: Dust<T::AccountId, Self>) {
+	fn handle_dust(_dust: Dust<T::AccountId, Self>) {
 		todo!("nuno")
 	}
 
 	fn write_balance(
-		asset: Self::AssetId,
-		who: &T::AccountId,
-		amount: Self::Balance,
+		_asset: Self::AssetId,
+		_who: &T::AccountId,
+		_amount: Self::Balance,
 	) -> Result<Option<Self::Balance>, DispatchError> {
 		todo!("nuno")
 	}
 
-	fn set_total_issuance(asset: Self::AssetId, amount: Self::Balance) {
+	fn set_total_issuance(_asset: Self::AssetId, _amount: Self::Balance) {
 		todo!("nuno")
 	}
 }

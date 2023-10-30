@@ -19,7 +19,6 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v3::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
@@ -43,15 +42,14 @@ use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, Contains, EqualPrivilegeOnly, InstanceFilter,
+		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter,
 		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier, Weight,
+		ConstantMultiplier,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -106,13 +104,11 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
-
 pub mod constants;
 pub mod evm;
 pub mod liquidity_pools;
-mod migrations;
 mod weights;
+mod migrations;
 pub mod xcm;
 
 pub use crate::xcm::*;

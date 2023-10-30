@@ -255,7 +255,7 @@ pub mod pallet {
 						counter.weights += 1;
 					}
 
-					for (&ref currency_id, &group_id) in &changes.currencies.clone() {
+					for (currency_id, &group_id) in &changes.currencies.clone() {
 						T::Rewards::attach_currency(currency_id.clone(), group_id)?;
 						counter.currencies += 1;
 					}

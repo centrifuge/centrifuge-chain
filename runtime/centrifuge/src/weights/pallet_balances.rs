@@ -109,7 +109,7 @@ impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 
-	fn upgrade_accounts(u: u32) -> Weight {
+	fn upgrade_accounts(_u: u32) -> Weight {
 		//todo()
 		Weight::from_parts(34_183_000, 2603)
 			.saturating_add(T::DbWeight::get().reads(1))

@@ -187,6 +187,7 @@ mod orml_tokens_migration {
 	use frame_support::ensure;
 	use frame_support::traits::tokens::{Fortitude, Precision};
 	use orml_tokens::AccountData;
+	#[cfg(feature = "try-runtime")]
 	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;
 

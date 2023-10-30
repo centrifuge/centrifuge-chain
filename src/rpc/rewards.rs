@@ -5,7 +5,7 @@ use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use runtime_common::apis::{RewardDomain, RewardsApi as RewardsRuntimeApi};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{traits::Block as BlockT};
 
 use crate::rpc::{invalid_params_error, runtime_error};
 

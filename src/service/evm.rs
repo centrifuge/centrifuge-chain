@@ -36,8 +36,6 @@ use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use futures::{future, StreamExt};
-use polkadot_cli::Cli;
-use sc_cli::SubstrateCli;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
@@ -46,7 +44,7 @@ use sc_network::{NetworkBlock, NetworkService};
 use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
 use sc_rpc_api::DenyUnsafe;
-use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TaskManager};
+use sc_service::{Configuration, PartialComponents, TFullBackend, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
@@ -56,7 +54,7 @@ use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
-use super::{rpc, FullBackend, FullClient, HostFunctions, ParachainBlockImport};
+use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]
@@ -229,13 +227,19 @@ where
 		})
 		.transpose()?;
 
-	let executor = sc_executor::WasmExecutor::<HostFunctions>::new(
-		config.wasm_method,
-		config.default_heap_pages,
-		config.max_runtime_instances,
-		None,
-		config.runtime_cache_size,
-	);
+	let heap_pages = config
+		.default_heap_pages
+		.map_or(sc_executor::DEFAULT_HEAP_ALLOC_STRATEGY, |h| sc_executor::HeapAllocStrategy::Static {
+			extra_pages: h as _,
+		});
+
+	let executor = sc_executor::WasmExecutor::builder()
+		.with_execution_method(config.wasm_method)
+		.with_onchain_heap_alloc_strategy(heap_pages)
+		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_max_runtime_instances(config.max_runtime_instances)
+		.with_runtime_cache_size(config.runtime_cache_size)
+		.build();
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
@@ -558,6 +562,8 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::extra_unused_type_parameters)]
+//todo(nuno): can we drop the `Executer` type param?
 fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	client: Arc<FullClient<RuntimeApi>>,

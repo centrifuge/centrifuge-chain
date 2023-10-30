@@ -12,9 +12,6 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use cfg_primitives::{Block, Hash};
-use cfg_types::ParaId;
-use fc_db::Backend as FrontierBackend;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,
@@ -30,7 +27,6 @@ use sc_client_api::{
 use sc_network::NetworkService;
 use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
-use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool::{ChainApi, Pool};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
@@ -165,7 +161,7 @@ where
 		client,
 		pool,
 		graph,
-		converter,
+		converter: _converter,
 		is_authority,
 		enable_dev_signer,
 		network,

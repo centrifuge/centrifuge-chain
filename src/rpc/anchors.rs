@@ -6,7 +6,7 @@ use pallet_anchors::AnchorData;
 pub use runtime_common::apis::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{traits::Block as BlockT};
 
 use crate::rpc::invalid_params_error;
 

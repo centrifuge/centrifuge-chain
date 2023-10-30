@@ -184,8 +184,8 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 			T::PreFungibleTransfer::check(FungibleTransferEffects::Transfer(
 				source.clone(),
 				dest.clone(),
-				amount.clone(),
-				preservation.clone()
+				amount,
+				preservation,
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
