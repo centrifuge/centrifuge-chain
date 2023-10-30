@@ -17,7 +17,7 @@ use frame_support::traits::{
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
-use sp_runtime::traits::DispatchError;
+use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
 use {frame_support::inherent::Vec, sp_std::vec};
 
