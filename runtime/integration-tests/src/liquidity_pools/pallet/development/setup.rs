@@ -16,92 +16,7 @@ use cfg_types::{domain_address::Domain, tokens::CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
 
-use crate::utils::env::PARA_ID_SIBLING;
-
-/// Accounts
-pub const ALICE: [u8; 32] = [4u8; 32];
-pub const BOB: [u8; 32] = [5u8; 32];
-pub const CHARLIE: [u8; 32] = [6u8; 32];
-
-pub const TEST_DOMAIN: Domain = Domain::EVM(1284);
-
-/// A PARA ID used for a sibling parachain emulating Moonbeam.
-/// It must be one that doesn't collide with any other in use.
-pub const PARA_ID_MOONBEAM: u32 = 2023;
-
-pub struct ExtBuilder {
-	balances: Vec<(AccountId, CurrencyId, Balance)>,
-	parachain_id: u32,
-}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self {
-			balances: vec![],
-			parachain_id: parachains::polkadot::centrifuge::ID,
-		}
-	}
-}
-
-impl ExtBuilder {
-	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
-		self.balances = balances;
-		self
-	}
-
-	pub fn parachain_id(mut self, parachain_id: u32) -> Self {
-		self.parachain_id = parachain_id;
-		self
-	}
-
-	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-		let native_currency_id = development_runtime::NativeToken::get();
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self
-				.balances
-				.clone()
-				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id == native_currency_id)
-				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-				.collect::<Vec<_>>(),
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-		orml_tokens::GenesisConfig::<Runtime> {
-			balances: self
-				.balances
-				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id != native_currency_id)
-				.collect::<Vec<_>>(),
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&parachain_info::GenesisConfig {
-				parachain_id: self.parachain_id.into(),
-			},
-			&mut t,
-		)
-		.unwrap();
-
-		<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-			&pallet_xcm::GenesisConfig {
-				safe_xcm_version: Some(2),
-			},
-			&mut t,
-		)
-		.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-}
+use crate::{chain::centrifuge::PARA_ID, utils::env::PARA_ID_SIBLING};
 
 pub fn cfg(amount: Balance) -> Balance {
 	amount * dollar(currency_decimals::NATIVE)
@@ -111,12 +26,12 @@ pub fn dollar(decimals: u32) -> Balance {
 	10u128.saturating_pow(decimals)
 }
 
-pub fn moonbeam_account() -> AccountId {
-	parachain_account(PARA_ID_SIBLING)
+pub fn centrifuge_account() -> AccountId {
+	parachain_account(PARA_ID)
 }
 
-pub fn centrifuge_account() -> AccountId {
-	parachain_account(parachains::polkadot::centrifuge::ID)
+pub fn sibling_account() -> AccountId {
+	parachain_account(PARA_ID_SIBLING)
 }
 
 fn parachain_account(id: u32) -> AccountId {

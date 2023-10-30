@@ -54,8 +54,7 @@ use crate::{
 	},
 	liquidity_pools::pallet::{
 		development::{
-			setup::{centrifuge_account, cfg, moonbeam_account},
-			test_net::{Development, Moonbeam, RelayChain, TestNet},
+			setup::{centrifuge_account, cfg, sibling_account},
 			tests::register_ausd,
 		},
 		xcm_metadata,
@@ -119,7 +118,7 @@ fn transfer_cfg_to_sibling(env: &mut TestEnv) {
 			Balances::free_balance(&Keyring::Alice.into()),
 			alice_initial_balance
 		);
-		assert_eq!(Balances::free_balance(&moonbeam_account()), 0);
+		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
@@ -195,7 +194,7 @@ fn transfer_cfg_to_sibling(env: &mut TestEnv) {
 		);
 
 		// Verify that the amount transferred is now part of the sibling account here
-		assert_eq!(Balances::free_balance(&moonbeam_account()), transfer_amount);
+		assert_eq!(Balances::free_balance(&sibling_account()), transfer_amount);
 	});
 
 	env.evolve().unwrap();

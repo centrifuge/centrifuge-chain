@@ -74,7 +74,6 @@ use crate::{
 	},
 	liquidity_pools::pallet::development::{
 		setup::dollar,
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::{
 			foreign_investments::setup::{
 				do_initial_increase_investment, do_initial_increase_redemption,
@@ -1978,10 +1977,7 @@ mod mismatching_currencies {
 	use super::*;
 	use crate::{
 		liquidity_pools::pallet::development::tests::{
-			liquidity_pools::foreign_investments::setup::{
-				enable_usdt_trading, min_fulfillment_amount,
-			},
-			register_usdt,
+			liquidity_pools::foreign_investments::setup::enable_usdt_trading, register_usdt,
 		},
 		utils::{GLMR_CURRENCY_ID, USDT_CURRENCY_ID},
 	};
@@ -2564,7 +2560,7 @@ mod mismatching_currencies {
 				TokenSwapReason::Investment
 			);
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -2630,7 +2626,7 @@ mod mismatching_currencies {
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -2844,7 +2840,7 @@ mod mismatching_currencies {
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -2917,7 +2913,7 @@ mod mismatching_currencies {
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -2989,7 +2985,7 @@ mod mismatching_currencies {
 				}
 			));
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));
@@ -3262,7 +3258,7 @@ mod mismatching_currencies {
 				default_investment_id()
 			));
 			assert_ok!(Investments::collect_redemptions_for(
-				RuntimeOrigin::signed(CHARLIE.into()),
+				RuntimeOrigin::signed(Keyring::Charlie.into()),
 				investor.clone(),
 				default_investment_id()
 			));

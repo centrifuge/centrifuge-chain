@@ -43,9 +43,7 @@ use crate::{
 		PARA_ID,
 	},
 	liquidity_pools::pallet::development::{
-		setup::{dollar, TEST_DOMAIN},
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
-		tests,
+		setup::dollar,
 		tests::{
 			liquidity_pools::setup::{setup_test_env, DEFAULT_SIBLING_LOCATION},
 			routers::axelar_evm::TEST_EVM_CHAIN,
@@ -53,6 +51,8 @@ use crate::{
 	},
 	utils::{accounts::Keyring, env, env::PARA_ID_SIBLING, genesis, GLMR_CURRENCY_ID},
 };
+
+const TEST_DOMAIN: Domain = Domain::EVM(1);
 
 #[tokio::test]
 async fn submit_ethereum_xcm() {

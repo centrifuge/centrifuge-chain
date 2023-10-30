@@ -66,7 +66,6 @@ use crate::{
 	},
 	liquidity_pools::pallet::development::{
 		setup::dollar,
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
 			enable_liquidity_pool_transferability, get_default_moonbeam_native_token_location,

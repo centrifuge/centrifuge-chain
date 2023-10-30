@@ -38,6 +38,7 @@ use frame_support::{
 		fungibles::{Balanced, Mutate},
 		Get, PalletInfo,
 	},
+	weights::Weight,
 };
 use fudge::primitives::Chain;
 use liquidity_pools_gateway_routers::{
@@ -72,7 +73,12 @@ use crate::{
 		},
 		relay::{Hrmp as RelayHrmp, RuntimeOrigin as RelayRuntimeOrigin},
 	},
-	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, GLMR_ED, MOONBEAM_EVM_CHAIN_ID},
+	liquidity_pools::pallet::development::{setup::dollar, tests::register_ausd},
+	utils::{
+		accounts::Keyring,
+		env::{TestEnv, PARA_ID_SIBLING},
+		AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID,
+	},
 };
 
 // 10 GLMR (18 decimals)
@@ -89,9 +95,6 @@ pub const DEFAULT_SIBLING_LOCATION: MultiLocation = MultiLocation {
 	parents: 1,
 	interior: X1(Parachain(PARA_ID_SIBLING)),
 };
-use frame_support::weights::Weight;
-
-use crate::utils::env::{TestEnv, PARA_ID_SIBLING};
 
 pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
