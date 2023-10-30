@@ -821,9 +821,10 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount) =
-                Self::get_released_change(pool_id, change_id)? else {
-                    Err(Error::<T>::UnrelatedChangeId)?
-                };
+				Self::get_released_change(pool_id, change_id)?
+			else {
+				Err(Error::<T>::UnrelatedChangeId)?
+			};
 
 			let (amount, _count) = Self::transfer_debt_action(
 				&who,

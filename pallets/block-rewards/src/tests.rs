@@ -6,8 +6,8 @@ use super::*;
 use crate::mock::*;
 
 // The Reward amount
-// NOTE: This value needs to be > ExistentialDeposit, otherwise the tests will fail
-// as it's not allowed to transfer a value below the ED threshold.
+// NOTE: This value needs to be > ExistentialDeposit, otherwise the tests will
+// fail as it's not allowed to transfer a value below the ED threshold.
 const REWARD: u128 = 100 + ExistentialDeposit::get();
 
 #[test]
