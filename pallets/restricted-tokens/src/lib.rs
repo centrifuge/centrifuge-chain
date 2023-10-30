@@ -10,8 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
-///! A crate that allows for checking of preconditions before sending tokens.
-///! Mimics ORML-tokens Call-Api.
+
 
 pub use impl_currency::*;
 pub use impl_fungible::*;
@@ -62,6 +61,8 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 	}
 }
 
+///! A crate that allows for checking of preconditions before sending tokens.
+///! Mimics ORML-tokens Call-Api.
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::PreConditions;
@@ -72,9 +73,7 @@ pub mod pallet {
 			ArithmeticError, FixedPointOperand,
 		},
 		traits::{
-			fungibles::Mutate,
 			tokens::{Fortitude, Precision, Preservation},
-			ExistenceRequirement,
 		},
 	};
 	use frame_system::pallet_prelude::*;

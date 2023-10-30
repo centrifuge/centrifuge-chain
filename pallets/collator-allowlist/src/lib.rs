@@ -32,7 +32,7 @@ pub use weights::*;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_std::vec::{self, Vec};
+	use sp_std::vec::Vec;
 
 	use super::*;
 
@@ -66,9 +66,10 @@ pub mod pallet {
 	// The default value for the genesis config type.
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
+
 		fn default() -> Self {
 			Self {
-				initial_state: vec![],
+				initial_state: sp_std::vec![],
 			}
 		}
 	}

@@ -23,6 +23,7 @@ use frame_support::{
 use orml_traits::asset_registry::AssetMetadata;
 #[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::Zero;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 

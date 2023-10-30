@@ -117,11 +117,11 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 
 	// <T::NativeFungible as InspectHold<T::AccountId>>::Reason;
 
-	fn total_balance_on_hold(who: &T::AccountId) -> Self::Balance {
+	fn total_balance_on_hold(_who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")
 	}
 
-	fn reducible_total_balance_on_hold(who: &T::AccountId, force: Fortitude) -> Self::Balance {
+	fn reducible_total_balance_on_hold(_who: &T::AccountId, _force: Fortitude) -> Self::Balance {
 		todo!("nuno")
 	}
 
@@ -129,18 +129,9 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		<T::NativeFungible as InspectHold<T::AccountId>>::balance_on_hold(reason, who)
 	}
 
-	fn hold_available(reason: &Self::Reason, who: &T::AccountId) -> bool {
+	fn hold_available(_reason: &Self::Reason, _who: &T::AccountId) -> bool {
 		todo!("nuno")
 	}
-
-	// fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance)
-	// -> bool {
-	// 	T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
-	// 		who.clone(),
-	// 		amount,
-	// 		<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who,
-	// amount), 	))
-	// }
 
 	fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
 		T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
@@ -234,13 +225,13 @@ pub enum FungibleMutateHoldEffects<AccountId, Balance> {
 }
 
 impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
-	fn handle_dust(dust: Dust<T::AccountId, Self>) {
+	fn handle_dust(_dust: Dust<T::AccountId, Self>) {
 		todo!("nuno")
 	}
 
 	fn write_balance(
-		who: &T::AccountId,
-		amount: Self::Balance,
+		_who: &T::AccountId,
+		_amount: Self::Balance,
 	) -> Result<Option<Self::Balance>, DispatchError> {
 		todo!("nuno")
 	}
@@ -252,9 +243,9 @@ impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
 
 impl<T: Config> fungible::hold::Unbalanced<T::AccountId> for Pallet<T> {
 	fn set_balance_on_hold(
-		reason: &Self::Reason,
-		who: &T::AccountId,
-		amount: Self::Balance,
+		_reason: &Self::Reason,
+		_who: &T::AccountId,
+		_amount: Self::Balance,
 	) -> sp_runtime::DispatchResult {
 		todo!("nuno")
 	}

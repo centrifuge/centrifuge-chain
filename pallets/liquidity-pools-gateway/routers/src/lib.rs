@@ -45,8 +45,6 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::{axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter};
-
 #[cfg(test)]
 mod mock;
 

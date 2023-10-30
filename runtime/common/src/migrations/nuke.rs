@@ -19,6 +19,7 @@ use frame_support::{
 	traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
 	weights::{RuntimeDbWeight, Weight},
 };
+#[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;

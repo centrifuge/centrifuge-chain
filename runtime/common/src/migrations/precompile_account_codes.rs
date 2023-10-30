@@ -16,6 +16,7 @@ use frame_support::{
 	weights::Weight,
 };
 use sp_core::H160;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 
 use crate::evm::precompile::PRECOMPILE_CODE_STORAGE;
