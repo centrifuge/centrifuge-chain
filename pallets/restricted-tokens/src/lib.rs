@@ -10,12 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
+///! A crate that allows for checking of preconditions before sending tokens.
+///! Mimics ORML-tokens Call-Api.
 
 pub use impl_currency::*;
 pub use impl_fungible::*;
 pub use impl_fungibles::*;
-///! A crate that allows for checking of preconditions before sending tokens.
-///! Mimics ORML-tokens Call-Api.
+
 pub use pallet::*;
 pub use weights::*;
 

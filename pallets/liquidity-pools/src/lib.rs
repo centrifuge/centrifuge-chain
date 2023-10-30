@@ -729,7 +729,7 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::schedule_upgrade())]
 		#[pallet::call_index(10)]
 		pub fn schedule_upgrade(
 			origin: OriginFor<T>,
@@ -746,7 +746,7 @@ pub mod pallet {
 		}
 
 		/// Schedule an upgrade of an EVM-based liquidity pool contract instance
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::cancel_upgrade())]
 		#[pallet::call_index(11)]
 		pub fn cancel_upgrade(
 			origin: OriginFor<T>,
@@ -767,7 +767,7 @@ pub mod pallet {
 		/// NOTE: Pulls the metadata from the `AssetRegistry` and thus requires
 		/// the pool admin to have updated the tranche tokens metadata there
 		/// beforehand.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::update_tranche_token_metadata())]
 		#[pallet::call_index(12)]
 		pub fn update_tranche_token_metadata(
 			origin: OriginFor<T>,
