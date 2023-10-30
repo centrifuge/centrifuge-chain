@@ -236,7 +236,7 @@ impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
 		todo!("nuno")
 	}
 
-	fn set_total_issuance(amount: Self::Balance) {
+	fn set_total_issuance(_amount: Self::Balance) {
 		todo!("nuno")
 	}
 }

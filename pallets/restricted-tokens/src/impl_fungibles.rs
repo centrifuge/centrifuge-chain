@@ -164,7 +164,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 
 	//<T::Fungibles as InspectHold<T::AccountId>>::Reason;
 
-	fn total_balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
+	fn total_balance_on_hold(_asset: Self::AssetId, _who: &T::AccountId) -> Self::Balance {
 		todo!("nuno")
 	}
 
@@ -188,7 +188,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 		}
 	}
 
-	fn hold_available(asset: Self::AssetId, reason: &Self::Reason, who: &T::AccountId) -> bool {
+	fn hold_available(_asset: Self::AssetId, _reason: &Self::Reason, _who: &T::AccountId) -> bool {
 		todo!("nuno")
 	}
 
