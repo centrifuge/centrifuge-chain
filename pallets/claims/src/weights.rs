@@ -23,7 +23,7 @@ impl WeightInfo for () {
 	fn claim(hashes_length: usize) -> Weight {
 		Weight::from_parts(195_000_000, 0).saturating_add(
 			Weight::from_parts(hashes_length.saturating_mul(1_000_000) as u64, 0)
-				+ RocksDbWeight::get().reads_writes(2, 2)
+				+ RocksDbWeight::get().reads_writes(2, 2),
 		)
 	}
 

@@ -30,7 +30,6 @@ use frame_support::{
 	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
-
 use orml_traits::{
 	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,

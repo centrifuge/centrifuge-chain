@@ -40,8 +40,7 @@ use cfg_types::{
 	},
 	time::TimeProvider,
 	tokens::{
-		CustomMetadata, StakingCurrency::BlockRewards as BlockRewardsCurrency,
-		TrancheCurrency,
+		CustomMetadata, StakingCurrency::BlockRewards as BlockRewardsCurrency, TrancheCurrency,
 	},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
@@ -53,8 +52,8 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly,
-		InstanceFilter, LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
+		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
 	weights::{
@@ -88,13 +87,11 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,
+	asset_registry,
 	fees::{DealWithFees, WeightToFee},
-	xcm::AccountIdToMultiLocation,
-	xcm_transactor,
-	CurrencyED,
 	production_or_benchmark,
-	asset_registry
-
+	xcm::AccountIdToMultiLocation,
+	xcm_transactor, CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -122,8 +119,8 @@ pub use crate::xcm::*;
 
 pub mod evm;
 pub mod liquidity_pools;
-mod weights;
 mod migrations;
+mod weights;
 pub mod xcm;
 
 // Make the WASM binary available.

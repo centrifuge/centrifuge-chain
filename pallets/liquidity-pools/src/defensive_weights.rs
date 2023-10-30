@@ -102,7 +102,6 @@ impl WeightInfo for () {
 			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
-
 	fn schedule_upgrade() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.

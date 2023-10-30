@@ -11,11 +11,9 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-
 pub use impl_currency::*;
 pub use impl_fungible::*;
 pub use impl_fungibles::*;
-
 pub use pallet::*;
 pub use weights::*;
 
@@ -72,9 +70,7 @@ pub mod pallet {
 			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
 			ArithmeticError, FixedPointOperand,
 		},
-		traits::{
-			tokens::{Fortitude, Precision, Preservation},
-		},
+		traits::tokens::{Fortitude, Precision, Preservation},
 	};
 	use frame_system::pallet_prelude::*;
 

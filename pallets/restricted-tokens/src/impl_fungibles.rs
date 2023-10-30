@@ -422,13 +422,7 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 	) -> Result<Self::Balance, DispatchError> {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::transfer_on_hold(
-				reason,
-				source,
-				dest,
-				amount,
-				precision,
-				mode,
-				force,
+				reason, source, dest, amount, precision, mode, force,
 			)
 		} else {
 			ensure!(

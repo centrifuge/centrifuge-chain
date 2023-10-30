@@ -43,9 +43,8 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter,
-		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
-		WithdrawReasons,
+		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
+		OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -107,8 +106,8 @@ use xcm_executor::XcmExecutor;
 pub mod constants;
 pub mod evm;
 pub mod liquidity_pools;
-mod weights;
 mod migrations;
+mod weights;
 pub mod xcm;
 
 pub use crate::xcm::*;

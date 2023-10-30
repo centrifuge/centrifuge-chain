@@ -40,4 +40,8 @@ impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> fo
 			H160::from_low_u64_be(1).into(),
 		))))
 	}
+
+	fn try_successful_origin() -> Result<O, ()> {
+		todo!("nuno")
+	}
 }

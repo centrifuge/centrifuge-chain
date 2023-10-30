@@ -9,9 +9,7 @@ use pallet_pool_system::{
 use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{
-	traits::{Block as BlockT, Get},
-};
+use sp_runtime::traits::{Block as BlockT, Get};
 
 use crate::rpc::{invalid_params_error, runtime_error};
 

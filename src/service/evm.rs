@@ -227,11 +227,14 @@ where
 		})
 		.transpose()?;
 
-	let heap_pages = config
-		.default_heap_pages
-		.map_or(sc_executor::DEFAULT_HEAP_ALLOC_STRATEGY, |h| sc_executor::HeapAllocStrategy::Static {
-			extra_pages: h as _,
-		});
+	let heap_pages =
+		config
+			.default_heap_pages
+			.map_or(sc_executor::DEFAULT_HEAP_ALLOC_STRATEGY, |h| {
+				sc_executor::HeapAllocStrategy::Static {
+					extra_pages: h as _,
+				}
+			});
 
 	let executor = sc_executor::WasmExecutor::builder()
 		.with_execution_method(config.wasm_method)

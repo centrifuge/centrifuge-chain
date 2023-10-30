@@ -78,11 +78,8 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
-	account_conversion::AccountConverter, xcm::AccountIdToMultiLocation,
-	xcm_transactor,
-	CurrencyED,
-	production_or_benchmark,
-	asset_registry
+	account_conversion::AccountConverter, asset_registry, production_or_benchmark,
+	xcm::AccountIdToMultiLocation, xcm_transactor, CurrencyED,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -113,9 +110,9 @@ mod weights;
 pub mod xcm;
 
 use runtime_common::fees::{DealWithFees, WeightToFee};
+
 /// common types for the runtime.
 //nuno: explict imports from runtime_common
-
 pub use crate::xcm::*;
 
 // Make the WASM binary available.
