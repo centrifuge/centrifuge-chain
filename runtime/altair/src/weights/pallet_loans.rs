@@ -84,7 +84,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 250_549 nanoseconds.
 		Weight::from_parts(269_059_406, 406331)
 			// Standard Error: 72_865
-			.saturating_add(Weight::from_ref_time(433_503).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(433_503, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(10))
 			.saturating_add(T::DbWeight::get().writes(7))
 	}
@@ -112,7 +112,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 188_823 nanoseconds.
 		Weight::from_parts(200_809_419, 403628)
 			// Standard Error: 51_840
-			.saturating_add(Weight::from_ref_time(336_065).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(336_065, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
@@ -136,7 +136,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 329_846 nanoseconds.
 		Weight::from_parts(356_180_860, 400130)
 			// Standard Error: 73_406
-			.saturating_add(Weight::from_ref_time(141_382).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(141_382, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -180,7 +180,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 51_156 nanoseconds.
 		Weight::from_parts(58_771_114, 331707)
 			// Standard Error: 22_845
-			.saturating_add(Weight::from_ref_time(400_702).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(400_702, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -206,7 +206,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 111_679 nanoseconds.
 		Weight::from_parts(119_865_142, 403476)
 			// Standard Error: 37_882
-			.saturating_add(Weight::from_ref_time(607_123).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(607_123, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
@@ -236,7 +236,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 147_436 nanoseconds.
 		Weight::from_parts(160_957_070, 399496)
 			// Standard Error: 53_460
-			.saturating_add(Weight::from_ref_time(579_039).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(579_039, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -292,7 +292,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 95_619 nanoseconds.
 		Weight::from_parts(95_212_206, 408290)
 			// Standard Error: 62_465
-			.saturating_add(Weight::from_ref_time(10_471_077).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(10_471_077, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -318,7 +318,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 293_078 nanoseconds.
 		Weight::from_parts(311_351_284, 395232)
 			// Standard Error: 103_889
-			.saturating_add(Weight::from_ref_time(1_470_198).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(1_470_198, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -346,7 +346,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 183_000 nanoseconds.
 		Weight::from_parts(220_730_649, 406179)
 			// Standard Error: 324_292
-			.saturating_add(Weight::from_ref_time(1_790_308).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(1_790_308, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}

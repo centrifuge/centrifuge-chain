@@ -49,6 +49,6 @@ impl<T: frame_system::Config> pallet_timestamp::WeightInfo for WeightInfo<T> {
 		//  Measured:  `161`
 		//  Estimated: `0`
 		// Minimum execution time: 6_412 nanoseconds.
-		Weight::from_ref_time(6_752_000)
+		Weight::from_parts(6_752_000, 0)
 	}
 }

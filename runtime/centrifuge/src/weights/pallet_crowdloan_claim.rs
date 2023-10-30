@@ -154,7 +154,7 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_772 nanoseconds.
-		Weight::from_ref_time(12_062_000)
+		Weight::from_parts(12_062_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim LeasePeriod (r:0 w:1)
@@ -164,7 +164,7 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_491 nanoseconds.
-		Weight::from_ref_time(11_992_000)
+		Weight::from_parts(11_992_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim Contributions (r:0 w:1)
@@ -174,7 +174,7 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 12_644 nanoseconds.
-		Weight::from_ref_time(13_054_000)
+		Weight::from_parts(13_054_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim LockedAt (r:0 w:1)
@@ -184,7 +184,7 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_691 nanoseconds.
-		Weight::from_ref_time(12_023_000)
+		Weight::from_parts(12_023_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanClaim CrowdloanTrieIndex (r:0 w:1)
@@ -194,7 +194,7 @@ impl<T: frame_system::Config> pallet_crowdloan_claim::WeightInfo for WeightInfo<
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_772 nanoseconds.
-		Weight::from_ref_time(12_133_000)
+		Weight::from_parts(12_133_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

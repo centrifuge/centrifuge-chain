@@ -42,7 +42,7 @@ impl<T: frame_system::Config> pallet_crowdloan_reward::WeightInfo for WeightInfo
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 13_265 nanoseconds.
-		Weight::from_ref_time(13_796_000)
+		Weight::from_parts(13_796_000, 0)
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	/// Storage: CrowdloanReward VestingStart (r:0 w:1)
@@ -52,7 +52,7 @@ impl<T: frame_system::Config> pallet_crowdloan_reward::WeightInfo for WeightInfo
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_331 nanoseconds.
-		Weight::from_ref_time(11_863_000)
+		Weight::from_parts(11_863_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanReward VestingPeriod (r:0 w:1)
@@ -62,7 +62,7 @@ impl<T: frame_system::Config> pallet_crowdloan_reward::WeightInfo for WeightInfo
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_421 nanoseconds.
-		Weight::from_ref_time(11_872_000)
+		Weight::from_parts(11_872_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: CrowdloanReward DirectPayoutRatio (r:0 w:1)
@@ -72,7 +72,7 @@ impl<T: frame_system::Config> pallet_crowdloan_reward::WeightInfo for WeightInfo
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 11_701 nanoseconds.
-		Weight::from_ref_time(12_002_000)
+		Weight::from_parts(12_002_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

@@ -91,11 +91,11 @@ impl WeightInfo for () {
 		//       * Maximum weight { ref_time: 500000000000, proof_size: 5242880 }
 		//
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 }

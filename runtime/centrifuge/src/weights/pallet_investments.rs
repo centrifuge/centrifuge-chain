@@ -99,11 +99,11 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 116_257 nanoseconds.
 		Weight::from_parts(114_791_906, 18871)
 			// Standard Error: 16_352
-			.saturating_add(Weight::from_ref_time(4_446_136).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(4_446_136, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(2555).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2555).saturating_mul(n.into()))
 	}
 	/// Storage: PoolSystem Pool (r:1 w:0)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
@@ -127,10 +127,10 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 113_121 nanoseconds.
 		Weight::from_parts(111_562_739, 18871)
 			// Standard Error: 18_199
-			.saturating_add(Weight::from_ref_time(4_497_790).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(4_497_790, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(7))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
-			.saturating_add(Weight::from_proof_size(2555).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 2555).saturating_mul(n.into()))
 	}
 }

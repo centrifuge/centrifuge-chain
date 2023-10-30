@@ -31,71 +31,71 @@ impl WeightInfo for () {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn add_pool() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn add_tranche() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn update_token_price() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn update_member() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 
 	fn transfer() -> Weight {
 		// NOTE: Defensive hardcoded weight taken from pool_system::execute_epoch. Will
 		// be replaced with real benchmark soon.
 		Weight::from_parts(124_979_771, 19974)
-			.saturating_add(Weight::from_ref_time(58_136_652).saturating_mul(N))
+			.saturating_add(Weight::from_parts(58_136_652, 0).saturating_mul(N))
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().reads((7_u64).saturating_mul(N)))
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
-			.saturating_add(Weight::from_proof_size(17774).saturating_mul(N))
+			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
 	}
 }

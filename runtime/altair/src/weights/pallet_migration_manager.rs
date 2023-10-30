@@ -54,7 +54,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 19_276 nanoseconds.
 		Weight::from_parts(18_344_777, 496)
 			// Standard Error: 1_959
-			.saturating_add(Weight::from_ref_time(1_120_674).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(1_120_674, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
@@ -86,12 +86,12 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 67_556 nanoseconds.
 		Weight::from_parts(42_386_202, 496)
 			// Standard Error: 84_499
-			.saturating_add(Weight::from_ref_time(34_789_516).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(34_789_516, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(n.into())))
-			.saturating_add(Weight::from_proof_size(9009).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(0, 9009).saturating_mul(n.into()))
 	}
 	/// Storage: Migration Status (r:1 w:1)
 	/// Proof: Migration Status (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)
@@ -105,7 +105,7 @@ impl<T: frame_system::Config> pallet_migration_manager::WeightInfo for WeightInf
 		// Minimum execution time: 33_683 nanoseconds.
 		Weight::from_parts(37_730_635, 496)
 			// Standard Error: 74_688
-			.saturating_add(Weight::from_ref_time(6_997_845).saturating_mul(n.into()))
+			.saturating_add(Weight::from_parts(6_997_845, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))

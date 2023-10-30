@@ -223,7 +223,7 @@ mod increase_investment {
 			MockTokenSwaps::mock_place_order(|account_id, curr_in, curr_out, amount, limit| {
 				assert_eq!(account_id, USER);
 				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
+				assert_eq 	 	!(curr_out, USER_CURR);
 				assert_eq!(amount, INCREASE_AMOUNT);
 				assert_eq!(limit, DefaultTokenSellRatio::get());
 				Ok(ORDER_ID)

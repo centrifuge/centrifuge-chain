@@ -49,7 +49,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 35_266 nanoseconds.
 		Weight::from_parts(36_569_531, 9838)
 			// Standard Error: 3_376
-			.saturating_add(Weight::from_ref_time(103_666).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(103_666, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
@@ -72,7 +72,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 49_463 nanoseconds.
 		Weight::from_parts(50_949_118, 9710)
 			// Standard Error: 4_193
-			.saturating_add(Weight::from_ref_time(118_738).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(118_738, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
@@ -95,7 +95,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 49_742 nanoseconds.
 		Weight::from_parts(51_039_382, 9838)
 			// Standard Error: 4_047
-			.saturating_add(Weight::from_ref_time(116_233).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(116_233, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(Weight::from_parts(0, 320).saturating_mul(v.into()))
@@ -127,7 +127,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 40_616 nanoseconds.
 		Weight::from_parts(40_957_133, 6390)
 			// Standard Error: 1_722
-			.saturating_add(Weight::from_ref_time(102_900).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(102_900, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(Weight::from_parts(0, 144).saturating_mul(c.into()))
@@ -142,7 +142,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 36_368 nanoseconds.
 		Weight::from_parts(36_962_864, 895)
 			// Standard Error: 1_501
-			.saturating_add(Weight::from_ref_time(70_450).saturating_mul(c.into()))
+			.saturating_add(Weight::from_parts(70_450, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
 			.saturating_add(Weight::from_parts(0, 48).saturating_mul(c.into()))
@@ -228,7 +228,7 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 43_473_064 nanoseconds.
 		Weight::from_parts(43_709_055_000, 19504)
 			// Standard Error: 369_753
-			.saturating_add(Weight::from_ref_time(54_839_950).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(54_839_950, 0).saturating_mul(v.into()))
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(v.into())))
 			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(v.into())))
@@ -262,9 +262,9 @@ impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightIn
 		// Minimum execution time: 3_943_121 nanoseconds.
 		Weight::from_parts(3_959_913_000, 530640)
 			// Standard Error: 518_596
-			.saturating_add(Weight::from_ref_time(25_138_085).saturating_mul(v.into()))
+			.saturating_add(Weight::from_parts(25_138_085, 0).saturating_mul(v.into()))
 			// Standard Error: 33_280
-			.saturating_add(Weight::from_ref_time(936_926).saturating_mul(e.into()))
+			.saturating_add(Weight::from_parts(936_926, 0).saturating_mul(e.into()))
 			.saturating_add(T::DbWeight::get().reads(25))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(v.into())))
