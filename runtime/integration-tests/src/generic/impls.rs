@@ -27,10 +27,11 @@ macro_rules! impl_fudge_support {
         $fudge_companion_type:ident,
         $relay_path:ident,
         $parachain_path:ident,
-        $parachain_id:literal
+        $parachain_id:literal,
+        $sibling_id:literal
     ) => {
 		const _: () = {
-			use fudge::primitives::Chain;
+			use fudge::primitives::{Chain, ParaId};
 			use polkadot_core_primitives::Block as RelayBlock;
 			use sp_api::ConstructRuntimeApi;
 			use sp_runtime::Storage;
@@ -50,6 +51,9 @@ macro_rules! impl_fudge_support {
 				#[fudge::parachain($parachain_id)]
 				pub parachain:
 					ParachainBuilder<$parachain_path::Block, $parachain_path::RuntimeApi>,
+
+				#[fudge::parachain($sibling_id)]
+				pub sibling: ParachainBuilder<$parachain_path::Block, $parachain_path::RuntimeApi>,
 			}
 
 			// Implement for T only one time when fudge::companion
@@ -68,14 +72,26 @@ macro_rules! impl_fudge_support {
 				type RelayRuntime = $relay_path::Runtime;
 
 				const PARACHAIN_CODE: Option<&'static [u8]> = $parachain_path::WASM_BINARY;
-				const PARA_ID: u32 = $parachain_id;
 				const RELAY_CODE: Option<&'static [u8]> = $relay_path::WASM_BINARY;
 
-				fn new(relay_storage: Storage, parachain_storage: Storage) -> Self {
+				fn new(
+					relay_storage: Storage,
+					parachain_storage: Storage,
+					sibling_storage: Storage,
+				) -> Self {
 					let relay = Self::new_relay_builder(relay_storage);
-					let parachain = Self::new_parachain_builder(&relay, parachain_storage);
+					let parachain = Self::new_parachain_builder(
+						ParaId::from($parachain_id),
+						&relay,
+						parachain_storage,
+					);
+					let sibling = Self::new_parachain_builder(
+						ParaId::from($sibling_id),
+						&relay,
+						sibling_storage,
+					);
 
-					Self::new(relay, parachain).unwrap()
+					Self::new(relay, parachain, sibling).unwrap()
 				}
 
 				fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
@@ -100,8 +116,25 @@ macro_rules! impl_fudge_support {
 					&mut self.parachain
 				}
 
-				fn append_extrinsic(&mut self, chain: Chain, extrinsic: Vec<u8>) -> Result<(), ()> {
+				fn sibling(
+					&self,
+				) -> &ParachainBuilder<$parachain_path::Block, Self::ParachainConstructApi> {
+					&self.sibling
+				}
+
+				fn sibling_mut(
+					&mut self,
+				) -> &mut ParachainBuilder<$parachain_path::Block, Self::ParachainConstructApi> {
+					&mut self.sibling
+				}
+
+				fn append_extrinsic(
+					&mut self,
+					chain: Chain,
+					extrinsic: Vec<u8>,
+				) -> Result<(), Box<dyn std::error::Error>> {
 					self.append_extrinsic(chain, extrinsic)
+						.map_err(|e| e.into())
 				}
 
 				fn with_state<R>(&self, chain: Chain, f: impl FnOnce() -> R) -> R {
@@ -124,6 +157,18 @@ macro_rules! impl_fudge_support {
 	};
 }
 
-impl_fudge_support!(FudgeDevelopment, rococo_runtime, development_runtime, 2000);
-impl_fudge_support!(FudgeAltair, kusama_runtime, altair_runtime, 2088);
-impl_fudge_support!(CentrifugeAltair, polkadot_runtime, centrifuge_runtime, 2031);
+impl_fudge_support!(
+	FudgeDevelopment,
+	rococo_runtime,
+	development_runtime,
+	2000,
+	2001
+);
+impl_fudge_support!(FudgeAltair, kusama_runtime, altair_runtime, 2088, 2089);
+impl_fudge_support!(
+	FudgeCentrifuge,
+	polkadot_runtime,
+	centrifuge_runtime,
+	2031,
+	2032
+);

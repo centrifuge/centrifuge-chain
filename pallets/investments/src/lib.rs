@@ -591,6 +591,14 @@ impl<T: Config> Pallet<T> {
 							Error::<T>::CollectRequired
 						);
 
+						Self::do_update_redeem_order(
+							total_order,
+							&who,
+							investment_id,
+							order,
+							amount,
+						)?;
+
 						order.update_submitted_at(cur_order_id);
 
 						Self::do_update_redeem_order(
@@ -605,6 +613,18 @@ impl<T: Config> Pallet<T> {
 						if amount.is_zero() {
 							*maybe_order = None;
 						}
+						// else {
+						// 	// nuno: check that this is ok. Amount == 0 removes the order, so
+						// 	// there's no point in processing a transfer of 0 which fails because it
+						// 	// would kill the account (< ED)
+						// 	Self::do_update_redeem_order(
+						// 		total_order,
+						// 		&who,
+						// 		investment_id,
+						// 		order,
+						// 		amount,
+						// 	)?;
+						// }
 
 						Ok(cur_order_id)
 					},

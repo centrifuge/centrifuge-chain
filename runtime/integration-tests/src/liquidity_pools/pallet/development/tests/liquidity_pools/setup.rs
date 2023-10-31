@@ -77,7 +77,7 @@ use crate::{
 	utils::{
 		accounts::Keyring,
 		env::{TestEnv, PARA_ID_SIBLING},
-		AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID,
+		AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, GLMR_ED, MOONBEAM_EVM_CHAIN_ID,
 	},
 };
 

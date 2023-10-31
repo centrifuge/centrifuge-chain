@@ -31,8 +31,9 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 }
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
-	fn from_storage(storage: Storage) -> Self {
-		let mut handle = T::FudgeHandle::new(Storage::default(), storage);
+	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
+		let mut handle =
+			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
 
 		handle.evolve();
 
@@ -53,7 +54,7 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
 		let nonce = *self.nonce_storage.entry(who).or_default();
 
-		let extrinsic = self.state(|| utils::create_extrinsic::<T>(who, call, nonce));
+		let extrinsic = self.parachain_state(|| utils::create_extrinsic::<T>(who, call, nonce));
 
 		self.handle
 			.parachain_mut()
@@ -69,16 +70,32 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		Ok(())
 	}
 
-	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+	fn relay_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.handle.relay_mut().with_mut_state(f).unwrap()
+	}
+
+	fn relay_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.handle.relay().with_state(f).unwrap()
+	}
+
+	fn parachain_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.handle.parachain_mut().with_mut_state(f).unwrap()
 	}
 
-	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
+	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.handle.parachain().with_state(f).unwrap()
 	}
 
+	fn sibling_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.handle.sibling_mut().with_mut_state(f).unwrap()
+	}
+
+	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.handle.sibling().with_state(f).unwrap()
+	}
+
 	fn __priv_build_block(&mut self, i: BlockNumber) {
-		let current = self.state(|| frame_system::Pallet::<T>::block_number());
+		let current = self.parachain_state(|| frame_system::Pallet::<T>::block_number());
 		if i > current + 1 {
 			panic!("Jump to future blocks is unsupported in fudge (maybe you've used Blocks::BySecondsFast?)");
 		}
@@ -129,6 +146,7 @@ mod tests {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
+			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(
