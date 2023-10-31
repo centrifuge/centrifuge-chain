@@ -33,12 +33,15 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
-		pub fn init() -> DispatchResult {
+	impl<T: Config> MockedRouter for Pallet<T> {
+		type Sender = T::AccountId;
+		type Message = MessageMock;
+
+		fn init() -> DispatchResult {
 			execute_call!(())
 		}
 
-		pub fn send(sender: T::AccountId, message: MessageMock) -> DispatchResult {
+		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResult {
 			execute_call!((sender, message))
 		}
 	}
@@ -70,6 +73,8 @@ impl<T: pallet::Config> RouterMock<T> {
 	}
 }
 
+/// Here we implement the actual Router trait for the `RouterMock` which in turn calls
+/// the `MockedRouter` trait implementation.
 impl<T: pallet::Config> Router for RouterMock<T> {
 	type Message = MessageMock;
 	type Sender = T::AccountId;
@@ -81,4 +86,23 @@ impl<T: pallet::Config> Router for RouterMock<T> {
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		pallet::Pallet::<T>::send(sender, message)
 	}
+}
+
+/// A mocked Router trait that emulates the actual Router trait but without
+/// the inclusion of &self in the function parameters. This allows us to have
+/// the mocked Routers pallet (defined above) implementing a Router-like trait (and not
+/// just like regular pallet functions) when defining the mocked calls, which is implicitly
+/// required by mock-builder or else it fails with `Location must have trait info"`.
+trait MockedRouter {
+	/// The sender type of the outbound message.
+	type Sender;
+
+	/// The outbound message type.
+	type Message;
+
+	/// Initialize the router.
+	fn init() -> DispatchResult;
+
+	/// Send the message to the router's destination.
+	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResult;
 }
