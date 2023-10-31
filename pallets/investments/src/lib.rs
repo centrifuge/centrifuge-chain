@@ -593,20 +593,17 @@ impl<T: Config> Pallet<T> {
 
 						order.update_submitted_at(cur_order_id);
 
+						Self::do_update_redeem_order(
+							total_order,
+							&who,
+							investment_id,
+							order,
+							amount,
+						)?;
+
 						// Remove order from storage if empty
 						if amount.is_zero() {
 							*maybe_order = None;
-						} else {
-							// nuno: check that this is ok. Amount == 0 removes the order, so
-							// there's no point in processing a transfer of 0 which fails because it
-							// would kill the account (< ED)
-							Self::do_update_redeem_order(
-								total_order,
-								&who,
-								investment_id,
-								order,
-								amount,
-							)?;
 						}
 
 						Ok(cur_order_id)
