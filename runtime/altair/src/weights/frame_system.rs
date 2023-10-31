@@ -66,9 +66,10 @@ impl<T: frame_system::Config> frame_system::WeightInfo for WeightInfo<T> {
 	}
 
 	fn set_code() -> Weight {
-		todo!()
+		Weight::from_parts(87_586_619_000, 1485)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-
 	/// Storage: Skipped Metadata (r:0 w:0)
 	/// Proof Skipped: Skipped Metadata (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `i` is `[0, 1000]`.
