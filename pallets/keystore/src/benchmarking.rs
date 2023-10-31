@@ -20,7 +20,7 @@ use sp_runtime::traits::Hash;
 
 use super::*;
 
-pub const EXISTENTIAL_DEPOSIT: u128 = 1;
+pub const EXISTENTIAL_DEPOSIT: u128 = 1_000_000_000_0001;
 
 benchmarks! {
 	where_clause {
