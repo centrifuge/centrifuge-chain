@@ -616,7 +616,6 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 				.for_each(|()| future::ready(())),
 			);
 		}
-		// nuno: do we want to handle this?
 		#[cfg(feature = "sql")]
 		fc_db::Backend::Sql(fb) => {
 			task_manager.spawn_essential_handle().spawn_blocking(
