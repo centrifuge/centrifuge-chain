@@ -1334,7 +1334,6 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
-	//todo(nuno): check this value
 	pub const MaxFeedValues: u32 = 10;
 }
 
