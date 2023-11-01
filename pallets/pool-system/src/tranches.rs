@@ -1947,7 +1947,7 @@ pub mod test {
 			let valid_tranche_id: TrancheId = [
 				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
 			];
-			let mut tranche = tranches
+			tranche = tranches
 				.get_mut_tranche(TrancheLoc::Id(valid_tranche_id))
 				.unwrap();
 
@@ -3568,7 +3568,7 @@ pub mod test {
 		#[test]
 		fn epoch_execution_residual_tranche_mut_works() {
 			let mut epoch_tranches = default_epoch_tranches();
-			let mut epoch_tranche = epoch_tranches.residual_tranche_mut().unwrap();
+			let epoch_tranche = epoch_tranches.residual_tranche_mut().unwrap();
 			epoch_tranche.invest = 200;
 
 			assert_eq!(epoch_tranche.invest, 200)

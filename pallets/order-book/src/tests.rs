@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::CFG;
 use cfg_types::tokens::CurrencyId;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,

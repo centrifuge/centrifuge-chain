@@ -20,7 +20,7 @@ use cfg_types::{
 use frame_support::{
 	pallet_prelude::DispatchResult,
 	parameter_types,
-	traits::{ConstU32, ConstU64, GenesisBuild},
+	traits::{ConstU32, GenesisBuild},
 };
 use frame_system::EnsureRoot;
 use orml_traits::{

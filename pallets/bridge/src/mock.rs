@@ -31,11 +31,11 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureNever, EnsureSignedBy,
 };
-use sp_core::{blake2_128, ConstU64, H256};
+use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, ConstU128, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 };
 
 use crate::{self as pallet_bridge, Config as BridgePalletConfig};

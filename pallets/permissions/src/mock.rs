@@ -196,7 +196,7 @@ mod dummy {
 
 		#[pallet::call]
 		impl<T: Config> Pallet<T> {
-			#[pallet::weight(100)]
+			#[pallet::weight({100})]
 			#[pallet::call_index(0)]
 			pub fn test_add(
 				origin: OriginFor<T>,
@@ -215,7 +215,7 @@ mod dummy {
 				Ok(())
 			}
 
-			#[pallet::weight(100)]
+			#[pallet::weight({100})]
 			#[pallet::call_index(1)]
 			pub fn test_rm(origin: OriginFor<T>, scope: T::Scope, role: T::Role) -> DispatchResult {
 				let who = ensure_signed(origin)?;

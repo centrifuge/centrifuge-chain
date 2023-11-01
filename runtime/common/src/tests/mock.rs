@@ -1,9 +1,5 @@
 use cfg_primitives::AccountId;
-use frame_support::{
-	parameter_types,
-	traits::{ConstU32, FindAuthor},
-	PalletId,
-};
+use frame_support::{parameter_types, traits::FindAuthor, PalletId};
 use sp_core::{ConstU64, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
