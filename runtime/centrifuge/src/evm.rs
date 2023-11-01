@@ -97,7 +97,6 @@ impl pallet_base_fee::Config for crate::Runtime {
 
 parameter_types! {
 	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
-	//todo(nuno): revisit this
 	pub const ExtraDataLength: u32 = 30;
 }
 
