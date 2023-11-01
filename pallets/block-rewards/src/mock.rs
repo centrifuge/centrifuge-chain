@@ -10,7 +10,7 @@ use frame_support::{
 };
 use frame_system::EnsureRoot;
 use num_traits::{One, Zero};
-use sp_core::{ConstU128, H256};
+use sp_core::H256;
 use sp_runtime::{
 	impl_opaque_keys,
 	testing::{Header, UintAuthorityId},

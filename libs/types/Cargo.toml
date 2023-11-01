@@ -39,28 +39,28 @@ hex = { version = "0.4.3", default_features = false }
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-support/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
   "cfg-primitives/std",
   "cfg-traits/std",
+  "cfg-utils/std",
   "codec/std",
   "frame-support/std",
-  "sp-runtime/std",
-  "sp-runtime/std",
-  "sp-std/std",
   "orml-asset-registry/std",
   "scale-info/std",
   "serde/std",
   "sp-arithmetic/std",
-  "xcm/std",
-  "cfg-utils/std",
   "sp-core/std",
+  "sp-runtime/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "xcm/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
