@@ -128,7 +128,7 @@ impl pallet_balances::Config for MockRuntime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();

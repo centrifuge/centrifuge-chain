@@ -10,7 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
+use cfg_primitives::{
+	AccountId, BLOCK_STORAGE_LIMIT, MAXIMUM_BLOCK_WEIGHT, MAX_POV_SIZE, NORMAL_DISPATCH_RATIO,
+};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use frame_system::EnsureRoot;
 use pallet_ethereum::PostLogContent;
@@ -41,11 +43,6 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 		None
 	}
 }
-
-// todo(nuno): dry this
-const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
-/// Block storage limit in bytes. Set to 40 KB.
-const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
@@ -99,7 +96,6 @@ impl pallet_base_fee::Config for Runtime {
 
 parameter_types! {
 	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
-	//todo(nuno): revisit this
 	pub const ExtraDataLength: u32 = 30;
 }
 

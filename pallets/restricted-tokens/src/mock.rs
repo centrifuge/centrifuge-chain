@@ -450,7 +450,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ConstU32<50>;
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];

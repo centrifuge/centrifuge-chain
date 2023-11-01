@@ -55,8 +55,6 @@ pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
-//todo(nuno): if we AllowDeath in Fees::withdraw_fee, we don't need to add the
-// ED here
 pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance =
 	NATIVE_TOKEN_TRANSFER_FEE + ExistentialDeposit::get();
 pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
@@ -139,7 +137,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();

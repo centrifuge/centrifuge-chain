@@ -192,6 +192,7 @@ impl pallet_restricted_tokens::Config for Test {
 	type PreFungiblesMutate = cfg_traits::Always;
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

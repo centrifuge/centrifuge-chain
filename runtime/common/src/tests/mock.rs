@@ -1,5 +1,9 @@
 use cfg_primitives::AccountId;
-use frame_support::{parameter_types, traits::FindAuthor, PalletId};
+use frame_support::{
+	parameter_types,
+	traits::{ConstU32, FindAuthor},
+	PalletId,
+};
 use sp_core::{ConstU64, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -7,7 +11,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use sp_std::convert::{TryFrom, TryInto};
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 const TEST_ACCOUNT: AccountId = AccountId::new([1; 32]);
@@ -64,7 +67,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];

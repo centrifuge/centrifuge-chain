@@ -374,9 +374,7 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 	) -> Result<(), Self::Error> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
-		T::Tokens::mint_into(id.into(), buyer, amount).map(|_| ()) // todo(nuno):
-		                                                   // propagate this api
-		                                                   // change upstream
+		T::Tokens::mint_into(id.into(), buyer, amount).map(|_| ())
 	}
 
 	fn withdraw(

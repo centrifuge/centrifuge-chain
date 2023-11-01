@@ -326,10 +326,9 @@ impl pallet_balances::Config for Runtime {
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
-	//todo(nuno)
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -678,7 +677,7 @@ parameter_types! {
 	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 	// todo(nuno)
-	pub const MaxVotesPerVoter: u32 = 5;
+	pub const MaxVotesPerVoter: u32 = 20;
 }
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via

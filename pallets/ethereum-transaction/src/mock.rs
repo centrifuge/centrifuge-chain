@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use fp_evm::{FeeCalculator, Precompile, PrecompileResult};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight};
 use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
@@ -78,7 +79,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
@@ -162,10 +163,6 @@ impl PrecompileSet for MockPrecompileSet {
 	}
 }
 
-const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
-/// Block storage limit in bytes. Set to 40 KB.
-const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
-
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::max_value();
 	pub WeightPerGas: Weight = Weight::from_parts(20_000, 0);
@@ -204,7 +201,6 @@ impl pallet_evm::Config for Runtime {
 
 parameter_types! {
 	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
-	//todo(nuno): revisit this
 	pub const ExtraDataLength: u32 = 30;
 }
 

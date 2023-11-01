@@ -21,7 +21,7 @@ use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
 	sp_runtime::traits::ConvertInto,
-	traits::{Contains, InstanceFilter, WithdrawReasons},
+	traits::{ConstU32, Contains, InstanceFilter, WithdrawReasons},
 };
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
@@ -124,7 +124,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
@@ -175,7 +175,7 @@ impl frame_system::Config for Runtime {
 	type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
 	type Index = Index;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();

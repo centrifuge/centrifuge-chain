@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use codec::{Decode, Encode};
@@ -233,10 +234,6 @@ impl PrecompileSet for MockPrecompileSet {
 	}
 }
 
-const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
-/// Block storage limit in bytes. Set to 40 KB.
-const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
-
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::max_value();
 	pub WeightPerGas: Weight = Weight::from_parts(20_000, 0);
@@ -275,7 +272,6 @@ impl pallet_evm::Config for Runtime {
 
 parameter_types! {
 	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
-	//todo(nuno): revisit this
 	pub const ExtraDataLength: u32 = 30;
 }
 
