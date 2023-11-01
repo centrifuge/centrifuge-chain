@@ -677,7 +677,7 @@ parameter_types! {
 	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 	// todo(nuno)
-	pub const MaxVotesPerVoter: u32 = 20;
+	pub const MaxVotesPerVoter: u32 = 5;
 }
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via

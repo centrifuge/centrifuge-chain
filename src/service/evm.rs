@@ -566,7 +566,6 @@ where
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::extra_unused_type_parameters)]
-//todo(nuno): can we drop the `Executer` type param?
 fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	client: Arc<FullClient<RuntimeApi>>,

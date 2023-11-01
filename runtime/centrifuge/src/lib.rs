@@ -819,8 +819,9 @@ parameter_types! {
 	pub const DesiredMembers: u32 = 9;
 	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
-	// todo(nuno)
-	pub const MaxVotesPerVoter: u32 = 20;
+
+	pub const MaxVoters: u32 = 100;
+	pub const MaxVotesPerVoter: u32 = 5;
 }
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via
@@ -1169,7 +1170,6 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxCandidates: u32 = 20;
 	pub const MinCandidates: u32 = 5;
-	pub const MaxVoters: u32 = 100;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
 }
