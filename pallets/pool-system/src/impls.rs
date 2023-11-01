@@ -485,7 +485,6 @@ mod benchmarks_utils {
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u128 = u64::max_value() as u128;
 			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
-			const ED: u128 = 1_000_000_000_000;
 
 			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
 				frame_support::assert_ok!(T::AssetRegistry::register_asset(
@@ -505,7 +504,10 @@ mod benchmarks_utils {
 			}
 
 			// Pool creation
-			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get() + ED.into());
+			T::Currency::make_free_balance_be(
+				admin,
+				T::PoolDeposit::get() + T::Currency::minimum_balance(),
+			);
 			frame_support::assert_ok!(Pallet::<T>::create(
 				admin.clone(),
 				admin.clone(),
@@ -545,7 +547,11 @@ mod benchmarks_utils {
 
 			// Investment in pool
 			let investor = account::<T::AccountId>("investor_benchmark_pool", 0, 0);
-			Self::bench_investor_setup(pool_id, investor.clone(), (FUNDS + ED).into());
+			Self::bench_investor_setup(
+				pool_id,
+				investor.clone(),
+				T::Currency::minimum_balance() + FUNDS.into(),
+			);
 			let tranche =
 				<Self as InvestmentIdBenchmarkHelper>::bench_default_investment_id(pool_id)
 					.of_tranche();
