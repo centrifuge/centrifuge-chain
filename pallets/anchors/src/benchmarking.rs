@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_support::traits::{tokens::Balance, Get};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::traits::One;
 

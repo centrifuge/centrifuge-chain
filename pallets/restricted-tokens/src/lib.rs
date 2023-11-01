@@ -151,6 +151,12 @@ pub mod pallet {
 			Result = bool,
 		>;
 
+		/// Checks the pre conditions for trait fungibles::Unbalanced calls
+		type PreFungiblesUnbalanced: PreConditions<
+			FungiblesUnbalancedEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
+
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ fungibles::InspectHold<Self::AccountId, Reason = ()>
 			+ fungibles::Mutate<Self::AccountId>
@@ -490,36 +496,29 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
-
 			let new_total = new_free
 				.checked_add(&new_reserved)
 				.ok_or(ArithmeticError::Overflow)?;
 
 			let token = if T::NativeToken::get() == currency_id {
 				let old_reserved =
-					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
-						&(),
-						&who,
-					);
-				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::release(
+					<Self as fungible::InspectHold<T::AccountId>>::balance_on_hold(&(), &who);
+
+				<Self as fungible::MutateHold<T::AccountId>>::release(
 					&(),
 					&who,
 					old_reserved,
 					Precision::Exact,
 				)?;
-				let to_burn = <T::NativeFungible as fungible::Inspect<T::AccountId>>::balance(&who);
-				<T::NativeFungible as fungible::Mutate<T::AccountId>>::burn_from(
+				let to_burn = <Self as fungible::Inspect<T::AccountId>>::balance(&who);
+				<Self as fungible::Mutate<T::AccountId>>::burn_from(
 					&who,
 					to_burn,
 					Precision::Exact,
-					Fortitude::Polite,
+					Fortitude::Force,
 				)?;
-				<T::NativeFungible as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
-				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::hold(
-					&(),
-					&who,
-					new_reserved,
-				)?;
+				<Self as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
+				<Self as fungible::MutateHold<T::AccountId>>::hold(&(), &who, new_reserved)?;
 
 				TokenType::Native
 			} else {
@@ -534,7 +533,7 @@ pub mod pallet {
 					&(),
 					&who,
 					old_reserved,
-					Precision::BestEffort,
+					Precision::Exact,
 				)?;
 				let to_burn =
 					<T::Fungibles as fungibles::Inspect<T::AccountId>>::balance(currency_id, &who);
@@ -543,7 +542,7 @@ pub mod pallet {
 					&who,
 					to_burn,
 					Precision::Exact,
-					Fortitude::Polite,
+					Fortitude::Force,
 				)?;
 				<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
 					currency_id,

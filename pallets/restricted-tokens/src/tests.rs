@@ -13,6 +13,7 @@
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{
+		fungible::Inspect,
 		tokens::{
 			fungible, fungibles, DepositConsequence, ExistenceRequirement, Fortitude, Precision,
 			Preservation, Provenance, Restriction, WithdrawConsequence,
@@ -136,7 +137,7 @@ fn transfer_keep_alive_works() {
 					RuntimeOrigin::signed(1),
 					2,
 					CurrencyId::AUSD,
-					DISTR_PER_ACCOUNT - 1
+					DISTR_PER_ACCOUNT - ExistentialDeposit::get()
 				)
 			);
 			assert_ok!(
@@ -144,7 +145,7 @@ fn transfer_keep_alive_works() {
 					RuntimeOrigin::signed(100),
 					101,
 					CurrencyId::RestrictedCoin,
-					DISTR_PER_ACCOUNT - 1
+					DISTR_PER_ACCOUNT - ExistentialDeposit::get()
 				)
 			);
 		})
@@ -237,7 +238,26 @@ fn force_transfer_fails() {
 }
 
 #[test]
-fn set_balance_works() {
+fn set_balance_native_works() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			// pallet_balances::Pallet::<Runtime>::make_free_balance_be(&1337, 100);
+			// assert!(System::providers(&1337) > 0);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
+				RuntimeOrigin::root(),
+				1,
+				CurrencyId::Cfg,
+				200,
+				100
+			));
+			assert_eq!(System::account(1).data.free, 200);
+			assert_eq!(System::account(1).data.reserved, 100);
+		})
+}
+
+#[test]
+fn set_balance_foreign_works() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
@@ -328,8 +348,13 @@ fn fungible_reducible_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite), DISTR_PER_ACCOUNT);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Expendable, Fortitude::Force), DISTR_PER_ACCOUNT);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Protect, Fortitude::Polite), DISTR_PER_ACCOUNT);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Protect, Fortitude::Force), DISTR_PER_ACCOUNT);
+			// Subtracting 2 * ED here because of filter (minus 1) and implicit fungible impl by pallet-balances (minus 1)
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Preserve, Fortitude::Polite), DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Preserve, Fortitude::Force), DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
 		})
 }
 
@@ -445,15 +470,14 @@ fn fungible_transfer_on_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &1, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::BestEffort, Restriction::OnHold, Fortitude::Polite).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &1, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::OnHold, Fortitude::Polite).is_ok());
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, Preservation::Preserve, Fortitude::Polite), 0);
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			// nuno ^ this might be failing because of BestEffort or because ExistentialDeposit changed
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
 
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&(), &2, DISTR_PER_ACCOUNT).is_ok());
 			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_on_hold(&(), &2, &9, DISTR_PER_ACCOUNT, Precision::Exact, Restriction::Free,Fortitude::Polite).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, Preservation::Preserve, Fortitude::Polite), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, Preservation::Preserve, Fortitude::Polite), 2 * DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get());
 		})
 }
 
@@ -546,17 +570,118 @@ fn fungibles_reducible_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
+			// Native
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Expendable, Fortitude::Polite),
-				DISTR_PER_ACCOUNT - ExistentialDeposit::get()
+				DISTR_PER_ACCOUNT
 			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Protect, Fortitude::Polite),
+				DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Preserve, Fortitude::Polite),
+				DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Expendable, Fortitude::Force),
+				DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Protect, Fortitude::Force),
+				DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, Preservation::Preserve, Fortitude::Force),
+				DISTR_PER_ACCOUNT - 2 * ExistentialDeposit::get()
+			);
+
+			// AUSD
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Expendable, Fortitude::Polite),
 				DISTR_PER_ACCOUNT / 2
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Protect, Fortitude::Polite),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Preserve, Fortitude::Polite),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Expendable, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Protect, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::AUSD, &1, Preservation::Preserve, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+
+			// Restricted
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Expendable, Fortitude::Polite),
+				DISTR_PER_ACCOUNT / 2
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Protect, Fortitude::Polite),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Preserve, Fortitude::Polite),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Expendable, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Protect, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, Preservation::Preserve, Fortitude::Force),
+				DISTR_PER_ACCOUNT / 2 - ExistentialDeposit::get()
 			);
 		})
 }
@@ -1173,4 +1298,545 @@ fn currency_extend_lock() {
 				WithdrawReasons::TRANSACTION_PAYMENT,
 			);
 		})
+}
+
+mod fungible_hold {
+	use frame_support::traits::tokens::fungible::{InspectHold, MutateHold};
+
+	use super::*;
+
+	const RESERVED: u64 = 100;
+	const HOLD_USER: u64 = 8;
+
+	#[test]
+	fn hold_available() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+			}))
+			.execute_with(|| {
+				assert!(Tokens::hold_available(&(), &1));
+				assert!(Tokens::hold_available(&(), &HOLD_USER));
+			})
+	}
+
+	#[test]
+	fn balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+			}))
+			.execute_with(|| {
+				assert_eq!(Tokens::balance_on_hold(&(), &1), 0);
+				assert_eq!(Tokens::balance_on_hold(&(), &1), 0);
+
+				assert_eq!(Tokens::balance_on_hold(&(), &HOLD_USER), RESERVED);
+				assert_eq!(Tokens::balance_on_hold(&(), &HOLD_USER), RESERVED);
+			})
+	}
+
+	#[test]
+	fn total_balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+			}))
+			.execute_with(|| {
+				assert_eq!(Tokens::total_balance_on_hold(&1), 0);
+				assert_eq!(Tokens::total_balance_on_hold(&1), 0);
+
+				assert_eq!(Tokens::total_balance_on_hold(&HOLD_USER), RESERVED);
+				assert_eq!(Tokens::total_balance_on_hold(&HOLD_USER), RESERVED);
+			})
+	}
+
+	#[test]
+	fn reducible_total_balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+			}))
+			.execute_with(|| {
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(&1, Fortitude::Polite),
+					0
+				);
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(&1, Fortitude::Force),
+					0
+				);
+
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(&HOLD_USER, Fortitude::Polite),
+					RESERVED
+				);
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(&HOLD_USER, Fortitude::Force),
+					RESERVED
+				);
+			})
+	}
+
+	#[test]
+	fn reducible_balance() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(&(), &HOLD_USER, RESERVED));
+			}))
+			.execute_with(|| {
+				// Total funds can be withdrawn for Expendable and Protect
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Expendable, Fortitude::Polite),
+					DISTR_PER_ACCOUNT
+				);
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Expendable, Fortitude::Force),
+					DISTR_PER_ACCOUNT
+				);
+
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Protect, Fortitude::Polite),
+					DISTR_PER_ACCOUNT
+				);
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Protect, Fortitude::Force),
+					DISTR_PER_ACCOUNT
+				);
+
+				// If account shall be preserved, ED needs to remain
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Preserve, Fortitude::Polite),
+					DISTR_PER_ACCOUNT - ExistentialDeposit::get()
+				);
+				assert_eq!(
+					Balances::reducible_balance(&1, Preservation::Preserve, Fortitude::Force),
+					DISTR_PER_ACCOUNT - ExistentialDeposit::get()
+				);
+
+				// Funds which are not held can be withdrawn for Expendable and Protect
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+
+				// Funds which are not held or accounting to ED can be withdrawn for Preserve
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED - 1
+				);
+				assert_eq!(
+					Balances::reducible_balance(
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED - 1
+				);
+			})
+	}
+}
+
+mod fungibles_hold {
+	use frame_support::traits::{
+		fungibles::Inspect,
+		tokens::fungibles::{InspectHold, MutateHold},
+	};
+
+	use super::*;
+
+	const RESERVED: u64 = 100;
+	const HOLD_USER: u64 = 8;
+
+	#[test]
+	fn hold_available() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER,
+					RESERVED
+				));
+			}))
+			.execute_with(|| {
+				assert!(Tokens::hold_available(CurrencyId::Cfg, &(), &1));
+				assert!(Tokens::hold_available(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER
+				));
+			})
+	}
+
+	#[test]
+	fn balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER,
+					RESERVED
+				));
+			}))
+			.execute_with(|| {
+				assert_eq!(Tokens::balance_on_hold(CurrencyId::Cfg, &(), &1), 0);
+				assert_eq!(
+					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &(), &1),
+					0
+				);
+
+				assert_eq!(
+					Tokens::balance_on_hold(CurrencyId::Cfg, &(), &HOLD_USER),
+					RESERVED
+				);
+				assert_eq!(
+					Tokens::balance_on_hold(CurrencyId::RestrictedCoin, &(), &HOLD_USER),
+					RESERVED
+				);
+			})
+	}
+
+	#[test]
+	fn total_balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER,
+					RESERVED
+				));
+			}))
+			.execute_with(|| {
+				assert_eq!(Tokens::total_balance_on_hold(CurrencyId::Cfg, &1), 0);
+				assert_eq!(
+					Tokens::total_balance_on_hold(CurrencyId::RestrictedCoin, &1),
+					0
+				);
+
+				assert_eq!(
+					Tokens::total_balance_on_hold(CurrencyId::Cfg, &HOLD_USER),
+					RESERVED
+				);
+				assert_eq!(
+					Tokens::total_balance_on_hold(CurrencyId::RestrictedCoin, &HOLD_USER),
+					RESERVED
+				);
+			})
+	}
+
+	#[test]
+	fn reducible_total_balance_on_hold() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER,
+					RESERVED
+				));
+			}))
+			.execute_with(|| {
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(CurrencyId::Cfg, &1, Fortitude::Polite),
+					0
+				);
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(CurrencyId::Cfg, &1, Fortitude::Force),
+					0
+				);
+
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Fortitude::Polite
+					),
+					0
+				);
+				assert_eq!(
+					Tokens::reducible_total_balance_on_hold(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Fortitude::Force
+					),
+					0
+				);
+			})
+	}
+
+	#[test]
+	fn reducible_balance() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {
+				assert_ok!(Tokens::hold(CurrencyId::Cfg, &(), &HOLD_USER, RESERVED));
+				assert_ok!(Tokens::hold(
+					CurrencyId::RestrictedCoin,
+					&(),
+					&HOLD_USER,
+					RESERVED
+				));
+			}))
+			.execute_with(|| {
+				// Preservation::Expendable
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Polite
+					),
+					(DISTR_PER_ACCOUNT - RESERVED) / 2
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Expendable,
+						Fortitude::Force
+					),
+					(DISTR_PER_ACCOUNT - RESERVED) / 2
+				);
+
+				// Preservation::Protect
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Polite
+					),
+					(DISTR_PER_ACCOUNT - RESERVED) / 2
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Protect,
+						Fortitude::Force
+					),
+					(DISTR_PER_ACCOUNT - RESERVED) / 2
+				);
+
+				// Preservation::Preserve
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Polite
+					),
+					DISTR_PER_ACCOUNT - RESERVED - 2 * ExistentialDeposit::get()
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Polite
+					),
+					(DISTR_PER_ACCOUNT - RESERVED - ExistentialDeposit::get()) / 2
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::Cfg,
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Force
+					),
+					DISTR_PER_ACCOUNT - RESERVED - 2 * ExistentialDeposit::get()
+				);
+				assert_eq!(
+					Tokens::reducible_balance(
+						CurrencyId::RestrictedCoin,
+						&HOLD_USER,
+						Preservation::Preserve,
+						Fortitude::Force
+					),
+					(DISTR_PER_ACCOUNT - RESERVED - ExistentialDeposit::get()) / 2
+				);
+			})
+	}
+}
+
+mod unbalanced_filter {
+	use super::*;
+
+	#[test]
+	fn write_balance_native_fungible() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				assert_eq!(
+					<Tokens as fungible::Unbalanced<AccountId>>::write_balance(&1, 100),
+					Ok(None)
+				);
+				assert_eq!(Tokens::balance(&1), 100);
+			})
+	}
+	#[test]
+	fn write_balance_native_fungibles() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				assert_eq!(
+					<Tokens as fungibles::Unbalanced<AccountId>>::write_balance(
+						CurrencyId::Cfg,
+						&1,
+						100
+					),
+					Ok(None)
+				);
+				assert_eq!(Tokens::balance(&1), 100);
+			})
+	}
+	#[test]
+	fn write_balance_foreign() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				assert_noop!(
+					<Tokens as fungibles::Unbalanced<AccountId>>::write_balance(
+						CurrencyId::AUSD,
+						&1,
+						100
+					),
+					pallet_restricted_tokens::Error::<Runtime>::PreConditionsNotMet
+				);
+				assert_noop!(
+					<Tokens as fungibles::Unbalanced<AccountId>>::write_balance(
+						CurrencyId::RestrictedCoin,
+						&1,
+						100
+					),
+					pallet_restricted_tokens::Error::<Runtime>::PreConditionsNotMet
+				);
+			})
+	}
+	#[test]
+	fn set_total_issuance_native_fungible() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				<Tokens as fungible::Unbalanced<AccountId>>::set_total_issuance(100);
+				assert_eq!(
+					<Tokens as fungible::Inspect<AccountId>>::total_issuance(),
+					100
+				);
+			})
+	}
+	#[test]
+	fn set_total_issuance_native_fungibles() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				<Tokens as fungibles::Unbalanced<AccountId>>::set_total_issuance(
+					CurrencyId::Cfg,
+					100,
+				);
+				assert_eq!(
+					<Tokens as fungible::Inspect<AccountId>>::total_issuance(),
+					100
+				);
+			})
+	}
+	#[test]
+	fn set_total_issuance_foreign() {
+		TestExternalitiesBuilder::default()
+			.build(Some(|| {}))
+			.execute_with(|| {
+				<Tokens as fungibles::Unbalanced<AccountId>>::set_total_issuance(
+					CurrencyId::AUSD,
+					100,
+				);
+				assert_eq!(
+					<Tokens as fungibles::Inspect<AccountId>>::total_issuance(CurrencyId::AUSD),
+					10000
+				);
+
+				<Tokens as fungibles::Unbalanced<AccountId>>::set_total_issuance(
+					CurrencyId::RestrictedCoin,
+					100,
+				);
+				assert_eq!(
+					<Tokens as fungibles::Inspect<AccountId>>::total_issuance(
+						CurrencyId::RestrictedCoin
+					),
+					110000
+				);
+			})
+	}
 }
