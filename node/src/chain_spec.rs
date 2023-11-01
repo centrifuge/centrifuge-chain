@@ -468,6 +468,7 @@ fn centrifuge_genesis(
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 			..Default::default()
 		},
+		sudo: Default::default(),
 	}
 }
 
