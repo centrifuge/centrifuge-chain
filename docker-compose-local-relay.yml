@@ -8,8 +8,7 @@ services:
     platform: "linux/amd64"
     ports:
       - "30333:30333"
-      - "9933:9933"
-      - "9944:9944"
+      - "9944:9933"
     volumes:
       - type: bind
         source: ./res/rococo-local.json
@@ -22,7 +21,7 @@ services:
       --execution=wasm
       --base-path=/data
       --port 30333
-      --rpc-port 9944
+      --rpc-port 9933
       --rpc-external
       --rpc-cors all
       --rpc-methods=Unsafe
@@ -35,8 +34,7 @@ services:
     platform: "linux/amd64"
     ports:
       - "30344:30333"
-      - "9935:9933"
-      - "9945:9944"
+      - "9945:9933"
     volumes:
       - type: bind
         source: ./res/rococo-local.json
@@ -49,7 +47,7 @@ services:
       --wasm-execution=compiled
       --execution=wasm
       --port 30333
-      --rpc-port 9944
+      --rpc-port 9933
       --rpc-external
       --rpc-cors all
       --rpc-methods=Unsafe
