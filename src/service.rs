@@ -22,7 +22,7 @@ use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, Slo
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_primitives_core::ParaId;
 use fc_db::Backend as FrontierBackend;
-use sc_executor::WasmExecutor;
+use sc_executor::NativeElseWasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
 
@@ -36,21 +36,13 @@ use crate::rpc::{
 pub(crate) mod evm;
 use evm::EthConfiguration;
 
-#[cfg(not(feature = "runtime-benchmarks"))]
-type HostFunctions = sp_io::SubstrateHostFunctions;
-
-#[cfg(feature = "runtime-benchmarks")]
-type HostFunctions = (
-	sp_io::SubstrateHostFunctions,
-	frame_benchmarking::benchmarking::HostFunctions,
-);
-
-type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
+type FullClient<RuntimeApi, Executor> =
+	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
 
 type FullBackend = TFullBackend<Block>;
 
-type ParachainBlockImport<RuntimeApi> =
-	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi>>, FullBackend>;
+type ParachainBlockImport<RuntimeApi, Executor> =
+	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi, Executor>>, FullBackend>;
 
 // Native Altair executor instance.
 pub struct AltairRuntimeExecutor;
@@ -118,15 +110,18 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 /// Build the import queue for the "altair" runtime.
 #[allow(clippy::type_complexity)]
 pub fn build_altair_import_queue(
-	client: Arc<FullClient<altair_runtime::RuntimeApi>>,
-	block_import: ParachainBlockImport<altair_runtime::RuntimeApi>,
+	client: Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
+	block_import: ParachainBlockImport<altair_runtime::RuntimeApi, AltairRuntimeExecutor>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
-	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
+	sc_consensus::DefaultImportQueue<
+		Block,
+		FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>,
+	>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -172,8 +167,12 @@ pub async fn start_altair_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
+)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
@@ -181,6 +180,7 @@ pub async fn start_altair_node(
 		eth_config,
 		collator_options,
 		id,
+		hwbench,
 		first_evm_block,
 		move |client,
 		      pool,
@@ -310,15 +310,18 @@ pub async fn start_altair_node(
 /// Build the import queue for the "centrifuge" runtime.
 #[allow(clippy::type_complexity)]
 pub fn build_centrifuge_import_queue(
-	client: Arc<FullClient<centrifuge_runtime::RuntimeApi>>,
-	block_import: ParachainBlockImport<centrifuge_runtime::RuntimeApi>,
+	client: Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
+	block_import: ParachainBlockImport<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
-	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
+	sc_consensus::DefaultImportQueue<
+		Block,
+		FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>,
+	>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -364,8 +367,12 @@ pub async fn start_centrifuge_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
+)> {
 	let is_authority = parachain_config.role.is_authority();
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
@@ -373,6 +380,7 @@ pub async fn start_centrifuge_node(
 		eth_config,
 		collator_options,
 		id,
+		hwbench,
 		first_evm_block,
 		move |client,
 		      pool,
@@ -502,15 +510,18 @@ pub async fn start_centrifuge_node(
 /// Build the import queue for the "development" runtime.
 #[allow(clippy::type_complexity)]
 pub fn build_development_import_queue(
-	client: Arc<FullClient<development_runtime::RuntimeApi>>,
-	block_import: ParachainBlockImport<development_runtime::RuntimeApi>,
+	client: Arc<FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>>,
+	block_import: ParachainBlockImport<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 	frontier_backend: FrontierBackend<Block>,
 	first_evm_block: BlockNumber,
 ) -> Result<
-	sc_consensus::DefaultImportQueue<Block, FullClient<development_runtime::RuntimeApi>>,
+	sc_consensus::DefaultImportQueue<
+		Block,
+		FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>,
+	>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -556,10 +567,11 @@ pub async fn start_development_node(
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<FullClient<development_runtime::RuntimeApi>>,
+	Arc<FullClient<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
 
@@ -569,6 +581,7 @@ pub async fn start_development_node(
 		eth_config,
 		collator_options,
 		id,
+		hwbench,
 		first_evm_block,
 		move |client,
 		      pool,
