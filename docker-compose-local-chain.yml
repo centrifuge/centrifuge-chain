@@ -6,23 +6,25 @@ services:
     platform: "linux/amd64"
     ports:
       - "30355:30333"
-      - "9936:9933"
-      - "9946:9944"
+      - "9946:9933"
     volumes:
       - type: bind
         source: ./res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
-      --chain="${PARA_CHAIN_SPEC:-altair-local}" 
+      --chain="${PARA_CHAIN_SPEC:-development}" 
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
       --execution=wasm
+      --port=30333
+      --rpc-port=9933
       --rpc-external
       --rpc-cors all
       --rpc-methods=Unsafe
       --log="main,info,xcm=trace,xcm-executor=trace"
+      --database=auto
       -- 
       --wasm-execution=compiled 
       --execution=wasm
