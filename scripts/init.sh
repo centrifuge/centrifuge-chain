@@ -51,20 +51,19 @@ start-parachain)
   fi
 
   ./scripts/run_collator.sh \
-    --chain="${parachain}" --alice \
+    --chain="${parachain}" \
+    --alice \
     --parachain-id="${para_id}" \
     --base-path=$parachain_dir/data \
     --wasm-execution=compiled \
     --execution=wasm \
     --port $((30355 + $para_id)) \
     --rpc-port $((9936 + $para_id)) \
-    --ws-port $((9946 + $para_id)) \
     --rpc-external \
     --rpc-cors all \
-    --ws-external \
     --rpc-methods=Unsafe \
-    --state-cache-size 0 \
     --log="main,info" \
+    --database=auto
   ;;
 
 onboard-parachain)
