@@ -311,7 +311,6 @@ pub mod pallet {
 
 				Group::<T, I>::try_mutate(group_id, |group| {
 					StakeAccount::<T, I>::try_mutate(account_id, currency_id.clone(), |account| {
-						// nuno: it fails here
 						if !T::Currency::can_hold(currency_id.clone(), &(), account_id, amount) {
 							Err(TokenError::FundsUnavailable)?;
 						}

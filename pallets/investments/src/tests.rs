@@ -532,7 +532,6 @@ fn update_redeem_to_zero_removes_order() {
 			Some(Order::new(2 * amount, 0))
 		);
 
-		// nuno: this fails with
 		assert_ok!(Investments::update_redeem_order(
 			RuntimeOrigin::signed(TrancheHolderA::get()),
 			INVESTMENT_0_0,
