@@ -1,6 +1,6 @@
 # Node Key Alice: `subkey inspect //Alice`
 # Node Key Bob: `subkey inspect //Bob`
-version: '3'
+version: '3.4'
 services:
   node_alice:
     container_name: alice
