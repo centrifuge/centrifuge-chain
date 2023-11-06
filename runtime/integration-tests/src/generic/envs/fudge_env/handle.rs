@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cfg_primitives::{AuraId, BlockNumber};
+use cfg_primitives::{AuraId, Balance, BlockNumber};
 use cumulus_primitives_core::CollectCollationInfo;
 use frame_support::{traits::GenesisBuild, Parameter};
 use fudge::{
@@ -18,6 +18,7 @@ use polkadot_parachain::primitives::Id as ParaId;
 use polkadot_primitives::{
 	runtime_api::ParachainHost, AssignmentId, AuthorityDiscoveryId, ValidatorId,
 };
+use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sc_block_builder::BlockBuilderApi;
 use sc_client_api::Backend;
 use sc_service::{TFullBackend, TFullClient};
@@ -27,7 +28,7 @@ use sp_consensus_babe::BabeApi;
 use sp_consensus_slots::SlotDuration;
 use sp_core::{crypto::AccountId32, ByteArray, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, MaybeSerializeDeserialize, Member, OpaqueKeys},
+	traits::{AccountIdLookup, BlakeTwo256, MaybeSerializeDeserialize, Member, OpaqueKeys},
 	Storage,
 };
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
@@ -80,10 +81,17 @@ pub type RelayClient<ConstructApi> = TFullClient<RelayBlock, ConstructApi, TWasm
 pub type ParachainClient<Block, ConstructApi> = TFullClient<Block, ConstructApi, TWasmExecutor>;
 
 pub trait FudgeHandle<T: Runtime> {
-	type RelayRuntime: frame_system::Config<BlockNumber = BlockNumber>
-		+ polkadot_runtime_parachains::paras::Config
+	type RelayRuntime: frame_system::Config<
+			BlockNumber = BlockNumber,
+			AccountId = AccountId32,
+			Lookup = AccountIdLookup<AccountId32, ()>,
+		> + polkadot_runtime_parachains::paras::Config
 		+ polkadot_runtime_parachains::session_info::Config
-		+ polkadot_runtime_parachains::initializer::Config;
+		+ polkadot_runtime_parachains::initializer::Config
+		+ polkadot_runtime_parachains::hrmp::Config
+		+ pallet_session::Config<ValidatorId = AccountId32>
+		+ pallet_xcm::Config
+		+ pallet_balances::Config<Balance = Balance>;
 
 	type RelayConstructApi: ConstructRuntimeApi<
 			RelayBlock,
@@ -116,6 +124,9 @@ pub trait FudgeHandle<T: Runtime> {
 	const RELAY_CODE: Option<&'static [u8]>;
 	const PARACHAIN_CODE: Option<&'static [u8]>;
 
+	const PARA_ID: u32;
+	const SIBLING_ID: u32;
+
 	fn relay(&self) -> &RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime>;
 	fn relay_mut(&mut self) -> &mut RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime>;
 
@@ -139,6 +150,7 @@ pub trait FudgeHandle<T: Runtime> {
 
 	fn new_relay_builder(
 		storage: Storage,
+		session_keys: <Self::RelayRuntime as pallet_session::Config>::Keys,
 	) -> RelaychainBuilder<Self::RelayConstructApi, Self::RelayRuntime> {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 
@@ -147,11 +159,30 @@ pub trait FudgeHandle<T: Runtime> {
 			StateProvider::<TFullBackend<RelayBlock>, RelayBlock>::empty_default(Some(code))
 				.expect("ESSENTIAL: State provider can be created.");
 
+		let mut configuration = polkadot_runtime_parachains::configuration::GenesisConfig::<
+			Self::RelayRuntime,
+		>::default();
+
+		let mut host_config = HostConfiguration::<u32>::default();
+		host_config.max_downward_message_size = 1024;
+		host_config.hrmp_channel_max_capacity = 100;
+		host_config.hrmp_channel_max_message_size = 1024;
+		host_config.hrmp_channel_max_total_size = 1024;
+		host_config.hrmp_max_parachain_outbound_channels = 10;
+		host_config.hrmp_max_parachain_inbound_channels = 10;
+		host_config.hrmp_max_message_num_per_candidate = 100;
+		host_config.max_upward_queue_count = 10;
+		host_config.max_upward_queue_size = 1024;
+		host_config.max_upward_message_size = 1024;
+		host_config.max_upward_message_num_per_candidate = 100;
+
+		configuration.config = host_config;
+
 		state
 			.insert_storage(
-				polkadot_runtime_parachains::configuration::GenesisConfig::<Self::RelayRuntime>::default()
-				.build_storage()
-				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+				configuration
+					.build_storage()
+					.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");
 
@@ -164,6 +195,19 @@ pub trait FudgeHandle<T: Runtime> {
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");
+		state
+			.insert_storage(
+				pallet_session::GenesisConfig::<Self::RelayRuntime> {
+					keys: vec![(
+						AccountId32::from_slice([0u8; 32].as_slice()).unwrap(),
+						AccountId32::from_slice([0u8; 32].as_slice()).unwrap(),
+						session_keys,
+					)],
+				}
+				.build_storage()
+				.unwrap(),
+			)
+			.unwrap();
 
 		state
 			.insert_storage(storage)
@@ -204,9 +248,7 @@ pub trait FudgeHandle<T: Runtime> {
 
 		let dp: DigestCreator<RelayBlock> = Box::new(move |parent: Header, inherents| async move {
 			let babe = FudgeBabeDigest::<RelayBlock>::new();
-			let mut digest = babe.build_digest(parent.clone(), &inherents).await?;
-
-			babe.append_digest(parent, &mut digest, &inherents).await?;
+			let digest = babe.build_digest(parent.clone(), &inherents).await?;
 
 			Ok(digest)
 		});
@@ -243,6 +285,16 @@ pub trait FudgeHandle<T: Runtime> {
 				}
 				.build_storage()
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+			)
+			.expect("ESSENTIAL: Storage can be inserted");
+		state
+			.insert_storage(
+				<parachain_info::GenesisConfig as GenesisBuild<T>>::build_storage(
+					&parachain_info::GenesisConfig {
+						parachain_id: para_id,
+					},
+				)
+				.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
 			)
 			.expect("ESSENTIAL: Storage can be inserted");
 
@@ -288,9 +340,7 @@ pub trait FudgeHandle<T: Runtime> {
 					>::new(&*client)
 					.expect("ESSENTIAL: Aura digest can be created.");
 
-					let mut digest = aura.build_digest(parent.clone(), &inherents).await?;
-
-					// aura.append_digest(parent, &mut digest, &inherents).await?;
+					let digest = aura.build_digest(parent.clone(), &inherents).await?;
 
 					Ok(digest)
 				}

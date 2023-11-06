@@ -775,6 +775,8 @@ fn test_env(
 	// Build relay-chain builder
 	let relay = {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
+
+		//TODO(cdamian): Use RelayBlock
 		let mut state =
 			StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(
 				Some(RelayCode.expect("Wasm is build. Qed.")),

@@ -1,3 +1,6 @@
+use polkadot_primitives::{AssignmentId, AuthorityDiscoveryId, ValidatorId};
+use sp_core::ByteArray;
+
 /// Implements the `Runtime` trait for a runtime
 macro_rules! impl_runtime {
 	($runtime_path:ident, $kind:ident) => {
@@ -26,6 +29,7 @@ macro_rules! impl_fudge_support {
 	(
         $fudge_companion_type:ident,
         $relay_path:ident,
+		$relay_session_keys:expr,
         $parachain_path:ident,
         $parachain_id:literal,
         $sibling_id:literal
@@ -72,21 +76,23 @@ macro_rules! impl_fudge_support {
 				type RelayRuntime = $relay_path::Runtime;
 
 				const PARACHAIN_CODE: Option<&'static [u8]> = $parachain_path::WASM_BINARY;
+				const PARA_ID: u32 = $parachain_id;
 				const RELAY_CODE: Option<&'static [u8]> = $relay_path::WASM_BINARY;
+				const SIBLING_ID: u32 = $sibling_id;
 
 				fn new(
 					relay_storage: Storage,
 					parachain_storage: Storage,
 					sibling_storage: Storage,
 				) -> Self {
-					let relay = Self::new_relay_builder(relay_storage);
+					let relay = Self::new_relay_builder(relay_storage, $relay_session_keys);
 					let parachain = Self::new_parachain_builder(
-						ParaId::from($parachain_id),
+						ParaId::from(Self::PARA_ID),
 						&relay,
 						parachain_storage,
 					);
 					let sibling = Self::new_parachain_builder(
-						ParaId::from($sibling_id),
+						ParaId::from(Self::SIBLING_ID),
 						&relay,
 						sibling_storage,
 					);
@@ -160,15 +166,63 @@ macro_rules! impl_fudge_support {
 impl_fudge_support!(
 	FudgeDevelopment,
 	rococo_runtime,
+	default_rococo_session_keys(),
 	development_runtime,
 	2000,
 	2001
 );
-impl_fudge_support!(FudgeAltair, kusama_runtime, altair_runtime, 2088, 2089);
+
+impl_fudge_support!(
+	FudgeAltair,
+	kusama_runtime,
+	default_kusama_session_keys(),
+	altair_runtime,
+	2088,
+	2089
+);
+
 impl_fudge_support!(
 	FudgeCentrifuge,
 	polkadot_runtime,
+	default_polkadot_session_keys(),
 	centrifuge_runtime,
 	2031,
 	2032
 );
+
+pub fn default_rococo_session_keys() -> rococo_runtime::SessionKeys {
+	rococo_runtime::SessionKeys {
+		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
+			.unwrap(),
+		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
+		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
+		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
+		beefy: sp_consensus_beefy::crypto::AuthorityId::from_slice([0u8; 33].as_slice()).unwrap(),
+	}
+}
+
+pub fn default_kusama_session_keys() -> kusama_runtime::SessionKeys {
+	kusama_runtime::SessionKeys {
+		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
+			.unwrap(),
+		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
+		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
+		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
+	}
+}
+
+pub fn default_polkadot_session_keys() -> polkadot_runtime::SessionKeys {
+	polkadot_runtime::SessionKeys {
+		grandpa: pallet_grandpa::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		babe: pallet_babe::AuthorityId::from_slice([0u8; 32].as_slice()).unwrap(),
+		im_online: pallet_im_online::sr25519::AuthorityId::from_slice([0u8; 32].as_slice())
+			.unwrap(),
+		para_validator: ValidatorId::from_slice([0u8; 32].as_slice()).unwrap(),
+		para_assignment: AssignmentId::from_slice([0u8; 32].as_slice()).unwrap(),
+		authority_discovery: AuthorityDiscoveryId::from_slice([0u8; 32].as_slice()).unwrap(),
+	}
+}

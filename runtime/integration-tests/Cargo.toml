@@ -26,6 +26,7 @@ pallet-aura = { git = "https://github.com/paritytech/substrate", default-feature
 pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+pallet-beefy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 pallet-democracy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -44,6 +45,7 @@ fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", b
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-beefy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -172,6 +174,7 @@ std = [
   "pallet-balances/std",
   "pallet-collective/std",
   "pallet-democracy/std",
+  "pallet-beefy/std",
   "pallet-foreign-investments/std",
   "pallet-investments/std",
   "pallet-message-queue/std",
