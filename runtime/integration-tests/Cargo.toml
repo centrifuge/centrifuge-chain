@@ -90,9 +90,6 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.43" }
 
-# Misc
-xcm-simulator = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.43" }
-
 # Local
 altair-runtime = { path = "../altair" }
 centrifuge-runtime = { path = "../centrifuge" }

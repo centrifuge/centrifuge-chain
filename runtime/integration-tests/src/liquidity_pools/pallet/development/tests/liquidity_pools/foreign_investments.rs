@@ -64,7 +64,6 @@ use sp_runtime::{
 	WeakBoundedVec,
 };
 use tokio::runtime::Handle;
-use xcm_simulator::TestExt;
 
 use crate::{
 	chain::centrifuge::{

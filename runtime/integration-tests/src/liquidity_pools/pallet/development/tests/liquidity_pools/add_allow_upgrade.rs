@@ -53,7 +53,6 @@ use xcm::{
 	v3::{Junction, Junctions},
 	VersionedMultiLocation,
 };
-use xcm_simulator::TestExt;
 
 use crate::{
 	chain::{

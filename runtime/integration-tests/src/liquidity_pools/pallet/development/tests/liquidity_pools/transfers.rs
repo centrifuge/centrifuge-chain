@@ -46,7 +46,6 @@ use sp_runtime::{
 };
 use tokio::runtime::Handle;
 use xcm::{latest::MultiLocation, VersionedMultiLocation};
-use xcm_simulator::TestExt;
 
 use crate::{
 	chain::centrifuge::{

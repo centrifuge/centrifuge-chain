@@ -4180,7 +4180,7 @@ dependencies = [
 [[package]]
 name = "fudge"
 version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#c6ee97cc74d023a891fd6029d8f4bd3f67d4fbe2"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#a7162cac11809579ff23f74628a70700075e6a14"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -4193,7 +4193,7 @@ dependencies = [
 [[package]]
 name = "fudge-companion"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#c6ee97cc74d023a891fd6029d8f4bd3f67d4fbe2"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#a7162cac11809579ff23f74628a70700075e6a14"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -4204,7 +4204,7 @@ dependencies = [
 [[package]]
 name = "fudge-core"
 version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#c6ee97cc74d023a891fd6029d8f4bd3f67d4fbe2"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.43#a7162cac11809579ff23f74628a70700075e6a14"
 dependencies = [
  "async-trait",
  "bitvec 1.0.1",
@@ -11464,6 +11464,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-beefy",
  "pallet-block-rewards",
  "pallet-collator-selection",
  "pallet-collective",
@@ -11513,6 +11514,7 @@ dependencies = [
  "sp-block-builder",
  "sp-consensus-aura",
  "sp-consensus-babe",
+ "sp-consensus-beefy",
  "sp-consensus-slots",
  "sp-core",
  "sp-inherents",
@@ -11527,7 +11529,6 @@ dependencies = [
  "tracing-subscriber",
  "xcm",
  "xcm-executor",
- "xcm-simulator",
 ]
 
 [[package]]
@@ -16509,24 +16510,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.38",
-]
-
-[[package]]
-name = "xcm-simulator"
-version = "0.9.43"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.43#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
-dependencies = [
- "frame-support",
- "parity-scale-codec 3.6.5",
- "paste",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-runtime-parachains",
- "sp-io",
- "sp-std",
- "xcm",
- "xcm-builder",
- "xcm-executor",
 ]
 
 [[package]]

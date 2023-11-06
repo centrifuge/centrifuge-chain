@@ -42,7 +42,6 @@ use xcm::{
 	v3::{Junction, Junction::*, Junctions, Junctions::*, MultiLocation, NetworkId, WeightLimit},
 	VersionedMultiLocation,
 };
-use xcm_simulator::TestExt;
 
 use crate::{
 	chain::{
@@ -52,12 +51,9 @@ use crate::{
 		},
 		relay::{Hrmp as RelayHrmp, RuntimeOrigin as RelayRuntimeOrigin},
 	},
-	liquidity_pools::pallet::{
-		development::{
-			setup::{centrifuge_account, cfg, sibling_account},
-			tests::register_ausd,
-		},
-		xcm_metadata,
+	liquidity_pools::pallet::development::{
+		setup::{centrifuge_account, cfg, sibling_account},
+		tests::register_ausd,
 	},
 	utils::{
 		accounts::Keyring,
@@ -348,4 +344,13 @@ fn calc_fee(fee_per_second: Balance) -> Balance {
 	// NOTE: it is possible that in different machines this value may differ. We
 	// shall see.
 	fee_per_second.div_euclid(10_000) * 8
+}
+
+/// Get the `XcmMetadata` for a given `CrossChainTransferability` value if
+/// possible.
+fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
+	match transferability {
+		CrossChainTransferability::Xcm(x) | CrossChainTransferability::All(x) => Some(x),
+		_ => None,
+	}
 }

@@ -35,7 +35,6 @@ use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::{bounded::BoundedVec, H160};
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
-use xcm_simulator::TestExt;
 
 use crate::{
 	chain::centrifuge::{
