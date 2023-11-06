@@ -14,11 +14,14 @@ const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
 // 1 from utility.batchAll
 // 2 for pallet and extrinsic indices
 const COUNCIL_PROPOSAL_BYTES = 90;
+const COUNCIL_CLOSE_PROOF_SIZE = 1126;
+const COUNCIL_CLOSE_REF_TIME = 514033761
+
 // arbitrary numbers
-const FAST_TRACK_VOTE_BLOCKS = 15;
+const FAST_TRACK_VOTE_BLOCKS = 5;
 const FAST_TRACK_DELAY_BLOCKS = 0;
 const MAX_COUNT_DOWN_BLOCKS = 30;
-const POST_UPGRADE_WAITING_SESSIONS = 3;
+const POST_UPGRADE_WAITING_SESSIONS = 5;
 
 const run = async () => {
   let exitCode = 0;
@@ -65,8 +68,7 @@ const run = async () => {
     await waitUntilEventFound(api, "ExtrinsicSuccess")
 
     // Wait one extra session due to facing random errors when starting to send txs too close to the onboarding step
-    // await waitUntilEventFound(api, "NewSession")
-    await waitUntilEventFound(api, "NewSession") //TODO: Change to "NewSession" once we have built a runtime upgrade with a version increment
+    await waitUntilEventFound(api, "NewSession")
 
     const keyring = new Keyring({ type: "sr25519" });
     const alice = keyring.addFromUri(ALICE);
@@ -290,13 +292,14 @@ async function councilVoteProposal(api, account, proposalHash, proposalIndex, no
   });
 }
 
+// NOTE: If council closing fails, the proof size probably needs to be updated.
 async function councilCloseProposal(api, account, proposalHash, proposalIndex, nonce) {
   return new Promise((resolve, reject) => {
     console.log(
       `--- Submitting extrinsic to close council motion. (nonce: ${nonce}) ---`
     );
 
-    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, COUNCIL_PROPOSAL_BYTES)
+    api.tx.council.close(proposalHash, proposalIndex, { refTime: COUNCIL_CLOSE_REF_TIME, proofSize: COUNCIL_CLOSE_PROOF_SIZE }, COUNCIL_PROPOSAL_BYTES)
       .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
         console.log(`Current status is ${result.status}`);
         if (result.status.isInBlock) {

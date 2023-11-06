@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Moment;
+use cfg_traits::Seconds;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
@@ -21,7 +21,7 @@ pub struct EpochState<EpochId> {
 	/// Current epoch that is ongoing.
 	pub current: EpochId,
 	/// Time when the last epoch was closed.
-	pub last_closed: Moment,
+	pub last_closed: Seconds,
 	/// Last epoch that was executed.
 	pub last_executed: EpochId,
 }

@@ -12,9 +12,10 @@
 use std::marker::PhantomData;
 
 use cfg_mocks::pallet_mock_write_off_policy;
-use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
+use cfg_primitives::{BlockNumber, CollectionId, PoolEpochId, TrancheWeight};
 use cfg_traits::{
-	investments::OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState,
+	investments::OrderManager, Millis, PoolMutate, PoolUpdateGuard, PreConditions, Seconds,
+	UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
@@ -84,7 +85,7 @@ impl frame_system::Config for Test {
 
 impl pallet_timestamp::Config for Test {
 	type MinimumPeriod = ();
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
 }
@@ -180,7 +181,7 @@ pub type Balance = u128;
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 0;
+	pub const MinDelay: Seconds = 0;
 
 	pub const MaxRoles: u32 = u32::MAX;
 }
@@ -364,7 +365,7 @@ impl parachain_info::Config for Test {}
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		TrancheCurrency,

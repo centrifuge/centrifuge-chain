@@ -354,7 +354,7 @@ fn with_percentage_applied_external() {
 		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*pool_id, POOL_A);
 			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+			Ok((PRICE_VALUE, BLOCK_TIME_MS))
 		});
 		let pv = util::current_loan_pv(loan_id);
 

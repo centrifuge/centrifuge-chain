@@ -1,7 +1,10 @@
-use cfg_traits::interest::{InterestAccrual, InterestRate, RateCollection};
+use cfg_traits::{
+	interest::{InterestAccrual, InterestRate, RateCollection},
+	TimeAsSecs,
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebugNoBound};
+use frame_support::RuntimeDebugNoBound;
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
 
@@ -52,7 +55,7 @@ impl<T: Config> ActiveInterestRate<T> {
 	}
 
 	pub fn current_debt(&self) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
+		let now = T::Time::now();
 		T::InterestAccrual::calculate_debt(&self.interest_rate, self.normalized_acc, now)
 	}
 

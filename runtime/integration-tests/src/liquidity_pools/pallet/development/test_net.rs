@@ -23,6 +23,9 @@ use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
 use super::setup::{cfg, ExtBuilder, ALICE, BOB, PARA_ID_MOONBEAM};
+use crate::utils::{
+	AUSD_CURRENCY_ID, AUSD_ED, GLMR_CURRENCY_ID, GLMR_ED, USDT_CURRENCY_ID, USDT_ED,
+};
 
 decl_test_relay_chain! {
 	pub struct RelayChain {
@@ -114,6 +117,12 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 		.balances(vec![
 			(AccountId::from(ALICE), CurrencyId::Native, cfg(10_000)),
 			(AccountId::from(BOB), CurrencyId::Native, cfg(10_000)),
+			(AccountId::from(ALICE), AUSD_CURRENCY_ID, AUSD_ED),
+			(AccountId::from(BOB), AUSD_CURRENCY_ID, AUSD_ED),
+			(AccountId::from(ALICE), USDT_CURRENCY_ID, USDT_ED),
+			(AccountId::from(BOB), USDT_CURRENCY_ID, USDT_ED),
+			(AccountId::from(ALICE), GLMR_CURRENCY_ID, GLMR_ED),
+			(AccountId::from(BOB), GLMR_CURRENCY_ID, GLMR_ED),
 		])
 		.parachain_id(parachain_id)
 		.build()

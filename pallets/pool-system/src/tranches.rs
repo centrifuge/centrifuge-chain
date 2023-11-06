@@ -10,10 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, Seconds};
 #[cfg(test)]
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
@@ -134,7 +133,7 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub reserve: Balance,
 	pub loss: Balance,
 	pub ratio: Perquintill,
-	pub last_updated_interest: Moment,
+	pub last_updated_interest: Seconds,
 
 	pub _phantom: PhantomData<Weight>,
 }
@@ -176,7 +175,7 @@ where
 	/// Update the debt of a Tranche by multiplying with the accrued interest
 	/// since the last update:
 	/// debt = debt * interest_rate_per_second ^ (now - last_update)
-	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
+	pub fn accrue(&mut self, now: Seconds) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();
 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
@@ -213,7 +212,7 @@ where
 
 	/// Updates the debt by applying the accrued interest rate since the last
 	/// update moment and returns it.
-	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
+	pub fn debt(&mut self, now: Seconds) -> Result<Balance, DispatchError> {
 		self.accrue(now)?;
 		Ok(self.debt)
 	}
@@ -352,7 +351,7 @@ where
 	pub fn from_input<MaxTokenNameLength, MaxTokenSymbolLength>(
 		pool: PoolId,
 		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
-		now: Moment,
+		now: Seconds,
 	) -> Result<Self, DispatchError>
 	where
 		MaxTokenNameLength: Get<u32>,
@@ -490,7 +489,7 @@ where
 		id: TrancheId,
 		tranche_type: TrancheType<Rate>,
 		seniority: Option<Seniority>,
-		now: Moment,
+		now: Seconds,
 	) -> Result<Tranche<Balance, Rate, Weight, TrancheCurrency>, DispatchError> {
 		let tranche = Tranche {
 			tranche_type,
@@ -511,7 +510,7 @@ where
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
-		now: Moment,
+		now: Seconds,
 	) -> DispatchResult
 	where
 		MaxTokenNameLength: Get<u32>,
@@ -593,7 +592,7 @@ where
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
-		now: Moment,
+		now: Seconds,
 	) -> DispatchResult
 	where
 		MaxTokenNameLength: Get<u32>,
@@ -801,7 +800,7 @@ where
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
-		now: Moment,
+		now: Seconds,
 	) -> Result<Vec<BalanceRatio>, DispatchError>
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,
@@ -965,7 +964,7 @@ where
 
 	pub fn rebalance_tranches(
 		&mut self,
-		now: Moment,
+		now: Seconds,
 		pool_total_reserve: Balance,
 		pool_nav: Balance,
 		tranche_ratios: &[Perquintill],

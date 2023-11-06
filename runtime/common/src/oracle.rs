@@ -1,8 +1,8 @@
 use cfg_primitives::{
 	conversion::fixed_point_to_balance,
-	types::{AccountId, Balance, Moment, PoolId},
+	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::PoolInspect;
+use cfg_traits::{Millis, PoolInspect};
 use cfg_types::{
 	fixed_point::Quantity,
 	oracles::OracleKey,
@@ -12,22 +12,22 @@ use orml_traits::{asset_registry, CombineData, DataProviderExtended, OnNewData};
 use sp_runtime::traits::Zero;
 use sp_std::{marker::PhantomData, vec::Vec};
 
-type TimestampedQuantity = orml_oracle::TimestampedValue<Quantity, Moment>;
+type TimestampedQuantity = orml_oracle::TimestampedValue<Quantity, Millis>;
 
 /// A provider that maps an `TimestampedQuantity` into a tuple
-/// `(Balance, Moment)`.
+/// `(Balance, Millis)`.
 pub struct DataProviderBridge<Oracle, AssetRegistry, Pools>(
 	PhantomData<(Oracle, AssetRegistry, Pools)>,
 );
 
-impl<Oracle, AssetRegistry, Pools> DataProviderExtended<(OracleKey, PoolId), (Balance, Moment)>
+impl<Oracle, AssetRegistry, Pools> DataProviderExtended<(OracleKey, PoolId), (Balance, Millis)>
 	for DataProviderBridge<Oracle, AssetRegistry, Pools>
 where
 	Oracle: DataProviderExtended<OracleKey, TimestampedQuantity>,
 	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
 	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
 {
-	fn get_no_op((key, pool_id): &(OracleKey, PoolId)) -> Option<(Balance, Moment)> {
+	fn get_no_op((key, pool_id): &(OracleKey, PoolId)) -> Option<(Balance, Millis)> {
 		let TimestampedQuantity { value, timestamp } = Oracle::get_no_op(key)?;
 		let currency = Pools::currency_for(*pool_id)?;
 		let decimals = AssetRegistry::metadata(&currency)?.decimals;
@@ -37,7 +37,7 @@ where
 		Some((balance, timestamp))
 	}
 
-	fn get_all_values() -> Vec<((OracleKey, PoolId), Option<(Balance, Moment)>)> {
+	fn get_all_values() -> Vec<((OracleKey, PoolId), Option<(Balance, Millis)>)> {
 		// Unimplemented.
 		//
 		// This method is not used by pallet-data-collector and there is no way to

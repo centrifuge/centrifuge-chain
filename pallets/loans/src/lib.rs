@@ -70,10 +70,10 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::Moment;
 	use cfg_traits::{
-		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, Permissions,
-		PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
+		self, changes::ChangeGuard, data::DataRegistry, interest::InterestAccrual, IntoSeconds,
+		Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate, Seconds,
+		TimeAsSecs,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -88,12 +88,9 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		storage::transactional,
-		traits::{
-			tokens::{
-				self,
-				nonfungibles::{Inspect, Transfer},
-			},
-			UnixTime,
+		traits::tokens::{
+			self,
+			nonfungibles::{Inspect, Transfer},
 		},
 	};
 	use frame_system::pallet_prelude::*;
@@ -116,7 +113,7 @@ pub mod pallet {
 
 	pub type PortfolioInfoOf<T> = Vec<(<T as Config>::LoanId, ActiveLoanInfo<T>)>;
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
+	pub type PriceOf<T> = (<T as Config>::Balance, <T as Config>::Moment);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
@@ -167,7 +164,10 @@ pub mod pallet {
 		type PerThing: Parameter + Member + PerThing + TypeInfo + MaxEncodedLen;
 
 		/// Fetching method for the time of the current block
-		type Time: UnixTime;
+		type Time: TimeAsSecs;
+
+		/// Generic time type
+		type Moment: Parameter + Member + IntoSeconds;
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
@@ -243,9 +243,7 @@ pub mod pallet {
 	/// Storage for active loans.
 	/// The indexation of this storage differs from `CreatedLoan` or
 	/// `ClosedLoan` because here we try to minimize the iteration speed over
-	/// all active loans in a pool. `Moment` value along with the `ActiveLoan`
-	/// correspond to the last moment the active loan was used to compute the
-	/// portfolio valuation in an inexact way.
+	/// all active loans in a pool.
 	#[pallet::storage]
 	pub(crate) type ActiveLoans<T: Config> = StorageMap<
 		_,
@@ -447,7 +445,7 @@ pub mod pallet {
 			Self::ensure_collateral_owner(&who, info.collateral())?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			info.validate(Self::now())?;
+			info.validate(T::Time::now())?;
 
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
@@ -929,7 +927,7 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		pub fn expire_action(pool_id: T::PoolId, loan_id: T::LoanId) -> DispatchResult {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.set_maturity(T::Time::now().as_secs());
+				loan.set_maturity(T::Time::now());
 				Ok(())
 			})?;
 			Ok(())
@@ -938,10 +936,6 @@ pub mod pallet {
 
 	/// Utility methods
 	impl<T: Config> Pallet<T> {
-		fn now() -> Moment {
-			T::Time::now().as_secs()
-		}
-
 		fn ensure_role(pool_id: T::PoolId, who: &T::AccountId, role: PoolRole) -> DispatchResult {
 			T::Permissions::has(
 				PermissionScope::Pool(pool_id),
@@ -1023,7 +1017,7 @@ pub mod pallet {
 				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
 				.collect::<Result<Vec<_>, DispatchError>>()?;
 
-			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let portfolio = portfolio::PortfolioValuation::from_values(T::Time::now(), values)?;
 			let valuation = portfolio.value();
 			PortfolioValuation::<T>::insert(pool_id, portfolio);
 
@@ -1162,7 +1156,7 @@ pub mod pallet {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
-		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Moment)> {
+		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Seconds)> {
 			let portfolio = PortfolioValuation::<T>::get(pool_id);
 			Some((portfolio.value(), portfolio.last_updated()))
 		}

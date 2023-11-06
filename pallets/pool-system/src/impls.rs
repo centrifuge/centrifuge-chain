@@ -29,7 +29,7 @@ use crate::{
 };
 
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolId = T::PoolId;
 	type TrancheId = T::TrancheId;
 
@@ -54,15 +54,15 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type BalanceRatio = T::BalanceRatio;
-	type Moment = Moment;
+	type Moment = Seconds;
 	type PoolId = T::PoolId;
 	type TrancheId = T::TrancheId;
 
 	fn get(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
-		let now = Self::now();
+	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Seconds>> {
+		let now = T::Time::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
 		// Get cached nav as calculating current nav would be too computationally
@@ -136,7 +136,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		Self::take_deposit(depositor.clone(), pool_id)?;
 
-		let now = Self::now();
+		let now = T::Time::now();
 
 		let tranches = Tranches::<
 			T::Balance,
@@ -264,7 +264,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
 		}
 
-		let now = Self::now();
+		let now = T::Time::now();
 
 		let update = ScheduledUpdateDetails {
 			changes: changes.clone(),
@@ -295,7 +295,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		let update =
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
-		let now = Self::now();
+		let now = T::Time::now();
 		ensure!(
 			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
 			Error::<T>::ScheduledTimeHasNotPassed
@@ -392,7 +392,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let noted_change = NotedPoolChange {
-			submitted_time: Self::now(),
+			submitted_time: T::Time::now(),
 			change,
 		};
 
@@ -427,7 +427,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			allowed &= match requirement {
 				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
 				Requirement::DelayTime(secs) => {
-					Self::now().saturating_sub(submitted_time) >= secs as u64
+					T::Time::now().saturating_sub(submitted_time) >= secs as u64
 				}
 				Requirement::BlockedByLockedRedemptions => true, // TODO: #1407
 			}

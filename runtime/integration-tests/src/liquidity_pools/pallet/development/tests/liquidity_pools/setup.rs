@@ -22,8 +22,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{currency_decimals, Balance, Moment, PoolId, TrancheId};
-use cfg_traits::{investments::InvestmentAccountant, PoolMutate};
+use cfg_primitives::{currency_decimals, Balance, PoolId, TrancheId};
+use cfg_traits::{investments::InvestmentAccountant, PoolMutate, Seconds};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::{Quantity, Rate},
@@ -70,7 +70,7 @@ use crate::{
 		setup::{dollar, ALICE, BOB, PARA_ID_MOONBEAM},
 		tests::register_ausd,
 	},
-	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, GLMR_ED, MOONBEAM_EVM_CHAIN_ID},
 };
 // 10 GLMR (18 decimals)
 pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
@@ -78,7 +78,7 @@ pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(MOONBEAM_EVM_CHAIN_ID);
 pub const DEFAULT_EVM_ADDRESS_MOONBEAM: [u8; 20] = [99; 20];
 pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, DEFAULT_EVM_ADDRESS_MOONBEAM);
-pub const DEFAULT_VALIDITY: Moment = 2555583502;
+pub const DEFAULT_VALIDITY: Seconds = 2555583502;
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 pub const DEFAULT_POOL_ID: u64 = 42;
@@ -159,6 +159,7 @@ pub fn setup_pre_requirements() {
 			"GLMR".into(),
 			18,
 			false,
+			GLMR_ED,
 			Some(VersionedMultiLocation::V3(
 				get_default_moonbeam_native_token_location()
 			)),
@@ -303,6 +304,7 @@ pub fn asset_metadata(
 	symbol: Vec<u8>,
 	decimals: u32,
 	is_pool_currency: bool,
+	existential_deposit: Balance,
 	location: Option<VersionedMultiLocation>,
 	transferability: CrossChainTransferability,
 ) -> AssetMetadata<Balance, CustomMetadata> {
@@ -311,7 +313,7 @@ pub fn asset_metadata(
 		symbol,
 		decimals,
 		location,
-		existential_deposit: 1_000_000,
+		existential_deposit,
 		additional: CustomMetadata {
 			transferability,
 			mintable: false,

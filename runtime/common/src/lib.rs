@@ -26,6 +26,12 @@ pub mod migrations;
 pub mod oracle;
 pub mod xcm;
 
+use cfg_primitives::Balance;
+use cfg_types::tokens::CurrencyId;
+use orml_traits::GetByKey;
+use sp_runtime::traits::Get;
+use sp_std::marker::PhantomData;
+
 #[macro_export]
 macro_rules! production_or_benchmark {
 	($production:expr, $benchmark:expr) => {{
@@ -35,6 +41,22 @@ macro_rules! production_or_benchmark {
 			$production
 		}
 	}};
+}
+
+pub struct CurrencyED<T>(PhantomData<T>);
+impl<T> GetByKey<CurrencyId, Balance> for CurrencyED<T>
+where
+	T: pallet_balances::Config<Balance = Balance>
+		+ orml_asset_registry::Config<AssetId = CurrencyId, Balance = Balance>,
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		match currency_id {
+			CurrencyId::Native => T::ExistentialDeposit::get(),
+			currency_id => orml_asset_registry::Pallet::<T>::metadata(currency_id)
+				.map(|metadata| metadata.existential_deposit)
+				.unwrap_or_default(),
+		}
+	}
 }
 
 pub mod xcm_fees {
@@ -561,6 +583,14 @@ pub mod foreign_investments {
 			}
 		}
 	}
+}
+
+pub mod liquidity_pools {
+	use cfg_primitives::{Balance, PoolId, TrancheId};
+	use cfg_types::{domain_address::Domain, fixed_point::Ratio};
+
+	pub type LiquidityPoolsMessage =
+		pallet_liquidity_pools::Message<Domain, PoolId, TrancheId, Balance, Ratio>;
 }
 
 pub mod origin {

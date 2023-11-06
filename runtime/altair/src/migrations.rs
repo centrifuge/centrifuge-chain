@@ -11,10 +11,8 @@
 // GNU General Public License for more details.
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
-/// The migration set for Altair 1031 @ Kusama. It includes all the migrations
-/// that have to be applied on that chain, which includes migrations that have
-/// already been executed on Algol (1028 & 1029).
-#[cfg(not(feature = "testnet-runtime"))]
+/// The migration set for Altair 1034 @ Kusama. It includes all the migrations
+/// that have to be applied on that chain.
 pub type UpgradeAltair1034 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
@@ -51,13 +49,9 @@ pub type UpgradeAltair1034 = (
 	pallet_xcm::migration::v1::MigrateToV1<crate::Runtime>,
 	// Sets currently unset safe XCM version to v2
 	xcm_v2_to_v3::SetSafeXcmVersion,
+	// Sets account codes for all precompiles
+	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
 );
-
-/// The Upgrade set for Algol - it excludes the migrations already executed in
-/// the side releases that only landed on Algol (1028 to 1031) but not yet on
-/// Altair.
-#[cfg(feature = "testnet-runtime")]
-pub type UpgradeAltair1034 = ();
 
 mod asset_registry {
 	use cfg_primitives::Balance;
@@ -68,31 +62,9 @@ mod asset_registry {
 	use sp_std::{vec, vec::Vec};
 	use xcm::{v3::prelude::*, VersionedMultiLocation};
 
-	pub const ALTAIR_ASSET_LOC_COUNT: u32 = 5;
-	pub const ALTAIR_ASSET_METADATA_COUNT: u32 = 5;
-
 	pub struct AltairAssets;
 	impl runtime_common::migrations::asset_registry_xcmv3::AssetsToMigrate for AltairAssets {
-		fn get_assets_to_migrate(
-			loc_count: u32,
-			meta_count: u32,
-		) -> Vec<(
-			CurrencyId,
-			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-		)> {
-			match (loc_count, meta_count) {
-				(loc, meta)
-					if (loc, meta) == (ALTAIR_ASSET_LOC_COUNT, ALTAIR_ASSET_METADATA_COUNT) =>
-				{
-					Self::get_altair_assets()
-				}
-				_ => vec![],
-			}
-		}
-	}
-
-	impl AltairAssets {
-		pub fn get_altair_assets() -> Vec<(
+		fn get_assets_to_migrate() -> Vec<(
 			CurrencyId,
 			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 		)> {

@@ -52,7 +52,7 @@ use xcm_emulator::TestExt;
 
 use crate::{
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB},
+		setup::{dollar, ALICE, BOB, CHARLIE},
 		test_net::{Development, Moonbeam, RelayChain, TestNet},
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
@@ -63,7 +63,7 @@ use crate::{
 			DEFAULT_POOL_ID,
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::{AUSD_CURRENCY_ID, AUSD_ED, MOONBEAM_EVM_CHAIN_ID},
 };
 
 #[test]
@@ -73,13 +73,17 @@ fn transfer_non_tranche_tokens_from_local() {
 		// Register GLMR and fund BOB
 		setup_pre_requirements();
 
-		let initial_balance = 100_000_000;
+		let initial_balance = 2 * AUSD_ED;
 		let amount = initial_balance / 2;
 		let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
 		let currency_id = AUSD_CURRENCY_ID;
-		let source_account = BOB;
+		let source_account = CHARLIE;
 
 		// Mint sufficient balance
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &source_account.into()),
+			0
+		);
 		assert_ok!(OrmlTokens::mint_into(
 			currency_id,
 			&source_account.into(),
@@ -188,15 +192,21 @@ fn transfer_non_tranche_tokens_to_local() {
 			amount,
 		};
 
-		assert!(OrmlTokens::total_issuance(currency_id).is_zero());
+		assert_eq!(OrmlTokens::total_issuance(currency_id), AUSD_ED * 2);
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
 		// Verify that the correct amount was minted
-		assert_eq!(OrmlTokens::total_issuance(currency_id), amount);
-		assert_eq!(OrmlTokens::free_balance(currency_id, &receiver), amount);
+		assert_eq!(
+			OrmlTokens::total_issuance(currency_id),
+			amount + AUSD_ED * 2
+		);
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &receiver),
+			amount + AUSD_ED
+		);
 
 		// Verify empty transfers throw
 		assert_noop!(

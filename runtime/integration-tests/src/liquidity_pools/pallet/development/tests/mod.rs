@@ -10,7 +10,7 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::utils::{AUSD_CURRENCY_ID, USDT_CURRENCY_ID};
+use crate::utils::{AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED};
 
 mod liquidity_pools;
 mod routers;
@@ -23,7 +23,7 @@ pub fn register_ausd() {
 		decimals: 12,
 		name: "Acala Dollar".into(),
 		symbol: "AUSD".into(),
-		existential_deposit: 1_000_000_000,
+		existential_deposit: AUSD_ED,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 			1,
 			X2(
@@ -54,7 +54,7 @@ fn register_usdt() {
 		decimals: 6,
 		name: "Tether USDT".into(),
 		symbol: "USDT".into(),
-		existential_deposit: 10_000,
+		existential_deposit: USDT_ED,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 			1,
 			X3(Parachain(1000), PalletInstance(50), GeneralIndex(1984)),

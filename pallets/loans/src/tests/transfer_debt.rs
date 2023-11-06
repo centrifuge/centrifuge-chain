@@ -11,7 +11,7 @@ fn config_mocks(
 	MockPrices::mock_get(|id, pool_id| {
 		assert_eq!(*id, REGISTER_PRICE_ID);
 		assert_eq!(*pool_id, POOL_A);
-		Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		Ok((PRICE_VALUE, BLOCK_TIME_MS))
 	});
 	MockPrices::mock_register_id(|id, pool_id| {
 		assert_eq!(*pool_id, POOL_A);
@@ -247,7 +247,7 @@ fn with_mismatch_external_internal_amounts() {
 		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
 			assert_eq!(*pool_id, POOL_A);
-			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+			Ok((PRICE_VALUE, BLOCK_TIME_MS))
 		});
 		assert_noop!(
 			Loans::propose_transfer_debt(
@@ -316,7 +316,7 @@ fn with_mismatch_external_external_amounts() {
 		MockPrices::mock_get(|id, pool_id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
 			assert_eq!(*pool_id, POOL_A);
-			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+			Ok((PRICE_VALUE, BLOCK_TIME_MS))
 		});
 		assert_noop!(
 			Loans::propose_transfer_debt(
