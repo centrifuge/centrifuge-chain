@@ -4,7 +4,7 @@ use codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
-	DispatchError, DispatchResult, MultiSignature, Storage,
+	DispatchError, MultiSignature, Storage,
 };
 use sp_std::ops::Range;
 
@@ -72,7 +72,11 @@ pub trait Env<T: Runtime> {
 	) -> Result<Balance, DispatchError>;
 
 	/// Submit an extrinsic mutating the state when the block is finalized
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult;
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>>;
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T::RuntimeEventExt>) {

@@ -13,7 +13,7 @@ use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
-use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage};
+use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, Storage};
 use sp_timestamp::Timestamp;
 
 use crate::{
@@ -89,7 +89,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		Ok(fee)
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>> {
 		self.pending_extrinsics.push((who, call.into()));
 		Ok(())
 	}

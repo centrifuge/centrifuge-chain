@@ -13,7 +13,8 @@
 use cfg_primitives::{AccountId, Balance, CFG};
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards};
 use cfg_types::tokens::CurrencyId;
-use development_runtime::{apis::RewardsApi, BlockId};
+use development_runtime::{BlockId};
+use runtime_common::apis::RewardsApi;
 use frame_support::assert_ok;
 use runtime_common::apis::RewardDomain;
 use sp_core::{sr25519, Pair};

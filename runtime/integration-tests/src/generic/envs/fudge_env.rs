@@ -8,7 +8,7 @@ use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::H256;
-use sp_runtime::{DispatchError, DispatchResult, Storage};
+use sp_runtime::{DispatchError, Storage};
 
 use crate::{
 	generic::{
@@ -32,7 +32,10 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
-		let handle = T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
+		let mut handle =
+			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
+
+		handle.evolve();
 
 		Self {
 			handle,
@@ -48,7 +51,11 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		unimplemented!("FudgeEnv does not support submit_now() try submit_later()")
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>> {
 		let nonce = *self.nonce_storage.entry(who).or_default();
 
 		let extrinsic = self.parachain_state(|| utils::create_extrinsic::<T>(who, call, nonce));
@@ -56,11 +63,7 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		self.handle
 			.parachain_mut()
 			.append_extrinsic(extrinsic)
-			.map(|_| ())
-			.map_err(|_| {
-				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
-				// More information, issue: https://github.com/centrifuge/fudge/issues/67
-			})?;
+			.map(|_| ())?;
 
 		self.nonce_storage.insert(who, nonce + 1);
 
