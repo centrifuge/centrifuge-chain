@@ -323,7 +323,6 @@ parameter_types! {
 	// This is set to a value so you can still get some return without getting your account removed.
 	pub const ExistentialDeposit: Balance = 1 * MICRO_CFG;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
-	pub const MaxHolds: u32 = 50;
 	pub const MaxLocks: u32 = 50;
 	pub const MaxReserves: u32 = 50;
 }
@@ -339,9 +338,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
-	type MaxFreezes = MaxFreezes;
 	type MaxFreezes = ();
-	type MaxHolds = MaxHolds;
 	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
