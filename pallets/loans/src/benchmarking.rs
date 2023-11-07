@@ -17,22 +17,18 @@ use cfg_traits::{
 	changes::ChangeGuard,
 	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolWriteOffPolicyMutate,
+	Permissions, PoolWriteOffPolicyMutate, Seconds, TimeAsSecs,
 };
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::traits::{
-	tokens::nonfungibles::{Create, Mutate},
-	UnixTime,
-};
+use frame_support::traits::tokens::nonfungibles::{Create, Mutate};
 use frame_system::RawOrigin;
 use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Bounded, Get, One, Zero};
-use sp_std::time::Duration;
 
 use crate::{
 	entities::{
@@ -52,7 +48,7 @@ use crate::{
 	},
 };
 
-const OFFSET: Duration = Duration::from_secs(120);
+const OFFSET: Seconds = 120;
 const COLLECION_ID: u16 = 42;
 const COLLATERAL_VALUE: u128 = 1_000_000;
 const FUNDS: u128 = 1_000_000_000;
@@ -136,7 +132,7 @@ where
 	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
 		LoanInfo {
 			schedule: RepaymentSchedule {
-				maturity: Maturity::fixed((T::Time::now() + OFFSET).as_secs()),
+				maturity: Maturity::fixed(T::Time::now() + OFFSET),
 				interest_payments: InterestPayments::None,
 				pay_down_schedule: PayDownSchedule::None,
 			},
@@ -478,8 +474,10 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_1, loan_2, repaid_amount, borrow_amount)
 
 	apply_transfer_debt {
+		let n in 2..Helper::<T>::max_active_loans() - 2;
+
 		let any = account("any", 0, 0);
-		let pool_id = Helper::<T>::prepare_benchmark();
+		let pool_id = Helper::<T>::initialize_active_state(n);
 		let change_id = Helper::<T>::propose_transfer_debt(pool_id);
 
 	}: _(RawOrigin::Signed(any), pool_id, change_id)

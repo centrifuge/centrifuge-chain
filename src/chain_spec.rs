@@ -22,6 +22,8 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
+use std::collections::BTreeMap;
+
 use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{
 	currency_decimals, parachains, Balance, BlockNumber, CFG, MILLI_CFG, SAFE_XCM_VERSION,
@@ -29,8 +31,11 @@ use cfg_primitives::{
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{
-		lp_eth_usdc_metadata, AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
-		GOERLI_CHAIN_ID, GOERLI_USDC, LP_ETH_USDC_CURRENCY_ID,
+		usdc::{
+			lp_wrapped_usdc_metadata, CHAIN_ID_ETH_GOERLI_TESTNET, CONTRACT_ETH_GOERLI,
+			CURRENCY_ID_LP_ETH_GOERLI,
+		},
+		AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata,
 	},
 };
 use cfg_utils::vec_to_fixed_array;
@@ -40,7 +45,7 @@ use runtime_common::account_conversion::AccountConverter;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
+use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public, H160, U256};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use xcm::{
 	latest::MultiLocation,
@@ -356,10 +361,6 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn algol_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/algol-spec.json")[..]).unwrap()
-}
-
 pub fn charcoal_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
@@ -664,7 +665,9 @@ fn centrifuge_genesis(
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
-		evm: Default::default(),
+		evm: centrifuge_runtime::EVMConfig {
+			accounts: precompile_account_genesis(),
+		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
@@ -776,7 +779,9 @@ fn altair_genesis(
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
-		evm: Default::default(),
+		evm: centrifuge_runtime::EVMConfig {
+			accounts: precompile_account_genesis(),
+		},
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: altair_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
@@ -937,7 +942,9 @@ fn development_genesis(
 			chain_id: chain_id.into(),
 		},
 		ethereum: Default::default(),
-		evm: Default::default(),
+		evm: centrifuge_runtime::EVMConfig {
+			accounts: precompile_account_genesis(),
+		},
 		block_rewards_base: Default::default(),
 		liquidity_rewards_base: Default::default(),
 		polkadot_xcm: development_runtime::PolkadotXcmConfig {
@@ -999,13 +1006,98 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			LP_ETH_USDC_CURRENCY_ID,
-			lp_eth_usdc_metadata(
-				development_runtime::LiquidityPoolsPalletIndex::get(),
-				GOERLI_CHAIN_ID,
-				GOERLI_USDC,
+			CURRENCY_ID_LP_ETH_GOERLI,
+			lp_wrapped_usdc_metadata(
+				"LP Ethereum Wrapped USDC".as_bytes().to_vec(),
+				"LpEthUSDC".as_bytes().to_vec(),
+				development_runtime::liquidity_pools::LiquidityPoolsPalletIndex::get(),
+				CHAIN_ID_ETH_GOERLI_TESTNET,
+				CONTRACT_ETH_GOERLI,
+				true,
 			)
 			.encode(),
 		),
 	]
+}
+
+fn precompile_account_genesis() -> BTreeMap<H160, fp_evm::GenesisAccount> {
+	use fp_evm::GenesisAccount;
+	use runtime_common::evm::precompile::*;
+
+	let mut map = BTreeMap::new();
+	/*
+		pub struct GenesisAccount {
+		/// Account nonce.
+		pub nonce: U256,
+		/// Account balance.
+		pub balance: U256,
+		/// Full account storage.
+		pub storage: std::collections::BTreeMap<sp_core::H256, sp_core::H256>,
+		/// Account code.
+		pub code: Vec<u8>,
+	}
+		 */
+	let to_genesis_account = |code: [u8; 5]| -> GenesisAccount {
+		GenesisAccount {
+			nonce: U256::zero(),
+			balance: U256::zero(),
+			storage: BTreeMap::new(),
+			code: code.to_vec(),
+		}
+	};
+
+	map.insert(
+		H160::from(ECRECOVER_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(SHA256_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(RIPEMD160_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(IDENTITY_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(MODEXP_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(BN128ADD_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(BN128MUL_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(BN128PAIRING_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(BLAKE2F_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(SHA3FIPS256_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(DISPATCH_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(ECRECOVERPUBLICKEY_ADDR),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+	map.insert(
+		H160::from(LP_AXELAR_GATEWAY),
+		to_genesis_account(PRECOMPILE_CODE_STORAGE),
+	);
+
+	map
 }

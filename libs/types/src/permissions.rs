@@ -10,13 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Properties;
+use cfg_traits::{Properties, Seconds, TimeAsSecs};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	sp_runtime::traits::Saturating,
-	traits::{Get, UnixTime},
-	BoundedVec,
-};
+use frame_support::{traits::Get, BoundedVec};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -27,27 +23,26 @@ use sp_std::{
 
 /// PoolRole can hold any type of role specific functions a user can do on a
 /// given pool.
-// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a
-// default.       In case the Role we provide does not match what we expect. I.e. if we change the
-// Moment       type in our actual runtimes, then the compiler complains about it anyways.
+// NOTE: In order to not carry around the TrancheId type all the time, we give it a
+// default.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
+pub enum PoolRole<TrancheId = [u8; 16]> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,
 	LiquidityAdmin,
 	InvestorAdmin,
 	LoanAdmin,
-	TrancheInvestor(TrancheId, Moment),
+	TrancheInvestor(TrancheId, Seconds),
 	PODReadAccess,
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PermissionedCurrencyRole<Moment = u64> {
+pub enum PermissionedCurrencyRole {
 	/// This role can hold & transfer tokens
-	Holder(Moment),
+	Holder(Seconds),
 	/// This role can add/remove holders
 	Manager,
 	/// This role can mint/burn tokens
@@ -59,11 +54,11 @@ pub enum PermissionedCurrencyRole<Moment = u64> {
 /// specific scope.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum Role<TrancheId = [u8; 16], Moment = u64> {
+pub enum Role<TrancheId = [u8; 16]> {
 	/// Roles that apply to a specific pool.
-	PoolRole(PoolRole<TrancheId, Moment>),
+	PoolRole(PoolRole<TrancheId>),
 	/// Roles that apply to a specific permissioned currency.
-	PermissionedCurrencyRole(PermissionedCurrencyRole<Moment>),
+	PermissionedCurrencyRole(PermissionedCurrencyRole),
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
@@ -107,43 +102,42 @@ bitflags::bitflags! {
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
-pub struct PermissionedCurrencyHolderInfo<Moment> {
-	permissioned_till: Moment,
+pub struct PermissionedCurrencyHolderInfo {
+	permissioned_till: Seconds,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
-pub struct TrancheInvestorInfo<TrancheId, Moment> {
+pub struct TrancheInvestorInfo<TrancheId> {
 	tranche_id: TrancheId,
-	permissioned_till: Moment,
+	permissioned_till: Seconds,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
-pub struct PermissionedCurrencyHolders<Now, MinDelay, Moment> {
-	info: Option<PermissionedCurrencyHolderInfo<Moment>>,
+pub struct PermissionedCurrencyHolders<Now, MinDelay> {
+	info: Option<PermissionedCurrencyHolderInfo>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
-pub struct TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches: Get<u32>> {
-	info: BoundedVec<TrancheInvestorInfo<TrancheId, Moment>, MaxTranches>,
+pub struct TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
+	info: BoundedVec<TrancheInvestorInfo<TrancheId>, MaxTranches>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
 /// The structure that we store in the pallet-permissions storage
 /// This here implements trait Properties.
 #[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug, MaxEncodedLen)]
-pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>, Moment = u64> {
+pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>> {
 	pool_admin: PoolAdminRoles,
 	currency_admin: CurrencyAdminRoles,
-	permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay, Moment>,
-	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>,
+	permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay>,
+	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>,
 }
 
-impl<Now, MinDelay, Moment> Default for PermissionedCurrencyHolders<Now, MinDelay, Moment>
+impl<Now, MinDelay> Default for PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 {
 	fn default() -> Self {
 		Self {
@@ -153,12 +147,11 @@ where
 	}
 }
 
-impl<Now, MinDelay, TrancheId, Moment, MaxTranches> Default
-	for TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>
+impl<Now, MinDelay, TrancheId, MaxTranches> Default
+	for TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
 {
@@ -170,12 +163,11 @@ where
 	}
 }
 
-impl<Now, MinDelay, TrancheId, MaxTranches, Moment> Default
-	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches, Moment>
+impl<Now, MinDelay, TrancheId, MaxTranches> Default
+	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
 {
@@ -183,32 +175,29 @@ where
 		Self {
 			pool_admin: PoolAdminRoles::empty(),
 			currency_admin: CurrencyAdminRoles::empty(),
-			permissioned_asset_holder:
-				PermissionedCurrencyHolders::<Now, MinDelay, Moment>::default(),
-			tranche_investor:
-				TrancheInvestors::<Now, MinDelay, TrancheId, Moment, MaxTranches>::default(),
+			permissioned_asset_holder: PermissionedCurrencyHolders::<Now, MinDelay>::default(),
+			tranche_investor: TrancheInvestors::<Now, MinDelay, TrancheId, MaxTranches>::default(),
 		}
 	}
 }
 
 /// The implementation of trait Properties for our PermissionsRoles does not
-/// care which Moment is passed to the PoolRole::TrancheInvestor(TrancheId,
-/// Moment) variant. This UNION shall reflect that and explain to the reader why
-/// it is passed here.
-pub const UNION: u64 = 0;
+/// care which Seconds is passed to the PoolRole::TrancheInvestor(TrancheId,
+/// Seconds) variant. This UNION shall reflect that and explain to the reader
+/// why it is passed here.
+pub const UNION: Seconds = 0;
 
-impl<Now, MinDelay, TrancheId, MaxTranches, Moment> Properties
-	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches, Moment>
+impl<Now, MinDelay, TrancheId, MaxTranches> Properties
+	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
 {
 	type Error = ();
 	type Ok = ();
-	type Property = Role<TrancheId, Moment>;
+	type Property = Role<TrancheId>;
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -318,11 +307,10 @@ where
 	}
 }
 
-impl<Now, MinDelay, Moment> PermissionedCurrencyHolders<Now, MinDelay, Moment>
+impl<Now, MinDelay> PermissionedCurrencyHolders<Now, MinDelay>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 {
 	pub fn empty() -> Self {
 		Self::default()
@@ -332,8 +320,8 @@ where
 		self.info.is_none()
 	}
 
-	fn validity(&self, delta: Moment) -> Result<Moment, ()> {
-		let now: Moment = Now::now().as_secs().into();
+	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
+		let now = <Now as TimeAsSecs>::now();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -346,17 +334,17 @@ where
 
 	pub fn contains(&self) -> bool {
 		if let Some(info) = &self.info {
-			info.permissioned_till >= Now::now().as_secs().into()
+			info.permissioned_till >= <Now as TimeAsSecs>::now()
 		} else {
 			false
 		}
 	}
 
 	#[allow(clippy::result_unit_err)]
-	pub fn remove(&mut self, delta: Moment) -> Result<(), ()> {
+	pub fn remove(&mut self, delta: Seconds) -> Result<(), ()> {
 		if let Some(info) = &self.info {
 			let valid_till = &info.permissioned_till;
-			let now = Now::now().as_secs().into();
+			let now = <Now as TimeAsSecs>::now();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -373,7 +361,7 @@ where
 	}
 
 	#[allow(clippy::result_unit_err)]
-	pub fn insert(&mut self, delta: Moment) -> Result<(), ()> {
+	pub fn insert(&mut self, delta: Seconds) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
 		match &self.info {
@@ -389,12 +377,10 @@ where
 	}
 }
 
-impl<Now, MinDelay, TrancheId, Moment, MaxTranches>
-	TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>
+impl<Now, MinDelay, TrancheId, MaxTranches> TrancheInvestors<Now, MinDelay, TrancheId, MaxTranches>
 where
-	Now: UnixTime,
-	MinDelay: Get<Moment>,
-	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
+	Now: TimeAsSecs,
+	MinDelay: Get<Seconds>,
 	TrancheId: PartialEq + PartialOrd,
 	MaxTranches: Get<u32>,
 {
@@ -406,8 +392,8 @@ where
 		self.info.is_empty()
 	}
 
-	fn validity(&self, delta: Moment) -> Result<Moment, ()> {
-		let now: Moment = Now::now().as_secs().into();
+	fn validity(&self, delta: Seconds) -> Result<Seconds, ()> {
+		let now = <Now as TimeAsSecs>::now();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -420,15 +406,15 @@ where
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
 		self.info.iter().any(|info| {
-			info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
+			info.tranche_id == tranche && info.permissioned_till >= <Now as TimeAsSecs>::now()
 		})
 	}
 
 	#[allow(clippy::result_unit_err)]
-	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
+	pub fn remove(&mut self, tranche: TrancheId, delta: Seconds) -> Result<(), ()> {
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
-			let now = Now::now().as_secs().into();
+			let now = <Now as TimeAsSecs>::now();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -443,7 +429,7 @@ where
 	}
 
 	#[allow(clippy::result_unit_err)]
-	pub fn insert(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
+	pub fn insert(&mut self, tranche: TrancheId, delta: Seconds) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
@@ -494,7 +480,7 @@ mod tests {
 	}
 
 	static mut NOW_HOLDER: u64 = 0;
-	impl UnixTime for Now {
+	impl frame_support::traits::UnixTime for Now {
 		fn now() -> Duration {
 			unsafe { Duration::new(NOW_HOLDER, 0) }
 		}

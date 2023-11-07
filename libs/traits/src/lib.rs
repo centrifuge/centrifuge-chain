@@ -22,6 +22,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
+	traits::UnixTime,
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
@@ -630,4 +631,33 @@ pub trait ConversionFromAssetBalance<AssetBalance, AssetId, OutBalance> {
 		balance: AssetBalance,
 		asset_id: AssetId,
 	) -> Result<OutBalance, Self::Error>;
+}
+
+// TODO: Probably these should be in a future cfg-utils.
+// Issue: https://github.com/centrifuge/centrifuge-chain/issues/1380
+
+/// Type to represent milliseconds
+pub type Millis = u64;
+
+/// Type to represent seconds
+pub type Seconds = u64;
+
+/// Trait to obtain the time as seconds
+pub trait TimeAsSecs: UnixTime {
+	fn now() -> Seconds {
+		<Self as UnixTime>::now().as_secs()
+	}
+}
+
+impl<T: UnixTime> TimeAsSecs for T {}
+
+/// Trait to convert into seconds
+pub trait IntoSeconds {
+	fn into_seconds(self) -> Seconds;
+}
+
+impl IntoSeconds for Millis {
+	fn into_seconds(self) -> Seconds {
+		self / 1000
+	}
 }

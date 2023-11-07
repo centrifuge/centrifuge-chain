@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.28"
+version = "0.10.34"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
@@ -27,7 +27,6 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-  "libs/mock-builder",
   "libs/mocks",
   "libs/primitives",
   "libs/proofs",
@@ -70,6 +69,9 @@ members = [
   "runtime/common",
   "runtime/integration-tests",
 ]
+
+[workspace.dependencies]
+mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.38" }
 
 [dependencies]
 # third-party dependencies
@@ -167,8 +169,10 @@ fc-mapping-sync = { git = "https://github.com/PureStake/frontier", default-featu
 fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+fp-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -276,10 +280,6 @@ fast-runtime = [
   "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
   "runtime-integration-tests/fast-runtime",
-]
-
-testnet-runtime = [
-  "altair-runtime/testnet-runtime",
 ]
 
 #

@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::Moment;
 use cfg_traits::{
 	investments::TrancheCurrency, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
 };
@@ -141,7 +140,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId, Moment>,
+			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
 

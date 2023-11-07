@@ -1,4 +1,4 @@
-use cfg_primitives::Moment;
+use cfg_traits::Millis;
 use frame_support::{parameter_types, traits::Hooks, weights::constants::RocksDbWeight};
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -49,7 +49,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
-	type Moment = Moment;
+	type Moment = Millis;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
 }

@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 
 pub mod accounts;
@@ -20,9 +21,7 @@ pub mod evm;
 pub mod extrinsics;
 pub mod genesis;
 pub mod liquidity_pools_gateway;
-pub mod loans;
 pub mod logs;
-pub mod pools;
 pub mod preimage;
 pub mod time;
 pub mod tokens;
@@ -37,3 +36,7 @@ pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(3);
 pub const USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 /// The EVM Chain id of Moonbeam
 pub const MOONBEAM_EVM_CHAIN_ID: u64 = 1284;
+
+pub const GLMR_ED: Balance = 1_000_000;
+pub const AUSD_ED: Balance = 1_000_000_000;
+pub const USDT_ED: Balance = 10_000;

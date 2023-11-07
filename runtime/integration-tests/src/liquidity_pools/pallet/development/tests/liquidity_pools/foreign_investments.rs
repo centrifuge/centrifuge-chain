@@ -37,7 +37,7 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{
 		CrossChainTransferability, CurrencyId, CurrencyId::ForeignAsset, CustomMetadata,
-		ForeignAssetId,
+		ForeignAssetId, TrancheCurrency,
 	},
 };
 use development_runtime::{
@@ -89,7 +89,7 @@ use crate::{
 			},
 		},
 	},
-	utils::AUSD_CURRENCY_ID,
+	utils::{AUSD_CURRENCY_ID, AUSD_ED},
 };
 
 mod same_currencies {
@@ -103,7 +103,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let amount = 100_000_000;
+			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -151,7 +151,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let invest_amount: u128 = 100_000_000;
+			let invest_amount: u128 = 10 * dollar(12);
 			let decrease_amount = invest_amount / 3;
 			let final_amount = invest_amount - decrease_amount;
 			let investor: AccountId =
@@ -233,7 +233,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let invest_amount = 100_000_000;
+			let invest_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -330,7 +330,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let amount = 100_000_000;
+			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -482,7 +482,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let invest_amount = 100_000_000;
+			let invest_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -740,7 +740,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let amount = 100_000_000;
+			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -793,7 +793,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let redeem_amount = 100_000_000;
+			let redeem_amount = 10 * dollar(12);
 			let decrease_amount = redeem_amount / 3;
 			let final_amount = redeem_amount - decrease_amount;
 			let investor: AccountId =
@@ -906,7 +906,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let redeem_amount = 100_000_000;
+			let redeem_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -1002,7 +1002,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let amount = 100_000_000;
+			let amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -1156,7 +1156,7 @@ mod same_currencies {
 		Development::execute_with(|| {
 			setup_pre_requirements();
 			let pool_id = DEFAULT_POOL_ID;
-			let redeem_amount = 100_000_000;
+			let redeem_amount = 10 * dollar(12);
 			let investor: AccountId =
 				AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert((
 					DOMAIN_MOONBEAM,
@@ -1380,7 +1380,7 @@ mod same_currencies {
 				Development::execute_with(|| {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
-					let invest_amount: u128 = 100_000_000;
+					let invest_amount: u128 = 10 * dollar(12);
 					let decrease_amount = invest_amount + 1;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
@@ -1422,7 +1422,7 @@ mod same_currencies {
 				Development::execute_with(|| {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
-					let redeem_amount: u128 = 100_000_000;
+					let redeem_amount: u128 = 10 * dollar(12);
 					let decrease_amount = redeem_amount + 1;
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
@@ -1465,7 +1465,7 @@ mod same_currencies {
 				Development::execute_with(|| {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
-					let amount: u128 = 100_000_000;
+					let amount: u128 = 10 * dollar(12);
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
@@ -1501,7 +1501,7 @@ mod same_currencies {
 						tranche_id: default_tranche_id(pool_id),
 						investor: investor.clone().into(),
 						currency: general_currency_index(currency_id),
-						amount: 1,
+						amount: AUSD_ED,
 					};
 					assert_noop!(
 						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
@@ -1533,7 +1533,7 @@ mod same_currencies {
 				Development::execute_with(|| {
 					setup_pre_requirements();
 					let pool_id = DEFAULT_POOL_ID;
-					let amount: u128 = 100_000_000;
+					let amount: u128 = 10 * dollar(12);
 					let investor: AccountId = AccountConverter::<
 						DevelopmentRuntime,
 						LocationToAccountId,
@@ -1636,7 +1636,7 @@ mod same_currencies {
 						tranche_id: default_tranche_id(pool_id),
 						investor: investor.clone().into(),
 						currency: general_currency_index(foreign_currency),
-						amount: 1,
+						amount: AUSD_ED,
 					};
 					assert_noop!(
 						LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, increase_msg),
@@ -1860,7 +1860,7 @@ mod same_currencies {
 mod mismatching_currencies {
 	use cfg_traits::investments::ForeignInvestment;
 	use cfg_types::investments::{ForeignInvestmentInfo, Swap};
-	use development_runtime::{DefaultTokenSellRatio, OrderBook};
+	use development_runtime::OrderBook;
 	use pallet_foreign_investments::{types::TokenSwapReason, InvestmentState};
 
 	use super::*;
@@ -2739,10 +2739,6 @@ mod mismatching_currencies {
 					redeem_amount: invest_amount_pool_denominated / 2,
 				}
 			);
-			dbg!(System::events());
-			dbg!(min_fulfillment_amount(foreign_currency));
-			dbg!(invest_amount_pool_denominated / 8);
-			dbg!(min_fulfillment_amount(pool_currency));
 
 			assert!(System::events().iter().any(|e| {
 				e.event
@@ -3362,9 +3358,6 @@ mod mismatching_currencies {
 			);
 			let swap_amount =
 				invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
-			dbg!(System::events());
-			dbg!(swap_amount);
-			dbg!(MinFulfillmentAmountNative::get());
 			assert!(System::events().iter().any(|e| {
 				e.event
 					== pallet_order_book::Event::<DevelopmentRuntime>::OrderUpdated {
