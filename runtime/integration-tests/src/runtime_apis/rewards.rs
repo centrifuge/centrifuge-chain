@@ -75,8 +75,13 @@ where
 				/// we need another distribution to allow the participant claim
 				/// rewards
 				for (group_id, amount) in &rewards {
-					<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
-						.expect("Distributing rewards should work");
+					let res =
+						<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
+							.expect("Distributing rewards should work");
+
+					res.iter().for_each(|item| {
+						item.expect("Rewards distribution error");
+					});
 				}
 			}
 		})

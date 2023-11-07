@@ -13,7 +13,7 @@ use crate::{
 		},
 		utils::genesis::Genesis,
 	},
-	utils::{accounts::Keyring, logs::init_logs},
+	utils::accounts::Keyring,
 };
 
 fn transfer_balance<T: Runtime>() {

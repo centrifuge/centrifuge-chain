@@ -41,9 +41,12 @@ use sp_runtime::{
 };
 use tokio::runtime::Handle;
 
-use crate::chain::{
-	centrifuge,
-	centrifuge::{Runtime, PARA_ID},
+use crate::{
+	chain::{
+		centrifuge,
+		centrifuge::{Runtime, PARA_ID},
+	},
+	utils::accounts::Keyring,
 };
 
 /// Start date used for timestamps in test-enviornments
@@ -91,15 +94,7 @@ fn create_builder(
 
 	state.insert_storage(
 		pallet_balances::GenesisConfig::<centrifuge::Runtime> {
-			balances: vec![(
-				sp_runtime::AccountId32::from(
-					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
-						.unwrap()
-						.public()
-						.into_account(),
-				),
-				10000 * CFG,
-			)],
+			balances: vec![(Keyring::Alice.to_account_id(), 10000 * CFG)],
 		}
 		.build_storage()
 		.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
@@ -178,9 +173,8 @@ impl ApiEnv {
 	}
 
 	pub fn new_with_genesis(handle: Handle, genesis: Storage) -> Self {
-		// TODO: Actually make a lot of the utils in pools not specific to pools
-		//       testing. Like init logs, creating builder and so on.
 		crate::utils::logs::init_logs();
+
 		Self {
 			builder: create_builder(handle, Some(genesis)),
 		}

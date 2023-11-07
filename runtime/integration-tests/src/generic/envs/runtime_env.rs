@@ -94,11 +94,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		Ok(())
 	}
 
-	fn relay_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+	fn relay_state_mut<R>(&mut self, _f: impl FnOnce() -> R) -> R {
 		unimplemented!("Mutable relay state not implemented for RuntimeEnv")
 	}
 
-	fn relay_state<R>(&self, f: impl FnOnce() -> R) -> R {
+	fn relay_state<R>(&self, _f: impl FnOnce() -> R) -> R {
 		unimplemented!("Relay state not implemented for RuntimeEnv")
 	}
 

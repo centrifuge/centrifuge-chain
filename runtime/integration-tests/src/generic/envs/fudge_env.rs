@@ -32,8 +32,7 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
-		let mut handle =
-			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
+		let handle = T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
 
 		Self {
 			handle,

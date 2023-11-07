@@ -19,8 +19,8 @@ use sp_runtime::{
 use xcm::{
 	prelude::XCM_VERSION,
 	v3::{
-		AssetId, Fungibility, Instruction::WithdrawAsset, Junction, Junction::*, Junctions,
-		Junctions::*, MultiAsset, MultiAssets, MultiLocation, NetworkId, WeightLimit, Xcm,
+		AssetId, Fungibility, Junction, Junction::*, Junctions, Junctions::*, MultiAsset,
+		MultiAssets, MultiLocation, WeightLimit,
 	},
 	VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation,
 };
@@ -381,7 +381,6 @@ mod altair {
 
 		fn transfer_air_to_sibling<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 			let alice_initial_balance = air(10);
-			let bob_initial_balance = air(10);
 			let transfer_amount = air(5);
 			let air_in_sibling = CurrencyId::ForeignAsset(12);
 
@@ -817,7 +816,6 @@ mod altair {
 
 			setup_xcm(&mut env);
 
-			let alice_initial_balance = air(10);
 			let sibling_asset_id = CurrencyId::ForeignAsset(1);
 			let asset_location = MultiLocation::new(
 				1,
@@ -1280,7 +1278,7 @@ mod altair {
 }
 
 mod centrifuge {
-	use centrifuge_runtime::{CurrencyIdConvert, PoolPalletIndex};
+	use centrifuge_runtime::CurrencyIdConvert;
 
 	use super::*;
 
@@ -1791,8 +1789,6 @@ mod centrifuge {
 		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
 
-			use codec::Encode;
-
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
 				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
@@ -1839,8 +1835,6 @@ mod centrifuge {
 
 		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			use codec::Encode;
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
@@ -1899,8 +1893,6 @@ mod centrifuge {
 
 		fn transfer_cfg_to_sibling<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
 			let alice_initial_balance = cfg(10);
-			let bob_initial_balance = cfg(10);
-			let transfer_amount = cfg(1);
 			let transfer_amount = cfg(5);
 			let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
@@ -2306,7 +2298,6 @@ mod centrifuge {
 
 			setup_xcm(&mut env);
 
-			let alice_initial_balance = cfg(10);
 			let sibling_asset_id = CurrencyId::ForeignAsset(1);
 			let asset_location = MultiLocation::new(
 				1,
