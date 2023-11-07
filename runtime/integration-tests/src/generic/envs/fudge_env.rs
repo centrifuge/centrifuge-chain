@@ -35,9 +35,6 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		let mut handle =
 			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
 
-		// TODO(cdamian): Confirm this doesn't affect tests.
-		// handle.evolve();
-
 		Self {
 			handle,
 			nonce_storage: HashMap::default(),
