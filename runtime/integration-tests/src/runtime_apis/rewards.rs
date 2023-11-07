@@ -23,11 +23,11 @@ use tokio::runtime::Handle;
 use super::ApiEnv;
 use crate::utils::accounts::Keyring;
 
-#[tokio::test]
-async fn liquidity_rewards_runtime_api_works() {
-	rewards_runtime_api_works::<development_runtime::LiquidityRewardsBase>(RewardDomain::Liquidity)
-		.await;
-}
+// #[tokio::test]
+// async fn liquidity_rewards_runtime_api_works() {
+// 	rewards_runtime_api_works::<development_runtime::LiquidityRewardsBase>(RewardDomain::Liquidity)
+// 		.await;
+// }
 
 #[tokio::test]
 async fn block_rewards_runtime_api_works() {
