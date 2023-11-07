@@ -1,7 +1,10 @@
 name: Benchmark PR
+# ToDo: add an arbitrary label to keep this cache separate from the builds
 on:
+  workflow_call:
+  # Manually triggered by an authorized repo contributor.
   push:
-    branches: [main]
+    branches: main # To build the "benchmark-only" cache
   pull_request:
     paths:
       - '.github/workflows/benchmark-auto-pr.yml'

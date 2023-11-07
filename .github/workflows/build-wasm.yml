@@ -1,6 +1,8 @@
 on:
   push:
-    branches: [main, 'release-v**']
+    tags:
+      - '**'
+    # branches: [main, 'release-v**']
   pull_request:
 name: Build&Publish WASM
 concurrency:
@@ -22,12 +24,9 @@ jobs:
         # To test until I get one right
         # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
         # package: [centrifuge-runtime, altair-runtime]
-        target: [build-runtime, build-runtime-testnet, build-runtime-fast]
+        target: [build-runtime, build-runtime-fast]
         package: [altair-runtime, centrifuge-runtime]
         rust_version: ["1.66.0"]
-        exclude:
-          - target: "build-runtime-testnet"
-            package: "centrifuge-runtime"
     name: ${{ matrix.target }}-${{ matrix.package }}
     # Cannot make sccache work with the srtool container
     # env:
@@ -57,9 +56,7 @@ jobs:
       - 
         id: buildopt
         run: |
-          if ${{ matrix.target == 'build-runtime-testnet'}} ; then
-            echo "BUILD_OPTS="--features=testnet-runtime"" >> GITHUB_ENV
-          elif ${{ matrix.target == 'build-runtime-fast'}} ; then
+          if ${{ matrix.target == 'build-runtime-fast'}} ; then
             echo "BUILD_OPTS="--features=fast-runtime"" >> GITHUB_ENV
           fi
           echo "BUILD_OPTS=${{ env.BUILD_OPT }}"
@@ -115,4 +112,4 @@ jobs:
           filename=$(echo "${{ matrix.package }}" | sed -e 's/-/_/g' )
           gsutil cp \
             ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
-            gs://centrifuge-wasm-repo/${runtime_name}/${target}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
+            gs://centrifuge-wasm-repo/${runtime_name}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
