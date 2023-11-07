@@ -27,7 +27,7 @@ This must be done before releasing a new version of any of our runtimes to ensur
     - Download your runtime assert `.wasm` file.
 
 1. In **Centrifuge Local** client -> Governance -> Democracy, click on **Submit preimage**.
-    - At **proponer**, choose: `parachainSystem` with `authorizeUpgrade`
+    - At **proposer**, choose: `parachainSystem` with `authorizeUpgrade`
     - At **codeHash**, copy the `BLAKE2_256` of the previous step.
     - Click on **Submit preimage**
 
@@ -43,15 +43,15 @@ This must be done before releasing a new version of any of our runtimes to ensur
 
     - Click on **propose**
 
-1. Voting phase. You should make 3 votes in favor with 3 diferent people (modify the CFG amount before to a low number).
+1. Voting phase. The appropriate threshold of votes should be placed in favour of the proposal.
     **Warning**, once the proposal appears, you will have `10 * 12` (`votingPeriod * secons_per_block`) seconds to perform
     all votes in favor.
 
     Once the time ends, **close** the motion.
 
 1. Go to democracy and add a vote to the referendum.
-    (You can reduce the amount used to vote if the account don't has enough).
-    **Warning**, you will have a reduce time to make this step.
+    (You can reduce the amount used to vote if the account doesn't have enough).
+    **Warning**, you will have a reduced time to make this step.
 
 1. In Developer -> Extrinsics, choose `parachainSystem` with `enactAuthorizedUpgrade`.
-    Click then on **file upload** and upload the `.wasm` file previously downlaoded.
+    Click then on **file upload** and upload the `.wasm` file previously downloaded.
