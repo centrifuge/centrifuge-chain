@@ -200,7 +200,6 @@ async fn transfer_non_tranche_tokens_to_local() {
 			amount,
 		};
 
-		// assert_eq!(OrmlTokens::total_issuance(currency_id), AUSD_ED * 2);
 		assert_eq!(OrmlTokens::total_issuance(currency_id), 0);
 
 		// Finally, verify that we can now transfer the tranche to the destination
@@ -208,15 +207,7 @@ async fn transfer_non_tranche_tokens_to_local() {
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
 		// Verify that the correct amount was minted
-		// assert_eq!(
-		// 	OrmlTokens::total_issuance(currency_id),
-		// 	amount + AUSD_ED * 2
-		// );
 		assert_eq!(OrmlTokens::total_issuance(currency_id), amount);
-		// assert_eq!(
-		// 	OrmlTokens::free_balance(currency_id, &receiver),
-		// 	amount + AUSD_ED
-		// );
 		assert_eq!(OrmlTokens::free_balance(currency_id, &receiver), amount);
 
 		// Verify empty transfers throw
