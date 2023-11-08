@@ -13,10 +13,9 @@
 use cfg_primitives::{AccountId, Balance, CFG};
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards};
 use cfg_types::tokens::CurrencyId;
-use development_runtime::{BlockId};
-use runtime_common::apis::RewardsApi;
+use development_runtime::BlockId;
 use frame_support::assert_ok;
-use runtime_common::apis::RewardDomain;
+use runtime_common::apis::{RewardDomain, RewardsApi};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
