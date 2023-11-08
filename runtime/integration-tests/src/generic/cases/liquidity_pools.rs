@@ -242,140 +242,6 @@ mod altair {
 
 	use utils::*;
 
-	mod restricted_calls {
-		use super::*;
-
-		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						CurrencyId::Tranche(401, [0; 16]),
-						42,
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::NotCrossChainTransferableCurrency
-				);
-			});
-		}
-
-		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
-			let tranche_id =
-				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
-					Parachain(123),
-					PalletInstance(42),
-					GeneralKey {
-						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
-					},
-				),
-			};
-			let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
-				AssetId::Concrete(tranche_location),
-				Fungibility::Fungible(42),
-			)));
-
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer_multiasset(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(tranche_multi_asset),
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::XcmExecutionFailed
-				);
-			});
-		}
-
-		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
-			let tranche_id =
-				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
-					Parachain(123),
-					PalletInstance(42),
-					GeneralKey {
-						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
-					},
-				),
-			};
-			let tranche_multi_asset = MultiAsset::from((
-				AssetId::Concrete(tranche_location),
-				Fungibility::Fungible(42),
-			));
-
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer_multiassets(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
-							tranche_multi_asset
-						]))),
-						0,
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::XcmExecutionFailed
-				);
-			});
-		}
-
-		crate::test_for_runtimes!([altair], xtokens_transfer);
-		crate::test_for_runtimes!([altair], xtokens_transfer_multiasset);
-		crate::test_for_runtimes!([altair], xtokens_transfer_multiassets);
-	}
-
 	mod transfers {
 		use super::*;
 
@@ -1750,144 +1616,6 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], convert_unsupported_currency);
 	}
 
-	mod restricted_calls {
-		use super::*;
-
-		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			// For now, Tranche tokens are not supported in the XCM config so
-			// we just safe-guard that trying to transfer a tranche token fails.
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						CurrencyId::Tranche(401, [0; 16]),
-						42,
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::NotCrossChainTransferableCurrency
-				);
-			});
-		}
-
-		// Verify that trying to transfer Tranche tokens using their MultiLocation
-		// representation also fails.
-		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
-			let tranche_id =
-				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
-					Parachain(123),
-					PalletInstance(42),
-					GeneralKey {
-						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
-					},
-				),
-			};
-			let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
-				AssetId::Concrete(tranche_location),
-				Fungibility::Fungible(42),
-			)));
-
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer_multiasset(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(tranche_multi_asset),
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::XcmExecutionFailed
-				);
-			});
-		}
-
-		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
-
-			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
-			let tranche_id =
-				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
-			let tranche_location = MultiLocation {
-				parents: 1,
-				interior: X3(
-					Parachain(123),
-					PalletInstance(42),
-					GeneralKey {
-						length: tranche_id.len() as u8,
-						data: vec_to_fixed_array(tranche_id.to_vec()),
-					},
-				),
-			};
-			let tranche_multi_asset = MultiAsset::from((
-				AssetId::Concrete(tranche_location),
-				Fungibility::Fungible(42),
-			));
-
-			env.parachain_state_mut(|| {
-				assert_noop!(
-					orml_xtokens::Pallet::<T>::transfer_multiassets(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
-							tranche_multi_asset
-						]))),
-						0,
-						Box::new(
-							MultiLocation::new(
-								1,
-								X2(
-									Parachain(T::FudgeHandle::SIBLING_ID),
-									Junction::AccountId32 {
-										network: None,
-										id: Keyring::Bob.into(),
-									}
-								)
-							)
-							.into()
-						),
-						WeightLimit::Limited(8_000_000_000_000.into()),
-					),
-					orml_xtokens::Error::<T>::XcmExecutionFailed
-				);
-			});
-		}
-
-		crate::test_for_runtimes!([centrifuge], xtokens_transfer);
-		crate::test_for_runtimes!([centrifuge], xtokens_transfer_multiasset);
-		crate::test_for_runtimes!([centrifuge], xtokens_transfer_multiassets);
-	}
-
 	mod transfers {
 		use super::*;
 
@@ -2501,5 +2229,143 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], transfer_dot_to_and_from_relay_chain);
 		crate::test_for_runtimes!([centrifuge], transfer_foreign_sibling_to_centrifuge);
 		crate::test_for_runtimes!([centrifuge], transfer_wormhole_usdc_acala_to_centrifuge);
+	}
+}
+
+mod all {
+	use super::*;
+
+	mod restricted_calls {
+		use super::*;
+
+		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
+
+			env.parachain_state_mut(|| {
+				assert_noop!(
+					orml_xtokens::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						CurrencyId::Tranche(401, [0; 16]),
+						42,
+						Box::new(
+							MultiLocation::new(
+								1,
+								X2(
+									Parachain(T::FudgeHandle::SIBLING_ID),
+									Junction::AccountId32 {
+										network: None,
+										id: Keyring::Bob.into(),
+									}
+								)
+							)
+							.into()
+						),
+						WeightLimit::Limited(8_000_000_000_000.into()),
+					),
+					orml_xtokens::Error::<T>::NotCrossChainTransferableCurrency
+				);
+			});
+		}
+
+		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
+
+			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
+			let tranche_id =
+				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+			let tranche_location = MultiLocation {
+				parents: 1,
+				interior: X3(
+					Parachain(123),
+					PalletInstance(42),
+					GeneralKey {
+						length: tranche_id.len() as u8,
+						data: vec_to_fixed_array(tranche_id.to_vec()),
+					},
+				),
+			};
+			let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
+				AssetId::Concrete(tranche_location),
+				Fungibility::Fungible(42),
+			)));
+
+			env.parachain_state_mut(|| {
+				assert_noop!(
+					orml_xtokens::Pallet::<T>::transfer_multiasset(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Box::new(tranche_multi_asset),
+						Box::new(
+							MultiLocation::new(
+								1,
+								X2(
+									Parachain(T::FudgeHandle::SIBLING_ID),
+									Junction::AccountId32 {
+										network: None,
+										id: Keyring::Bob.into(),
+									}
+								)
+							)
+							.into()
+						),
+						WeightLimit::Limited(8_000_000_000_000.into()),
+					),
+					orml_xtokens::Error::<T>::XcmExecutionFailed
+				);
+			});
+		}
+
+		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
+
+			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
+			let tranche_id =
+				WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+			let tranche_location = MultiLocation {
+				parents: 1,
+				interior: X3(
+					Parachain(123),
+					PalletInstance(42),
+					GeneralKey {
+						length: tranche_id.len() as u8,
+						data: vec_to_fixed_array(tranche_id.to_vec()),
+					},
+				),
+			};
+			let tranche_multi_asset = MultiAsset::from((
+				AssetId::Concrete(tranche_location),
+				Fungibility::Fungible(42),
+			));
+
+			env.parachain_state_mut(|| {
+				assert_noop!(
+					orml_xtokens::Pallet::<T>::transfer_multiassets(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
+							tranche_multi_asset
+						]))),
+						0,
+						Box::new(
+							MultiLocation::new(
+								1,
+								X2(
+									Parachain(T::FudgeHandle::SIBLING_ID),
+									Junction::AccountId32 {
+										network: None,
+										id: Keyring::Bob.into(),
+									}
+								)
+							)
+							.into()
+						),
+						WeightLimit::Limited(8_000_000_000_000.into()),
+					),
+					orml_xtokens::Error::<T>::XcmExecutionFailed
+				);
+			});
+		}
+
+		crate::test_for_runtimes!(all, xtokens_transfer);
+		crate::test_for_runtimes!(all, xtokens_transfer_multiasset);
+		crate::test_for_runtimes!(all, xtokens_transfer_multiassets);
 	}
 }
