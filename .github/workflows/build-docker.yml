@@ -53,8 +53,7 @@ jobs:
           images: centrifugeio/centrifuge-chain
           flavor: |
             suffix=-${{ env.NOW }}
-            # latest=auto is already default, but the logic needs a value at the end and '' isn't valid
-            ${{ matrix.target == 'test' && 'prefix=test-' || 'latest=auto' }}
+            prefix=${{ matrix.target == 'test' && 'test-' || '' }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
