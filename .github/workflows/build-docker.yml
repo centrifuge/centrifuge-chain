@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
-      - "Dockerfile"
+      - "docker/centrifuge-chain/Dockerfile"
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.ref == '/refs/heads/main' && github.sha || 'false' }}
@@ -53,12 +53,12 @@ jobs:
           images: centrifugeio/centrifuge-chain
           flavor: |
             suffix=-${{ env.NOW }}
-            prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=semver,pattern={{raw}}
-            # type=semver,pattern={{major}}
+            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}pr-
             type=edge
 
       - name: Configure sccache

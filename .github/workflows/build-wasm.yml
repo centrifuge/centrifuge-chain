@@ -2,6 +2,9 @@ on:
   push:
     tags:
       - '*'
+  pull_request:
+    paths:
+      - ".github/workflows/build-wasm.yml"
 name: Build&Publish WASM
 concurrency:
   group: '${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -24,7 +27,7 @@ jobs:
         # package: [centrifuge-runtime, altair-runtime]
         target: [build-runtime, build-runtime-fast]
         package: [altair-runtime, centrifuge-runtime]
-        # rust_version: ["1.66.0"]
+        # rust_version: ["1.69.0"]
     name: ${{ matrix.target }}-${{ matrix.package }}
     # Cannot make sccache work with the srtool container
     # env:
@@ -62,9 +65,9 @@ jobs:
 
       - name: Run srtool
         run: >
-          docker run --rm  
-          -e PACKAGE=centrifuge-runtime  -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }} 
-          --platform=linux/amd64  -v ${{ github.workspace }}:/build paritytech/srtool:1.66.0 
+          docker run --rm  --user root --platform=linux/amd64
+          -e PACKAGE=${{ matrix.package }} -e BUILD_OPTS=${{ env.BUILD_OPTS || '' }} 
+          -v /home/runner/.cargo:/cargo-home  -v ${{ github.workspace }}:/build paritytech/srtool:latest
           /srtool/build 
 
       # - name: Run Docker SRTool
