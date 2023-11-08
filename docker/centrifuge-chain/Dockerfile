@@ -31,12 +31,10 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 		rm rustup-init;
 
   # BUILD
-	ARG RUST_TOOLCHAIN="1.66"
 	ARG RUSTC_WRAPPER=''
 	ARG SCCACHE_GHA_ENABLED="false"
 
-	RUN	rustup default $RUST_TOOLCHAIN && \
-		rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
+	RUN	rustup target add wasm32-unknown-unknown
 
 	COPY . centrifuge-chain
 	WORKDIR /centrifuge-chain

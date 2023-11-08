@@ -28,11 +28,15 @@ runs:
         df -h
         sudo apt-get install protobuf-compiler
 
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
-      with:
-        toolchain: ${{ inputs.RUST_TOOLCHAIN }}
-        default: true        
+    # - name: Install latest nightly
+    #   uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+    #   with:
+    #     toolchain: ${{ inputs.RUST_TOOLCHAIN }}
+    #     default: true        
+    - name: Install toolchain from rust-toolchain.toml
+      run: |
+        TOOLCHAIN_VERSION=$(grep 'channel =' rust-toolchain.toml | awk -F'"' '{print $2}')
+        rustup toolchain install "$TOOLCHAIN_VERSION"
 
     - name: SCcache setup
       if: ${{ inputs.cache == 'enabled' }}

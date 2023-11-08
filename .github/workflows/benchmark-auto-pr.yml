@@ -22,7 +22,7 @@ jobs:
       matrix:
         runtimes: [centrifuge, altair]
     env:       
-      RUST_TOOLCHAIN: "1.66.0"
+      # RUST_TOOLCHAIN: "1.66.0"
       RUSTC_WRAPPER: "sccache"
     steps:
       - name: Checkout code
@@ -31,7 +31,7 @@ jobs:
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+          # RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
           cache: enabled
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
