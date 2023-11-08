@@ -31,7 +31,7 @@ use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
-use polkadot_parachain::primitives::Sibling;
+use polkadot_parachain_primitives::primitives::Sibling;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider, LpInstanceRelayer},
 	xcm_fees::native_per_second,

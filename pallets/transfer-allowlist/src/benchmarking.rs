@@ -100,7 +100,7 @@ benchmarks! {
 
 	remove_transfer_allowance_delay_present {
 		let (sender, receiver) = set_up_users::<T>();
-		let delay = T::BlockNumber::one();
+		let delay = BlockNumberFor<T>::one();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), delay.clone())?;
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), receiver.clone().into())?;
 

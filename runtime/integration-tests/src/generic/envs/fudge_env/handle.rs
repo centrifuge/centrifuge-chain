@@ -14,7 +14,7 @@ use fudge::{
 	TWasmExecutor,
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
-use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_parachain_primitives::primitives::Id as ParaId;
 use polkadot_primitives::runtime_api::ParachainHost;
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sc_block_builder::BlockBuilderApi;

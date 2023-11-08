@@ -13,9 +13,11 @@
 use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
-use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AccountIdConversion, Convert};
+use sp_runtime::{
+	traits::{AccountIdConversion, Convert},
+	RuntimeDebug,
+};
 use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;

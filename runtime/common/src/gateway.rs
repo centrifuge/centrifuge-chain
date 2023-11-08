@@ -12,7 +12,7 @@
 
 use cfg_primitives::AccountId;
 use pallet_evm::AddressMapping;
-use polkadot_parachain::primitives::Sibling;
+use polkadot_parachain_primitives::primitives::Sibling;
 use sp_core::{crypto::AccountId32, Get, H160};
 use sp_runtime::traits::AccountIdConversion;
 

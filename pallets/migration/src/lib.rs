@@ -130,7 +130,7 @@ pub mod pallet {
 			<<T as pallet_vesting::Config>::Currency as frame_support::traits::Currency<
 				<T as frame_system::Config>::AccountId,
 			>>::Balance,
-			T::BlockNumber,
+			BlockNumberFor<T>,
 		),
 
 		/// Indicates if a migration of proxy data failed, this should NEVER
@@ -262,7 +262,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn migrate_vesting_vesting(
 			origin: OriginFor<T>,
-			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, T::BlockNumber>)>,
+			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, BlockNumberFor<T>>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
@@ -329,7 +329,7 @@ pub mod pallet {
 				>>::Balance,
 				(
 					BoundedVec<
-						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
+						ProxyDefinition<T::AccountId, T::ProxyType, BlockNumberFor<T>>,
 						<T as pallet_proxy::Config>::MaxProxies,
 					>,
 					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<

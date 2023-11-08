@@ -7,7 +7,7 @@
 //! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("statemint-dev"), DB CACHE: 1024
 
 // Executed Command:
-// ./artifacts/polkadot-parachain
+// ./artifacts/polkadot-parachain-primitives
 // benchmark
 // pallet
 // --chain=statemint-dev

@@ -14,48 +14,48 @@ smallvec = "1.6.1"
 
 # Substrate dependencies
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+pallet-treasury = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-api = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
 
 # Polkadot dependencies
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+polkadot-parachain-primitives = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+xcm = { package = "staging-xcm",  git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+xcm-executor = { package = "staging-xcm-executor", git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
 
 # ORML dependencies
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
 
 # Frontier dependencies
-pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-blake2 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-bn128 = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-modexp = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-sha3fips = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+pallet-base-fee = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-blake2 = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-bn128 = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-modexp = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-sha3fips = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-simple = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 
 # There is a bug in the frontier repo that adds pallet-ethereum without a try-runtime dependency
 # for this crate which makes our compilation fail with the i_know_what_i_am_doing error.
 # It seem fixed in 0.9.39, and this dependency can be removed from this file safely.
-fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-self-contained = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
 
 # Moonbeam dependencies
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "7fee3fd72c3a02e33b0f059fd9cc5cc20c1c6fd5" }
 
 # Local Dependencies
 axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
@@ -73,13 +73,13 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 
 # Used for migrations
 log = "0.4"
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
 
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
 hex-literal = "0.3.4"
-pallet-collective = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
+pallet-collective = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = true, tag = "polkadot-v1.1.0" }
 
 [features]
 default = ["std"]
@@ -119,7 +119,7 @@ std = [
   "pallet-pool-system/std",
   "pallet-treasury/std",
   "parachain-info/std",
-  "polkadot-parachain/std",
+  "polkadot-parachain-primitives/std",
   "scale-info/std",
   "serde/std",
   "sp-api/std",
@@ -154,7 +154,7 @@ runtime-benchmarks = [
   "pallet-loans/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
-  "polkadot-parachain/runtime-benchmarks",
+  "polkadot-parachain-primitives/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",

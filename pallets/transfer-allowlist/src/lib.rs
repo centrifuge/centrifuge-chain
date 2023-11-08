@@ -61,7 +61,7 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
-	/// AllowanceDetails where `BlockNumber` is of type T::BlockNumber
+	/// AllowanceDetails where `BlockNumber` is of type BlockNumberFor<T>
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
 
 	/// The current storage version.
@@ -185,14 +185,14 @@ pub mod pallet {
 	/// Storage item containing number of allowances set, delay for sending
 	/// account/currency, and block number delay is modifiable at. Contains an
 	/// instance of AllowanceMetadata with allowance count as `u64`,
-	/// current_delay as `Option<T::BlockNumber>`, and modifiable_at as
-	/// `Option<T::BlockNumber>`. If a delay is set, but no allowances have been
-	/// created, `allowance_count` will be set to `0`. A double map is used here
-	/// as we need to know whether there is a restriction set for the account
-	/// and currency in the case where there is no allowance for destination
-	/// location. Using an StorageNMap would not allow us to look up whether
-	/// there was a restriction for the sending account and currency, given
-	/// that:
+	/// current_delay as `Option<BlockNumberFor<T>>`, and modifiable_at as
+	/// `Option<BlockNumberFor<T>>`. If a delay is set, but no allowances have
+	/// been created, `allowance_count` will be set to `0`. A double map is used
+	/// here as we need to know whether there is a restriction set for the
+	/// account and currency in the case where there is no allowance for
+	/// destination location. Using an StorageNMap would not allow us to look up
+	/// whether there was a restriction for the sending account and currency,
+	/// given that:
 	/// - we're checking whether there's an allowance specified for the receiver
 	///   location
 	///   - we would only find whether a restriction was set for the account in
@@ -212,7 +212,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::CurrencyId,
-		AllowanceMetadata<T::BlockNumber>,
+		AllowanceMetadata<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
@@ -227,7 +227,7 @@ pub mod pallet {
 			NMapKey<Twox64Concat, T::CurrencyId>,
 			NMapKey<Blake2_128Concat, T::Location>,
 		),
-		AllowanceDetails<T::BlockNumber>,
+		AllowanceDetails<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
@@ -267,16 +267,16 @@ pub mod pallet {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 			receiver: T::Location,
-			allowed_at: T::BlockNumber,
-			blocked_at: T::BlockNumber,
+			allowed_at: BlockNumberFor<T>,
+			blocked_at: BlockNumberFor<T>,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowanceRemoved {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 			receiver: T::Location,
-			allowed_at: T::BlockNumber,
-			blocked_at: T::BlockNumber,
+			allowed_at: BlockNumberFor<T>,
+			blocked_at: BlockNumberFor<T>,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowancePurged {
@@ -288,19 +288,19 @@ pub mod pallet {
 		TransferAllowanceDelayAdd {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		},
 		/// Event for Allowance delay update
 		TransferAllowanceDelayUpdate {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		},
 		/// Event for Allowance delay future modification allowed
 		ToggleTransferAllowanceDelayFutureModifiable {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			modifiable_once_after: Option<T::BlockNumber>,
+			modifiable_once_after: Option<BlockNumberFor<T>>,
 		},
 		/// Event for Allowance delay removal
 		TransferAllowanceDelayPurge {
@@ -464,7 +464,7 @@ pub mod pallet {
 		pub fn add_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let count_delay = match Self::get_account_currency_restriction_count_delay(
@@ -508,7 +508,7 @@ pub mod pallet {
 		pub fn update_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			delay: T::BlockNumber,
+			delay: BlockNumberFor<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let current_block = <frame_system::Pallet<T>>::block_number();

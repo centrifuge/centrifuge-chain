@@ -128,7 +128,7 @@ impl<T: Config> CreatedLoan<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ClosedLoan<T: Config> {
 	/// Block when the loan was closed
-	closed_at: T::BlockNumber,
+	closed_at: BlockNumberFor<T>,
 
 	/// Loan information
 	info: LoanInfo<T>,

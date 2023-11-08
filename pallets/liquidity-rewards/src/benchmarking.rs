@@ -31,7 +31,7 @@ benchmarks! {
 		where
 		T::Balance: From<u32>,
 		T::CurrencyId: From<u32> + Default,
-		T::BlockNumber: From<u32> + One,
+		BlockNumberFor<T>: From<u32> + One,
 		T::GroupId: From<u32>,
 		T::Weight: From<u32>,
 	}
@@ -54,7 +54,7 @@ benchmarks! {
 			Pallet::<T>::set_currency_group(RawOrigin::Root.into(), i.into(), GROUP_A.into()).unwrap();
 		}
 
-		Pallet::<T>::on_initialize(T::BlockNumber::zero());
+		Pallet::<T>::on_initialize(BlockNumberFor<T>::zero());
 
 		for i in 0..y {
 			Pallet::<T>::set_group_weight(RawOrigin::Root.into(), i.into(), WEIGHT.into()).unwrap();

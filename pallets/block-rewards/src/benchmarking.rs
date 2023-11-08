@@ -18,7 +18,7 @@ benchmarks! {
 	where_clause {
 		where
 		T::Balance: From<u128>,
-		T::BlockNumber: From<u32> + One,
+		BlockNumberFor<T>: From<u32> + One,
 		T::Weight: From<u32>,
 		<T as Config>::Currency: frame_support::traits::fungibles::Inspect<T::AccountId> + CurrencyT<T::AccountId>,
 		<T as Config>::CurrencyId: From<CurrencyId>,

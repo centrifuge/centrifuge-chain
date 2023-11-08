@@ -31,7 +31,7 @@ use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
-use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_parachain_primitives::primitives::Id as ParaId;
 use polkadot_runtime_parachains::{configuration, configuration::HostConfiguration, dmp};
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullBackend, TFullClient, TaskManager};

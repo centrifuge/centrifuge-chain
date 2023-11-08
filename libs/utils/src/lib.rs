@@ -14,6 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, Input};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::{cmp::min, vec::Vec};
 
 /// Build a fixed-size array using as many elements from `src` as possible
@@ -60,7 +61,7 @@ pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, c
 /// Function that initializes the frame system & Aura, so a timestamp can be set
 /// and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
-pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
+pub fn set_block_number_timestamp<T>(block_number: BlockNumberFor<T>, timestamp: T::Moment)
 where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
 {

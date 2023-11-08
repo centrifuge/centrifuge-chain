@@ -72,10 +72,10 @@ benchmarks! {
 			get_account_relay_sr25519::<T>(),
 			get_contribution::<T>(CONTRIBUTION)
 		);
-		let locked_at: T::BlockNumber = 1u32.into();
+		let locked_at: BlockNumberFor<T> = 1u32.into();
 		let index: TrieIndex = 1u32.into();
-		let lease_start: T::BlockNumber = 1u32.into();
-		let lease_period: T::BlockNumber = 1u32.into();
+		let lease_start: BlockNumberFor<T> = 1u32.into();
+		let lease_period: BlockNumberFor<T> = 1u32.into();
   }: _(RawOrigin::Root, contributions, locked_at, index, lease_start, lease_period)
   verify {
 		assert!(Pallet::<T>::contributions().is_some());
@@ -86,14 +86,14 @@ benchmarks! {
   }
 
   set_lease_start{
-	let start: T::BlockNumber = 1u32.into();
+	let start: BlockNumberFor<T> = 1u32.into();
   }: _(RawOrigin::Root, start)
   verify {
 		assert_eq!(Pallet::<T>::lease_start(), 1u32.into());
   }
 
   set_lease_period{
-	let period: T::BlockNumber = 1u32.into();
+	let period: BlockNumberFor<T> = 1u32.into();
   }: _(RawOrigin::Root, period)
   verify {
 		assert_eq!(Pallet::<T>::lease_period(), 1u32.into());
@@ -110,7 +110,7 @@ benchmarks! {
   }
 
   set_locked_at {
-	  let locked: T::BlockNumber = 1u32.into();
+	  let locked: BlockNumberFor<T> = 1u32.into();
   }: _(RawOrigin::Root, locked)
   verify {
 		assert!(Pallet::<T>::locked_at().is_some());
@@ -347,17 +347,17 @@ fn init_pallets<T: Config>(relay_account: T::RelayChainAccountId) {
 		get_contribution::<T>(CONTRIBUTION),
 	));
 	<CrowdloanTrieIndex<T>>::put(Into::<TrieIndex>::into(100u32));
-	<LockedAt<T>>::put(Into::<T::BlockNumber>::into(0u32));
-	<LeaseStart<T>>::put(Into::<T::BlockNumber>::into(0u32));
-	<LeasePeriod<T>>::put(Into::<T::BlockNumber>::into(400u32));
+	<LockedAt<T>>::put(Into::<BlockNumberFor<T>>::into(0u32));
+	<LeaseStart<T>>::put(Into::<BlockNumberFor<T>>::into(0u32));
+	<LeasePeriod<T>>::put(Into::<BlockNumberFor<T>>::into(400u32));
 	<CurrIndex<T>>::put(Into::<Index>::into(1u32));
 
 	let vesting_start_key = create_final_key_crowdloan_reward(b"VestingStart");
-	let vesting_start: T::BlockNumber = 100u32.into();
+	let vesting_start: BlockNumberFor<T> = 100u32.into();
 	frame_support::storage::unhashed::put(&vesting_start_key, &vesting_start);
 
 	let vesting_period_key = create_final_key_crowdloan_reward(b"VestingPeriod");
-	let vesting_period: T::BlockNumber = 500u32.into();
+	let vesting_period: BlockNumberFor<T> = 500u32.into();
 	frame_support::storage::unhashed::put(&vesting_period_key, &vesting_period);
 
 	let direct_payout_ratio_key = create_final_key_crowdloan_reward(b"DirectPayoutRatio");

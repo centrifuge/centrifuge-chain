@@ -79,7 +79,7 @@ benchmarks! {
 			i += 1;
 			let key: Vec<u8> = vesting.key.iter().cloned().collect();
 			let vesting: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-			T::BlockNumber> =
+			BlockNumberFor<T>> =
 				codec::Decode::decode(&mut vesting.value[..].as_ref()).unwrap();
 
 			let start_byte = key.len() - 32;
@@ -102,7 +102,7 @@ benchmarks! {
   verify {
 		for ( id, vesting_info) in data {
 			let storage_vesting_info: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-			T::BlockNumber> =
+			BlockNumberFor<T>> =
 				pallet_vesting::Vesting::<T>::get(id).unwrap().first().unwrap().clone();
 
 			assert_eq!(vesting_info, storage_vesting_info);
@@ -122,7 +122,7 @@ benchmarks! {
 				>>::Balance,
 				(
 					BoundedVec<
-						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
+						ProxyDefinition<T::AccountId, T::ProxyType, BlockNumberFor<T>>,
 						<T as pallet_proxy::Config>::MaxProxies,
 					>,
 					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
@@ -139,7 +139,7 @@ benchmarks! {
 			let key: Vec<u8> = proxy.key.iter().cloned().collect();
 			let proxy_info: (
 					BoundedVec<
-						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
+						ProxyDefinition<T::AccountId, T::ProxyType, BlockNumberFor<T>>,
 						<T as pallet_proxy::Config>::MaxProxies,
 					>,
 					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<

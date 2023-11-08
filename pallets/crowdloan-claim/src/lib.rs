@@ -252,7 +252,7 @@ pub mod pallet {
 		RewardClaimed(T::RelayChainAccountId, ParachainAccountIdOf<T>, T::Balance),
 
 		/// The block number, where we lock the contributions has been updated
-		LockedAtUpdated(T::BlockNumber),
+		LockedAtUpdated(BlockNumberFor<T>),
 
 		/// Relay-chain Root hash which allows to verify contributions
 		ContributionsRootUpdated(RootHashOf<T>),
@@ -263,11 +263,11 @@ pub mod pallet {
 
 		/// The lease start of the parachain slot. Used to define when we can
 		/// initialize the next time
-		LeaseStartUpdated(T::BlockNumber),
+		LeaseStartUpdated(BlockNumberFor<T>),
 
 		/// The lease period of the parachain slot. Used to define when we can
 		/// initialize the next time
-		LeasePeriodUpdated(T::BlockNumber),
+		LeasePeriodUpdated(BlockNumberFor<T>),
 	}
 
 	// ------------------------------------------------------------------------
@@ -281,7 +281,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn locked_at)]
-	pub(super) type LockedAt<T: Config> = StorageValue<_, T::BlockNumber, OptionQuery>;
+	pub(super) type LockedAt<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
 
 	/// TrieIndex of the crowdloan campaign inside the relay-chain crowdloan
 	/// pallet.
@@ -312,17 +312,19 @@ pub mod pallet {
 	pub type PrevIndex<T: Config> = StorageValue<_, Index, ValueQuery, OnIndexEmpty>;
 
 	#[pallet::type_value]
-	pub fn OnLeaseEmpty<T: Config>() -> T::BlockNumber {
+	pub fn OnLeaseEmpty<T: Config>() -> BlockNumberFor<T> {
 		Zero::zero()
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn lease_start)]
-	pub type LeaseStart<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, OnLeaseEmpty<T>>;
+	pub type LeaseStart<T: Config> =
+		StorageValue<_, BlockNumberFor<T>, ValueQuery, OnLeaseEmpty<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn lease_period)]
-	pub type LeasePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, OnLeaseEmpty<T>>;
+	pub type LeasePeriod<T: Config> =
+		StorageValue<_, BlockNumberFor<T>, ValueQuery, OnLeaseEmpty<T>>;
 
 	// ----------------------------------------------------------------------------
 	// Pallet lifecycle hooks
@@ -493,10 +495,10 @@ pub mod pallet {
 		pub fn initialize(
 			origin: OriginFor<T>,
 			contributions: RootHashOf<T>,
-			locked_at: T::BlockNumber,
+			locked_at: BlockNumberFor<T>,
 			index: TrieIndex,
-			lease_start: T::BlockNumber,
-			lease_period: T::BlockNumber,
+			lease_start: BlockNumberFor<T>,
+			lease_period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only administrator entity can perform this administrative
 			// transaction
@@ -543,7 +545,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn set_lease_start(
 			origin: OriginFor<T>,
-			start: T::BlockNumber,
+			start: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -563,7 +565,7 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		pub fn set_lease_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -613,7 +615,7 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		pub fn set_locked_at(
 			origin: OriginFor<T>,
-			locked_at: T::BlockNumber,
+			locked_at: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(

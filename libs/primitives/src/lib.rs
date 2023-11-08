@@ -328,9 +328,8 @@ pub mod liquidity_pools {
 
 	impl sp_core::Get<[u8; 12]> for GeneralCurrencyPrefix {
 		fn get() -> [u8; 12] {
-			let hash: [u8; 16] = frame_support::sp_io::hashing::blake2_128(
-				&crate::constants::GENERAL_CURRENCY_INDEX_PREFIX,
-			);
+			let hash: [u8; 16] =
+				sp_io::hashing::blake2_128(&crate::constants::GENERAL_CURRENCY_INDEX_PREFIX);
 			let (trimmed, _) = hash.split_at(12);
 
 			trimmed
@@ -343,11 +342,11 @@ pub mod liquidity_pools {
 pub mod xcm {
 	use codec::{Compact, Encode};
 	use sp_io::hashing::blake2_256;
-	use sp_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
+	use sp_std::{marker::PhantomData, vec::Vec};
 	use xcm::prelude::{
 		AccountId32, AccountKey20, Here, MultiLocation, PalletInstance, Parachain, X1,
 	};
-	use xcm_executor::traits::Convert;
+	use xcm_executor::traits::ConvertLocation;
 
 	/// NOTE: Copied from <https://github.com/moonbeam-foundation/polkadot/blob/d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc/xcm/xcm-builder/src/location_conversion.rs#L25C1-L68C2>
 	///
@@ -355,24 +354,23 @@ pub mod xcm {
 	/// will move to once we update this repository to Polkadot 0.9.43+.
 	pub struct HashedDescriptionDescribeFamilyAllTerminal<AccountId>(PhantomData<AccountId>);
 	impl<AccountId: From<[u8; 32]> + Clone> HashedDescriptionDescribeFamilyAllTerminal<AccountId> {
-		fn describe_location_suffix(l: &MultiLocation) -> Result<Vec<u8>, ()> {
+		fn describe_location_suffix(l: &MultiLocation) -> Option<Vec<u8>> {
 			match (l.parents, &l.interior) {
-				(0, Here) => Ok(Vec::new()),
+				(0, Here) => Some(Vec::new()),
 				(0, X1(PalletInstance(i))) => {
-					Ok((b"Pallet", Compact::<u32>::from(*i as u32)).encode())
+					Some((b"Pallet", Compact::<u32>::from(*i as u32)).encode())
 				}
-				(0, X1(AccountId32 { id, .. })) => Ok((b"AccountId32", id).encode()),
-				(0, X1(AccountKey20 { key, .. })) => Ok((b"AccountKey20", key).encode()),
-				_ => Err(()),
+				(0, X1(AccountId32 { id, .. })) => Some((b"AccountId32", id).encode()),
+				(0, X1(AccountKey20 { key, .. })) => Some((b"AccountKey20", key).encode()),
+				_ => None,
 			}
 		}
 	}
 
-	impl<AccountId: From<[u8; 32]> + Clone> Convert<MultiLocation, AccountId>
+	impl<AccountId: From<[u8; 32]> + Clone> ConvertLocation<AccountId>
 		for HashedDescriptionDescribeFamilyAllTerminal<AccountId>
 	{
-		fn convert_ref(location: impl Borrow<MultiLocation>) -> Result<AccountId, ()> {
-			let l = location.borrow();
+		fn convert_location(l: &MultiLocation) -> Option<AccountId> {
 			let to_hash = match (l.parents, l.interior.first()) {
 				(0, Some(Parachain(index))) => {
 					let tail = l.interior.split_first().0;
@@ -389,13 +387,9 @@ pub mod xcm {
 					let interior = Self::describe_location_suffix(&tail)?;
 					(b"ParentChain", interior).encode()
 				}
-				_ => return Err(()),
+				_ => return None,
 			};
-			Ok(blake2_256(&to_hash).into())
-		}
-
-		fn reverse_ref(_: impl Borrow<AccountId>) -> Result<MultiLocation, ()> {
-			Err(())
+			Some(blake2_256(&to_hash).into())
 		}
 	}
 

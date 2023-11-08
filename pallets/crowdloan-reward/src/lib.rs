@@ -172,17 +172,17 @@ pub mod pallet {
 
 		/// Event triggered when the reward module is ready to reward
 		/// contributors \[vesting_start, vesting_period, direct_payout_ratio\]
-		RewardPalletInitialized(T::BlockNumber, T::BlockNumber, Perbill),
+		RewardPalletInitialized(BlockNumberFor<T>, BlockNumberFor<T>, Perbill),
 
 		/// Direct payout ratio for contributors has been updated
 		/// \[payout_ratio\]
 		DirectPayoutRatioUpdated(Perbill),
 
 		/// Vesting period has been updated
-		VestingPeriodUpdated(T::BlockNumber),
+		VestingPeriodUpdated(BlockNumberFor<T>),
 
 		/// Start of vesting has been updated
-		VestingStartUpdated(T::BlockNumber),
+		VestingStartUpdated(BlockNumberFor<T>),
 	}
 
 	#[pallet::type_value]
@@ -200,12 +200,12 @@ pub mod pallet {
 	/// Over which period are the contributions vested.
 	#[pallet::storage]
 	#[pallet::getter(fn vesting_period)]
-	pub(super) type VestingPeriod<T: Config> = StorageValue<_, T::BlockNumber>;
+	pub(super) type VestingPeriod<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
 	/// At which block number does the vesting start.
 	#[pallet::storage]
 	#[pallet::getter(fn vesting_start)]
-	pub(super) type VestingStart<T: Config> = StorageValue<_, T::BlockNumber>;
+	pub(super) type VestingStart<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
 	// ----------------------------------------------------------------------------
 	// Pallet errors
@@ -241,8 +241,8 @@ pub mod pallet {
 		pub fn initialize(
 			origin: OriginFor<T>,
 			direct_payout_ratio: Perbill,
-			vesting_period: T::BlockNumber,
-			vesting_start: T::BlockNumber,
+			vesting_period: BlockNumberFor<T>,
+			vesting_start: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure!(
 				Self::is_origin_administrator(origin).is_ok(),
@@ -267,7 +267,7 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		pub fn set_vesting_start(
 			origin: OriginFor<T>,
-			start: T::BlockNumber,
+			start: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -294,7 +294,7 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		pub fn set_vesting_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensure that only an administrator or root entity triggered the transaction
 			ensure!(
@@ -364,7 +364,7 @@ impl<T: Config> Reward for Pallet<T>
 where
 	BalanceOf<T>: Send + Sync,
 {
-	type BlockNumber = T::BlockNumber;
+	type BlockNumber = BlockNumberFor<T>;
 	type ContributionAmount = BalanceOf<T>;
 	type ParachainAccountId = T::AccountId;
 

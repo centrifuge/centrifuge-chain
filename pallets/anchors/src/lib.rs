@@ -21,17 +21,18 @@
 use cfg_traits::fees::{Fee, Fees};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
 	storage::child,
 	traits::{Currency, Get, ReservableCurrency},
-	BoundedVec, RuntimeDebug, StateVersion,
+	BoundedVec,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{
 	traits::{Hash, Header},
-	ArithmeticError,
+	ArithmeticError, DispatchError, RuntimeDebug, StateVersion,
 };
 use sp_std::vec::Vec;
 pub use weights::*;
@@ -146,7 +147,7 @@ pub mod pallet {
 		_,
 		Blake2_256,
 		T::Hash,
-		PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>,
+		PreCommitData<T::Hash, T::AccountId, BlockNumberFor<T>, BalanceOf<T>>,
 	>;
 
 	/// Map to find the eviction date given an anchor id
@@ -185,7 +186,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
 	pub(super) type EvictedAnchorRoots<T: Config> =
-		StorageMap<_, Blake2_256, u32, BoundedVec<u8, RootHashSize<T::Header>>>;
+		StorageMap<_, Blake2_256, u32, BoundedVec<u8, RootHashSize<HeaderFor<T>>>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -253,7 +254,9 @@ pub mod pallet {
 			);
 
 			let expiration_block = <frame_system::Pallet<T>>::block_number()
-				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
+				.checked_add(&BlockNumberFor::<T>::from(
+					PRE_COMMIT_EXPIRATION_DURATION_BLOCKS,
+				))
 				.ok_or(ArithmeticError::Overflow)?;
 
 			let deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
@@ -438,7 +441,7 @@ impl<T: Config> Pallet<T> {
 	/// pre-commit with `expiration_block` < `current_block_number`.
 	fn get_valid_pre_commit(
 		anchor_id: T::Hash,
-	) -> Option<PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>> {
+	) -> Option<PreCommitData<T::Hash, T::AccountId, BlockNumberFor<T>, BalanceOf<T>>> {
 		<PreCommits<T>>::get(anchor_id).filter(|pre_commit| {
 			pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number()
 		})
@@ -537,7 +540,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get an anchor by its id in the child storage
-	pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
+	pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, BlockNumberFor<T>>> {
 		let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id)?;
 		let anchor_evict_date_enc: &[u8] = &anchor_evict_date.encode();
 		let prefixed_key = Self::anchor_storage_key(anchor_evict_date_enc);
