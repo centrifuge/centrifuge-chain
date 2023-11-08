@@ -34,6 +34,7 @@ runs:
     #     toolchain: ${{ inputs.RUST_TOOLCHAIN }}
     #     default: true        
     - name: Install toolchain from rust-toolchain.toml
+      shell: sh
       run: |
         TOOLCHAIN_VERSION=$(grep 'channel =' rust-toolchain.toml | awk -F'"' '{print $2}')
         rustup toolchain install "$TOOLCHAIN_VERSION"

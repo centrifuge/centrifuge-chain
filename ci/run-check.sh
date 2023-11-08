@@ -14,11 +14,11 @@ case $TARGET in
     ;;
 
   test-general)
-    RUST_MIN_STACK=8388608 cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   test-integration)
-    RUST_MIN_STACK=8388608 cargo test --release --package runtime-integration-tests --features fast-runtime
+    cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
   lint-fmt)

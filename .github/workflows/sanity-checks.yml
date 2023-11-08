@@ -27,7 +27,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: "nightly-2022-11-14"
+          # RUST_TOOLCHAIN: "nightly-2023-02-07"
           cache: enabled
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
@@ -72,7 +72,7 @@ jobs:
       - name: Prep build
         uses: ./.github/actions/prep-ubuntu
         with:
-          RUST_TOOLCHAIN: "nightly-2022-11-14"
+          # RUST_TOOLCHAIN: "nightly-2022-11-14"
           setup_cache: true
           cache: enabled
           GWIP: ${{ secrets.GWIP_SCCACHE }}
