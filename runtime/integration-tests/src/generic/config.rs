@@ -91,7 +91,10 @@ pub trait Runtime:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
+	+ parachain_info::Config
 	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
+	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_xcm::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

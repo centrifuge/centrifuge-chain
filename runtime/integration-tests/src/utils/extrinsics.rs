@@ -51,7 +51,7 @@ pub fn xt_centrifuge(
 	who: Keyring,
 	nonce: cfg_primitives::Index,
 	call: centrifuge::RuntimeCall,
-) -> Result<centrifuge::UncheckedExtrinsic, ()> {
+) -> Result<centrifuge::UncheckedExtrinsic, Box<dyn std::error::Error>> {
 	let client = env.centrifuge.client();
 
 	let genesis_hash = client
@@ -67,7 +67,7 @@ pub fn xt_centrifuge(
 
 	env.centrifuge
 		.with_state(|| sign_centrifuge(who, nonce, call, spec_version, tx_version, genesis_hash))
-		.map_err(|_| ())
+		.map_err(|e| e.into())
 }
 
 /// Generates an signed-extrinisc for relay-chain.
@@ -79,7 +79,7 @@ pub fn xt_relay(
 	who: Keyring,
 	nonce: RelayIndex,
 	call: relay::RuntimeCall,
-) -> Result<relay::UncheckedExtrinsic, ()> {
+) -> Result<relay::UncheckedExtrinsic, Box<dyn std::error::Error>> {
 	let client = env.relay.client();
 
 	let genesis_hash = client
@@ -95,7 +95,7 @@ pub fn xt_relay(
 
 	env.relay
 		.with_state(|| sign_relay(who, nonce, call, spec_version, tx_version, genesis_hash))
-		.map_err(|_| ())
+		.map_err(|e| e.into())
 }
 
 fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtra {

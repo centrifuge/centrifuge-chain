@@ -4,7 +4,7 @@ use codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
-	DispatchError, DispatchResult, MultiSignature, Storage,
+	DispatchError, MultiSignature, Storage,
 };
 use sp_std::ops::Range;
 
@@ -61,7 +61,7 @@ impl<Event> Blocks<Event> {
 /// Define an environment behavior
 pub trait Env<T: Runtime> {
 	/// Load the environment from a storage
-	fn from_storage(storage: Storage) -> Self;
+	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self;
 
 	/// Submit an extrinsic mutating the state instantly and returning the
 	/// consumed fee
@@ -72,11 +72,15 @@ pub trait Env<T: Runtime> {
 	) -> Result<Balance, DispatchError>;
 
 	/// Submit an extrinsic mutating the state when the block is finalized
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult;
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>>;
 
 	/// Pass any number of blocks
 	fn pass(&mut self, blocks: Blocks<T::RuntimeEventExt>) {
-		let (current, slot) = self.state(|| {
+		let (current, slot) = self.parachain_state(|| {
 			(
 				frame_system::Pallet::<T>::block_number(),
 				pallet_aura::Pallet::<T>::slot_duration().into_seconds(),
@@ -94,19 +98,30 @@ pub trait Env<T: Runtime> {
 		}
 	}
 
-	/// Allows to mutate the storage state through the closure
-	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
+	/// Allows to mutate the relay storage state through the closure.
+	fn relay_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
 
-	/// Allows to read the storage state through the closure
-	/// If storage is modified, it would not be applied.
-	fn state<R>(&self, f: impl FnOnce() -> R) -> R;
+	/// Allows to read the relay storage state through the closure.
+	fn relay_state<R>(&self, f: impl FnOnce() -> R) -> R;
+
+	/// Allows to mutate the parachain storage state through the closure.
+	fn parachain_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
+
+	/// Allows to read the parachain storage state through the closure.
+	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R;
+
+	/// Allows to mutate the sibling storage state through the closure.
+	fn sibling_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R;
+
+	/// Allows to read the sibling storage state through the closure.
+	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R;
 
 	/// Check for an exact event introduced in the current block.
 	/// Starting from last event introduced
 	/// Returns an Option to unwrap it from the tests and have good panic
 	/// message with the error test line
 	fn check_event(&self, event: impl Into<T::RuntimeEventExt>) -> Option<()> {
-		self.state(|| {
+		self.parachain_state(|| {
 			let event = event.into();
 			frame_system::Pallet::<T>::events()
 				.into_iter()
@@ -124,7 +139,7 @@ pub trait Env<T: Runtime> {
 	where
 		T::RuntimeEventExt: TryInto<E>,
 	{
-		self.state(|| {
+		self.parachain_state(|| {
 			frame_system::Pallet::<T>::events()
 				.into_iter()
 				.rev()

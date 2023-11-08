@@ -13,7 +13,7 @@ use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
-use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, DispatchResult, Storage};
+use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, Storage};
 use sp_timestamp::Timestamp;
 
 use crate::{
@@ -24,29 +24,42 @@ use crate::{
 	utils::accounts::Keyring,
 };
 
-/// Evironment that interact directly with the runtime,
+/// Environment that interact directly with the runtime,
 /// without the usage of a client.
 pub struct RuntimeEnv<T: Runtime> {
-	ext: Rc<RefCell<sp_io::TestExternalities>>,
+	parachain_ext: Rc<RefCell<sp_io::TestExternalities>>,
+	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
 	_config: PhantomData<T>,
 }
 
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_storage(mut storage: Storage) -> Self {
+	fn from_storage(mut parachain_storage: Storage, mut sibling_storage: Storage) -> Self {
 		// Needed for the aura usage
 		pallet_aura::GenesisConfig::<T> {
 			authorities: vec![AuraId::from(Public([0; 32]))],
 		}
-		.assimilate_storage(&mut storage)
+		.assimilate_storage(&mut parachain_storage)
 		.unwrap();
 
-		let mut ext = sp_io::TestExternalities::new(storage);
+		let mut parachain_ext = sp_io::TestExternalities::new(parachain_storage);
 
-		ext.execute_with(|| Self::prepare_block(1));
+		parachain_ext.execute_with(|| Self::prepare_block(1));
+
+		// Needed for the aura usage
+		pallet_aura::GenesisConfig::<T> {
+			authorities: vec![AuraId::from(Public([0; 32]))],
+		}
+		.assimilate_storage(&mut sibling_storage)
+		.unwrap();
+
+		let mut sibling_ext = sp_io::TestExternalities::new(sibling_storage);
+
+		sibling_ext.execute_with(|| Self::prepare_block(1));
 
 		Self {
-			ext: Rc::new(RefCell::new(ext)),
+			parachain_ext: Rc::new(RefCell::new(parachain_ext)),
+			sibling_ext: Rc::new(RefCell::new(sibling_ext)),
 			pending_extrinsics: Vec::default(),
 			_config: PhantomData,
 		}
@@ -57,12 +70,12 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		who: Keyring,
 		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
-		let extrinsic = self.state(|| {
+		let extrinsic = self.parachain_state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
 
-		self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
+		self.parachain_state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
 
 		let fee = self
 			.find_event(|e| match e {
@@ -76,17 +89,45 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		Ok(fee)
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>> {
 		self.pending_extrinsics.push((who, call.into()));
 		Ok(())
 	}
 
-	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
-		self.ext.borrow_mut().execute_with(f)
+	fn relay_state_mut<R>(&mut self, _f: impl FnOnce() -> R) -> R {
+		unimplemented!("Mutable relay state not implemented for RuntimeEnv")
 	}
 
-	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
-		self.ext.borrow_mut().execute_with(|| {
+	fn relay_state<R>(&self, _f: impl FnOnce() -> R) -> R {
+		unimplemented!("Relay state not implemented for RuntimeEnv")
+	}
+
+	fn parachain_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.parachain_ext.borrow_mut().execute_with(f)
+	}
+
+	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.parachain_ext.borrow_mut().execute_with(|| {
+			let version = frame_support::StateVersion::V1;
+			let hash = frame_support::storage_root(version);
+
+			let result = f();
+
+			assert_eq!(hash, frame_support::storage_root(version));
+			result
+		})
+	}
+
+	fn sibling_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.sibling_ext.borrow_mut().execute_with(f)
+	}
+
+	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.sibling_ext.borrow_mut().execute_with(|| {
 			let version = frame_support::StateVersion::V1;
 			let hash = frame_support::storage_root(version);
 
@@ -99,7 +140,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 
 	fn __priv_build_block(&mut self, i: BlockNumber) {
 		self.process_pending_extrinsics();
-		self.state_mut(|| {
+		self.parachain_state_mut(|| {
 			T::Api::finalize_block();
 			Self::prepare_block(i);
 		});
@@ -111,12 +152,12 @@ impl<T: Runtime> RuntimeEnv<T> {
 		let pending_extrinsics = mem::replace(&mut self.pending_extrinsics, Vec::default());
 
 		for (who, call) in pending_extrinsics {
-			let extrinsic = self.state(|| {
+			let extrinsic = self.parachain_state(|| {
 				let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 				utils::create_extrinsic::<T>(who, call, nonce)
 			});
 
-			self.state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap().unwrap());
+			self.parachain_state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap().unwrap());
 		}
 	}
 
@@ -206,6 +247,7 @@ mod tests {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
+			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_now(
@@ -228,6 +270,7 @@ mod tests {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
+			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(

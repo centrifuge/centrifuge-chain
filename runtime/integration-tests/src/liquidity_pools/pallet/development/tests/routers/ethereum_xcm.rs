@@ -23,6 +23,7 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use frame_support::{assert_noop, assert_ok};
+use fudge::primitives::Chain;
 use hex::FromHex;
 use liquidity_pools_gateway_routers::{
 	ethereum_xcm::EthereumXCMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, FeeValues,
@@ -32,52 +33,64 @@ use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
 use pallet_liquidity_pools::Message;
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::{bounded::BoundedVec, H160};
-use xcm_simulator::TestExt;
+use sp_runtime::Storage;
+use tokio::runtime::Handle;
 
 use crate::{
 	chain::centrifuge::{
 		Balance, LiquidityPoolsGateway, OrmlAssetRegistry, OrmlTokens, Runtime, RuntimeOrigin,
+		PARA_ID,
 	},
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB, CHARLIE, PARA_ID_MOONBEAM, TEST_DOMAIN},
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
-		tests::routers::axelar_evm::TEST_EVM_CHAIN,
+		setup::dollar,
+		tests::{
+			liquidity_pools::setup::{setup_test_env, DEFAULT_SIBLING_LOCATION},
+			routers::axelar_evm::TEST_EVM_CHAIN,
+		},
 	},
-	utils::accounts::Keyring,
+	utils::{accounts::Keyring, env, env::PARA_ID_SIBLING, genesis, GLMR_CURRENCY_ID},
 };
 
-#[test]
-fn submit_ethereum_xcm() {
+const TEST_DOMAIN: Domain = Domain::EVM(1);
+
+#[tokio::test]
+async fn submit_ethereum_xcm() {
 	submit_test_fn(get_ethereum_xcm_router_fn());
 }
 
-#[test]
-fn submit_axelar_xcm() {
+#[tokio::test]
+async fn submit_axelar_xcm() {
 	submit_test_fn(get_axelar_xcm_router_fn());
 }
 
 fn submit_test_fn(router_creation_fn: RouterCreationFn) {
-	TestNet::reset();
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_native_balances::<Runtime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
-	Development::execute_with(|| {
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		setup(router_creation_fn);
 
 		let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
 			currency: 0,
-			sender: ALICE.into(),
-			receiver: BOB.into(),
+			sender: Keyring::Alice.into(),
+			receiver: Keyring::Bob.into(),
 			amount: 1_000u128,
 		};
 
 		assert_ok!(<LiquidityPoolsGateway as OutboundQueue>::submit(
-			ALICE.into(),
+			Keyring::Alice.into(),
 			TEST_DOMAIN,
 			msg.clone(),
 		));
 
 		assert_noop!(
 			<LiquidityPoolsGateway as OutboundQueue>::submit(
-				ALICE.into(),
+				Keyring::Alice.into(),
 				Domain::EVM(1285),
 				msg.clone(),
 			),
@@ -141,65 +154,11 @@ fn get_ethereum_xcm_router_fn() -> RouterCreationFn {
 }
 
 fn setup(router_creation_fn: RouterCreationFn) {
-	let moonbeam_location = MultiLocation {
-		parents: 1,
-		interior: X1(Parachain(PARA_ID_MOONBEAM)),
-	};
-	let moonbeam_native_token = MultiLocation {
-		parents: 1,
-		interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
-	};
-
-	/// Register Moonbeam's native token
-	let glmr_currency_id = CurrencyId::ForeignAsset(1);
-	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: 18,
-		name: "Glimmer".into(),
-		symbol: "GLMR".into(),
-		existential_deposit: 1_000_000,
-		location: Some(VersionedMultiLocation::V3(moonbeam_native_token)),
-		additional: CustomMetadata {
-			transferability: CrossChainTransferability::Xcm(Default::default()),
-			..CustomMetadata::default()
-		},
-	};
-
-	let domain_router = router_creation_fn(moonbeam_location.into(), glmr_currency_id);
+	let domain_router = router_creation_fn(DEFAULT_SIBLING_LOCATION.into(), GLMR_CURRENCY_ID);
 
 	assert_ok!(LiquidityPoolsGateway::set_domain_router(
 		RuntimeOrigin::root(),
 		TEST_DOMAIN,
 		domain_router,
-	));
-
-	assert_ok!(OrmlAssetRegistry::register_asset(
-		RuntimeOrigin::root(),
-		meta,
-		Some(glmr_currency_id)
-	));
-
-	// Fund the gateway sender account with enough glimmer to pay for fees
-	OrmlTokens::deposit(
-		glmr_currency_id,
-		&<Runtime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
-		1_000_000_000_000 * dollar(18),
-	);
-
-	// We first need to register AUSD in the asset registry
-	let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: 12,
-		name: "Acala Dollar".into(),
-		symbol: "AUSD".into(),
-		existential_deposit: 1_000,
-		location: None,
-		additional: CustomMetadata {
-			transferability: CrossChainTransferability::Xcm(Default::default()),
-			..CustomMetadata::default()
-		},
-	};
-	assert_ok!(OrmlAssetRegistry::register_asset(
-		RuntimeOrigin::root(),
-		ausd_meta,
-		Some(CurrencyId::AUSD)
 	));
 }

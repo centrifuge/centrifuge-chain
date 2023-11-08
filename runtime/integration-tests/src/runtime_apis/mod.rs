@@ -25,7 +25,7 @@ use fudge::{
 };
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_executor::WasmExecutor;
-use sc_service::TFullClient;
+use sc_service::{TFullBackend, TFullClient};
 use sp_api::ProvideRuntimeApi as _;
 use sp_consensus_slots::SlotDuration;
 use sp_core::{
@@ -33,13 +33,20 @@ use sp_core::{
 	sr25519::{Pair, Public},
 	Pair as TraitPair, H256,
 };
-use sp_inherents::CreateInherentDataProviders;
-use sp_runtime::{generic::BlockId, traits::IdentifyAccount, BuildStorage, Storage};
+use sp_inherents::{CreateInherentDataProviders, InherentData};
+use sp_runtime::{
+	generic::BlockId,
+	traits::{BlakeTwo256, IdentifyAccount},
+	BuildStorage, Storage,
+};
 use tokio::runtime::Handle;
 
-use crate::chain::{
-	centrifuge,
-	centrifuge::{Runtime, PARA_ID},
+use crate::{
+	chain::{
+		centrifuge,
+		centrifuge::{Runtime, PARA_ID},
+	},
+	utils::accounts::Keyring,
 };
 
 /// Start date used for timestamps in test-enviornments
@@ -70,9 +77,13 @@ type ApiRef<'a> = sp_api::ApiRef<'a, <TFullClient<centrifuge::Block, centrifuge:
 
 fn create_builder(
 	handle: Handle,
-	genesis: Option<impl BuildStorage>,
+	genesis: Option<Storage>,
 ) -> StandaloneBuilder<centrifuge::Block, centrifuge::RuntimeApi, Cidp, Dp> {
-	let mut state = StateProvider::new(centrifuge::WASM_BINARY.expect("Wasm is build. Qed."));
+	let mut state =
+		StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(Some(
+			centrifuge::WASM_BINARY.expect("Wasm is build. Qed."),
+		))
+		.expect("ESSENTIAL: State provider can be created.");
 	state.insert_storage(
 		pallet_aura::GenesisConfig::<centrifuge::Runtime> {
 			authorities: vec![AuraId::from(sr25519::Public([0u8; 32]))],
@@ -83,15 +94,7 @@ fn create_builder(
 
 	state.insert_storage(
 		pallet_balances::GenesisConfig::<centrifuge::Runtime> {
-			balances: vec![(
-				sp_runtime::AccountId32::from(
-					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
-						.unwrap()
-						.public()
-						.into_account(),
-				),
-				10000 * CFG,
-			)],
+			balances: vec![(Keyring::Alice.to_account_id(), 10000 * CFG)],
 		}
 		.build_storage()
 		.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
@@ -108,7 +111,8 @@ fn create_builder(
 	let instance_id = FudgeInherentTimestamp::create_instance(
 		std::time::Duration::from_secs(12),
 		Some(std::time::Duration::from_millis(START_DATE)),
-	);
+	)
+	.expect("ESSENTIAL: Instance ID can be created.");
 
 	let cidp = Box::new(move |_parent: H256, ()| {
 		async move {
@@ -131,29 +135,30 @@ fn create_builder(
 			Ok((timestamp, slot, relay_para_inherent))
 		}
 	});
+
 	let dp = |clone_client: Arc<
-		sc_service::TFullClient<centrifuge::Block, centrifuge::RuntimeApi, TWasmExecutor>,
+		TFullClient<centrifuge::Block, centrifuge::RuntimeApi, TWasmExecutor>,
 	>| {
-		Box::new(move |parent, inherents| {
-			let client = clone_client.clone();
+		Box::new(
+			move |parent: sp_runtime::generic::Header<u32, BlakeTwo256>, inherents| {
+				let client = clone_client.clone();
 
-			async move {
-				let aura = FudgeAuraDigest::<
-					centrifuge::Block,
-					sc_service::TFullClient<
+				async move {
+					let aura = FudgeAuraDigest::<
 						centrifuge::Block,
-						centrifuge::RuntimeApi,
-						TWasmExecutor,
-					>,
-				>::new(&*client);
+						TFullClient<centrifuge::Block, centrifuge::RuntimeApi, TWasmExecutor>,
+					>::new(&*client)
+					.expect("ESSENTIAL: Aura digest can be created.");
 
-				let digest = aura.build_digest(&parent, &inherents).await?;
-				Ok(digest)
-			}
-		})
+					let digest = aura.build_digest(parent, &inherents).await?;
+					Ok(digest)
+				}
+			},
+		)
 	};
 
 	StandaloneBuilder::<_, _, Cidp, Dp>::new(init, |client| (cidp, dp(client)))
+		.expect("ESSENTIAL: Standalone builder can be created.")
 }
 
 pub struct ApiEnv {
@@ -167,10 +172,9 @@ impl ApiEnv {
 		}
 	}
 
-	pub fn new_with_genesis(handle: Handle, genesis: impl BuildStorage) -> Self {
-		// TODO: Actually make a lot of the utils in pools not specific to pools
-		//       testing. Like init logs, creating builder and so on.
+	pub fn new_with_genesis(handle: Handle, genesis: Storage) -> Self {
 		crate::utils::logs::init_logs();
+
 		Self {
 			builder: create_builder(handle, Some(genesis)),
 		}

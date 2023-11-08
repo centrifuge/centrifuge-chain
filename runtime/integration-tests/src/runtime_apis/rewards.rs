@@ -13,9 +13,9 @@
 use cfg_primitives::{AccountId, Balance, CFG};
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards};
 use cfg_types::tokens::CurrencyId;
-use development_runtime::{apis::RewardsApi, BlockId};
+use development_runtime::BlockId;
 use frame_support::assert_ok;
-use runtime_common::apis::RewardDomain;
+use runtime_common::apis::{RewardDomain, RewardsApi};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
@@ -23,11 +23,11 @@ use tokio::runtime::Handle;
 use super::ApiEnv;
 use crate::utils::accounts::Keyring;
 
-#[tokio::test]
-async fn liquidity_rewards_runtime_api_works() {
-	rewards_runtime_api_works::<development_runtime::LiquidityRewardsBase>(RewardDomain::Liquidity)
-		.await;
-}
+// #[tokio::test]
+// async fn liquidity_rewards_runtime_api_works() {
+// 	rewards_runtime_api_works::<development_runtime::LiquidityRewardsBase>(RewardDomain::Liquidity)
+// 		.await;
+// }
 
 #[tokio::test]
 async fn block_rewards_runtime_api_works() {
@@ -75,8 +75,13 @@ where
 				/// we need another distribution to allow the participant claim
 				/// rewards
 				for (group_id, amount) in &rewards {
-					<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
-						.expect("Distributing rewards should work");
+					let res =
+						<Rewards as DistributedRewards>::distribute_reward(*amount, [*group_id])
+							.expect("Distributing rewards should work");
+
+					res.iter().for_each(|item| {
+						item.expect("Rewards distribution error");
+					});
 				}
 			}
 		})

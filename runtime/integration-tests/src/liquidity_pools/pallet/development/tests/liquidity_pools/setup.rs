@@ -31,10 +31,6 @@ use cfg_types::{
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 };
 use cumulus_primitives_core::Junction::GlobalConsensus;
-use development_runtime::{
-	LiquidityPools, LiquidityPoolsGateway, OrmlAssetRegistry, OrmlTokens, PoolSystem,
-	Runtime as DevelopmentRuntime, RuntimeOrigin, TreasuryPalletId,
-};
 use frame_support::{
 	assert_ok,
 	traits::{
@@ -42,7 +38,9 @@ use frame_support::{
 		fungibles::{Balanced, Mutate},
 		Get, PalletInfo,
 	},
+	weights::Weight,
 };
+use fudge::primitives::Chain;
 use liquidity_pools_gateway_routers::{
 	ethereum_xcm::EthereumXCMRouter, DomainRouter, XCMRouter, XcmDomain as GatewayXcmDomain,
 	XcmTransactInfo, DEFAULT_PROOF_SIZE,
@@ -51,6 +49,7 @@ use orml_asset_registry::{AssetMetadata, Metadata};
 use orml_traits::MultiCurrency;
 use pallet_liquidity_pools::Message;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
+use polkadot_parachain::primitives::Id;
 use runtime_common::{
 	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
 };
@@ -60,18 +59,26 @@ use sp_runtime::{
 	BoundedVec, DispatchError, Perquintill, SaturatedConversion, WeakBoundedVec,
 };
 use xcm::{
-	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
-	prelude::{Parachain, X1, X2},
+	prelude::{Parachain, X1, X2, X3, XCM_VERSION},
+	v3::{Junction, Junction::*, Junctions, MultiLocation, NetworkId},
 	VersionedMultiLocation,
 };
 
 use crate::{
-	chain::centrifuge::development,
-	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB, PARA_ID_MOONBEAM},
-		tests::register_ausd,
+	chain::{
+		centrifuge::{
+			LiquidityPools, LiquidityPoolsGateway, OrmlAssetRegistry, OrmlTokens, PolkadotXcm,
+			PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, Tokens, TreasuryPalletId,
+			PARA_ID,
+		},
+		relay::{Hrmp as RelayHrmp, RuntimeOrigin as RelayRuntimeOrigin},
 	},
-	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, GLMR_ED, MOONBEAM_EVM_CHAIN_ID},
+	liquidity_pools::pallet::development::{setup::dollar, tests::register_ausd},
+	utils::{
+		accounts::Keyring,
+		env::{TestEnv, PARA_ID_SIBLING},
+		AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, GLMR_ED, MOONBEAM_EVM_CHAIN_ID,
+	},
 };
 
 // 10 GLMR (18 decimals)
@@ -84,18 +91,17 @@ pub const DEFAULT_VALIDITY: Seconds = 2555583502;
 pub const DEFAULT_OTHER_DOMAIN_ADDRESS: DomainAddress =
 	DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [0; 20]);
 pub const DEFAULT_POOL_ID: u64 = 42;
-pub const DEFAULT_MOONBEAM_LOCATION: MultiLocation = MultiLocation {
+pub const DEFAULT_SIBLING_LOCATION: MultiLocation = MultiLocation {
 	parents: 1,
-	interior: X1(Parachain(PARA_ID_MOONBEAM)),
+	interior: X1(Parachain(PARA_ID_SIBLING)),
 };
-use frame_support::weights::Weight;
 
 pub type LiquidityPoolMessage = Message<Domain, PoolId, TrancheId, Balance, Quantity>;
 
 pub fn get_default_moonbeam_native_token_location() -> MultiLocation {
 	MultiLocation {
 		parents: 1,
-		interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
+		interior: X2(Parachain(PARA_ID_SIBLING), general_key(&[0, 1])),
 	}
 }
 
@@ -135,12 +141,27 @@ pub fn set_test_domain_router(
 	));
 }
 
+pub fn setup_test_env(env: &mut TestEnv) {
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		setup_pre_requirements();
+	})
+	.unwrap();
+
+	env.with_mut_state(Chain::Relay, || {
+		setup_hrmp_channel();
+	})
+	.unwrap();
+
+	env.evolve().unwrap();
+}
+
 /// Initializes universally required storage for liquidityPools tests:
 /// * Set the EthereumXCM router which in turn sets:
 ///     * transact info and domain router for Moonbeam `MultiLocation`,
 ///     * fee for GLMR (`GLMR_CURRENCY_ID`),
 /// * Register GLMR and AUSD in `OrmlAssetRegistry`,
-/// * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice, Bob and the Treasury.
+/// * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for the LP Gateway Sender.
+/// * Set the XCM version for the sibling parachain.
 ///
 /// NOTE: AUSD is the default pool currency in `create_pool`.
 /// Neither AUSD nor GLMR are registered as a liquidityPools-transferable
@@ -149,7 +170,7 @@ pub fn setup_pre_requirements() {
 	/// Set the EthereumXCM router necessary for Moonbeam.
 	set_test_domain_router(
 		MOONBEAM_EVM_CHAIN_ID,
-		DEFAULT_MOONBEAM_LOCATION.into(),
+		DEFAULT_SIBLING_LOCATION.into(),
 		GLMR_CURRENCY_ID,
 	);
 
@@ -171,22 +192,45 @@ pub fn setup_pre_requirements() {
 	));
 
 	// Fund the gateway sender account with enough glimmer to pay for fees
-	OrmlTokens::deposit(
+	assert_ok!(Tokens::set_balance(
+		RuntimeOrigin::root(),
+		<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get().into(),
 		GLMR_CURRENCY_ID,
-		&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 		DEFAULT_BALANCE_GLMR,
-	);
-	// TODO: Check
-	// // Treasury pays for `Executed*` messages
-	// OrmlTokens::deposit(
-	// 	GLMR_CURRENCY_ID,
-	// 	&TreasuryPalletId::get().into_account_truncating(),
-	// 	DEFAULT_BALANCE_GLMR * dollar(18),
-	// );
+		0,
+	));
 
 	// Register AUSD in the asset registry which is the default pool currency in
 	// `create_pool`
 	register_ausd();
+
+	// Set the XCM version used when sending XCM messages to sibling.
+	assert_ok!(PolkadotXcm::force_xcm_version(
+		RuntimeOrigin::root(),
+		Box::new(MultiLocation::new(
+			1,
+			Junctions::X1(Junction::Parachain(PARA_ID_SIBLING)),
+		)),
+		XCM_VERSION,
+	));
+}
+
+/// Opens the required HRMP channel between parachain and sibling.
+///
+/// NOTE - this is should be done on the relay chain.
+pub fn setup_hrmp_channel() {
+	assert_ok!(RelayHrmp::force_open_hrmp_channel(
+		RelayRuntimeOrigin::root(),
+		Id::from(PARA_ID),
+		Id::from(PARA_ID_SIBLING),
+		10,
+		1024,
+	));
+
+	assert_ok!(RelayHrmp::force_process_hrmp_open(
+		RelayRuntimeOrigin::root(),
+		0,
+	));
 }
 
 /// Creates a new pool for the given id with
@@ -203,8 +247,8 @@ pub fn create_ausd_pool(pool_id: u64) {
 ///  * The given `currency` as pool currency with of `currency_decimals`.
 pub fn create_currency_pool(pool_id: u64, currency_id: CurrencyId, currency_decimals: Balance) {
 	assert_ok!(PoolSystem::create(
-		BOB.into(),
-		BOB.into(),
+		Keyring::Bob.into(),
+		Keyring::Bob.into(),
 		pool_id,
 		vec![
 			TrancheInput {

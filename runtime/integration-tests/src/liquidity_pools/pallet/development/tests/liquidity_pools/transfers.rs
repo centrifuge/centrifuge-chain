@@ -36,48 +36,51 @@ use cfg_types::{
 		ForeignAssetId,
 	},
 };
-use development_runtime::{
-	LiquidityPools, LocationToAccountId, OrmlTokens, Permissions, PoolSystem,
-	Runtime as DevelopmentRuntime, RuntimeOrigin, System,
-};
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::fungibles::Mutate};
+use fudge::primitives::Chain;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::{
 	traits::{Convert, One, Zero},
-	BoundedVec, DispatchError,
+	BoundedVec, DispatchError, Storage,
 };
+use tokio::runtime::Handle;
 use xcm::{latest::MultiLocation, VersionedMultiLocation};
-use xcm_simulator::TestExt;
 
 use crate::{
+	chain::centrifuge::{
+		LiquidityPools, LocationToAccountId, OrmlTokens, Permissions, PoolSystem,
+		Runtime as DevelopmentRuntime, RuntimeOrigin, System, PARA_ID,
+	},
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB, CHARLIE},
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
+		setup::dollar,
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
 			enable_liquidity_pool_transferability,
 			investments::{default_tranche_id, general_currency_index, investment_id},
-			liquidity_pools_transferable_multilocation, setup_pre_requirements,
-			LiquidityPoolMessage, DEFAULT_BALANCE_GLMR, DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-			DEFAULT_POOL_ID,
+			liquidity_pools_transferable_multilocation, setup_test_env, LiquidityPoolMessage,
+			DEFAULT_BALANCE_GLMR, DEFAULT_DOMAIN_ADDRESS_MOONBEAM, DEFAULT_POOL_ID,
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, AUSD_ED, MOONBEAM_EVM_CHAIN_ID},
+	utils::{accounts::Keyring, env, genesis, AUSD_CURRENCY_ID, AUSD_ED, MOONBEAM_EVM_CHAIN_ID},
 };
 
-#[test]
-fn transfer_non_tranche_tokens_from_local() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		// Register GLMR and fund BOB
-		setup_pre_requirements();
+#[tokio::test]
+async fn transfer_non_tranche_tokens_from_local() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_native_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let initial_balance = 2 * AUSD_ED;
 		let amount = initial_balance / 2;
 		let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
 		let currency_id = AUSD_CURRENCY_ID;
-		let source_account = CHARLIE;
+		let source_account = Keyring::Charlie;
 
 		// Mint sufficient balance
 		assert_eq!(
@@ -171,42 +174,41 @@ fn transfer_non_tranche_tokens_from_local() {
 	});
 }
 
-#[test]
-fn transfer_non_tranche_tokens_to_local() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn transfer_non_tranche_tokens_to_local() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_native_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let initial_balance = DEFAULT_BALANCE_GLMR;
 		let amount = DEFAULT_BALANCE_GLMR / 2;
 		let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
 		let currency_id = AUSD_CURRENCY_ID;
-		let receiver: AccountId = BOB.into();
+		let receiver: AccountId = Keyring::Bob.into();
 
 		// Mock incoming decrease message
 		let msg = LiquidityPoolMessage::Transfer {
 			currency: general_currency_index(currency_id),
 			// sender is irrelevant for other -> local
-			sender: ALICE,
+			sender: Keyring::Alice.into(),
 			receiver: receiver.clone().into(),
 			amount,
 		};
 
-		assert_eq!(OrmlTokens::total_issuance(currency_id), AUSD_ED * 2);
+		assert_eq!(OrmlTokens::total_issuance(currency_id), 0);
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		assert_ok!(LiquidityPools::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, msg));
 
 		// Verify that the correct amount was minted
-		assert_eq!(
-			OrmlTokens::total_issuance(currency_id),
-			amount + AUSD_ED * 2
-		);
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &receiver),
-			amount + AUSD_ED
-		);
+		assert_eq!(OrmlTokens::total_issuance(currency_id), amount);
+		assert_eq!(OrmlTokens::free_balance(currency_id, &receiver), amount);
 
 		// Verify empty transfers throw
 		assert_noop!(
@@ -214,7 +216,7 @@ fn transfer_non_tranche_tokens_to_local() {
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				LiquidityPoolMessage::Transfer {
 					currency: general_currency_index(currency_id),
-					sender: ALICE,
+					sender: Keyring::Alice.into(),
 					receiver: receiver.into(),
 					amount: 0,
 				},
@@ -224,16 +226,21 @@ fn transfer_non_tranche_tokens_to_local() {
 	});
 }
 
-#[test]
-fn transfer_tranche_tokens_from_local() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn transfer_tranche_tokens_from_local() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let pool_id = DEFAULT_POOL_ID;
 		let amount = 100_000;
 		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
-		let receiver = BOB;
+		let receiver = Keyring::Bob;
 
 		// Create the pool
 		create_ausd_pool(pool_id);
@@ -245,7 +252,7 @@ fn transfer_tranche_tokens_from_local() {
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
 			LiquidityPools::transfer_tranche_tokens(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				dest_address.clone(),
@@ -315,18 +322,23 @@ fn transfer_tranche_tokens_from_local() {
 	});
 }
 
-#[test]
-fn transfer_tranche_tokens_to_local() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn transfer_tranche_tokens_to_local() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		// Create new pool
 		let pool_id = DEFAULT_POOL_ID;
 		create_ausd_pool(pool_id);
 
 		let amount = 100_000_000;
-		let receiver: AccountId = BOB.into();
+		let receiver: AccountId = Keyring::Bob.into();
 		let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 		let sending_domain_locator = Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 		let tranche_id = default_tranche_id(pool_id);
@@ -390,13 +402,19 @@ fn transfer_tranche_tokens_to_local() {
 	});
 }
 
-#[test]
 /// Try to transfer tranches for non-existing pools or invalid tranche ids for
 /// existing pools.
-fn transferring_invalid_tranche_tokens_should_fail() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn transferring_invalid_tranche_tokens_should_fail() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 
 		let valid_pool_id: u64 = 42;
@@ -408,26 +426,26 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		let invalid_tranche_id = valid_tranche_id.map(|i| i.saturating_add(1));
 		assert!(PoolSystem::pool(invalid_pool_id).is_none());
 
-		// Make BOB the MembersListAdmin of both pools
+		// Make Keyring::Bob the MembersListAdmin of both pools
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
-			BOB.into(),
+			Keyring::Bob.into(),
 			PermissionScope::Pool(valid_pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
-			BOB.into(),
+			Keyring::Bob.into(),
 			PermissionScope::Pool(invalid_pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
-		// Give BOB investor role for (valid_pool_id, invalid_tranche_id) and
+		// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
 		// (invalid_pool_id, valid_tranche_id)
 		assert_ok!(Permissions::add(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
 				dest_address.clone()
@@ -436,7 +454,7 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 			Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
 		));
 		assert_ok!(Permissions::add(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
 				dest_address.clone()
@@ -446,7 +464,7 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		));
 		assert_noop!(
 			LiquidityPools::transfer_tranche_tokens(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				invalid_pool_id,
 				valid_tranche_id,
 				dest_address.clone(),
@@ -456,7 +474,7 @@ fn transferring_invalid_tranche_tokens_should_fail() {
 		);
 		assert_noop!(
 			LiquidityPools::transfer_tranche_tokens(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				valid_pool_id,
 				invalid_tranche_id,
 				dest_address,
