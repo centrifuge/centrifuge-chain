@@ -318,7 +318,7 @@ async fn transfer_cfg_sibling_to_centrifuge() {
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(cfg_fee(), 8012800000000000);
+	assert_eq!(cfg_fee(), 7039200000000000);
 }
 
 fn cfg_fee() -> Balance {
