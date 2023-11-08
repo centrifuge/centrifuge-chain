@@ -32,32 +32,33 @@ jobs:
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
-      - name: generate codecov reports
-        run: |
-          if ${{ contains(matrix.target, 'test' ) }}; then
-            echo "---- GENERATE CODE COVERAGE ----"
-            echo "# Install Tarpaulin"
-            cargo install --locked cargo-tarpaulin
-            # make Cargo.toml
-            echo "Generate code coverage for ${{ matrix.target }}"
-            cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
-          fi 
+      # Tarpaulin requires cargo 1.70.0:
+      # - name: generate codecov reports
+      #   run: |
+      #     if ${{ contains(matrix.target, 'test' ) }}; then
+      #       echo "---- GENERATE CODE COVERAGE ----"
+      #       echo "# Install Tarpaulin"
+      #       cargo install --locked cargo-tarpaulin
+      #       # make Cargo.toml
+      #       echo "Generate code coverage for ${{ matrix.target }}"
+      #       cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
+      #     fi 
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"           
 
-    # UPLOAD REPORTS
-      - name: Upload codecov report
-        uses: codecov/codecov-action@v3
-        with:
-          # token: ${{ secrets.CODECOV_TOKEN }}
-          # files: ./coverage1.xml,./coverage2.xml # optional
-          # flags: unittests # optional
-          # name: codecov-umbrella # optional
-          # fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)        
+    # UPLOAD REPORTS (requires cargo 1.70.0)
+      # - name: Upload codecov report
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     # token: ${{ secrets.CODECOV_TOKEN }}
+      #     # files: ./coverage1.xml,./coverage2.xml # optional
+      #     # flags: unittests # optional
+      #     # name: codecov-umbrella # optional
+      #     # fail_ci_if_error: true # optional (default = false)
+      #     verbose: true # optional (default = false)        
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}
