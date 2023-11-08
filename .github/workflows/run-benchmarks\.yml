@@ -1,7 +1,7 @@
-name: Benchmark PR
+name: Run benchmarks
 # ToDo: add an arbitrary label to keep this cache separate from the builds
 on:
-  workflow_call:
+  workflow_dispatch:
   # Manually triggered by an authorized repo contributor.
   push:
     branches: main # To build the "benchmark-only" cache
