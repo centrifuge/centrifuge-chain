@@ -1,9 +1,7 @@
 on:
   push:
     tags:
-      - '**'
-    # branches: [main, 'release-v**']
-  pull_request:
+      - '*'
 name: Build&Publish WASM
 concurrency:
   group: '${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
