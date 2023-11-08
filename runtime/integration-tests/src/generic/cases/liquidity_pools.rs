@@ -1671,7 +1671,7 @@ mod centrifuge {
 			let ausd_location: MultiLocation = MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::polkadot::acala::ID),
+					Parachain(T::FudgeHandle::SIBLING_ID),
 					general_key(parachains::polkadot::acala::AUSD_KEY),
 				),
 			);
