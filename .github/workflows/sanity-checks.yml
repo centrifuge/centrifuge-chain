@@ -74,7 +74,6 @@ jobs:
         uses: ./.github/actions/prep-ubuntu
         with:
           # RUST_TOOLCHAIN: "nightly-2022-11-14"
-          setup_cache: true
           cache: enabled
           GWIP: ${{ secrets.GWIP_SCCACHE }}
           GSA: ${{ secrets.GSA_SCCACHE }}
