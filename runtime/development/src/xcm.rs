@@ -165,7 +165,7 @@ impl TakeRevenue for ToTreasury {
 /// executed.
 pub type Barrier = (
 	TakeWeightCredit,
-	//todo(nuno): revisit this
+	// todo(nuno): revisit this
 	// xcm_primitives::AllowTopLevelPaidExecutionDescendOriginFirst<Everything>,
 	AllowTopLevelPaidExecutionFrom<Everything>,
 	// Expected responses are OK.

@@ -338,8 +338,8 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
-	type MaxFreezes = ConstU32<0>;
-	type MaxHolds = ConstU32<0>;
+	type MaxFreezes = ConstU32<10>;
+	type MaxHolds = ConstU32<10>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
