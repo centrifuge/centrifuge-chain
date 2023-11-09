@@ -260,7 +260,7 @@ impl pallet_block_rewards::Config for Test {
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
-		// nuno: this is failing since the balance at this point is the existential deposit
+		// NOTE: This is now the ED instead of 0, as we collators need ED now.
 		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
 		ExistentialDeposit::get()
 	);
@@ -282,6 +282,8 @@ pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	.is_zero());
 	assert_eq!(
 		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		// NOTE: IF a collator has been staked before the system already granted them ED
+		//       of `StakeCurrency`.
 		if was_before {
 			ExistentialDeposit::get()
 		} else {

@@ -374,6 +374,13 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
 		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
+
+		// NOTE: We currently must leave the `ED` in the account if it otherwise
+		//       would get killed and down the line our orml-tokens prevents
+		//       that.
+		//
+		//       I.e. this means stake curreny issuance will grow over time if many
+		//       collators leave and join.
 		T::Currency::burn_from(
 			T::StakeCurrencyId::get(),
 			who,
