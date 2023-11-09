@@ -311,21 +311,28 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
+			keep_alive: bool,
 		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
+			let preservation = if keep_alive {
+				Preservation::Preserve
+			} else {
+				Preservation::Expendable
+			};
+
 			let reducible_balance = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Inspect<T::AccountId>>::reducible_balance(
 					&from,
-					Preservation::Expendable,
+					preservation,
 					Fortitude::Polite,
 				)
 			} else {
 				<T::Fungibles as fungibles::Inspect<T::AccountId>>::reducible_balance(
 					currency_id,
 					&from,
-					Preservation::Expendable,
+					preservation,
 					Fortitude::Polite,
 				)
 			};
@@ -345,7 +352,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					Preservation::Expendable,
+					preservation,
 				)?;
 
 				TokenType::Native
@@ -355,7 +362,7 @@ pub mod pallet {
 					&from,
 					&to,
 					reducible_balance,
-					Preservation::Expendable,
+					preservation,
 				)?;
 
 				TokenType::Other
@@ -413,7 +420,7 @@ pub mod pallet {
 					&from,
 					&to,
 					amount,
-					Preservation::Protect,
+					Preservation::Preserve,
 				)?;
 
 				TokenType::Other

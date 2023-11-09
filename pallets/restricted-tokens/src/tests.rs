@@ -160,6 +160,7 @@ fn transfer_all_works() {
 				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
+				false
 			));
 			assert_eq!(
 				orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free,
@@ -169,12 +170,14 @@ fn transfer_all_works() {
 				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
+				false
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
 				RuntimeOrigin::signed(100),
 				101,
 				CurrencyId::RestrictedCoin,
+				false
 			));
 			assert!(
 				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).free

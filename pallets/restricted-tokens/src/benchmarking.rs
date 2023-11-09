@@ -264,7 +264,7 @@ benchmarks! {
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account::<T>("receiver", false);
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency)
+	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency, false)
 	verify {
 		assert!(pallet_balances::Pallet::<T>::free_balance(&recv) == amount);
 		assert!(pallet_balances::Pallet::<T>::free_balance(&send) == Zero::zero());
@@ -279,7 +279,7 @@ benchmarks! {
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone())
+	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), false)
 	verify {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
