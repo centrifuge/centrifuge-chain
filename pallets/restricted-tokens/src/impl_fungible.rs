@@ -76,16 +76,6 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		preservation: Preservation,
 		force: Fortitude,
 	) -> Self::Balance {
-		#[cfg(feature = "std")]
-		{
-			dbg!(
-				<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance(
-					who,
-					preservation,
-					force,
-				)
-			);
-		}
 		T::PreFungibleInspect::check(FungibleInspectEffects::ReducibleBalance(
 			who.clone(),
 			preservation,
@@ -285,21 +275,8 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Hold(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
 		);
-		#[cfg(feature = "std")]
-		{
-			dbg!(who, amount);
-			dbg!(<T::NativeFungible as Inspect<T::AccountId>>::balance(who));
-		}
 
 		<T::NativeFungible as MutateHold<T::AccountId>>::hold(reason, who, amount)?;
-
-		#[cfg(feature = "std")]
-		{
-			dbg!(<T::NativeFungible as Inspect<T::AccountId>>::balance(who));
-			dbg!(<T::NativeFungible as Inspect<T::AccountId>>::total_balance(
-				who
-			));
-		}
 
 		Ok(())
 	}
