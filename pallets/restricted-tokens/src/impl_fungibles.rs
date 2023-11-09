@@ -524,6 +524,7 @@ pub enum FungiblesUnbalancedEffects<AssetId, AccountId, Balance> {
 
 impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
 	fn handle_dust(_dust: Dust<T::AccountId, Self>) {
+		// NOTE: Uses an always triggering `debug_assert` internally
 		defensive!("DustRemoval disabled");
 	}
 

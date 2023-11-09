@@ -10,10 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{
-	TwoThirdOfCouncil, BLOCK_STORAGE_LIMIT, MAXIMUM_BLOCK_WEIGHT, MAX_POV_SIZE,
-	NORMAL_DISPATCH_RATIO,
-};
+use cfg_primitives::{TwoThirdOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use pallet_ethereum::PostLogContent;
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
@@ -25,7 +22,6 @@ use runtime_common::{
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
-use static_assertions::const_assert;
 
 use crate::{Aura, LocationToAccountId};
 
