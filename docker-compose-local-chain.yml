@@ -5,7 +5,7 @@ services:
       - default
     container_name: cc-alice
     image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
-    platform: "linux/amd64"
+    platform: "linux/x86_64"
     ports:
       - "30355:30333"
       - "9946:9933"
@@ -38,7 +38,7 @@ services:
       - old
     container_name: cc-alice
     image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
-    platform: "linux/amd64"
+    platform: "linux/x86_64"
     ports:
       - "30355:30333"
       - "9936:9933"
