@@ -24,6 +24,7 @@ use runtime_common::{
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
+use static_assertions::const_assert;
 
 use crate::{Aura, LocationToAccountId, Runtime, RuntimeEvent};
 
@@ -48,12 +49,26 @@ parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
 	pub PrecompilesValue: Altair<Runtime> = Altair::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
-	pub GasLimitPovSizeRatio: u64 = {
-		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
-		block_gas_limit.saturating_div(MAX_POV_SIZE)
-	};
-	pub GasLimitStorageGrowthRatio: u64 =
-		BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
+	//
+	// pub GasLimitPovSizeRatio: u64 = {
+	//	let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
+	//	block_gas_limit.saturating_div(MAX_POV_SIZE)
+	// };
+	//
+	// NOTE: The above results in a value of 2. AS this factor is a divisor generating a
+	//       a storage limit we are conservative and use the value that moonbeam is using
+	//       in their staging environment
+	//       (https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408)
+	pub const GasLimitPovSizeRatio: u64 = 4;
+
+	//
+	// pub const GasLimitStorageGrowthRatio: u64 =
+	// 	 BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
+	//
+	// NOTE: The above results in a value of 366 which is the same value that moonbeam is using
+	//       in their staging environment. As we can not constantly assert this value we hardcode
+	//       it for now.
+	pub const GasLimitStorageGrowthRatio: u64 = 366;
 }
 
 impl pallet_evm::Config for Runtime {
