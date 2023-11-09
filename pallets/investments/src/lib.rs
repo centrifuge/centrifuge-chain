@@ -538,8 +538,6 @@ impl<T: Config> Pallet<T> {
 							amount,
 						)?;
 
-						order.update_submitted_at(cur_order_id);
-
 						// Remove order from storage if empty
 						if amount == T::Amount::zero() {
 							*maybe_order = None;
@@ -590,8 +588,6 @@ impl<T: Config> Pallet<T> {
 							order.submitted_at() == cur_order_id,
 							Error::<T>::CollectRequired
 						);
-
-						order.update_submitted_at(cur_order_id);
 
 						Self::do_update_redeem_order(
 							total_order,
