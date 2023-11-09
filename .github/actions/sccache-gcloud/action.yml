@@ -35,7 +35,7 @@ runs:
       if: ${{ inputs.cache == 'enabled' }}
       shell: sh
       run: |
-        echo "RUSTC_WRAPPER="sccache"" >> $GITHUB_ENV
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
         echo "CARGO_INCREMENTAL=false" >> $GITHUB_ENV # https://github.com/mozilla/sccache#rust
     
     - name: Run sccache stat for check
