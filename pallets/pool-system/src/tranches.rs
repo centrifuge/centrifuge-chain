@@ -157,7 +157,12 @@ impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 
 impl<Balance, Rate, Weight, Currency> Tranche<Balance, Rate, Weight, Currency>
 where
-	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	Balance: Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 	Rate: FixedPointNumber<Inner = Balance> + One + Copy,
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
@@ -341,7 +346,13 @@ impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
 	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
 where
 	TrancheCurrency: Copy + TrancheCurrencyT<PoolId, TrancheId>,
-	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	Balance: Zero
+		+ Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 	Weight: Copy + From<u128>,
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
 	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
@@ -1399,7 +1410,12 @@ pub fn calculate_risk_buffers<Balance, BalanceRatio>(
 ) -> Result<Vec<Perquintill>, DispatchError>
 where
 	BalanceRatio: Copy + FixedPointNumber,
-	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	Balance: Copy
+		+ BaseArithmetic
+		+ FixedPointOperand
+		+ Unsigned
+		+ From<u64>
+		+ sp_arithmetic::MultiplyRational,
 {
 	let tranche_values: Vec<_> = tranche_supplies
 		.iter()
@@ -1931,7 +1947,7 @@ pub mod test {
 			let valid_tranche_id: TrancheId = [
 				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
 			];
-			let mut tranche = tranches
+			tranche = tranches
 				.get_mut_tranche(TrancheLoc::Id(valid_tranche_id))
 				.unwrap();
 
@@ -2544,6 +2560,8 @@ pub mod test {
 		}
 
 		mod calculate_prices {
+			use frame_support::traits::tokens::{Fortitude, Preservation, Provenance};
+
 			use super::*;
 
 			/// Implements only `total_issuance` required for
@@ -2574,6 +2592,10 @@ pub mod test {
 					todo!()
 				}
 
+				fn total_balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+					todo!()
+				}
+
 				fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
 					todo!()
 				}
@@ -2581,7 +2603,8 @@ pub mod test {
 				fn reducible_balance(
 					_asset: Self::AssetId,
 					_who: &TrancheCurrency,
-					_keep_alive: bool,
+					_preservation: Preservation,
+					_force: Fortitude,
 				) -> Self::Balance {
 					todo!()
 				}
@@ -2590,7 +2613,7 @@ pub mod test {
 					_asset: Self::AssetId,
 					_who: &TrancheCurrency,
 					_amount: Self::Balance,
-					_mint: bool,
+					_provenance: Provenance,
 				) -> frame_support::traits::tokens::DepositConsequence {
 					todo!()
 				}
@@ -2681,6 +2704,13 @@ pub mod test {
 						todo!()
 					}
 
+					fn total_balance(
+						_asset: Self::AssetId,
+						_who: &TrancheCurrency,
+					) -> Self::Balance {
+						todo!()
+					}
+
 					fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
 						todo!()
 					}
@@ -2688,7 +2718,8 @@ pub mod test {
 					fn reducible_balance(
 						_asset: Self::AssetId,
 						_who: &TrancheCurrency,
-						_keep_alive: bool,
+						_preservation: Preservation,
+						_force: Fortitude,
 					) -> Self::Balance {
 						todo!()
 					}
@@ -2697,7 +2728,7 @@ pub mod test {
 						_asset: Self::AssetId,
 						_who: &TrancheCurrency,
 						_amount: Self::Balance,
-						_mint: bool,
+						_p: Provenance,
 					) -> frame_support::traits::tokens::DepositConsequence {
 						todo!()
 					}
@@ -3537,7 +3568,7 @@ pub mod test {
 		#[test]
 		fn epoch_execution_residual_tranche_mut_works() {
 			let mut epoch_tranches = default_epoch_tranches();
-			let mut epoch_tranche = epoch_tranches.residual_tranche_mut().unwrap();
+			let epoch_tranche = epoch_tranches.residual_tranche_mut().unwrap();
 			epoch_tranche.invest = 200;
 
 			assert_eq!(epoch_tranche.invest, 200)

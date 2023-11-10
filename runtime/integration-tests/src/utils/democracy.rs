@@ -10,6 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use std::ops::Add;
+
 use cfg_primitives::Balance;
 use chain::centrifuge::{
 	BlockNumber, CouncilCollective, Runtime, RuntimeCall, RuntimeEvent, PARA_ID,
@@ -250,7 +252,7 @@ fn execute_collective_proposal(
 		council_members[0] => collective_close(
 			prop_hash,
 			prop_index,
-			proposal_weight.add(1),
+			proposal_weight.add(1.into()),
 			(proposal.encoded_size() + 1) as u32,
 		)
 	);

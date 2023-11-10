@@ -114,15 +114,26 @@ impl pallet_session::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	// the minimum fee for an anchor is 500,000ths of a CFG.
+	// This is set to a value so you can still get some return without getting your account removed.
+	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	pub const MaxHolds: u32 = 50;
+	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
 }
+
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxLocks = ();
-	type MaxReserves = ();
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = MaxHolds;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -144,7 +155,7 @@ orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
 			CurrencyId::Native => ExistentialDeposit::get(),
-			_ => 0,
+			_ => 1,
 		}
 	};
 }
@@ -156,8 +167,8 @@ impl orml_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = ();
-	type MaxReserves = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -181,6 +192,7 @@ impl pallet_restricted_tokens::Config for Test {
 	type PreFungiblesMutate = cfg_traits::Always;
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -234,6 +246,7 @@ impl pallet_block_rewards::Config for Test {
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
+	type ExistentialDeposit = ExistentialDeposit;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
@@ -247,24 +260,35 @@ impl pallet_block_rewards::Config for Test {
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
+		// NOTE: This is now the ED instead of 0, as we collators need ED now.
 		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
-		<Test as Config>::StakeAmount::get()
+		ExistentialDeposit::get()
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrencyId::get(), who, 1),
-		WithdrawConsequence::NoFunds
+		<Test as Config>::Currency::can_withdraw(
+			<Test as Config>::StakeCurrencyId::get(),
+			who,
+			ExistentialDeposit::get() * 2
+		),
+		WithdrawConsequence::BalanceLow
 	);
 }
 
-pub(crate) fn assert_not_staked(who: &AccountId) {
+pub(crate) fn assert_not_staked(who: &AccountId, was_before: bool) {
 	assert!(<Test as Config>::Rewards::account_stake(
 		<Test as Config>::StakeCurrencyId::get(),
 		who
 	)
 	.is_zero());
-	assert!(
-		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who)
-			.is_zero()
+	assert_eq!(
+		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrencyId::get(), who),
+		// NOTE: IF a collator has been staked before the system already granted them ED
+		//       of `StakeCurrency`.
+		if was_before {
+			ExistentialDeposit::get()
+		} else {
+			0
+		}
 	);
 }
 

@@ -547,7 +547,7 @@ impl<T: Config> Pallet<T> {
 		maybe_state: Option<InvestState<Of<T>>>,
 	) {
 		match maybe_state {
-			Some(state) if state == InvestState::NoState => {
+			Some(InvestState::NoState) => {
 				Self::deposit_event(Event::<T>::ForeignInvestmentCleared {
 					investor: who.clone(),
 					investment_id,
@@ -572,7 +572,7 @@ impl<T: Config> Pallet<T> {
 		maybe_state: Option<RedeemState<T::Balance, T::CurrencyId>>,
 	) {
 		match maybe_state {
-			Some(state) if state == RedeemState::NoState => {
+			Some(RedeemState::NoState) => {
 				Self::deposit_event(Event::<T>::ForeignRedemptionCleared {
 					investor: who.clone(),
 					investment_id,

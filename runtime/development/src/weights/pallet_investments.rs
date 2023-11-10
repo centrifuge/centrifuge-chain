@@ -5,13 +5,13 @@
 //! DATE: 2023-11-10, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
 //! HOSTNAME: `kf-FG`, CPU: `<UNKNOWN>`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("altair-dev"), DB CACHE: 1024
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("development-local"), DB CACHE: 1024
 
 // Executed Command:
 // target/release/centrifuge-chain
 // benchmark
 // pallet
-// --chain=altair-dev
+// --chain=development-local
 // --steps=50
 // --repeat=20
 // --pallet=pallet_investments
@@ -19,7 +19,7 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=/tmp/runtime/altair/src/weights/pallet_investments.rs
+// --output=/tmp/runtime/development/src/weights/pallet_investments.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
@@ -50,10 +50,10 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 	/// Proof Skipped: OrmlAssetRegistry Metadata (max_values: None, max_size: None, mode: Measured)
 	fn update_invest_order() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2122`
+		//  Measured:  `2492`
 		//  Estimated: `6198`
-		// Minimum execution time: 66_000_000 picoseconds.
-		Weight::from_parts(67_000_000, 0)
+		// Minimum execution time: 69_000_000 picoseconds.
+		Weight::from_parts(70_000_000, 0)
 			.saturating_add(Weight::from_parts(0, 6198))
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(4))
@@ -76,10 +76,10 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 	/// Proof Skipped: OrmlAssetRegistry Metadata (max_values: None, max_size: None, mode: Measured)
 	fn update_redeem_order() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2018`
+		//  Measured:  `2388`
 		//  Estimated: `6198`
-		// Minimum execution time: 66_000_000 picoseconds.
-		Weight::from_parts(67_000_000, 0)
+		// Minimum execution time: 68_000_000 picoseconds.
+		Weight::from_parts(70_000_000, 0)
 			.saturating_add(Weight::from_parts(0, 6198))
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(4))
@@ -103,13 +103,13 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 	/// The range of component `n` is `[1, 10]`.
 	fn collect_investments(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2358 + n * (44 ±0)`
-		//  Estimated: `6198 + n * (2555 ±0)`
-		// Minimum execution time: 74_000_000 picoseconds.
-		Weight::from_parts(71_579_173, 0)
-			.saturating_add(Weight::from_parts(0, 6198))
-			// Standard Error: 23_580
-			.saturating_add(Weight::from_parts(3_539_606, 0).saturating_mul(n.into()))
+		//  Measured:  `2761 + n * (44 ±0)`
+		//  Estimated: `6226 + n * (2555 ±0)`
+		// Minimum execution time: 77_000_000 picoseconds.
+		Weight::from_parts(73_312_888, 0)
+			.saturating_add(Weight::from_parts(0, 6226))
+			// Standard Error: 76_955
+			.saturating_add(Weight::from_parts(4_342_053, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))
@@ -134,13 +134,13 @@ impl<T: frame_system::Config> pallet_investments::WeightInfo for WeightInfo<T> {
 	/// The range of component `n` is `[1, 10]`.
 	fn collect_redemptions(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2395 + n * (44 ±0)`
-		//  Estimated: `6198 + n * (2555 ±0)`
-		// Minimum execution time: 73_000_000 picoseconds.
-		Weight::from_parts(69_516_579, 0)
-			.saturating_add(Weight::from_parts(0, 6198))
-			// Standard Error: 19_033
-			.saturating_add(Weight::from_parts(3_747_693, 0).saturating_mul(n.into()))
+		//  Measured:  `2798 + n * (44 ±0)`
+		//  Estimated: `6263 + n * (2555 ±0)`
+		// Minimum execution time: 76_000_000 picoseconds.
+		Weight::from_parts(74_696_337, 0)
+			.saturating_add(Weight::from_parts(0, 6263))
+			// Standard Error: 176_441
+			.saturating_add(Weight::from_parts(4_772_044, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes(3))

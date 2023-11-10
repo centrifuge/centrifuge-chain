@@ -5,7 +5,10 @@ use sp_runtime::traits::BadOrigin;
 use super::*;
 use crate::mock::*;
 
-const REWARD: u128 = 100;
+// The Reward amount
+// NOTE: This value needs to be > ExistentialDeposit, otherwise the tests will
+// fail as it's not allowed to transfer a value below the ED threshold.
+const REWARD: u128 = 100 + ExistentialDeposit::get();
 
 #[test]
 fn check_special_privileges() {
@@ -167,7 +170,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128
+			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -182,13 +185,13 @@ fn joining_leaving_collators() {
 			vec![2, 3]
 		);
 		assert_staked(&1);
-		assert_not_staked(&2);
-		assert_not_staked(&3);
+		assert_not_staked(&2, false);
+		assert_not_staked(&3, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			<Test as Config>::StakeAmount::get() as u128
+			<Test as Config>::StakeAmount::get() as u128 + ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -202,16 +205,16 @@ fn joining_leaving_collators() {
 			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![4, 5]
 		);
-		assert_not_staked(&1);
+		assert_not_staked(&1, true);
 		assert_staked(&2);
 		assert_staked(&3);
-		assert_not_staked(&4);
-		assert_not_staked(&5);
+		assert_not_staked(&4, false);
+		assert_not_staked(&5, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			2 * <Test as Config>::StakeAmount::get() as u128
+			2 * <Test as Config>::StakeAmount::get() as u128 + 3 * ExistentialDeposit::get()
 		);
 
 		advance_session();
@@ -225,17 +228,17 @@ fn joining_leaving_collators() {
 			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![6, 7]
 		);
-		assert_not_staked(&2);
+		assert_not_staked(&2, true);
 		assert_staked(&3);
 		assert_staked(&4);
 		assert_staked(&5);
-		assert_not_staked(&6);
-		assert_not_staked(&7);
+		assert_not_staked(&6, false);
+		assert_not_staked(&7, false);
 		assert_eq!(
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			3 * <Test as Config>::StakeAmount::get() as u128
+			3 * <Test as Config>::StakeAmount::get() as u128 + 5 * ExistentialDeposit::get()
 		);
 	});
 }
@@ -273,6 +276,7 @@ fn single_claim_reward() {
 				),
 				Ok(REWARD)
 			);
+
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(2), 1));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {

@@ -12,7 +12,7 @@ jobs:
         target: [tests, integration]
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
+      RUST_TOOLCHAIN: "nightly-2023-10-26"
     steps:
       - name: Prep build on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'

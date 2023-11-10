@@ -72,7 +72,7 @@ parameter_types! {
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
-			_ => 0,
+			_ => 1,
 		}
 	};
 }
@@ -151,6 +151,10 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();

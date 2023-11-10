@@ -88,4 +88,22 @@ impl<T: frame_system::Config> pallet_liquidity_pools::WeightInfo for WeightInfo<
 			.saturating_add(T::DbWeight::get().reads(20))
 			.saturating_add(T::DbWeight::get().writes(17))
 	}
+
+	fn schedule_upgrade() -> Weight {
+		Weight::from_parts(236_000_000, 71940)
+			.saturating_add(T::DbWeight::get().reads(20))
+			.saturating_add(T::DbWeight::get().writes(17))
+	}
+
+	fn cancel_upgrade() -> Weight {
+		Weight::from_parts(236_000_000, 71940)
+			.saturating_add(T::DbWeight::get().reads(20))
+			.saturating_add(T::DbWeight::get().writes(17))
+	}
+
+	fn update_tranche_token_metadata() -> Weight {
+		Weight::from_parts(236_000_000, 71940)
+			.saturating_add(T::DbWeight::get().reads(20))
+			.saturating_add(T::DbWeight::get().writes(17))
+	}
 }

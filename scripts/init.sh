@@ -12,6 +12,7 @@ base_dir=/tmp/centrifuge-chain
 # Option to use the Docker image to export state & wasm
 docker_onboard="${DOCKER_ONBOARD:-false}"
 cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-test-main-latest}"
+cc_docker_profile="${PARA_DOCKER_PROFILE:-default}"
 
 case $cmd in
 install-toolchain)
@@ -30,12 +31,12 @@ stop-relay-chain)
 
 start-parachain-docker)
   echo "Starting local parachain with Alice..."
-  docker-compose -f ./docker-compose-local-chain.yml up -d
+  docker-compose -f ./docker-compose-local-chain.yml --profile=$cc_docker_profile up -d
   ;;
 
 stop-parachain-docker)
   echo "Stopping local parachain with Alice..."
-  docker-compose -f ./docker-compose-local-chain.yml down
+  docker-compose -f ./docker-compose-local-chain.yml --profile=$cc_docker_profile down
   ;;
 
 start-parachain)
@@ -51,20 +52,19 @@ start-parachain)
   fi
 
   ./scripts/run_collator.sh \
-    --chain="${parachain}" --alice \
+    --chain="${parachain}" \
+    --alice \
     --parachain-id="${para_id}" \
     --base-path=$parachain_dir/data \
     --wasm-execution=compiled \
     --execution=wasm \
     --port $((30355 + $para_id)) \
     --rpc-port $((9936 + $para_id)) \
-    --ws-port $((9946 + $para_id)) \
     --rpc-external \
     --rpc-cors all \
-    --ws-external \
     --rpc-methods=Unsafe \
-    --state-cache-size 0 \
     --log="main,info" \
+    --database=auto
   ;;
 
 onboard-parachain)

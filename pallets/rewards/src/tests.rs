@@ -3,7 +3,13 @@ mod common;
 mod currency_movement;
 
 use cfg_traits::rewards::DistributedRewards;
-use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{
+		fungibles::Inspect,
+		tokens::{Fortitude, Preservation},
+	},
+};
 
 use super::{mock::*, *};
 
@@ -31,7 +37,12 @@ enum MechanismKind {
 }
 
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
-	Tokens::reducible_balance(currency_id, account_id, true)
+	Tokens::reducible_balance(
+		currency_id,
+		account_id,
+		Preservation::Expendable,
+		Fortitude::Polite,
+	)
 }
 
 fn rewards_account() -> u64 {

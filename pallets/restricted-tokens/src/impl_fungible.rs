@@ -11,9 +11,15 @@
 // GNU General Public License for more details.
 
 use cfg_traits::PreConditions;
-use frame_support::traits::{
-	fungible::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
-	tokens::{DepositConsequence, WithdrawConsequence},
+use frame_support::{
+	defensive,
+	traits::{
+		fungible::{Dust, Inspect, InspectHold, Mutate, MutateHold, Unbalanced},
+		tokens::{
+			DepositConsequence, Fortitude, Precision, Preservation, Provenance, Restriction,
+			WithdrawConsequence,
+		},
+	},
 };
 
 use super::*;
@@ -25,11 +31,12 @@ pub enum FungibleInspectEffects<AccountId, Balance> {
 	///
 	/// Interpretation of tuple `(AccountId, bool, Balance)`:
 	/// * tuple.0 = `who`. The person who's balance should be checked.
-	/// * tuple.1 = `keep_alive`. The liveness bool.
-	/// * tuple.2 = `<T::NativeFungible as
+	/// * tuple.1 = `preservation`. The preservation of the account's liveness.
+	/// * tuple.2 = `fortitude`. The privilege with which a withdraw operation
+	/// * tuple.3 = `<T::NativeFungible as
 	///   Inspect<T::AccountId>>::reducible_balance()`. The result of the call
 	///   to the not-filtered trait `fungible::Inspect` implementation.
-	ReducibleBalance(AccountId, bool, Balance),
+	ReducibleBalance(AccountId, Preservation, Fortitude, Balance),
 }
 
 pub struct FungibleInspectPassthrough;
@@ -40,7 +47,7 @@ impl<AccountId, Balance> PreConditions<FungibleInspectEffects<AccountId, Balance
 
 	fn check(t: FungibleInspectEffects<AccountId, Balance>) -> Self::Result {
 		match t {
-			FungibleInspectEffects::ReducibleBalance(_, _, amount) => amount,
+			FungibleInspectEffects::ReducibleBalance(_, _, _, amount) => amount,
 		}
 	}
 }
@@ -56,20 +63,37 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		<T::NativeFungible as Inspect<T::AccountId>>::minimum_balance()
 	}
 
+	fn total_balance(who: &T::AccountId) -> Self::Balance {
+		<T::NativeFungible as Inspect<T::AccountId>>::total_balance(who)
+	}
+
 	fn balance(who: &T::AccountId) -> Self::Balance {
 		<T::NativeFungible as Inspect<T::AccountId>>::balance(who)
 	}
 
-	fn reducible_balance(who: &T::AccountId, keep_alive: bool) -> Self::Balance {
+	fn reducible_balance(
+		who: &T::AccountId,
+		preservation: Preservation,
+		force: Fortitude,
+	) -> Self::Balance {
 		T::PreFungibleInspect::check(FungibleInspectEffects::ReducibleBalance(
 			who.clone(),
-			keep_alive,
-			<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance(who, keep_alive),
+			preservation,
+			force,
+			<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance(
+				who,
+				preservation,
+				force,
+			),
 		))
 	}
 
-	fn can_deposit(who: &T::AccountId, amount: Self::Balance, mint: bool) -> DepositConsequence {
-		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount, mint)
+	fn can_deposit(
+		who: &T::AccountId,
+		amount: Self::Balance,
+		provenance: Provenance,
+	) -> DepositConsequence {
+		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount, provenance)
 	}
 
 	fn can_withdraw(
@@ -85,25 +109,52 @@ pub enum FungibleInspectHoldEffects<AccountId, Balance> {
 	/// A call to the `InspectHold::can_hold()`.
 	///
 	/// Interpretation of tuple `(AccountId, Balance, bool)`:
-	/// * tuple.0 = `who`. The person who's balance should be reserved.
+	/// * tuple.0 = `who`. The person whose balance should be reserved.
 	/// * tuple.1 = `amount`. The amount that should be reserved.
 	/// * tuple.2 = `<T::NativeFungible as
 	///   InspectHold<T::AccountId>>::can_hold()`. The result of the call to the
 	///   not-filtered trait `fungible::InspectHold` implementation.
 	CanHold(AccountId, Balance, bool),
+	/// A call to the `InspectHold::hold_available()`.
+	///
+	/// Interpretation of tuple `(AccountId, bool)`:
+	/// * tuple.0 = `who`. The person whose balance should be reserved.
+	/// * tuple.1 = `<T::NativeFungible as
+	///   InspectHold<T::AccountId>>::hold_available()`. The result of the call
+	///   to the not-filtered trait `fungible::InspectHold` implementation.
+	HoldAvailable(AccountId, bool),
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
-	fn balance_on_hold(who: &T::AccountId) -> Self::Balance {
-		<T::NativeFungible as InspectHold<T::AccountId>>::balance_on_hold(who)
+	type Reason = ();
+
+	fn total_balance_on_hold(who: &T::AccountId) -> Self::Balance {
+		<T::NativeFungible as InspectHold<T::AccountId>>::total_balance_on_hold(who)
 	}
 
-	fn can_hold(who: &T::AccountId, amount: Self::Balance) -> bool {
+	fn reducible_total_balance_on_hold(who: &T::AccountId, force: Fortitude) -> Self::Balance {
+		<T::NativeFungible as InspectHold<T::AccountId>>::reducible_total_balance_on_hold(
+			who, force,
+		)
+	}
+
+	fn balance_on_hold(reason: &Self::Reason, who: &T::AccountId) -> Self::Balance {
+		<T::NativeFungible as InspectHold<T::AccountId>>::balance_on_hold(reason, who)
+	}
+
+	fn hold_available(reason: &Self::Reason, who: &T::AccountId) -> bool {
+		T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::HoldAvailable(
+			who.clone(),
+			<T::NativeFungible as InspectHold<T::AccountId>>::hold_available(reason, who),
+		)) && <T::NativeFungible as InspectHold<T::AccountId>>::hold_available(reason, who)
+	}
+
+	fn can_hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> bool {
 		T::PreFungibleInspectHold::check(FungibleInspectHoldEffects::CanHold(
 			who.clone(),
 			amount,
-			<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(who, amount),
-		))
+			<T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who, amount),
+		)) && <T::NativeFungible as InspectHold<T::AccountId>>::can_hold(reason, who, amount)
 	}
 }
 
@@ -113,7 +164,10 @@ pub enum FungibleMutateEffects<AccountId, Balance> {
 }
 
 impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
-	fn mint_into(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn mint_into(
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutate::check(FungibleMutateEffects::MintInto(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
@@ -125,13 +179,34 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	fn burn_from(
 		who: &T::AccountId,
 		amount: Self::Balance,
+		precision: Precision,
+		force: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutate::check(FungibleMutateEffects::BurnFrom(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as Mutate<T::AccountId>>::burn_from(who, amount)
+		<T::NativeFungible as Mutate<T::AccountId>>::burn_from(who, amount, precision, force)
+	}
+
+	fn transfer(
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Balance,
+		preservation: Preservation,
+	) -> Result<Self::Balance, DispatchError> {
+		ensure!(
+			T::PreFungibleTransfer::check(FungibleTransferEffects::Transfer(
+				source.clone(),
+				dest.clone(),
+				amount,
+				preservation,
+			)),
+			Error::<T>::PreConditionsNotMet
+		);
+
+		<T::NativeFungible as Mutate<T::AccountId>>::transfer(source, dest, amount, preservation)
 	}
 }
 
@@ -165,57 +240,88 @@ pub enum FungibleMutateHoldEffects<AccountId, Balance> {
 	TransferHeld(AccountId, AccountId, Balance, bool, bool),
 }
 
+impl<T: Config> Unbalanced<T::AccountId> for Pallet<T> {
+	fn handle_dust(_dust: Dust<T::AccountId, Self>) {
+		// NOTE: Uses an always triggering `debug_assert` internally
+		defensive!("DustRemoval disabled");
+	}
+
+	fn write_balance(
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> Result<Option<Self::Balance>, DispatchError> {
+		<T::NativeFungible as Unbalanced<T::AccountId>>::write_balance(who, amount)
+	}
+
+	fn set_total_issuance(amount: Self::Balance) {
+		<T::NativeFungible as Unbalanced<T::AccountId>>::set_total_issuance(amount)
+	}
+}
+
+impl<T: Config> fungible::hold::Unbalanced<T::AccountId> for Pallet<T> {
+	fn set_balance_on_hold(
+		reason: &Self::Reason,
+		who: &T::AccountId,
+		amount: Self::Balance,
+	) -> sp_runtime::DispatchResult {
+		<T::NativeFungible as fungible::hold::Unbalanced<T::AccountId>>::set_balance_on_hold(
+			reason, who, amount,
+		)
+	}
+}
+
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
-	fn hold(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+	fn hold(reason: &Self::Reason, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Hold(who.clone(), amount)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::hold(who, amount)
+		<T::NativeFungible as MutateHold<T::AccountId>>::hold(reason, who, amount)?;
+
+		Ok(())
 	}
 
 	fn release(
+		reason: &Self::Reason,
 		who: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
+		precision: Precision,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::Release(
 				who.clone(),
 				amount,
-				best_effort
+				precision == Precision::BestEffort,
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::release(who, amount, best_effort)
+		<T::NativeFungible as MutateHold<T::AccountId>>::release(reason, who, amount, precision)
 	}
 
-	fn transfer_held(
+	fn transfer_on_hold(
+		reason: &Self::Reason,
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
-		best_effort: bool,
-		on_held: bool,
+		precision: Precision,
+		mode: Restriction,
+		force: Fortitude,
 	) -> Result<Self::Balance, DispatchError> {
 		ensure!(
 			T::PreFungibleMutateHold::check(FungibleMutateHoldEffects::TransferHeld(
 				source.clone(),
 				dest.clone(),
 				amount,
-				best_effort,
-				on_held
+				precision == Precision::BestEffort,
+				mode == Restriction::OnHold,
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as MutateHold<T::AccountId>>::transfer_held(
-			source,
-			dest,
-			amount,
-			best_effort,
-			on_held,
+		<T::NativeFungible as MutateHold<T::AccountId>>::transfer_on_hold(
+			reason, source, dest, amount, precision, mode, force,
 		)
 	}
 }
@@ -230,26 +336,5 @@ pub enum FungibleTransferEffects<AccountId, Balance> {
 	/// * tuple.1 = `recv`. The receiver of the tokens.
 	/// * tuple.2 = `amount`. The amount that should be transferred.
 	/// * tuple.3 = `keep_alive`. The lifeness requirements.
-	Transfer(AccountId, AccountId, Balance, bool),
-}
-
-impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
-	fn transfer(
-		source: &T::AccountId,
-		dest: &T::AccountId,
-		amount: Self::Balance,
-		keep_alive: bool,
-	) -> Result<Self::Balance, DispatchError> {
-		ensure!(
-			T::PreFungibleTransfer::check(FungibleTransferEffects::Transfer(
-				source.clone(),
-				dest.clone(),
-				amount,
-				keep_alive
-			)),
-			Error::<T>::PreConditionsNotMet
-		);
-
-		<T::NativeFungible as Transfer<T::AccountId>>::transfer(source, dest, amount, keep_alive)
-	}
+	Transfer(AccountId, AccountId, Balance, Preservation),
 }

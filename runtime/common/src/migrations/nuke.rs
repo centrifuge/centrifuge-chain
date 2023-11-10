@@ -20,15 +20,17 @@ use frame_support::{
 	weights::{RuntimeDbWeight, Weight},
 };
 #[cfg(feature = "try-runtime")]
+use sp_runtime::DispatchError;
+#[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;
 
 /// This upgrade nukes all storages from the pallet individually.
 /// This upgrade is only executed if pallet version has changed.
 ///
-/// To handle possible issues forgeting removing the upgrade,
+/// To handle possible issues forgetting removing the upgrade,
 /// you must specify the ON_CHAIN_VERSION,
 /// which represent the expected previous on-chain version when the upgrade is
-/// done. If these numbers mistmatch, the upgrade will not take effect.
+/// done. If these numbers mismatch, the upgrade will not take effect.
 pub struct Migration<Pallet, DbWeight, const ON_CHAIN_VERSION: u16>(
 	sp_std::marker::PhantomData<(Pallet, DbWeight)>,
 );
@@ -36,11 +38,11 @@ pub struct Migration<Pallet, DbWeight, const ON_CHAIN_VERSION: u16>(
 impl<Pallet, DbWeight, const ON_CHAIN_VERSION: u16> OnRuntimeUpgrade
 	for Migration<Pallet, DbWeight, ON_CHAIN_VERSION>
 where
-	Pallet: GetStorageVersion + PalletInfoAccess,
+	Pallet: GetStorageVersion<CurrentStorageVersion = StorageVersion> + PalletInfoAccess,
 	DbWeight: Get<RuntimeDbWeight>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		ensure!(
 			Pallet::on_chain_storage_version() == StorageVersion::new(ON_CHAIN_VERSION),
 			"Pallet on-chain version must match with ON_CHAIN_VERSION"
@@ -108,7 +110,7 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
 		assert_eq!(
 			Pallet::on_chain_storage_version(),
 			Pallet::current_storage_version(),

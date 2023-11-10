@@ -48,7 +48,9 @@ use frame_support::{
 	pallet_prelude::*,
 	storage::transactional,
 	traits::{
-		fungibles::Mutate, tokens::Balance, Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
+		fungibles::Mutate,
+		tokens::{Balance, Fortitude, Precision},
+		Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
 	},
 	DefaultNoBound,
 };
@@ -133,6 +135,9 @@ pub mod pallet {
 			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
 			+ MaybeSerializeDeserialize;
 
+		#[pallet::constant]
+		type ExistentialDeposit: Get<Self::Balance>;
+
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
@@ -197,7 +202,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
@@ -357,7 +361,11 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get())?;
+		T::Currency::mint_into(
+			T::StakeCurrencyId::get(),
+			who,
+			T::StakeAmount::get() + T::ExistentialDeposit::get(),
+		)?;
 		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
 
@@ -366,7 +374,21 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
 		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
-		T::Currency::burn_from(T::StakeCurrencyId::get(), who, amount).map(|_| ())
+
+		// NOTE: We currently must leave the `ED` in the account if it otherwise
+		//       would get killed and down the line our orml-tokens prevents
+		//       that.
+		//
+		//       I.e. this means stake curreny issuance will grow over time if many
+		//       collators leave and join.
+		T::Currency::burn_from(
+			T::StakeCurrencyId::get(),
+			who,
+			amount,
+			Precision::Exact,
+			Fortitude::Polite,
+		)
+		.map(|_| ())
 	}
 
 	/// Apply session changes and distribute rewards.

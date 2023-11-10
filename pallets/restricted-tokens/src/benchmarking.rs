@@ -16,10 +16,15 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_benchmarking::{account, benchmarks, Zero};
-use frame_support::traits::{fungibles, Get};
+use frame_support::traits::{
+	fungibles,
+	tokens::{Fortitude, Preservation},
+	Get,
+};
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
 use sp_runtime::traits::StaticLookup;
+use sp_std::default::Default;
 
 use super::*;
 
@@ -31,22 +36,30 @@ fn make_free_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		>,
 {
 	if T::NativeToken::get() == currency_id {
-		<pallet_balances::Pallet<T> as fungible::Mutate<T::AccountId>>::mint_into(account, balance)
-			.expect("should not fail to set tokens");
+		assert_eq!(
+			<pallet_balances::Pallet<T> as fungible::Mutate<T::AccountId>>::mint_into(
+				account, balance
+			)
+			.expect("should not fail to set native tokens"),
+			balance
+		);
 	} else {
-		<orml_tokens::Pallet<T> as fungibles::Mutate<T::AccountId>>::mint_into(
-			currency_id,
-			account,
-			balance,
-		)
-		.expect("should not fail to set tokens");
+		assert_eq!(
+			<orml_tokens::Pallet<T> as fungibles::Mutate<T::AccountId>>::mint_into(
+				currency_id,
+				account,
+				balance,
+			)
+			.expect("should not fail to set tokens"),
+			balance
+		);
 	}
 }
 
@@ -56,22 +69,31 @@ fn reserve_balance<T>(
 	balance: <T as Config>::Balance,
 ) where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
 		>,
 {
 	if T::NativeToken::get() == currency_id {
-		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(account, balance)
-			.expect("should not fail to hold existing tokens");
-	} else {
-		<orml_tokens::Pallet<T> as fungibles::MutateHold<T::AccountId>>::hold(
-			currency_id,
+		assert!(
+			frame_system::Pallet::<T>::providers(account) > 0,
+			"Providers should not be zero"
+		);
+		<pallet_balances::Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(
+			&Default::default(),
 			account,
 			balance,
 		)
-		.expect("should not fail to hold existing tokens");
+		.expect("should not fail to hold existing native tokens");
+	} else {
+		<orml_tokens::Pallet<T> as fungibles::MutateHold<T::AccountId>>::hold(
+			currency_id,
+			&Default::default(),
+			account,
+			balance,
+		)
+		.expect("should not fail to hold existing foreign tokens");
 	}
 }
 
@@ -127,7 +149,7 @@ fn set_up_account<T>(
 ) -> T::AccountId
 where
 	T: Config
-		+ pallet_balances::Config<Balance = <T as Config>::Balance>
+		+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
@@ -168,7 +190,7 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config
-			+ pallet_balances::Config<Balance = <T as Config>::Balance>
+			+ pallet_balances::Config<Balance = <T as Config>::Balance, HoldIdentifier = ()>
 			+ orml_tokens::Config<Balance = <T as Config>::Balance, CurrencyId = <T as Config>::CurrencyId>
 			+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		<T as Config>::Balance: From<u128> + Zero,
@@ -199,8 +221,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
 	transfer_keep_alive_native {
@@ -229,8 +251,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_keep_alive(RawOrigin::Signed(send.clone()), recv_loopup, currency, send_amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false)  == send_amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false)  == amount - send_amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite)  == send_amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite)  == amount - send_amount);
 	}
 
 	// We transfer into non-existing accounts in order to get worst-case scenarios
@@ -259,8 +281,8 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:transfer_all(RawOrigin::Signed(send.clone()), recv_loopup, currency.clone(), false)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
 	// We transfer into non-existing accounts in order to get worst-case scenarios
@@ -291,11 +313,12 @@ benchmarks! {
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:force_transfer(RawOrigin::Root, send_loopup, recv_loopup, currency.clone(), amount)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == amount);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, false) == Zero::zero());
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == amount);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &send, Preservation::Protect, Fortitude::Polite) == Zero::zero());
 	}
 
-	// We transfer into non-existing accounts in order to get worst-case scenarios
+	// We fund the account beforehand to get worst-case scenario (release
+	// held funds and burn all tokens).
 	// It might be beneficially to have a separation of cases in the future.
 	// We let the other die to have clean-up logic in weight
 	set_balance_native {
@@ -303,14 +326,19 @@ benchmarks! {
 		let reserved = as_balance::<T>(200);
 		let currency: <T as Config>::CurrencyId = CurrencyId::Native.into();
 		let recv = get_account::<T>("receiver", false);
-		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
-	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
+		let recv_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
+
+		make_free_balance::<T>(currency, &recv, free + free);
+		reserve_balance::<T>(currency, &recv, reserved + reserved);
+	}:set_balance(RawOrigin::Root, recv_lookup, currency, free, reserved)
 	verify {
-		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, false) == free);
-		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::balance(&recv) == (free + reserved));
+		assert!(<pallet_balances::Pallet<T> as fungible::InspectHold<T::AccountId>>::total_balance_on_hold(&recv) == reserved);
+		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(&recv, Preservation::Protect, Fortitude::Polite) == free - <pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::minimum_balance());
+		assert!(<pallet_balances::Pallet<T> as fungible::Inspect<T::AccountId>>::balance(&recv) == (free));
 	}
 
-	// We benchmark into non-existing accounts in order to get worst-case scenarios
+	// We fund the account beforehand to get worst-case scenario (release
+	// held funds and burn all tokens).
 	// It might be beneficially to have a separation of cases in the future.
 	// We let the other die to have clean-up logic in weight
 	set_balance_other {
@@ -319,9 +347,13 @@ benchmarks! {
 		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
+
+		make_free_balance::<T>(currency, &recv, free + free);
+		reserve_balance::<T>(currency, &recv, reserved + reserved);
 	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
 	verify {
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, false) == free);
-		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free + reserved));
+		assert!(<orml_tokens::Pallet<T> as fungibles::InspectHold<T::AccountId>>::total_balance_on_hold(currency, &recv) == reserved);
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::reducible_balance(currency, &recv, Preservation::Protect, Fortitude::Polite) == free - <orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::minimum_balance(currency));
+		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free));
 	}
 }

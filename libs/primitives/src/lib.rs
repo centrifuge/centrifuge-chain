@@ -180,7 +180,6 @@ pub mod types {
 
 /// Common constants for all runtimes
 pub mod constants {
-	use cumulus_primitives_core::relay_chain::MAX_POV_SIZE;
 	use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
 
@@ -221,7 +220,7 @@ pub mod constants {
 	pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
-	pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND)
+	pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0)
 		.saturating_div(2)
 		.set_proof_size(MAX_POV_SIZE as u64);
 
@@ -269,6 +268,10 @@ pub mod constants {
 
 	/// The safe XCM version of pallet-xcm, same as on relay chain
 	pub const SAFE_XCM_VERSION: u32 = xcm::opaque::v2::VERSION;
+
+	pub const MAX_POV_SIZE: u64 = cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64;
+	/// Block storage limit in bytes. Set to 40 KB.
+	pub const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
 }
 
 /// Listing of parachains we integrate with.

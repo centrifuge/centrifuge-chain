@@ -16,68 +16,66 @@ scale-info = { version = "2.3.0", default-features = false, features = ["derive"
 serde = { version = "1.0.119" }
 
 cfg-traits = { path = "../../libs/traits", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 
 # optional dependencies for benchmarking
 cfg-utils = { path = "../../libs/utils", default-features = false, optional = true }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
-pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 
 [dev-dependencies]
-pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 
 cfg-mocks = { path = "../../libs/mocks" }
 
 [features]
 default = ["std"]
 runtime-benchmarks = [
-  "frame-benchmarking/runtime-benchmarks",
-  "pallet-timestamp/runtime-benchmarks",
-  "cfg-utils/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-  "cfg-utils/try-runtime",
-  "cfg-traits/try-runtime",
   "cfg-mocks/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-utils/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-aura/try-runtime",
-  "pallet-timestamp/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
-  "pallet-randomness-collective-flip/try-runtime",
+  "pallet-timestamp/try-runtime",
   "sp-runtime/try-runtime",
 ]
 std = [
-  "codec/std",
-  "sp-core/std",
-  "frame-support/std",
-  "frame-system/std",
-  "sp-runtime/std",
-  "sp-std/std",
-  "sp-arithmetic/std",
-  "pallet-timestamp/std",
   "cfg-traits/std",
   "cfg-utils/std",
+  "codec/std",
   "frame-benchmarking/std",
+  "frame-support/std",
+  "frame-system/std",
   "pallet-aura/std",
+  "pallet-timestamp/std",
   "scale-info/std",
   "serde/std",
+  "sp-arithmetic/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
 ]

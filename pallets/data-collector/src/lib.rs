@@ -39,7 +39,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T, I = ()>(_);
 
@@ -233,7 +232,7 @@ pub mod pallet {
 			T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
 		{
 			fn feed_value(
-				account_id: T::AccountId,
+				account_id: Option<T::AccountId>,
 				data_id: T::DataId,
 				data: T::Data,
 			) -> DispatchResult {

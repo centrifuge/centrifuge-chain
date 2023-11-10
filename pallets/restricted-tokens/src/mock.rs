@@ -28,6 +28,7 @@ use sp_runtime::{
 use sp_std::collections::btree_map::BTreeMap;
 
 pub use crate as pallet_restricted_tokens;
+use crate::ConstU32;
 
 pub const DISTR_PER_ACCOUNT: u64 = 1000;
 pub type AccountId = u64;
@@ -86,16 +87,26 @@ impl Timer {
 mod filter {
 	pub mod fungibles {
 		use cfg_traits::PreConditions;
+		use frame_support::traits::tokens::Preservation;
 
 		use crate::{
 			impl_fungibles::*,
-			mock::{AccountId, Balance, CurrencyId, RestrictedTokens, POOL_PALLET_ID},
+			mock::{
+				AccountId, Balance, CurrencyId, ExistentialDeposit, RestrictedTokens,
+				POOL_PALLET_ID,
+			},
 			TransferDetails,
 		};
 
 		/// Dummy filter, that allows to reduce the balance of native normally
 		/// but other balances are only allowed to be reduced by the half of
 		/// what is actually reducible.
+		///
+		/// Additionally, we limit up to the ED for Preservation::Preserve.
+		///
+		/// NOTE: Since CurrencyId::Cfg is native, this filter passes
+		/// CurrencyId::Cfg directly to the fungible::Inspect implementation and
+		/// the respective filters.
 		pub struct InspectFilter;
 		impl PreConditions<FungiblesInspectEffects<CurrencyId, AccountId, Balance>> for InspectFilter {
 			type Result = Balance;
@@ -103,18 +114,22 @@ mod filter {
 			fn check(t: FungiblesInspectEffects<CurrencyId, AccountId, Balance>) -> Self::Result {
 				match t {
 					FungiblesInspectEffects::ReducibleBalance(
-						asset,
+						_asset,
 						_who,
-						_keep_alive,
+						preservation,
+						_force,
 						actually_reducible,
-					) => {
-						match asset {
-							// Note this filter actually never filters CurrencyId::Cfg. As CFG is
-							// the native one, which is passe directly to the fungible::Inspect
-							// implementation and the respective filters.
-							_ => actually_reducible / 2,
+					) => match preservation {
+						// NOTE: This mimics the behavior of the fungible implementation provided by
+						// pallet_balances (i.e. withdraw all including ED except for
+						// Preservation::Preserve).
+						// However, the fungibles implementation by orml_tokens actually behaves
+						// slightly differently: It secures ED for Preservation::Protect instead.
+						Preservation::Expendable | Preservation::Protect => actually_reducible / 2,
+						Preservation::Preserve => {
+							actually_reducible / 2 - ExistentialDeposit::get()
 						}
-					}
+					},
 				}
 			}
 		}
@@ -140,6 +155,14 @@ mod filter {
 					) => match asset {
 						CurrencyId::AUSD => false,
 						_ => can_actually_hold,
+					},
+					FungiblesInspectHoldEffects::HoldAvailable(
+						asset,
+						_who,
+						actual_hold_available,
+					) => match asset {
+						CurrencyId::AUSD => false,
+						_ => actual_hold_available,
 					},
 				}
 			}
@@ -172,7 +195,7 @@ mod filter {
 			}
 		}
 
-		/// Dummy filter that enforeces hold restrictens given by can hold.
+		/// Dummy filter that enforces hold restrictions given by `CanHold`.
 		pub struct MutateHoldFilter;
 		impl PreConditions<FungiblesMutateHoldEffects<CurrencyId, AccountId, Balance>>
 			for MutateHoldFilter
@@ -215,10 +238,28 @@ mod filter {
 				}
 			}
 		}
+
+		/// Dummy filter for Unbalanced. Only allows native token actions.
+		pub struct UnbalancedFilter;
+		impl PreConditions<FungiblesUnbalancedEffects<CurrencyId, AccountId, Balance>>
+			for UnbalancedFilter
+		{
+			type Result = bool;
+
+			fn check(
+				t: FungiblesUnbalancedEffects<CurrencyId, AccountId, Balance>,
+			) -> Self::Result {
+				match t {
+					FungiblesUnbalancedEffects::WriteBalance(asset, _, _)
+					| FungiblesUnbalancedEffects::SetTotalIssuance(asset, _) => asset == CurrencyId::Cfg,
+				}
+			}
+		}
 	}
 
 	pub mod fungible {
 		use cfg_traits::PreConditions;
+		use frame_support::traits::tokens::Preservation;
 
 		use crate::{
 			impl_fungible::*,
@@ -229,7 +270,7 @@ mod filter {
 		};
 
 		/// Dummy filter, that allows to reduce only till the
-		/// ExistentialDeposit.
+		/// ExistentialDeposit for Preservation::Preserve.
 		pub struct InspectFilter;
 		impl PreConditions<FungibleInspectEffects<AccountId, Balance>> for InspectFilter {
 			type Result = Balance;
@@ -238,15 +279,17 @@ mod filter {
 				match t {
 					FungibleInspectEffects::ReducibleBalance(
 						_who,
-						keep_alive,
+						preservation,
+						_fortitude,
 						actually_reducible,
-					) => {
-						if keep_alive {
-							actually_reducible
-						} else {
+					) => match preservation {
+						Preservation::Expendable | Preservation::Protect => actually_reducible,
+						// NOTE: If we did not add this extra-check, pallet_balances would still
+						// only allow withdrawals up to the ED for `Preserve`.
+						Preservation::Preserve => {
 							actually_reducible.saturating_sub(ExistentialDeposit::get())
 						}
-					}
+					},
 				}
 			}
 		}
@@ -353,7 +396,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024).set_proof_size(u64::MAX).into());
+	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_parts(1024, 0).set_proof_size(u64::MAX).into());
 }
 
 // Implement frame system configuration for the mock runtime
@@ -395,6 +438,7 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub const MaxLocks: u32 = 100;
+	pub const MaxReserves: u32 = 50;
 	pub const ExistentialDeposit: u64 = 1;
 }
 
@@ -403,16 +447,18 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ConstU32<50>;
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const MaxReserves: u32 = 50;
-}
+parameter_types! {}
 
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
@@ -449,6 +495,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutate = filter::fungibles::MutateFilter;
 	type PreFungiblesMutateHold = filter::fungibles::MutateHoldFilter;
 	type PreFungiblesTransfer = filter::fungibles::TransferFilter;
+	type PreFungiblesUnbalanced = filter::fungibles::UnbalancedFilter;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

@@ -21,9 +21,9 @@ args=( "$@" )
 alice="127.0.0.1"
 bob="127.0.0.1"
 alice_p2p_port="30333"
-alice_rpc_port="9933"
+alice_rpc_port="9944"
 bob_p2p_port="30344"
-bob_rpc_port="9935"
+bob_rpc_port="9945"
 chain="${RELAY_CHAIN_SPEC:-./res/rococo-local.json}"
 
 
@@ -33,7 +33,7 @@ get_id () {
     curl -sS \
         -H 'Content-Type: application/json' \
         --data '{"id":1,"jsonrpc":"2.0","method":"system_localPeerId"}' \
-        "$node:$port" |\
+        "http://$node:$port" |\
     jq -r '.result'
 
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{io::Write, net::SocketAddr};
+use std::io::Write;
 
 use cfg_primitives::Block;
 use codec::Encode;
@@ -70,6 +70,13 @@ impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
 		<dyn sc_service::ChainSpec>::identify(self)
 	}
 }
+
+#[cfg(feature = "try-runtime")]
+use try_runtime_cli::block_building_info::substrate_info;
+#[cfg(feature = "try-runtime")]
+/// The time internavel for block production on our chain in milliseconds (12
+/// seconds to millis)
+const BLOCK_TIME_MILLIS: u64 = 12 * 1_000;
 
 fn load_spec(
 	id: &str,
@@ -229,7 +236,7 @@ macro_rules! construct_async_run {
             match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, _>(
+				let $components = new_partial::<altair_runtime::RuntimeApi, _, AltairRuntimeExecutor>(
 					&$config,
 					first_evm_block,
 					crate::service::build_altair_import_queue,
@@ -240,7 +247,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Centrifuge => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _>(
+				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _, CentrifugeRuntimeExecutor>(
 					&$config,
 					first_evm_block,
 					crate::service::build_centrifuge_import_queue,
@@ -251,7 +258,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Development => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<development_runtime::RuntimeApi, _>(
+				let $components = new_partial::<development_runtime::RuntimeApi, _, DevelopmentRuntimeExecutor>(
 					&$config,
 					first_evm_block,
 					crate::service::build_development_import_queue,
@@ -392,7 +399,7 @@ pub fn run() -> Result<()> {
 						cmd.run::<Block, ExtendedHostFunctions<
 							sp_io::SubstrateHostFunctions,
 							<Executor as NativeExecutionDispatch>::ExtendHostFunctions,
-						>>(),
+						>, _>(Some(substrate_info(BLOCK_TIME_MILLIS))),
 						task_manager,
 					))
 				})
@@ -436,6 +443,11 @@ pub fn run() -> Result<()> {
 			let collator_options = cli.run.collator_options();
 
 			runner.run_node_until_exit(|config| async move {
+				let hwbench = (!cli.no_hardware_benchmarks).then_some(
+					config.database.path().map(|database_path| {
+						let _ = std::fs::create_dir_all(database_path);
+						sc_sysinfo::gather_hwbench(Some(database_path))
+					})).flatten();
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name()]
@@ -451,7 +463,7 @@ pub fn run() -> Result<()> {
 				let id = ParaId::from(para_id);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
+					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(&id);
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&*config.chain_spec, state_version)
@@ -493,6 +505,7 @@ pub fn run() -> Result<()> {
                         cli.eth,
 						collator_options,
 						id,
+						hwbench,
 						first_evm_block,
 					)
 					.await
@@ -504,6 +517,7 @@ pub fn run() -> Result<()> {
                         cli.eth,
 						collator_options,
 						id,
+						hwbench,
 						first_evm_block,
 					)
 					.await
@@ -515,6 +529,7 @@ pub fn run() -> Result<()> {
                         cli.eth,
 						collator_options,
 						id,
+						hwbench,
 						first_evm_block,
 					)
 					.await
@@ -531,12 +546,8 @@ impl DefaultConfigurationValues for RelayChainCli {
 		30334
 	}
 
-	fn rpc_ws_listen_port() -> u16 {
+	fn rpc_listen_port() -> u16 {
 		9945
-	}
-
-	fn rpc_http_listen_port() -> u16 {
-		9934
 	}
 
 	fn prometheus_listen_port() -> u16 {
@@ -582,24 +593,12 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.chain_id(is_dev)
 	}
 
-	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_http(default_listen_port)
-	}
-
-	fn rpc_ipc(&self) -> Result<Option<String>> {
-		self.base.base.rpc_ipc()
-	}
-
-	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_ws(default_listen_port)
-	}
-
 	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
 		self.base.base.rpc_methods()
 	}
 
-	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
-		self.base.base.rpc_ws_max_connections()
+	fn rpc_max_connections(&self) -> Result<u32> {
+		self.base.base.rpc_max_connections()
 	}
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {

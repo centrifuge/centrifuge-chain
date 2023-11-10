@@ -27,7 +27,7 @@ fn advance_time(elapsed: u64) {
 fn feed(data_id: DataId, data: Data) {
 	// For testing we want to skip the limitiation of one feed call per block
 	Oracle::on_finalize(0);
-	Oracle::feed_value(ORACLE_MEMBER, data_id, data).unwrap();
+	Oracle::feed_value(Some(ORACLE_MEMBER), data_id, data).unwrap();
 }
 
 #[test]

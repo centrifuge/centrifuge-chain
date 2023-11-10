@@ -6,7 +6,7 @@ use pallet_anchors::AnchorData;
 pub use runtime_common::apis::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::traits::Block as BlockT;
 
 use crate::rpc::invalid_params_error;
 
@@ -49,13 +49,12 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<AnchorData<cfg_primitives::Hash, BlockNumber>> {
 		let api = self.client.runtime_api();
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
+		let hash = match at {
+			Some(hash) => hash,
+			None => self.client.info().best_hash,
 		};
 
-		api.get_anchor_by_id(&at, id)
+		api.get_anchor_by_id(hash, id)
 			.ok()
 			.unwrap()
 			.ok_or_else(|| invalid_params_error("Unable to find anchor"))

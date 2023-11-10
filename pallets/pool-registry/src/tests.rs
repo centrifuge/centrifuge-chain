@@ -71,7 +71,6 @@ fn register_pool_and_set_metadata() {
 
 			MockWriteOffPolicy::mock_update(|_, _| Ok(()));
 
-			// nuno: failing with MetadataForCurrencyNotFound
 			assert_ok!(PoolRegistry::register(
 				RuntimeOrigin::signed(pool_owner),
 				pool_owner,

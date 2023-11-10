@@ -24,7 +24,7 @@ use frame_support::{
 	traits::{LockableCurrency, WithdrawReasons},
 };
 use sp_core::{blake2_256, H256};
-use sp_runtime::DispatchError;
+use sp_runtime::{DispatchError, TokenError};
 
 use crate::{
 	self as pallet_bridge,
@@ -57,6 +57,7 @@ fn transfer_native() {
 
 			// Using account with not enough balance for fee should fail when requesting
 			// transfer
+			assert_eq!(Balances::free_balance(RELAYER_C), 0);
 			assert_err!(
 				Bridge::transfer_native(
 					RuntimeOrigin::signed(RELAYER_C),
@@ -78,7 +79,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<Runtime>::InsufficientBalance
+				TokenError::FundsUnavailable
 			);
 
 			// Account balance of relayer B should be reverted to original balance
@@ -100,7 +101,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<Runtime>::LiquidityRestrictions
+				TokenError::Frozen
 			);
 
 			Balances::remove_lock(*b"testlock", &RELAYER_A);

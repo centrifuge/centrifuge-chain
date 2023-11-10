@@ -15,6 +15,7 @@ pub mod utils;
 // Test cases
 mod cases {
 	mod example;
+	mod liquidity_pools;
 	mod loans;
 }
 
@@ -60,6 +61,8 @@ macro_rules! test_for_runtimes {
             $(
                 #[tokio::test]
                 async fn $runtime_name() {
+                    crate::utils::logs::init_logs();
+
                     $test_name::<$runtime_name::Runtime>()
                 }
             )*

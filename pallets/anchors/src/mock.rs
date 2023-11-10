@@ -46,7 +46,6 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Authorship: pallet_authorship,
 		Balances: pallet_balances,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
 		Aura: pallet_aura,
 		MockFees: pallet_mock_fees,
 		Anchors: pallet_anchors,
@@ -84,8 +83,6 @@ impl frame_system::Config for Runtime {
 	type Version = ();
 }
 
-impl pallet_randomness_collective_flip::Config for Runtime {}
-
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
@@ -95,6 +92,10 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();

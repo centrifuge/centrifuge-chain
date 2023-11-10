@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-///! A crate that defines a simple permissions logic for our infrastructure.
+//! A crate that defines a simple permissions logic for our infrastructure.
 pub use pallet::*;
 
 #[cfg(test)]
@@ -72,7 +72,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]

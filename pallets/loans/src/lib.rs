@@ -118,7 +118,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
@@ -652,8 +651,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Loan(loan_id, mutation) = Self::get_released_change(pool_id, change_id)? else {
-                Err(Error::<T>::UnrelatedChangeId)?
+			let Change::Loan(loan_id, mutation) = Self::get_released_change(pool_id, change_id)?
+			else {
+				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -740,7 +740,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let Change::Policy(policy) = Self::get_released_change(pool_id, change_id)? else {
-                Err(Error::<T>::UnrelatedChangeId)?
+				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
 			Self::update_write_off_policy(pool_id, policy)?;
@@ -821,9 +821,10 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let Change::TransferDebt(from_loan_id, to_loan_id, repaid_amount, borrow_amount) =
-                Self::get_released_change(pool_id, change_id)? else {
-                    Err(Error::<T>::UnrelatedChangeId)?
-                };
+				Self::get_released_change(pool_id, change_id)?
+			else {
+				Err(Error::<T>::UnrelatedChangeId)?
+			};
 
 			let (amount, _count) = Self::transfer_debt_action(
 				&who,

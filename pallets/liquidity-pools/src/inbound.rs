@@ -21,7 +21,7 @@ use cfg_types::{
 };
 use frame_support::{
 	ensure,
-	traits::fungibles::{Mutate, Transfer},
+	traits::{fungibles::Mutate, tokens::Preservation},
 };
 use sp_core::Get;
 use sp_runtime::{
@@ -82,7 +82,7 @@ where
 			&Domain::convert(sending_domain.domain()),
 			&receiver,
 			amount,
-			false,
+			Preservation::Expendable,
 		)?;
 
 		Ok(())
@@ -203,7 +203,7 @@ where
 			&Domain::convert(sending_domain.domain()),
 			&investor,
 			amount,
-			false,
+			Preservation::Expendable,
 		)?;
 
 		T::ForeignInvestment::increase_foreign_redemption(
@@ -249,7 +249,7 @@ where
 			&investor,
 			&Domain::convert(destination.domain()),
 			tranche_tokens_payout,
-			false,
+			Preservation::Expendable,
 		)?;
 
 		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {

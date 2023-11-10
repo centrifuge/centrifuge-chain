@@ -11,10 +11,7 @@
 // GNU General Public License for more details.
 
 //! Utilities to create a relay-chain-parachain setup
-use std::{
-	collections::HashMap,
-	sync::{Arc, Mutex},
-};
+use std::collections::HashMap;
 
 use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
@@ -28,19 +25,24 @@ use fudge::{
 	},
 	primitives::{Chain, PoolState},
 	state::StateProvider,
-	ParachainBuilder, RelaychainBuilder, TWasmExecutor,
+	InherentBuilder, ParachainBuilder, RelaychainBuilder, TWasmExecutor,
 };
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
+use polkadot_runtime_parachains::{configuration, configuration::HostConfiguration, dmp};
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::{TFullClient, TaskManager};
+use sc_service::{TFullBackend, TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, traits::Extrinsic, DigestItem, Storage};
+use sp_runtime::{
+	generic::BlockId,
+	traits::{BlakeTwo256, Extrinsic},
+	DigestItem, Storage,
+};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -435,6 +437,8 @@ pub enum EventRange {
 	Latest,
 }
 
+pub(crate) const PARA_ID_SIBLING: u32 = 2001;
+
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
@@ -442,6 +446,8 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
+	#[fudge::parachain(PARA_ID_SIBLING)]
+	pub sibling: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
 }
@@ -450,10 +456,12 @@ pub type Header = cfg_primitives::Header;
 pub type Block = cfg_primitives::Block;
 pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 
+type EnvError = Box<dyn std::error::Error>;
+
 // NOTE: Nonce management is a known issue when interacting with a chain and
 // wanting       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
-	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
+	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, EnvError>
 	where
 		sp_runtime::generic::Block<Header, UncheckedExtrinsic>: sp_runtime::traits::Block,
 	{
@@ -461,8 +469,7 @@ impl TestEnv {
 			Chain::Relay => {
 				let latest = self
 					.centrifuge
-					.with_state(|| frame_system::Pallet::<Runtime>::block_number())
-					.map_err(|_| ())?;
+					.with_state(|| frame_system::Pallet::<Runtime>::block_number())?;
 
 				match range {
 					EventRange::Latest => self.events_relay(latest),
@@ -491,8 +498,7 @@ impl TestEnv {
 				_ if id == PARA_ID => {
 					let latest = self
 						.centrifuge
-						.with_state(|| frame_system::Pallet::<Runtime>::block_number())
-						.map_err(|_| ())?;
+						.with_state(|| frame_system::Pallet::<Runtime>::block_number())?;
 
 					match range {
 						EventRange::Latest => self.events_centrifuge(latest),
@@ -517,26 +523,26 @@ impl TestEnv {
 						EventRange::One(at) => self.events_centrifuge(at),
 					}
 				}
-				_ => Err(()),
+				_ => Err(EnvError::from("parachain not found")),
 			},
 		}
 	}
 
-	fn events_centrifuge(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, ()> {
+	fn events_centrifuge(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, EnvError> {
 		self.centrifuge
 			.with_state_at(BlockId::Number(at), || {
 				frame_system::Pallet::<centrifuge::Runtime>::events()
 			})
-			.map_err(|_| ())
+			.map_err(|e| e.into())
 			.map(|records| records.into_iter().map(|record| record.encode()).collect())
 	}
 
-	fn events_relay(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, ()> {
+	fn events_relay(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, EnvError> {
 		self.relay
 			.with_state_at(BlockId::Number(at), || {
 				frame_system::Pallet::<relay::Runtime>::events()
 			})
-			.map_err(|_| ())
+			.map_err(|e| e.into())
 			.map(|records| records.into_iter().map(|record| record.encode()).collect())
 	}
 
@@ -594,56 +600,48 @@ impl TestEnv {
 	/// Signs a given call for the given chain. Should only be used if the
 	/// extrinsic really should be submitted afterwards.
 	/// **NOTE: This will increase the stored nonce of an account**
-	pub fn sign(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<Vec<u8>, ()> {
+	pub fn sign(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<Vec<u8>, EnvError> {
 		let nonce = self.fetch_add_nonce(chain, who);
 		match chain {
-			Chain::Relay => Ok(xt_relay(
-				self,
-				who,
-				nonce,
-				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-			)?
-			.encode()),
+			Chain::Relay => {
+				Ok(xt_relay(self, who, nonce, Decode::decode(&mut call.as_slice())?)?.encode())
+			}
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => Ok(xt_centrifuge(
-					self,
-					who,
-					nonce,
-					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-				)?
-				.encode()),
-				_ => Err(()),
+				_ if id == PARA_ID => {
+					Ok(
+						xt_centrifuge(self, who, nonce, Decode::decode(&mut call.as_slice())?)?
+							.encode(),
+					)
+				}
+				_ => Err(EnvError::from("parachain not found")),
 			},
 		}
 	}
 
 	/// Submits a previously signed extrinsics to the pool of the respective
 	/// chain.
-	pub fn submit(&mut self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
-		self.append_extrinsic(chain, xt)
+	pub fn submit(&mut self, chain: Chain, xt: Vec<u8>) -> Result<(), EnvError> {
+		self.append_extrinsic(chain, xt).map_err(|e| e.into())
 	}
 
 	/// Signs and submits an extrinsic to the given chain. Will take the nonce
 	/// for the account from the `NonceManager`.
-	pub fn sign_and_submit(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
+	pub fn sign_and_submit(
+		&mut self,
+		chain: Chain,
+		who: Keyring,
+		call: Vec<u8>,
+	) -> Result<(), EnvError> {
 		let nonce = self.nonce(chain, who);
 		let xt = match chain {
-			Chain::Relay => xt_relay(
-				self,
-				who,
-				nonce,
-				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-			)?
-			.encode(),
+			Chain::Relay => {
+				xt_relay(self, who, nonce, Decode::decode(&mut call.as_slice())?)?.encode()
+			}
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => xt_centrifuge(
-					self,
-					who,
-					nonce,
-					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-				)?
-				.encode(),
-				_ => return Err(()),
+				_ if id == PARA_ID => {
+					xt_centrifuge(self, who, nonce, Decode::decode(&mut call.as_slice())?)?.encode()
+				}
+				_ => return Err(EnvError::from("parachain not found")),
 			},
 		};
 
@@ -661,7 +659,7 @@ impl TestEnv {
 		chain: Chain,
 		who: Keyring,
 		calls: Vec<Vec<u8>>,
-	) -> Result<(), ()> {
+	) -> Result<(), EnvError> {
 		for call in calls {
 			self.sign_and_submit(chain, who, call)?;
 		}
@@ -669,7 +667,7 @@ impl TestEnv {
 		Ok(())
 	}
 
-	pub fn evolve_till(&mut self, chain: Chain, till_state: ChainState) -> Result<(), ()> {
+	pub fn evolve_till(&mut self, chain: Chain, till_state: ChainState) -> Result<(), EnvError> {
 		match chain {
 			Chain::Relay => match till_state {
 				ChainState::EvolvedBy(blocks) => pass_n(self, blocks / 2),
@@ -687,7 +685,7 @@ impl TestEnv {
 		}
 	}
 
-	fn evolve_till_pool_xts_centrifuge(&mut self, xts: usize) -> Result<(), ()> {
+	fn evolve_till_pool_xts_centrifuge(&mut self, xts: usize) -> Result<(), EnvError> {
 		let state = self.centrifuge.pool_state();
 		let mut curr_xts = match state {
 			PoolState::Empty => return Ok(()),
@@ -720,7 +718,7 @@ impl TestEnv {
 		Ok(())
 	}
 
-	fn evolve_till_pool_xts_relay(&mut self, xts: usize) -> Result<(), ()> {
+	fn evolve_till_pool_xts_relay(&mut self, xts: usize) -> Result<(), EnvError> {
 		let state = self.relay.pool_state();
 		let mut curr_xts = match state {
 			PoolState::Empty => return Ok(()),
@@ -777,13 +775,31 @@ fn test_env(
 	// Build relay-chain builder
 	let relay = {
 		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
-		let mut state = StateProvider::new(RelayCode.expect("Wasm is build. Qed."));
 
-		// We need to HostConfiguration and use the default here.
+		//TODO(cdamian): Use RelayBlock
+		let mut state =
+			StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(
+				Some(RelayCode.expect("Wasm is build. Qed.")),
+			)
+			.expect("ESSENTIAL: State provider can be created");
+
+		let mut configuration = configuration::GenesisConfig::<RelayRt>::default();
+
+		let mut host_config = HostConfiguration::<u32>::default();
+		host_config.max_downward_message_size = 1024;
+		host_config.hrmp_channel_max_capacity = 100;
+		host_config.hrmp_channel_max_message_size = 1024;
+		host_config.hrmp_channel_max_total_size = 1024;
+		host_config.hrmp_max_parachain_outbound_channels = 10;
+		host_config.hrmp_max_parachain_inbound_channels = 10;
+		host_config.hrmp_max_message_num_per_candidate = 100;
+
+		configuration.config = host_config;
+
 		state.insert_storage(
-			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
+			configuration
 				.build_storage()
-				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+				.expect("ESSENTIAL: Host Configuration GenesisBuild must not fail at this stage."),
 		);
 
 		state.insert_storage(
@@ -791,7 +807,7 @@ fn test_env(
 				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
 			}
 			.build_storage::<RelayRt>()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+			.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
 		);
 
 		if let Some(storage) = relay_storage {
@@ -807,7 +823,8 @@ fn test_env(
 			let instance_id = FudgeInherentTimestamp::create_instance(
 				std::time::Duration::from_secs(6),
 				Some(std::time::Duration::from_millis(START_DATE)),
-			);
+			)
+			.expect("ESSENTIAL: Instance ID can be created.");
 
 			Box::new(move |parent: H256, ()| {
 				let client = clone_client.clone();
@@ -832,103 +849,146 @@ fn test_env(
 			})
 		};
 
-		let dp: RelayDp = Box::new(move |parent, inherents| async move {
-			let babe = FudgeBabeDigest::<RelayBlock>::new();
-			let digest = babe.build_digest(&parent, &inherents).await?;
-			Ok(digest)
-		});
+		let dp: RelayDp = Box::new(
+			move |parent: sp_runtime::generic::Header<u32, BlakeTwo256>, inherents| async move {
+				let babe = FudgeBabeDigest::<RelayBlock>::new();
+				let digest = babe.build_digest(parent, &inherents).await?;
+				Ok(digest)
+			},
+		);
 
 		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp>::new(init, |client| {
 			(cidp(client), dp)
 		})
+		.expect("ESSENTIAL: Relay chain builder can be created.")
 	};
 
-	// Build parachain-builder
-	let centrifuge = {
-		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
-		let mut state = StateProvider::new(CentrifugeCode.expect("Wasm is build. Qed."));
+	let para_inherent_builder = relay.inherent_builder(ParaId::from(PARA_ID));
+	let sibling_inherent_builder = relay.inherent_builder(ParaId::from(PARA_ID_SIBLING));
 
-		state.insert_storage(
-			frame_system::GenesisConfig {
-				code: CentrifugeCode
-					.expect("ESSENTIAL: Centrifuge WASM is some.")
-					.to_vec(),
-			}
-			.build_storage::<Runtime>()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
-		);
-		state.insert_storage(
-			pallet_aura::GenesisConfig::<Runtime> {
-				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
-			}
-			.build_storage()
-			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
-		);
+	let para_builder = get_parachain_builder(
+		handle.clone(),
+		para_inherent_builder,
+		PARA_ID,
+		centrifuge_storage.clone(),
+	);
 
-		if let Some(storage) = centrifuge_storage {
-			state.insert_storage(storage);
-		}
-
-		let mut init = fudge::initiator::default(handle);
-		init.with_genesis(Box::new(state));
-
-		let para_id = ParaId::from(PARA_ID);
-		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance_id = FudgeInherentTimestamp::create_instance(
-			std::time::Duration::from_secs(12),
-			Some(std::time::Duration::from_millis(START_DATE)),
-		);
-
-		let cidp = Box::new(move |_parent: H256, ()| {
-			let inherent_builder_clone = inherent_builder.clone();
-			async move {
-				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
-					.expect("Instances is initialized");
-
-				let slot =
-					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						timestamp.current_time(),
-						SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
-					);
-				let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
-				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
-				Ok((timestamp, slot, relay_para_inherent))
-			}
-		});
-		let dp = |clone_client: Arc<
-			sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
-		>| {
-			Box::new(move |parent, inherents| {
-				let client = clone_client.clone();
-
-				async move {
-					let aura = FudgeAuraDigest::<
-						CentrifugeBlock,
-						sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
-					>::new(&*client);
-
-					let digest = aura.build_digest(&parent, &inherents).await?;
-					Ok(digest)
-				}
-			})
-		};
-
-		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(init, |client| {
-			(cidp, dp(client))
-		})
-	};
+	let sibling_builder = get_parachain_builder(
+		handle,
+		sibling_inherent_builder,
+		PARA_ID_SIBLING,
+		centrifuge_storage,
+	);
 
 	TestEnv::new(
 		relay,
-		centrifuge,
+		para_builder,
+		sibling_builder,
 		Arc::new(Mutex::new(NonceManager::new())),
 		Arc::new(Mutex::new(EventsStorage::new())),
 	)
 	.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 
+fn get_parachain_builder(
+	handle: Handle,
+	inherent_builder: InherentBuilder<
+		TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>,
+		TFullBackend<RelayBlock>,
+	>,
+	para_id: u32,
+	centrifuge_storage: Option<Storage>,
+) -> ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp> {
+	sp_tracing::enter_span!(sp_tracing::Level::INFO, "Parachain - StartUp");
+
+	let mut state =
+		StateProvider::<TFullBackend<centrifuge::Block>, centrifuge::Block>::empty_default(Some(
+			CentrifugeCode.expect("Wasm is build. Qed."),
+		))
+		.expect("ESSENTIAL: State provider can be created.");
+
+	state.insert_storage(
+		frame_system::GenesisConfig {
+			code: CentrifugeCode
+				.expect("ESSENTIAL: Centrifuge WASM is some.")
+				.to_vec(),
+		}
+		.build_storage::<Runtime>()
+		.expect("ESSENTIAL: Frame System GenesisBuild must not fail at this stage."),
+	);
+	state.insert_storage(
+		pallet_aura::GenesisConfig::<Runtime> {
+			authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
+		}
+		.build_storage()
+		.expect("ESSENTIAL: Pallet Aura GenesisBuild must not fail at this stage."),
+	);
+	state.insert_storage(
+		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::build_storage(
+			&parachain_info::GenesisConfig {
+				parachain_id: ParaId::from(para_id),
+			},
+		)
+		.expect("ESSENTIAL: Parachain Info GenesisBuild must not fail at this stage."),
+	);
+
+	if let Some(storage) = centrifuge_storage {
+		state.insert_storage(storage);
+	}
+
+	let mut init = fudge::initiator::default(handle);
+	init.with_genesis(Box::new(state));
+
+	let para_id = ParaId::from(para_id);
+	let instance_id = FudgeInherentTimestamp::create_instance(
+		std::time::Duration::from_secs(12),
+		Some(std::time::Duration::from_millis(START_DATE)),
+	)
+	.expect("ESSENTIAL: Instance ID can be created.");
+
+	let cidp = Box::new(move |_parent: H256, ()| {
+		let inherent_builder_clone = inherent_builder.clone();
+		async move {
+			let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
+				.expect("Instances is initialized");
+
+			let slot =
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+					timestamp.current_time(),
+					SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
+				);
+			let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
+			let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
+			Ok((timestamp, slot, relay_para_inherent))
+		}
+	});
+	let dp = |clone_client: Arc<
+		sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
+	>| {
+		Box::new(move |parent, inherents| {
+			let client = clone_client.clone();
+
+			async move {
+				let aura = FudgeAuraDigest::<
+					CentrifugeBlock,
+					sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
+				>::new(&*client)
+				.expect("ESSENTIAL: Aura digest can be created.");
+
+				let digest = aura.build_digest(parent, &inherents).await?;
+				Ok(digest)
+			}
+		})
+	};
+
+	ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(para_id, init, |client| {
+		(cidp, dp(client))
+	})
+	.expect("ESSENTIAL: Parachain builder can be created.")
+}
+
 /// Pass n_blocks on the parachain-side!
-pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
+pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), EnvError> {
 	for _ in 0..n {
 		env.evolve()?;
 	}
