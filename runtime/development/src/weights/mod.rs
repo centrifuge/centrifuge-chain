@@ -26,7 +26,6 @@ pub mod pallet_identity;
 pub mod pallet_interest_accrual;
 pub mod pallet_investments;
 pub mod pallet_keystore;
-pub mod pallet_liquidity_pools;
 pub mod pallet_loans;
 pub mod pallet_migration_manager;
 pub mod pallet_multisig;

@@ -204,4 +204,11 @@ impl<T: frame_system::Config> pallet_transfer_allowlist::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads(4))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
+
+	fn remove_transfer_allowance_missing_allowance() -> Weight {
+		Weight::from_parts(21_000_000, 0)
+			.saturating_add(Weight::from_parts(0, 3596))
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
