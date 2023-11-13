@@ -67,7 +67,7 @@ jobs:
         run: >
           docker run --rm  --user root --platform=linux/amd64
           -e PACKAGE=${{ matrix.package }} -v /home/runner/.cargo:/cargo-home  
-          -v ${{ github.workspace }}:/build paritytech/srtool:1.70.0
+          -v ${{ github.workspace }}:/build paritytech/srtool:1.73.0-0.12.0
           /srtool/build 
 
       # - name: Run Docker SRTool
