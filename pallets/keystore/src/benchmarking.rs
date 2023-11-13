@@ -31,7 +31,7 @@ benchmarks! {
 		let n in 1..T::MaxKeys::get();
 		let caller: T::AccountId = account("acc_0", 0, 0);
 		let test_keys: Vec<AddKey<T::Hash>> = build_test_keys::<T>(n);
-		T::Currency::deposit_creating(&caller.clone().into(), T::DefaultKeyDeposit::get() * n as u128);
+		T::Currency::deposit_creating(&caller.clone().into(), T::Currency::minimum_balance() + T::DefaultKeyDeposit::get() * n as u128);
 		let origin = RawOrigin::Signed(caller.clone());
 	}: add_keys(origin, test_keys)
 	verify {

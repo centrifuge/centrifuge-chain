@@ -28,7 +28,7 @@ fn add_keys() {
 		let keys = get_test_keys();
 		let origin: u64 = 1;
 
-		Balances::set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY, 0).unwrap();
+		Balances::force_set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY).unwrap();
 
 		assert_ok!(Keystore::add_keys(
 			RuntimeOrigin::signed(origin),
@@ -103,7 +103,7 @@ fn add_keys_key_already_exists() {
 		let keys = get_test_keys();
 		let origin = 1;
 
-		Balances::set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY, 0).unwrap();
+		Balances::force_set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY).unwrap();
 
 		let first_key = keys[0].clone();
 		let key_id: KeyId<H256> = (first_key.key.clone(), first_key.purpose.clone());

@@ -162,7 +162,6 @@ pub mod pallet {
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	/// Contains the timestamp when the current epoch is finalized.
@@ -256,8 +255,8 @@ pub mod pallet {
 						counter.weights += 1;
 					}
 
-					for (&currency_id, &group_id) in &changes.currencies {
-						T::Rewards::attach_currency(currency_id, group_id)?;
+					for (currency_id, &group_id) in &changes.currencies.clone() {
+						T::Rewards::attach_currency(currency_id.clone(), group_id)?;
 						counter.currencies += 1;
 					}
 

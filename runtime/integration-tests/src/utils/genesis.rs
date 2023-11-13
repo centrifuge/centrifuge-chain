@@ -19,7 +19,8 @@ use sp_runtime::{AccountId32, Storage};
 use crate::utils::{
 	accounts::{default_accounts, Keyring},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
-	AUSD_CURRENCY_ID, RELAY_ASSET_ID,
+	AUSD_CURRENCY_ID, AUSD_ED, GLMR_CURRENCY_ID, GLMR_ED, RELAY_ASSET_ID, USDT_CURRENCY_ID,
+	USDT_ED,
 };
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the
@@ -42,12 +43,12 @@ where
 			.collect(),
 	}
 	.assimilate_storage(storage)
-	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+	.expect("ESSENTIAL: Balances Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_12 AUSD tokens to the
-/// `accounts::default_accounts()`
-pub fn default_ausd_balances<Runtime>(storage: &mut Storage)
+/// Sets the balances for default accounts in the Orml Tokens genesis config
+/// with the provided amount for a specific currency.
+pub fn default_orml_balances<Runtime>(storage: &mut Storage, currency_id: CurrencyId, amount: u128)
 where
 	Runtime: orml_tokens::Config,
 	Runtime::Balance: From<u128>,
@@ -60,14 +61,14 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					AUSD_CURRENCY_ID.into(),
-					(100_000 * DECIMAL_BASE_12).into(),
+					currency_id.into(),
+					amount.into(),
 				)
 			})
 			.collect(),
 	}
 	.assimilate_storage(storage)
-	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+	.expect("ESSENTIAL: Orml Tokens Genesisbuild is not allowed to fail.");
 }
 
 /// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12
@@ -81,7 +82,9 @@ where
 	Runtime::CurrencyId: From<CurrencyId>,
 {
 	default_native_balances::<Runtime>(storage);
-	default_ausd_balances::<Runtime>(storage);
+	default_orml_balances::<Runtime>(storage, AUSD_CURRENCY_ID, AUSD_ED);
+	default_orml_balances::<Runtime>(storage, USDT_CURRENCY_ID, USDT_ED);
+	default_orml_balances::<Runtime>(storage, GLMR_CURRENCY_ID, GLMR_ED);
 }
 
 /// Register the Relay chain token and AUSD_CURRENCY_ID in the asset registry

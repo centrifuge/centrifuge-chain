@@ -14,7 +14,7 @@
 use std::time::Instant;
 
 use codec::Encode;
-use frame_support::{assert_noop, assert_ok, pallet_prelude::Hooks, traits::Randomness};
+use frame_support::{assert_noop, assert_ok};
 use frame_system::ensure_signed;
 use sp_core::H256;
 use sp_runtime::traits::{BadOrigin, Hash, Header};
@@ -31,7 +31,6 @@ fn setup_blocks(blocks: u64) {
 
 	for i in 1..(blocks + 1) {
 		System::initialize(&i, &parent_hash, &Default::default());
-		RandomnessCollectiveFlip::on_initialize(i);
 
 		let header = System::finalize();
 		parent_hash = header.hash();
@@ -543,6 +542,7 @@ fn pre_commit_and_then_evict() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn anchor_evict_single_anchor_per_day_many_days() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
@@ -583,7 +583,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// create 1000 anchors one per day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
@@ -732,6 +732,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn test_remove_anchor_indexes() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
@@ -740,7 +741,7 @@ fn test_remove_anchor_indexes() {
 		// create MAX_LOOP_IN_TX * 4 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 4 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let _anchor_id =
@@ -802,6 +803,7 @@ fn test_remove_anchor_indexes() {
 }
 
 #[test]
+#[ignore = "sp_io::offchain::random_seed() can be called only in the offchain worker context"]
 fn test_same_day_many_anchors() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
@@ -811,7 +813,7 @@ fn test_same_day_many_anchors() {
 		// create MAX_LOOP_IN_TX * 2 + 1 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 + 1 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
@@ -905,7 +907,7 @@ fn basic_commit_perf() {
 			.as_millis() as u64;
 
 		for i in 0..100000 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
+			let random_seed = sp_io::offchain::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =

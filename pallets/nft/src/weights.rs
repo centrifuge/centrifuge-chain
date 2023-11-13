@@ -20,10 +20,10 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
 	fn transfer() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn validate_mint() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 }

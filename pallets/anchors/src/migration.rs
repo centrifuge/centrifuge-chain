@@ -11,7 +11,7 @@ pub mod fix_evict_date {
 	use frame_support::ensure; // Not in prelude for try-runtime
 
 	#[cfg(feature = "try-runtime")]
-	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
+	pub fn pre_migrate<T: Config>() -> Result<(), DispatchError> {
 		ensure!(
 			LatestEvictedDate::<T>::get() == None,
 			"State already initialized"
@@ -26,11 +26,11 @@ pub mod fix_evict_date {
 			return T::DbWeight::get().writes(1);
 		}
 
-		Weight::from_ref_time(0)
+		Weight::from_parts(0, 0)
 	}
 
 	#[cfg(feature = "try-runtime")]
-	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
+	pub fn post_migrate<T: Config>() -> Result<(), DispatchError> {
 		ensure!(
 			LatestEvictedDate::<T>::get() == Some(HARDCODED_EVICTED_DATE),
 			"State not initialized"

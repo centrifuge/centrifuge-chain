@@ -37,6 +37,7 @@ const run = async () => {
     const wasmFile = process.argv[2];
     const targetDockerTag = process.argv[3];
     const chainSpec = process.argv[4] !== undefined ? process.argv[4] : 'centrifuge-local';
+    const ccDockerProfile = process.argv[5] !== undefined ? process.argv[5] : 'default';
 
     console.log("Starting Relay Chain and waiting until is up")
     await execCommand('cd ../../../ && ./scripts/init.sh start-relay-chain')
@@ -52,7 +53,7 @@ const run = async () => {
     console.log("Starting Centrifuge Chain and waiting until is up")
     process.env.CC_DOCKER_TAG = targetDockerTag
     process.env.PARA_CHAIN_SPEC = chainSpec
-    await execCommand('cd ../../../ && ./scripts/init.sh start-parachain-docker')
+    await execCommand(`cd ../../../ && PARA_DOCKER_PROFILE=${ccDockerProfile} ./scripts/init.sh start-parachain-docker`)
 
     const wsProvider = new WsProvider(endpoint);
     const api = await ApiPromise.create({

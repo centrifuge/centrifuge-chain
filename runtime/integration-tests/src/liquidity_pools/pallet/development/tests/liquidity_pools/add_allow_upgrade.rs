@@ -36,33 +36,49 @@ use cfg_types::{
 		ForeignAssetId,
 	},
 };
-use development_runtime::{
-	LiquidityPools, LocationToAccountId, OrderBook, OrmlAssetRegistry, OrmlTokens, Permissions,
-	Runtime as DevelopmentRuntime, RuntimeOrigin, System, TreasuryAccount, XTokens, XcmTransactor,
-};
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Mutate};
+use fudge::primitives::{Chain, PoolState};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use polkadot_parachain::primitives::Id;
 use runtime_common::account_conversion::AccountConverter;
 use sp_runtime::{
 	traits::{BadOrigin, Convert, One, Zero},
-	BoundedVec, DispatchError,
+	BoundedVec, DispatchError, Storage,
 };
-use xcm::{latest::MultiLocation, VersionedMultiLocation};
-use xcm_emulator::TestExt;
+use tokio::runtime::Handle;
+use xcm::{
+	latest::MultiLocation,
+	prelude::XCM_VERSION,
+	v3::{Junction, Junctions},
+	VersionedMultiLocation,
+};
 
 use crate::{
+	chain::{
+		centrifuge::{
+			LiquidityPools, LocationToAccountId, OrderBook, OrmlAssetRegistry, OrmlTokens,
+			Permissions, Runtime as DevelopmentRuntime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+			System, TreasuryAccount, XTokens, XcmTransactor, PARA_ID,
+		},
+		relay::{Runtime as RelayRuntime, RuntimeOrigin as RelayRuntimeOrigin},
+	},
 	liquidity_pools::pallet::development::{
-		setup::{dollar, ALICE, BOB},
-		test_net::{Development, Moonbeam, RelayChain, TestNet},
+		setup::dollar,
 		tests::liquidity_pools::setup::{
 			asset_metadata, create_ausd_pool, create_currency_pool,
 			enable_liquidity_pool_transferability, get_default_moonbeam_native_token_location,
 			investments::default_tranche_id, liquidity_pools_transferable_multilocation,
-			setup_pre_requirements, DEFAULT_BALANCE_GLMR, DEFAULT_MOONBEAM_LOCATION,
-			DEFAULT_POOL_ID, DEFAULT_VALIDITY,
+			setup_pre_requirements, setup_test_env, DEFAULT_BALANCE_GLMR, DEFAULT_POOL_ID,
+			DEFAULT_SIBLING_LOCATION, DEFAULT_VALIDITY,
 		},
 	},
-	utils::{AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID},
+	utils::{
+		accounts::Keyring,
+		env,
+		env::{ChainState, EventRange, PARA_ID_SIBLING},
+		genesis, AUSD_CURRENCY_ID, GLMR_CURRENCY_ID, MOONBEAM_EVM_CHAIN_ID,
+	},
 };
 
 /// NOTE: We can't actually verify that the messages hits the
@@ -76,17 +92,23 @@ use crate::{
 /// be executed on Moonbeam.
 /// Verify that `LiquidityPools::add_pool` succeeds when called with all the
 /// necessary requirements.
-#[test]
-fn add_pool() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn add_pool() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let pool_id = DEFAULT_POOL_ID;
 
 		// Verify that the pool must exist before we can call LiquidityPools::add_pool
 		assert_noop!(
 			LiquidityPools::add_pool(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
@@ -99,7 +121,7 @@ fn add_pool() {
 		// Verify ALICE can't call `add_pool` given she is not the `PoolAdmin`
 		assert_noop!(
 			LiquidityPools::add_pool(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 			),
@@ -108,7 +130,7 @@ fn add_pool() {
 
 		// Verify that it works if it's BOB calling it (the pool admin)
 		assert_ok!(LiquidityPools::add_pool(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			pool_id,
 			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
 		));
@@ -121,13 +143,17 @@ fn add_pool() {
 /// heavy e2e setup to emulate. Instead, here we test that we can send the
 /// extrinsic and we have other unit tests verifying the encoding of the remote
 /// EVM call to be executed on Moonbeam.
-#[test]
-fn add_tranche() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let decimals: u8 = 15;
+#[tokio::test]
+async fn add_tranche() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		// Now create the pool
 		let pool_id = DEFAULT_POOL_ID;
 		create_ausd_pool(pool_id);
@@ -137,7 +163,7 @@ fn add_tranche() {
 		let nonexistent_tranche = [71u8; 16];
 		assert_noop!(
 			LiquidityPools::add_tranche(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				nonexistent_tranche,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -149,7 +175,7 @@ fn add_tranche() {
 		// Verify ALICE can't call `add_tranche` given she is not the `PoolAdmin`
 		assert_noop!(
 			LiquidityPools::add_tranche(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				tranche_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -160,7 +186,7 @@ fn add_tranche() {
 		// Finally, verify we can call LiquidityPools::add_tranche successfully
 		// when called by the PoolAdmin with the right pool + tranche id pair.
 		assert_ok!(LiquidityPools::add_tranche(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			pool_id,
 			tranche_id,
 			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -171,7 +197,7 @@ fn add_tranche() {
 		orml_asset_registry::Metadata::<DevelopmentRuntime>::remove(tranche_currency_id);
 		assert_noop!(
 			LiquidityPools::update_tranche_token_metadata(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				tranche_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -181,15 +207,22 @@ fn add_tranche() {
 	});
 }
 
-#[test]
-fn update_member() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn update_member() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		// Now create the pool
 		let pool_id = DEFAULT_POOL_ID;
+
 		create_ausd_pool(pool_id);
+
 		let tranche_id = default_tranche_id(pool_id);
 
 		// Finally, verify we can call LiquidityPools::add_tranche successfully
@@ -201,7 +234,7 @@ fn update_member() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
-			ALICE.into(),
+			Keyring::Alice.into(),
 			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
@@ -209,7 +242,7 @@ fn update_member() {
 		// Verify it fails if the destination is not whitelisted yet
 		assert_noop!(
 			LiquidityPools::update_member(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				tranche_id,
 				new_member.clone(),
@@ -220,7 +253,7 @@ fn update_member() {
 
 		// Whitelist destination as TrancheInvestor of this Pool
 		assert_ok!(Permissions::add(
-			RuntimeOrigin::signed(ALICE.into()),
+			RuntimeOrigin::signed(Keyring::Alice.into()),
 			Role::PoolRole(PoolRole::InvestorAdmin),
 			AccountConverter::<DevelopmentRuntime, LocationToAccountId>::convert(
 				new_member.clone()
@@ -243,7 +276,7 @@ fn update_member() {
 
 		// Verify it now works
 		assert_ok!(LiquidityPools::update_member(
-			RuntimeOrigin::signed(ALICE.into()),
+			RuntimeOrigin::signed(Keyring::Alice.into()),
 			pool_id,
 			tranche_id,
 			new_member,
@@ -254,7 +287,7 @@ fn update_member() {
 		// beforehand
 		assert_noop!(
 			LiquidityPools::update_member(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				tranche_id,
 				DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [9; 20]),
@@ -265,19 +298,26 @@ fn update_member() {
 	});
 }
 
-#[test]
-fn update_token_price() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let decimals: u8 = 15;
+#[tokio::test]
+async fn update_token_price() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let currency_id = AUSD_CURRENCY_ID;
 		let pool_id = DEFAULT_POOL_ID;
-		create_ausd_pool(pool_id);
+
 		enable_liquidity_pool_transferability(currency_id);
 
+		create_ausd_pool(pool_id);
+
 		assert_ok!(LiquidityPools::update_token_price(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			pool_id,
 			default_tranche_id(pool_id),
 			currency_id,
@@ -286,69 +326,79 @@ fn update_token_price() {
 	});
 }
 
-#[test]
-fn add_currency() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn add_currency() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	setup_test_env(&mut env);
+
+	env.with_state(Chain::Para(PARA_ID), || {
+		let gateway_sender =
+			<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
 		let currency_id = AUSD_CURRENCY_ID;
 
-		// Enable LiquidityPools transferability
 		enable_liquidity_pool_transferability(currency_id);
 
 		assert_eq!(
-			OrmlTokens::free_balance(
-				GLMR_CURRENCY_ID,
-				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
-			),
+			OrmlTokens::free_balance(GLMR_CURRENCY_ID, &gateway_sender),
 			DEFAULT_BALANCE_GLMR
 		);
 
 		assert_ok!(LiquidityPools::add_currency(
-			RuntimeOrigin::signed(BOB.into()),
-			currency_id
+			RuntimeOrigin::signed(Keyring::Bob.into()),
+			currency_id,
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(
-				GLMR_CURRENCY_ID,
-				&<DevelopmentRuntime as pallet_liquidity_pools_gateway::Config>::Sender::get()
-			),
+			OrmlTokens::free_balance(GLMR_CURRENCY_ID, &gateway_sender),
 			/// Ensure it only charged the 0.2 GLMR of fee
 			DEFAULT_BALANCE_GLMR
 				- dollar(18).saturating_div(5)
 		);
-	});
+	})
+	.unwrap();
 }
 
-#[test]
-fn add_currency_should_fail() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn add_currency_should_fail() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		assert_noop!(
 			LiquidityPools::add_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				CurrencyId::ForeignAsset(42)
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotFound
 		);
 		assert_noop!(
-			LiquidityPools::add_currency(RuntimeOrigin::signed(BOB.into()), CurrencyId::Native),
+			LiquidityPools::add_currency(
+				RuntimeOrigin::signed(Keyring::Bob.into()),
+				CurrencyId::Native
+			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotFound
 		);
 		assert_noop!(
 			LiquidityPools::add_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotFound
 		);
 		assert_noop!(
 			LiquidityPools::add_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
 			),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotFound
@@ -371,7 +421,7 @@ fn add_currency_should_fail() {
 			Some(currency_id)
 		));
 		assert_noop!(
-			LiquidityPools::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			LiquidityPools::add_currency(RuntimeOrigin::signed(Keyring::Bob.into()), currency_id),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsWrappedToken
 		);
 
@@ -398,7 +448,7 @@ fn add_currency_should_fail() {
 			}),
 		));
 		assert_noop!(
-			LiquidityPools::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			LiquidityPools::add_currency(RuntimeOrigin::signed(Keyring::Bob.into()), currency_id),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
 		);
 
@@ -420,18 +470,23 @@ fn add_currency_should_fail() {
 			})
 		));
 		assert_noop!(
-			LiquidityPools::add_currency(RuntimeOrigin::signed(BOB.into()), currency_id),
+			LiquidityPools::add_currency(RuntimeOrigin::signed(Keyring::Bob.into()), currency_id),
 			pallet_liquidity_pools::Error::<DevelopmentRuntime>::AssetNotLiquidityPoolsTransferable
 		);
 	});
 }
 
-#[test]
-fn allow_investment_currency() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn allow_investment_currency() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let currency_id = AUSD_CURRENCY_ID;
 		let pool_id = DEFAULT_POOL_ID;
 		let evm_chain_id: u64 = MOONBEAM_EVM_CHAIN_ID;
@@ -439,6 +494,8 @@ fn allow_investment_currency() {
 
 		// Create an AUSD pool
 		create_ausd_pool(pool_id);
+
+		enable_liquidity_pool_transferability(currency_id);
 
 		// Enable LiquidityPools transferability
 		assert_ok!(OrmlAssetRegistry::update_asset(
@@ -463,7 +520,7 @@ fn allow_investment_currency() {
 		));
 
 		assert_ok!(LiquidityPools::allow_investment_currency(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			pool_id,
 			default_tranche_id(pool_id),
 			currency_id,
@@ -471,20 +528,25 @@ fn allow_investment_currency() {
 	});
 }
 
-#[test]
-fn allow_pool_should_fail() {
-	TestNet::reset();
+#[tokio::test]
+async fn allow_pool_should_fail() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
-	Development::execute_with(|| {
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let pool_id = DEFAULT_POOL_ID;
 		let currency_id = CurrencyId::ForeignAsset(42);
 		let ausd_currency_id = AUSD_CURRENCY_ID;
 
-		setup_pre_requirements();
 		// Should fail if pool does not exist
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				// Tranche id is arbitrary in this case as pool does not exist
 				[0u8; 16],
@@ -512,10 +574,9 @@ fn allow_pool_should_fail() {
 		create_currency_pool(pool_id, currency_id, 10_000 * dollar(12));
 
 		// Should fail if asset is not payment currency
-		assert!(currency_id != ausd_currency_id);
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				ausd_currency_id,
@@ -534,7 +595,7 @@ fn allow_pool_should_fail() {
 		enable_liquidity_pool_transferability(ausd_currency_id);
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				ausd_currency_id,
@@ -562,7 +623,7 @@ fn allow_pool_should_fail() {
 		));
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				currency_id,
@@ -590,7 +651,7 @@ fn allow_pool_should_fail() {
 		));
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				currency_id,
@@ -614,7 +675,7 @@ fn allow_pool_should_fail() {
 		));
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				default_tranche_id(pool_id),
 				currency_id,
@@ -641,7 +702,7 @@ fn allow_pool_should_fail() {
 		// Should fail if currency is not foreign asset
 		assert_noop!(
 			LiquidityPools::allow_investment_currency(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id + 1,
 				// Tranche id is arbitrary in this case, so we don't need to check for the exact
 				// pool_id
@@ -653,16 +714,21 @@ fn allow_pool_should_fail() {
 	});
 }
 
-#[test]
-fn schedule_upgrade() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn schedule_upgrade() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		// Only Root can call `schedule_upgrade`
 		assert_noop!(
 			LiquidityPools::schedule_upgrade(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				MOONBEAM_EVM_CHAIN_ID,
 				[7; 20]
 			),
@@ -678,16 +744,21 @@ fn schedule_upgrade() {
 	});
 }
 
-#[test]
-fn cancel_upgrade_upgrade() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
+#[tokio::test]
+async fn cancel_upgrade_upgrade() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
 
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		// Only Root can call `cancel_upgrade`
 		assert_noop!(
 			LiquidityPools::cancel_upgrade(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				MOONBEAM_EVM_CHAIN_ID,
 				[7; 20]
 			),
@@ -703,12 +774,17 @@ fn cancel_upgrade_upgrade() {
 	});
 }
 
-#[test]
-fn update_tranche_token_metadata() {
-	TestNet::reset();
-	Development::execute_with(|| {
-		setup_pre_requirements();
-		let decimals: u8 = 15;
+#[tokio::test]
+async fn update_tranche_token_metadata() {
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<DevelopmentRuntime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
+	};
+
+	setup_test_env(&mut env);
+
+	env.with_mut_state(Chain::Para(PARA_ID), || {
 		let pool_id = DEFAULT_POOL_ID;
 		// NOTE: Default pool admin is BOB
 		create_ausd_pool(pool_id);
@@ -717,7 +793,7 @@ fn update_tranche_token_metadata() {
 		let nonexistent_tranche = [71u8; 16];
 		assert_noop!(
 			LiquidityPools::update_tranche_token_metadata(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				nonexistent_tranche,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -729,7 +805,7 @@ fn update_tranche_token_metadata() {
 		// Should throw if called by anything but `PoolAdmin`
 		assert_noop!(
 			LiquidityPools::update_tranche_token_metadata(
-				RuntimeOrigin::signed(ALICE.into()),
+				RuntimeOrigin::signed(Keyring::Alice.into()),
 				pool_id,
 				tranche_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -738,7 +814,7 @@ fn update_tranche_token_metadata() {
 		);
 
 		assert_ok!(LiquidityPools::update_tranche_token_metadata(
-			RuntimeOrigin::signed(BOB.into()),
+			RuntimeOrigin::signed(Keyring::Bob.into()),
 			pool_id,
 			tranche_id,
 			Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -749,7 +825,7 @@ fn update_tranche_token_metadata() {
 		orml_asset_registry::Metadata::<DevelopmentRuntime>::remove(tranche_currency_id);
 		assert_noop!(
 			LiquidityPools::update_tranche_token_metadata(
-				RuntimeOrigin::signed(BOB.into()),
+				RuntimeOrigin::signed(Keyring::Bob.into()),
 				pool_id,
 				tranche_id,
 				Domain::EVM(MOONBEAM_EVM_CHAIN_ID),

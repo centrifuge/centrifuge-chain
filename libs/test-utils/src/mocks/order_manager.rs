@@ -23,7 +23,10 @@ pub mod pallet {
 	};
 	use frame_support::{
 		pallet_prelude::*,
-		traits::fungibles::{Inspect, Mutate, Transfer},
+		traits::{
+			fungibles::{Inspect, Mutate},
+			tokens::Preservation,
+		},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::BlockNumberFor;
@@ -76,11 +79,10 @@ pub mod pallet {
 
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>;
 
-		type Tokens: Inspect<Self::AccountId> + Mutate<Self::AccountId> + Transfer<Self::AccountId>;
+		type Tokens: Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::genesis_config]
@@ -178,7 +180,7 @@ pub mod pallet {
 				&T::FundsAccount::get().into_account_truncating(),
 				&OrderManagerAccount::get::<T>(),
 				amount,
-				false,
+				Preservation::Expendable,
 			)
 			.map(|_| ())
 		}
@@ -334,7 +336,7 @@ pub mod pallet {
 				&OrderManagerAccount::get::<T>(),
 				&details.owner,
 				tokens_to_transfer_to_pool,
-				true,
+				Preservation::Preserve,
 			)
 			.expect("Transferring must work. Qed.");
 
@@ -400,7 +402,7 @@ pub mod pallet {
 				&details.owner,
 				&OrderManagerAccount::get::<T>(),
 				payment_currency_to_move_to_order_manager,
-				false,
+				Preservation::Expendable,
 			)
 			.expect("Transferring must work. Qed.");
 

@@ -13,14 +13,3 @@
 use cfg_types::{tokens::CrossChainTransferability, xcm::XcmMetadata};
 
 mod development;
-mod kusama;
-mod polkadot;
-
-/// Get the `XcmMetadata` for a given `CrossChainTransferability` value if
-/// possible.
-fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
-	match transferability {
-		CrossChainTransferability::Xcm(x) | CrossChainTransferability::All(x) => Some(x),
-		_ => None,
-	}
-}

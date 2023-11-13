@@ -24,7 +24,7 @@
 
 mod add_allow_upgrade;
 mod foreign_investments;
-mod setup;
+pub(crate) mod setup;
 mod transfers;
 
 #[test]

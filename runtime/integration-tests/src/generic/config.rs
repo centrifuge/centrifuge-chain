@@ -91,7 +91,10 @@ pub trait Runtime:
 		Balance = Balance,
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
+	+ parachain_info::Config
 	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
+	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_xcm::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -152,14 +155,14 @@ pub trait Runtime:
 	>;
 
 	/// You can extend this bounds to give extra API support
-	type Api: sp_api::runtime_decl_for_Core::CoreV4<Self::Block>
-		+ sp_block_builder::runtime_decl_for_BlockBuilder::BlockBuilderV6<Self::Block>
-		+ apis::runtime_decl_for_LoansApi::LoansApiV1<
+	type Api: sp_api::runtime_decl_for_core::CoreV4<Self::Block>
+		+ sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6<Self::Block>
+		+ apis::runtime_decl_for_loans_api::LoansApiV1<
 			Self::Block,
 			PoolId,
 			LoanId,
 			pallet_loans::entities::loans::ActiveLoanInfo<Self>,
-		> + apis::runtime_decl_for_PoolsApi::PoolsApiV1<
+		> + apis::runtime_decl_for_pools_api::PoolsApiV1<
 			Self::Block,
 			PoolId,
 			TrancheId,

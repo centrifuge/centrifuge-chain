@@ -125,6 +125,10 @@ impl pallet_balances::Config for MockRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
@@ -280,15 +284,51 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				// Owner holds enough capital to satisfy redemptions
-				(Owner::get(), AUSD_CURRENCY_ID, OWNER_START_BALANCE),
-				(InvestorA::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
-				(InvestorB::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
-				(InvestorC::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
-				(InvestorD::get(), AUSD_CURRENCY_ID, 100 * CURRENCY),
-				(TrancheHolderA::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
-				(TrancheHolderB::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
-				(TrancheHolderC::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
-				(TrancheHolderD::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
+				(
+					Owner::get(),
+					AUSD_CURRENCY_ID,
+					OWNER_START_BALANCE + ExistentialDeposit::get(),
+				),
+				(
+					InvestorA::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorB::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorC::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					InvestorD::get(),
+					AUSD_CURRENCY_ID,
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderA::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderB::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderC::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
+				(
+					TrancheHolderD::get(),
+					INVESTMENT_0_0.into(),
+					100 * CURRENCY + ExistentialDeposit::get(),
+				),
 			],
 		}
 		.assimilate_storage(&mut storage)

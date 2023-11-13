@@ -2,6 +2,10 @@
 //! considered at util level and below modules. If you need utilities related to
 //! your use case, add them under `cases/<my_use_case.rs>`.
 //!
+//! Trying to use methods that map to real extrinsic will make easy life to
+//! frontend applications, having a source of the real calls they can replicate
+//! to simulate some scenarios.
+//!
 //! Divide this utilities into files when it grows
 
 pub mod currency;
@@ -48,11 +52,10 @@ pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (Collecti
 
 pub fn give_balance<T: Runtime>(dest: AccountId, amount: Balance) {
 	let data = pallet_balances::Account::<T>::get(dest.clone());
-	pallet_balances::Pallet::<T>::set_balance(
+	pallet_balances::Pallet::<T>::force_set_balance(
 		RawOrigin::Root.into(),
 		T::Lookup::unlookup(dest),
 		data.free + amount,
-		data.reserved,
 	)
 	.unwrap();
 }
@@ -145,5 +148,6 @@ pub fn invest<T: Runtime>(
 }
 
 pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
-	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values).unwrap();
+	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values.try_into().unwrap())
+		.unwrap();
 }

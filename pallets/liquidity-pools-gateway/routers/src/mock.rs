@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
+use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use codec::{Decode, Encode};
@@ -13,11 +14,11 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
-use pallet_ethereum::IntermediateStateRoot;
+use pallet_ethereum::{IntermediateStateRoot, PostLogContent};
 use pallet_evm::{
 	runner::stack::Runner, AddressMapping, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
-	FixedGasWeightMapping, Precompile, PrecompileHandle, PrecompileResult, PrecompileSet,
-	SubstrateBlockHashMapping,
+	FixedGasWeightMapping, IsPrecompileResult, Precompile, PrecompileHandle, PrecompileResult,
+	PrecompileSet, SubstrateBlockHashMapping,
 };
 use pallet_liquidity_pools_gateway::EnsureLocal;
 use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256};
@@ -97,14 +98,28 @@ impl frame_system::Config for Runtime {
 	type Version = ();
 }
 
+parameter_types! {
+	// the minimum fee for an anchor is 500,000ths of a CFG.
+	// This is set to a value so you can still get some return without getting your account removed.
+	pub const ExistentialDeposit: Balance = 1 * cfg_primitives::MICRO_CFG;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	pub const MaxHolds: u32 = 50;
+	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
+}
+
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ();
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = MaxHolds;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
@@ -164,7 +179,7 @@ pub struct FixedGasPrice;
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> (U256, Weight) {
 		// Return some meaningful gas price and weight
-		(1_000_000_000u128.into(), Weight::from_ref_time(7u64))
+		(1_000_000_000u128.into(), Weight::from_parts(7u64, 0))
 	}
 }
 
@@ -211,15 +226,24 @@ impl PrecompileSet for MockPrecompileSet {
 	/// Check if the given address is a precompile. Should only be called to
 	/// perform the check while not executing the precompile afterward, since
 	/// `execute` already performs a check internally.
-	fn is_precompile(&self, address: H160) -> bool {
-		address == H160::from_low_u64_be(1)
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		IsPrecompileResult::Answer {
+			is_precompile: address == H160::from_low_u64_be(1),
+			extra_cost: 0,
+		}
 	}
 }
 
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::max_value();
-	pub WeightPerGas: Weight = Weight::from_ref_time(20_000);
+	pub WeightPerGas: Weight = Weight::from_parts(20_000, 0);
 	pub MockPrecompiles: MockPrecompileSet = MockPrecompileSet;
+	pub GasLimitPovSizeRatio: u64 = {
+		let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
+		block_gas_limit.saturating_div(MAX_POV_SIZE)
+	};
+	pub GasLimitStorageGrowthRatio: u64 =
+		BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
 }
 
 impl pallet_evm::Config for Runtime {
@@ -231,6 +255,8 @@ impl pallet_evm::Config for Runtime {
 	type Currency = Balances;
 	type FeeCalculator = FixedGasPrice;
 	type FindAuthor = FindAuthorTruncated;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -238,15 +264,23 @@ impl pallet_evm::Config for Runtime {
 	type PrecompilesValue = MockPrecompiles;
 	type Runner = Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Timestamp;
+	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressNever<Self::AccountId>;
 }
 
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
 impl pallet_ethereum::Config for Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = RuntimeEvent;
 	type StateRoot = IntermediateStateRoot<Self>;
 }
-
 ///////////////////////////
 // XCM transactor mocks. //
 ///////////////////////////
@@ -448,7 +482,7 @@ parameter_types! {
 				)
 		));
 
-		pub const BaseXcmWeight: xcm::latest::Weight = xcm::latest::Weight::from_ref_time(1000);
+		pub const BaseXcmWeight: xcm::latest::Weight = xcm::latest::Weight::from_parts(1000, 0);
 
 		pub MaxFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
 

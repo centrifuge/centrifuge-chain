@@ -25,30 +25,30 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
 	fn receive_nonfungible() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn remark() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn transfer() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn transfer_asset() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn transfer_native() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn set_token_transfer_fee() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 
 	fn set_nft_transfer_fee() -> Weight {
-		Weight::from_ref_time(195_000_000)
+		Weight::from_parts(195_000_000, 0)
 	}
 }

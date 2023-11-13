@@ -9,7 +9,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     env:
-      RUST_TOOLCHAIN: "nightly-2022-11-14"
+      RUST_TOOLCHAIN: "nightly-2023-10-26"
       RUSTDOCFLAGS: "-D warnings"
     steps:
       - name: Checkout repository

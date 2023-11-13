@@ -72,7 +72,6 @@ pub mod pallet {
 	// This structure is a placeholder for traits and functions implementation
 	// for the pallet.
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------

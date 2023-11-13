@@ -55,39 +55,43 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn update_invest_order() {
+	fn update_invest_order() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000_000_000u128.into())?;
 
 		#[extrinsic_call]
 		update_invest_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn update_redeem_order() {
+	fn update_redeem_order() -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = investment_id.into();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000_000_000u128.into())?;
 
 		#[extrinsic_call]
 		update_redeem_order(RawOrigin::Signed(caller), investment_id, 1u32.into());
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn collect_investments(n: Linear<1, 10>) {
+	fn collect_investments(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000_000_000u128.into())?;
 
 		Pallet::<T>::update_investment(&caller, investment_id, 1u32.into())?;
-		for i in 0..n {
+		for _ in 0..n {
 			Pallet::<T>::process_invest_orders(investment_id)?;
 
 			let fulfillment = FulfillmentWithPrice {
@@ -100,18 +104,20 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		collect_investments(RawOrigin::Signed(caller), investment_id);
+
+		Ok(())
 	}
 
 	#[benchmark]
-	fn collect_redemptions(n: Linear<1, 10>) {
+	fn collect_redemptions(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = investment_id.into();
 
-		T::Tokens::mint_into(currency_id, &caller, 1u32.into())?;
+		T::Tokens::mint_into(currency_id, &caller, 100_000_000_000_000u128.into())?;
 
 		Pallet::<T>::update_redemption(&caller, investment_id, 1u32.into())?;
-		for i in 0..n {
+		for _ in 0..n {
 			Pallet::<T>::process_redeem_orders(investment_id)?;
 
 			let fulfillment = FulfillmentWithPrice {
@@ -124,6 +130,8 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		collect_redemptions(RawOrigin::Signed(caller), investment_id);
+
+		Ok(())
 	}
 
 	impl_benchmark_test_suite!(

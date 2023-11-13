@@ -151,6 +151,10 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
@@ -212,6 +216,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutate = cfg_traits::Always;
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

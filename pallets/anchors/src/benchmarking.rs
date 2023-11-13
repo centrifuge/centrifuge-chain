@@ -49,6 +49,7 @@ benchmarks! {
 		T: Config + pallet_aura::Config,
 		T::Hash: From<[u8; 32]>,
 		T::Moment: From<u64>,
+		BalanceOf<T>: From<u64>,
 	}
 
 	pre_commit {
@@ -58,7 +59,7 @@ benchmarks! {
 		let caller = whitelisted_caller();
 
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
-		T::Currency::make_free_balance_be(&caller, required_deposit);
+		T::Currency::make_free_balance_be(&caller, required_deposit + T::Currency::minimum_balance() );
 
 		let anchor_id = T::Hashing::hash_of(&0);
 
@@ -73,7 +74,7 @@ benchmarks! {
 
 		let caller = whitelisted_caller();
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
-		T::Currency::make_free_balance_be(&caller, required_deposit);
+		T::Currency::make_free_balance_be(&caller, required_deposit + T::Currency::minimum_balance() );
 
 		let pre_image = T::Hashing::hash_of(&0);
 		let anchor_id = pre_image.using_encoded(T::Hashing::hash);
@@ -90,7 +91,7 @@ benchmarks! {
 		config_mocks();
 
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
-		T::Currency::make_free_balance_be(&caller, required_deposit);
+		T::Currency::make_free_balance_be(&caller, required_deposit + T::Currency::minimum_balance() );
 
 		assert!(<PreCommits<T>>::get(anchor_id).is_none());
 		assert!(<AnchorEvictDates<T>>::get(anchor_id).is_some());
@@ -105,7 +106,7 @@ benchmarks! {
 
 		let anchor_ids = (0..EVICT_PRE_COMMIT_LIST_SIZE)
 			.map(|i| {
-				T::Currency::make_free_balance_be(&caller, required_deposit);
+				T::Currency::make_free_balance_be(&caller, required_deposit + T::Currency::minimum_balance() );
 
 				let anchor_id = T::Hashing::hash_of(&i);
 

@@ -13,7 +13,7 @@
 
 use cfg_traits::rewards::RewardIssuance;
 use codec::{Decode, Encode};
-use frame_support::traits::fungibles::{Mutate, Transfer};
+use frame_support::traits::{fungibles::Mutate, tokens::Preservation};
 use sp_runtime::{traits::Get, DispatchResult};
 use sp_std::marker::PhantomData;
 
@@ -37,7 +37,7 @@ where
 		beneficiary: &Self::AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult {
-		Currency::mint_into(currency_id, beneficiary, amount)
+		Currency::mint_into(currency_id, beneficiary, amount).map(|_| ())
 	}
 }
 
@@ -50,7 +50,7 @@ impl<AccountId, Balance, CurrencyId, Currency, SourceAddress> RewardIssuance
 	for TransferReward<AccountId, Balance, CurrencyId, Currency, SourceAddress>
 where
 	AccountId: Encode + Decode,
-	Currency: Transfer<AccountId, AssetId = CurrencyId, Balance = Balance>,
+	Currency: Mutate<AccountId, AssetId = CurrencyId, Balance = Balance>,
 	SourceAddress: Get<AccountId>,
 {
 	type AccountId = AccountId;
@@ -67,7 +67,7 @@ where
 			&SourceAddress::get(),
 			beneficiary,
 			amount,
-			true,
+			Preservation::Protect,
 		)
 		.map(|_| ())
 	}

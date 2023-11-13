@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use std::{
-	collections::{BTreeMap, HashMap},
+	collections::BTreeMap,
 	marker::PhantomData,
 	path::PathBuf,
 	sync::{Arc, Mutex},
@@ -21,41 +21,40 @@ use std::{
 use cfg_primitives::{Block, BlockNumber, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_common::{ParachainBlockImportMarker, ParachainConsensus};
-use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
-	build_relay_chain_interface, prepare_node_config, start_collator, start_full_node,
-	StartCollatorParams, StartFullNodeParams,
+	build_network, build_relay_chain_interface, prepare_node_config, start_collator,
+	start_full_node, BuildNetworkParams, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
 use fc_consensus::Error;
 use fc_db::Backend as FrontierBackend;
-use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
+use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
+use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::{future, StreamExt};
-use polkadot_cli::Cli;
-use sc_cli::SubstrateCli;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
 };
 use sc_network::{NetworkBlock, NetworkService};
+use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
 use sc_rpc_api::DenyUnsafe;
-use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TaskManager};
+use sc_service::{Configuration, PartialComponents, TFullBackend, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::{ConstructRuntimeApi, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
-use sp_blockchain::{well_known_cache_keys::Id as CacheKeyId, HeaderBackend};
+use sp_blockchain::HeaderBackend;
 use sp_consensus::Error as ConsensusError;
-use sp_keystore::SyncCryptoStorePtr;
+use sp_keystore::KeystorePtr;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
-use super::{rpc, FullBackend, FullClient, HostFunctions, ParachainBlockImport};
+use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]
@@ -146,31 +145,20 @@ where
 	async fn import_block(
 		&mut self,
 		block: BlockImportParams<B, Self::Transaction>,
-		new_cache: HashMap<CacheKeyId, Vec<u8>>,
 	) -> Result<ImportResult, Self::Error> {
 		// Validate that there is one and exactly one frontier log,
 		// but only on blocks created after frontier was enabled.
 		if *block.header.number() >= self.first_evm_block {
 			ensure_log(block.header.digest()).map_err(Error::from)?;
 		}
-		self.inner
-			.import_block(block, new_cache)
-			.await
-			.map_err(Into::into)
+		self.inner.import_block(block).await.map_err(Into::into)
 	}
 }
 
 impl<B: BlockT, I, C> ParachainBlockImportMarker for BlockImport<B, I, C> {}
 
 fn db_config_dir(config: &Configuration) -> PathBuf {
-	config
-		.base_path
-		.as_ref()
-		.map(|base_path| base_path.config_dir(config.chain_spec.id()))
-		.unwrap_or_else(|| {
-			BasePath::from_project("", "", &Cli::executable_name())
-				.config_dir(config.chain_spec.id())
-		})
+	config.base_path.config_dir(config.chain_spec.id())
 }
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -178,22 +166,22 @@ fn db_config_dir(config: &Configuration) -> PathBuf {
 /// Use this macro if you don't actually need the full service, but just the
 /// builder in order to be able to perform chain operations.
 #[allow(clippy::type_complexity)]
-pub fn new_partial<RuntimeApi, BIQ>(
+pub fn new_partial<RuntimeApi, BIQ, Executor>(
 	config: &Configuration,
 	first_evm_block: BlockNumber,
 	build_import_queue: BIQ,
 ) -> Result<
 	PartialComponents<
-		FullClient<RuntimeApi>,
+		FullClient<RuntimeApi, Executor>,
 		FullBackend,
 		(),
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
-		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
 		(
-			ParachainBlockImport<RuntimeApi>,
+			ParachainBlockImport<RuntimeApi, Executor>,
 			Option<Telemetry>,
 			Option<TelemetryWorkerHandle>,
-			Arc<FrontierBackend<Block>>,
+			FrontierBackend<Block>,
 			FilterPool,
 			FeeHistoryCache,
 		),
@@ -201,7 +189,9 @@ pub fn new_partial<RuntimeApi, BIQ>(
 	sc_service::Error,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
@@ -210,15 +200,15 @@ where
 		+ sp_block_builder::BlockBuilder<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
 	BIQ: FnOnce(
-		Arc<FullClient<RuntimeApi>>,
-		ParachainBlockImport<RuntimeApi>,
+		Arc<FullClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
+		FrontierBackend<Block>,
 		BlockNumber,
 	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
 		sc_service::Error,
 	>,
 {
@@ -233,13 +223,24 @@ where
 		})
 		.transpose()?;
 
-	let executor = sc_executor::WasmExecutor::<HostFunctions>::new(
-		config.wasm_method,
-		config.default_heap_pages,
-		config.max_runtime_instances,
-		None,
-		config.runtime_cache_size,
-	);
+	let heap_pages =
+		config
+			.default_heap_pages
+			.map_or(sc_executor::DEFAULT_HEAP_ALLOC_STRATEGY, |h| {
+				sc_executor::HeapAllocStrategy::Static {
+					extra_pages: h as _,
+				}
+			});
+
+	let wasm = sc_executor::WasmExecutor::builder()
+		.with_execution_method(config.wasm_method)
+		.with_onchain_heap_alloc_strategy(heap_pages)
+		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_max_runtime_instances(config.max_runtime_instances)
+		.with_runtime_cache_size(config.runtime_cache_size)
+		.build();
+
+	let executor = sc_executor::NativeElseWasmExecutor::<Executor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
@@ -268,7 +269,7 @@ where
 
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
-	let frontier_backend = Arc::new(FrontierBackend::open(
+	let frontier_backend = FrontierBackend::KeyValue(fc_db::kv::Backend::open(
 		Arc::clone(&client),
 		&config.database,
 		&db_config_dir(config),
@@ -314,20 +315,22 @@ where
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[allow(clippy::too_many_arguments)]
-#[sc_tracing::logging::prefix_logs_with("Parachain")]
+#[sc_tracing::logging::prefix_logs_with("🌀Parachain")]
 pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
+	hwbench: Option<sc_sysinfo::HwBench>,
 	first_evm_block: BlockNumber,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
@@ -340,12 +343,13 @@ where
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
-			Arc<FullClient<RuntimeApi>>,
-			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
+			Arc<FullClient<RuntimeApi, Executor>>,
+			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
 			DenyUnsafe,
 			SubscriptionTaskExecutor,
 			Arc<NetworkService<Block, Hash>>,
-			Arc<FrontierBackend<Block>>,
+			Arc<SyncingService<Block>>,
+			FrontierBackend<Block>,
 			FilterPool,
 			FeeHistoryCache,
 			Arc<OverrideHandle<Block>>,
@@ -353,34 +357,37 @@ where
 		) -> Result<rpc::RpcExtension, sc_service::Error>
 		+ 'static,
 	BIQ: FnOnce(
-		Arc<FullClient<RuntimeApi>>,
-		ParachainBlockImport<RuntimeApi>,
+		Arc<FullClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
+		FrontierBackend<Block>,
 		BlockNumber,
 	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, Executor>>,
 		sc_service::Error,
 	>,
 	BIC: FnOnce(
-		Arc<FullClient<RuntimeApi>>,
-		ParachainBlockImport<RuntimeApi>,
+		Arc<FullClient<RuntimeApi, Executor>>,
+		ParachainBlockImport<RuntimeApi, Executor>,
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<dyn RelayChainInterface>,
-		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
-		Arc<NetworkService<Block, Hash>>,
-		SyncCryptoStorePtr,
+		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+		Arc<SyncingService<Block>>,
+		KeystorePtr,
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
-	let params =
-		new_partial::<RuntimeApi, BIQ>(&parachain_config, first_evm_block, build_import_queue)?;
+	let params = new_partial::<RuntimeApi, BIQ, Executor>(
+		&parachain_config,
+		first_evm_block,
+		build_import_queue,
+	)?;
 	let (
 		block_import,
 		mut telemetry,
@@ -400,30 +407,30 @@ where
 		telemetry_worker_handle,
 		&mut task_manager,
 		collator_options.clone(),
-		None,
+		hwbench.clone(),
 	)
 	.await
 	.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
-
-	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
-	let (network, system_rpc_tx, tx_handler_controller, start_network) =
-		sc_service::build_network(sc_service::BuildNetworkParams {
-			config: &parachain_config,
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+
+	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
+		build_network(BuildNetworkParams {
+			parachain_config: &parachain_config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
+			para_id: id,
 			spawn_handle: task_manager.spawn_handle(),
+			relay_chain_interface: relay_chain_interface.clone(),
 			import_queue: params.import_queue,
-			block_announce_validator_builder: Some(Box::new(|_| {
-				Box::new(block_announce_validator)
-			})),
-			warp_sync: None,
-		})?;
+		})
+		.await?;
 
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
@@ -443,6 +450,7 @@ where
 		let fee_history_cache = fee_history_cache.clone();
 		let filter_pool = filter_pool.clone();
 		let overrides = overrides.clone();
+		let sync_service = sync_service.clone();
 		move |deny, subscription_task_executor| {
 			rpc_ext_builder(
 				rpc_client.clone(),
@@ -450,6 +458,7 @@ where
 				deny,
 				subscription_task_executor,
 				network.clone(),
+				sync_service.clone(),
 				frontier_backend.clone(),
 				filter_pool.clone(),
 				fee_history_cache.clone(),
@@ -465,14 +474,16 @@ where
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
 		config: parachain_config,
-		keystore: params.keystore_container.sync_keystore(),
+		keystore: params.keystore_container.keystore(),
 		backend: backend.clone(),
 		network: network.clone(),
 		system_rpc_tx,
 		tx_handler_controller,
+		sync_service: sync_service.clone(),
 		telemetry: telemetry.as_mut(),
 	})?;
 
+	// do we need this at all?
 	spawn_frontier_tasks::<RuntimeApi, Executor>(
 		&task_manager,
 		client.clone(),
@@ -482,18 +493,42 @@ where
 		overrides,
 		fee_history_cache.clone(),
 		eth_config.fee_history_limit,
+		sync_service.clone(),
+		Arc::new(Default::default()),
 	);
 
+	if let Some(hwbench) = hwbench {
+		sc_sysinfo::print_hwbench(&hwbench);
+		// Here you can check whether the hardware meets your chains' requirements.
+		// Putting a link in there and swapping out the requirements for your own are
+		// probably a good idea. The requirements for a para-chain are dictated by its
+		// relay-chain.
+		if !SUBSTRATE_REFERENCE_HARDWARE.check_hardware(&hwbench) && validator {
+			log::warn!(
+				"⚠️  The hardware does not meet the minimal requirements for role 'Authority'."
+			);
+		}
+
+		if let Some(ref mut telemetry) = telemetry {
+			let telemetry_handle = telemetry.handle();
+			task_manager.spawn_handle().spawn(
+				"telemetry_hwbench",
+				None,
+				sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
+			);
+		}
+	}
+
 	let announce_block = {
-		let network = network.clone();
-		Arc::new(move |hash, data| network.announce_block(hash, data))
+		let sync_service = sync_service.clone();
+		Arc::new(move |hash, data| sync_service.announce_block(hash, data))
 	};
-
 	let relay_chain_slot_duration = Duration::from_secs(6);
-
 	let _overseer_handle = relay_chain_interface
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
+
+	let recovery_handle = Box::new(_overseer_handle);
 
 	if validator {
 		let parachain_consensus = build_consensus(
@@ -504,8 +539,8 @@ where
 			&task_manager,
 			relay_chain_interface.clone(),
 			transaction_pool,
-			network,
-			params.keystore_container.sync_keystore(),
+			sync_service.clone(),
+			params.keystore_container.keystore(),
 			force_authoring,
 		)?;
 
@@ -525,6 +560,8 @@ where
 				sc_service::error::Error::Other("Collator Key is None".to_string())
 			})?,
 			relay_chain_slot_duration,
+			recovery_handle,
+			sync_service,
 		};
 
 		start_collator(params).await?;
@@ -537,6 +574,8 @@ where
 			relay_chain_interface,
 			relay_chain_slot_duration,
 			import_queue: import_queue_service,
+			recovery_handle,
+			sync_service,
 		};
 
 		start_full_node(params)?;
@@ -548,17 +587,25 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::extra_unused_type_parameters)]
 fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
-	client: Arc<FullClient<RuntimeApi>>,
+	client: Arc<FullClient<RuntimeApi, Executor>>,
 	backend: Arc<TFullBackend<Block>>,
-	frontier_backend: Arc<FrontierBackend<Block>>,
+	frontier_backend: FrontierBackend<Block>,
 	filter_pool: FilterPool,
 	overrides: Arc<OverrideHandle<Block>>,
 	fee_history_cache: FeeHistoryCache,
 	fee_history_cache_limit: FeeHistoryCacheLimit,
+	sync: Arc<SyncingService<Block>>,
+	pubsub_notification_sinks: Arc<
+		fc_mapping_sync::EthereumBlockNotificationSinks<
+			fc_mapping_sync::EthereumBlockNotification<Block>,
+		>,
+	>,
 ) where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
@@ -571,21 +618,48 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
-	task_manager.spawn_essential_handle().spawn(
-		"frontier-mapping-sync-worker",
-		None,
-		MappingSyncWorker::new(
-			client.import_notification_stream(),
-			Duration::new(6, 0),
-			client.clone(),
-			backend,
-			frontier_backend,
-			3,
-			0,
-			SyncStrategy::Parachain,
-		)
-		.for_each(|()| future::ready(())),
-	);
+	match frontier_backend {
+		FrontierBackend::KeyValue(fb) => {
+			task_manager.spawn_essential_handle().spawn(
+				"frontier-mapping-sync-worker",
+				None,
+				MappingSyncWorker::new(
+					client.import_notification_stream(),
+					Duration::new(6, 0),
+					client.clone(),
+					backend,
+					overrides.clone(),
+					Arc::new(fb),
+					3,
+					0,
+					SyncStrategy::Parachain,
+					sync,
+					pubsub_notification_sinks,
+				)
+				.for_each(|()| future::ready(())),
+			);
+		}
+		#[cfg(feature = "sql")]
+		fc_db::Backend::Sql(fb) => {
+			task_manager.spawn_essential_handle().spawn_blocking(
+				"frontier-mapping-sync-worker",
+				Some("frontier"),
+				fc_mapping_sync::sql::SyncWorker::run(
+					client.clone(),
+					backend.clone(),
+					Arc::new(fb),
+					client.import_notification_stream(),
+					fc_mapping_sync::sql::SyncWorkerConfig {
+						read_notification_timeout: Duration::from_secs(10),
+						check_indexed_blocks_interval: Duration::from_secs(60),
+					},
+					fc_mapping_sync::SyncStrategy::Parachain,
+					sync.clone(),
+					pubsub_notification_sinks.clone(),
+				),
+			);
+		}
+	}
 
 	// Spawn Frontier EthFilterApi maintenance task.
 	// Each filter is allowed to stay in the pool for 100 blocks.

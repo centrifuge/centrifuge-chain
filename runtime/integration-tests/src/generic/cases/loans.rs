@@ -26,7 +26,7 @@ use pallet_loans::{
 	},
 };
 use runtime_common::apis::{
-	runtime_decl_for_LoansApi::LoansApiV1, runtime_decl_for_PoolsApi::PoolsApiV1,
+	runtime_decl_for_loans_api::LoansApiV1, runtime_decl_for_pools_api::PoolsApiV1,
 };
 
 use crate::{
@@ -72,9 +72,10 @@ mod common {
 				.add(genesis::assets(vec![Usd6::ID]))
 				.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
 				.storage(),
+			Genesis::<T>::default().storage(),
 		);
 
-		env.state_mut(|| {
+		env.parachain_state_mut(|| {
 			// Creating a pool
 			utils::give_balance::<T>(POOL_ADMIN.id(), T::PoolDeposit::get());
 			utils::create_empty_pool::<T>(POOL_ADMIN.id(), POOL_A, Usd6::ID);
@@ -96,7 +97,7 @@ mod common {
 
 		env.pass(Blocks::BySeconds(POOL_MIN_EPOCH_TIME));
 
-		env.state_mut(|| {
+		env.parachain_state_mut(|| {
 			// New epoch with the investor funds available
 			utils::close_pool_epoch::<T>(POOL_ADMIN.id(), POOL_A);
 		});
@@ -258,7 +259,7 @@ mod call {
 fn internal_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	let info = env.state(|| {
+	let info = env.parachain_state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 		common::default_loan_info::<T>(now, common::default_internal_pricing())
 	});
@@ -271,8 +272,8 @@ fn internal_priced<T: Runtime>() {
 
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
-	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
-	env.state_mut(|| {
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
 		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
@@ -292,9 +293,9 @@ fn internal_priced<T: Runtime>() {
 fn oracle_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	env.state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_A)]));
+	env.parachain_state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_A)]));
 
-	let info = env.state(|| {
+	let info = env.parachain_state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 		common::default_loan_info::<T>(now, common::default_external_pricing())
 	});
@@ -307,8 +308,8 @@ fn oracle_priced<T: Runtime>() {
 
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
-	let loan_portfolio = env.state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
-	env.state_mut(|| {
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
 		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
@@ -330,7 +331,7 @@ fn oracle_priced<T: Runtime>() {
 fn update_maturity_extension<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	let info = env.state(|| {
+	let info = env.parachain_state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
 		common::default_loan_info::<T>(now, common::default_internal_pricing())
 	});

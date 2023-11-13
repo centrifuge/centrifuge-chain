@@ -15,7 +15,9 @@ use core::marker::PhantomData;
 use codec::Decode;
 use frame_support::dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo};
 use hex_literal::hex;
-use pallet_evm::{Precompile, PrecompileHandle, PrecompileResult, PrecompileSet};
+use pallet_evm::{
+	IsPrecompileResult, Precompile, PrecompileHandle, PrecompileResult, PrecompileSet,
+};
 use pallet_evm_precompile_blake2::Blake2F;
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
 use pallet_evm_precompile_dispatch::Dispatch;
@@ -93,18 +95,21 @@ where
 		}
 	}
 
-	fn is_precompile(&self, address: H160) -> bool {
-		matches!(
-			address.0,
-			ECRECOVER_ADDR
-				| SHA256_ADDR | RIPEMD160_ADDR
-				| IDENTITY_ADDR | MODEXP_ADDR
-				| BN128ADD_ADDR | BN128MUL_ADDR
-				| BN128PAIRING_ADDR
-				| BLAKE2F_ADDR | SHA3FIPS256_ADDR
-				| DISPATCH_ADDR | ECRECOVERPUBLICKEY_ADDR
-				| LP_AXELAR_GATEWAY
-		)
+	fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
+		IsPrecompileResult::Answer {
+			is_precompile: matches!(
+				address.0,
+				ECRECOVER_ADDR
+					| SHA256_ADDR | RIPEMD160_ADDR
+					| IDENTITY_ADDR | MODEXP_ADDR
+					| BN128ADD_ADDR | BN128MUL_ADDR
+					| BN128PAIRING_ADDR | BLAKE2F_ADDR
+					| SHA3FIPS256_ADDR | DISPATCH_ADDR
+					| ECRECOVERPUBLICKEY_ADDR
+					| LP_AXELAR_GATEWAY
+			),
+			extra_cost: 0,
+		}
 	}
 }
 

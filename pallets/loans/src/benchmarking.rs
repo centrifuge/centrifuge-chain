@@ -229,7 +229,7 @@ where
 	}
 
 	fn propose_policy(pool_id: T::PoolId) -> T::Hash {
-		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
+		let pool_admin = account("pool_admin", 0, 0);
 		let policy = Pallet::<T>::worst_case_policy();
 		Pallet::<T>::propose_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
@@ -280,7 +280,7 @@ where
 	fn set_policy(pool_id: T::PoolId) {
 		let change_id = Self::propose_policy(pool_id);
 
-		let any = account::<T::AccountId>("any", 0, 0);
+		let any = account("any", 0, 0);
 		Pallet::<T>::apply_write_off_policy(RawOrigin::Signed(any).into(), pool_id, change_id)
 			.unwrap();
 	}
@@ -307,7 +307,7 @@ where
 			// This restriction no longer exists once
 			// https://github.com/open-web3-stack/open-runtime-module-library/pull/920 is merged
 			let feeder = account("feeder", i, 0);
-			T::PriceRegistry::feed_value(feeder, price_id, Default::default()).unwrap();
+			T::PriceRegistry::feed_value(Some(feeder), price_id, Default::default()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 
