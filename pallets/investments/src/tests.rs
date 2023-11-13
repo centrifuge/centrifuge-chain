@@ -92,7 +92,10 @@ fn update_invest_works() {
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				2 * amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), 0);
+			assert_eq!(
+				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
+				ExistentialDeposit::get()
+			);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -136,7 +139,7 @@ fn update_invest_works() {
 			);
 			assert_eq!(
 				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
-				amount + amount / 2
+				amount + amount / 2 + ExistentialDeposit::get()
 			);
 			assert_eq!(
 				last_event(),
@@ -164,7 +167,10 @@ fn update_invest_works() {
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
 				amount
 			);
-			assert_eq!(free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID), amount);
+			assert_eq!(
+				free_balance_of(InvestorA::get(), AUSD_CURRENCY_ID),
+				amount + ExistentialDeposit::get()
+			);
 			assert_eq!(
 				last_event(),
 				Event::InvestOrderUpdated {
@@ -368,14 +374,17 @@ fn update_redeem_works() {
 				INVESTMENT_0_0,
 				2 * amount,
 			));
+
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
 				2 * amount
 			);
+
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), INVESTMENT_0_0.into()),
-				0
+				ExistentialDeposit::get()
 			);
+
 			assert_eq!(
 				last_event(),
 				Event::RedeemOrderUpdated {
@@ -419,7 +428,7 @@ fn update_redeem_works() {
 			);
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), INVESTMENT_0_0.into()),
-				amount + amount / 2
+				amount + amount / 2 + ExistentialDeposit::get()
 			);
 			assert_eq!(
 				last_event(),
@@ -449,7 +458,7 @@ fn update_redeem_works() {
 			);
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), INVESTMENT_0_0.into()),
-				amount
+				amount + ExistentialDeposit::get()
 			);
 			assert_eq!(
 				last_event(),
@@ -696,7 +705,7 @@ fn fulfillment_flow_for_everything_works() {
 		{
 			assert_eq!(
 				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
-				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
+				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE + ExistentialDeposit::get()
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
@@ -783,7 +792,7 @@ fn fulfillment_flow_for_everything_works() {
 		{
 			assert_eq!(
 				free_balance_of(Owner::get(), AUSD_CURRENCY_ID),
-				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
+				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE + ExistentialDeposit::get()
 					- PRICE
 						.checked_mul_int(TOTAL_REDEEM_AMOUNT)
 						.expect("Unwrapping test checked_mul_int must work")
@@ -922,6 +931,7 @@ fn fulfillment_partially_works_low_price() {
 							.expect("Unwrapping checked_mul_int must work")
 					)
 					.expect("Unwrapping checked_sub must work")
+					+ ExistentialDeposit::get()
 			);
 			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
 		}
@@ -1607,6 +1617,7 @@ fn fulfillment_partially_works_high_price() {
 							.expect("Unwrapping checked_mul_int must work")
 					)
 					.expect("Unwrapping checked_sub must work")
+					+ ExistentialDeposit::get()
 			);
 			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
 		}

@@ -41,7 +41,7 @@ impl<T: Config> DataRegistry<T::PriceId, T::PoolId> for NoPriceRegistry<T> {
 	}
 
 	fn collection(_: &T::PoolId) -> Self::Collection {
-		NoPriceCollection(PhantomData::default())
+		NoPriceCollection(PhantomData)
 	}
 
 	fn register_id(_: &T::PriceId, _: &T::PoolId) -> DispatchResult {
@@ -60,7 +60,7 @@ impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
 }
 
 impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
-	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Rate) -> DispatchResult {
+	fn feed_value(_: Option<T::AccountId>, _: T::PriceId, _: T::Rate) -> DispatchResult {
 		Err(DEFAULT_PRICE_ERR)
 	}
 }

@@ -12,9 +12,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::domain_address::{Domain, DomainAddress};
-use fp_evm::PrecompileHandle;
+use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
 use frame_support::ensure;
-use pallet_evm::{ExitError, PrecompileFailure};
 use precompile_utils::prelude::*;
 use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
 use sp_runtime::{
@@ -102,7 +101,7 @@ pub mod pallet {
 	// Simple declaration of the `Pallet` type. It is placeholder we use to
 	// implement traits and method.
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -230,8 +229,7 @@ where
 	//         string calldata sourceChain,
 	//         string calldata sourceAddress,
 	//         bytes calldata payload
-	//     ) external {
-	//       bytes32 payloadHash = keccak256(payload);
+	//     ) external { bytes32 payloadHash = keccak256(payload);
 	// 		 if (
 	//           !gateway.validateContractCall(
 	//              commandId,
@@ -308,8 +306,7 @@ where
 	//         bytes calldata payload,
 	//         string calldata tokenSymbol,
 	//         uint256 amount
-	//     ) external {
-	//       ...
+	//     ) external { ...
 	//     }
 	//
 	// Note: NOT SUPPORTED

@@ -45,8 +45,6 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use crate::{axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter};
-
 #[cfg(test)]
 mod mock;
 
@@ -255,6 +253,8 @@ where
 				transact_required_weight_at_most: self.xcm_domain.transact_required_weight_at_most,
 				overall_weight: Some(self.xcm_domain.overall_weight),
 			},
+			// Opt-in on RefundSurplus
+			true,
 		)?;
 
 		Ok(())

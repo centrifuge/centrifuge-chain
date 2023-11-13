@@ -109,7 +109,7 @@ pub mod benchmarks_util {
 	where
 		Oracle: DataFeeder<OracleKey, Quantity, AccountId>,
 	{
-		fn feed_value(who: AccountId, key: OracleKey, _: Balance) -> DispatchResult {
+		fn feed_value(who: Option<AccountId>, key: OracleKey, _: Balance) -> DispatchResult {
 			Oracle::feed_value(who, key, Default::default())
 		}
 	}

@@ -14,7 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
-	fungibles::{self, Transfer as FungiblesTransfer},
+	fungibles::{self, Mutate as FungiblesMutate},
 	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
 };
 pub use pallet::*;
@@ -66,14 +66,14 @@ pub struct Price<CurrencyId, Balance> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, transactional, PalletId};
+	use frame_support::{pallet_prelude::*, traits::tokens::Preservation, transactional, PalletId};
 	use frame_system::{pallet_prelude::*, RawOrigin};
 
 	use super::*;
 	use crate::weights::WeightInfo;
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -82,9 +82,9 @@ pub mod pallet {
 
 		type WeightInfo: WeightInfo;
 
-		/// Fungibles implements fungibles::Transfer, granting us a way of
+		/// Fungibles implements fungibles::Mutate, granting us a way of
 		/// charging the buyer of an NFT the respective asking price.
-		type Fungibles: fungibles::Transfer<Self::AccountId>;
+		type Fungibles: fungibles::Mutate<Self::AccountId>;
 
 		/// The NonFungibles trait impl that can transfer and inspect NFTs.
 		type NonFungibles: nonfungibles::Transfer<Self::AccountId>;
@@ -315,11 +315,11 @@ pub mod pallet {
 
 			// Have the buyer pay the seller for the NFT
 			T::Fungibles::transfer(
-				sale.price.currency,
+				sale.price.currency.clone(),
 				&buyer,
 				&sale.seller,
 				sale.price.amount,
-				true,
+				Preservation::Protect,
 			)?;
 
 			// Transfer the NFT to the buyer

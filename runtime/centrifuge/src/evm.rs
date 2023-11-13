@@ -12,6 +12,7 @@
 
 use cfg_primitives::{TwoThirdOfCouncil, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
+use pallet_ethereum::PostLogContent;
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
@@ -44,7 +45,27 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
 	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
-	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
+	pub WeightPerGas: Weight = Weight::from_parts(WEIGHT_PER_GAS, 0);
+	//
+	// pub GasLimitPovSizeRatio: u64 = {
+	//	let block_gas_limit = BlockGasLimit::get().min(u64::MAX.into()).low_u64();
+	//	block_gas_limit.saturating_div(MAX_POV_SIZE)
+	// };
+	//
+	// NOTE: The above results in a value of 2. AS this factor is a divisor generating a
+	//       a storage limit we are conservative and use the value that moonbeam is using
+	//       in their staging environment
+	//       (https://github.com/moonbeam-foundation/moonbeam/blob/973015c376e8741073013094be88e7c58c716a70/runtime/moonriver/src/lib.rs#L408)
+	pub const GasLimitPovSizeRatio: u64 = 4;
+
+	//
+	// pub const GasLimitStorageGrowthRatio: u64 =
+	// 	 BlockGasLimit::get().min(u64::MAX.into()).low_u64().saturating_div(BLOCK_STORAGE_LIMIT);
+	//
+	// NOTE: The above results in a value of 366 which is the same value that moonbeam is using
+	//       in their staging environment. As we can not constantly assert this value we hardcode
+	//       it for now.
+	pub const GasLimitStorageGrowthRatio: u64 = 366;
 }
 
 impl pallet_evm::Config for crate::Runtime {
@@ -56,6 +77,8 @@ impl pallet_evm::Config for crate::Runtime {
 	type Currency = crate::Balances;
 	type FeeCalculator = crate::BaseFee;
 	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
@@ -63,6 +86,8 @@ impl pallet_evm::Config for crate::Runtime {
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;
+	type Timestamp = crate::Timestamp;
+	type WeightInfo = ();
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressTruncated;
 }
@@ -81,7 +106,14 @@ impl pallet_base_fee::Config for crate::Runtime {
 	type Threshold = BaseFeeThreshold;
 }
 
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+	pub const ExtraDataLength: u32 = 30;
+}
+
 impl pallet_ethereum::Config for crate::Runtime {
+	type ExtraDataLength = ExtraDataLength;
+	type PostLogContent = PostBlockAndTxnHashes;
 	type RuntimeEvent = crate::RuntimeEvent;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }

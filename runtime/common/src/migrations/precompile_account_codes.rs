@@ -16,6 +16,8 @@ use frame_support::{
 	weights::Weight,
 };
 use sp_core::H160;
+#[cfg(feature = "try-runtime")]
+use sp_runtime::DispatchError;
 
 use crate::evm::precompile::PRECOMPILE_CODE_STORAGE;
 
@@ -197,7 +199,7 @@ impl<T: pallet_evm::Config> OnRuntimeUpgrade for Migration<T> {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, DispatchError> {
 		assert_eq!(
 			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::ECRECOVER_ADDR)),
 			sp_std::vec::Vec::<u8>::new()
@@ -263,7 +265,7 @@ impl<T: pallet_evm::Config> OnRuntimeUpgrade for Migration<T> {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), DispatchError> {
 		assert_eq!(
 			pallet_evm::AccountCodes::<T>::get(H160::from(crate::evm::precompile::ECRECOVER_ADDR)),
 			PRECOMPILE_CODE_STORAGE.to_vec()

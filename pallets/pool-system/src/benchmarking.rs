@@ -29,7 +29,8 @@ use crate::tranches::{TrancheIndex, TrancheInput, TrancheLoc};
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
-const MINT_AMOUNT: u128 = 1_000_000 * CURRENCY;
+const MINT_AMOUNT: u128 = 1_000_000 * CURRENCY + ED;
+const ED: u128 = CURRENCY;
 
 const SECS_PER_HOUR: u64 = 60 * 60;
 const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
@@ -239,6 +240,7 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
+	T::Currency::deposit_creating(&investor.clone().into(), ED);
 	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone().into(), MINT_AMOUNT)?;
 	if let Some(amount) = with_tranche_tokens {
 		T::Tokens::mint_into(
@@ -256,7 +258,7 @@ where
 		From<<T as frame_system::Config>::AccountId>,
 {
 	let admin: T::AccountId = account("admin", id, 0);
-	let mint_amount = T::PoolDeposit::get() * 2;
+	let mint_amount = T::PoolDeposit::get() * 2 + ED;
 	T::Currency::deposit_creating(&admin.clone().into(), mint_amount);
 	admin
 }

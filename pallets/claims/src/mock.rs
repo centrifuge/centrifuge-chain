@@ -31,7 +31,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 pub use pallet_balances as balances;
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
@@ -127,9 +127,13 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ConstU32<50>;
+	type MaxHolds = ConstU32<50>;
+	type MaxLocks = ConstU32<50>;
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }

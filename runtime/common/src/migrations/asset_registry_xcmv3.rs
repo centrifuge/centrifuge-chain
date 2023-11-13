@@ -23,6 +23,8 @@ use frame_support::{
 use orml_traits::asset_registry::AssetMetadata;
 #[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::Zero;
+#[cfg(feature = "try-runtime")]
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 pub struct Migration<
@@ -128,7 +130,7 @@ impl<
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: pre-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
 
@@ -139,7 +141,7 @@ impl<
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_old_counts: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_old_counts: Vec<u8>) -> Result<(), DispatchError> {
 		log::info!("💎 AssetRegistryMultilocationToXCMV3: post-upgrade: started");
 		let (loc_count, meta_count) = Self::get_key_counts();
 

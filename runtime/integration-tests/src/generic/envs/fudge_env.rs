@@ -7,7 +7,8 @@ use fudge::primitives::Chain;
 use handle::{FudgeHandle, ParachainClient};
 use sc_client_api::HeaderBackend;
 use sp_api::{ApiRef, ProvideRuntimeApi};
-use sp_runtime::{generic::BlockId, DispatchError, DispatchResult, Storage};
+use sp_core::H256;
+use sp_runtime::{DispatchError, Storage};
 
 use crate::{
 	generic::{
@@ -30,8 +31,9 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 }
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
-	fn from_storage(storage: Storage) -> Self {
-		let mut handle = T::FudgeHandle::new(Storage::default(), storage);
+	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
+		let mut handle =
+			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
 
 		handle.evolve();
 
@@ -49,35 +51,51 @@ impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
 		unimplemented!("FudgeEnv does not support submit_now() try submit_later()")
 	}
 
-	fn submit_later(&mut self, who: Keyring, call: impl Into<T::RuntimeCallExt>) -> DispatchResult {
+	fn submit_later(
+		&mut self,
+		who: Keyring,
+		call: impl Into<T::RuntimeCallExt>,
+	) -> Result<(), Box<dyn std::error::Error>> {
 		let nonce = *self.nonce_storage.entry(who).or_default();
 
-		let extrinsic = self.state(|| utils::create_extrinsic::<T>(who, call, nonce));
+		let extrinsic = self.parachain_state(|| utils::create_extrinsic::<T>(who, call, nonce));
 
 		self.handle
 			.parachain_mut()
 			.append_extrinsic(extrinsic)
-			.map(|_| ())
-			.map_err(|_| {
-				DispatchError::Other("Specific kind of DispatchError not supported by fudge now")
-				// More information, issue: https://github.com/centrifuge/fudge/issues/67
-			})?;
+			.map(|_| ())?;
 
 		self.nonce_storage.insert(who, nonce + 1);
 
 		Ok(())
 	}
 
-	fn state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+	fn relay_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.handle.relay_mut().with_mut_state(f).unwrap()
+	}
+
+	fn relay_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.handle.relay().with_state(f).unwrap()
+	}
+
+	fn parachain_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
 		self.handle.parachain_mut().with_mut_state(f).unwrap()
 	}
 
-	fn state<R>(&self, f: impl FnOnce() -> R) -> R {
+	fn parachain_state<R>(&self, f: impl FnOnce() -> R) -> R {
 		self.handle.parachain().with_state(f).unwrap()
 	}
 
+	fn sibling_state_mut<R>(&mut self, f: impl FnOnce() -> R) -> R {
+		self.handle.sibling_mut().with_mut_state(f).unwrap()
+	}
+
+	fn sibling_state<R>(&self, f: impl FnOnce() -> R) -> R {
+		self.handle.sibling().with_state(f).unwrap()
+	}
+
 	fn __priv_build_block(&mut self, i: BlockNumber) {
-		let current = self.state(|| frame_system::Pallet::<T>::block_number());
+		let current = self.parachain_state(|| frame_system::Pallet::<T>::block_number());
 		if i > current + 1 {
 			panic!("Jump to future blocks is unsupported in fudge (maybe you've used Blocks::BySecondsFast?)");
 		}
@@ -105,12 +123,11 @@ impl<T: Runtime + FudgeSupport> FudgeEnv<T> {
 
 	pub fn with_api<F>(&self, exec: F)
 	where
-		F: FnOnce(ApiRefOf<T>, BlockId<T::Block>),
+		F: FnOnce(ApiRefOf<T>, H256),
 	{
 		let client = self.handle.parachain().client();
 		let best_hash = client.info().best_hash;
 		let api = client.runtime_api();
-		let best_hash = BlockId::hash(best_hash);
 
 		exec(api, best_hash);
 	}
@@ -129,6 +146,7 @@ mod tests {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
+			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(

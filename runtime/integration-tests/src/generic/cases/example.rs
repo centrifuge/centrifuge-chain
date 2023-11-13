@@ -1,7 +1,7 @@
 use cfg_primitives::{Balance, CFG, SECONDS_PER_YEAR};
 use cfg_traits::IntoSeconds;
 use frame_support::traits::Get;
-use sp_api::runtime_decl_for_Core::CoreV4;
+use sp_api::runtime_decl_for_core::CoreV4;
 
 use crate::{
 	generic::{
@@ -32,6 +32,7 @@ fn transfer_balance<T: Runtime>() {
 				)],
 			})
 			.storage(),
+		Genesis::<T>::default().storage(),
 	);
 
 	// Call an extrinsic that would be processed immediately
@@ -54,7 +55,7 @@ fn transfer_balance<T: Runtime>() {
 	.unwrap();
 
 	// Check the state
-	env.state(|| {
+	env.parachain_state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
@@ -83,6 +84,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 				)],
 			})
 			.storage(),
+		Genesis::<T>::default().storage(),
 	);
 
 	env.submit_later(
@@ -116,7 +118,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 		.unwrap();
 
 	// Check the state
-	env.state(|| {
+	env.parachain_state(|| {
 		assert_eq!(
 			pallet_balances::Pallet::<T>::free_balance(Keyring::Alice.to_account_id()),
 			T::ExistentialDeposit::get() + FOR_FEES - fee,
@@ -129,10 +131,10 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 }
 
 fn call_api<T: Runtime>() {
-	let env = RuntimeEnv::<T>::from_storage(Default::default());
+	let env = RuntimeEnv::<T>::from_storage(Default::default(), Default::default());
 
-	env.state(|| {
-		// If imported the trait: sp_api::runtime_decl_for_Core::CoreV4,
+	env.parachain_state(|| {
+		// If imported the trait: sp_api::runtime_decl_for_core::CoreV4,
 		// you can easily do: T::Api::version()
 		assert_eq!(
 			T::Api::version(),
@@ -142,7 +144,7 @@ fn call_api<T: Runtime>() {
 }
 
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
-	let env = FudgeEnv::<T>::from_storage(Default::default());
+	let env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
 
 	// Exclusive from fudge environment.
 	// It uses a client to access the runtime api.
@@ -150,7 +152,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 		// We include the API we want to use
 		use sp_api::Core;
 
-		let result = api.version(&latest).unwrap();
+		let result = api.version(latest).unwrap();
 
 		assert_eq!(result, T::Api::version());
 		assert_eq!(result, <T as frame_system::Config>::Version::get());
@@ -158,14 +160,14 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 }
 
 fn pass_time_one_block<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::from_storage(Default::default());
+	let mut env = RuntimeEnv::<T>::from_storage(Default::default(), Default::default());
 
-	let before = env.state(|| pallet_timestamp::Pallet::<T>::get());
+	let before = env.parachain_state(|| pallet_timestamp::Pallet::<T>::get());
 
 	// Not supported in fudge
 	env.pass(Blocks::JumpBySeconds(SECONDS_PER_YEAR));
 
-	let after = env.state(|| pallet_timestamp::Pallet::<T>::get());
+	let after = env.parachain_state(|| pallet_timestamp::Pallet::<T>::get());
 
 	assert_eq!((after - before).into_seconds(), SECONDS_PER_YEAR)
 }

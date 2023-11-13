@@ -24,13 +24,12 @@ use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	traits::{
-		fungibles::{Inspect, Mutate, Transfer},
+		fungibles::{Inspect, Mutate},
 		ReservableCurrency,
 	},
 	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
-pub use impls::*;
 use orml_traits::{
 	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
@@ -187,7 +186,10 @@ pub mod pallet {
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
-		pallet_prelude::*, sp_runtime::traits::Convert, traits::Contains, PalletId,
+		pallet_prelude::*,
+		sp_runtime::traits::Convert,
+		traits::{tokens::Preservation, Contains},
+		PalletId,
 	};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
@@ -288,8 +290,7 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 
 		type Tokens: Mutate<Self::AccountId>
-			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ Transfer<Self::AccountId>;
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
 		type Permission: Permissions<
 			Self::AccountId,
@@ -368,7 +369,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
@@ -1226,7 +1226,13 @@ pub mod pallet {
 				// TODO: Add a debug log here and/or a debut_assert maybe even an error if
 				// remaining_amount != 0 at this point!
 
-				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
+				T::Tokens::transfer(
+					pool.currency,
+					&who,
+					&pool_account,
+					amount,
+					Preservation::Expendable,
+				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})
@@ -1246,12 +1252,12 @@ pub mod pallet {
 					.reserve
 					.total
 					.checked_sub(&amount)
-					.ok_or(TokenError::NoFunds)?;
+					.ok_or(TokenError::FundsUnavailable)?;
 				pool.reserve.available = pool
 					.reserve
 					.available
 					.checked_sub(&amount)
-					.ok_or(TokenError::NoFunds)?;
+					.ok_or(TokenError::FundsUnavailable)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1275,7 +1281,13 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
+				T::Tokens::transfer(
+					pool.currency,
+					&pool_account,
+					&who,
+					amount,
+					Preservation::Expendable,
+				)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})

@@ -46,8 +46,8 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
-			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold, Transfer},
-			tokens::AssetId,
+			fungibles::{Inspect as AssetInspect, InspectHold, Mutate, MutateHold},
+			tokens::{AssetId, Precision, Preservation},
 		},
 		Twox64Concat,
 	};
@@ -80,7 +80,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 
 	pub struct Pallet<T>(_);
@@ -131,10 +130,9 @@ pub mod pallet {
 
 		/// Type for currency orders can be made for
 		type TradeableAsset: AssetInspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::AssetCurrencyId>
-			+ InspectHold<Self::AccountId>
+			+ InspectHold<Self::AccountId, Reason = ()>
 			+ MutateHold<Self::AccountId>
-			+ Mutate<Self::AccountId>
-			+ Transfer<Self::AccountId>;
+			+ Mutate<Self::AccountId>;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
@@ -599,7 +597,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				T::TradeableAsset::can_hold(order.asset_in_id, &account_id, buy_amount),
+				T::TradeableAsset::can_hold(order.asset_in_id, &(), &account_id, buy_amount),
 				Error::<T>::InsufficientAssetFunds,
 			);
 
@@ -626,9 +624,10 @@ pub mod pallet {
 			} else {
 				T::TradeableAsset::release(
 					order.asset_out_id,
+					&(),
 					&order.placing_account,
 					sell_amount,
-					false,
+					Precision::Exact,
 				)?;
 
 				Self::remove_order(order.order_id)?;
@@ -639,14 +638,14 @@ pub mod pallet {
 				&account_id,
 				&order.placing_account,
 				buy_amount,
-				false,
+				Preservation::Expendable,
 			)?;
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
 				&order.placing_account,
 				&account_id,
 				sell_amount,
-				false,
+				Preservation::Expendable,
 			)?;
 
 			T::FulfilledOrderHook::notify_status_change(
@@ -688,9 +687,10 @@ pub mod pallet {
 		pub fn unreserve_order(order: &OrderOf<T>) -> Result<BalanceOf<T>, DispatchError> {
 			T::TradeableAsset::release(
 				order.asset_out_id,
+				&(),
 				&order.placing_account,
 				order.max_sell_amount,
-				false,
+				Precision::Exact,
 			)
 		}
 
@@ -775,7 +775,7 @@ pub mod pallet {
 			let max_sell_amount = <Orders<T>>::try_mutate_exists(
 				order_id,
 				|maybe_order| -> Result<T::Balance, DispatchError> {
-					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,
@@ -793,6 +793,7 @@ pub mod pallet {
 								max_sell_amount.ensure_sub(order.max_sell_amount)?;
 							T::TradeableAsset::hold(
 								order.asset_out_id,
+								&(),
 								&account,
 								sell_reserve_diff,
 							)?;
@@ -801,9 +802,10 @@ pub mod pallet {
 								order.max_sell_amount.ensure_sub(max_sell_amount)?;
 							T::TradeableAsset::release(
 								order.asset_out_id,
+								&(),
 								&account,
 								sell_reserve_diff,
-								false,
+								Precision::Exact,
 							)?;
 						}
 					};
@@ -822,7 +824,7 @@ pub mod pallet {
 				&account,
 				order_id,
 				|maybe_order| -> DispatchResult {
-					let mut order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
+					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 					order.buy_amount = buy_amount;
 					order.max_sell_rate = sell_rate_limit;
 					order.min_fulfillment_amount = min_fulfillment_amount;
@@ -858,7 +860,7 @@ pub mod pallet {
 			let max_sell_amount =
 				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
 
-			T::TradeableAsset::hold(currency_out, &account, max_sell_amount)?;
+			T::TradeableAsset::hold(currency_out, &(), &account, max_sell_amount)?;
 
 			let order_id = <OrderIdNonceStore<T>>::get();
 			let new_order = Order {

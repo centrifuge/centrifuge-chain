@@ -12,7 +12,6 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use fc_db::Backend as FrontierBackend;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,
@@ -26,6 +25,7 @@ use sc_client_api::{
 	client::BlockchainEvents,
 };
 use sc_network::NetworkService;
+use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
 use sc_transaction_pool::{ChainApi, Pool};
 use sc_transaction_pool_api::TransactionPool;
@@ -51,8 +51,10 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	pub enable_dev_signer: bool,
 	/// Network service
 	pub network: Arc<NetworkService<B, B::Hash>>,
+	/// Chain syncing service
+	pub sync: Arc<SyncingService<B>>,
 	/// Frontier Backend.
-	pub frontier_backend: Arc<FrontierBackend<B>>,
+	pub frontier_backend: Arc<dyn fc_db::BackendReader<B> + Send + Sync>,
 	/// Ethereum data access overrides.
 	pub overrides: Arc<OverrideHandle<B>>,
 	/// Cache for Ethereum block data.
@@ -68,6 +70,8 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	/// Maximum allowed gas limit will be ` block.gas_limit *
 	/// execute_gas_limit_multiplier` when using eth_call/eth_estimateGas.
 	pub execute_gas_limit_multiplier: u64,
+	/// Mandated parent hashes for a given block hash.
+	pub forced_parent_hashes: Option<BTreeMap<H256, H256>>,
 }
 
 impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
@@ -80,6 +84,7 @@ impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
 			is_authority: self.is_authority,
 			enable_dev_signer: self.enable_dev_signer,
 			network: self.network.clone(),
+			sync: self.sync.clone(),
 			frontier_backend: self.frontier_backend.clone(),
 			overrides: self.overrides.clone(),
 			block_data_cache: self.block_data_cache.clone(),
@@ -88,6 +93,7 @@ impl<C, P, A: ChainApi, CT: Clone, B: BlockT> Clone for Deps<C, P, A, CT, B> {
 			fee_history_cache: self.fee_history_cache.clone(),
 			fee_history_cache_limit: self.fee_history_cache_limit,
 			execute_gas_limit_multiplier: self.execute_gas_limit_multiplier,
+			forced_parent_hashes: self.forced_parent_hashes.clone(),
 		}
 	}
 }
@@ -123,11 +129,15 @@ where
 	})
 }
 
-/// Instantiate Ethereum-compatible RPC extensions.
 pub fn create<C, BE, P, A, CT, B>(
 	mut io: RpcModule<()>,
 	deps: Deps<C, P, A, CT, B>,
 	subscription_task_executor: SubscriptionTaskExecutor,
+	pubsub_notification_sinks: Arc<
+		fc_mapping_sync::EthereumBlockNotificationSinks<
+			fc_mapping_sync::EthereumBlockNotification<B>,
+		>,
+	>,
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
 	B: BlockT<Hash = H256>,
@@ -151,10 +161,11 @@ where
 		client,
 		pool,
 		graph,
-		converter,
+		converter: _converter,
 		is_authority,
 		enable_dev_signer,
 		network,
+		sync,
 		frontier_backend,
 		overrides,
 		block_data_cache,
@@ -163,6 +174,7 @@ where
 		fee_history_cache,
 		fee_history_cache_limit,
 		execute_gas_limit_multiplier,
+		forced_parent_hashes,
 	} = deps;
 
 	let mut signers = Vec::new();
@@ -170,21 +182,33 @@ where
 		signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
 	}
 
+	enum Never {}
+	impl<T> fp_rpc::ConvertTransaction<T> for Never {
+		fn convert_transaction(&self, _transaction: pallet_ethereum::Transaction) -> T {
+			// The Never type is not instantiable, but this method requires the type to be
+			// instantiated to be called (`&self` parameter), so if the code compiles we
+			// have the guarantee that this function will never be called.
+			unreachable!()
+		}
+	}
+	let convert_transaction: Option<Never> = None;
+
 	io.merge(
 		Eth::new(
-			client.clone(),
-			pool.clone(),
-			graph,
-			converter,
-			network.clone(),
-			vec![],
-			overrides.clone(),
-			frontier_backend.clone(),
+			Arc::clone(&client),
+			Arc::clone(&pool),
+			graph.clone(),
+			convert_transaction,
+			Arc::clone(&sync),
+			signers,
+			Arc::clone(&overrides),
+			Arc::clone(&frontier_backend),
 			is_authority,
-			block_data_cache.clone(),
+			Arc::clone(&block_data_cache),
 			fee_history_cache,
 			fee_history_cache_limit,
 			execute_gas_limit_multiplier,
+			forced_parent_hashes,
 		)
 		.into_rpc(),
 	)?;
@@ -192,9 +216,10 @@ where
 	io.merge(
 		EthFilter::new(
 			client.clone(),
-			frontier_backend,
+			frontier_backend.clone(),
+			fc_rpc::TxPool::new(client.clone(), graph.clone()),
 			filter_pool,
-			500_usize, // max stored filters
+			500_usize,
 			max_past_logs,
 			block_data_cache,
 		)
@@ -204,10 +229,11 @@ where
 	io.merge(
 		EthPubSub::new(
 			pool,
-			client.clone(),
-			network.clone(),
+			Arc::clone(&client),
+			Arc::clone(&sync),
 			subscription_task_executor,
 			overrides,
+			pubsub_notification_sinks.clone(),
 		)
 		.into_rpc(),
 	)?;

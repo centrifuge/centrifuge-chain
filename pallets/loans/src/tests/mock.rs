@@ -26,7 +26,7 @@ use frame_support::traits::{
 use frame_system::{EnsureRoot, EnsureSigned};
 use scale_info::TypeInfo;
 use sp_arithmetic::{fixed_point::FixedU64, Perbill};
-use sp_core::H256;
+use sp_core::{ConstU128, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -157,7 +157,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type ExistentialDeposit = ();
+	type ExistentialDeposit = ConstU128<1>;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();

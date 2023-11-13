@@ -20,14 +20,14 @@ use cfg_types::{
 use frame_support::{
 	pallet_prelude::DispatchResult,
 	parameter_types,
-	traits::{ConstU128, ConstU32, GenesisBuild},
+	traits::{ConstU32, GenesisBuild},
 };
 use frame_system::EnsureRoot;
 use orml_traits::{
 	asset_registry::{AssetMetadata, Inspect},
 	parameter_type_with_key,
 };
-use sp_core::H256;
+use sp_core::{ConstU128, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -123,6 +123,10 @@ impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
+	type FreezeIdentifier = ();
+	type HoldIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = frame_support::traits::ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
@@ -131,16 +135,16 @@ impl pallet_balances::Config for Runtime {
 }
 
 cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
-		RegistryMock,
-		CurrencyId,
-		Balance,
-		CustomMetadata
+	RegistryMock,
+	CurrencyId,
+	Balance,
+	CustomMetadata
 }
 
 parameter_type_with_key! {
-		pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-				Default::default()
-		};
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
 }
 
 impl orml_tokens::Config for Runtime {
@@ -179,6 +183,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutate = cfg_traits::Always;
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreFungiblesUnbalanced = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

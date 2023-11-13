@@ -192,12 +192,11 @@ mod dummy {
 		}
 
 		#[pallet::pallet]
-		#[pallet::generate_store(pub(super) trait Store)]
 		pub struct Pallet<T>(_);
 
 		#[pallet::call]
 		impl<T: Config> Pallet<T> {
-			#[pallet::weight(100)]
+			#[pallet::weight({100})]
 			#[pallet::call_index(0)]
 			pub fn test_add(
 				origin: OriginFor<T>,
@@ -216,7 +215,7 @@ mod dummy {
 				Ok(())
 			}
 
-			#[pallet::weight(100)]
+			#[pallet::weight({100})]
 			#[pallet::call_index(1)]
 			pub fn test_rm(origin: OriginFor<T>, scope: T::Scope, role: T::Role) -> DispatchResult {
 				let who = ensure_signed(origin)?;
@@ -254,7 +253,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-			pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024).set_proof_size(u64::MAX).into());
+			pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_parts(1024, 0).set_proof_size(u64::MAX).into());
 }
 
 // Implement frame system configuration for the mock runtime

@@ -31,7 +31,10 @@ use cfg_types::{
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
+	traits::tokens::{
+		fungibles::{Inspect, Mutate},
+		Preservation,
+	},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -164,9 +167,7 @@ pub mod pallet {
 
 		/// Something that can handle payments and transfers of
 		/// currencies
-		type Tokens: Mutate<Self::AccountId>
-			+ Inspect<Self::AccountId, Balance = Self::Amount>
-			+ Transfer<Self::AccountId>;
+		type Tokens: Mutate<Self::AccountId> + Inspect<Self::AccountId, Balance = Self::Amount>;
 
 		/// A possible check if investors fulfill every condition to invest into
 		/// a given investment
@@ -200,7 +201,6 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
@@ -538,8 +538,6 @@ impl<T: Config> Pallet<T> {
 							amount,
 						)?;
 
-						order.update_submitted_at(cur_order_id);
-
 						// Remove order from storage if empty
 						if amount == T::Amount::zero() {
 							*maybe_order = None;
@@ -599,10 +597,8 @@ impl<T: Config> Pallet<T> {
 							amount,
 						)?;
 
-						order.update_submitted_at(cur_order_id);
-
 						// Remove order from storage if empty
-						if amount == T::Amount::zero() {
+						if amount.is_zero() {
 							*maybe_order = None;
 						}
 
@@ -840,7 +836,7 @@ impl<T: Config> Pallet<T> {
 					&investment_account,
 					&who,
 					collection.payout_investment_redeem,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				let amount = order.amount();
@@ -909,7 +905,14 @@ impl<T: Config> Pallet<T> {
 			&mut total_order.amount,
 		)?;
 
-		T::Tokens::transfer(payment_currency, send, recv, transfer_amount, false).map(|_| ())
+		T::Tokens::transfer(
+			payment_currency,
+			send,
+			recv,
+			transfer_amount,
+			Preservation::Expendable,
+		)
+		.map(|_| ())
 	}
 
 	pub(crate) fn do_update_redeem_order(
@@ -1346,7 +1349,7 @@ impl<T: Config> OrderManager for Pallet<T> {
 					&investment_account,
 					&info.owner,
 					invest_amount,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				// The amount of investments the accountant needs to
@@ -1438,7 +1441,7 @@ impl<T: Config> OrderManager for Pallet<T> {
 					&info.owner,
 					&investment_account,
 					redeem_amount_payment,
-					false,
+					Preservation::Expendable,
 				)?;
 
 				T::Accountant::withdraw(&investment_account, info.id, redeem_amount)?;

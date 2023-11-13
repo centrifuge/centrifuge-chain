@@ -30,7 +30,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn inbound_collect_redeem() {
+	fn inbound_collect_redeem() -> Result<(), BenchmarkError> {
 		let BenchForeignInvestmentSetupInfo { investor, investment_id, pool_currency, foreign_currency, .. } = <T::ForeignInvestment as ForeignInvestmentBenchmarkHelper>::bench_prepare_foreign_investments_setup();
 
 		// Fund investor with foreign currency and tranche tokens
@@ -64,5 +64,7 @@ mod benchmarks {
 		assert!(
 			T::ForeignInvestment::redemption(&investor_pointer, investment_id)? < redeeming_amount
 		);
+
+		Ok(())
 	}
 }

@@ -13,7 +13,6 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest-4-cores
     env:
-      RUST_TOOLCHAIN: "1.66.0"
       RUSTDOCFLAGS: "-D warnings"
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -27,7 +26,7 @@ jobs:
           cache: enabled
           # Cache needs Google credentials:
           GWIP: ${{ secrets.GWIP_SCCACHE }}
-          GSA: ${{ secrets.GSA_SCCACHE }}          
+          GSA: ${{ secrets.GSA_SCCACHE }}
 
       - name: Build documentation
         id: build_docs
