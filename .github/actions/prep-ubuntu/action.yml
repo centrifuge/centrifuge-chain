@@ -1,9 +1,6 @@
 name: Prepare Ubuntu for Rust builds
 description: cleanup and Rust Tools setup
 inputs:
-  RUST_TOOLCHAIN:
-    description: toolchain version
-    default: "1.66"
   cache:
     description: cache type (enabled if set)
     default: "disabled"
