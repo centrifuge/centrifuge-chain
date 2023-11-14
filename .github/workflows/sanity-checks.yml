@@ -1,6 +1,6 @@
 on:
-  # push:
-  #   branches: [main, 'release-v**']
+  push:
+    branches: ['ci-rewrite-n-cache']
   pull_request:
     paths:
       - 'src/'
@@ -42,12 +42,12 @@ jobs:
       #       # make Cargo.toml
       #       echo "Generate code coverage for ${{ matrix.target }}"
       #       cargo +nightly tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
-      #     fi 
+      #     fi
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
-          RUSTC_WRAPPER: "sccache"           
+          RUSTC_WRAPPER: "sccache"
 
     # UPLOAD REPORTS (requires cargo 1.70.0)
       # - name: Upload codecov report
@@ -58,7 +58,7 @@ jobs:
       #     # flags: unittests # optional
       #     # name: codecov-umbrella # optional
       #     # fail_ci_if_error: true # optional (default = false)
-      #     verbose: true # optional (default = false)        
+      #     verbose: true # optional (default = false)
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}
