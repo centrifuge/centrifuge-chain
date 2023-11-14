@@ -10,15 +10,15 @@ cargo --version
 
 case $TARGET in
   cargo-build)
-    cargo build --release "$@"
+    cargo build "$@"
     ;;
 
   test-general)
-    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    cargo test --workspace --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   test-integration)
-    cargo test --release --package runtime-integration-tests --features fast-runtime
+    cargo test --package runtime-integration-tests --features fast-runtime
     ;;
 
   lint-fmt)
