@@ -15,7 +15,7 @@ permissions:
 jobs:
   build-runtime-wasms:
     # environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
-    # environment: production
+    environment: production
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
