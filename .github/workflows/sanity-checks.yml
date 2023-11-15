@@ -81,6 +81,7 @@ jobs:
       - name: Runing cargo ${{ matrix.target }}
         run: ./ci/run-check.sh
         env:
+          RUST_LOG: ERROR
           TARGET: benchmark-check
           RUNTIME: ${{ matrix.runtime }}
           RUSTC_WRAPPER: "sccache"
