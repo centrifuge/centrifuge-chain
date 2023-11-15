@@ -1,11 +1,12 @@
 [package]
 name = "runtime-common"
 version = "1.0.0"
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-license = "LGPL-3.0"
-homepage = "https://centrifuge.io/"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
 hex-literal = { workspace = true }
@@ -120,10 +121,9 @@ pallet-vesting = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
 parachain-info = { workspace = true }
-#fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks", features = ["std"] }
+cfg-mocks = { workspace = true }
 
 [features]
 default = ["std"]
@@ -132,6 +132,7 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "cfg-utils/std",
+  "cfg-mocks/std",
   "codec/std",
   "frame-support/std",
   "frame-system/std",
@@ -150,7 +151,6 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
-  #"fp-self-contained/std",
 
   # Pallet exporting list
   "axelar-gateway-precompile/std",
@@ -224,11 +224,11 @@ std = [
 ]
 runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
@@ -294,12 +294,11 @@ runtime-benchmarks = [
 ]
 try-runtime = [
   "sp-runtime/try-runtime",
-  "cfg-mocks/try-runtime",
-  "cfg-primitives/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
+  "cfg-mocks/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
 

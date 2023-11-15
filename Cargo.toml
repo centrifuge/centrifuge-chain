@@ -70,6 +70,14 @@ members = [
   "runtime/integration-tests",
 ]
 
+[workspace.package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+edition = "2021"
+license = "LGPL-3.0"
+homepage = "https://centrifuge.io/"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+documentation = "https://github.com/centrifuge/centrifuge-chain"
+
 [workspace.dependencies]
 hex-literal = { version = "0.3.4", default-features = false }
 smallvec = "1.6.1"
@@ -217,6 +225,8 @@ cfg-traits = { path = "libs/traits", default-features = false }
 cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 
+# Testing
+cfg-mocks = { path = "libs/mocks", default-features = false }
 
 [dependencies]
 # third-party dependencies
