@@ -11386,6 +11386,7 @@ dependencies = [
  "log",
  "orml-asset-registry",
  "orml-oracle",
+ "orml-tokens",
  "orml-traits",
  "pallet-anchors",
  "pallet-authorship",

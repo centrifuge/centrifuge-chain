@@ -10,18 +10,5 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Codec;
-use sp_api::decl_runtime_apis;
-use sp_std::vec::Vec;
-
-decl_runtime_apis! {
-		/// Runtime API for investments
-		pub trait InvestmentsApi<AccountId, InvestmentId, InvestmentPortfolio>
-				where
-				AccountId: Codec,
-				InvestmentId: Codec,
-				InvestmentPortfolio: Codec,
-		{
-				fn investment_portfolio(account_id: AccountId) -> Vec<(InvestmentId, InvestmentPortfolio)>;
-		}
-}
+#[tokio::test]
+async fn investment_portfolio_api_works() {}

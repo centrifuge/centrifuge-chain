@@ -239,3 +239,22 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 	///   pool currency)
 	pub amount_remaining: Balance,
 }
+
+/// A representation of an investment portfolio consisting of free, pending and
+/// claimable pool currency as well as tranche tokens.
+#[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+
+pub struct InvestmentPortfolio<Balance> {
+	/// The unprocessed invest order amount in pool currency
+	pub pending_invest_currency: Balance,
+	/// The amount of tranche tokens which can be collected for an invest order
+	pub claimable_tranche_tokens: Balance,
+	/// The amount of tranche tokens which can be transferred
+	pub free_tranche_tokens: Balance,
+	/// The amount of tranche tokens which cannot be transferred
+	pub locked_tranche_tokens: Balance,
+	/// The unprocessed redeem order amount in tranche tokens
+	pub pending_redeem_tranche_tokens: Balance,
+	/// The amount of pool currency which can be collected for a redeem order
+	pub claimable_currency: Balance,
+}
