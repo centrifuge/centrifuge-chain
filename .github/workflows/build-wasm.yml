@@ -14,25 +14,16 @@ permissions:
   contents: read
 jobs:
   build-runtime-wasms:
-    # environment: ${{ github.ref == 'refs/heads/main' && 'production' || '' }}
-    environment: production
+    environment: production # It needs the production GCP credentials to upload WASM
     # Benchmark (with cache hit)
     # ubuntu-latest 50 min
     # ubuntu-latest-4-cores 34 min
     runs-on:  ubuntu-latest-4-cores
     strategy:
       matrix:
-        # To test until I get one right
-        # target: [build-runtime, build-runtime-fast, build-runtime-testnet]
-        # package: [centrifuge-runtime, altair-runtime]
         target: [build-runtime, build-runtime-fast]
         package: [altair-runtime, centrifuge-runtime]
-        # rust_version: ["1.69.0"]
     name: ${{ matrix.target }}-${{ matrix.package }}
-    # Cannot make sccache work with the srtool container
-    # env:
-      # SCCACHE_GHA_ENABLED: "true"
-      # RUSTC_WRAPPER: "sccache"
     steps:
     # PREP  
       - name: Check out code
@@ -40,9 +31,6 @@ jobs:
 
       - name: Prep build on Ubuntu
         uses: ./.github/actions/prep-ubuntu
-        # Use default toolchain
-        # with:
-        #   RUST_TOOLCHAIN: ${{ matrix.rust_version }}
 
       # sccache does not work inside the srtool container
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
@@ -55,8 +43,7 @@ jobs:
           cache-directories: ./runtime
           # save-if: ${{ github.ref == 'refs/heads/master' }}
     # BUILD
-      - 
-        id: buildopt
+      - id: buildopt
         run: |
           if ${{ matrix.target == 'build-runtime-fast'}} ; then
             echo "BUILD_OPTS=--features=fast-runtime" >> GITHUB_ENV
@@ -68,13 +55,14 @@ jobs:
           docker run --rm  --user root --platform=linux/amd64
           -e PACKAGE=${{ matrix.package }} -v /home/runner/.cargo:/cargo-home  
           -v ${{ github.workspace }}:/build paritytech/srtool:1.73.0-0.12.0
-          /srtool/build 
+          /srtool/build --app
+        #  -a, --app
+        # Enable the "app" mode which is a mix of json output and outputting progress  during the build. This flag is recommended for CI. the json output will be provided as a single line at the end in compact mode
 
+      # Alternative way of running SRTool that allows for "script-like" execution,
+      # extremely useful to debug:
       # - name: Run Docker SRTool
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
-      #   env:
-      #     RUSTC_VERSION: ${{ matrix.rust_version }}
-      #     TARPAULIN_VERSION: 0.19.1 # travis-ci codecov generator
       #   with:
       #     image: paritytech/srtool:${{ matrix.rust_version }}
       #     options: --user root -v /home/runner/.cargo:/cargo-home -v ${{ github.workspace }}:/build -e BUILD_OPTS=${{ env.BUILD_OPTS || ''}} -e PACKAGE=${{ matrix.package }}
