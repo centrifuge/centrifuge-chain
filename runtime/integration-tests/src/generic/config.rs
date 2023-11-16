@@ -7,6 +7,7 @@ use cfg_primitives::{
 use cfg_traits::Millis;
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
+	investments::InvestmentPortfolio,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -128,6 +129,7 @@ pub trait Runtime:
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
+		+ From<pallet_investments::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
@@ -170,6 +172,11 @@ pub trait Runtime:
 			CurrencyId,
 			Quantity,
 			Self::MaxTranchesExt,
+		> + apis::runtime_decl_for_investments_api::InvestmentsApiV1<
+			Self::Block,
+			AccountId,
+			TrancheCurrency,
+			InvestmentPortfolio<Balance>,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;

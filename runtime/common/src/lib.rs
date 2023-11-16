@@ -378,11 +378,14 @@ pub mod investment_portfolios {
 		PoolInspect, Seconds,
 	};
 	use cfg_types::{investments::InvestmentPortfolio, tokens::CurrencyId};
-	use sp_core::crypto::AccountId32;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
 	/// investments for an account.
+	///
+	/// NOTE: Moving inner scope to any pallet would introduce tight(er)
+	/// coupling due to requirement of iterating over storage maps which in turn
+	/// require the pallet's Config trait.
 	pub fn get_account_portfolio<T, PoolInspector>(
 		investor: <T as frame_system::Config>::AccountId,
 		// TODO: Add limit for iterations
@@ -391,17 +394,11 @@ pub mod investment_portfolios {
 		InvestmentPortfolio<Balance>,
 	)>
 	where
-		T: frame_system::Config
-			+ pallet_investments::Config
-			+ pallet_balances::Config
-			+ orml_tokens::Config,
+		T: frame_system::Config + pallet_investments::Config + orml_tokens::Config,
 		<T as pallet_investments::Config>::InvestmentId:
 			TrancheCurrency<PoolId, TrancheId> + Into<<T as orml_tokens::Config>::CurrencyId> + Ord,
-		AccountId32: From<<T as frame_system::Config>::AccountId>,
-		CurrencyId: From<<T as orml_tokens::Config>::CurrencyId>
-			+ From<<T as pallet_investments::Config>::InvestmentId>,
-		Balance: From<<T as pallet_balances::Config>::Balance>
-			+ From<<T as pallet_investments::Config>::Amount>
+		CurrencyId: From<<T as orml_tokens::Config>::CurrencyId>,
+		Balance: From<<T as pallet_investments::Config>::Amount>
 			+ From<<T as orml_tokens::Config>::Balance>,
 		PoolInspector: PoolInspect<
 			<T as frame_system::Config>::AccountId,
@@ -425,40 +422,47 @@ pub mod investment_portfolios {
 					.and_modify(|p| {
 						p.free_tranche_tokens = balance.free.into();
 						p.locked_tranche_tokens = balance.frozen.into();
-					});
+					})
+					.or_insert(
+						InvestmentPortfolio::<Balance>::new()
+							.with_free_tranche_tokens(balance.free.into())
+							.with_locked_tranche_tokens(balance.frozen.into()),
+					);
 			}
 		});
 
 		// Set pending invest currency and claimable tranche tokens
 		pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
-			let amount = pallet_investments::InvestOrders::<T>::get(&investor, invest_id)
-				.map(|order| order.amount())
-				.unwrap_or_default();
-
 			// Collect such that we can determine claimable tranche tokens
 			// NOTE: Does not modify storage since RtAPI is readonly
 			let _ =
 				pallet_investments::Pallet::<T>::collect_investment(investor.clone(), invest_id);
-
+			let amount = pallet_investments::InvestOrders::<T>::get(&investor, invest_id)
+				.map(|order| order.amount())
+				.unwrap_or_default();
 			let free_tranche_tokens_new =
 				orml_tokens::Accounts::<T>::get(&investor, invest_id.into())
 					.free
 					.into();
-			portfolio.entry(invest_id).and_modify(|p| {
-				p.pending_invest_currency = amount.into();
-				if p.free_tranche_tokens < free_tranche_tokens_new {
-					p.claimable_tranche_tokens =
-						free_tranche_tokens_new.saturating_sub(p.free_tranche_tokens);
-				}
-			});
+
+			portfolio
+				.entry(invest_id)
+				.and_modify(|p| {
+					p.pending_invest_currency = amount.into();
+					if p.free_tranche_tokens < free_tranche_tokens_new {
+						p.claimable_tranche_tokens =
+							free_tranche_tokens_new.saturating_sub(p.free_tranche_tokens);
+					}
+				})
+				.or_insert(
+					InvestmentPortfolio::<Balance>::new()
+						.with_pending_invest_currency(amount.into())
+						.with_claimable_tranche_tokens(free_tranche_tokens_new),
+				);
 		});
 
-		// Sett pending tranche tokens and claimable invest currency
-		pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
-			let amount = pallet_investments::RedeemOrders::<T>::get(&investor, invest_id)
-				.map(|order| order.amount())
-				.unwrap_or_default();
-
+		// Set pending tranche tokens and claimable invest currency
+		pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
 			let pool_currency = PoolInspector::currency_for(invest_id.of_pool());
 			let balance_before: Balance = pool_currency
 				.map(|p_currency| {
@@ -472,7 +476,9 @@ pub mod investment_portfolios {
 			// NOTE: Does not modify storage since RtAPI is readonly
 			let _ =
 				pallet_investments::Pallet::<T>::collect_redemption(investor.clone(), invest_id);
-
+			let amount = pallet_investments::RedeemOrders::<T>::get(&investor, invest_id)
+				.map(|order| order.amount())
+				.unwrap_or_default();
 			let balance_after: Balance = pool_currency
 				.map(|p_currency| {
 					orml_tokens::Accounts::<T>::get(&investor, p_currency)
@@ -481,12 +487,19 @@ pub mod investment_portfolios {
 				})
 				.unwrap_or_default();
 
-			portfolio.entry(invest_id).and_modify(|p| {
-				p.pending_redeem_tranche_tokens = amount.into();
-				if balance_before < balance_after {
-					p.claimable_currency = balance_after.saturating_sub(balance_before);
-				}
-			});
+			portfolio
+				.entry(invest_id)
+				.and_modify(|p| {
+					p.pending_redeem_tranche_tokens = amount.into();
+					if balance_before < balance_after {
+						p.claimable_currency = balance_after.saturating_sub(balance_before);
+					}
+				})
+				.or_insert(
+					InvestmentPortfolio::<Balance>::new()
+						.with_pending_redeem_tranche_tokens(amount.into())
+						.with_claimable_currency(balance_after),
+				);
 		});
 
 		portfolio.into_iter().collect()

@@ -258,3 +258,39 @@ pub struct InvestmentPortfolio<Balance> {
 	/// The amount of pool currency which can be collected for a redeem order
 	pub claimable_currency: Balance,
 }
+
+impl<Balance: Default> InvestmentPortfolio<Balance> {
+	pub fn new() -> Self {
+		Default::default()
+	}
+
+	pub fn with_pending_invest_currency(mut self, amount: Balance) -> Self {
+		self.pending_invest_currency = amount;
+		self
+	}
+
+	pub fn with_free_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.free_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_locked_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.locked_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_claimable_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.claimable_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_pending_redeem_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.pending_redeem_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_claimable_currency(mut self, amount: Balance) -> Self {
+		self.claimable_currency = amount;
+		self
+	}
+}
