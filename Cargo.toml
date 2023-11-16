@@ -79,12 +79,15 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 documentation = "https://github.com/centrifuge/centrifuge-chain"
 
 [workspace.dependencies]
-hex-literal = { version = "0.3.4", default-features = false }
+hex-literal = { version = "0.3.4" }
+hex = { version = "0.4.3", default_features = false }
 smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 log = "0.4"
+getrandom = { version = "0.2", features = ["js"] }
+static_assertions = "1.1.0"
 
 # Parachain
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -127,7 +130,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = [
   "tuples-96",
-], branch = "polkadot-v0.9.43" } # tuples feature can be remove on 0.9.42
+], branch = "polkadot-v0.9.43" } # Check when tuples-96 can be removed
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
@@ -184,6 +187,7 @@ pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/f
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.43" }
 
 # Moonbeam
+moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
 
@@ -224,6 +228,9 @@ cfg-primitives = { path = "libs/primitives", default-features = false }
 cfg-traits = { path = "libs/traits", default-features = false }
 cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
+
+# runtimes
+runtime-common = { path = "runtime/common", default-features = false }
 
 # Testing
 cfg-mocks = { path = "libs/mocks", default-features = false }
