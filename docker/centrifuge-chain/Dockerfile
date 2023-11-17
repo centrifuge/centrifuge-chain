@@ -2,8 +2,8 @@
 # https://github.com/paritytech/polkadot-sdk/blob/master/docker/dockerfiles/polkadot/polkadot_injected_release.Dockerfile
 
 # ToDo: create a CI/builder image with preloaded tools
-FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
-
+# FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
+FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
   # Defaults
 	ENV RUST_BACKTRACE 1
 	ENV DEBIAN_FRONTEND=noninteractive
@@ -20,17 +20,10 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 			protobuf-compiler \
 			curl
 
-	ENV RUSTUP_HOME=/usr/local/rustup \
-		CARGO_HOME=/usr/local/cargo \
-		PATH=/usr/local/cargo/bin:$PATH
 	COPY ./scripts scripts
 	COPY rust-toolchain.toml ./
-  # install rustup, use minimum components
-    RUN curl -L "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
-        -o rustup-init; \
-		chmod +x rustup-init; \
-		mv rustup-init /usr/local/bin/rustup
-
+	# RUN rustup update && rustup default
+	ENV PATH=~/.cargo/bin:$PATH
 	RUN	scripts/install_toolchain.sh 
 
   # BUILD
@@ -48,7 +41,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 
 # ===== SECOND STAGE ======
 # ToDo: create a secure image as a base for the binary
-FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04
+FROM --platform=linux/amd64 docker.io/library/ubuntu:latest
 
 	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
 		io.centrifuge.image.vendor="Centrifuge" \
@@ -74,6 +67,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 	RUN	mkdir -p /root/.local/share/centrifuge-chain && \
 		ln -s /root/.local/share/centrifuge-chain /data
+
 
 ENV RUST_BACKTRACE 1
 USER centrifuge
