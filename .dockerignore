@@ -1,6 +1,6 @@
 **/target/
 .github/
-scripts/
+!scripts/install_toolchain.sh
 docker-compos
 .gitignore
 docker

@@ -23,12 +23,15 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 	ENV RUSTUP_HOME=/usr/local/rustup \
 		CARGO_HOME=/usr/local/cargo \
 		PATH=/usr/local/cargo/bin:$PATH
+	COPY ./scripts scripts
+	COPY rust-toolchain.toml ./
   # install rustup, use minimum components
     RUN curl -L "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
         -o rustup-init; \
 		chmod +x rustup-init; \
-		./rustup-init -y --no-modify-path --profile minimal --default-toolchain stable; \
-		rm rustup-init;
+		mv rustup-init /usr/local/bin/rustup
+
+	RUN	scripts/install_toolchain.sh 
 
   # BUILD
 	ARG RUSTC_WRAPPER=''
@@ -68,18 +71,9 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04
 	RUN ldd /usr/local/bin/centrifuge-chain && \
 		/usr/local/bin/centrifuge-chain --version
 
-  # Unclutter
-	# RUN mv /usr/share/ca* /tmp && \
-	# 	rm -rf /usr/share/*  && \
-	# 	mv /tmp/ca-certificates /usr/share/
-
-  # minimize the attack surface
-	# RUN rm -rf /usr/bin /usr/sbin /usr/lib/python*
-
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 	RUN	mkdir -p /root/.local/share/centrifuge-chain && \
 		ln -s /root/.local/share/centrifuge-chain /data
-
 
 ENV RUST_BACKTRACE 1
 USER centrifuge

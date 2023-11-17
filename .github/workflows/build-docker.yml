@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   release:
-    types: [published]
+    types: [unpublished] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
@@ -59,9 +59,9 @@ jobs:
             suffix=-${{ env.NOW }}
             prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{raw}},suffix=
-            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=raw,event=branch,value={{branch}}-{{sha}}
+            type=semver,pattern={{raw}},suffix=,prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
+            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=
             type=edge
 
       - name: Configure sccache

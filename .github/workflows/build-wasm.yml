@@ -21,8 +21,8 @@ jobs:
     runs-on:  ubuntu-latest-4-cores
     strategy:
       matrix:
-        target: [build-runtime, build-runtime-fast]
-        package: [altair-runtime, centrifuge-runtime]
+        target: [build-runtime]
+        package: [altair-runtime, centrifuge-runtime, development-runtime]
     name: ${{ matrix.target }}-${{ matrix.package }}
     steps:
     # PREP  
@@ -35,32 +35,24 @@ jobs:
       # sccache does not work inside the srtool container
       - uses: Swatinem/rust-cache@e207df5d269b42b69c8bc5101da26f7d31feddb4 # 2.6.2
         with:
-          prefix-key: build #-${{ matrix.package }}
+          prefix-key: build
           shared-key: wasm
           workspaces: |
             .
             ./target/srtool
           cache-directories: ./runtime
-          # save-if: ${{ github.ref == 'refs/heads/master' }}
-    # BUILD
-      - id: buildopt
-        run: |
-          if ${{ matrix.target == 'build-runtime-fast'}} ; then
-            echo "BUILD_OPTS=--features=fast-runtime" >> GITHUB_ENV
-          fi
-          echo "BUILD_OPTS=${{ env.BUILD_OPTS }}"
 
-      - name: Run srtool
+    # BUILD
+      - name: Run srtool # https://docs.substrate.io/reference/command-line-tools/srtool/
         run: >
           docker run --rm  --user root --platform=linux/amd64
           -e PACKAGE=${{ matrix.package }} -v /home/runner/.cargo:/cargo-home  
           -v ${{ github.workspace }}:/build paritytech/srtool:1.73.0-0.12.0
           /srtool/build --app
-        #  -a, --app
-        # Enable the "app" mode which is a mix of json output and outputting progress  during the build. This flag is recommended for CI. the json output will be provided as a single line at the end in compact mode
 
       # Alternative way of running SRTool that allows for "script-like" execution,
       # extremely useful to debug:
+
       # - name: Run Docker SRTool
       #   uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185 #v3
       #   with:
@@ -83,7 +75,6 @@ jobs:
           path: ./${{ matrix.package }}-srtool-wasm-report.json      
 
       - id: 'auth'
-        # if: ${{ github.ref == 'refs/heads/main' }}
         uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # v1.1.1
         with:
           workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
@@ -97,9 +88,8 @@ jobs:
         if: ${{ steps.auth.outcome == 'success' }}
         shell: bash
         run: |
-          target=$(echo "${{ matrix.target }}" | sed -e "s/^build-//" )
           runtime_name=$(echo "${{ matrix.package }}" | sed -e "s/-runtime$//" )
           filename=$(echo "${{ matrix.package }}" | sed -e 's/-/_/g' )
           gsutil cp \
             ./runtime/${runtime_name}/target/srtool/release/wbuild/${{ matrix.package }}/${filename}.compact.compressed.wasm \
-            gs://centrifuge-wasm-repo/${runtime_name}/${runtime_name}-${target}-$(git rev-parse --short HEAD).wasm
+            gs://centrifuge-wasm-repo/${runtime_name}/${runtime_name}-$(git rev-parse --short HEAD).wasm
