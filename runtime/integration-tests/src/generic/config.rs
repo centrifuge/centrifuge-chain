@@ -96,6 +96,7 @@ pub trait Runtime:
 	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
 	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
+	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to

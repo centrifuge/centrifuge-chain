@@ -251,8 +251,9 @@ pub struct InvestmentPortfolio<Balance> {
 	pub claimable_tranche_tokens: Balance,
 	/// The amount of tranche tokens which can be transferred
 	pub free_tranche_tokens: Balance,
-	/// The amount of tranche tokens which cannot be transferred
-	pub locked_tranche_tokens: Balance,
+	/// The amount of tranche tokens which can not be used at all and get
+	/// slashed
+	pub reserved_tranche_tokens: Balance,
 	/// The unprocessed redeem order amount in tranche tokens
 	pub pending_redeem_tranche_tokens: Balance,
 	/// The amount of pool currency which can be collected for a redeem order
@@ -274,8 +275,8 @@ impl<Balance: Default> InvestmentPortfolio<Balance> {
 		self
 	}
 
-	pub fn with_locked_tranche_tokens(mut self, amount: Balance) -> Self {
-		self.locked_tranche_tokens = amount;
+	pub fn with_reserved_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.reserved_tranche_tokens = amount;
 		self
 	}
 

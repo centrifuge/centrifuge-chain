@@ -388,7 +388,6 @@ pub mod investment_portfolios {
 	/// require the pallet's Config trait.
 	pub fn get_account_portfolio<T, PoolInspector>(
 		investor: <T as frame_system::Config>::AccountId,
-		// TODO: Add limit for iterations
 	) -> Vec<(
 		<T as pallet_investments::Config>::InvestmentId,
 		InvestmentPortfolio<Balance>,
@@ -421,12 +420,12 @@ pub mod investment_portfolios {
 					.entry(TrancheCurrency::generate(pool_id, tranche_id))
 					.and_modify(|p| {
 						p.free_tranche_tokens = balance.free.into();
-						p.locked_tranche_tokens = balance.frozen.into();
+						p.reserved_tranche_tokens = balance.reserved.into();
 					})
 					.or_insert(
 						InvestmentPortfolio::<Balance>::new()
 							.with_free_tranche_tokens(balance.free.into())
-							.with_locked_tranche_tokens(balance.frozen.into()),
+							.with_reserved_tranche_tokens(balance.reserved.into()),
 					);
 			}
 		});

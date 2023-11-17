@@ -1,6 +1,7 @@
-use cfg_primitives::{Balance, PoolId};
+use cfg_primitives::{AccountId, Balance, PoolId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{investments::InvestmentPortfolio, permissions::PoolRole, tokens::TrancheCurrency};
+use frame_support::traits::fungibles::MutateHold;
 use runtime_common::apis::{
 	runtime_decl_for_investments_api::InvestmentsApiV1, runtime_decl_for_pools_api::PoolsApiV1,
 };
@@ -26,6 +27,7 @@ const INVESTOR: Keyring = Keyring::Alice;
 const POOL_A: PoolId = 23;
 const EXPECTED_POOL_BALANCE: Balance = usd6(1_000_000);
 const REDEEM_AMOUNT: Balance = EXPECTED_POOL_BALANCE / 2;
+const HOLD_AMOUNT: Balance = EXPECTED_POOL_BALANCE / 10;
 const FOR_FEES: Balance = cfg(1);
 
 mod common {
@@ -157,6 +159,27 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 			invest_id,
 			InvestmentPortfolio::<Balance>::new()
 				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT)
+		)]
+	);
+
+	// Simulate holding
+	env.parachain_state_mut(|| {
+		<pallet_restricted_tokens::Pallet<T> as MutateHold<AccountId>>::hold(
+			invest_id.into(),
+			&(),
+			&INVESTOR.id(),
+			HOLD_AMOUNT,
+		)
+		.unwrap();
+	});
+	investment_portfolio = env.parachain_state_mut(|| T::Api::investment_portfolio(INVESTOR.id()));
+	assert_eq!(
+		investment_portfolio,
+		vec![(
+			invest_id,
+			InvestmentPortfolio::<Balance>::new()
+				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT - HOLD_AMOUNT)
+				.with_reserved_tranche_tokens(HOLD_AMOUNT)
 		)]
 	);
 }
