@@ -41,7 +41,7 @@ FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
 
 # ===== SECOND STAGE ======
 # ToDo: create a secure image as a base for the binary
-FROM --platform=linux/amd64 docker.io/library/ubuntu:latest
+FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 
 	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
 		io.centrifuge.image.vendor="Centrifuge" \

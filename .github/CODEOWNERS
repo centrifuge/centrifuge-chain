@@ -2,8 +2,8 @@
 
 ## Changes to .github
 .github/* @mustermeiszer @NunoAlexandre @lemunozm
-.github/workflows @gpmayorga
-.github/actions @gpmayorga
+.github/workflows @gpmayorga @wischli
+.github/actions @gpmayorga @wischli
 
 ## Changes to ci
 ci/* @mustermeiszer @NunoAlexandre @lemunozm
