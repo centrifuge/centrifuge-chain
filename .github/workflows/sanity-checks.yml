@@ -1,10 +1,7 @@
 on:
   # push:
-  #   branches: [main, 'release-v**']
+  #   branches: [main]
   pull_request:
-    # paths:
-    #   - 'src/'
-    #   - '.github/workflows/sanity-checks.yml'
 name: Sanity checks
 concurrency:
   group: 'tests-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -15,7 +12,7 @@ permissions:
 jobs:
   test-n-lint:
     name: ${{ matrix.target }}
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest-8-cores
     strategy:
       matrix:
         target: [test-general, test-integration,
@@ -40,10 +37,10 @@ jobs:
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}
-    runs-on: ubuntu-latest #r-4-cores
+    runs-on: ubuntu-latest #-4-cores
     strategy:
       matrix:
-        runtime: [development, altair, centrifuge]
+        runtime: [altair, centrifuge]
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
