@@ -143,8 +143,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 
 [features]
 default = ["std"]
-instant-voting = []
-fast-runtime = []
+
 std = [
   "codec/std",
   "getrandom/std",
@@ -447,3 +446,8 @@ on-chain-release-build = [
   "sp-api/disable-logging",
   "runtime-common/on-chain-release-build",
 ]
+
+# Set timing constants (e.g. session period) to faster versions to speed up testing.
+fast-runtime = []
+
+instant-voting = []
