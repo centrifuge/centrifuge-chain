@@ -65,6 +65,8 @@ where
 	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		let account_prefix = frame_system::Account::<T>::final_prefix();
 
+		let mut total_count = 0;
+
 		let mut previous_key = account_prefix.to_vec();
 
 		while let Some(next) = sp_io::storage::next_key(&previous_key) {
@@ -108,7 +110,11 @@ where
 				}
 				None => log::error!("Balances Migration - Error decoding new data"),
 			};
+
+			total_count += 1;
 		}
+
+		log::info!("Balances Migration - Total accounts - {}", total_count);
 
 		// CHECKING DECODING OLD DATASTRUCTURE WITH NEW LAYOUT WORKS:
 		// * Fetch storage from chain with NEW data structure
