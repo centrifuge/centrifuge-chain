@@ -8,6 +8,7 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+hex = { version = "0.4.3", default-features = false }
 hex-literal = { version = "0.3.4", default-features = false }
 serde = { version = "1.0.119" }
 smallvec = "1.6.1"
@@ -36,6 +37,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 
 # Frontier dependencies
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -98,6 +100,7 @@ std = [
   "orml-asset-registry/std",
   "orml-oracle/std",
   "orml-traits/std",
+  "orml-tokens/std",
   "pallet-anchors/std",
   "pallet-authorship/std",
   "pallet-balances/std",
@@ -143,6 +146,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
@@ -176,6 +180,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
   "orml-oracle/try-runtime",
+  "orml-tokens/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",

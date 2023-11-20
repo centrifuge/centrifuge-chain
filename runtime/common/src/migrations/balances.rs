@@ -15,8 +15,10 @@ use frame_support::{
 	dispatch::TypeInfo, storage::unhashed, traits::OnRuntimeUpgrade, weights::Weight, RuntimeDebug,
 	StoragePrefixedMap,
 };
-use sp_arithmetic::traits::EnsureAdd;
+use frame_system::AccountInfo;
+use sp_arithmetic::traits::{EnsureAdd, Zero};
 use sp_runtime::DispatchError;
+use sp_std::prelude::Vec;
 
 /// All balance information for an account.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -45,34 +47,67 @@ pub struct OldAccountData<Balance> {
 	pub fee_frozen: Balance,
 }
 
+pub type OldAccountInfo<Index, Balance> = AccountInfo<Index, OldAccountData<Balance>>;
+
 pub type NewAccountData<Balance> = pallet_balances::AccountData<Balance>;
 
-pub struct Migration<T: pallet_balances::Config>(sp_std::marker::PhantomData<T>);
+pub type NewAccountInfo<Index, Balance> = AccountInfo<Index, NewAccountData<Balance>>;
+
+pub struct Migration<T: pallet_balances::Config + frame_system::Config>(
+	sp_std::marker::PhantomData<T>,
+);
 
 impl<T> OnRuntimeUpgrade for Migration<T>
 where
-	T: pallet_balances::Config,
+	T: pallet_balances::Config + frame_system::Config,
 {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-		// Logic similar to the one found in StoragePrefixedMap::translate_values.
+		let account_prefix = frame_system::Account::<T>::final_prefix();
 
-		let account_data_prefix = pallet_balances::Account::<T>::final_prefix();
+		let mut previous_key = account_prefix.to_vec();
 
-		let mut previous_key = account_data_prefix.clone().to_vec();
-
-		while let Some(next) =
-			sp_io::storage::next_key(&previous_key).filter(|n| n.starts_with(&account_data_prefix))
-		{
+		while let Some(next) = sp_io::storage::next_key(&previous_key) {
 			previous_key = next;
 
-			let old_account_data = unhashed::get::<OldAccountData<T::Balance>>(&previous_key)
-				.ok_or_else(|| DispatchError::Other("old account data decoding"))?;
+			log::info!(
+				"Balances Migration - Processing account key - {}",
+				hex::encode(previous_key.clone())
+			);
 
-			let new_account_data = Self::try_convert_account_data(old_account_data)
-				.map_err(|_| DispatchError::Other("old account data conversion"))?;
+			/// The difference between the old and new account data structures
+			/// is the last field of the struct, which is:
+			///
+			/// Old - `free_frozen` - T::Balance
+			/// New - `flags` - u128
+			///
+			/// During this check, we confirm that both the old and the new can
+			/// be successfully decoded given the raw data found in storage, and
+			/// we add specific checks for each version:
+			///
+			/// Old - confirm that `fee_frozen` is zero, as it shouldn't have
+			/// been used so far
+			/// New - confirm that `flags` does not have the
+			/// new logic flag set
+			match unhashed::get::<OldAccountInfo<T::Index, T::Balance>>(&previous_key) {
+				Some(old) => {
+					if !old.data.fee_frozen.is_zero() {
+						log::warn!("Balances Migration - Old account data with non zero frozen fee")
+					}
+				}
+				None => log::error!("Balances Migration - Error decoding old data"),
+			};
 
-			unhashed::put::<NewAccountData<T::Balance>>(&previous_key, &new_account_data)
+			match unhashed::get::<NewAccountInfo<T::Index, T::Balance>>(&previous_key) {
+				Some(new) => {
+					if new.data.flags.is_new_logic() {
+						log::warn!(
+							"Balances Migration - New account data with new logic flag enabled"
+						)
+					}
+				}
+				None => log::error!("Balances Migration - Error decoding new data"),
+			};
 		}
 
 		// CHECKING DECODING OLD DATASTRUCTURE WITH NEW LAYOUT WORKS:
@@ -84,7 +119,7 @@ where
 		// * Research whether we need to migrate locks in orml (maybe first check if
 		//   there exist any. ^^
 
-		let accounts = frame_system::Account::<T>::full_storage_key;
+		// let accounts = frame_system::Account::<T>::full_storage_key;
 
 		Ok(Vec::new())
 	}
@@ -99,29 +134,5 @@ where
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
 		Ok(())
-	}
-}
-
-impl<T> Migration<T>
-where
-	T: pallet_balances::Config,
-{
-	fn try_convert_account_data(
-		old_account_data: OldAccountData<T::Balance>,
-	) -> Result<NewAccountData<T::Balance>, ()> {
-		// TODO(cdamian): Should we use saturated add?
-		let total_frozen = old_account_data
-			.fee_frozen
-			.ensure_add(old_account_data.misc_frozen)
-			.map_err(|_| ())?;
-
-		let new_account_data = NewAccountData::<T::Balance> {
-			free: old_account_data.free,
-			reserved: old_account_data.reserved,
-			frozen: total_frozen,
-			flags: Default::default(),
-		};
-
-		Ok(new_account_data)
 	}
 }
