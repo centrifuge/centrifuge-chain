@@ -10,7 +10,7 @@ on:
       - ".github/workflows/build-docker.yml"
       - "docker/centrifuge-chain/Dockerfile"
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.ref == 'refs/heads/main' && github.sha || 'false' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
   cancel-in-progress: true
 jobs:
   docker:
@@ -72,7 +72,7 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          push: ${{ github.ref == 'refs/heads/main' && true || false }}
+          push: ${{ github.event_name == 'pull_request' && false || true }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
