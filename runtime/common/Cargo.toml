@@ -14,6 +14,7 @@ serde = { workspace = true }
 smallvec = { workspace = true }
 codec = { package = "parity-scale-codec", workspace = true }
 scale-info = { workspace = true }
+log = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -23,15 +24,14 @@ sp-arithmetic = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+sp-io = { workspace = true }
 
 polkadot-parachain = { workspace = true }
 xcm = { workspace = true }
 xcm-executor = { workspace = true }
 
-# Orml
 orml-traits = { workspace = true }
 
-# Frontier
 pallet-evm-precompile-blake2 = { workspace = true }
 pallet-evm-precompile-bn128 = { workspace = true }
 pallet-evm-precompile-dispatch = { workspace = true }
@@ -39,7 +39,6 @@ pallet-evm-precompile-modexp = { workspace = true }
 pallet-evm-precompile-sha3fips = { workspace = true }
 pallet-evm-precompile-simple = { workspace = true }
 
-# Moonbeam
 xcm-primitives = { workspace = true }
 
 # Local
@@ -47,10 +46,6 @@ cfg-primitives = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 cfg-utils = { workspace = true }
-
-# Used for migrations
-log = { workspace = true }
-sp-io = { workspace = true }
 
 # Pallets in the export list
 axelar-gateway-precompile = { workspace = true }
@@ -128,15 +123,12 @@ cfg-mocks = { workspace = true }
 [features]
 default = ["std"]
 std = [
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "cfg-utils/std",
-  "cfg-mocks/std",
   "codec/std",
+  "log/std",
+
+  # Substrate related
   "frame-support/std",
   "frame-system/std",
-  "log/std",
   "orml-traits/std",
   "polkadot-parachain/std",
   "scale-info/std",
@@ -151,6 +143,13 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
+
+  # Locals
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-utils/std",
+  "cfg-mocks/std",
 
   # Pallet exporting list
   "axelar-gateway-precompile/std",
@@ -223,16 +222,19 @@ std = [
   "parachain-info/std",
 ]
 runtime-benchmarks = [
+  # Substrate related
   "sp-runtime/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+
+  # Locals
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
 
   # Pallet exporting list
   "axelar-gateway-precompile/runtime-benchmarks",
