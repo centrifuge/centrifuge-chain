@@ -1,184 +1,213 @@
 [package]
 name = "centrifuge-runtime"
 version = "0.10.23"
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
 build = "build.rs"
-license = "LGPL-3.0"
-homepage = "https://centrifuge.io/"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
-# third-party dependencies
-codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.3.4", default-features = false }
-log = { version = "0.4.17", default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.119", optional = true }
-static_assertions = "1.1.0"
+codec = { package = "parity-scale-codec", workspace = true }
+getrandom = { workspace = true }
+hex = { workspace = true }
+hex-literal = { workspace = true, optional = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
+static_assertions = { workspace = true }
+log = { workspace = true }
 
-# parachain
-cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-cumulus-pallet-xcm = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-primitives-timestamp = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-cumulus-primitives-utility = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+sp-api = { workspace = true }
+sp-runtime = { workspace = true }
+sp-block-builder = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sp-core = { workspace = true }
+sp-inherents = { workspace = true }
+sp-io = { workspace = true }
+sp-offchain = { workspace = true }
+sp-session = { workspace = true }
+sp-std = { workspace = true }
+sp-transaction-pool = { workspace = true }
+sp-version = { workspace = true }
 
-# polkadot dependencies
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-system-rpc-runtime-api = { workspace = true }
+frame-system-benchmarking = { workspace = true, optional = true } # For benchmarking
+frame-executive = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true } # For benchmarking
+frame-try-runtime = { workspace = true, optional = true } # For try-runtime
 
-# primitives
-sp-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-inherents = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-offchain = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-session = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-version = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-primitives-core = { workspace = true }
+cumulus-primitives-timestamp = { workspace = true }
+cumulus-primitives-utility = { workspace = true }
+cumulus-pallet-session-benchmarking = { workspace = true, optional = true } # For benchmarking
 
-# frame dependencies
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = ["tuples-96"], branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-try-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-collective = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-democracy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-identity = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-membership = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-multisig = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-preimage = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-proxy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-scheduler = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-session = { git = "https://github.com/paritytech/substrate", default-features = false, features = ["historical"], branch = "polkadot-v0.9.43" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-utility = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true }
+polkadot-runtime-common = { workspace = true }
+polkadot-parachain = { workspace = true }
 
-# Orml pallets
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
+xcm = { workspace = true }
+xcm-builder = { workspace = true }
+xcm-executor = { workspace = true }
+xcm-primitives = { workspace = true }
 
-# frontier pallets
-fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-chain-id = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+orml-traits = { workspace = true }
+orml-xcm-support = { workspace = true }
 
-# Our pallets and modules
-axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-liquidity-pools-gateway-routers = { path = "../../pallets/liquidity-pools-gateway/routers", default-features = false }
-pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
-pallet-bridge = { path = "../../pallets/bridge", default-features = false }
-pallet-claims = { path = "../../pallets/claims", default-features = false }
-pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
-pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
-pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
-pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
-pallet-ethereum-transaction = { path = "../../pallets/ethereum-transaction", default-features = false }
-pallet-fees = { path = "../../pallets/fees", default-features = false }
-pallet-foreign-investments = { path = "../../pallets/foreign-investments", default-features = false }
-pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
-pallet-investments = { path = "../../pallets/investments", default-features = false }
-pallet-keystore = { path = "../../pallets/keystore", default-features = false }
-pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
-pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
-pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
-pallet-loans = { path = "../../pallets/loans", default-features = false }
-pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
-pallet-nft = { path = "../../pallets/nft", default-features = false }
-pallet-order-book = { path = "../../pallets/order-book", default-features = false }
-pallet-permissions = { path = "../../pallets/permissions", default-features = false }
-pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
-pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
-pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
-pallet-rewards = { path = "../../pallets/rewards", default-features = false }
-runtime-common = { path = "../common", default-features = false }
+fp-rpc = { workspace = true }
+fp-self-contained = { workspace = true }
 
-# LiquidityPools 3rd-party dependencies
-moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
-pallet-xcm-transactor = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+moonbeam-relay-encoder = { workspace = true }
 
-# bridge pallets
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.43" }
+# Locals
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+runtime-common = { workspace = true }
+liquidity-pools-gateway-routers = { workspace = true }
+
+# Pallet list
+axelar-gateway-precompile = { workspace = true }
+chainbridge = {workspace = true }
+cumulus-pallet-aura-ext = { workspace = true }
+cumulus-pallet-dmp-queue = { workspace = true }
+cumulus-pallet-parachain-system = { workspace = true }
+cumulus-pallet-xcm = { workspace = true }
+cumulus-pallet-xcmp-queue = { workspace = true }
+orml-asset-registry = { workspace = true }
+orml-oracle = { workspace = true }
+orml-tokens = { workspace = true }
+orml-xcm = { workspace = true }
+orml-xtokens = { workspace = true }
+pallet-anchors = { workspace = true }
+pallet-aura = { workspace = true }
+pallet-authorship = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-base-fee = { workspace = true }
+pallet-block-rewards = { workspace = true }
+pallet-bridge = { workspace = true }
+pallet-claims = { workspace = true }
+pallet-collator-allowlist = { workspace = true }
+pallet-collator-selection = { workspace = true }
+pallet-collective = { workspace = true }
+pallet-crowdloan-claim = { workspace = true }
+pallet-crowdloan-reward = { workspace = true }
+pallet-data-collector = { workspace = true }
+pallet-democracy = { workspace = true }
+pallet-elections-phragmen = { workspace = true }
+pallet-ethereum = { workspace = true }
+pallet-ethereum-transaction = { workspace = true }
+pallet-evm = { workspace = true }
+pallet-evm-chain-id = { workspace = true }
+pallet-fees = { workspace = true }
+pallet-foreign-investments = { workspace = true }
+pallet-identity = { workspace = true }
+pallet-interest-accrual = { workspace = true }
+pallet-investments = { workspace = true }
+pallet-keystore = { workspace = true }
+pallet-liquidity-pools = { workspace = true }
+pallet-liquidity-pools-gateway = { workspace = true }
+pallet-liquidity-rewards = { workspace = true }
+pallet-loans = { workspace = true }
+pallet-membership = { workspace = true }
+pallet-migration-manager = { workspace = true }
+pallet-multisig = { workspace = true }
+pallet-nft = { workspace = true }
+pallet-nft-sales = { workspace = true }
+pallet-order-book = { workspace = true }
+pallet-permissions = { workspace = true }
+pallet-pool-registry = { workspace = true }
+pallet-pool-system = { workspace = true }
+pallet-preimage = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-restricted-tokens = { workspace = true }
+pallet-rewards = { workspace = true }
+pallet-scheduler = { workspace = true }
+pallet-session = { workspace = true }
+pallet-sudo = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-transaction-payment = { workspace = true }
+pallet-transfer-allowlist = { workspace = true }
+pallet-treasury = { workspace = true }
+pallet-uniques = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-vesting = { workspace = true }
+pallet-xcm = { workspace = true }
+pallet-xcm-transactor = { workspace = true }
+parachain-info = { workspace = true }
 
 [build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+substrate-wasm-builder = { workspace = true }
 
 [features]
 default = ["std"]
+
 std = [
-  "axelar-gateway-precompile/std",
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "chainbridge/std",
   "codec/std",
-  "cumulus-pallet-aura-ext/std",
-  "cumulus-pallet-dmp-queue/std",
-  "cumulus-pallet-parachain-system/std",
-  "cumulus-pallet-session-benchmarking/std",
-  "cumulus-pallet-xcm/std",
-  "cumulus-pallet-xcmp-queue/std",
+  "getrandom/std",
+  "hex/std",
+  "scale-info/std",
+  "serde/std",
+  "log/std",
+
+  # Substrate related
+  "sp-api/std",
+  "sp-runtime/std",
+  "sp-block-builder/std",
+  "sp-consensus-aura/std",
+  "sp-core/std",
+  "sp-inherents/std",
+  "sp-io/std",
+  "sp-offchain/std",
+  "sp-session/std",
+  "sp-std/std",
+  "sp-transaction-pool/std",
+  "sp-version/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-system-rpc-runtime-api/std",
+  "frame-executive/std",
+  "frame-try-runtime?/std",
+  "frame-system-benchmarking?/std",
+  "frame-benchmarking?/std",
   "cumulus-primitives-core/std",
   "cumulus-primitives-timestamp/std",
   "cumulus-primitives-utility/std",
+  "cumulus-pallet-session-benchmarking?/std",
+  "xcm/std",
+  "xcm-builder/std",
+  "xcm-executor/std",
+  "xcm-primitives/std",
+  "orml-traits/std",
+  "orml-xcm-support/std",
   "fp-rpc/std",
   "fp-self-contained/std",
-  "frame-benchmarking/std",
-  "frame-executive/std",
-  "frame-support/std",
-
-  "frame-system-rpc-runtime-api/std",
-  "frame-system/std",
-  "frame-try-runtime/std",
-  "liquidity-pools-gateway-routers/std",
-  "log/std",
   "moonbeam-relay-encoder/std",
+  "pallet-transaction-payment-rpc-runtime-api/std",
+  "polkadot-runtime-common/std",
+  "polkadot-parachain/std",
+
+  # Locals
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "runtime-common/std",
+  "liquidity-pools-gateway-routers/std",
+
+  # Pallet list
+  "axelar-gateway-precompile/std",
+  "chainbridge/std",
+  "cumulus-pallet-aura-ext/std",
+  "cumulus-pallet-dmp-queue/std",
+  "cumulus-pallet-parachain-system/std",
+  "cumulus-pallet-xcm/std",
+  "cumulus-pallet-xcmp-queue/std",
   "orml-asset-registry/std",
   "orml-oracle/std",
   "orml-tokens/std",
-  "orml-traits/std",
-  "orml-xcm-support/std",
   "orml-xcm/std",
   "orml-xtokens/std",
   "pallet-anchors/std",
@@ -197,25 +226,25 @@ std = [
   "pallet-data-collector/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
-  "pallet-ethereum-transaction/std",
   "pallet-ethereum/std",
-  "pallet-evm-chain-id/std",
-  "pallet-evm-precompile-dispatch/std",
+  "pallet-ethereum-transaction/std",
   "pallet-evm/std",
+  "pallet-evm-chain-id/std",
   "pallet-fees/std",
   "pallet-foreign-investments/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
   "pallet-keystore/std",
-  "pallet-liquidity-pools-gateway/std",
   "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
   "pallet-liquidity-rewards/std",
   "pallet-loans/std",
   "pallet-membership/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
   "pallet-nft/std",
+  "pallet-nft-sales/std",
   "pallet-order-book/std",
   "pallet-permissions/std",
   "pallet-pool-registry/std",
@@ -226,53 +255,48 @@ std = [
   "pallet-rewards/std",
   "pallet-scheduler/std",
   "pallet-session/std",
+  "pallet-sudo/std",
   "pallet-timestamp/std",
-  "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
+  "pallet-transfer-allowlist/std",
   "pallet-treasury/std",
   "pallet-uniques/std",
   "pallet-utility/std",
   "pallet-vesting/std",
-  "pallet-xcm-transactor/std",
   "pallet-xcm/std",
+  "pallet-xcm-transactor/std",
   "parachain-info/std",
-  "polkadot-parachain/std",
-  "polkadot-runtime-common/std",
-  "runtime-common/std",
-  "scale-info/std",
-  "serde",
-  "sp-api/std",
-  "sp-block-builder/std",
-  "sp-consensus-aura/std",
-  "sp-core/std",
-  "sp-inherents/std",
-  "sp-io/std",
-  "sp-offchain/std",
-  "sp-runtime/std",
-  "sp-session/std",
-  "sp-std/std",
-  "sp-transaction-pool/std",
-  "sp-version/std",
-  "xcm-builder/std",
-  "xcm-executor/std",
-  "xcm-primitives/std",
-  "xcm/std",
 ]
 
 runtime-benchmarks = [
-  "axelar-gateway-precompile/runtime-benchmarks",
+  # Enabling optional
+  "hex-literal",
+  "frame-system-benchmarking/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
+
+  # Substrate related
+  "sp-runtime/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "xcm-builder/runtime-benchmarks",
+  "xcm-executor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+  "polkadot-runtime-common/runtime-benchmarks",
+  "polkadot-parachain/runtime-benchmarks",
+
+  # Locals
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "runtime-common/runtime-benchmarks",
+  "liquidity-pools-gateway-routers/runtime-benchmarks",
+
+  # Pallet list
+  "axelar-gateway-precompile/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
-  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system-benchmarking/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "liquidity-pools-gateway-routers/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "orml-tokens/runtime-benchmarks",
   "orml-xtokens/runtime-benchmarks",
@@ -289,8 +313,8 @@ runtime-benchmarks = [
   "pallet-data-collector/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
-  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-foreign-investments/runtime-benchmarks",
@@ -298,14 +322,15 @@ runtime-benchmarks = [
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-keystore/runtime-benchmarks",
-  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
   "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-membership/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
   "pallet-nft/runtime-benchmarks",
+  "pallet-nft-sales/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
@@ -315,39 +340,44 @@ runtime-benchmarks = [
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
+  "pallet-sudo/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
+  "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
-  "pallet-xcm-transactor/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
-  "polkadot-parachain/runtime-benchmarks",
-  "polkadot-runtime-common/runtime-benchmarks",
-  "runtime-common/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "xcm-builder/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
 ]
 
 try-runtime = [
-  "axelar-gateway-precompile/try-runtime",
+  # Enabling optional
+  "frame-try-runtime/try-runtime",
+
+  # Substrate related
+  "sp-runtime/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "frame-executive/try-runtime",
+  "fp-self-contained/try-runtime",
+  "polkadot-runtime-common/try-runtime",
+
+  # Locals
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
+  "runtime-common/try-runtime",
+  "liquidity-pools-gateway-routers/try-runtime",
+
+  # Pallet list
+  "axelar-gateway-precompile/try-runtime",
   "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
-  "fp-self-contained/try-runtime",
-  "frame-executive/try-runtime",
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "frame-try-runtime",
-  "liquidity-pools-gateway-routers/try-runtime",
   "orml-asset-registry/try-runtime",
   "orml-oracle/try-runtime",
   "orml-tokens/try-runtime",
@@ -369,24 +399,25 @@ try-runtime = [
   "pallet-data-collector/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
-  "pallet-ethereum-transaction/try-runtime",
   "pallet-ethereum/try-runtime",
-  "pallet-evm-chain-id/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
   "pallet-evm/try-runtime",
+  "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-foreign-investments/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
   "pallet-keystore/try-runtime",
-  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
   "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-membership/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
+  "pallet-nft-sales/try-runtime",
   "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-pool-registry/try-runtime",
@@ -397,18 +428,17 @@ try-runtime = [
   "pallet-rewards/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
+  "pallet-sudo/try-runtime",
   "pallet-timestamp/try-runtime",
   "pallet-transaction-payment/try-runtime",
+  "pallet-transfer-allowlist/try-runtime",
   "pallet-treasury/try-runtime",
   "pallet-uniques/try-runtime",
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
-  "pallet-xcm-transactor/try-runtime",
   "pallet-xcm/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
   "parachain-info/try-runtime",
-  "polkadot-runtime-common/try-runtime",
-  "runtime-common/try-runtime",
-  "sp-runtime/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
@@ -416,6 +446,7 @@ try-runtime = [
 # to make it smaller like logging for example.
 on-chain-release-build = [
   "sp-api/disable-logging",
+  "runtime-common/on-chain-release-build",
 ]
 
 # Set timing constants (e.g. session period) to faster versions to speed up testing.
