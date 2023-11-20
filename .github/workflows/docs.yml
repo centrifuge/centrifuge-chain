@@ -47,6 +47,7 @@ jobs:
           path: ./target/doc
 
   deploy-docs:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write      # to deploy to Pages
@@ -57,6 +58,5 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy Docs
-        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v2
