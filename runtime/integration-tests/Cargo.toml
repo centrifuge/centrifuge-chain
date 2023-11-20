@@ -140,7 +140,6 @@ pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", bra
 [features]
 default = [
   "runtime-development",
-  "development-runtime/instant-voting",
 ]
 fast-runtime = ["development-runtime/fast-runtime"]
 std = [

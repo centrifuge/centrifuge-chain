@@ -229,11 +229,14 @@ cfg-traits = { path = "libs/traits", default-features = false }
 cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 
-# runtimes
+# Runtimes
 runtime-common = { path = "runtime/common", default-features = false }
 
 # Testing
 cfg-mocks = { path = "libs/mocks", default-features = false }
+
+# Build dependencies
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 
 [dependencies]
 # third-party dependencies

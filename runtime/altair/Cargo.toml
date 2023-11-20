@@ -140,7 +140,7 @@ pallet-xcm-transactor = { workspace = true }
 parachain-info = { workspace = true }
 
 [build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+substrate-wasm-builder = { workspace = true }
 
 [features]
 default = ["std"]
