@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::or_fun_call)]
-#![feature(thread_local)]
 
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, Seconds, TimeAsSecs};
 use cfg_types::{
