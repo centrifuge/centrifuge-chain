@@ -71,8 +71,8 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 		decimals: u8,
-		/// The RestrictionManager implementation to be used for this tranche token on the domain it
-		/// will be added and subsequently deployed in.
+		/// The RestrictionManager implementation to be used for this tranche
+		/// token on the domain it will be added and subsequently deployed in.
 		restriction_set: u8,
 	},
 	/// Update the price of a tranche token on the target domain.
