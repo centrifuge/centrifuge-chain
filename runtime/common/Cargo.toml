@@ -71,6 +71,7 @@ pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-featu
 pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 
 # Used for migrations
 log = "0.4"
@@ -119,6 +120,7 @@ std = [
   "pallet-liquidity-pools/std",
   "pallet-loans/std",
   "pallet-pool-system/std",
+  "pallet-restricted-tokens/std",
   "pallet-treasury/std",
   "parachain-info/std",
   "polkadot-parachain/std",
@@ -156,6 +158,7 @@ runtime-benchmarks = [
   "pallet-liquidity-pools/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
+  "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
@@ -193,6 +196,7 @@ try-runtime = [
   "pallet-liquidity-pools/try-runtime",
   "pallet-loans/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-restricted-tokens/try-runtime",
   "pallet-treasury/try-runtime",
   "parachain-info/try-runtime",
   "sp-runtime/try-runtime",

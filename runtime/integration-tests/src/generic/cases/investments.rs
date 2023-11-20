@@ -1,6 +1,10 @@
 use cfg_primitives::{AccountId, Balance, PoolId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
-use cfg_types::{investments::InvestmentPortfolio, permissions::PoolRole, tokens::TrancheCurrency};
+use cfg_types::{
+	investments::InvestmentPortfolio,
+	permissions::PoolRole,
+	tokens::{CurrencyId, TrancheCurrency},
+};
 use frame_support::traits::fungibles::MutateHold;
 use runtime_common::apis::{
 	runtime_decl_for_investments_api::InvestmentsApiV1, runtime_decl_for_pools_api::PoolsApiV1,
@@ -84,7 +88,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_pending_invest_currency(EXPECTED_POOL_BALANCE)
 		)]
 	);
@@ -99,7 +103,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_claimable_tranche_tokens(EXPECTED_POOL_BALANCE)
 		)]
 	);
@@ -113,7 +117,8 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new().with_free_tranche_tokens(EXPECTED_POOL_BALANCE)
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
+				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE)
 		)]
 	);
 
@@ -126,7 +131,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT)
 				.with_pending_redeem_tranche_tokens(REDEEM_AMOUNT)
 		)]
@@ -142,7 +147,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT)
 				.with_claimable_currency(REDEEM_AMOUNT)
 		)]
@@ -157,7 +162,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT)
 		)]
 	);
@@ -177,7 +182,7 @@ fn investment_portfolio_single_tranche<T: Runtime>() {
 		investment_portfolio,
 		vec![(
 			invest_id,
-			InvestmentPortfolio::<Balance>::new()
+			InvestmentPortfolio::<Balance, CurrencyId>::new(Usd6::ID)
 				.with_free_tranche_tokens(EXPECTED_POOL_BALANCE - REDEEM_AMOUNT - HOLD_AMOUNT)
 				.with_reserved_tranche_tokens(HOLD_AMOUNT)
 		)]

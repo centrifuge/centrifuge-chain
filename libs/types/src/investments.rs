@@ -244,14 +244,16 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 /// claimable pool currency as well as tranche tokens.
 #[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 
-pub struct InvestmentPortfolio<Balance> {
+pub struct InvestmentPortfolio<Balance, CurrencyId> {
+	/// The identifier of the pool currency
+	pub pool_currency_id: CurrencyId,
 	/// The unprocessed invest order amount in pool currency
 	pub pending_invest_currency: Balance,
 	/// The amount of tranche tokens which can be collected for an invest order
 	pub claimable_tranche_tokens: Balance,
 	/// The amount of tranche tokens which can be transferred
 	pub free_tranche_tokens: Balance,
-	/// The amount of tranche tokens which can not be used at all and get
+	/// The amount of tranche tokens which can not be used at all and could get
 	/// slashed
 	pub reserved_tranche_tokens: Balance,
 	/// The unprocessed redeem order amount in tranche tokens
@@ -260,9 +262,17 @@ pub struct InvestmentPortfolio<Balance> {
 	pub claimable_currency: Balance,
 }
 
-impl<Balance: Default> InvestmentPortfolio<Balance> {
-	pub fn new() -> Self {
-		Default::default()
+impl<Balance: Default, CurrencyId> InvestmentPortfolio<Balance, CurrencyId> {
+	pub fn new(pool_currency_id: CurrencyId) -> Self {
+		Self {
+			pool_currency_id,
+			pending_invest_currency: Balance::default(),
+			claimable_tranche_tokens: Balance::default(),
+			free_tranche_tokens: Balance::default(),
+			reserved_tranche_tokens: Balance::default(),
+			pending_redeem_tranche_tokens: Balance::default(),
+			claimable_currency: Balance::default(),
+		}
 	}
 
 	pub fn with_pending_invest_currency(mut self, amount: Balance) -> Self {

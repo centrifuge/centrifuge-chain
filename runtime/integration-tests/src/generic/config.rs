@@ -177,7 +177,7 @@ pub trait Runtime:
 			Self::Block,
 			AccountId,
 			TrancheCurrency,
-			InvestmentPortfolio<Balance>,
+			InvestmentPortfolio<Balance, CurrencyId>,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;
