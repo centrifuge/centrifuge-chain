@@ -11409,6 +11409,7 @@ dependencies = [
  "pallet-liquidity-pools-gateway",
  "pallet-loans",
  "pallet-pool-system",
+ "pallet-restricted-tokens",
  "pallet-treasury",
  "parachain-info",
  "parity-scale-codec 3.6.5",

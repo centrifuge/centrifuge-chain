@@ -1,0 +1,42 @@
+name: Install SCcache w/ GCloud bucket
+description: Configure Scache to use a Gcloud bucket through workload identity
+
+inputs:
+  GWIP:
+    description: Google Workflow Identity provider
+    required: true
+  GSA:
+    description: Google Service Account
+    required: true
+runs:
+  using: composite
+  steps:
+
+    - name: Auth gcloud
+      id: gauth
+      uses: google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033 # @v1.1.1
+      with:
+        workload_identity_provider: ${{ inputs.GWIP }}
+        service_account: ${{ inputs.GSA }}
+
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e #v0.0.3
+
+    - name: set GCS bucket sccache variables
+      shell: bash
+      run: |
+        echo "SCCACHE_GCS_BUCKET=centrifuge-chain-sccache-backend" >> $GITHUB_ENV
+        echo "SCCACHE_GCS_RW_MODE=READ_WRITE" >> $GITHUB_ENV
+        # The gauth step should already take care of this:
+        # echo "SCCACHE_GCS_KEY_PATH=${{ steps.gauth.credentials_file_path }}" >> $GITHUB_ENV        
+
+    - name: setup Rust sccache wrapper
+      if: ${{ inputs.cache == 'enabled' }}
+      shell: bash
+      run: |
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+        echo "CARGO_INCREMENTAL=false" >> $GITHUB_ENV # https://github.com/mozilla/sccache#rust
+    
+    - name: Run sccache stat for check
+      shell: bash
+      run: ${SCCACHE_PATH} --show-stats      

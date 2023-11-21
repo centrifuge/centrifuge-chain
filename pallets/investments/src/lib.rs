@@ -15,9 +15,7 @@
 
 use cfg_primitives::OrderId;
 use cfg_traits::{
-	investments::{
-		Investment, InvestmentAccountant, InvestmentCollector, InvestmentsPortfolio, OrderManager,
-	},
+	investments::{Investment, InvestmentAccountant, InvestmentCollector, OrderManager},
 	PreConditions, StatusNotificationHook,
 };
 use cfg_types::{
@@ -47,6 +45,7 @@ use sp_std::{
 	convert::TryInto,
 	vec::Vec,
 };
+
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -59,12 +58,6 @@ mod tests;
 
 type CurrencyOf<T> =
 	<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
-
-type AccountInvestmentPortfolioOf<T> = Vec<(
-	<T as Config>::InvestmentId,
-	CurrencyOf<T>,
-	<T as Config>::Amount,
-)>;
 
 /// The enum we parse to `PreConditions` so the runtime
 /// can make an educated decision about this investment
@@ -1100,37 +1093,6 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> InvestmentsPortfolio<T::AccountId> for Pallet<T> {
-	type AccountInvestmentPortfolio = AccountInvestmentPortfolioOf<T>;
-	type Balance = T::Amount;
-	type CurrencyId = CurrencyOf<T>;
-	type Error = DispatchError;
-	type InvestmentId = T::InvestmentId;
-
-	/// Get the payment currency for an investment.
-	fn get_investment_currency_id(
-		investment_id: T::InvestmentId,
-	) -> Result<CurrencyOf<T>, DispatchError> {
-		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		Ok(info.payment_currency)
-	}
-
-	/// Get the investments and associated payment currencies and balances for
-	/// an account.
-	fn get_account_investments_currency(
-		who: &T::AccountId,
-	) -> Result<Self::AccountInvestmentPortfolio, DispatchError> {
-		let mut investments_currency: Vec<(Self::InvestmentId, Self::CurrencyId, Self::Balance)> =
-			Vec::new();
-		<InvestOrders<T>>::iter_key_prefix(who).try_for_each(|i| {
-			let currency = Self::get_investment_currency_id(i)?;
-			let balance = T::Accountant::balance(i, who);
-			investments_currency.push((i, currency, balance));
-			Ok::<(), DispatchError>(())
-		})?;
-		Ok(investments_currency)
-	}
-}
 impl<T: Config> Investment<T::AccountId> for Pallet<T> {
 	type Amount = T::Amount;
 	type CurrencyId = CurrencyOf<T>;

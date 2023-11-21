@@ -38,3 +38,5 @@ Temporary Items
 # Node Modules
 **/node_modules
 
+# Vistual studio
+.vscode

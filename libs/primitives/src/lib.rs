@@ -222,7 +222,7 @@ pub mod constants {
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
 	pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0)
 		.saturating_div(2)
-		.set_proof_size(MAX_POV_SIZE as u64);
+		.set_proof_size(MAX_POV_SIZE);
 
 	pub const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
 	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
