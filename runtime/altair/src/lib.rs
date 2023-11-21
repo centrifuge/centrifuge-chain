@@ -31,6 +31,7 @@ use cfg_types::{
 	fee_keys::FeeKey,
 	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
+	investments::InvestmentPortfolio,
 	oracles::OracleKey,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	time::TimeProvider,
@@ -2164,9 +2165,9 @@ impl_runtime_apis! {
 
 
 	// Investment Runtime APIs
-	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, CurrencyId, PoolId, Balance> for Runtime {
-		fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, TrancheCurrency, Balance)>> {
-			runtime_common::investment_portfolios::get_portfolios::<Runtime, AccountId, TrancheId, Investments, TrancheCurrency, CurrencyId, PoolId, Balance>(account_id)
+	impl runtime_common::apis::InvestmentsApi<Block, AccountId, TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>> for Runtime {
+		fn investment_portfolio(account_id: AccountId) -> Vec<(TrancheCurrency, InvestmentPortfolio<Balance, CurrencyId>)> {
+			runtime_common::investment_portfolios::get_account_portfolio::<Runtime, PoolSystem>(account_id)
 		}
 	}
 

@@ -550,7 +550,7 @@ impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 
 		multiply_by_rational_with_rounding(
 			lhs.value,
-			Self::DIV as u128,
+			Self::DIV,
 			rhs.value,
 			Rounding::from_signed(r, negative),
 		)
