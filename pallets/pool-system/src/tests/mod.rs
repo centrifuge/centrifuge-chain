@@ -2449,12 +2449,14 @@ mod changes {
 			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
 			let change_id_3 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
-			// Same change but different moment;
+			// Same change but different moment so overwrites
 			util::advance_secs(1);
 			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
 			let change_id_4 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
-			let ids = [change_id_1, change_id_2, change_id_3, change_id_4];
+			assert_eq!(change_id_4, change_id_3);
+
+			let ids = [change_id_1, change_id_2, change_id_3];
 			assert_eq!(BTreeSet::from(ids.clone()).len(), ids.len());
 		});
 	}
