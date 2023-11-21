@@ -406,7 +406,9 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			change,
 		};
 
-		let change_id: Self::ChangeId = T::Hashing::hash(&noted_change.encode());
+		// NOTE: Essentially, this key-generation allows to override previously
+		//       submitted changes, if they are identical.
+		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
 		NotedChange::<T>::insert(pool_id, change_id, noted_change.clone());
 
 		Self::deposit_event(Event::ProposedChange {
