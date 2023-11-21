@@ -62,6 +62,7 @@ members = [
   "pallets/pool-registry",
   "pallets/data-collector",
   "pallets/restricted-tokens",
+  "pallets/restricted-xtokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",
   "runtime/altair",
