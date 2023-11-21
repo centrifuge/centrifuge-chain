@@ -21,6 +21,7 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
+use restricted_xtokens::TransferEffects;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -307,6 +308,10 @@ impl orml_xtokens::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+impl restricted_xtokens::Config for Runtime {
+	type PreTransfer = PreTransferCheck;
+}
+
 impl orml_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SovereignOrigin = EnsureRoot<AccountId>;
@@ -330,9 +335,24 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin},
 
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>},
+		OrmlXTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>},
+		Xtokens: restricted_xtokens::{Pallet, Storage, Call},
 
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
 		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>},
 	}
 );
+
+pub struct PreTransferCheck;
+
+impl cfg_traits::PreConditions<TransferEffects<AccountId, CurrencyId, Balance>>
+	for PreTransferCheck
+{
+	type Result = bool;
+
+	fn check(effect: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
+		match effect {
+			_ => false,
+		}
+	}
+}
