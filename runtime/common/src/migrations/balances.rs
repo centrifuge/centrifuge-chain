@@ -66,6 +66,8 @@ where
 		let account_prefix = frame_system::Account::<T>::final_prefix();
 
 		let mut total_count = 0;
+		let mut total_reserved = 0;
+		let mut total_frozen = 0;
 
 		let mut previous_key = account_prefix.to_vec();
 
@@ -93,8 +95,12 @@ where
 			/// new logic flag set
 			match unhashed::get::<OldAccountInfo<T::Index, T::Balance>>(&previous_key) {
 				Some(old) => {
-					if !old.data.fee_frozen.is_zero() {
-						log::warn!("Balances Migration - Old account data with non zero frozen fee")
+					if !old.data.reserved.is_zero() {
+						total_reserved += 1;
+					}
+
+					if !old.data.fee_frozen.is_zero() || !old.data.misc_frozen.is_zero() {
+						total_frozen += 1;
 					}
 				}
 				None => log::error!("Balances Migration - Error decoding old data"),
@@ -115,17 +121,14 @@ where
 		}
 
 		log::info!("Balances Migration - Total accounts - {}", total_count);
-
-		// CHECKING DECODING OLD DATASTRUCTURE WITH NEW LAYOUT WORKS:
-		// * Fetch storage from chain with NEW data structure
-		// * Check if fetched accounts matches on-chain storage entries
-
-		// TODO:
-		// * Research whether orml-pallets datastructure also changed
-		// * Research whether we need to migrate locks in orml (maybe first check if
-		//   there exist any. ^^
-
-		// let accounts = frame_system::Account::<T>::full_storage_key;
+		log::info!(
+			"Balances Migration - Total accounts with frozen balances - {}",
+			total_frozen
+		);
+		log::info!(
+			"Balances Migration - Total accounts with reserved balances - {}",
+			total_reserved
+		);
 
 		Ok(Vec::new())
 	}
