@@ -39,7 +39,10 @@ use xcm_executor::{Config, XcmExecutor};
 
 use super::{Amount, Balance, CurrencyId, CurrencyIdConvert, ParachainXcmRouter};
 use crate as restricted_xtokens;
-use crate::mock::AllTokensAreCreatedEqualToWeight;
+use crate::mock::{
+	para_a_rreceiver_para_a, para_a_rreceiver_para_b, para_a_rreceiver_relay,
+	AllTokensAreCreatedEqualToWeight, RESTRICTED_SENDER,
+};
 
 pub type AccountId = AccountId32;
 
@@ -352,6 +355,27 @@ impl cfg_traits::PreConditions<TransferEffects<AccountId, CurrencyId, Balance>>
 
 	fn check(effect: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
 		match effect {
+			TransferEffects::Transfer {
+				sender,
+				destination,
+				currency_id,
+				..
+			} => {
+				if sender == RESTRICTED_SENDER {
+					if currency_id == CurrencyId::R
+						|| currency_id == CurrencyId::A1
+						|| currency_id == CurrencyId::B1
+					{
+						destination == para_a_rreceiver_relay()
+							|| destination == para_a_rreceiver_para_a()
+							|| destination == para_a_rreceiver_para_b()
+					} else {
+						true
+					}
+				} else {
+					true
+				}
+			}
 			_ => false,
 		}
 	}

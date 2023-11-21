@@ -25,8 +25,42 @@ use crate as restricted_xtokens;
 pub mod para;
 pub mod relay;
 
-pub const ALICE: AccountId32 = AccountId32::new([0u8; 32]);
+pub const RESTRICTED_SENDER: AccountId32 = AccountId32::new([0u8; 32]);
 pub const BOB: AccountId32 = AccountId32::new([1u8; 32]);
+pub const RESTRICTED_RECEIVER: AccountId32 = AccountId32::new([2u8; 32]);
+
+fn para_a_rreceiver_relay() -> MultiLocation {
+	MultiLocation::new(
+		1,
+		X1(Junction::AccountId32 {
+			network: None,
+			id: RESTRICTED_RECEIVER.into(),
+		}),
+	)
+}
+
+fn para_a_rreceiver_para_a() -> MultiLocation {
+	MultiLocation::new(
+		0,
+		X1(Junction::AccountId32 {
+			network: None,
+			id: RESTRICTED_RECEIVER.into(),
+		}),
+	)
+}
+
+fn para_a_rreceiver_para_b() -> MultiLocation {
+	MultiLocation::new(
+		1,
+		X2(
+			Junction::Parachain(2),
+			Junction::AccountId32 {
+				network: None,
+				id: RESTRICTED_RECEIVER.into(),
+			},
+		),
+	)
+}
 
 #[derive(
 	Encode,
@@ -193,6 +227,7 @@ decl_test_network! {
 }
 
 pub type RelayBalances = pallet_balances::Pallet<relay::Runtime>;
+
 pub type ParaTokens = orml_tokens::Pallet<para::Runtime>;
 pub type ParaXTokens = restricted_xtokens::Pallet<para::Runtime>;
 
@@ -213,7 +248,13 @@ pub fn para_ext(para_id: u32) -> TestExternalities {
 	.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
-		balances: vec![(ALICE, CurrencyId::R, 1_000)],
+		balances: vec![
+			(RESTRICTED_SENDER, CurrencyId::R, 1_000),
+			(RESTRICTED_SENDER, CurrencyId::A, 1_000),
+			(RESTRICTED_SENDER, CurrencyId::A1, 1_000),
+			(RESTRICTED_SENDER, CurrencyId::B, 1_000),
+			(RESTRICTED_SENDER, CurrencyId::B1, 1_000),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
@@ -231,7 +272,7 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![(ALICE, 1_000)],
+		balances: vec![(RESTRICTED_SENDER, 1_000)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
