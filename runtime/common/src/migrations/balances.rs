@@ -16,9 +16,11 @@ use frame_support::{
 	StoragePrefixedMap,
 };
 use frame_system::AccountInfo;
-use sp_arithmetic::traits::{EnsureAdd, Zero};
+use sp_arithmetic::traits::Zero;
+use sp_core::crypto::AccountId32;
+pub use sp_core::sr25519;
 use sp_runtime::DispatchError;
-use sp_std::prelude::Vec;
+use sp_std::{prelude::Vec, vec};
 
 /// All balance information for an account.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -59,7 +61,8 @@ pub struct Migration<T: pallet_balances::Config + frame_system::Config>(
 
 impl<T> OnRuntimeUpgrade for Migration<T>
 where
-	T: pallet_balances::Config + frame_system::Config,
+	T: frame_system::Config<AccountId = AccountId32, Index = u32>
+		+ pallet_balances::Config<Balance = u128>,
 {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
@@ -134,6 +137,24 @@ where
 	}
 
 	fn on_runtime_upgrade() -> Weight {
+		// !!! REMOVE TEST ACCOUNT DATA !!!
+		//
+		// TEST ACCOUNT DATA - START
+		let test_account_data = get_test_account_data::<T>();
+
+		for (account_id, account_data) in test_account_data {
+			log::info!(
+				"Balances Migration - Processing account id - {}",
+				hex::encode(account_id.clone())
+			);
+
+			let storage_key = frame_system::Account::<T>::hashed_key_for(account_id);
+
+			unhashed::put(storage_key.as_slice(), account_data.encode().as_slice())
+		}
+
+		// TEST ACCOUNT DATA - END
+
 		// WE CAN NOT MIGRATE. THIS CODE IS JUST FOR CHECKING IF WE NEED ANYTHING
 		// BESIDES THE LAZY MIGRATION FROM PARITY
 		// See: https://kflabs.slack.com/archives/C05TBFRBL15/p1699956615421249
@@ -144,4 +165,105 @@ where
 	fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
 		Ok(())
 	}
+}
+
+fn get_test_account_data<T>() -> Vec<(T::AccountId, OldAccountInfo<T::Index, T::Balance>)>
+where
+	T: frame_system::Config<AccountId = AccountId32, Index = u32>
+		+ pallet_balances::Config<Balance = u128>,
+{
+	vec![
+		(
+			[1u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 0,
+				consumers: 0,
+				providers: 0,
+				sufficients: 0,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 0,
+					misc_frozen: 0,
+					fee_frozen: 0,
+				},
+			},
+		),
+		(
+			[2u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 0,
+				consumers: 0,
+				providers: 0,
+				sufficients: 0,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 1_000_000_000_000,
+					misc_frozen: 0,
+					fee_frozen: 0,
+				},
+			},
+		),
+		(
+			[3u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 0,
+				consumers: 0,
+				providers: 0,
+				sufficients: 0,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 1_000_000_000_000,
+					misc_frozen: 1_000_000_000_000,
+					fee_frozen: 0,
+				},
+			},
+		),
+		(
+			[4u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 0,
+				consumers: 0,
+				providers: 0,
+				sufficients: 0,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 1_000_000_000_000,
+					misc_frozen: 1_000_000_000_000,
+					fee_frozen: 1_000_000_000_000,
+				},
+			},
+		),
+		(
+			[5u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 0,
+				consumers: 0,
+				providers: 0,
+				sufficients: 0,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 1_000_000_000_000,
+					misc_frozen: 1_000_000_000_000,
+					// IS_NEW_LOGIC flag value in the new account data structure
+					fee_frozen: 0x80000000_00000000_00000000_00000000u128,
+				},
+			},
+		),
+		(
+			[6u8; 32].into(),
+			OldAccountInfo::<T::Index, T::Balance> {
+				nonce: 1,
+				consumers: 2,
+				providers: 3,
+				sufficients: 4,
+				data: OldAccountData::<T::Balance> {
+					free: 1_000_000_000_000,
+					reserved: 1_000_000_000_000,
+					misc_frozen: 1_000_000_000_000,
+					// IS_NEW_LOGIC flag value in the new account data structure
+					fee_frozen: 0x80000000_00000000_00000000_00000000u128,
+				},
+			},
+		),
+	]
 }
