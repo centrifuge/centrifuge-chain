@@ -58,6 +58,7 @@ members = [
   "pallets/nft-sales",
   "pallets/order-book",
   "pallets/permissions",
+  "pallets/pool-fees",
   "pallets/pool-system",
   "pallets/pool-registry",
   "pallets/data-collector",
@@ -405,7 +406,6 @@ std = [
   "fp-storage/std",
   "frame-benchmarking/std",
   "frame-system/std",
-
   "futures/std",
   "futures/std",
   "getrandom/std",
