@@ -23,10 +23,7 @@ use super::*;
 use crate as restricted_xtokens;
 
 pub mod para;
-pub mod para_relative_view;
-pub mod para_teleport;
 pub mod relay;
-pub mod teleport_currency_adapter;
 
 pub const ALICE: AccountId32 = AccountId32::new([0u8; 32]);
 pub const BOB: AccountId32 = AccountId32::new([1u8; 32]);
@@ -56,12 +53,6 @@ pub enum CurrencyId {
 	B,
 	/// Parachain B B1 token
 	B1,
-	/// Parachain B B2 token
-	B2,
-	/// Parachain C token
-	C,
-	/// Parachain D token
-	D,
 }
 
 pub struct CurrencyIdConvert;
@@ -101,30 +92,6 @@ impl sp_runtime::traits::Convert<CurrencyId, Option<MultiLocation>> for Currency
 				)
 					.into(),
 			),
-			CurrencyId::B2 => Some(
-				(
-					Parent,
-					Parachain(2),
-					Junction::from(BoundedVec::try_from(b"B2".to_vec()).unwrap()),
-				)
-					.into(),
-			),
-			CurrencyId::C => Some(
-				(
-					Parent,
-					Parachain(3),
-					Junction::from(BoundedVec::try_from(b"C".to_vec()).unwrap()),
-				)
-					.into(),
-			),
-			CurrencyId::D => Some(
-				(
-					Parent,
-					Parachain(4),
-					Junction::from(BoundedVec::try_from(b"D".to_vec()).unwrap()),
-				)
-					.into(),
-			),
 		}
 	}
 }
@@ -138,12 +105,6 @@ impl sp_runtime::traits::Convert<MultiLocation, Option<CurrencyId>> for Currency
 		b.resize(32, 0);
 		let mut b1: Vec<u8> = "B1".into();
 		b1.resize(32, 0);
-		let mut b2: Vec<u8> = "B2".into();
-		b2.resize(32, 0);
-		let mut c: Vec<u8> = "C".into();
-		c.resize(32, 0);
-		let mut d: Vec<u8> = "D".into();
-		d.resize(32, 0);
 		if l == MultiLocation::parent() {
 			return Some(CurrencyId::R);
 		}
@@ -161,15 +122,6 @@ impl sp_runtime::traits::Convert<MultiLocation, Option<CurrencyId>> for Currency
 				X2(Parachain(2), GeneralKey { data, .. }) if data.to_vec() == b1 => {
 					Some(CurrencyId::B1)
 				}
-				X2(Parachain(2), GeneralKey { data, .. }) if data.to_vec() == b2 => {
-					Some(CurrencyId::B2)
-				}
-				X2(Parachain(3), GeneralKey { data, .. }) if data.to_vec() == c => {
-					Some(CurrencyId::C)
-				}
-				X2(Parachain(4), GeneralKey { data, .. }) if data.to_vec() == d => {
-					Some(CurrencyId::D)
-				}
 				_ => None,
 			},
 			MultiLocation { parents, interior } if parents == 0 => match interior {
@@ -177,9 +129,6 @@ impl sp_runtime::traits::Convert<MultiLocation, Option<CurrencyId>> for Currency
 				X1(GeneralKey { data, .. }) if data.to_vec() == b => Some(CurrencyId::B),
 				X1(GeneralKey { data, .. }) if data.to_vec() == a1 => Some(CurrencyId::A1),
 				X1(GeneralKey { data, .. }) if data.to_vec() == b1 => Some(CurrencyId::B1),
-				X1(GeneralKey { data, .. }) if data.to_vec() == b2 => Some(CurrencyId::B2),
-				X1(GeneralKey { data, .. }) if data.to_vec() == c => Some(CurrencyId::C),
-				X1(GeneralKey { data, .. }) if data.to_vec() == d => Some(CurrencyId::D),
 				_ => None,
 			},
 			_ => None,
@@ -221,26 +170,6 @@ decl_test_parachain! {
 	}
 }
 
-decl_test_parachain! {
-	pub struct ParaC {
-		Runtime = para_teleport::Runtime,
-		XcmpMessageHandler = para_teleport::XcmpQueue,
-		DmpMessageHandler = para_teleport::DmpQueue,
-		new_ext = para_teleport_ext(3),
-	}
-}
-
-// This parachain is identical to the others but using relative view for self
-// tokens
-decl_test_parachain! {
-	pub struct ParaD {
-		Runtime = para_relative_view::Runtime,
-		XcmpMessageHandler = para::XcmpQueue,
-		DmpMessageHandler = para::DmpQueue,
-		new_ext = para_ext(4),
-	}
-}
-
 decl_test_relay_chain! {
 	pub struct Relay {
 		Runtime = relay::Runtime,
@@ -259,50 +188,16 @@ decl_test_network! {
 		parachains = vec![
 			(1, ParaA),
 			(2, ParaB),
-			(3, ParaC),
-			(4, ParaD),
 		],
 	}
 }
 
 pub type RelayBalances = pallet_balances::Pallet<relay::Runtime>;
 pub type ParaTokens = orml_tokens::Pallet<para::Runtime>;
-pub type ParaXTokens = orml_xtokens::Pallet<para::Runtime>;
-
-pub type ParaRelativeTokens = orml_tokens::Pallet<para_relative_view::Runtime>;
-pub type ParaRelativeXTokens = orml_xtokens::Pallet<para_relative_view::Runtime>;
-
-pub type ParaTeleportTokens = orml_tokens::Pallet<para_teleport::Runtime>;
+pub type ParaXTokens = restricted_xtokens::Pallet<para::Runtime>;
 
 pub fn para_ext(para_id: u32) -> TestExternalities {
 	use para::{Runtime, System};
-
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-
-	let parachain_info_config = parachain_info::GenesisConfig {
-		parachain_id: para_id.into(),
-	};
-	<parachain_info::GenesisConfig as GenesisBuild<Runtime, _>>::assimilate_storage(
-		&parachain_info_config,
-		&mut t,
-	)
-	.unwrap();
-
-	orml_tokens::GenesisConfig::<Runtime> {
-		balances: vec![(ALICE, CurrencyId::R, 1_000)],
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-
-	let mut ext = TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
-}
-
-pub fn para_teleport_ext(para_id: u32) -> TestExternalities {
-	use para_teleport::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
