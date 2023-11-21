@@ -1683,7 +1683,7 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxFeedValues: u32 = 10;
+	pub const MaxFeedValues: u32 = 500;
 }
 
 impl orml_oracle::Config for Runtime {
