@@ -38,7 +38,6 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 
 # Frontier dependencies
 pallet-base-fee = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -101,7 +100,6 @@ std = [
   "log/std",
   "orml-asset-registry/std",
   "orml-oracle/std",
-  "orml-tokens/std",
   "orml-traits/std",
   "orml-tokens/std",
   "pallet-anchors/std",

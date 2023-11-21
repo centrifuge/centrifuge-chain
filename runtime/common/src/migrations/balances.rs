@@ -79,20 +79,20 @@ where
 				hex::encode(previous_key.clone())
 			);
 
-			/// The difference between the old and new account data structures
-			/// is the last field of the struct, which is:
-			///
-			/// Old - `free_frozen` - T::Balance
-			/// New - `flags` - u128
-			///
-			/// During this check, we confirm that both the old and the new can
-			/// be successfully decoded given the raw data found in storage, and
-			/// we add specific checks for each version:
-			///
-			/// Old - confirm that `fee_frozen` is zero, as it shouldn't have
-			/// been used so far
-			/// New - confirm that `flags` does not have the
-			/// new logic flag set
+			// The difference between the old and new account data structures
+			// is the last field of the struct, which is:
+			//
+			// Old - `free_frozen` - T::Balance
+			// New - `flags` - u128
+			//
+			// During this check, we confirm that both the old and the new can
+			// be successfully decoded given the raw data found in storage, and
+			// we add specific checks for each version:
+			//
+			// Old - confirm that `fee_frozen` is zero, as it shouldn't have
+			// been used so far
+			// New - confirm that `flags` does not have the
+			// new logic flag set
 			match unhashed::get::<OldAccountInfo<T::Index, T::Balance>>(&previous_key) {
 				Some(old) => {
 					if !old.data.reserved.is_zero() {
