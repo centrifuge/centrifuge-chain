@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CompoundingSchedule","InterestRate"],"trait":["InterestAccrual","RateCollection"]};

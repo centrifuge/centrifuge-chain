@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Requirement"],"struct":["MaxRequirements","NotedPoolChange","PoolChangeProposal","UniqueRequirement"]};

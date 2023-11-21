@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_PROOF_SIZE","GAS_TO_WEIGHT_MULTIPLIER","MAX_AXELAR_EVM_CHAIN_SIZE","XCM_INSTRUCTION_WEIGHT"],"enum":["DomainRouter"],"mod":["routers"],"struct":["EVMDomain","EVMRouter","FeeValues","XCMRouter","XcmDomain","XcmTransactInfo"]};

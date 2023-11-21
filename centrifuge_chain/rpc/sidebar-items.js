@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CustomServerError"],"fn":["create_full","invalid_params_error","runtime_error"],"mod":["anchors","evm","pools","rewards"],"type":["RpcExtension"]};

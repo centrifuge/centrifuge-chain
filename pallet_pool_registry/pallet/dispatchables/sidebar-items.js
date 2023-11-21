@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["execute_update","register","set_metadata","update"]};

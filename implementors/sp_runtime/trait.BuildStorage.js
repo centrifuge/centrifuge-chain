@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"altair_runtime":[["impl <a class=\"trait\" href=\"altair_runtime/trait.BuildStorage.html\" title=\"trait altair_runtime::BuildStorage\">BuildStorage</a> for <a class=\"struct\" href=\"altair_runtime/struct.GenesisConfig.html\" title=\"struct altair_runtime::GenesisConfig\">GenesisConfig</a>"]],
+"centrifuge_runtime":[["impl <a class=\"trait\" href=\"centrifuge_runtime/trait.BuildStorage.html\" title=\"trait centrifuge_runtime::BuildStorage\">BuildStorage</a> for <a class=\"struct\" href=\"centrifuge_runtime/struct.GenesisConfig.html\" title=\"struct centrifuge_runtime::GenesisConfig\">GenesisConfig</a>"]],
+"development_runtime":[["impl <a class=\"trait\" href=\"development_runtime/trait.BuildStorage.html\" title=\"trait development_runtime::BuildStorage\">BuildStorage</a> for <a class=\"struct\" href=\"development_runtime/struct.GenesisConfig.html\" title=\"struct development_runtime::GenesisConfig\">GenesisConfig</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

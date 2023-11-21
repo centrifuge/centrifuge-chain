@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TOKEN_NAME_SIZE","TOKEN_SYMBOL_SIZE"],"enum":["Message","ParachainId","Router"],"fn":["deserialize","encoded_contract_call","xcm_router_contract"],"mod":["defensive_weights","hooks","pallet"],"struct":["XcmDomain"],"type":["CurrencyIdOf","GeneralCurrencyIndexOf","GeneralCurrencyIndexType","MessageOf"]};

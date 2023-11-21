@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"runtime_common":[["impl&lt;OrmlAssetRegistry: Inspect&lt;AssetId = CurrencyId, Balance = Balance, CustomMetadata = CustomMetadata&gt;&gt; FixedConversionRateProvider for <a class=\"struct\" href=\"runtime_common/xcm/struct.FixedConversionRateProvider.html\" title=\"struct runtime_common::xcm::FixedConversionRateProvider\">FixedConversionRateProvider</a>&lt;OrmlAssetRegistry&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

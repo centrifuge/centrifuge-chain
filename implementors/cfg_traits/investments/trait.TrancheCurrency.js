@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"cfg_types":[["impl TrancheCurrency&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u64.html\">u64</a>, [<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u8.html\">u8</a>; <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.array.html\">16</a>]&gt; for <a class=\"struct\" href=\"cfg_types/tokens/struct.TrancheCurrency.html\" title=\"struct cfg_types::tokens::TrancheCurrency\">TrancheCurrency</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

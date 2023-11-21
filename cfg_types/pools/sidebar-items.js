@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PoolRegistrationStatus"],"struct":["PoolMetadata","TrancheMetadata"]};

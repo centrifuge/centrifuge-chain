@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["production_or_benchmark"],"mod":["account_conversion","apis","asset_registry","changes","evm","fees","foreign_investments","gateway","investment_portfolios","liquidity_pools","migrations","oracle","origin","xcm","xcm_fees","xcm_transactor"],"struct":["CurrencyED"]};

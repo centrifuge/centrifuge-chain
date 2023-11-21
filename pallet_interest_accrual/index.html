@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Interest Accrual Pallet"><title>pallet_interest_accrual - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="pallet_interest_accrual" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (ab5c841a1 2023-10-25)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-5f34af1a0ee6bacd.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../pallet_interest_accrual/index.html">pallet_interest_accrual</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">pallet_interest_accrual</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/pallet_interest_accrual/lib.rs.html#14-564">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="interest-accrual-pallet"><a href="#interest-accrual-pallet">Interest Accrual Pallet</a></h2>
+<p>A pallet for calculating interest accrual on debt.
+It keeps track of different buckets of interest rates and is optimized
+for many loans per interest bucket. This implementation is inspired
+by <a href="https://github.com/makerdao/dss/blob/master/src/jug.sol">jug.sol</a>
+from Multi Collateral Dai.</p>
+<p>It works by defining debt = normalized debt * accumulated rate.
+When the first loan for an interest rate is created, the accumulated
+rate is set to 1.0. The normalized debt is then calculated, which is
+the debt at t=0, using debt / accumulated rate.</p>
+<p>Over time, the accumulated rate grows based on the interest rate per second.
+Any time the accumulated rate is updated for an interest rate group,
+this indirectly updates the debt of all loans outstanding using this
+interest rate.</p>
+<div class="example-wrap"><pre class="language-text"><code>                   ar = accumulated rate
+                   nd = normalized debt
+
+           │
+       2.0 │                             ****
+           │                         ****
+           │                     ****
+           │                 ****
+  ar   1.5 │             ****
+           │         ****
+           │      ****
+           │   ****
+       1.0 │ **
+           └──────────────────────────────────
+           │              │
+
+           borrow 10      borrow 20
+           ar   = 1.0     ar   = 1.5
+           nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
+           debt = 10      debt = 35
+</code></pre></div><h3 id="basics-of-shared-rate-accrual-and-normalized-debts"><a href="#basics-of-shared-rate-accrual-and-normalized-debts">Basics of shared rate accrual and “normalized debts”</a></h3>
+<p>When we want to compute the interest accrued on some value, the
+high-level equation is:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>rate_per_second.pow(debt_age) * debt_base_value</code></pre></div>
+<p>Computing that pow for everything is expensive, so we want to only
+do it once for any given <code>rate_per_second</code> and share that result
+across multiple debts. Because these debts might not have been
+created at the same time as each other (or the rate), we must
+include a correction factor to the shared interest rate accrual:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>correction_factor = <span class="question-mark">???</span>;
+rate_per_second.pow(rate_age) * debt_base_value / correction_factor</code></pre></div>
+<p>This correction factor is just the accumulated interest at the
+time the debt was created:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>correction_factor = rate_per_second.pow(rate_age_at_time_of_debt_creation);
+rate_per_second.pow(rate_age) * debt_base_value / correction_factor
+<span class="comment">// Equivalent to:
+</span>rate_per_second.pow(rate_age - rate_ag_at_time_of_debt_creation) * debt_base_value</code></pre></div>
+<p>And in the classic trade-off of space vs time complexity, we
+precompute the correction factor applied to the base debt as the
+normalized debt</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_debt_creation);</code></pre></div>
+<p>In the actual code, <code>rate_per_second.pow(...)</code> will be precomputed
+for us at block initialize and is just queried as the “accrued
+rate”.</p>
+<p>The case of <code>rate_age_at_time_of_debt_creation == 0</code> creates a
+correction factor of 1, since no debt has yet accumulated on that
+rate. This leads to the behavior of <code>normalize</code> apparently doing
+nothing. The debt in that case is “synced” to the interest rate,
+and doesn’t need any correction.</p>
+<h3 id="renormalization"><a href="#renormalization">Renormalization</a></h3>
+<p>Renormalization is the operation of saying “from now one, I want
+to accrue this debt at a new rate”. Implicit in that is that all
+previous debt has been accounted for. We are essentially “starting
+over” with a new base debt - our accrued debt from the old rate -
+and a new interest rate.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>current_debt = normalized_debt * accrued_rate(old_interest_rate);
+normalized_debt = current_debt / accrued_rate(new_interest_rate);</code></pre></div>
+<p>Two things to note here:</p>
+<ul>
+<li>If <code>old_interest_rate</code> and <code>new_interest_rate</code> are identical, this is a
+no-op.</li>
+<li>If <code>new_interest_rate</code> is newly created (and thus its age is <code>0</code>), the
+correction factor is <code>1</code> just as for any other rate.  See the note above
+regarding zero-age rates.</li>
+</ul>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.WeightInfo"><code>pub use weights::<a class="trait" href="weights/trait.WeightInfo.html" title="trait pallet_interest_accrual::weights::WeightInfo">WeightInfo</a>;</code></div></li><li><div class="item-name"><code>pub use <a class="mod" href="pallet/index.html" title="mod pallet_interest_accrual::pallet">pallet</a>::*;</code></div></li></ul><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="pallet/index.html" title="mod pallet_interest_accrual::pallet">pallet</a></div><div class="desc docblock-short">The module that hosts all the
+<a href="https://docs.substrate.io/main-docs/build/events-errors/">FRAME</a>
+types needed to add this pallet to a
+runtime.</div></li><li><div class="item-name"><a class="mod" href="weights/index.html" title="mod pallet_interest_accrual::weights">weights</a></div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.RateDetails.html" title="struct pallet_interest_accrual::RateDetails">RateDetails</a></div></li><li><div class="item-name"><a class="struct" href="struct.RateVec.html" title="struct pallet_interest_accrual::RateVec">RateVec</a></div></li></ul></section></div></main></body></html>

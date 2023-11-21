@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PoolStatus"],"mod":["changes"],"struct":["PoolChanges","PoolDepositInfo","PoolDetails","PoolEssence","PoolLocator","PoolParameters","ReserveDetails","ScheduledUpdateDetails"]};

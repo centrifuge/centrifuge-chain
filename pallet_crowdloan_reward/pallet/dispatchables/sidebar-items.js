@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["initialize","set_direct_payout_ratio","set_vesting_period","set_vesting_start"]};

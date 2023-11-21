@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"runtime_common":[["impl CombineData&lt;OracleKey, TimestampedValue&lt;FixedU128&lt;cfg_types::::fixed_point::Quantity::{constant#0}&gt;, <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u64.html\">u64</a>&gt;&gt; for <a class=\"struct\" href=\"runtime_common/oracle/struct.LastOracleValue.html\" title=\"struct runtime_common::oracle::LastOracleValue\">LastOracleValue</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

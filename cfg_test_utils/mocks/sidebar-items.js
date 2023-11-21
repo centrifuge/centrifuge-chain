@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["accountant","authority_origin","nav","order_manager","orml_asset_registry"]};

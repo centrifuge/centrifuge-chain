@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"development_runtime":[["impl <a class=\"trait\" href=\"pallet_transfer_allowlist/pallet/trait.Config.html\" title=\"trait pallet_transfer_allowlist::pallet::Config\">Config</a> for <a class=\"struct\" href=\"development_runtime/struct.Runtime.html\" title=\"struct development_runtime::Runtime\">Runtime</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

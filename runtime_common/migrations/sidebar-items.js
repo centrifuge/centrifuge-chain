@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["asset_registry_xcmv3","nuke","precompile_account_codes"]};

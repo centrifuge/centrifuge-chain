@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_currency","add_pool","add_tranche","allow_investment_currency","cancel_upgrade","schedule_upgrade","transfer","transfer_tranche_tokens","update_member","update_token_price","update_tranche_token_metadata"]};

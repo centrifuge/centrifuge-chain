@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["claim_reward","set_collator_reward","set_total_reward"]};

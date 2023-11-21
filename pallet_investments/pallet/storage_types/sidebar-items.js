@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ActiveInvestOrders","ActiveRedeemOrders","ClearedInvestOrders","ClearedRedeemOrders","InProcessingInvestOrders","InProcessingRedeemOrders","InvestOrderId","InvestOrders","RedeemOrderId","RedeemOrders"]};

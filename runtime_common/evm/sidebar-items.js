@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["GAS_PER_SECOND","WEIGHT_PER_GAS"],"mod":["precompile"],"struct":["BaseFeeThreshold"],"trait":["GetTransactionAction"]};

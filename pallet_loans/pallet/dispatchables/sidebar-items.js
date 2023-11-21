@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["admin_write_off","apply_loan_mutation","apply_transfer_debt","apply_write_off_policy","borrow","close","create","propose_loan_mutation","propose_transfer_debt","propose_write_off_policy","repay","update_portfolio_valuation","write_off"]};

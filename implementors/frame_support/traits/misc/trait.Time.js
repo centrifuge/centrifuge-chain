@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"cfg_mocks":[["impl&lt;T: <a class=\"trait\" href=\"cfg_mocks/pallet_mock_time/trait.Config.html\" title=\"trait cfg_mocks::pallet_mock_time::Config\">Config</a>&gt; Time for <a class=\"struct\" href=\"cfg_mocks/pallet_mock_time/struct.Pallet.html\" title=\"struct cfg_mocks::pallet_mock_time::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

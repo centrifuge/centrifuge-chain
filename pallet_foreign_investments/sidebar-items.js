@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["errors","hooks","impls","pallet","types"],"type":["ForeignInvestmentInfoOf","SwapOf"]};

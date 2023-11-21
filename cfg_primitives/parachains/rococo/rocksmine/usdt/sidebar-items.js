@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["GENERAL_INDEX","PALLET_INSTANCE"]};

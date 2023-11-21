@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TrancheLoc","TrancheType"],"fn":["calculate_risk_buffers"],"struct":["EpochExecutionTranche","EpochExecutionTranches","Tranche","TrancheEssence","TrancheInput","TrancheSolution","TrancheUpdate","Tranches"],"type":["Seniority","TrancheIndex","TrancheSalt"]};

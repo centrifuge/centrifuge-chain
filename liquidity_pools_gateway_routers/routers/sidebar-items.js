@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["axelar_evm","axelar_xcm","ethereum_xcm"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_instance","add_relayer","process_msg","remove_instance","remove_relayer","set_domain_router"]};

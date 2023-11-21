@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["UNION"],"enum":["PermissionScope","PermissionedCurrencyRole","PoolRole","Role"],"struct":["CurrencyAdminRoles","PermissionRoles","PermissionedCurrencyHolderInfo","PermissionedCurrencyHolders","PoolAdminRoles","TrancheInvestorInfo","TrancheInvestors"]};

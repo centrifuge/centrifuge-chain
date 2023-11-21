@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"trait":["ForeignInvestment","Investment","InvestmentAccountant","InvestmentCollector","OrderManager","TrancheCurrency"]};

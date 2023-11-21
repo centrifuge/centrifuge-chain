@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["CollectedInvestment","CollectedRedemption","ForeignInvestmentInfo","InvestmentPaymentCurrency","InvestmentState","RedemptionPayoutCurrency","RedemptionState","TokenSwapOrderIds"]};

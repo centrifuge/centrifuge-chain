@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"cfg_mocks":[["impl&lt;T: <a class=\"trait\" href=\"cfg_mocks/pallet_mock_fees/trait.Config.html\" title=\"trait cfg_mocks::pallet_mock_fees::Config\">Config</a>&gt; Fees for <a class=\"struct\" href=\"cfg_mocks/pallet_mock_fees/struct.Pallet.html\" title=\"struct cfg_mocks::pallet_mock_fees::Pallet\">Pallet</a>&lt;T&gt;"]],
+"pallet_fees":[["impl&lt;T: <a class=\"trait\" href=\"pallet_fees/pallet/trait.Config.html\" title=\"trait pallet_fees::pallet::Config\">Config</a>&gt; Fees for <a class=\"struct\" href=\"pallet_fees/pallet/struct.Pallet.html\" title=\"struct pallet_fees::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

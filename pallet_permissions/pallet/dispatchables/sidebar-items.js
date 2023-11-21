@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add","admin_purge","purge","remove"]};

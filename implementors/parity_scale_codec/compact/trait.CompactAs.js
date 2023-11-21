@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"cfg_primitives":[["impl CompactAs for <a class=\"struct\" href=\"cfg_primitives/types/struct.TrancheWeight.html\" title=\"struct cfg_primitives::types::TrancheWeight\">TrancheWeight</a>"],["impl CompactAs for <a class=\"struct\" href=\"cfg_primitives/types/struct.ItemId.html\" title=\"struct cfg_primitives::types::ItemId\">ItemId</a>"]],
+"cfg_types":[["impl&lt;const DIV: <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u128.html\">u128</a>&gt; CompactAs for <a class=\"struct\" href=\"cfg_types/fixed_point/struct.FixedU128.html\" title=\"struct cfg_types::fixed_point::FixedU128\">FixedU128</a>&lt;DIV&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["KeyPurpose","KeyType"],"mod":["pallet","weights"],"struct":["AddKey","Key"],"type":["KeyId"]};

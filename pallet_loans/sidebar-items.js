@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["entities","pallet","types","util"],"trait":["WeightInfo"]};

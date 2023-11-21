@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MigrationStatus"],"mod":["pallet","weights"]};

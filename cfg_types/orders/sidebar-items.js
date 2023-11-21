@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["FulfillmentWithPrice","Order","SummarizedOrders","TotalOrder"]};

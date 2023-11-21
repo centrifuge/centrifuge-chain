@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ActiveLoan","ActiveLoanInfo","ClosedLoan","CreatedLoan","LoanInfo"]};

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"centrifuge_chain":[["impl SubstrateCli for <a class=\"struct\" href=\"centrifuge_chain/cli/struct.Cli.html\" title=\"struct centrifuge_chain::cli::Cli\">Cli</a>"],["impl SubstrateCli for <a class=\"struct\" href=\"centrifuge_chain/cli/struct.RelayChainCli.html\" title=\"struct centrifuge_chain::cli::RelayChainCli\">RelayChainCli</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AccountDeposit","EpochExecution","NotedChange","Pool","PoolDeposit","ScheduledUpdate"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BlockGasLimit","DefaultBaseFeePerGas","DefaultElasticity","ExtraDataLength","FindAuthorTruncated","GasLimitPovSizeRatio","GasLimitStorageGrowthRatio","PostBlockAndTxnHashes","PrecompilesValue","WeightPerGas"]};

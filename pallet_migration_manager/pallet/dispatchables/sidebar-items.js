@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["finalize","migrate_balances_issuance","migrate_proxy_proxies","migrate_system_account","migrate_vesting_vesting"]};

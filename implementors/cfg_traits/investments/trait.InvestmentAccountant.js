@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"pallet_pool_system":[["impl&lt;T: <a class=\"trait\" href=\"pallet_pool_system/pallet/trait.Config.html\" title=\"trait pallet_pool_system::pallet::Config\">Config</a>&gt; InvestmentAccountant&lt;&lt;T as Config&gt;::AccountId&gt; for <a class=\"struct\" href=\"pallet_pool_system/pallet/struct.Pallet.html\" title=\"struct pallet_pool_system::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

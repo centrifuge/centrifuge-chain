@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MaxBorrowAmount"],"struct":["ExternalActivePricing","ExternalAmount","ExternalPricing"]};

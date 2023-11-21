@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_PAYLOAD_BYTES","MAX_SOURCE_ADDRESS_BYTES","MAX_SOURCE_CHAIN_BYTES","MAX_TOKEN_SYMBOL_BYTES","PREFIX_CONTRACT_CALL_APPROVED"],"enum":["PalletCall"],"mod":["pallet","weights"],"struct":["SourceConverter"],"type":["Bytes","String"]};

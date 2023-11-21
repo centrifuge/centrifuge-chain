@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GatewayOrigin","RelayerMessageDecodingError"],"mod":["pallet","weights"],"struct":["EnsureLocal"]};

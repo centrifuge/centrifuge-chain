@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BorrowLoanError","BorrowRestrictions","CloseLoanError","CreateLoanError","InterestPayments","Maturity","MutationError","PayDownSchedule","RepayLoanError","RepayRestrictions","WrittenOffError"],"mod":["policy","portfolio","valuation"],"struct":["LoanRestrictions","RepaidAmount","RepaymentSchedule"]};

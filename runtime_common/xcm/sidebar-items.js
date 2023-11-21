@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["general_key"],"struct":["AccountIdToMultiLocation","FixedConversionRateProvider","LpInstanceRelayer"]};

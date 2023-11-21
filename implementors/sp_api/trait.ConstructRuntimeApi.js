@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"altair_runtime":[["impl&lt;Block: BlockT, C&gt; ConstructRuntimeApi&lt;Block, C&gt; for <a class=\"struct\" href=\"altair_runtime/struct.RuntimeApi.html\" title=\"struct altair_runtime::RuntimeApi\">RuntimeApi</a><span class=\"where fmt-newline\">where\n    C: CallApiAt&lt;Block&gt; + 'static,</span>"]],
+"centrifuge_runtime":[["impl&lt;Block: BlockT, C&gt; ConstructRuntimeApi&lt;Block, C&gt; for <a class=\"struct\" href=\"centrifuge_runtime/struct.RuntimeApi.html\" title=\"struct centrifuge_runtime::RuntimeApi\">RuntimeApi</a><span class=\"where fmt-newline\">where\n    C: CallApiAt&lt;Block&gt; + 'static,</span>"]],
+"development_runtime":[["impl&lt;Block: BlockT, C&gt; ConstructRuntimeApi&lt;Block, C&gt; for <a class=\"struct\" href=\"development_runtime/struct.RuntimeApi.html\" title=\"struct development_runtime::RuntimeApi\">RuntimeApi</a><span class=\"where fmt-newline\">where\n    C: CallApiAt&lt;Block&gt; + 'static,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

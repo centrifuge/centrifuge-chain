@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AnchorEvictDates","AnchorIndexes","EvictedAnchorRoots","LatestAnchorIndex","LatestEvictedAnchorIndex","LatestEvictedDate","PreCommits"]};

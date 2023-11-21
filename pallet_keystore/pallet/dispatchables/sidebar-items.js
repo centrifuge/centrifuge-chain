@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_keys","revoke_keys","set_deposit"]};

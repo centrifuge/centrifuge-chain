@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["claim_reward","initialize","set_contributions_root","set_crowdloan_trie_index","set_lease_period","set_lease_start","set_locked_at"]};

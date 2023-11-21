@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"altair_runtime":[["impl InstanceFilter&lt;<a class=\"enum\" href=\"altair_runtime/enum.RuntimeCall.html\" title=\"enum altair_runtime::RuntimeCall\">RuntimeCall</a>&gt; for <a class=\"enum\" href=\"altair_runtime/enum.ProxyType.html\" title=\"enum altair_runtime::ProxyType\">ProxyType</a>"]],
+"centrifuge_runtime":[["impl InstanceFilter&lt;<a class=\"enum\" href=\"centrifuge_runtime/enum.RuntimeCall.html\" title=\"enum centrifuge_runtime::RuntimeCall\">RuntimeCall</a>&gt; for <a class=\"enum\" href=\"centrifuge_runtime/enum.ProxyType.html\" title=\"enum centrifuge_runtime::ProxyType\">ProxyType</a>"]],
+"development_runtime":[["impl InstanceFilter&lt;<a class=\"enum\" href=\"development_runtime/enum.RuntimeCall.html\" title=\"enum development_runtime::RuntimeCall\">RuntimeCall</a>&gt; for <a class=\"enum\" href=\"development_runtime/enum.ProxyType.html\" title=\"enum development_runtime::ProxyType\">ProxyType</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

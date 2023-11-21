@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["transactional"],"mod":["pallet","transactional","weights"],"struct":["BoundedBTreeMap","EpochChanges","EpochData"],"trait":["AccountRewards","CurrencyGroupChange","DistributedRewards","GroupRewards"],"type":["MomentOf"]};

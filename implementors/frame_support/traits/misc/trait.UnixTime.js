@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"cfg_types":[["impl&lt;T&gt; UnixTime for <a class=\"struct\" href=\"cfg_types/time/struct.TimeProvider.html\" title=\"struct cfg_types::time::TimeProvider\">TimeProvider</a>&lt;T&gt;<span class=\"where fmt-newline\">where\n    T: UnixTime,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

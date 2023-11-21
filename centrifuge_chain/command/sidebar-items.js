@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ChainIdentity"],"fn":["extract_genesis_wasm","load_spec","run"],"macro":["construct_async_run"],"trait":["IdentifyChain"]};

@@ -1,0 +1,259 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `FixedPointNumberExtension` trait in crate `cfg_types`."><title>FixedPointNumberExtension in cfg_types::fixed_point - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cfg_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (ab5c841a1 2023-10-25)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5f34af1a0ee6bacd.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../cfg_types/index.html">cfg_types</a><span class="version">2.0.0</span></h2></div><h2 class="location"><a href="#">FixedPointNumberExtension</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.checked_div_int_with_rounding">checked_div_int_with_rounding</a></li><li><a href="#tymethod.checked_div_with_rounding">checked_div_with_rounding</a></li><li><a href="#tymethod.checked_mul_with_rounding">checked_mul_with_rounding</a></li><li><a href="#tymethod.saturating_div_with_rounding">saturating_div_with_rounding</a></li><li><a href="#tymethod.saturating_mul_with_rounding">saturating_mul_with_rounding</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.checked_div_ceil">checked_div_ceil</a></li><li><a href="#method.checked_div_floor">checked_div_floor</a></li><li><a href="#method.checked_div_int_ceil">checked_div_int_ceil</a></li><li><a href="#method.checked_div_int_floor">checked_div_int_floor</a></li><li><a href="#method.checked_from_rational_ceil">checked_from_rational_ceil</a></li><li><a href="#method.checked_from_rational_floor">checked_from_rational_floor</a></li><li><a href="#method.checked_from_rational_with_rounding">checked_from_rational_with_rounding</a></li><li><a href="#method.checked_mul_ceil">checked_mul_ceil</a></li><li><a href="#method.checked_mul_floor">checked_mul_floor</a></li><li><a href="#method.checked_mul_int_ceil">checked_mul_int_ceil</a></li><li><a href="#method.checked_mul_int_floor">checked_mul_int_floor</a></li><li><a href="#method.checked_mul_int_with_rounding">checked_mul_int_with_rounding</a></li><li><a href="#method.reciprocal_ceil">reciprocal_ceil</a></li><li><a href="#method.reciprocal_floor">reciprocal_floor</a></li><li><a href="#method.reciprocal_with_rounding">reciprocal_with_rounding</a></li><li><a href="#method.saturating_div_ceil">saturating_div_ceil</a></li><li><a href="#method.saturating_div_floor">saturating_div_floor</a></li><li><a href="#method.saturating_div_int_ceil">saturating_div_int_ceil</a></li><li><a href="#method.saturating_div_int_floor">saturating_div_int_floor</a></li><li><a href="#method.saturating_div_int_with_rounding">saturating_div_int_with_rounding</a></li><li><a href="#method.saturating_from_rational_ceil">saturating_from_rational_ceil</a></li><li><a href="#method.saturating_from_rational_floor">saturating_from_rational_floor</a></li><li><a href="#method.saturating_from_rational_with_rounding">saturating_from_rational_with_rounding</a></li><li><a href="#method.saturating_mul_ceil">saturating_mul_ceil</a></li><li><a href="#method.saturating_mul_floor">saturating_mul_floor</a></li><li><a href="#method.saturating_mul_int_ceil">saturating_mul_int_ceil</a></li><li><a href="#method.saturating_mul_int_floor">saturating_mul_int_floor</a></li><li><a href="#method.saturating_mul_int_with_rounding">saturating_mul_int_with_rounding</a></li><li><a href="#method.saturating_pow_ceil">saturating_pow_ceil</a></li><li><a href="#method.saturating_pow_floor">saturating_pow_floor</a></li><li><a href="#method.saturating_pow_with_rounding">saturating_pow_with_rounding</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In cfg_types::fixed_point</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../index.html">cfg_types</a>::<wbr><a href="index.html">fixed_point</a>::<wbr><a class="trait" href="#">FixedPointNumberExtension</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/cfg_types/fixed_point.rs.html#85-442">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait FixedPointNumberExtension: FixedPointNumber {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 36 methods</span></summary>    // Required methods
+    fn <a href="#tymethod.checked_mul_with_rounding" class="fn">checked_mul_with_rounding</a>(
+        &amp;self,
+        other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>,
+        r: SignedRounding
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.saturating_mul_with_rounding" class="fn">saturating_mul_with_rounding</a>(
+        self,
+        other: Self,
+        r: SignedRounding
+    ) -&gt; Self;
+<span class="item-spacer"></span>    fn <a href="#tymethod.checked_div_with_rounding" class="fn">checked_div_with_rounding</a>(
+        &amp;self,
+        other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>,
+        r: SignedRounding
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.saturating_div_with_rounding" class="fn">saturating_div_with_rounding</a>(
+        &amp;self,
+        other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>,
+        r: SignedRounding
+    ) -&gt; Self;
+<span class="item-spacer"></span>    fn <a href="#tymethod.checked_div_int_with_rounding" class="fn">checked_div_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+        self,
+        int: N,
+        r: SignedRounding
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;;
+
+    // Provided methods
+    fn <a href="#method.checked_mul_int_with_rounding" class="fn">checked_mul_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+        self,
+        int: N,
+        r: SignedRounding
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_mul_int_with_rounding" class="fn">saturating_mul_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+        self,
+        int: N,
+        r: SignedRounding
+    ) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_mul_int_floor" class="fn">checked_mul_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_mul_int_ceil" class="fn">checked_mul_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_mul_floor" class="fn">checked_mul_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_mul_ceil" class="fn">checked_mul_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_mul_floor" class="fn">saturating_mul_floor</a>(self, other: Self) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_mul_ceil" class="fn">saturating_mul_ceil</a>(self, other: Self) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_mul_int_floor" class="fn">saturating_mul_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_mul_int_ceil" class="fn">saturating_mul_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_from_rational_with_rounding" class="fn">checked_from_rational_with_rounding</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D,
+        pref: SignedRounding
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_from_rational_ceil" class="fn">checked_from_rational_ceil</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_from_rational_floor" class="fn">checked_from_rational_floor</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_from_rational_with_rounding" class="fn">saturating_from_rational_with_rounding</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D,
+        r: SignedRounding
+    ) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_from_rational_floor" class="fn">saturating_from_rational_floor</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D
+    ) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_from_rational_ceil" class="fn">saturating_from_rational_ceil</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+        n: N,
+        d: D
+    ) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_div_floor" class="fn">checked_div_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_div_ceil" class="fn">checked_div_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_div_floor" class="fn">saturating_div_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_div_ceil" class="fn">saturating_div_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_div_int_floor" class="fn">checked_div_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checked_div_int_ceil" class="fn">checked_div_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_div_int_with_rounding" class="fn">saturating_div_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+        self,
+        int: N,
+        r: SignedRounding
+    ) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_div_int_floor" class="fn">saturating_div_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_div_int_ceil" class="fn">saturating_div_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N { ... }
+<span class="item-spacer"></span>    fn <a href="#method.reciprocal_with_rounding" class="fn">reciprocal_with_rounding</a>(self, r: SignedRounding) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.reciprocal_floor" class="fn">reciprocal_floor</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.reciprocal_ceil" class="fn">reciprocal_ceil</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_pow_with_rounding" class="fn">saturating_pow_with_rounding</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, r: SignedRounding) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_pow_floor" class="fn">saturating_pow_floor</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self { ... }
+<span class="item-spacer"></span>    fn <a href="#method.saturating_pow_ceil" class="fn">saturating_pow_ceil</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self { ... }
+</details>}</code></pre><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.checked_mul_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#133">source</a><h4 class="code-header">fn <a href="#tymethod.checked_mul_with_rounding" class="fn">checked_mul_with_rounding</a>(
+    &amp;self,
+    other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>,
+    r: SignedRounding
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by another val of Type Self, with
+Rounding::SignedRounding rounding preference. Returns None if out of
+bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.saturating_mul_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#149">source</a><h4 class="code-header">fn <a href="#tymethod.saturating_mul_with_rounding" class="fn">saturating_mul_with_rounding</a>(self, other: Self, r: SignedRounding) -&gt; Self</h4></section></summary><div class="docblock"><p>Multiples by another val of type Self, with Rounding::SignedRounding
+rounding preference. Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.checked_div_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#257">source</a><h4 class="code-header">fn <a href="#tymethod.checked_div_with_rounding" class="fn">checked_div_with_rounding</a>(
+    &amp;self,
+    other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>,
+    r: SignedRounding
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked division by another val of Type Self, with
+Rounding::SignedRounding rounding preference. Returns None if out of
+bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.saturating_div_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#273">source</a><h4 class="code-header">fn <a href="#tymethod.saturating_div_with_rounding" class="fn">saturating_div_with_rounding</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>, r: SignedRounding) -&gt; Self</h4></section></summary><div class="docblock"><p>Divides by another val of type Self, with Rounding::SignedRounding
+rounding preference. Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.checked_div_int_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#317-321">source</a><h4 class="code-header">fn <a href="#tymethod.checked_div_int_with_rounding" class="fn">checked_div_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+    self,
+    int: N,
+    r: SignedRounding
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked division by FixedPointOperand, with Rounding::SignedRounding
+rounding preference. Returns None if out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case). For example:</p>
+<div class="example-wrap"><pre class="language-text"><code>   FixedU128::saturating_from_rational(2)
+       .checked_div_with_rounding(2, SignedRounding::...)
+
+would be equivalent to
+
+     (2 * FixedU128::accuracy) * (FixedU128::accuracy / 2)
+
+instead of
+
+     2 * 1/2.
+
+Whereas
+
+    FixedU128::saturating_from_rational(2)
+        .checked_div_with_rounding(2 * FixedU128::accuracy)
+
+would be equivalent to
+
+    2 * FixedU128::accuracy *
+       (FixedU128::accuracy / 2 * FixedU128::accuracy)
+
+Which would be 1 * FixedU128::accuracy
+</code></pre></div></div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.checked_mul_int_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#89-105">source</a><h4 class="code-header">fn <a href="#method.checked_mul_int_with_rounding" class="fn">checked_mul_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+    self,
+    int: N,
+    r: SignedRounding
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by FixedPointOperand, with
+Rounding:SignedRounding rounding preference. Returns None if out of
+bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_mul_int_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#109-116">source</a><h4 class="code-header">fn <a href="#method.saturating_mul_int_with_rounding" class="fn">saturating_mul_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+    self,
+    int: N,
+    r: SignedRounding
+) -&gt; N</h4></section></summary><div class="docblock"><p>Multiples by FixedPointOperand, with Rounding::SignedRounding rounding
+preference. Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_mul_int_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#120-122">source</a><h4 class="code-header">fn <a href="#method.checked_mul_int_floor" class="fn">checked_mul_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by FixedPointOperand; precision rounded to floor.
+Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_mul_int_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#126-128">source</a><h4 class="code-header">fn <a href="#method.checked_mul_int_ceil" class="fn">checked_mul_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by FixedPointOperand; precision rounded to ceil.
+Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_mul_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#137-139">source</a><h4 class="code-header">fn <a href="#method.checked_mul_floor" class="fn">checked_mul_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by another val of Type Self; rounds precision to
+floor. Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_mul_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#143-145">source</a><h4 class="code-header">fn <a href="#method.checked_mul_ceil" class="fn">checked_mul_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked multiplication by another val of Type Self; rounds precision to
+ceil. Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_mul_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#153-155">source</a><h4 class="code-header">fn <a href="#method.saturating_mul_floor" class="fn">saturating_mul_floor</a>(self, other: Self) -&gt; Self</h4></section></summary><div class="docblock"><p>Multiples by another val of type Self; rounds precision to floor.
+Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_mul_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#159-161">source</a><h4 class="code-header">fn <a href="#method.saturating_mul_ceil" class="fn">saturating_mul_ceil</a>(self, other: Self) -&gt; Self</h4></section></summary><div class="docblock"><p>Multiples by another val of type Self; rounds precision to ceil.
+Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_mul_int_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#166-168">source</a><h4 class="code-header">fn <a href="#method.saturating_mul_int_floor" class="fn">saturating_mul_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N</h4></section></summary><div class="docblock"><p>Multiplies by FixedPointOperand with Rounding::SignedRounding rounding
+preference. Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_mul_int_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#172-174">source</a><h4 class="code-header">fn <a href="#method.saturating_mul_int_ceil" class="fn">saturating_mul_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N</h4></section></summary><div class="docblock"><p>Multiplies by FixedPointOperand; precision rounded to ceil
+Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_from_rational_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#179-200">source</a><h4 class="code-header">fn <a href="#method.checked_from_rational_with_rounding" class="fn">checked_from_rational_with_rounding</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D,
+    pref: SignedRounding
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands, with
+Rounding::SignedRounding rounding preference Returns None if out of
+bounds</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_from_rational_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#204-209">source</a><h4 class="code-header">fn <a href="#method.checked_from_rational_ceil" class="fn">checked_from_rational_ceil</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands; rounds precision to
+ceil. Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_from_rational_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#213-218">source</a><h4 class="code-header">fn <a href="#method.checked_from_rational_floor" class="fn">checked_from_rational_floor</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands; rounds precision to
+floor. Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_from_rational_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#223-232">source</a><h4 class="code-header">fn <a href="#method.saturating_from_rational_with_rounding" class="fn">saturating_from_rational_with_rounding</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D,
+    r: SignedRounding
+) -&gt; Self</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands, with
+Rounding::SignedRounding rounding preference. Panics if denominator 0
+is. Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_from_rational_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#237-242">source</a><h4 class="code-header">fn <a href="#method.saturating_from_rational_floor" class="fn">saturating_from_rational_floor</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D
+) -&gt; Self</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands; rounds precision to
+floor. Panics if denominator 0 is.
+Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_from_rational_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#247-252">source</a><h4 class="code-header">fn <a href="#method.saturating_from_rational_ceil" class="fn">saturating_from_rational_ceil</a>&lt;N: FixedPointOperand, D: FixedPointOperand&gt;(
+    n: N,
+    d: D
+) -&gt; Self</h4></section></summary><div class="docblock"><p>Creates Self from rational of FixedPointOperands; rounds precision to
+ceil. Panics if denominator 0 is.
+Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_div_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#261-263">source</a><h4 class="code-header">fn <a href="#method.checked_div_floor" class="fn">checked_div_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked division by another val of Type Self; rounds precision to floor.
+Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_div_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#267-269">source</a><h4 class="code-header">fn <a href="#method.checked_div_ceil" class="fn">checked_div_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Checked division by another val of Type Self; rounds precision to ceil.
+Returns None if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_div_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#277-279">source</a><h4 class="code-header">fn <a href="#method.saturating_div_floor" class="fn">saturating_div_floor</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; Self</h4></section></summary><div class="docblock"><p>Divides by another val of type Self; rounds precision to floor.
+Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_div_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#283-285">source</a><h4 class="code-header">fn <a href="#method.saturating_div_ceil" class="fn">saturating_div_ceil</a>(&amp;self, other: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;Self</a>) -&gt; Self</h4></section></summary><div class="docblock"><p>Divides by another val of type Self; rounds precision to ceil.
+Saturates if out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_div_int_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#329-331">source</a><h4 class="code-header">fn <a href="#method.checked_div_int_floor" class="fn">checked_div_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked division by FixedPointOperand; rounds precision to floor.
+Returns None if out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.checked_div_int_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#339-341">source</a><h4 class="code-header">fn <a href="#method.checked_div_int_ceil" class="fn">checked_div_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;N&gt;</h4></section></summary><div class="docblock"><p>Checked division by FixedPointOperand; rounds precision to ceil.
+Returns None if out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_div_int_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#350-360">source</a><h4 class="code-header">fn <a href="#method.saturating_div_int_with_rounding" class="fn">saturating_div_int_with_rounding</a>&lt;N: FixedPointOperand&gt;(
+    self,
+    int: N,
+    r: SignedRounding
+) -&gt; N</h4></section></summary><div class="docblock"><p>Divides by FixedPointOperand, with Rounding:SignedRounding rounding
+preference. Panics if denominator 0 is.
+Saturates if result out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_div_int_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#369-371">source</a><h4 class="code-header">fn <a href="#method.saturating_div_int_floor" class="fn">saturating_div_int_floor</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N</h4></section></summary><div class="docblock"><p>Divides by FixedPointOperand; rounds precision to floor.
+Panics if denominator 0 is.
+Saturates if result out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_div_int_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#380-382">source</a><h4 class="code-header">fn <a href="#method.saturating_div_int_ceil" class="fn">saturating_div_int_ceil</a>&lt;N: FixedPointOperand&gt;(self, int: N) -&gt; N</h4></section></summary><div class="docblock"><p>Divides by FixedPointOperand; rounds precision to ceil.
+Panics if denominator 0 is.
+Saturates if result out of bounds.</p>
+<p>Note:  This assumes that the FP accuracy has been adjusted to match
+the accuracy of the FP extended type in question (FixedU128 in this
+case).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.reciprocal_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#386-388">source</a><h4 class="code-header">fn <a href="#method.reciprocal_with_rounding" class="fn">reciprocal_with_rounding</a>(self, r: SignedRounding) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Returns the reciprocal – 1 / self, with Rounding:SignedRounding
+rounding preference. Returns None if self is 0</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.reciprocal_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#391-393">source</a><h4 class="code-header">fn <a href="#method.reciprocal_floor" class="fn">reciprocal_floor</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Returns reciprocal; rounds precision to floor.
+Returns None if self is 0</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.reciprocal_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#397-399">source</a><h4 class="code-header">fn <a href="#method.reciprocal_ceil" class="fn">reciprocal_ceil</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self&gt;</h4></section></summary><div class="docblock"><p>Returns reciprocal; rounds precision to ceil.
+Returns None if self is 0</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_pow_with_rounding" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#403-429">source</a><h4 class="code-header">fn <a href="#method.saturating_pow_with_rounding" class="fn">saturating_pow_with_rounding</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, r: SignedRounding) -&gt; Self</h4></section></summary><div class="docblock"><p>Checked self raised to pow.
+Saturate if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_pow_floor" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#433-435">source</a><h4 class="code-header">fn <a href="#method.saturating_pow_floor" class="fn">saturating_pow_floor</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self</h4></section></summary><div class="docblock"><p>Checked self raised to pow; rounds precision to floor.
+Saturates if result out of bounds.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.saturating_pow_ceil" class="method"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#439-441">source</a><h4 class="code-header">fn <a href="#method.saturating_pow_ceil" class="fn">saturating_pow_ceil</a>(self, pow: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self</h4></section></summary><div class="docblock"><p>Checked self raised to pow; rounds precision to ceil.
+Saturates if result out of bounds.</p>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-FixedPointNumberExtension-for-FixedU128%3CDIV%3E" class="impl"><a class="src rightside" href="../../src/cfg_types/fixed_point.rs.html#524-619">source</a><a href="#impl-FixedPointNumberExtension-for-FixedU128%3CDIV%3E" class="anchor">§</a><h3 class="code-header">impl&lt;const DIV: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>&gt; <a class="trait" href="trait.FixedPointNumberExtension.html" title="trait cfg_types::fixed_point::FixedPointNumberExtension">FixedPointNumberExtension</a> for <a class="struct" href="struct.FixedU128.html" title="struct cfg_types::fixed_point::FixedU128">FixedU128</a>&lt;DIV&gt;</h3></section></div><script src="../../implementors/cfg_types/fixed_point/trait.FixedPointNumberExtension.js" async></script></section></div></main></body></html>

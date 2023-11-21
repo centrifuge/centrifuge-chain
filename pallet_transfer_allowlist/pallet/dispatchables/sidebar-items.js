@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_allowance_delay","add_transfer_allowance","purge_allowance_delay","purge_transfer_allowance","remove_transfer_allowance","toggle_allowance_delay_once_future_modifiable","update_allowance_delay"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["adjustments","consts","domain_address","epoch","fee_keys","fixed_point","ids","investments","locations","oracles","orders","permissions","pools","time","tokens","xcm"],"type":["EVMChainId","ParaId"]};

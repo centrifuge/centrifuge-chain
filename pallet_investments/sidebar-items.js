@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CollectOutcome","CollectType","OrderType"],"mod":["pallet","weights"],"type":["OrderOf"]};

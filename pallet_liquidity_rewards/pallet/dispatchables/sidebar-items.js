@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["claim_reward","set_currency_group","set_distributed_reward","set_epoch_duration","set_group_weight","stake","unstake"]};

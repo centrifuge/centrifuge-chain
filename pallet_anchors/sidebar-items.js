@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PRE_COMMIT_EXPIRATION_DURATION_BLOCKS"],"mod":["pallet","weights"],"struct":["AnchorData","PreCommitData","RootHashSize"]};

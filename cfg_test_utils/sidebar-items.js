@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TEST_PALLET_ID"],"macro":["impl_mock_accountant","impl_mock_registry"],"mod":["mocks"]};

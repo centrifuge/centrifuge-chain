@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"runtime_common":[["impl&lt;Account&gt; SortedMembers&lt;&lt;&lt;MultiSignature as Verify&gt;::Signer as IdentifyAccount&gt;::AccountId&gt; for <a class=\"struct\" href=\"runtime_common/origin/struct.AdminOnly.html\" title=\"struct runtime_common::origin::AdminOnly\">AdminOnly</a>&lt;Account&gt;<span class=\"where fmt-newline\">where\n    Account: Get&lt;AccountId&gt;,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

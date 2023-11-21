@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"centrifuge_chain":[["impl&lt;B: BlockT, I, C&gt; ParachainBlockImportMarker for <a class=\"struct\" href=\"centrifuge_chain/service/evm/struct.BlockImport.html\" title=\"struct centrifuge_chain::service::evm::BlockImport\">BlockImport</a>&lt;B, I, C&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

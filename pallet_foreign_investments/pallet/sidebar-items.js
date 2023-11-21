@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"mod":["dispatchables","storage_types"],"struct":["Of","Pallet"],"trait":["Config"],"type":["CollectedInvestment","CollectedRedemption","InvestmentPaymentCurrency","InvestmentState","Module","RedemptionPayoutCurrency","RedemptionState"]};

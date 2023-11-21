@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"mod":["dispatchables","storage_types"],"struct":["AllowanceDetails","AllowanceMetadata","Pallet"],"trait":["Config"],"type":["AccountCurrencyTransferAllowance","AccountCurrencyTransferCountDelay","AllowanceDetailsOf","DepositBalanceOf","Module"]};

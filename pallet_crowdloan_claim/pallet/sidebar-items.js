@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_on_index_empty","__type_value_for_on_lease_empty"],"mod":["dispatchables","storage_types"],"struct":["OnIndexEmpty","OnLeaseEmpty","Pallet"],"trait":["Config"],"type":["CrowdloanTrieIndex","CurrIndex","LeasePeriod","LeaseStart","Module","PrevIndex"]};
