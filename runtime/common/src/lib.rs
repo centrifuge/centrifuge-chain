@@ -293,7 +293,7 @@ pub mod changes {
 					},
 				},
 				LoansChange::<T>::Policy(_) => vec![week, blocked],
-				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![epoch, blocked],
+				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
 			};
 
 			PoolChangeProposal::new(requirements)
