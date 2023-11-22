@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -11,18 +11,17 @@
 // GNU General Public License for more details.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::TypeInfo, storage::unhashed, traits::OnRuntimeUpgrade, weights::Weight, RuntimeDebug,
-	StoragePrefixedMap,
-};
+use frame_support::{dispatch::TypeInfo, traits::OnRuntimeUpgrade, weights::Weight, RuntimeDebug};
+#[cfg(feature = "try-runtime")]
+use frame_support::{storage::unhashed, StoragePrefixedMap};
 use frame_system::AccountInfo;
 use pallet_balances::AccountData;
+#[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::Zero;
 use sp_core::crypto::AccountId32;
 pub use sp_core::sr25519;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
-#[cfg(feature = "try-runtime")]
 use sp_std::{prelude::Vec, vec};
 
 /// All balance information for an account.
@@ -129,6 +128,7 @@ where
 ///   this requires calling
 ///   `pallet_balances::Pallet::<T>::upgrade_account(origin, &who)` which can be
 ///   done by a script
+#[cfg(feature = "try-runtime")]
 fn check_account_storage<T: frame_system::Config + pallet_balances::Config>(is_old: bool) {
 	let account_prefix = frame_system::Account::<T>::final_prefix();
 
@@ -214,7 +214,6 @@ fn check_account_storage<T: frame_system::Config + pallet_balances::Config>(is_o
 ///
 /// NOTE: Unfortunately, flags needs to be initialized with the default
 /// (correct) value.
-#[cfg(feature = "try-runtime")]
 fn get_test_account_data<T>() -> Vec<(T::AccountId, NewAccountInfoOf<T>)>
 where
 	T: frame_system::Config<AccountId = AccountId32, Index = u32>
