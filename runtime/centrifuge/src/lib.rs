@@ -2017,7 +2017,7 @@ impl_runtime_apis! {
 		}
 
 		fn metadata_at_version(version: u32) -> Option<sp_core::OpaqueMetadata> { Runtime::metadata_at_version(version) }
-		fn metadata_versions() -> frame_benchmarking::Vec<u32> { Runtime::metadata_versions() }
+		fn metadata_versions() -> sp_std::vec::Vec<u32> { Runtime::metadata_versions() }
 	}
 
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {

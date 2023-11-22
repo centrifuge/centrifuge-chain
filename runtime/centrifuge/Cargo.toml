@@ -13,7 +13,7 @@ documentation.workspace = true
 codec = { package = "parity-scale-codec", workspace = true }
 getrandom = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true, optional = true }
+hex-literal = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 static_assertions = { workspace = true }
@@ -270,7 +270,6 @@ std = [
 
 runtime-benchmarks = [
   # Enabling optional
-  "hex-literal",
   "frame-system-benchmarking/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
