@@ -11,7 +11,7 @@ services:
       - "9946:9933"
     volumes:
       - type: bind
-        source: ./res/rococo-local.json
+        source: ../res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
@@ -45,7 +45,7 @@ services:
       - "9946:9944"
     volumes:
       - type: bind
-        source: ./res/rococo-local.json
+        source: ../res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
