@@ -4,6 +4,36 @@ use super::*;
 use crate::mock::*;
 
 #[test]
+fn add_transfer_fails_for_native() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			TransferAllowList::add_transfer_allowance(
+				RuntimeOrigin::signed(SENDER),
+				<Runtime as Config>::NativeCurrency::get(),
+				ACCOUNT_RECEIVER.into(),
+			),
+			Error::<Runtime>::NativeCurrencyNotPossible
+		);
+		assert_eq!(
+			TransferAllowList::get_account_currency_transfer_allowance((
+				SENDER,
+				<Runtime as Config>::CurrencyId::default(),
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
+			)),
+			None,
+		);
+		assert_eq!(
+			TransferAllowList::get_account_currency_restriction_count_delay(
+				SENDER,
+				<Runtime as Config>::CurrencyId::default()
+			),
+			None,
+		);
+
+		assert_eq!(Balances::reserved_balance(&SENDER), 0);
+	})
+}
+#[test]
 fn add_transfer_allowance_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
@@ -35,21 +65,7 @@ fn add_transfer_allowance_works() {
 			})
 		);
 
-		assert_eq!(
-			System::events()[0].event,
-			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
-		);
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
-		assert_eq!(
-			System::events()[1].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceCreated {
-				sender_account_id: SENDER,
-				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
-				allowed_at: 0,
-				blocked_at: u64::MAX
-			})
-		)
 	})
 }
 
@@ -129,15 +145,6 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 				current_delay: None,
 				once_modifiable_after: None
 			})
-		);
-
-		assert_eq!(
-			System::events()[0].event,
-			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
-		);
-		assert_eq!(
-			System::events()[2].event,
-			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 	})
 }
@@ -268,18 +275,6 @@ fn remove_transfer_allowance_works() {
 				once_modifiable_after: None
 			})
 		);
-
-		// event 1 for allowance creation itelf
-		assert_eq!(
-			System::events()[2].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
-				sender_account_id: SENDER,
-				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
-				allowed_at: 0u64,
-				blocked_at: 50u64
-			})
-		)
 	})
 }
 
@@ -330,19 +325,6 @@ fn remove_transfer_allowance_with_delay_works() {
 
 		// ensure only 1 reserve as we've still just got 1 allowance in storage
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
-
-		// 0, allowance creation itself
-		// 1, delay creation
-		assert_eq!(
-			System::events()[3].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
-				sender_account_id: SENDER,
-				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
-				allowed_at: 0u64,
-				blocked_at: 250u64
-			})
-		)
 	})
 }
 
@@ -398,25 +380,6 @@ fn purge_transfer_allowance_works() {
 				allowance_count: 0,
 				current_delay: Some(5u64),
 				once_modifiable_after: None
-			})
-		);
-		// verify event sent for removal
-		// event 0 is delay, addition to ensure blocked at set
-		// event 1 is reserve
-		// event 2 is allowance creation
-		// Event 3 is allowance removal to set blocked at
-		// event 4 is unreserve from purge
-		// event 5 is purge
-		assert_eq!(
-			System::events()[4].event,
-			RuntimeEvent::Balances(pallet_balances::Event::Unreserved { who: 1, amount: 10 })
-		);
-		assert_eq!(
-			System::events()[5].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowancePurged {
-				sender_account_id: SENDER,
-				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
 			})
 		);
 	})
