@@ -16,7 +16,7 @@ jobs:
     # Deploy to the github-pages environment
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}    
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
@@ -48,12 +48,19 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
-        
+
+      - name: Fix permissions
+        run: |
+          chmod -c -R +rX "./target/doc" | while read line; do
+            echo "::warning title=Invalid file permissions automatically fixed::$line"
+          done
+
       - name: upload Docs files
         uses: actions/upload-pages-artifact@v2
         with:
           path: ./target/doc
 
       - name: Deploy Docs
+        # if: github.ref == 'refs/heads/main'
         id: deployment
-        uses: actions/deploy-pages@v2          
+        uses: actions/deploy-pages@v2
