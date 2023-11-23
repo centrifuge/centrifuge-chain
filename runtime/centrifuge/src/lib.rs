@@ -80,7 +80,8 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter, asset_registry, production_or_benchmark,
-	xcm::AccountIdToMultiLocation, xcm_transactor, CurrencyED,
+	xcm::AccountIdToMultiLocation, xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
+	NativeCurrency,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1832,6 +1833,17 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+impl pallet_transfer_allowlist::Config for Runtime {
+	type CurrencyId = CurrencyId;
+	type Deposit = AllowanceDeposit<Fees>;
+	type HoldId = HoldId;
+	type Location = Location;
+	type NativeCurrency = NativeCurrency;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1893,6 +1905,7 @@ construct_runtime!(
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 107,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 108,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 109,
+		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 110,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1998,6 +2011,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use cfg_types::locations::Location;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2503,6 +2517,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
+			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2577,6 +2592,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
+			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
