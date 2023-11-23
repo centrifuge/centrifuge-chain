@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	AccountId32,
 };
-use xcm::{latest::MultiLocation, VersionedMultiLocation};
+use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::domain_address::DomainAddress;
 /// Location types for destinations that can receive restricted transfers
