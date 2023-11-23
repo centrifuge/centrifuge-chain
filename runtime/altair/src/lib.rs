@@ -490,6 +490,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Loans(pallet_loans::Call::propose_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+                    RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
                     RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
