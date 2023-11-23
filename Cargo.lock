@@ -272,6 +272,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transfer-allowlist",
  "pallet-treasury",
  "pallet-uniques",
  "pallet-utility",

@@ -130,6 +130,7 @@ pallet-pool-registry = { path = "../../pallets/pool-registry", default-features 
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
+pallet-transfer-allowlist = { path = "../../pallets/transfer-allowlist", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # LiquidityPools 3rd-party dependencies
@@ -222,6 +223,7 @@ std = [
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
+  "pallet-transfer-allowlist/std",
   "pallet-treasury/std",
   "pallet-uniques/std",
   "pallet-utility/std",
@@ -305,6 +307,7 @@ runtime-benchmarks = [
   "pallet-rewards/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
+  "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
@@ -388,6 +391,7 @@ try-runtime = [
   "pallet-session/try-runtime",
   "pallet-timestamp/try-runtime",
   "pallet-transaction-payment/try-runtime",
+  "pallet-transfer-allowlist/try-runtime",
   "pallet-treasury/try-runtime",
   "pallet-uniques/try-runtime",
   "pallet-utility/try-runtime",
