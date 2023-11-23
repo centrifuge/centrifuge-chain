@@ -634,6 +634,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Loans(pallet_loans::Call::propose_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+                    RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
+                    RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
 					// Specifically omitting Tokens
@@ -675,6 +677,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
                 RuntimeCall::Loans(pallet_loans::Call::close { .. }) |
                 RuntimeCall::Loans(pallet_loans::Call::apply_write_off_policy { .. }) |
                 RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::propose_transfer_debt { .. }) |
+                RuntimeCall::Loans(pallet_loans::Call::apply_transfer_debt { .. }) |
                 // Borrowers should be able to close and execute an epoch
                 // in order to get liquidity from repayments in previous epochs.
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
@@ -1684,7 +1688,7 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxFeedValues: u32 = 10;
+	pub const MaxFeedValues: u32 = 500;
 }
 
 impl orml_oracle::Config for Runtime {
