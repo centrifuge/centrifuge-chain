@@ -11437,6 +11437,7 @@ dependencies = [
  "pallet-evm-precompile-modexp",
  "pallet-evm-precompile-sha3fips",
  "pallet-evm-precompile-simple",
+ "pallet-fees",
  "pallet-investments",
  "pallet-liquidity-pools",
  "pallet-liquidity-pools-gateway",

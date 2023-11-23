@@ -92,7 +92,7 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, CurrencyED,
+	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1791,15 +1791,12 @@ impl pallet_block_rewards::Config for Runtime {
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
-parameter_types! {
-	pub const TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
-}
-
 impl pallet_transfer_allowlist::Config for Runtime {
-	type AllowanceFeeKey = TransferAllowlistFeeKey;
 	type CurrencyId = CurrencyId;
-	type Fees = Fees;
+	type Deposit = AllowanceDeposit<Fees>;
+	type HoldId = HoldId;
 	type Location = Location;
+	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
