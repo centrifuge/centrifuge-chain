@@ -11,7 +11,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      pages: write
     runs-on: ubuntu-latest-4-cores
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}    
     steps:
       - name: Checkout repository
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
@@ -41,22 +46,14 @@ jobs:
         run: |
           echo "<meta http-equiv=\"refresh\" content=\"0; url=centrifuge_chain/index.html\">" \ > ./target/doc/index.html
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
       - name: upload Docs files
         uses: actions/upload-pages-artifact@v2
         with:
           path: ./target/doc
 
-  deploy-docs:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write
-    # Deploy to the github-pages environment
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy Docs
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v2          
