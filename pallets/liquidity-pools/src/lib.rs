@@ -426,6 +426,10 @@ pub mod pallet {
 					decimals: metadata.decimals.saturated_into(),
 					token_name,
 					token_symbol,
+					// NOTE: This value is for now intentionally hardcoded to 1 since that's the
+					// only available option. We will design a dynamic approach going forward where
+					// this value can be set on a per-tranche-token basis on storage.
+					restriction_set: 1,
 				},
 			)?;
 

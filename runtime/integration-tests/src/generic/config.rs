@@ -7,6 +7,7 @@ use cfg_primitives::{
 use cfg_traits::Millis;
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
+	investments::InvestmentPortfolio,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -95,6 +96,7 @@ pub trait Runtime:
 	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
 	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
+	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -128,6 +130,7 @@ pub trait Runtime:
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
+		+ From<pallet_investments::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
@@ -170,6 +173,11 @@ pub trait Runtime:
 			CurrencyId,
 			Quantity,
 			Self::MaxTranchesExt,
+		> + apis::runtime_decl_for_investments_api::InvestmentsApiV1<
+			Self::Block,
+			AccountId,
+			TrancheCurrency,
+			InvestmentPortfolio<Balance, CurrencyId>,
 		>;
 
 	type MaxTranchesExt: Codec + Get<u32> + Member + PartialOrd + TypeInfo;

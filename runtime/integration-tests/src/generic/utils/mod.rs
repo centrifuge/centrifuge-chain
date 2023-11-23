@@ -147,6 +147,44 @@ pub fn invest<T: Runtime>(
 	.unwrap();
 }
 
+pub fn redeem<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+	amount: Balance,
+) {
+	pallet_investments::Pallet::<T>::update_redeem_order(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+		amount,
+	)
+	.unwrap();
+}
+
+pub fn collect_investments<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+) {
+	pallet_investments::Pallet::<T>::collect_investments(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+	)
+	.unwrap();
+}
+
+pub fn collect_redemptions<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+) {
+	pallet_investments::Pallet::<T>::collect_redemptions(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+	)
+	.unwrap();
+}
+
 pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
 	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values.try_into().unwrap())
 		.unwrap();
