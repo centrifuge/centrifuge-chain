@@ -3521,11 +3521,13 @@ source = "git+https://github.com/moonbeam-foundation/frontier?branch=moonbeam-po
 dependencies = [
  "async-trait",
  "fp-storage",
+ "kvdb-rocksdb",
  "log",
  "parity-db",
  "parity-scale-codec 3.6.5",
  "parking_lot 0.12.1",
  "sc-client-db",
+ "smallvec",
  "sp-blockchain",
  "sp-core",
  "sp-database",
