@@ -113,11 +113,9 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", default-featur
 
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-
 rococo-runtime = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
@@ -137,7 +135,7 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-featu
 sp-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-consensus-babe = { git = "https://github.com/paritytech/substrate", default-features = false ,branch = "polkadot-v0.9.43" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-consensus-beefy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-consensus-slots = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }

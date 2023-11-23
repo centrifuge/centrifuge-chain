@@ -10,37 +10,37 @@ documentation.workspace = true
 
 [dependencies]
 codec = { package = "parity-scale-codec", workspace = true }
+ethabi = { workspace = true, features = ["std"] }
+ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
 fudge-core = { workspace = true }
+getrandom = { workspace = true }
+hex = { workspace = true }
 lazy_static = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing-subscriber = { workspace = true }
-getrandom = { workspace = true }
-hex = { workspace = true }
-ethabi = { workspace = true, features = ["std"] }
-ethereum = { workspace = true, features = ["std"] }
 
 node-primitives = { workspace = true, features = ["std"] }
+sc-block-builder = { workspace = true }
 sc-client-api = { workspace = true }
 sc-executor = { workspace = true, features = ["std"] }
 sc-service = { workspace = true, features = ["rocksdb", "test-helpers"] }
-sc-block-builder = { workspace = true }
 
 sp-api = { workspace = true, features = ["std"] }
-sp-runtime = { workspace = true, features = ["std"] }
 sp-block-builder = { workspace = true, features = ["std"] }
 sp-consensus-aura = { workspace = true, features = ["std"] }
 sp-consensus-babe = { workspace = true, features = ["std"] }
+sp-consensus-beefy = { workspace = true, features = ["std"] }
+sp-consensus-slots = { workspace = true, features = ["std"] }
 sp-core = { workspace = true, features = ["std"] }
 sp-inherents = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
+sp-runtime = { workspace = true, features = ["std"] }
 sp-std = { workspace = true, features = ["std"] }
 sp-timestamp = { workspace = true, features = ["std"] }
 sp-tracing = { workspace = true, features = ["std"] }
-sp-consensus-beefy = { workspace = true, features = ["std"] }
-sp-consensus-slots = { workspace = true, features = ["std"] }
 sp-transaction-pool = { workspace = true, features = ["std"] }
 
 frame-support = { workspace = true, features = ["std"] }
@@ -50,18 +50,18 @@ cumulus-primitives-core = { workspace = true, features = ["std"] }
 cumulus-primitives-parachain-inherent = { workspace = true, features = ["std"] }
 cumulus-test-relay-sproof-builder = { workspace = true, features = ["std"] }
 
-rococo-runtime = { workspace = true, features = ["std"] }
 kusama-runtime = { workspace = true, features = ["std"] }
+polkadot-core-primitives = { workspace = true, features = ["std"] }
+polkadot-parachain = { workspace = true, features = ["std"] }
+polkadot-primitives = { workspace = true, features = ["std"] }
 polkadot-runtime = { workspace = true, features = ["std"] }
 polkadot-runtime-common = { workspace = true, features = ["std"] }
 polkadot-runtime-parachains = { workspace = true, features = ["std"] }
-polkadot-parachain = { workspace = true, features = ["std"] }
-polkadot-core-primitives = { workspace = true, features = ["std"] }
-polkadot-primitives = { workspace = true, features = ["std"] }
+rococo-runtime = { workspace = true, features = ["std"] }
 
-pallet-im-online = { workspace = true, features = ["std"] }
 pallet-babe = { workspace = true, features = ["std"] }
 pallet-grandpa = { workspace = true, features = ["std"] }
+pallet-im-online = { workspace = true, features = ["std"] }
 
 xcm = { workspace = true, features = ["std"] }
 xcm-executor = { workspace = true, features = ["std"] }
@@ -71,19 +71,19 @@ orml-traits = { workspace = true, features = ["std"] }
 fp-self-contained = { workspace = true, features = ["std"] }
 
 # Locals
+altair-runtime = { workspace = true, features = ["std"] }
+centrifuge-runtime = { workspace = true, features = ["std"] }
 cfg-primitives = { workspace = true, features = ["std"] }
 cfg-traits = { workspace = true, features = ["std"] }
 cfg-types = { workspace = true, features = ["std"] }
 cfg-utils = { workspace = true, features = ["std"] }
-runtime-common = { workspace = true, features = ["std"] }
 development-runtime = { workspace = true, features = ["std"] }
-altair-runtime = { workspace = true, features = ["std"] }
-centrifuge-runtime = { workspace = true, features = ["std"] }
 liquidity-pools-gateway-routers = { workspace = true, features = ["std"] }
+runtime-common = { workspace = true, features = ["std"] }
 
 # Pallet list
 axelar-gateway-precompile = { workspace = true, features = ["std"] }
-chainbridge = {workspace = true, features = ["std"] }
+chainbridge = { workspace = true, features = ["std"] }
 cumulus-pallet-aura-ext = { workspace = true, features = ["std"] }
 cumulus-pallet-dmp-queue = { workspace = true, features = ["std"] }
 cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
@@ -153,7 +153,7 @@ parachain-info = { workspace = true, features = ["std"] }
 
 [features]
 default = [
-  "development-runtime/instant-voting"
+  "development-runtime/instant-voting",
 ]
 
 fast-runtime = ["development-runtime/fast-runtime"]
