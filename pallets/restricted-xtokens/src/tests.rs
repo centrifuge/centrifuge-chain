@@ -20,7 +20,7 @@ use sp_runtime::{traits::AccountIdConversion, AccountId32};
 use xcm_simulator::TestExt;
 
 use super::*;
-
+use crate::tests::para::RESTRICTON_TRIGGERED;
 fn para_a_account() -> AccountId32 {
 	ParaId::from(1).into_account_truncating()
 }
@@ -64,7 +64,7 @@ mod para_a_to_relay {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -142,7 +142,7 @@ mod para_a_to_para_a {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -174,7 +174,7 @@ mod para_a_to_para_a {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -206,7 +206,7 @@ mod para_a_to_para_a {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -245,7 +245,7 @@ mod para_a_to_para_b {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -326,7 +326,7 @@ mod para_a_to_para_b {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
@@ -407,7 +407,7 @@ mod para_a_to_para_b {
 					),
 					WeightLimit::Unlimited
 				),
-				Error::<para::Runtime>::RestrictionTriggered
+				RESTRICTON_TRIGGERED
 			);
 
 			assert_eq!(
