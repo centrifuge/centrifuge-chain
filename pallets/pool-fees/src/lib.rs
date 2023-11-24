@@ -12,6 +12,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod types;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -27,7 +29,9 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type WeightInfo: WeightInfo;
+
+		// TODO: Enable after creating benchmarks
+		// type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -44,9 +48,11 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(Weight::from_parts(10_000, 0))]
 		pub fn some_extrinsic(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			Ok(())
 		}
 	}
 }
