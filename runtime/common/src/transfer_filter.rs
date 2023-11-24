@@ -11,17 +11,109 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, Balance};
-use cfg_traits::PreConditions;
-use cfg_types::tokens::CurrencyId;
+use cfg_traits::{PreConditions, TransferAllowance};
+use cfg_types::{locations::Location, tokens::CurrencyId};
+use codec::Encode;
 use pallet_restricted_xtokens::TransferEffects;
-use sp_runtime::DispatchResult;
+use sp_core::Hasher;
+use sp_runtime::{
+	traits::{BlakeTwo256, Convert},
+	DispatchError, DispatchResult, TokenError,
+};
+use xcm::v3::{MultiAsset, MultiLocation};
 
-pub struct PreXcmTransfer<T>(sp_std::marker::PhantomData<T>);
+pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
-impl<T> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T> {
+impl<
+		T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>,
+		C: Convert<MultiAsset, Option<CurrencyId>>,
+	> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T, C>
+{
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		todo!()
+		let currency_based_check = |sender, destination: MultiLocation, currency| {
+			T::allowance(
+				sender,
+				Location::XCM(BlakeTwo256::hash(&destination.encode())),
+				currency,
+			)
+		};
+
+		let asset_based_check = |sender, destination, asset| {
+			let currency =
+				C::convert(asset).ok_or(DispatchError::Token(TokenError::UnknownAsset))?;
+
+			currency_based_check(sender, destination, currency)
+		};
+
+		match t {
+			TransferEffects::Transfer {
+				sender,
+				destination,
+				currency_id,
+				..
+			} => currency_based_check(sender, destination, currency_id),
+			TransferEffects::TransferMultiAsset {
+				sender,
+				destination,
+				asset,
+			} => asset_based_check(sender, destination, asset),
+			TransferEffects::TransferWithFee {
+				sender,
+				destination,
+				currency_id,
+				..
+			} => currency_based_check(sender, destination, currency_id),
+			TransferEffects::TransferMultiAssetWithFee {
+				sender,
+				destination,
+				asset,
+				fee_asset,
+			} => {
+				asset_based_check(sender.clone(), destination, asset)?;
+
+				// NOTE: We do check the fee asset and assume that the destination
+				//       is the same as for the actual assets. This is a pure subjective
+				//       security assumption to not allow randomly burning fees of
+				//       protected assets.
+				asset_based_check(sender, destination, fee_asset)
+			}
+			TransferEffects::TransferMultiCurrencies {
+				sender,
+				destination,
+				currencies,
+				fee,
+			} => {
+				for (currency, ..) in currencies {
+					currency_based_check(sender.clone(), destination, currency)?;
+				}
+
+				// NOTE: We do check the fee asset and assume that the destination
+				//       is the same as for the actual assets. This is a pure subjective
+				//       security assumption to not allow randomly burning fees of
+				//       protected assets.
+				currency_based_check(sender, destination, fee.0)
+			}
+			TransferEffects::TransferMultiAssets {
+				sender,
+				destination,
+				assets,
+				fee_asset,
+			} => {
+				// NOTE: We do not check the fee, as we assume, that this is not a transfer
+				//       but rather a burn of tokens. Furthermore, we do not know the
+				//       destination where those fees will go.
+				for asset in assets.into_inner() {
+					asset_based_check(sender.clone(), destination, asset)?;
+				}
+
+				// NOTE: We do check the fee asset and assume that the destination
+				//       is the same as for the actual assets. This is a pure subjective
+				//       security assumption to not allow randomly burning fees of
+				//       protected assets.
+				asset_based_check(sender, destination, fee_asset)
+			}
+		}
 	}
 }

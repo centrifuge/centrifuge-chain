@@ -417,7 +417,7 @@ impl orml_xtokens::Config for Runtime {
 }
 
 impl pallet_restricted_xtokens::Config for Runtime {
-	type PreTransfer = PreXcmTransfer<super::TransferAllowList>;
+	type PreTransfer = PreXcmTransfer<super::TransferAllowList, CurrencyIdConvert>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
