@@ -70,7 +70,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 
 
 ENV RUST_BACKTRACE 1
-USER centrifuge
+USER centrifuge-chain
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 
