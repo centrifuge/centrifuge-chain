@@ -1219,6 +1219,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
