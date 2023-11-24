@@ -132,6 +132,7 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 pallet-transfer-allowlist = { path = "../../pallets/transfer-allowlist", default-features = false }
+pallet-restricted-xtokens = { path = "../../pallets/restricted-xtokens", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # LiquidityPools 3rd-party dependencies
@@ -223,6 +224,7 @@ std = [
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-restricted-tokens/std",
+  "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
   "pallet-scheduler/std",
   "pallet-session/std",
@@ -314,6 +316,7 @@ runtime-benchmarks = [
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
+  "pallet-restricted-xtokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
@@ -396,6 +399,7 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-restricted-tokens/try-runtime",
+  "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
