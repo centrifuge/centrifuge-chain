@@ -54,3 +54,5 @@ impl Default for FeeKey {
 		FeeKey::AnchorsCommit
 	}
 }
+
+pub type Fee = cfg_traits::fees::Fee<cfg_primitives::Balance, FeeKey>;

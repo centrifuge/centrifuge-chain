@@ -435,6 +435,13 @@ pub mod fees {
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
 	}
+
+	/// Trait to pay fees
+	/// This trait can be used by pallet to just pay fees without worring about
+	/// the value or where the fee goes.
+	pub trait PayFee<AccountId> {
+		fn pay_for(who: &AccountId) -> DispatchResult;
+	}
 }
 
 /// Trait to determine whether a sending account and currency have a
