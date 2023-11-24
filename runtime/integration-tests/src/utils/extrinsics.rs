@@ -151,8 +151,6 @@ fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
 		frame_system::CheckNonce::<RelayRuntime>::from(nonce),
 		frame_system::CheckWeight::<RelayRuntime>::new(),
 		pallet_transaction_payment::ChargeTransactionPayment::<RelayRuntime>::from(0),
-		#[cfg(not(feature = "runtime-development"))]
-		polkadot_runtime_common::claims::PrevalidateAttests::<RelayRuntime>::new(),
 	)
 }
 
