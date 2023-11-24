@@ -50,10 +50,10 @@ jobs:
         with:
           images: centrifugeio/centrifuge-chain
           tags: |
-            type=raw,event=branch,value={{branch}}-{{sha}},suffix=-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=
-            type=semver,pattern={{raw}},suffix=,prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
-            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=
-            type=edge
+            type=raw,event=branch,value=${{ matrix.target == 'test' && 'test-' || '' }}{{branch}}-{{sha}}-${{ env.NOW }}
+            type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
+            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=edge,suffix=-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
