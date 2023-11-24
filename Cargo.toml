@@ -283,7 +283,7 @@ url = "2.2.2"
 grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-chain-spec = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"] }
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -291,7 +291,7 @@ sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sc-network-sync = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-service = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"] }
 sc-sysinfo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -313,7 +313,7 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch 
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 
 # Cli specific
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"]}
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.43" }
 
 # Local dependencies
@@ -359,7 +359,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 # frontier
 fc-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = ["rocksdb"]}
 fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
@@ -418,7 +418,6 @@ std = [
   "runtime-common/std",
   #"runtime-integration-tests/std",
   "sc-executor/std",
-  "sc-service/rocksdb",
   "serde/std",
   "serde/std",
   "sp-api/std",
