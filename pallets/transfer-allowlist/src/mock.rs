@@ -41,9 +41,9 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
-			Balances: pallet_balances,
-			System: frame_system,
-			  TransferAllowList: transfer_allowlist,
+		  Balances: pallet_balances,
+		  System: frame_system,
+		  TransferAllowList: transfer_allowlist,
 	  }
 );
 
