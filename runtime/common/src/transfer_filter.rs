@@ -14,11 +14,12 @@ use cfg_primitives::{AccountId, Balance};
 use cfg_traits::PreConditions;
 use cfg_types::tokens::CurrencyId;
 use pallet_restricted_xtokens::TransferEffects;
+use sp_runtime::DispatchResult;
 
 pub struct PreXcmTransfer<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T> {
-	type Result = bool;
+	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
 		todo!()

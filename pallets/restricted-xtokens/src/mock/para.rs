@@ -12,7 +12,9 @@
 
 use cumulus_primitives_core::{ChannelStatus, GetChannelInfo, ParaId};
 use frame_support::{
-	construct_runtime, match_types, parameter_types,
+	construct_runtime,
+	dispatch::DispatchResult,
+	match_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Get, Nothing},
 	weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
@@ -26,7 +28,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{Convert, IdentityLookup},
-	AccountId32,
+	AccountId32, DispatchError,
 };
 use xcm::v3::{prelude::*, Weight};
 use xcm_builder::{
@@ -347,11 +349,12 @@ construct_runtime!(
 );
 
 pub struct PreTransferCheck;
+pub const RESTRICTON_TRIGGERED: DispatchError = DispatchError::Other("restricted");
 
 impl cfg_traits::PreConditions<TransferEffects<AccountId, CurrencyId, Balance>>
 	for PreTransferCheck
 {
-	type Result = bool;
+	type Result = DispatchResult;
 
 	fn check(effect: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
 		match effect {
@@ -366,17 +369,22 @@ impl cfg_traits::PreConditions<TransferEffects<AccountId, CurrencyId, Balance>>
 						|| currency_id == CurrencyId::A1
 						|| currency_id == CurrencyId::B1
 					{
-						destination == para_a_rreceiver_relay()
+						if destination == para_a_rreceiver_relay()
 							|| destination == para_a_rreceiver_para_a()
 							|| destination == para_a_rreceiver_para_b()
+						{
+							Ok(())
+						} else {
+							Err(RESTRICTON_TRIGGERED)
+						}
 					} else {
-						true
+						Ok(())
 					}
 				} else {
-					true
+					Ok(())
 				}
 			}
-			_ => false,
+			_ => Err(RESTRICTON_TRIGGERED),
 		}
 	}
 }

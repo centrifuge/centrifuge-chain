@@ -102,16 +102,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + orml_xtokens::Config {
 		type PreTransfer: PreConditions<
 			TransferEffects<Self::AccountId, Self::CurrencyId, Self::Balance>,
-			Result = bool,
+			Result = DispatchResult,
 		>;
-	}
-
-	#[pallet::error]
-	pub enum Error<T> {
-		/// Transfer has been restricted by the runtime.
-		/// In most cases this means there exist a restriction on the sender and
-		/// the receiver of the transfer is not allowlisted as a receiver
-		RestrictionTriggered,
 	}
 
 	#[pallet::pallet]
@@ -145,15 +137,12 @@ pub mod pallet {
 				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
 			let sender = ensure_signed(origin.clone())?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::Transfer {
-					sender,
-					destination,
-					currency_id: currency_id.clone(),
-					amount
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::Transfer {
+				sender,
+				destination,
+				currency_id: currency_id.clone(),
+				amount,
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer(
 				origin,
@@ -192,14 +181,11 @@ pub mod pallet {
 				.try_into()
 				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::TransferMultiAsset {
-					sender,
-					destination,
-					asset: multi_asset,
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::TransferMultiAsset {
+				sender,
+				destination,
+				asset: multi_asset,
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer_multiasset(origin, asset, dest, dest_weight_limit)
 		}
@@ -240,16 +226,13 @@ pub mod pallet {
 				.try_into()
 				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::TransferWithFee {
-					sender,
-					destination,
-					currency_id: currency_id.clone(),
-					amount,
-					fee
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::TransferWithFee {
+				sender,
+				destination,
+				currency_id: currency_id.clone(),
+				amount,
+				fee,
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer_with_fee(
 				origin,
@@ -302,15 +285,12 @@ pub mod pallet {
 				.try_into()
 				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::TransferMultiAssetWithFee {
-					sender,
-					destination,
-					asset: multi_asset,
-					fee_asset
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::TransferMultiAssetWithFee {
+				sender,
+				destination,
+				asset: multi_asset,
+				fee_asset,
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer_multiasset_with_fee(
 				origin,
@@ -353,15 +333,12 @@ pub mod pallet {
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::TransferMultiCurrencies {
-					sender,
-					destination,
-					currencies: currencies.clone(),
-					fee: fee.clone()
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::TransferMultiCurrencies {
+				sender,
+				destination,
+				currencies: currencies.clone(),
+				fee: fee.clone(),
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer_multicurrencies(
 				origin,
@@ -407,15 +384,12 @@ pub mod pallet {
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
 
-			ensure!(
-				T::PreTransfer::check(TransferEffects::TransferMultiAssets {
-					sender,
-					destination,
-					assets: multi_assets.clone(),
-					fee_asset: fee_asset.clone()
-				}),
-				Error::<T>::RestrictionTriggered
-			);
+			T::PreTransfer::check(TransferEffects::TransferMultiAssets {
+				sender,
+				destination,
+				assets: multi_assets.clone(),
+				fee_asset: fee_asset.clone(),
+			})?;
 
 			orml_xtokens::Pallet::<T>::transfer_multiassets(
 				origin,
