@@ -57,7 +57,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 	
 	# Because of the following, all data and config directories need to be owned by UID and GID 1000
-	RUN groupadd --gid 1000 centrifuge && useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge
+	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge
 	
 	RUN mkdir -p /data && \ 
 		chown -R centrifuge:centrifuge /data && \
