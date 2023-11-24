@@ -12,7 +12,7 @@ fn add_transfer_fails_for_native() {
 				<Runtime as Config>::NativeCurrency::get(),
 				ACCOUNT_RECEIVER.into(),
 			),
-			Error::<Runtime>::NativeCurrencyNotPossible
+			Error::<Runtime>::NativeCurrencyNotRestrictable
 		);
 		assert_eq!(
 			TransferAllowList::get_account_currency_transfer_allowance((
