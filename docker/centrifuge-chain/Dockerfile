@@ -30,8 +30,6 @@ FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
 	ARG RUSTC_WRAPPER=''
 	ARG SCCACHE_GHA_ENABLED="false"
 
-	RUN	rustup target add wasm32-unknown-unknown
-
 	COPY . centrifuge-chain
 	WORKDIR /centrifuge-chain
 	ARG FEATURES=""
@@ -54,24 +52,24 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 	# Add chain resources to image
 	COPY res /resources/
 
-	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge && \
-			mkdir -p /data /centrifuge/.local/share && \
-			chown -R centrifuge:centrifuge /data && \
-			ln -s /data /centrifuge/.local/share/centrifuge
-
 	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
-	# checks
-	RUN ldd /usr/local/bin/centrifuge-chain && \
-		/usr/local/bin/centrifuge-chain --version
 
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
-	RUN	mkdir -p /root/.local/share/centrifuge-chain && \
-		ln -s /root/.local/share/centrifuge-chain /data
+	
+	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge && \
+			mkdir -p /data && \ 
+			chown -R centrifuge:centrifuge /data && \
+			chown -R centrifuge:centrifuge /resources && \
+			chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
+			chown -R centrifuge:centrifuge /centrifuge/
 
-
-ENV RUST_BACKTRACE 1
 USER centrifuge
+# checks
+RUN ldd /usr/local/bin/centrifuge-chain && \
+	/usr/local/bin/centrifuge-chain --version
+ENV RUST_BACKTRACE 1
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 
 ENTRYPOINT ["/usr/local/bin/centrifuge-chain"]
+CMD ["--help"]
