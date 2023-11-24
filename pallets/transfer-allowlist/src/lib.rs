@@ -257,7 +257,7 @@ pub mod pallet {
 		/// destination
 		NoAllowanceForDestination,
 		/// Native currency can not be restricted with allowances
-		NativeCurrencyNotPossible,
+		NativeCurrencyNotRestrictable,
 	}
 
 	#[pallet::event]
@@ -334,7 +334,7 @@ pub mod pallet {
 
 			ensure!(
 				currency_id != T::NativeCurrency::get(),
-				Error::<T>::NativeCurrencyNotPossible
+				Error::<T>::NativeCurrencyNotRestrictable
 			);
 
 			let allowance_details = match Self::get_account_currency_restriction_count_delay(
