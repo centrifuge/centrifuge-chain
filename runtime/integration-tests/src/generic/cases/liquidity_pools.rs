@@ -1145,21 +1145,28 @@ mod altair {
 
 mod centrifuge {
 	use centrifuge_runtime::CurrencyIdConvert;
+	use sp_core::Get;
 
 	use super::*;
 
 	mod utils {
+		use xcm::v3::NetworkId;
+
 		use super::*;
 
 		/// The test asset id attributed to DOT
 		pub const DOT_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(91);
+
+		pub const LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
+
+		pub const USDC: CurrencyId = CurrencyId::ForeignAsset(6);
 
 		/// An Asset that is NOT XCM transferable
 		pub const NO_XCM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(401);
 
 		/// Register DOT in the asset registry.
 		/// It should be executed within an externalities environment.
-		pub fn register_dot<T: Runtime + FudgeSupport>() {
+		pub fn register_dot<T: Runtime>() {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 10,
 				name: "Polkadot".into(),
@@ -1175,6 +1182,62 @@ mod centrifuge {
 				<T as frame_system::Config>::RuntimeOrigin::root(),
 				meta,
 				Some(DOT_ASSET_ID)
+			));
+		}
+
+		pub fn register_lp_eth_usdc<T: Runtime>() {
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 6,
+				name: "LP Ethereum Wrapped USDC".into(),
+				symbol: "LpEthUSDC".into(),
+				existential_deposit: 1_000,
+				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					0,
+					X3(
+						PalletInstance(103),
+						GlobalConsensus(NetworkId::Ethereum { chain_id: 1 }),
+						AccountKey20 {
+							network: None,
+							key: hex_literal::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+						},
+					),
+				))),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::LiquidityPools,
+					..CustomMetadata::default()
+				},
+			};
+
+			assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+				<T as frame_system::Config>::RuntimeOrigin::root(),
+				meta,
+				Some(LP_ETH_USDC)
+			));
+		}
+
+		pub fn register_usdc<T: Runtime>() {
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 6,
+				name: "USD Circle".into(),
+				symbol: "USDC".into(),
+				existential_deposit: 1_000,
+				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					1,
+					X3(
+						Junction::Parachain(1000),
+						Junction::PalletInstance(50),
+						Junction::GeneralIndex(1337),
+					),
+				))),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::Xcm(Default::default()),
+					..CustomMetadata::default()
+				},
+			};
+			assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+				<T as frame_system::Config>::RuntimeOrigin::root(),
+				meta,
+				Some(USDC)
 			));
 		}
 
@@ -1333,6 +1396,72 @@ mod centrifuge {
 
 		pub fn foreign(amount: Balance, decimals: u32) -> Balance {
 			amount * dollar(decimals)
+		}
+
+		pub fn transfer_dot_from_relay_chain<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
+			let alice_initial_dot = dot(10);
+			let transfer_amount: Balance = dot(3);
+
+			env.parachain_state_mut(|| {
+				register_dot::<T>();
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
+					0
+				);
+			});
+
+			env.relay_state_mut(|| {
+				assert_ok!(
+					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
+						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
+						Keyring::Alice.to_account_id().into(),
+						alice_initial_dot,
+					)
+				);
+
+				assert_ok!(
+					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
+						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
+						Box::new(MultiLocation::new(
+							0,
+							Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
+						)),
+						XCM_VERSION,
+					)
+				);
+
+				assert_ok!(
+					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::reserve_transfer_assets(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
+						Box::new(
+							Junction::AccountId32 {
+								network: None,
+								id: Keyring::Alice.into(),
+							}
+							.into()
+						),
+						Box::new((Here, transfer_amount).into()),
+						0
+					)
+				);
+
+				assert_eq!(
+					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
+						&Keyring::Alice.into()
+					),
+					alice_initial_dot - transfer_amount
+				);
+			});
+
+			env.pass(Blocks::ByNumber(1));
+
+			env.parachain_state(|| {
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
+					transfer_amount - dot_fee()
+				);
+			});
 		}
 	}
 
@@ -1614,6 +1743,225 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], convert_dot);
 		crate::test_for_runtimes!([centrifuge], convert_unknown_multilocation);
 		crate::test_for_runtimes!([centrifuge], convert_unsupported_currency);
+	}
+
+	mod restricted_transfers {
+		use cfg_types::locations::Location;
+		use sp_core::Hasher;
+		use sp_runtime::traits::BlakeTwo256;
+
+		use super::*;
+		use crate::generic::envs::runtime_env::RuntimeEnv;
+
+		const TRANSFER_AMOUNT: u128 = 10;
+
+		fn xcm_location() -> MultiLocation {
+			MultiLocation::new(
+				1,
+				X1(Junction::AccountId32 {
+					id: Keyring::Alice.into(),
+					network: None,
+				}),
+			)
+		}
+
+		fn allowed_xcm_location() -> Location {
+			Location::XCM(BlakeTwo256::hash(&xcm_location().encode()))
+		}
+
+		fn add_allowance<T: Runtime>(account: Keyring, asset: CurrencyId, location: Location) {
+			assert_ok!(
+				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+					RawOrigin::Signed(account.into()).into(),
+					asset,
+					location
+				)
+			);
+		}
+
+		fn restrict_lp_eth_usdc_transfer<T: Runtime>() {
+			todo!()
+		}
+
+		fn restrict_lp_eth_usdc_xcm_transfer<T: Runtime>() {
+			todo!()
+		}
+
+		fn restrict_usdc_transfer<T: Runtime>() {
+			todo!()
+		}
+
+		fn restrict_usdc_xcm_transfer<T: Runtime>() {
+			todo!()
+		}
+		fn restrict_dot_transfer<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_storage(
+				Genesis::default()
+					.add(orml_tokens::GenesisConfig::<T> {
+						balances: vec![(
+							Keyring::Alice.to_account_id(),
+							DOT_ASSET_ID,
+							T::ExistentialDeposit::get() + dot(TRANSFER_AMOUNT),
+						)],
+					})
+					.storage(),
+				Genesis::<T>::default().storage(),
+			);
+
+			register_dot::<T>();
+
+			env.parachain_state_mut(|| {
+				let pre_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Alice.to_account_id(),
+				);
+				let pre_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Bob.to_account_id(),
+				);
+				let pre_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Charlie.to_account_id(),
+				);
+
+				add_allowance::<T>(
+					Keyring::Alice,
+					DOT_ASSET_ID,
+					Location::Local(Keyring::Bob.to_account_id()),
+				);
+
+				assert_noop!(
+					pallet_restricted_tokens::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Keyring::Charlie.into(),
+						DOT_ASSET_ID,
+						dot(TRANSFER_AMOUNT)
+					),
+					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+				);
+
+				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Alice.to_account_id(),
+				);
+				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Charlie.to_account_id(),
+				);
+
+				assert_eq!(after_transfer_alice, pre_transfer_alice);
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+
+				assert_ok!(pallet_restricted_tokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					Keyring::Bob.into(),
+					DOT_ASSET_ID,
+					dot(TRANSFER_AMOUNT)
+				),);
+
+				let after_transfer_alice = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Alice.to_account_id(),
+				);
+				let after_transfer_bob = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Bob.to_account_id(),
+				);
+				let after_transfer_charlie = orml_tokens::Pallet::<T>::free_balance(
+					DOT_ASSET_ID,
+					&Keyring::Charlie.to_account_id(),
+				);
+
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - dot(TRANSFER_AMOUNT)
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + dot(TRANSFER_AMOUNT));
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
+		}
+
+		fn restrict_dot_xcm_transfer<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
+
+			utils::transfer_dot_from_relay_chain(&mut env);
+
+			env.parachain_state_mut(|| {
+				let alice_initial_dot =
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into());
+
+				assert_eq!(alice_initial_dot, dot(3) - dot_fee());
+
+				assert_ok!(pallet_xcm::Pallet::<T>::force_xcm_version(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					Box::new(MultiLocation::new(1, Junctions::Here)),
+					XCM_VERSION,
+				));
+
+				assert_ok!(
+					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						DOT_ASSET_ID,
+						allowed_xcm_location()
+					)
+				);
+
+				assert_noop!(
+					pallet_restricted_xtokens::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						DOT_ASSET_ID,
+						dot(1),
+						Box::new(
+							MultiLocation::new(
+								1,
+								X1(Junction::AccountId32 {
+									id: Keyring::Bob.into(),
+									network: None,
+								})
+							)
+							.into()
+						),
+						WeightLimit::Unlimited,
+					),
+					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+				);
+
+				assert_ok!(pallet_restricted_xtokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					DOT_ASSET_ID,
+					dot(1),
+					Box::new(
+						MultiLocation::new(
+							1,
+							X1(Junction::AccountId32 {
+								id: Keyring::Alice.into(),
+								network: None,
+							})
+						)
+						.into()
+					),
+					WeightLimit::Unlimited,
+				));
+
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
+					alice_initial_dot - dot(1),
+				);
+			});
+
+			env.pass(Blocks::ByNumber(1));
+
+			env.relay_state_mut(|| {
+				assert_eq!(
+					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
+						&Keyring::Alice.into()
+					),
+					79628418552
+				);
+			});
+		}
+
+		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
 	}
 
 	mod transfers {
@@ -1898,76 +2246,10 @@ mod centrifuge {
 			});
 		}
 
-		fn transfer_dot_from_relay_chain<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
-			let alice_initial_dot = dot(10);
-			let transfer_amount: Balance = dot(3);
-
-			env.parachain_state_mut(|| {
-				register_dot::<T>();
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
-					0
-				);
-			});
-
-			env.relay_state_mut(|| {
-				assert_ok!(
-					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
-						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
-						alice_initial_dot,
-					)
-				);
-
-				assert_ok!(
-					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
-						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Box::new(MultiLocation::new(
-							0,
-							Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
-						)),
-						XCM_VERSION,
-					)
-				);
-
-				assert_ok!(
-					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::reserve_transfer_assets(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
-						Box::new(
-							Junction::AccountId32 {
-								network: None,
-								id: Keyring::Alice.into(),
-							}
-							.into()
-						),
-						Box::new((Here, transfer_amount).into()),
-						0
-					)
-				);
-
-				assert_eq!(
-					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
-						&Keyring::Alice.into()
-					),
-					alice_initial_dot - transfer_amount
-				);
-			});
-
-			env.pass(Blocks::ByNumber(1));
-
-			env.parachain_state(|| {
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
-					transfer_amount - dot_fee()
-				);
-			});
-		}
-
 		fn transfer_dot_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
 
-			transfer_dot_from_relay_chain(&mut env);
+			utils::transfer_dot_from_relay_chain(&mut env);
 
 			env.parachain_state_mut(|| {
 				let alice_initial_dot =

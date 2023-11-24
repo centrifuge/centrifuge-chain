@@ -8,6 +8,7 @@ use cfg_traits::Millis;
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	investments::InvestmentPortfolio,
+	locations::Location,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
@@ -97,6 +98,8 @@ pub trait Runtime:
 	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
+	+ pallet_restricted_xtokens::Config
+	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
