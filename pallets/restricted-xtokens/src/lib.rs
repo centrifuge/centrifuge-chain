@@ -10,17 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # Xtokens Module
+//! # Pallet-Restricted-Xtokens Module
 //!
 //! ## Overview
 //!
-//! The xtokens module provides cross-chain token transfer functionality, by
-//! cross-consensus messages(XCM).
-//!
-//! The xtokens module provides functions for
-//! - Token transfer from parachains to relay chain.
-//! - Token transfer between parachains, including relay chain tokens like DOT,
-//!   KSM, and parachain tokens like ACA, aUSD.
+//! This pallet is a wrapper pallet over `orml-xtokens` and allows the runtime
+//! to create arbitrary filters for transfers of x-chain-transfers.
+//! The interface mimic 1-to-1 the interface of `orml-xtokens`.
 //!
 //! ## Interface
 //!
