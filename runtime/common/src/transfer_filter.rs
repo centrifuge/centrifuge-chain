@@ -12,8 +12,9 @@
 
 use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
-use cfg_types::{locations::Location, tokens::CurrencyId};
+use cfg_types::{domain_address::DomainAddress, locations::Location, tokens::CurrencyId};
 use codec::Encode;
+use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use sp_core::Hasher;
 use sp_runtime::{
@@ -115,5 +116,29 @@ impl<
 				asset_based_check(sender, destination, fee_asset)
 			}
 		}
+	}
+}
+
+pub struct PreNativeTransfer<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>>
+	PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
+{
+	type Result = bool;
+
+	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> Self::Result {
+		T::allowance(t.send, Location::Local(t.recv), t.id).is_ok()
+	}
+}
+pub struct PreLpTransfer<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>>
+	PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
+{
+	type Result = DispatchResult;
+
+	fn check(t: (AccountId, DomainAddress, CurrencyId)) -> Self::Result {
+		let (sender, receiver, currency) = t;
+		T::allowance(sender, Location::Address(receiver), currency)
 	}
 }
