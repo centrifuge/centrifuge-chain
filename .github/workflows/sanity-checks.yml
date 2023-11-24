@@ -15,11 +15,6 @@ jobs:
       matrix:
         target: [test-general, test-integration,
                  lint-fmt, lint-clippy, cargo-build, docs-build] # ,lint-taplo]
-        include:
-          - target: benchmark-check
-            runtime: altair
-          - target: benchmark-check
-            runtime: centrifuge
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -37,5 +32,27 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           RUSTC_WRAPPER: "sccache"
-          RUNTIME: ${{ matrix.runtime }}
 
+  benchmark-check:
+    name: bench-check-${{ matrix.runtime }}
+    runs-on: ubuntu-latest #-4-cores
+    strategy:
+      matrix:
+        runtime: [altair, centrifuge]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
+
+      - name: Prep build
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          cache: enabled
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Runing cargo ${{ matrix.target }}
+        run: ./ci/run-check.sh
+        env:
+          TARGET: benchmark-check
+          RUNTIME: ${{ matrix.runtime }}
+          RUSTC_WRAPPER: "sccache"
