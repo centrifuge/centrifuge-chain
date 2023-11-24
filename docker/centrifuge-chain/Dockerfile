@@ -1,8 +1,6 @@
-# Based on
+# Inspired by
 # https://github.com/paritytech/polkadot-sdk/blob/master/docker/dockerfiles/polkadot/polkadot_injected_release.Dockerfile
 
-# ToDo: create a CI/builder image with preloaded tools
-# FROM --platform=linux/amd64 docker.io/library/ubuntu:22.04 as builder
 FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
   # Defaults
 	ENV RUST_BACKTRACE 1
@@ -38,7 +36,9 @@ FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
 
 
 # ===== SECOND STAGE ======
-# ToDo: create a secure image as a base for the binary
+# IF we were to publish binaries that we can always trust we could skip the first part
+# and simply download the binaries here. Some short of hash or integrity check would need to
+# happen to make sure the binary is what we want.
 FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 
 	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
@@ -56,13 +56,18 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 	
-	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge && \
-			mkdir -p /data && \ 
-			chown -R centrifuge:centrifuge /data && \
-			chown -R centrifuge:centrifuge /resources && \
-			chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
-			chown -R centrifuge:centrifuge /centrifuge/
+	# Because of the following, all data and config directories need to be owned by UID and GID 1000
+	RUN groupadd --gid 1000 centrifuge && useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge
+	
+	RUN mkdir -p /data && \ 
+		chown -R centrifuge:centrifuge /data && \
+		chown -R centrifuge:centrifuge /resources && \
+		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
+		chown -R centrifuge:centrifuge /centrifuge/
 
+# Running as an non-root is a good security practice
+# in some cases the container can be forced to run as root overriding the next line
+# but by default we want to enforce this.
 USER centrifuge
 # checks
 RUN ldd /usr/local/bin/centrifuge-chain && \
