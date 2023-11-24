@@ -49,6 +49,7 @@ use frame_support::pallet_prelude::*;
 use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::XtokensWeightInfo;
 pub use pallet::*;
+use sp_std::{boxed::Box, vec::Vec};
 use xcm::{v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation};
 
 mod mock;

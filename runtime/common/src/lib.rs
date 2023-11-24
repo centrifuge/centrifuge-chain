@@ -24,6 +24,7 @@ pub mod evm;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
