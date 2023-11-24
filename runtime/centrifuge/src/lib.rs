@@ -583,6 +583,7 @@ pub enum ProxyType {
 	PodOperation,
 	PodAuth,
 	PermissionManagement,
+	Transfer,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -721,6 +722,12 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
 					| RuntimeCall::Utility(pallet_utility::Call::batch { .. })
 			),
+			ProxyType::Transfer => {
+				matches!(
+					c,
+					RuntimeCall::XTokens(..) | RuntimeCall::Balances(..) | RuntimeCall::Tokens(..)
+				)
+			}
 		}
 	}
 
