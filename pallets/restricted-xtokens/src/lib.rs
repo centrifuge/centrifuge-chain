@@ -105,6 +105,11 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
+	#[pallet::error]
+	pub enum Error<T> {
+		BadVersion,
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Transfer native currencies.
@@ -130,7 +135,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let sender = ensure_signed(origin.clone())?;
 
 			T::PreTransfer::check(TransferEffects::Transfer {
@@ -172,10 +177,10 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let multi_asset: MultiAsset = (*asset.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiAsset {
 				sender,
@@ -220,7 +225,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferWithFee {
 				sender,
@@ -273,13 +278,13 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let multi_asset: MultiAsset = (*asset.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee_asset: MultiAsset = (*fee.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 
 			T::PreTransfer::check(TransferEffects::TransferMultiAssetWithFee {
 				sender,
@@ -324,7 +329,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee = currencies
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
@@ -372,10 +377,10 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let multi_assets: MultiAssets = (*assets.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let destination: MultiLocation = (*dest.clone())
 				.try_into()
-				.map_err(|()| orml_xtokens::Error::<T>::BadVersion)?;
+				.map_err(|()| Error::<T>::BadVersion)?;
 			let fee_asset: &MultiAsset = multi_assets
 				.get(fee_item as usize)
 				.ok_or(orml_xtokens::Error::<T>::AssetIndexNonExistent)?;
