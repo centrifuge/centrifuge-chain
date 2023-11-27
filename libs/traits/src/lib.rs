@@ -668,3 +668,10 @@ impl IntoSeconds for Millis {
 		self / 1000
 	}
 }
+
+pub trait ValueProvider<Source, Key> {
+	type Value;
+	type Timestamp;
+
+	fn get(source: &Source, id: &Key) -> Option<(Self::Value, Self::Timestamp)>;
+}

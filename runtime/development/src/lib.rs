@@ -30,7 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
-	fee_keys::FeeKey,
+	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	investments::InvestmentPortfolio,
@@ -90,7 +90,7 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
 	changes::FastDelay,
-	fees::{DealWithFees, WeightToFee},
+	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
@@ -1335,6 +1335,18 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
+	pub const FirstValueFee: Fee = Fee::Balance(10 * CFG);
+}
+
+impl pallet_oracle_feed::Config for Runtime {
+	type FirstValuePayFee = FeeToTreasury<Fees, FirstValueFee>;
+	type OracleKey = OracleKey;
+	type OracleValue = (Quantity, Millis);
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+}
+
+parameter_types! {
 	pub const MaxFeedValues: u32 = 500;
 }
 
@@ -1915,6 +1927,7 @@ construct_runtime!(
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
+		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

@@ -2820,6 +2820,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -8250,6 +8251,18 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-oracle-feed"
+version = "1.0.0"
+dependencies = [
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime",
 ]
 
 [[package]]
