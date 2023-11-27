@@ -1,23 +1,11 @@
 # Inspired by
 # https://github.com/paritytech/polkadot-sdk/blob/master/docker/dockerfiles/polkadot/polkadot_injected_release.Dockerfile
 
-FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
+FROM --platform=linux/amd64 docker.io/paritytech/ci-linux:production as builder
   # Defaults
 	ENV RUST_BACKTRACE 1
-	ENV DEBIAN_FRONTEND=noninteractive
-
-	RUN apt-get update && \
-		# apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
-		apt-get install -y \
-			cmake \
-			pkg-config \
-			libssl-dev \
-			git \
-			clang \
-			libclang-dev \
-			protobuf-compiler \
-			curl
-
+  
+  # RustUp
 	COPY ./scripts scripts
 	COPY rust-toolchain.toml ./
 	# RUN rustup update && rustup default
@@ -32,7 +20,7 @@ FROM --platform=linux/amd64 docker.io/library/rust:bookworm as builder
 	WORKDIR /centrifuge-chain
 	ARG FEATURES=""
 	RUN	FEATURES=$(echo ${FEATURES} | tr -d '"') \
-		cargo build "--release" --features=${FEATURES}
+		cargo build --locked --release --features=${FEATURES}
 
 
 # ===== SECOND STAGE ======
@@ -75,6 +63,8 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 ENV RUST_BACKTRACE 1
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
+COPY docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/centrifuge-chain"]
+# ENTRYPOINT ["/usr/local/bin/centrifuge-chain"]
+ENTRYPOINT ["/centrifuge/entrypoint.sh"]
 CMD ["--help"]
