@@ -63,7 +63,7 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 ENV RUST_BACKTRACE 1
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
-COPY docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
+COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
 
 # ENTRYPOINT ["/usr/local/bin/centrifuge-chain"]
 ENTRYPOINT ["/centrifuge/entrypoint.sh"]
