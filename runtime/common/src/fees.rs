@@ -92,7 +92,7 @@ impl<
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToTreasury<F, V>
 {
-	fn pay_for(who: &AccountId) -> DispatchResult {
+	fn pay(who: &AccountId) -> DispatchResult {
 		F::fee_to_treasury(who, V::get())
 	}
 }
@@ -103,7 +103,7 @@ impl<
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToAuthor<F, V>
 {
-	fn pay_for(who: &AccountId) -> DispatchResult {
+	fn pay(who: &AccountId) -> DispatchResult {
 		F::fee_to_author(who, V::get())
 	}
 }
@@ -114,7 +114,7 @@ impl<
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToBurn<F, V>
 {
-	fn pay_for(who: &AccountId) -> DispatchResult {
+	fn pay(who: &AccountId) -> DispatchResult {
 		F::fee_to_burn(who, V::get())
 	}
 }
