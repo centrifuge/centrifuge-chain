@@ -78,10 +78,16 @@ pub mod pallet {
 		/// Emits when an oracle key is fed by first time and the account has
 		/// not enough balance to pay the fees
 		NotEnoughToPayFees,
+
+		/// The key has not been fed yet
+		KeyNotFound,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Permissionles call to feed an oracle key from a source with value.
+		/// The first time the value is set, an extra fee is required for the
+		/// feeder.
 		#[pallet::weight(1_000_000)]
 		#[pallet::call_index(0)]
 		pub fn feed(
@@ -115,8 +121,11 @@ pub mod pallet {
 		type Timestamp = MomentOf<T>;
 		type Value = T::OracleValue;
 
-		fn get(source: &T::AccountId, id: &T::OracleKey) -> Option<(Self::Value, Self::Timestamp)> {
-			FedValues::<T>::get(source, id)
+		fn get(
+			source: &T::AccountId,
+			id: &T::OracleKey,
+		) -> Result<(Self::Value, Self::Timestamp), DispatchError> {
+			FedValues::<T>::get(source, id).ok_or(Error::<T>::KeyNotFound.into())
 		}
 	}
 }

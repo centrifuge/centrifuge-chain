@@ -57,6 +57,7 @@ members = [
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/oracle-feed",
+  "pallets/oracle-data-collection",
   "pallets/order-book",
   "pallets/permissions",
   "pallets/pool-system",
@@ -247,6 +248,7 @@ pallet-migration-manager = { path = "pallets/migration", default-features = fals
 pallet-nft = { path = "pallets/nft", default-features = false }
 pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
+pallet-oracle-data-collection = { path = "pallets/oracle-data-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
 pallet-permissions = { path = "pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "pallets/pool-registry", default-features = false }

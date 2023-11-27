@@ -673,5 +673,5 @@ pub trait ValueProvider<Source, Key> {
 	type Value;
 	type Timestamp;
 
-	fn get(source: &Source, id: &Key) -> Option<(Self::Value, Self::Timestamp)>;
+	fn get(source: &Source, id: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError>;
 }
