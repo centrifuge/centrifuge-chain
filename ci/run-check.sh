@@ -34,4 +34,7 @@ case $TARGET in
     ;;
   benchmark-check)
     ./scripts/check_benchmarks.sh $RUNTIME
+    ;;
+  docs-build)
+    RUSTDOCFLAGS="-D warnings" cargo doc --all --no-deps
 esac
