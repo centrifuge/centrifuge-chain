@@ -437,10 +437,11 @@ pub mod fees {
 	}
 
 	/// Trait to pay fees
-	/// This trait can be used by pallet to just pay fees without worring about
-	/// the value or where the fee goes.
+	/// This trait can be used by a pallet to just pay fees without worring
+	/// about the value or where the fee goes.
 	pub trait PayFee<AccountId> {
-		fn pay(who: &AccountId) -> DispatchResult;
+		/// Pay the fee using a payer
+		fn pay(payer: &AccountId) -> DispatchResult;
 	}
 }
 
