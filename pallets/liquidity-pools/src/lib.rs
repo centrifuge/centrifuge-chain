@@ -116,7 +116,8 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_traits::{
 		investments::{ForeignInvestment, TrancheCurrency},
-		CurrencyInspect, Permissions, PoolInspect, Seconds, TimeAsSecs, TrancheTokenPrice,
+		CurrencyInspect, Permissions, PoolInspect, PreConditions, Seconds, TimeAsSecs,
+		TrancheTokenPrice,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -277,6 +278,11 @@ pub mod pallet {
 		/// beforehand as part of receiving the corresponding investment
 		/// message.
 		type TreasuryAccount: Get<Self::AccountId>;
+
+		type PreTransferFilter: PreConditions<
+			(Self::AccountId, DomainAddress, Self::CurrencyId),
+			Result = DispatchResult,
+		>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
@@ -565,6 +571,12 @@ pub mod pallet {
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 
+			T::PreTransferFilter::check((
+				who.clone(),
+				domain_address.clone(),
+				invest_id.clone().into(),
+			))?;
+
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
 				invest_id.into(),
@@ -626,6 +638,8 @@ pub mod pallet {
 					);
 				}
 			}
+
+			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id.clone()))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
