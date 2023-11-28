@@ -4,4 +4,5 @@
 docker-compos
 .gitignore
 docker
+!docker/scripts
 README.md
