@@ -53,6 +53,9 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
 		chown -R centrifuge:centrifuge /centrifuge/
 
+COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
+RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
+
 # Running as an non-root is a good security practice
 # in some cases the container can be forced to run as root overriding the next line
 # but by default we want to enforce this.
@@ -63,8 +66,6 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 ENV RUST_BACKTRACE 1
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
-COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
-RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
 
 ENTRYPOINT ["/centrifuge/entrypoint.sh"]
 CMD ["--help"]
