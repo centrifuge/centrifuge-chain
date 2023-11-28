@@ -99,7 +99,7 @@ pub mod pallet {
 
 			FedValues::<T>::mutate(&who, key, |prev_value| {
 				if prev_value.is_none() {
-					T::FirstValuePayFee::pay_for(&who)?;
+					T::FirstValuePayFee::pay(&who)?;
 				}
 
 				*prev_value = Some((value, T::Time::now()));

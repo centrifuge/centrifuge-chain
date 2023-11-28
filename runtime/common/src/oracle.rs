@@ -2,14 +2,17 @@ use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::{Millis, PoolInspect};
+use cfg_traits::{Millis, PoolInspect, ValueProvider};
 use cfg_types::{
 	fixed_point::Quantity,
 	oracles::OracleKey,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use orml_traits::{asset_registry, CombineData, DataProviderExtended, OnNewData};
-use sp_runtime::traits::Zero;
+use sp_runtime::{
+	traits::{EnsureInto, Zero},
+	DispatchError,
+};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 type TimestampedQuantity = orml_oracle::TimestampedValue<Quantity, Millis>;
@@ -140,5 +143,41 @@ pub mod benchmarks_util {
 			// Allowing any member
 			true
 		}
+	}
+}
+
+/// A provider bridge that transform generic quantity representation of a price
+/// into a balance denominated in a pool currency.
+pub struct OracleConverterBridge<Provider, AssetRegistry, Pools>(
+	PhantomData<(Provider, AssetRegistry, Pools)>,
+);
+
+const NO_CURRENCY_ERROR: DispatchError =
+	DispatchError::Other("OracleConverterBridge: No currency for pool");
+const NO_METADATA_ERROR: DispatchError =
+	DispatchError::Other("OracleConverterBridge: No metadata for currency");
+
+impl<Provider, AssetRegistry, Pools> ValueProvider<(AccountId, PoolId), OracleKey>
+	for OracleConverterBridge<Provider, AssetRegistry, Pools>
+where
+	Provider: ValueProvider<AccountId, OracleKey, Value = Quantity>,
+	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
+	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+{
+	type Timestamp = Provider::Timestamp;
+	type Value = Balance;
+
+	fn get(
+		(account_id, pool_id): &(AccountId, PoolId),
+		key: &OracleKey,
+	) -> Result<(Balance, Self::Timestamp), DispatchError> {
+		let (value, timestamp) = Provider::get(account_id, key)?;
+
+		let currency = Pools::currency_for(*pool_id).ok_or(NO_CURRENCY_ERROR)?;
+		let metadata = AssetRegistry::metadata(&currency).ok_or(NO_METADATA_ERROR)?;
+
+		let balance = fixed_point_to_balance(value, metadata.decimals.ensure_into()?)?;
+
+		Ok((balance, timestamp))
 	}
 }

@@ -91,6 +91,8 @@ use runtime_common::{
 	asset_registry,
 	changes::FastDelay,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
+	oracle::OracleConverterBridge,
+	permissions::PoolAdminCheck,
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
@@ -1341,9 +1343,21 @@ parameter_types! {
 impl pallet_oracle_feed::Config for Runtime {
 	type FirstValuePayFee = FeeToTreasury<Fees, FirstValueFee>;
 	type OracleKey = OracleKey;
-	type OracleValue = (Quantity, Millis);
+	type OracleValue = Quantity;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
+}
+
+impl pallet_oracle_data_collection::Config for Runtime {
+	type CollectionId = PoolId;
+	type IsAdmin = PoolAdminCheck<Permissions>;
+	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxFeedersPerKey = ConstU32<10>;
+	type Moment = Millis;
+	type OracleKey = OracleKey;
+	type OracleProvider = OracleConverterBridge<OraclePriceFeed, OrmlAssetRegistry, PoolSystem>;
+	type OracleValue = Balance;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -1928,6 +1942,7 @@ construct_runtime!(
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
+		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 119,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

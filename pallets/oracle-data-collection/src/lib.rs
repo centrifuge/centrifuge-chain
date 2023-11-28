@@ -30,12 +30,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{data::DataRegistry, PreConditions, ValueProvider};
-	use frame_support::{
-		pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap, traits::Time,
-	};
+	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::{EnsureAddAssign, EnsureSubAssign, Zero};
-	use sp_std::collections::btree_map::BTreeMap;
+	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	use crate::{
 		types::{CachedCollection, KeyInfo},
@@ -43,8 +41,6 @@ pub mod pallet {
 	};
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
-
-	pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -63,15 +59,15 @@ pub mod pallet {
 		/// Represent an oracle value
 		type OracleValue: Parameter + Member + Copy + MaxEncodedLen + Ord;
 
-		/// A way to obtain the current time
-		type Time: Time;
+		/// Represent the a time moment
+		type Moment: Parameter + Member + Copy + MaxEncodedLen + Ord;
 
 		/// A way to obtain oracle values from feeders
 		type OracleProvider: ValueProvider<
 			(Self::AccountId, Self::CollectionId),
 			Self::OracleKey,
 			Value = Self::OracleValue,
-			Timestamp = MomentOf<Self>,
+			Timestamp = Self::Moment,
 		>;
 
 		/// Used to verify collection admin permissions
@@ -80,10 +76,6 @@ pub mod pallet {
 		/// Max size of a data collection
 		#[pallet::constant]
 		type MaxCollectionSize: Get<u32>;
-
-		/// Max number of collections
-		#[pallet::constant]
-		type MaxCollections: Get<u32>;
 
 		/// Max number of collections
 		#[pallet::constant]
@@ -96,7 +88,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedBTreeMap<T::OracleKey, (T::OracleValue, MomentOf<T>), T::MaxCollectionSize>,
+		BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Moment), T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
@@ -143,7 +135,7 @@ pub mod pallet {
 		/// The key is not in the collection.
 		KeyNotInCollection,
 
-		/// The key is not in the collection.
+		/// Collection size reached
 		MaxCollectionSize,
 	}
 
@@ -215,7 +207,7 @@ pub mod pallet {
 
 	impl<T: Config> DataRegistry<T::OracleKey, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
-		type Data = (T::OracleValue, MomentOf<T>);
+		type Data = (T::OracleValue, T::Moment);
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
@@ -302,7 +294,7 @@ mod types {
 	};
 	use sp_runtime::{traits::Zero, RuntimeDebug};
 
-	use crate::pallet::{Config, Error, MomentOf};
+	use crate::pallet::{Config, Error};
 
 	/// Type containing the associated info to a key
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
@@ -329,16 +321,16 @@ mod types {
 
 	/// A collection cached in memory
 	pub struct CachedCollection<T: Config>(
-		pub BoundedBTreeMap<T::OracleKey, (T::OracleValue, MomentOf<T>), T::MaxCollectionSize>,
+		pub BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Moment), T::MaxCollectionSize>,
 	);
 
 	impl<T: Config> DataCollection<T::OracleKey> for CachedCollection<T> {
-		type Data = (T::OracleValue, MomentOf<T>);
+		type Data = (T::OracleValue, T::Moment);
 
 		fn get(
 			&self,
 			data_id: &T::OracleKey,
-		) -> Result<(T::OracleValue, MomentOf<T>), DispatchError> {
+		) -> Result<(T::OracleValue, T::Moment), DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()
@@ -348,6 +340,8 @@ mod types {
 }
 
 mod util {
+	use sp_std::vec::Vec;
+
 	/// Computes fastly the median of a list of values
 	/// Extracted from orml
 	pub fn median<'a, T: Ord>(items: &'a mut Vec<T>) -> Option<&'a T> {

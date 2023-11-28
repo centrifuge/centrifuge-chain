@@ -2820,6 +2820,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
