@@ -682,6 +682,12 @@ pub mod pallet {
 						},
 					)?;
 
+				// TODO: Finish
+				// let fees_epoch_duration = now.saturating_add(pool.epoch.last_executed);
+				// let total_pool_fees = T::PoolFees::get_bucket_amount(pool_id,
+				// cfg_types::pools::FeeBucket::Top, nav, fees_epoch_duration);
+				// pool.reserve.total = pool.reserve.total.saturating_sub(total_pool_fees);
+
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
 					nav,
@@ -1142,6 +1148,16 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
+			// TODO: Finish
+			// last_closed is exactly the block when the reserve was deducted by the
+			// total fee amount
+			// let fees_epoch_duration = pool
+			// 	.epoch
+			// 	.last_closed
+			// 	.saturating_sub(pool.epoch.last_executed);
+			// T::PoolFees::pay(pool_id, cfg_types::pools::FeeBucket::Top, epoch.nav,
+			// fees_epoch_duration);
+
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
 
 			for (tranche, solution) in epoch.tranches.residual_top_slice().iter().zip(solution) {
@@ -1152,6 +1168,7 @@ pub mod pallet {
 						price: tranche.price,
 					},
 				)?;
+
 				T::Investments::redeem_fulfillment(
 					tranche.currency,
 					FulfillmentWithPrice {

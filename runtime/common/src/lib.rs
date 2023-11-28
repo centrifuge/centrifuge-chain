@@ -27,6 +27,7 @@ pub mod xcm;
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
 use orml_traits::GetByKey;
+use pallet_pool_system::pool_types::PoolChangeProposal;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 
@@ -164,21 +165,25 @@ pub mod asset_registry {
 }
 
 pub mod changes {
+	use cfg_primitives::SECONDS_PER_WEEK;
+	use cfg_types::fixed_point::Ratio;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
 	use pallet_loans::entities::changes::Change as LoansChange;
+	use pallet_pool_fees::types::Change as PoolFeesChange;
 	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub enum RuntimeChange<T: pallet_loans::Config> {
+	pub enum RuntimeChange<T: pallet_loans::Config + frame_system::Config> {
 		Loan(LoansChange<T>),
+		PoolFee(PoolFeesChange<<T as frame_system::Config>::AccountId, Ratio>),
 	}
 
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
+	impl<T: pallet_loans::Config + frame_system::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(change: RuntimeChange<T>) -> Self {
 			use cfg_primitives::SECONDS_PER_WEEK;
 			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
 			use pallet_pool_system::pool_types::changes::Requirement;
@@ -188,24 +193,30 @@ pub mod changes {
 			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 			let blocked = Requirement::BlockedByLockedRedemptions;
 
-			let requirements = match loans_change {
+			let requirements = match change {
 				// Requirements gathered from
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
-					LoanMutation::Maturity(_) => vec![week, blocked],
-					LoanMutation::MaturityExtension(_) => vec![],
-					LoanMutation::InterestPayments(_) => vec![week, blocked],
-					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-					LoanMutation::InterestRate(_) => vec![epoch],
-					LoanMutation::Internal(mutation) => match mutation {
-						InternalMutation::ValuationMethod(_) => vec![week, blocked],
-						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-						InternalMutation::LossGivenDefault(_) => vec![epoch],
-						InternalMutation::DiscountRate(_) => vec![epoch],
+				RuntimeChange::Loan(loans_change) => match loans_change {
+					LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
+						LoanMutation::Maturity(_) => vec![week, blocked],
+						LoanMutation::MaturityExtension(_) => vec![],
+						LoanMutation::InterestPayments(_) => vec![week, blocked],
+						LoanMutation::PayDownSchedule(_) => vec![week, blocked],
+						LoanMutation::InterestRate(_) => vec![epoch],
+						LoanMutation::Internal(mutation) => match mutation {
+							InternalMutation::ValuationMethod(_) => vec![week, blocked],
+							InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
+							InternalMutation::LossGivenDefault(_) => vec![epoch],
+							InternalMutation::DiscountRate(_) => vec![epoch],
+						},
 					},
+					LoansChange::<T>::Policy(_) => vec![week, blocked],
+					LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
 				},
-				LoansChange::<T>::Policy(_) => vec![week, blocked],
-				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
+				RuntimeChange::PoolFee(pool_fees_change) => match pool_fees_change {
+					PoolFeesChange::AppendFee(_, _) => vec![week],
+					PoolFeesChange::RemoveFee(_, _) => vec![week],
+				},
 			};
 
 			PoolChangeProposal::new(requirements)
@@ -213,8 +224,10 @@ pub mod changes {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
+	impl<T: pallet_loans::Config + pallet_system::Config> From<RuntimeChange<T>>
+		for PoolChangeProposal
+	{
+		fn from(_: RuntimeChange<T>) -> Self {
 			// We dont add any requirement in case of benchmarking.
 			// We assume checking requirements in the pool is something very fast and
 			// deprecable in relation to reading from any storage.
@@ -226,24 +239,49 @@ pub mod changes {
 	}
 
 	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
+	impl<T: pallet_loans::Config + frame_system::Config> From<LoansChange<T>> for RuntimeChange<T> {
 		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
 			RuntimeChange::Loan(loan_change)
 		}
 	}
 
+	/// Used for building CfgChanges in pallet-pool-fees
+	impl<T: pallet_loans::Config + frame_system::Config> From<PoolFeesChange<T::AccountId, Ratio>>
+		for RuntimeChange<T>
+	{
+		fn from(pool_fees_change: PoolFeesChange<T::AccountId, Ratio>) -> RuntimeChange<T> {
+			RuntimeChange::PoolFee(pool_fees_change)
+		}
+	}
+
 	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
+	impl<T: pallet_loans::Config + frame_system::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
 		type Error = DispatchError;
 
 		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-			let RuntimeChange::Loan(loan_change) = self;
-			Ok(loan_change)
+			match self {
+				RuntimeChange::Loan(change) => Ok(change),
+				_ => Err(DispatchError::Other("Not a loans change")),
+			}
+		}
+	}
+
+	/// Used for recovering PoolFeeChange in pallet-pool-fees
+	impl<T: pallet_loans::Config + frame_system::Config>
+		TryInto<PoolFeesChange<T::AccountId, Ratio>> for RuntimeChange<T>
+	{
+		type Error = DispatchError;
+
+		fn try_into(self) -> Result<PoolFeesChange<T::AccountId, Ratio>, DispatchError> {
+			match self {
+				RuntimeChange::PoolFee(pool_fees_change) => Ok(pool_fees_change),
+				_ => Err(DispatchError::Other("Not a pool fees change")),
+			}
 		}
 	}
 
 	pub mod fast {
-		use pallet_pool_system::pool_types::changes::Requirement;
+		use pallet_pool_system::pool_types::{changes::Requirement, PoolChangeProposal};
 
 		use super::*;
 		const SECONDS_PER_WEEK: u32 = 60;

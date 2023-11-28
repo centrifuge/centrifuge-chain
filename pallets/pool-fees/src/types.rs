@@ -11,18 +11,19 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, LoanId};
+use cfg_types::{fixed_point::Rate, pools::FeeBucket};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::TypeInfo;
+use frame_support::{dispatch::TypeInfo, BoundedVec, RuntimeDebug};
 
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-enum FeeRate<Rate> {
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+pub enum FeeRate<Rate> {
 	ShareOfPortfolioValuation(Rate),
 	// Future options: AmountPerYear, AmountPerMonth, ...
 }
 
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-enum FeeAmount<Rate> {
+pub enum FeeAmount<Rate> {
 	/// A fixed fee is deducted automatically every epoch
 	Fixed { amount: FeeRate<Rate> },
 
@@ -30,25 +31,16 @@ enum FeeAmount<Rate> {
 	ChargedUpTo { limit: FeeRate<Rate> },
 }
 
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-enum FeeEditor<AccountId> {
+pub enum FeeEditor<AccountId> {
 	Root,
 	Account(AccountId),
 }
 
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-enum FeeBucket {
-	/// Fees that are charged first, before any redemptions, investments,
-	/// repayments or originations
-	Top,
-	// Future: AfterTranche(TrancheId)
-}
-
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-
-struct Fee<AccountId, Rate> {
+pub struct PoolFee<AccountId, Rate> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
 
@@ -59,14 +51,22 @@ struct Fee<AccountId, Rate> {
 	pub amount: FeeAmount<Rate>,
 }
 
+/// Represents pool changes which might require to complete further guarding
+/// checks.
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+pub enum Change<AccountId, Rate> {
+	AppendFee(FeeBucket, PoolFee<AccountId, Rate>),
+	RemoveFee(FeeBucket, PoolFee<AccountId, Rate>),
+}
+
 // NOTE: Remark feature will be a separate feature in the future (post Pool Fees
 // MVP). The following enum is necessary to deliver the MVP.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 
-enum Remark<Hash, LoanId, Meta> {
+pub enum Remark<Hash, LoanId, Meta> {
 	Loan { id: LoanId, meta: Meta },
 	IpfsHash(Hash),
 	Metadata(Meta),
 }
 
-type IpfsHash = [u8; 46];
+pub type IpfsHash = [u8; 46];

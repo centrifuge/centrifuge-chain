@@ -53,6 +53,7 @@ pub mod rewards;
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
+pub mod fee;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///

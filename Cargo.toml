@@ -372,12 +372,14 @@ fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-
 pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 
+# Workspace dependencies
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 vergen = "3.0.4"
 
 [dev-dependencies]
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 getrandom = { version = "0.2", features = ["js"] }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sc-service-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
@@ -446,6 +448,7 @@ runtime-benchmarks = [
   "development-runtime/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",

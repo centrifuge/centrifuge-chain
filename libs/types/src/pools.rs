@@ -37,3 +37,12 @@ pub enum PoolRegistrationStatus {
 	Registered,
 	Unregistered,
 }
+
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+
+pub enum FeeBucket {
+	/// Fees that are charged first, before any redemptions, investments,
+	/// repayments or originations
+	Top,
+	// Future: AfterTranche(TrancheId)
+}

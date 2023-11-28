@@ -11470,6 +11470,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
