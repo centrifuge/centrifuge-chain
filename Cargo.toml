@@ -1,29 +1,8 @@
-[package]
-name = "centrifuge-chain"
-version = "0.10.34"
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Centrifuge chain implementation in Rust."
-build = "build.rs"
-edition = "2021"
-license = "LGPL-3.0"
-default-run = "centrifuge-chain"
-homepage = "https://centrifuge.io/"
-repository = "https://github.com/centrifuge/centrifuge-chain"
-
-[package.metadata.wasm-pack.profile.release]
-# `wasm-opt` has some problems on linux, see
-# https://github.com/rustwasm/wasm-pack/issues/781 etc.
-wasm-opt = false
-
 [badges]
 travis-ci = { repository = "centrifuge/centrifuge-chain", branch = "master" }
 maintenance = { status = "actively-developed" }
 is-it-maintained-issue-resolution = { repository = "centrifuge/centrifuge-chain" }
 is-it-maintained-open-issues = { repository = "centrifuge/centrifuge-chain" }
-
-[[bin]]
-name = "centrifuge-chain"
-path = "src/main.rs"
 
 [workspace]
 members = [
@@ -94,6 +73,12 @@ tokio = { version = "1.15", features = ["macros"] }
 tracing-subscriber = "0.2"
 ethabi = { version = "16.0", default-features = false }
 ethereum = { version = "0.14.0", default-features = false }
+async-trait = "0.1"
+clap = { version = "4.0.9", features = ["derive"] }
+futures = "0.3.25"
+jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+url = "2.2.2"
+tempfile = "3.1.0"
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -107,6 +92,13 @@ cumulus-primitives-timestamp = { git = "https://github.com/paritytech/cumulus", 
 cumulus-primitives-utility = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-client-consensus-aura = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-client-consensus-common = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-client-network = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
+cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
 
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -124,13 +116,30 @@ polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", 
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+polkadot-cli = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 
 # Substrate
 node-primitives = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-service = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-service-test = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-executor = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-basic-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-chain-spec = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-cli = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-consensus = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-consensus-grandpa = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-network = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-network-sync = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-rpc-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-sysinfo = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-tracing = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-transaction-pool = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
@@ -149,6 +158,10 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate", default
 sp-version = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-consensus = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-keystore = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, features = [
@@ -182,6 +195,12 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", default-features = false }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", default-features = false }
 
 # Orml
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
@@ -205,6 +224,15 @@ pallet-evm-precompile-dispatch = { git = "https://github.com/moonbeam-foundation
 pallet-evm-precompile-modexp = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-sha3fips = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 pallet-evm-precompile-simple = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = ["rocksdb"]}
+fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
+
 
 # Moonbeam
 moonbeam-relay-encoder = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
@@ -266,121 +294,138 @@ centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
 
 # Build dependencies
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-
-[dependencies]
-# third-party dependencies
-async-trait = "0.1"
-clap = { version = "4.0.9", features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
-futures = "0.3.25"
-hex-literal = "0.3.4"
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-log = "0.4.8"
-serde = { version = "1.0.119", features = ["derive"] }
-url = "2.2.2"
-
-# client dependencies
-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-chain-spec = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"] }
-sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-network-sync = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"] }
-sc-sysinfo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-keystore = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-offchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-timestamp = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-
-# Cli specific
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"]}
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.43" }
-
-# Local dependencies
-cfg-types = { path = "./libs/types" }
-pallet-anchors = { path = "./pallets/anchors" }
-pallet-pool-system = { path = "./pallets/pool-system" }
-pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-
-# Cumulus dependencies
-cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-client-consensus-aura = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-client-consensus-common = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.43" }
-
-# Polkadot dependencies
-polkadot-cli = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.43" }
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.43" }
-polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.43" }
-
-# node-specific dependencies
-altair-runtime = { path = "runtime/altair", default-features = false }
-centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
-cfg-primitives = { path = "libs/primitives" }
-cfg-utils = { path = "libs/utils" }
-development-runtime = { path = "runtime/development", default-features = false }
-runtime-common = { path = "runtime/common" }
-
-# benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, default-features = false, branch = "polkadot-v0.9.43" }
-frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, default-features = false, branch = "polkadot-v0.9.43" }
-# integration testing
-#runtime-integration-tests = { path = "runtime/integration-tests", optional = true, default-features = false }
-
-# xcm
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
-
-# frontier
-fc-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = ["rocksdb"]}
-fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-evm = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-
-[build-dependencies]
-substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 vergen = "3.0.4"
 
+[package]
+name = "centrifuge-chain"
+version = "0.10.34"
+description = "Centrifuge chain implementation in Rust."
+build = "build.rs"
+default-run = "centrifuge-chain"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[package.metadata.wasm-pack.profile.release]
+# `wasm-opt` has some problems on linux, see
+# https://github.com/rustwasm/wasm-pack/issues/781 etc.
+wasm-opt = false
+
+[[bin]]
+name = "centrifuge-chain"
+path = "src/main.rs"
+
+[dependencies]
+async-trait = { workspace = true, default-features = true }
+clap = { workspace = true, default-features = true }
+codec = { package = "parity-scale-codec", default-features = true, workspace = true }
+futures = { workspace = true, default-features = true }
+hex-literal = { workspace = true, default-features = true }
+jsonrpsee = { workspace = true, default-features = true }
+log = { workspace = true, default-features = true }
+serde = { workspace = true, default-features = true }
+url = { workspace = true, default-features = true }
+
+# client dependencies
+sc-consensus-grandpa = { workspace = true, default-features = true }
+sc-basic-authorship = { workspace = true, default-features = true }
+sc-chain-spec = { workspace = true, default-features = true }
+sc-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
+sc-client-api = { workspace = true, default-features = true }
+sc-consensus = { workspace = true, default-features = true }
+sc-executor = { workspace = true, default-features = true }
+sc-network = { workspace = true, default-features = true }
+sc-network-sync = { workspace = true, default-features = true }
+sc-rpc = { workspace = true, default-features = true }
+sc-rpc-api = { workspace = true, default-features = true }
+sc-service = { workspace = true, default-features = true, features = ["rocksdb"] }
+sc-sysinfo = { workspace = true, default-features = true }
+sc-telemetry = { workspace = true, default-features = true }
+sc-tracing = { workspace = true, default-features = true }
+sc-transaction-pool = { workspace = true, default-features = true }
+sc-transaction-pool-api = { workspace = true, default-features = true }
+sp-api = { workspace = true, default-features = true }
+sp-block-builder = { workspace = true, default-features = true }
+sp-blockchain = { workspace = true, default-features = true }
+sp-consensus = { workspace = true, default-features = true }
+sp-consensus-aura = { workspace = true, default-features = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+sp-keystore = { workspace = true, default-features = true }
+sp-offchain = { workspace = true, default-features = true }
+sp-runtime = { workspace = true, default-features = true }
+sp-session = { workspace = true, default-features = true }
+sp-timestamp = { workspace = true, default-features = true }
+sp-transaction-pool = { workspace = true, default-features = true }
+substrate-prometheus-endpoint = { workspace = true, default-features = true }
+substrate-frame-rpc-system = { workspace = true, default-features = true }
+pallet-transaction-payment-rpc = { workspace = true, default-features = true }
+
+# Cli specific
+frame-benchmarking-cli = { workspace = true, default-features = true, features = ["rocksdb"] }
+try-runtime-cli = { workspace = true, default-features = true, optional = true }
+
+# Cumulus
+cumulus-client-cli = { workspace = true, default-features = true }
+cumulus-client-consensus-aura = { workspace = true, default-features = true }
+cumulus-client-consensus-common = { workspace = true, default-features = true }
+cumulus-client-network = { workspace = true, default-features = true }
+cumulus-client-service = { workspace = true, default-features = true }
+cumulus-pallet-session-benchmarking = { workspace = true, default-features = true }
+cumulus-primitives-core = { workspace = true, default-features = true }
+cumulus-primitives-parachain-inherent = { workspace = true, default-features = true }
+cumulus-relay-chain-inprocess-interface = { workspace = true, default-features = true }
+cumulus-relay-chain-interface = { workspace = true, default-features = true }
+
+# Polkadot
+polkadot-cli = { workspace = true, default-features = true }
+polkadot-primitives = { workspace = true, default-features = true }
+polkadot-service = { workspace = true, default-features = true }
+xcm = { workspace = true, default-features = true }
+
+# Local
+cfg-types = { workspace = true, default-features = true }
+cfg-primitives = { workspace = true, default-features = true }
+cfg-utils = { workspace = true, default-features = true }
+pallet-anchors = { workspace = true, default-features = true }
+pallet-pool-system = { workspace = true, default-features = true }
+development-runtime = { workspace = true, default-features = true }
+altair-runtime = { workspace = true, default-features = true}
+centrifuge-runtime = { workspace = true, default-features = true }
+runtime-common = { workspace = true, default-features = true }
+
+# benchmarking
+frame-benchmarking = { workspace = true, default-features = true, optional = true }
+frame-system-benchmarking = { workspace = true, default-features = true, optional = true }
+
+# frontier
+fc-consensus = { workspace = true, default-features = true }
+fc-db = { workspace = true, default-features = true, features = ["rocksdb"]}
+fc-mapping-sync = { workspace = true, default-features = true }
+fc-rpc = { workspace = true, default-features = true }
+fc-rpc-core = { workspace = true, default-features = true }
+fp-consensus = { workspace = true, default-features = true }
+fp-evm = { workspace = true, default-features = true }
+fp-rpc = { workspace = true, default-features = true }
+fp-storage = { workspace = true, default-features = true }
+pallet-ethereum = { workspace = true, default-features = true }
+pallet-evm = { workspace = true, default-features = true }
+
+[build-dependencies]
+substrate-build-script-utils = { workspace = true, default-features = true, optional = true }
+vergen = { workspace = true, default-features = true }
+
 [dev-dependencies]
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-getrandom = { version = "0.2", features = ["js"] }
-pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sc-service-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-tempfile = "3.1.0"
+frame-system = { workspace = true, default-features = true }
+getrandom = { workspace = true, features = ["js"] }
+pallet-transaction-payment = { workspace = true, default-features = true }
+sc-service-test = { workspace = true, default-features = true }
+sp-keyring = { workspace = true, default-features = true }
+tempfile = { workspace = true }
 
 [features]
 default = ["std", "cli"]
@@ -431,7 +476,7 @@ std = [
   "sp-runtime/std",
   "sp-session/std",
   "sp-timestamp/std",
-  "sp-transaction-pool/std",
+  #"sp-transaction-pool/std",
   "substrate-build-script-utils",
   "xcm/std",
 ]
@@ -494,7 +539,7 @@ fast-runtime = [
 # the specific revision of the respective repository at hand, avoiding duplicated crates from tainting compilation.
 #
 [patch."https://github.com/paritytech/substrate"]
-#binary-merkle-tree = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
+binary-merkle-tree = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 frame-election-provider-support = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }

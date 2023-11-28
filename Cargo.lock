@@ -718,14 +718,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "binary-merkle-tree"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "hash-db 0.16.0",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7225,7 +7217,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "array-bytes 4.2.0",
- "binary-merkle-tree 4.0.0-dev (git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43)",
+ "binary-merkle-tree",
  "frame-support",
  "frame-system",
  "log",
@@ -11223,7 +11215,7 @@ name = "rococo-runtime"
 version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.43#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
- "binary-merkle-tree 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "binary-merkle-tree",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
