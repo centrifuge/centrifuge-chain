@@ -64,7 +64,7 @@ ENV RUST_BACKTRACE 1
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
+RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
 
-# ENTRYPOINT ["/usr/local/bin/centrifuge-chain"]
 ENTRYPOINT ["/centrifuge/entrypoint.sh"]
 CMD ["--help"]
