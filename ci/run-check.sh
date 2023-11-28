@@ -10,11 +10,11 @@ cargo --version
 
 case $TARGET in
   cargo-build)
-    cargo build --release "$@"
+    cargo build -p centrifuge-chain --release "$@"
     ;;
 
   test-general)
-    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    cargo test --release --features runtime-benchmarks,try-runtime,fast-runtime --exclude runtime-integration-tests
     ;;
 
   test-integration)
@@ -30,7 +30,7 @@ case $TARGET in
     ;;
 
   lint-clippy)
-    cargo clippy --workspace -- -D warnings -A clippy::unnecessary-cast -A clippy::bool-to-int-with-if
+    cargo clippy -- -D warnings -A clippy::unnecessary-cast -A clippy::bool-to-int-with-if
     ;;
   benchmark-check)
     ./scripts/check_benchmarks.sh $RUNTIME

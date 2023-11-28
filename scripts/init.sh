@@ -41,7 +41,7 @@ stop-parachain-docker)
 
 start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
-  cargo build --release --features=fast-runtime
+  cargo build -p centrifuge-chain --release --features=fast-runtime
 
   parachain_dir=$base_dir/parachain/${para_id}
   mkdir -p $parachain_dir;
@@ -92,6 +92,6 @@ onboard-parachain)
 
 benchmark)
   pallet=$2
-  cargo run --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
+  cargo run -p centrifuge-chain --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
   ;;
 esac
