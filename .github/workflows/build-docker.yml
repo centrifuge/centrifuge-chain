@@ -49,14 +49,12 @@ jobs:
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 #v5
         with:
           images: centrifugeio/centrifuge-chain
-          flavor: |
-            suffix=-${{ env.NOW }}
-            prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
           tags: |
-            type=raw,event=branch,value={{branch}}-{{sha}}
-            type=semver,pattern={{raw}},suffix=,prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
-            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=
-            type=edge
+            type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=edge,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=tag,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }}-{{branch}},suffix={{sha}}-${{ env.NOW }}
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
@@ -72,7 +70,7 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          push: ${{ github.event_name == 'pull_request' && false || true }}
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/

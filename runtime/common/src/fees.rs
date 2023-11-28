@@ -1,9 +1,13 @@
 use cfg_primitives::{
 	constants::{CENTI_CFG, TREASURY_FEE_RATIO},
 	types::Balance,
+	AccountId,
 };
+use cfg_traits::fees::{Fee, Fees, PayFee};
+use cfg_types::fee_keys::FeeKey;
 use frame_support::{
-	traits::{Currency, Imbalance, OnUnbalanced},
+	dispatch::DispatchResult,
+	traits::{Currency, Get, Imbalance, OnUnbalanced},
 	weights::{
 		constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
 		WeightToFeePolynomial,
@@ -79,6 +83,39 @@ impl WeightToFeePolynomial for WeightToFee {
 			coeff_frac: Perbill::from_rational(p % q, q),
 			coeff_integer: p / q,
 		})
+	}
+}
+
+pub struct FeeToTreasury<F, V>(sp_std::marker::PhantomData<(F, V)>);
+impl<
+		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
+		V: Get<Fee<Balance, FeeKey>>,
+	> PayFee<AccountId> for FeeToTreasury<F, V>
+{
+	fn pay(who: &AccountId) -> DispatchResult {
+		F::fee_to_treasury(who, V::get())
+	}
+}
+
+pub struct FeeToAuthor<F, V>(sp_std::marker::PhantomData<(F, V)>);
+impl<
+		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
+		V: Get<Fee<Balance, FeeKey>>,
+	> PayFee<AccountId> for FeeToAuthor<F, V>
+{
+	fn pay(who: &AccountId) -> DispatchResult {
+		F::fee_to_author(who, V::get())
+	}
+}
+
+pub struct FeeToBurn<F, V>(sp_std::marker::PhantomData<(F, V)>);
+impl<
+		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
+		V: Get<Fee<Balance, FeeKey>>,
+	> PayFee<AccountId> for FeeToBurn<F, V>
+{
+	fn pay(who: &AccountId) -> DispatchResult {
+		F::fee_to_burn(who, V::get())
 	}
 }
 
