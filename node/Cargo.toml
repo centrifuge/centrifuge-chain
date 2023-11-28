@@ -22,10 +22,6 @@ documentation.workspace = true
 # https://github.com/rustwasm/wasm-pack/issues/781 etc.
 wasm-opt = false
 
-[[bin]]
-name = "centrifuge-chain"
-path = "src/main.rs"
-
 [dependencies]
 async-trait = { workspace = true, default-features = true }
 clap = { workspace = true, default-features = true }
