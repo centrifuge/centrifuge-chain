@@ -48,9 +48,6 @@ pub use pallet::*;
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{v3::prelude::*, VersionedMultiAsset, VersionedMultiAssets, VersionedMultiLocation};
 
-mod mock;
-mod tests;
-
 pub enum TransferEffects<AccountId, CurrencyId, Balance> {
 	Transfer {
 		sender: AccountId,
