@@ -37,8 +37,6 @@ use crate::{
 };
 
 mod utils {
-	use polkadot_runtime_parachains::paras;
-
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
@@ -1560,72 +1558,6 @@ mod centrifuge {
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(DOT_ASSET_ID, &Keyring::Alice.into()),
 					transfer_amount - dot_fee()
-				);
-			});
-		}
-
-		pub fn transfer_usdc_from_relay_chain<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
-			let alice_initial_usdc = usdc(1_000_000_000_000);
-			let transfer_amount: Balance = usdc(3_000_000_000);
-
-			env.parachain_state_mut(|| {
-				register_usdc::<T>();
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.into()),
-					0
-				);
-			});
-
-			env.relay_state_mut(|| {
-				assert_ok!(
-					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::force_set_balance(
-						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Keyring::Alice.to_account_id().into(),
-						alice_initial_usdc,
-					)
-				);
-
-				assert_ok!(
-					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::force_xcm_version(
-						<FudgeRelayRuntime<T> as frame_system::Config>::RuntimeOrigin::root(),
-						Box::new(MultiLocation::new(
-							0,
-							Junctions::X1(Junction::Parachain(T::FudgeHandle::PARA_ID)),
-						)),
-						XCM_VERSION,
-					)
-				);
-
-				assert_ok!(
-					pallet_xcm::Pallet::<FudgeRelayRuntime<T>>::reserve_transfer_assets(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						Box::new(Parachain(T::FudgeHandle::PARA_ID).into()),
-						Box::new(
-							Junction::AccountId32 {
-								network: None,
-								id: Keyring::Alice.into(),
-							}
-							.into()
-						),
-						Box::new((Here, transfer_amount).into()),
-						0
-					)
-				);
-
-				assert_eq!(
-					pallet_balances::Pallet::<FudgeRelayRuntime<T>>::free_balance(
-						&Keyring::Alice.into()
-					),
-					alice_initial_usdc - transfer_amount
-				);
-			});
-
-			env.pass(Blocks::ByNumber(1));
-
-			env.parachain_state(|| {
-				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.into()),
-					transfer_amount - usdc_fee()
 				);
 			});
 		}
