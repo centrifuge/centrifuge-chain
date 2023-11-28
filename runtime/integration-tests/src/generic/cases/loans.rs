@@ -67,6 +67,7 @@ mod common {
 
 	pub fn initialize_state_for_loans<E: Env<T>, T: Runtime>() -> E {
 		let mut env = E::from_storage(
+			Default::default(),
 			Genesis::<T>::default()
 				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
 				.add(genesis::assets(vec![Usd6::ID]))

@@ -24,6 +24,7 @@ fn transfer_balance<T: Runtime>() {
 	// You can choose `RuntimeEnv` by `FudgeEnv` to make it working with fudge
 	// environment.
 	let mut env = RuntimeEnv::<T>::from_storage(
+		Default::default(),
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
@@ -76,6 +77,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const FOR_FEES: Balance = 1 * CFG;
 
 	let mut env = FudgeEnv::<T>::from_storage(
+		Default::default(),
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
@@ -131,7 +133,8 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 }
 
 fn call_api<T: Runtime>() {
-	let env = RuntimeEnv::<T>::from_storage(Default::default(), Default::default());
+	let env =
+		RuntimeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
 
 	env.parachain_state(|| {
 		// If imported the trait: sp_api::runtime_decl_for_core::CoreV4,
@@ -144,7 +147,8 @@ fn call_api<T: Runtime>() {
 }
 
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
-	let env = FudgeEnv::<T>::from_storage(Default::default(), Default::default());
+	let env =
+		FudgeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
 
 	// Exclusive from fudge environment.
 	// It uses a client to access the runtime api.
@@ -160,7 +164,8 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 }
 
 fn pass_time_one_block<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::from_storage(Default::default(), Default::default());
+	let mut env =
+		RuntimeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
 
 	let before = env.parachain_state(|| pallet_timestamp::Pallet::<T>::get());
 

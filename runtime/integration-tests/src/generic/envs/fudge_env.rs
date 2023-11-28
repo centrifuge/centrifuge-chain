@@ -31,9 +31,12 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 }
 
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
-	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
-		let mut handle =
-			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
+	fn from_storage(
+		relay_storage: Storage,
+		parachain_storage: Storage,
+		sibling_storage: Storage,
+	) -> Self {
+		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();
 
@@ -141,6 +144,7 @@ mod tests {
 
 	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
 		let mut env = FudgeEnv::<T>::from_storage(
+			Default::default(),
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
