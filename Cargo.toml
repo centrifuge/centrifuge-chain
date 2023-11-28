@@ -416,7 +416,7 @@ pallet-ethereum = { workspace = true, default-features = true }
 pallet-evm = { workspace = true, default-features = true }
 
 [build-dependencies]
-substrate-build-script-utils = { workspace = true, default-features = true, optional = true }
+substrate-build-script-utils = { workspace = true, default-features = true }
 vergen = { workspace = true, default-features = true }
 
 [dev-dependencies]
@@ -428,58 +428,7 @@ sp-keyring = { workspace = true, default-features = true }
 tempfile = { workspace = true }
 
 [features]
-default = ["std", "cli"]
-std = [
-  "altair-runtime/std",
-  "centrifuge-runtime/std",
-  "cfg-primitives/std",
-  "cfg-types/std",
-  "cfg-utils/std",
-  "clap/std",
-  "codec/std",
-  "cumulus-pallet-session-benchmarking/std",
-  "cumulus-primitives-core/std",
-  "cumulus-primitives-parachain-inherent/std",
-  "development-runtime/std",
-  "fp-consensus/std",
-  "fp-consensus/std",
-  "fp-evm/std",
-  "fp-rpc/std",
-  "fp-rpc/std",
-  "fp-storage/std",
-  "fp-storage/std",
-  "frame-benchmarking/std",
-  "frame-system/std",
-
-  "futures/std",
-  "futures/std",
-  "getrandom/std",
-  "log/std",
-  "pallet-anchors/std",
-  "pallet-ethereum/std",
-  "pallet-evm/std",
-  "pallet-pool-system/std",
-  "polkadot-primitives/std",
-  "runtime-common/std",
-  #"runtime-integration-tests/std",
-  "sc-executor/std",
-  "serde/std",
-  "serde/std",
-  "sp-api/std",
-  "sp-block-builder/std",
-  "sp-consensus-aura/std",
-  "sp-core/std",
-  "sp-io/std",
-  "sp-io/std",
-  "sp-keystore/std",
-  "sp-offchain/std",
-  "sp-runtime/std",
-  "sp-session/std",
-  "sp-timestamp/std",
-  #"sp-transaction-pool/std",
-  "substrate-build-script-utils",
-  "xcm/std",
-]
+default = ["cli"]
 runtime-benchmarks = [
   "altair-runtime/runtime-benchmarks",
   "centrifuge-runtime/runtime-benchmarks",
@@ -499,12 +448,8 @@ runtime-benchmarks = [
   "polkadot-primitives/runtime-benchmarks",
   "polkadot-service/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
-  #"runtime-integration-tests/runtime-benchmarks",
   "sc-service/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-]
-cli = [
-  "try-runtime-cli",
 ]
 try-runtime = [
   "altair-runtime/try-runtime",
@@ -524,12 +469,13 @@ try-runtime = [
   "sp-runtime/try-runtime",
   "try-runtime-cli",
 ]
-
+cli = [
+  "try-runtime-cli",
+]
 fast-runtime = [
   "altair-runtime/fast-runtime",
   "centrifuge-runtime/fast-runtime",
   "development-runtime/fast-runtime",
-  #"runtime-integration-tests/fast-runtime",
 ]
 
 #
