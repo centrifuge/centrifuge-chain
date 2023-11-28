@@ -16,7 +16,7 @@ FROM --platform=linux/amd64 docker.io/paritytech/ci-linux:production as builder
 	ARG RUSTC_WRAPPER=''
 	ARG SCCACHE_GHA_ENABLED="false"
 
-	COPY . centrifuge-chain
+	COPY . /centrifuge-chain
 	WORKDIR /centrifuge-chain
 	ARG FEATURES=""
 	RUN	FEATURES=$(echo ${FEATURES} | tr -d '"') \
