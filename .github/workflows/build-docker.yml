@@ -40,10 +40,10 @@ jobs:
           images: centrifugeio/centrifuge-chain
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=edge,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=tag,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }}-{{branch}},suffix={{sha}}-${{ env.NOW }}
+            type=edge,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
+            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
