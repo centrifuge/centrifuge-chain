@@ -75,6 +75,7 @@ jobs:
           path: ./${{ matrix.package }}-srtool-wasm-report.json      
 
       - id: 'auth'
+        if: github.event_name != 'pull_request'
         uses: 'google-github-actions/auth@67e9c72af6e0492df856527b474995862b7b6591' # v2.0.0
         with:
           workload_identity_provider: ${{ secrets.GWIP_ARTIFACTS }}
