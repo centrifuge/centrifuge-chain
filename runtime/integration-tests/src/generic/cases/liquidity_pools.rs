@@ -1796,14 +1796,20 @@ mod centrifuge {
 	}
 
 	mod restricted_transfers {
-		use cfg_types::locations::Location;
-		use frame_support::{pallet_prelude::GenesisBuild, traits::fungibles::Mutate};
+		use cfg_types::{
+			domain_address::{Domain, DomainAddress},
+			locations::Location,
+		};
+		use frame_support::{pallet_prelude::GenesisBuild, traits::fungibles::Mutate, BoundedVec};
+		use liquidity_pools_gateway_routers::{
+			DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain,
+		};
 		use polkadot_parachain::primitives::ValidationCode;
 		use polkadot_runtime_parachains::{
 			paras,
 			paras::{ParaGenesisArgs, ParaKind},
 		};
-		use sp_core::Hasher;
+		use sp_core::{Hasher, H160};
 		use sp_runtime::traits::BlakeTwo256;
 
 		use super::*;
@@ -1922,6 +1928,86 @@ mod centrifuge {
 					pre_transfer_bob + lp_eth_usdc(TRANSFER_AMOUNT)
 				);
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
+		}
+
+		fn restrict_lp_eth_usdc_lp_transfer<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(10)))
+					.add(orml_tokens::GenesisConfig::<T> {
+						balances: vec![(
+							Keyring::Alice.to_account_id(),
+							LP_ETH_USDC,
+							T::ExistentialDeposit::get() + lp_eth_usdc(TRANSFER_AMOUNT),
+						)],
+					})
+					.storage(),
+			);
+
+			setup_xcm(&mut env);
+
+			env.parachain_state_mut(|| {
+				register_usdc::<T>();
+				register_lp_eth_usdc::<T>();
+
+				assert_ok!(orml_tokens::Pallet::<T>::set_balance(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					<T as pallet_liquidity_pools_gateway::Config>::Sender::get().into(),
+					USDC,
+					usdc(1_000),
+					0,
+				));
+
+				let router = DomainRouter::EthereumXCM(EthereumXCMRouter::<T> {
+					router: XCMRouter {
+						xcm_domain: XcmDomain {
+							location: Box::new(
+								MultiLocation::new(1, X1(Parachain(T::FudgeHandle::SIBLING_ID)))
+									.into(),
+							),
+							ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![
+								38, 0,
+							]),
+							contract_address: H160::from_low_u64_be(11),
+							max_gas_limit: 700_000,
+							transact_required_weight_at_most: Default::default(),
+							overall_weight: Default::default(),
+							fee_currency: USDC,
+							fee_amount: usdc(1),
+						},
+						_marker: Default::default(),
+					},
+					_marker: Default::default(),
+				});
+
+				assert_ok!(
+					pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+						<T as frame_system::Config>::RuntimeOrigin::root(),
+						Domain::EVM(1),
+						router,
+					)
+				);
+
+				let receiver = H160::from_slice(
+					&<sp_runtime::AccountId32 as AsRef<[u8; 32]>>::as_ref(
+						&Keyring::Charlie.to_account_id(),
+					)[0..20],
+				);
+
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					LP_ETH_USDC,
+					DomainAddress::EVM(1, receiver.into()),
+					lp_eth_usdc(TRANSFER_AMOUNT),
+				));
+
+				let domain_acc = Domain::convert(Domain::EVM(1));
+
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &domain_acc),
+					lp_eth_usdc(TRANSFER_AMOUNT),
+				);
 			});
 		}
 
@@ -2286,6 +2372,7 @@ mod centrifuge {
 		}
 
 		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_transfer);
+		crate::test_for_runtimes!([centrifuge], restrict_lp_eth_usdc_lp_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
