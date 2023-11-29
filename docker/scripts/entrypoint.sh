@@ -7,7 +7,7 @@ fi
 
 # Fix to account for Polkadot's renaming of their DB folder from
 # relay-chain to polkadot. Probably not needed after all nodes are upgraded
-# beyond Polkadot 0.93.z
+# beyond Polkadot 0.9.42+
 BASE_PATH=""
 for ARG in "$@"
 do
