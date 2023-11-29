@@ -41,7 +41,6 @@ jobs:
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=semver,value=latest,enable=${{ github.event_name == 'release' }}
-            type=edge,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
             type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
