@@ -29,12 +29,11 @@ FROM --platform=linux/amd64 docker.io/paritytech/ci-linux:production as builder
 # happen to make sure the binary is what we want.
 FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 
-	LABEL io.centrifuge.image.authors="guillermo@k-f.co" \
+	LABEL io.centrifuge.image.authors="protocol@k-f.co" \
 		io.centrifuge.image.vendor="Centrifuge" \
 		io.centrifuge.image.title="centrifugeio/centrifuge-chain" \
-		io.centrifuge.image.description="Centrifuge, the layer 1 of RWA. This is the official Centrifuge image with an injected binary." \
+		io.centrifuge.image.description="Centrifuge, the layer 1 of RWA. This is the official Centrifuge (para)chain image" \
 		io.centrifuge.image.source="https://github.com/centrifuge/centrifuge-chain/blob/main/docker/centrifuge-chain/Dockerfile" \
-		# io.centrifuge.image.revision="${VCS_REF}" \
 		io.centrifuge.image.created="${BUILD_DATE}"
 
 	# Add chain resources to image
@@ -53,19 +52,19 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
 		chown -R centrifuge:centrifuge /centrifuge/
 
-COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
-RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
+	COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
+	RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
 
 # Running as an non-root is a good security practice
 # in some cases the container can be forced to run as root overriding the next line
 # but by default we want to enforce this.
 USER centrifuge
+
 # checks
 RUN ldd /usr/local/bin/centrifuge-chain && \
 	/usr/local/bin/centrifuge-chain --version
-ENV RUST_BACKTRACE 1
+
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
-
 ENTRYPOINT ["/centrifuge/entrypoint.sh"]
 CMD ["--help"]
