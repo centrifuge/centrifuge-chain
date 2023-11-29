@@ -60,6 +60,9 @@ impl<Event> Blocks<Event> {
 
 /// Define an environment behavior
 pub trait Env<T: Runtime> {
+	/// Load the environment from a parachain storage
+	fn from_parachain_storage(parachain_storage: Storage) -> Self;
+
 	/// Load the environment from a storage
 	fn from_storage(
 		relay_storage: Storage,

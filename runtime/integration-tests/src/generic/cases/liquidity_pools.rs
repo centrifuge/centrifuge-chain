@@ -406,12 +406,10 @@ mod altair {
 		}
 
 		fn test_air_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(air(10)))
 					.storage(),
-				Default::default(),
 			);
 
 			setup_xcm(&mut env);
@@ -486,11 +484,7 @@ mod altair {
 		}
 
 		fn transfer_ausd_to_altair<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			setup_xcm(&mut env);
 
@@ -649,11 +643,7 @@ mod altair {
 		}
 
 		fn transfer_ksm_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let transfer_amount: Balance = ksm(2);
 			let currency_id = CurrencyId::ForeignAsset(3001);
@@ -717,12 +707,10 @@ mod altair {
 		}
 
 		fn transfer_foreign_sibling_to_altair<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(air(10)))
 					.storage(),
-				Default::default(),
 			);
 
 			setup_xcm(&mut env);
@@ -938,11 +926,7 @@ mod altair {
 		use super::*;
 
 		fn register_air_works<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -969,11 +953,7 @@ mod altair {
 		}
 
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -1004,11 +984,7 @@ mod altair {
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -1049,11 +1025,7 @@ mod altair {
 		use super::*;
 
 		fn convert_air<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
@@ -1089,11 +1061,7 @@ mod altair {
 		/// Verify that Tranche tokens are not handled by the CurrencyIdConvert
 		/// since we don't allow Tranche tokens to be transferable through XCM.
 		fn convert_tranche<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
@@ -1126,11 +1094,7 @@ mod altair {
 		}
 
 		fn convert_ausd<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				assert_eq!(parachains::kusama::karura::AUSD_KEY, &[0, 129]);
@@ -1158,11 +1122,7 @@ mod altair {
 		}
 
 		fn convert_ksm<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let ksm_location: MultiLocation = MultiLocation::parent().into();
 
@@ -1182,11 +1142,7 @@ mod altair {
 		}
 
 		fn convert_unkown_multilocation<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let unknown_location: MultiLocation = MultiLocation::new(
 				1,
@@ -1199,11 +1155,7 @@ mod altair {
 		}
 
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				assert_eq!(
@@ -1569,11 +1521,7 @@ mod centrifuge {
 		use super::*;
 
 		fn register_cfg_works<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -1600,11 +1548,7 @@ mod centrifuge {
 		}
 
 		fn register_foreign_asset_works<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -1635,11 +1579,7 @@ mod centrifuge {
 
 		// Verify that registering tranche tokens is not allowed through extrinsics
 		fn register_tranche_asset_blocked<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -1680,11 +1620,7 @@ mod centrifuge {
 		use super::*;
 
 		fn convert_cfg<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
 
@@ -1722,11 +1658,7 @@ mod centrifuge {
 		/// v2 MultiLocation, that `CurrencyIdConvert` can look it up given an
 		/// identical location in XCM v3.
 		fn convert_cfg_xcm_v2<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
 
@@ -1764,11 +1696,7 @@ mod centrifuge {
 		/// Verify that a registered token that is NOT XCM transferable is
 		/// filtered out by CurrencyIdConvert as expected.
 		fn convert_no_xcm_token<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				register_no_xcm_token::<T>();
@@ -1781,11 +1709,7 @@ mod centrifuge {
 		}
 
 		fn convert_ausd<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			assert_eq!(parachains::polkadot::acala::AUSD_KEY, &[0, 1]);
 
@@ -1813,11 +1737,7 @@ mod centrifuge {
 		}
 
 		fn convert_dot<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let dot_location: MultiLocation = MultiLocation::parent();
 
@@ -1837,11 +1757,7 @@ mod centrifuge {
 		}
 
 		fn convert_unknown_multilocation<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let unknown_location: MultiLocation = MultiLocation::new(
 				1,
@@ -1857,11 +1773,7 @@ mod centrifuge {
 		}
 
 		fn convert_unsupported_currency<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				assert_eq!(
@@ -1924,8 +1836,7 @@ mod centrifuge {
 		}
 
 		fn restrict_lp_eth_usdc_transfer<T: Runtime>() {
-			let mut env = RuntimeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
@@ -1936,7 +1847,6 @@ mod centrifuge {
 						)],
 					})
 					.storage(),
-				Genesis::<T>::default().storage(),
 			);
 
 			env.parachain_state_mut(|| {
@@ -2016,8 +1926,7 @@ mod centrifuge {
 		}
 
 		fn restrict_usdc_transfer<T: Runtime>() {
-			let mut env = RuntimeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
@@ -2028,7 +1937,6 @@ mod centrifuge {
 						)],
 					})
 					.storage(),
-				Genesis::<T>::default().storage(),
 			);
 
 			env.parachain_state_mut(|| {
@@ -2207,8 +2115,7 @@ mod centrifuge {
 		}
 
 		fn restrict_dot_transfer<T: Runtime>() {
-			let mut env = RuntimeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.add(orml_tokens::GenesisConfig::<T> {
@@ -2219,7 +2126,6 @@ mod centrifuge {
 						)],
 					})
 					.storage(),
-				Genesis::<T>::default().storage(),
 			);
 
 			env.parachain_state_mut(|| {
@@ -2296,12 +2202,10 @@ mod centrifuge {
 		}
 
 		fn restrict_dot_xcm_transfer<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.storage(),
-				Default::default(),
 			);
 
 			transfer_dot_from_relay_chain(&mut env);
@@ -2498,12 +2402,10 @@ mod centrifuge {
 		}
 
 		fn test_cfg_transfers_to_and_from_sibling<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.storage(),
-				Default::default(),
 			);
 
 			setup_xcm(&mut env);
@@ -2579,11 +2481,7 @@ mod centrifuge {
 		}
 
 		fn transfer_ausd_to_centrifuge<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			setup_xcm(&mut env);
 
@@ -2676,11 +2574,7 @@ mod centrifuge {
 		}
 
 		fn transfer_dot_to_and_from_relay_chain<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			transfer_dot_from_relay_chain(&mut env);
 
@@ -2732,12 +2626,10 @@ mod centrifuge {
 		}
 
 		fn transfer_foreign_sibling_to_centrifuge<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(10)))
 					.storage(),
-				Default::default(),
 			);
 
 			setup_xcm(&mut env);
@@ -2956,11 +2848,7 @@ mod all {
 		use super::*;
 
 		fn xtokens_transfer<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			env.parachain_state_mut(|| {
 				assert_noop!(
@@ -2989,11 +2877,7 @@ mod all {
 		}
 
 		fn xtokens_transfer_multiasset<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =
@@ -3040,11 +2924,7 @@ mod all {
 		}
 
 		fn xtokens_transfer_multiassets<T: Runtime + FudgeSupport>() {
-			let mut env = FudgeEnv::<T>::from_storage(
-				Default::default(),
-				Default::default(),
-				Default::default(),
-			);
+			let mut env = FudgeEnv::<T>::default();
 
 			let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 			let tranche_id =

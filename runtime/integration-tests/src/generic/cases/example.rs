@@ -23,8 +23,7 @@ fn transfer_balance<T: Runtime>() {
 	// Set up all GenesisConfig for your initial state
 	// You can choose `RuntimeEnv` by `FudgeEnv` to make it working with fudge
 	// environment.
-	let mut env = RuntimeEnv::<T>::from_storage(
-		Default::default(),
+	let mut env = RuntimeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
@@ -33,7 +32,6 @@ fn transfer_balance<T: Runtime>() {
 				)],
 			})
 			.storage(),
-		Genesis::<T>::default().storage(),
 	);
 
 	// Call an extrinsic that would be processed immediately
@@ -76,8 +74,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 	const TRANSFER: Balance = 1000 * CFG;
 	const FOR_FEES: Balance = 1 * CFG;
 
-	let mut env = FudgeEnv::<T>::from_storage(
-		Default::default(),
+	let mut env = FudgeEnv::<T>::from_parachain_storage(
 		Genesis::default()
 			.add(pallet_balances::GenesisConfig::<T> {
 				balances: vec![(
@@ -86,7 +83,6 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 				)],
 			})
 			.storage(),
-		Genesis::<T>::default().storage(),
 	);
 
 	env.submit_later(
@@ -133,8 +129,7 @@ fn fudge_transfer_balance<T: Runtime + FudgeSupport>() {
 }
 
 fn call_api<T: Runtime>() {
-	let env =
-		RuntimeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
+	let env = RuntimeEnv::<T>::default();
 
 	env.parachain_state(|| {
 		// If imported the trait: sp_api::runtime_decl_for_core::CoreV4,
@@ -147,8 +142,7 @@ fn call_api<T: Runtime>() {
 }
 
 fn fudge_call_api<T: Runtime + FudgeSupport>() {
-	let env =
-		FudgeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
+	let env = FudgeEnv::<T>::default();
 
 	// Exclusive from fudge environment.
 	// It uses a client to access the runtime api.
@@ -164,8 +158,7 @@ fn fudge_call_api<T: Runtime + FudgeSupport>() {
 }
 
 fn pass_time_one_block<T: Runtime>() {
-	let mut env =
-		RuntimeEnv::<T>::from_storage(Default::default(), Default::default(), Default::default());
+	let mut env = RuntimeEnv::<T>::default();
 
 	let before = env.parachain_state(|| pallet_timestamp::Pallet::<T>::get());
 
