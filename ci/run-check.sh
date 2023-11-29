@@ -37,4 +37,18 @@ case $TARGET in
     ;;
   docs-build)
     RUSTDOCFLAGS="-D warnings" cargo doc --all --no-deps
+    ;;
+  subalfred)
+    # Find all child directories containing Cargo.toml files
+    # TODO: Filter by crates found in the workspace
+    dirs=$(find . -name Cargo.toml -print0 | xargs -0 -n1 dirname | sort -u)
+
+    # Execute the command "subalfred check" on each directory
+    for dir in $dirs; do
+      # Avoiding cargo workspace
+      if [[ "$dir" == "." ]]; then
+        continue
+      fi
+      subalfred check features $dir
+    done
 esac

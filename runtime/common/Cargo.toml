@@ -143,6 +143,12 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
+  "pallet-evm-precompile-blake2/std",
+  "pallet-evm-precompile-bn128/std",
+  "pallet-evm-precompile-dispatch/std",
+  "pallet-evm-precompile-modexp/std",
+  "pallet-evm-precompile-sha3fips/std",
+  "pallet-evm-precompile-simple/std",
 
   # Locals
   "cfg-primitives/std",
@@ -228,6 +234,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "polkadot-parachain/runtime-benchmarks",
 
   # Locals
   "cfg-primitives/runtime-benchmarks",

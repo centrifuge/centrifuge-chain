@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "node",
   "libs/mocks",
   "libs/primitives",
   "libs/proofs",
@@ -8,7 +9,6 @@ members = [
   "libs/traits",
   "libs/types",
   "libs/utils",
-  "node",
   "pallets/anchors",
   "pallets/bridge",
   "pallets/block-rewards",
