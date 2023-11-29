@@ -41,6 +41,7 @@ case $TARGET in
   subalfred)
     # Find all child directories containing Cargo.toml files
     # TODO: Filter by crates found in the workspace
+    #   HINT: Use `cargo workspaces list -l" and filter by the paths
     dirs=$(find . -name Cargo.toml -print0 | xargs -0 -n1 dirname | sort -u)
 
     # Execute the command "subalfred check" on each directory

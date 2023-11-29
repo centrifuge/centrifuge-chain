@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Usage
-# ./scripts/tests.sh <"-F=feature1,feature2,...">
+# ./scripts/tests.sh check|test "-F=feature1,feature2,..." <--no-run>
 
 all_crates=$(
     cargo workspaces list
@@ -30,10 +30,9 @@ if [[ $? -ne 0 ]]; then
     echo try: \'cargo install cargo-workspaces\' before using this crate
 fi
 
-# Checking cargo check
 for crate in $all_crates
 do
-    if [[ $1 == *"runtime-benchmarks"* || $1 == *"try-runtime"* ]]; then
+    if [[ $2 == *"runtime-benchmarks"* || $2 == *"try-runtime"* ]]; then
         if [[ "$crate" == "proofs" ]]; then
             echo "Skipping!"
             continue
@@ -45,23 +44,5 @@ do
         fi
     fi
 
-    cargo_action check $crate $1
-done
-
-# Checking cargo test
-for crate in $all_crates
-do
-    if [[ $1 == *"runtime-benchmarks"* || $1 == *"try-runtime"* ]]; then
-        if [[ "$crate" == "proofs" ]]; then
-            echo "Skipping!"
-            continue
-        fi
-
-        if [[ "$crate" == "runtime-integration-tests" ]]; then
-            echo "Skipping!"
-            continue
-        fi
-    fi
-
-    cargo_action test $crate $1 --no-run
+    cargo_action $1 $crate $2 $3
 done
