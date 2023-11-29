@@ -5,3 +5,4 @@
 docker
 !docker/scripts
 README.md
+flake*
