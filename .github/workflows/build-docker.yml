@@ -59,8 +59,7 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          # push: ${{ github.event_name != 'pull_request' }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
