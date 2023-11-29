@@ -16,19 +16,22 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::TypeInfo, BoundedVec, RuntimeDebug};
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub enum FeeRate<Rate> {
+pub enum FeeAmount<Balance, Rate> {
 	ShareOfPortfolioValuation(Rate),
 	// Future options: AmountPerYear, AmountPerMonth, ...
+	// TODO: AmountPerSecond(Balance) might be sufficient
+	AmountPerYear(Balance),
+	AmountPerMonth(Balance),
 }
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum FeeAmount<Rate> {
+pub enum FeeAmountType<Balance, Rate> {
 	/// A fixed fee is deducted automatically every epoch
-	Fixed { amount: FeeRate<Rate> },
+	Fixed { amount: FeeAmount<Balance, Rate> },
 
 	/// A fee can be charged up to a limit, paid every epoch
-	ChargedUpTo { limit: FeeRate<Rate> },
+	ChargedUpTo { limit: FeeAmount<Balance, Rate> },
 }
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
@@ -40,7 +43,7 @@ pub enum FeeEditor<AccountId> {
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub struct PoolFee<AccountId, Rate> {
+pub struct PoolFee<AccountId, Balance, Rate> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
 
@@ -48,15 +51,15 @@ pub struct PoolFee<AccountId, Rate> {
 	pub editor: FeeEditor<AccountId>,
 
 	/// Amount of fees that can be charged
-	pub amount: FeeAmount<Rate>,
+	pub amount: FeeAmountType<Balance, Rate>,
 }
 
 /// Represents pool changes which might require to complete further guarding
 /// checks.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub enum Change<AccountId, Rate> {
-	AppendFee(FeeBucket, PoolFee<AccountId, Rate>),
-	RemoveFee(FeeBucket, PoolFee<AccountId, Rate>),
+pub enum Change<AccountId, Balance, Rate> {
+	AppendFee(FeeBucket, PoolFee<AccountId, Balance, Rate>),
+	RemoveFee(FeeBucket, PoolFee<AccountId, Balance, Rate>),
 }
 
 // NOTE: Remark feature will be a separate feature in the future (post Pool Fees

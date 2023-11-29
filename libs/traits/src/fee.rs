@@ -12,14 +12,15 @@
 
 // TODO: Docs
 // TODO: Enable paying without FeeBucket knowledge or expose buckets
-trait PoolFees {
+pub trait PoolFees {
 	type PoolId;
 	type FeeBucket;
 	type Balance;
-	type BlockNumber;
+	type Time;
 	type PoolReserve;
 	type Fee;
 	type Error;
+	type Rate;
 
 	/// Withdraw any due fees. The waterfall of fee payment follows the order of
 	/// the corresponding [FeeBucket].
@@ -29,7 +30,7 @@ trait PoolFees {
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		portfolio_valuation: Self::Balance,
-		epoch_duration: Self::BlockNumber,
+		epoch_duration: Self::Time,
 	);
 
 	/// Get the amount of any due fees. The waterfall of fee payment follows the
@@ -38,7 +39,7 @@ trait PoolFees {
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		portfolio_valuation: Self::Balance,
-		epoch_duration: Self::BlockNumber,
+		epoch_duration: Self::Time,
 	);
 
 	/// Charge a fee for the given pair of pool id and fee bucket.
@@ -63,4 +64,25 @@ trait PoolFees {
 		bucket: Self::FeeBucket,
 		fee: Self::Fee,
 	) -> Result<(), Self::Error>;
+}
+
+/// Trait to prorate a fee amount to a rate or amount
+pub trait FeeAmountProration<T> {
+	type Balance;
+	type Rate;
+	type Time;
+
+	// TODO(william): Docs
+	fn saturated_prorated_amount(
+		&self,
+		portfolio_valuation: Self::Balance,
+		period: Self::Time,
+	) -> Self::Balance;
+
+	// TODO(william): Docs
+	fn saturated_prorated_rate(
+		&self,
+		portfolio_valuation: Self::Balance,
+		period: Self::Time,
+	) -> Self::Rate;
 }
