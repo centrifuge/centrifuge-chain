@@ -41,6 +41,7 @@ members = [
   "pallets/rewards",
   "runtime/altair",
   "runtime/centrifuge",
+  "runtime/development",
   "runtime/common",
   "runtime/integration-tests",
 ]
