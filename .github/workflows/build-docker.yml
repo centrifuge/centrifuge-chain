@@ -22,17 +22,6 @@ jobs:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
         with:
           fetch-depth: 0
-      - name: Free space
-      # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          # sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
-      - name: check available docker space
-        run: |
-          docker volume ls
-          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
@@ -51,10 +40,10 @@ jobs:
           images: centrifugeio/centrifuge-chain
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=edge,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=tag,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=pr,suffix={{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
-            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }}-{{branch}},suffix={{sha}}-${{ env.NOW }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
+            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
