@@ -350,32 +350,38 @@ pub mod pallet {
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
 			portfolio_valuation: Self::Balance,
+			mut reserve: Self::Balance,
 			epoch_duration: Self::Time,
 		) {
 			let fee_structure = FeeIds::<T>::get(pool_id, bucket.clone());
-			let mut nav = portfolio_valuation.clone();
+			let mut fees: Vec<(T::FeeId, T::Balance)> = Vec::new();
 
-			let mut fees: Vec<(PoolFeeOf<T>, T::Balance)> = vec![];
-			// TODO: Switch to other iterator
-			for (_index, fee_id) in fee_structure.into_iter().enumerate() {
-				if nav.is_zero() {
+			// Follow fee waterfall until reserve is empty
+			for fee_id in fee_structure {
+				if reserve.is_zero() {
 					break;
 				}
 
-				if let Some(fee) = CreatedFees::<T>::get(fee_id) {
+				if let Some(fee) = CreatedFees::<T>::get(fee_id.clone()) {
 					let fee_amount = match fee.amount.clone() {
-						Fixed { amount } => <FeeAmount<
-							<T as pallet::Config>::Balance,
-							<T as pallet::Config>::Rate,
-						> as FeeAmountProration<T>>::saturated_prorated_amount(
-							&amount,
-							portfolio_valuation,
-							epoch_duration.clone(),
-						)
-						.min(portfolio_valuation),
+						Fixed { amount } => {
+							let fee_amount = <FeeAmount<
+								<T as pallet::Config>::Balance,
+								<T as pallet::Config>::Rate,
+							> as FeeAmountProration<T>>::saturated_prorated_amount(
+								&amount,
+								portfolio_valuation,
+								epoch_duration.clone(),
+							)
+							.min(portfolio_valuation);
+
+							reserve = reserve.saturating_sub(fee_amount);
+							fee_amount
+						}
 						FeeAmountType::ChargedUpTo { limit } => {
-							PendingFees::<T>::mutate_exists(fee_id, |maybe_accrued| {
-								// TODO: Maybe Charging a limit fee needs to be stored for epoch?:
+							PendingFees::<T>::mutate_exists(fee_id.clone(), |maybe_accrued| {
+								// TODO: Maybe Charging a limit fee needs to be stored for
+								// epoch?:
 								if let Some(accrued) = maybe_accrued {
 									let max_amount = <FeeAmount<
 										<T as pallet::Config>::Balance,
@@ -386,7 +392,7 @@ pub mod pallet {
 										epoch_duration.clone(),
 									);
 									let amount = accrued.clone().min(max_amount);
-									if let Some(excess_fee) = Self::decrement_nav(nav, amount) {
+									if let Some(excess_fee) = Self::decrement_nav(reserve, amount) {
 										*maybe_accrued = Some(excess_fee);
 										amount.saturating_sub(excess_fee)
 									} else {
@@ -400,12 +406,8 @@ pub mod pallet {
 						}
 					};
 
-					if !fee_amount.is_zero() {
-						nav = nav.saturating_sub(fee_amount);
-						// TODO: Maybe returning fee id instead of fee is sufficient
-						// TODO: Check whether we need notify partial fulfillments
-						fees.push((fee.clone(), fee_amount));
-					}
+					// TODO(remark): Check whether we need notify if fulfillments are
+					fees.push((fee_id, fee_amount));
 				}
 			}
 		}

@@ -34,11 +34,13 @@ pub trait PoolFees {
 	);
 
 	/// Get the amount of any due fees. The waterfall of fee payment follows the
-	/// order of the corresponding [FeeBucket].
+	/// order of the corresponding [FeeBucket] as long as the reserve is not
+	/// empty.
 	fn get_bucket_amount(
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		portfolio_valuation: Self::Balance,
+		reserve: Self::Balance,
 		epoch_duration: Self::Time,
 	);
 
