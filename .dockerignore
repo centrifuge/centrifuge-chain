@@ -1,7 +1,8 @@
 **/target/
 .github/
 !scripts/install_toolchain.sh
-docker-compos
 .gitignore
 docker
+!docker/scripts
 README.md
+flake*
