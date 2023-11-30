@@ -358,6 +358,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
 
+		/// Enable fast runtime changes, overwriting the waiting time with a
+		/// fixed value. `None` value means the normal behaviour.
+		/// Used for testnets.
+		type FastChanges: Get<Option<Seconds>>;
+
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 

@@ -1490,6 +1490,7 @@ impl pallet_pool_system::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FastChanges = runtime_common::changes::NoFastChanges;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;

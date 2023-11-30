@@ -318,6 +318,8 @@ parameter_types! {
 	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
+
+	pub const NoFastChanges: Option<u64> = None;
 }
 
 impl Config for Runtime {
@@ -330,6 +332,7 @@ impl Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FastChanges = NoFastChanges;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;

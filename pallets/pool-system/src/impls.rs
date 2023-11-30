@@ -438,7 +438,11 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 			allowed &= match requirement {
 				Requirement::NextEpoch => submitted_time < pool.epoch.last_closed,
 				Requirement::DelayTime(secs) => {
-					T::Time::now().saturating_sub(submitted_time) >= secs as u64
+					let secs = match T::FastChanges::get() {
+						Some(fixed_secs) => fixed_secs,
+						None => secs as u64,
+					};
+					T::Time::now().saturating_sub(submitted_time) >= secs
 				}
 				Requirement::BlockedByLockedRedemptions => true, // TODO: #1407
 			}
