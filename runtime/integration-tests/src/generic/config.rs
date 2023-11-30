@@ -16,10 +16,12 @@ use cfg_types::{
 use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
-	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo},
-	traits::IsType,
+	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
+	traits::{IsType, OriginTrait},
 	Parameter,
 };
+use liquidity_pools_gateway_routers::DomainRouter;
+use pallet_liquidity_pools::Router;
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::{
 	apis,
@@ -49,6 +51,7 @@ pub trait Runtime:
 		RuntimeEvent = Self::RuntimeEventExt,
 		BlockNumber = BlockNumber,
 		Lookup = AccountIdLookup<AccountId, ()>,
+		RuntimeOrigin = Self::RuntimeOriginExt,
 	> + pallet_pool_system::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
@@ -100,6 +103,11 @@ pub trait Runtime:
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
 	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
+	+ pallet_liquidity_pools::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>>
+	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
+	+ pallet_ethereum::Config
+	+ pallet_ethereum_transaction::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -138,6 +146,13 @@ pub trait Runtime:
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
 		+ From<orml_oracle::Event<Self>>;
+
+	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
+		+ From<RawOrigin<Self::AccountId>>
+		+ Clone
+		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall>
+		+ From<pallet_ethereum::RawOrigin>
+		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>;
 
 	/// Block used by the runtime
 	type Block: Block<

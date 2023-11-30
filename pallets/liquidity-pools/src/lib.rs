@@ -639,7 +639,7 @@ pub mod pallet {
 				}
 			}
 
-			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id.clone()))?;
+			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(

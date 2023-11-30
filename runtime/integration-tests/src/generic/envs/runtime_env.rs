@@ -35,8 +35,22 @@ pub struct RuntimeEnv<T: Runtime> {
 	_config: PhantomData<T>,
 }
 
+impl<T: Runtime> Default for RuntimeEnv<T> {
+	fn default() -> Self {
+		Self::from_storage(Default::default(), Default::default(), Default::default())
+	}
+}
+
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_storage(mut parachain_storage: Storage, mut sibling_storage: Storage) -> Self {
+	fn from_parachain_storage(parachain_storage: Storage) -> Self {
+		Self::from_storage(Default::default(), parachain_storage, Default::default())
+	}
+
+	fn from_storage(
+		mut _relay_storage: Storage,
+		mut parachain_storage: Storage,
+		mut sibling_storage: Storage,
+	) -> Self {
 		// Needed for the aura usage
 		pallet_aura::GenesisConfig::<T> {
 			authorities: vec![AuraId::from(Public([0; 32]))],
@@ -244,13 +258,12 @@ mod tests {
 	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_now<T: Runtime>() {
-		let mut env = RuntimeEnv::<T>::from_storage(
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_now(
@@ -267,13 +280,12 @@ mod tests {
 	}
 
 	fn correct_nonce_for_submit_later<T: Runtime>() {
-		let mut env = RuntimeEnv::<T>::from_storage(
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(

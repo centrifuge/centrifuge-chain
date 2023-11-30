@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::tokens::CurrencyId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -81,30 +82,6 @@ impl frame_system::Config for Runtime {
 
 #[derive(
 	Clone,
-	Copy,
-	Debug,
-	PartialOrd,
-	Default,
-	Ord,
-	Encode,
-	Decode,
-	Eq,
-	PartialEq,
-	MaxEncodedLen,
-	TypeInfo,
-	Deserialize,
-	Serialize,
-)]
-pub enum CurrencyId {
-	#[default]
-	A,
-	B,
-	C,
-	D,
-}
-
-#[derive(
-	Clone,
 	Debug,
 	PartialOrd,
 	Ord,
@@ -145,7 +122,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NativeCurrency: CurrencyId = CurrencyId::D;
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
 	pub const HoldId: () = ();
 }
 
