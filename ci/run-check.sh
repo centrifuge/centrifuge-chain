@@ -21,11 +21,13 @@ case $TARGET in
     cargo test --release --package runtime-integration-tests --features fast-runtime
     ;;
 
+
   lint-fmt)
     cargo fmt -- --check
     ;;
 
   lint-taplo)
+    cargo install taplo-cli --locked
     taplo fmt --check
     ;;
 
