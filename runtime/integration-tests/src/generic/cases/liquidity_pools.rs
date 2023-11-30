@@ -1995,10 +1995,28 @@ mod centrifuge {
 					)[0..20],
 				);
 
+				let domain_address = DomainAddress::EVM(1, receiver.into());
+
+				add_allowance::<T>(
+					Keyring::Alice,
+					LP_ETH_USDC,
+					Location::Address(domain_address.clone()),
+				);
+
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						LP_ETH_USDC,
+						DomainAddress::EVM(1, [1u8; 20]),
+						lp_eth_usdc(TRANSFER_AMOUNT),
+					),
+					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
+				);
+
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					LP_ETH_USDC,
-					DomainAddress::EVM(1, receiver.into()),
+					domain_address,
 					lp_eth_usdc(TRANSFER_AMOUNT),
 				));
 
