@@ -19,6 +19,7 @@ pub trait PoolFees {
 	type Time;
 	type PoolReserve;
 	type Fee;
+	type FeeId;
 	type Error;
 	type Rate;
 
@@ -36,24 +37,29 @@ pub trait PoolFees {
 	/// Get the amount of any due fees. The waterfall of fee payment follows the
 	/// order of the corresponding [FeeBucket] as long as the reserve is not
 	/// empty.
-	fn get_bucket_amount(
+	fn get_pool_fee_disbursements(
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		portfolio_valuation: Self::Balance,
 		reserve: Self::Balance,
 		epoch_duration: Self::Time,
-	);
+	) -> (Self::Balance, Vec<(Self::FeeId, Self::Balance)>);
 
 	/// Charge a fee for the given pair of pool id and fee bucket.
-	fn charge_fee(
-		pool_id: Self::PoolId,
-		bucket: Self::FeeBucket,
-		fee: Self::Fee,
-	) -> Result<(), Self::Error>;
+	///
+	/// NOTE: Assumes call permissions are separately checked beforehand.
+	fn charge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error>;
 
 	/// Cancel a previously charged fee for the given pair of pool id and fee
 	/// bucket.
-	fn uncharge_fee(
+	///
+	/// NOTE: Assumes call permissions are separately checked beforehand.
+	fn uncharge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error>;
+
+	/// Add a new fee to the pool and bucket.
+	///
+	/// NOTE: Assumes call permissions are separately checked beforehand.
+	fn add_fee(
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		fee: Self::Fee,
@@ -61,11 +67,9 @@ pub trait PoolFees {
 
 	/// Entirely remove a stored fee from the given pair of pool id and fee
 	/// bucket.
-	fn remove_fee(
-		pool_id: Self::PoolId,
-		bucket: Self::FeeBucket,
-		fee: Self::Fee,
-	) -> Result<(), Self::Error>;
+	///
+	/// NOTE: Assumes call permissions are separately checked beforehand.
+	fn remove_fee(fee_id: Self::FeeId) -> Result<(), Self::Error>;
 }
 
 /// Trait to prorate a fee amount to a rate or amount

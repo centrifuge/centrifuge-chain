@@ -10,18 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, LoanId};
-use cfg_types::{fixed_point::Rate, pools::FeeBucket};
+use cfg_types::pools::FeeBucket;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::TypeInfo, BoundedVec, RuntimeDebug};
+use frame_support::dispatch::TypeInfo;
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum FeeAmount<Balance, Rate> {
 	ShareOfPortfolioValuation(Rate),
-	// Future options: AmountPerYear, AmountPerMonth, ...
 	// TODO: AmountPerSecond(Balance) might be sufficient
 	AmountPerYear(Balance),
 	AmountPerMonth(Balance),
+	AmountPerSecond(Balance),
 }
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
@@ -39,6 +38,18 @@ pub enum FeeAmountType<Balance, Rate> {
 pub enum FeeEditor<AccountId> {
 	Root,
 	Account(AccountId),
+}
+
+impl<AccountId> FeeEditor<AccountId>
+where
+	AccountId: PartialEq,
+{
+	pub fn matches_account(&self, who: &AccountId) -> bool {
+		match self {
+			Self::Account(account) => account == who,
+			_ => false,
+		}
+	}
 }
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]

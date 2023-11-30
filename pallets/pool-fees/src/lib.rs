@@ -37,13 +37,19 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_arithmetic::{
-		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One, Saturating, Zero},
+		traits::{
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating,
+			Zero,
+		},
 		ArithmeticError, FixedPointNumber, FixedPointOperand,
 	};
 	use sp_std::vec::Vec;
 
 	use super::*;
-	use crate::types::{Change, FeeAmount, FeeAmountType, FeeAmountType::Fixed, PoolFee};
+	use crate::{
+		types::{Change, FeeAmount, FeeAmountType, FeeAmountType::Fixed, FeeEditor, PoolFee},
+		Call::remove_fee,
+	};
 
 	pub type PoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
@@ -59,7 +65,15 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The identifier of a particular fee
-		type FeeId: Parameter + Member + Default + TypeInfo + MaxEncodedLen + Copy + EnsureAdd + One;
+		type FeeId: Parameter
+			+ Member
+			+ Default
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Copy
+			+ EnsureAdd
+			+ One
+			+ Ord;
 
 		/// The source of truth for the balance of accounts
 		type Balance: Parameter
@@ -69,6 +83,7 @@ pub mod pallet {
 			+ Copy
 			+ FixedPointOperand
 			+ SaturatedProration<Time = Self::Time>
+			+ From<Self::Time>
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
@@ -193,6 +208,14 @@ pub mod pallet {
 	pub type CreatedFees<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::FeeId, PoolFeeOf<T>, OptionQuery>;
 
+	/// Maps a fee identifier to the corresponding pool and [FeeBucket].
+	///
+	/// Follows the lifetime of the corresponding fee and thus aligns with the
+	/// one of [CreatedFees].
+	#[pallet::storage]
+	pub type FeeIdsToPoolBucket<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::FeeId, (T::PoolId, FeeBucket), OptionQuery>;
+
 	/// Represents accrued and pending charged fees of a particular pool
 	/// [FeeBucket].
 	///
@@ -206,7 +229,7 @@ pub mod pallet {
 	/// execution.
 	#[pallet::storage]
 	pub type PendingFees<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::FeeId, T::Balance, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::FeeId, T::Balance, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -214,6 +237,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// A fee could not be found.
+		FeeNotFound,
 		/// A pool could not be found.
 		PoolNotFound,
 		/// Only the PoolAdmin can execute a given operation.
@@ -225,6 +250,10 @@ pub mod pallet {
 		/// The change id belongs to a pool fees change but was called in the
 		/// wrong context.
 		ChangeIdUnrelated,
+		/// The fee can only be charged by the destination
+		UnauthorizedCharge,
+		/// The fee can only be edited or removed by the editor
+		UnauthorizedEdit,
 	}
 
 	#[pallet::call]
@@ -285,10 +314,69 @@ pub mod pallet {
 				_ => Err(Error::<T>::ChangeIdUnrelated),
 			}?;
 
-			let fee_id = Self::generate_fee_id()?;
-			FeeIds::<T>::mutate(pool_id, bucket, |list| list.try_push(fee_id))
-				.map_err(|_| Error::<T>::MaxFeesPerPoolBucket)?;
-			CreatedFees::<T>::insert(fee_id, fee);
+			Self::add_fee(pool_id, bucket, fee)?;
+
+			Ok(())
+		}
+
+		/// Remove a fee.
+		///
+		/// Origin must be the fee editor.
+		// TODO: Discuss whether ChangeGuard needed
+		#[pallet::call_index(2)]
+		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let fee = CreatedFees::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
+			ensure!(
+				fee.editor.matches_account(&who),
+				Error::<T>::UnauthorizedEdit
+			);
+
+			<Self as PoolFees>::remove_fee(fee_id)?;
+
+			Ok(())
+		}
+
+		/// Charge a fee.
+		///
+		/// Origin must be the fee destination.
+		#[pallet::call_index(3)]
+		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		pub fn charge_fee(
+			origin: OriginFor<T>,
+			fee_id: T::FeeId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let fee = crate::pallet::CreatedFees::<T>::get(fee_id)
+				.ok_or(crate::pallet::Error::<T>::FeeNotFound)?;
+			ensure!(fee.destination == who, Error::<T>::UnauthorizedCharge);
+
+			<Self as PoolFees>::charge_fee(fee_id, amount)?;
+
+			Ok(())
+		}
+
+		/// Cancel a charged fee.
+		///
+		/// Origin must be the fee destination.
+		#[pallet::call_index(4)]
+		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		pub fn uncharge_fee(
+			origin: OriginFor<T>,
+			fee_id: T::FeeId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let fee = crate::pallet::CreatedFees::<T>::get(fee_id)
+				.ok_or(crate::pallet::Error::<T>::FeeNotFound)?;
+			ensure!(fee.destination == who, Error::<T>::UnauthorizedCharge);
+
+			<Self as PoolFees>::uncharge_fee(fee_id, amount)?;
 
 			Ok(())
 		}
@@ -315,13 +403,14 @@ pub mod pallet {
 		///
 		/// If the NAV cannot be fully reduced by amount, returns
 		/// `Some(amount - nav)`.
-		fn decrement_nav(mut nav: T::Balance, amount: T::Balance) -> Option<T::Balance> {
-			if nav >= amount {
-				nav = nav - amount;
+		// TODO: Maybe remove
+		fn decrement_reserve(mut reserve: T::Balance, amount: T::Balance) -> Option<T::Balance> {
+			if reserve >= amount {
+				reserve -= amount;
 				None
 			} else {
-				let remainder = amount - nav;
-				nav = T::Balance::zero();
+				let remainder = amount - reserve;
+				reserve = T::Balance::zero();
 				Some(remainder)
 			}
 		}
@@ -329,9 +418,10 @@ pub mod pallet {
 
 	impl<T: Config> PoolFees for Pallet<T> {
 		type Balance = T::Balance;
-		type Error = Error<T>;
+		type Error = DispatchError;
 		type Fee = PoolFeeOf<T>;
 		type FeeBucket = FeeBucket;
+		type FeeId = T::FeeId;
 		type PoolId = T::PoolId;
 		type PoolReserve = T::PoolReserve;
 		type Rate = T::Rate;
@@ -346,14 +436,15 @@ pub mod pallet {
 			todo!("william")
 		}
 
-		fn get_bucket_amount(
+		fn get_pool_fee_disbursements(
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
 			portfolio_valuation: Self::Balance,
-			mut reserve: Self::Balance,
+			reserve: Self::Balance,
 			epoch_duration: Self::Time,
-		) {
+		) -> (Self::Balance, Vec<(Self::FeeId, Self::Balance)>) {
 			let fee_structure = FeeIds::<T>::get(pool_id, bucket.clone());
+			let mut reserve = reserve;
 			let mut fees: Vec<(T::FeeId, T::Balance)> = Vec::new();
 
 			// Follow fee waterfall until reserve is empty
@@ -362,7 +453,7 @@ pub mod pallet {
 					break;
 				}
 
-				if let Some(fee) = CreatedFees::<T>::get(fee_id.clone()) {
+				if let Some(fee) = CreatedFees::<T>::get(fee_id) {
 					let fee_amount = match fee.amount.clone() {
 						Fixed { amount } => {
 							let fee_amount = <FeeAmount<
@@ -379,10 +470,11 @@ pub mod pallet {
 							fee_amount
 						}
 						FeeAmountType::ChargedUpTo { limit } => {
-							PendingFees::<T>::mutate_exists(fee_id.clone(), |maybe_accrued| {
+							PendingFees::<T>::mutate_exists(fee_id, |maybe_pending| {
 								// TODO: Maybe Charging a limit fee needs to be stored for
 								// epoch?:
-								if let Some(accrued) = maybe_accrued {
+								if let Some(pending) = maybe_pending {
+									// Pending amount might exceed the configured max
 									let max_amount = <FeeAmount<
 										<T as pallet::Config>::Balance,
 										<T as pallet::Config>::Rate,
@@ -391,13 +483,16 @@ pub mod pallet {
 										portfolio_valuation,
 										epoch_duration.clone(),
 									);
-									let amount = accrued.clone().min(max_amount);
-									if let Some(excess_fee) = Self::decrement_nav(reserve, amount) {
-										*maybe_accrued = Some(excess_fee);
-										amount.saturating_sub(excess_fee)
-									} else {
-										*maybe_accrued = None;
+									let amount = (*pending).min(max_amount);
+
+									if reserve >= amount {
+										*maybe_pending = None;
+										reserve -= amount;
 										amount
+									} else {
+										let pending_remainder = amount - reserve;
+										*maybe_pending = Some(pending_remainder);
+										amount - pending_remainder
 									}
 								} else {
 									T::Balance::zero()
@@ -410,47 +505,58 @@ pub mod pallet {
 					fees.push((fee_id, fee_amount));
 				}
 			}
+
+			(reserve, fees)
 		}
 
-		fn charge_fee(
+		fn charge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error> {
+			PendingFees::<T>::mutate(fee_id, |pending| pending.ensure_add_assign(amount))
+				.map_err(|e| e.into())
+		}
+
+		fn uncharge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error> {
+			PendingFees::<T>::mutate(fee_id, |pending| pending.ensure_sub_assign(amount))
+				.map_err(|e| e.into())
+		}
+
+		fn add_fee(
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
 			fee: Self::Fee,
 		) -> Result<(), Self::Error> {
-			todo!("william")
+			let fee_id = Self::generate_fee_id()?;
+			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
+				.map_err(|_| Error::<T>::MaxFeesPerPoolBucket)?;
+			CreatedFees::<T>::insert(fee_id, fee);
+			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
+
+			Ok(())
 		}
 
-		fn uncharge_fee(
-			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
-			fee: Self::Fee,
-		) -> Result<(), Self::Error> {
-			todo!("william")
-		}
+		fn remove_fee(fee_id: Self::FeeId) -> Result<(), Self::Error> {
+			CreatedFees::<T>::remove(fee_id);
+			PendingFees::<T>::remove(fee_id);
+			FeeIdsToPoolBucket::<T>::mutate_exists(fee_id, |maybe_key| {
+				maybe_key
+					.as_ref()
+					.map(|(pool_id, bucket)| {
+						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
+							let pos = fee_ids
+								.binary_search(&fee_id)
+								.err()
+								.ok_or(Error::<T>::FeeNotFound)?;
+							fee_ids.remove(pos);
+							Ok::<(), DispatchError>(())
+						})
+					})
+					.transpose()?;
+				*maybe_key = None;
+				Ok::<(), DispatchError>(())
+			})?;
 
-		fn remove_fee(
-			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
-			fee: Self::Fee,
-		) -> Result<(), Self::Error> {
-			todo!("william")
+			Ok(())
 		}
 	}
-
-	// impl<T: Config> FeeAmountType<T::Balance, T::Rate> {
-	// 	fn get_fee_amount(
-	// 		&self,
-	// 		portfolio_valuation: T::Balance,
-	// 		epoch_duration: T::Time,
-	// 	) -> T::Balance {
-	// 		match self {
-	// 			Fixed { amount } => amount
-	// 				.saturated_prorated_amount(portfolio_valuation, epoch_duration)
-	// 				.min(portfolio_valuation),
-	// 			FeeAmountType::ChargedUpTo { limit } => AccruedFees::<T>::get((pool_id,
-	// bucket)), 		}
-	// 	}
-	// }
 
 	impl<T: Config> FeeAmountProration<T> for FeeAmount<T::Balance, T::Rate> {
 		type Balance = T::Balance;
@@ -463,10 +569,10 @@ pub mod pallet {
 			period: T::Time,
 		) -> T::Balance {
 			match self {
-				FeeAmount::ShareOfPortfolioValuation(rate) => {
+				FeeAmount::ShareOfPortfolioValuation(_) => {
 					let proration: T::Rate =
 						<Self as FeeAmountProration<T>>::saturated_prorated_rate(
-							&self,
+							self,
 							portfolio_valuation,
 							period,
 						);
@@ -478,6 +584,7 @@ pub mod pallet {
 				FeeAmount::AmountPerMonth(amount) => {
 					T::Balance::saturated_proration(amount.saturating_mul(12u32.into()), period)
 				}
+				FeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
 			}
 		}
 
@@ -490,10 +597,12 @@ pub mod pallet {
 				FeeAmount::ShareOfPortfolioValuation(rate) => {
 					T::Rate::saturated_proration(*rate, period)
 				}
-				FeeAmount::AmountPerYear(_) | FeeAmount::AmountPerMonth(_) => {
+				FeeAmount::AmountPerYear(_)
+				| FeeAmount::AmountPerMonth(_)
+				| FeeAmount::AmountPerSecond(_) => {
 					let prorated_amount: T::Balance =
 						<Self as FeeAmountProration<T>>::saturated_prorated_amount(
-							&self,
+							self,
 							portfolio_valuation,
 							period,
 						);
@@ -501,32 +610,5 @@ pub mod pallet {
 				}
 			}
 		}
-
-		// fn saturated_rate_from_annual_rate(
-		// 	&self,
-		// 	portfolio_valuation: T::Balance,
-		// 	annual_rate: T::Rate,
-		// 	period: T::Time,
-		// ) -> T::Rate {
-		// 	todo!("william")
-		// }
-		//
-		// fn saturated_amount_from_annual_amount(
-		// 	&self,
-		// 	portfolio_valuation: T::Balance,
-		// 	annual_amount: T::Balance,
-		// 	period: T::Time,
-		// ) -> T::Balance {
-		// 	todo!("william")
-		// }
-		//
-		// fn saturated_rate_from_annual_amount(
-		// 	&self,
-		// 	portfolio_valuation: T::Balance,
-		// 	annual_rate: T::Rate,
-		// 	period: T::Time,
-		// ) -> T::Rate {
-		// 	todo!("william")
-		// }
 	}
 }
