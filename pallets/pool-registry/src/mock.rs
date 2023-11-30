@@ -130,6 +130,8 @@ parameter_types! {
 	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
+
+	pub const NoFastChanges: Option<u64> = None;
 }
 
 impl cfg_test_utils::mocks::nav::Config for Test {
@@ -148,6 +150,7 @@ impl pallet_pool_system::Config for Test {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FastChanges = NoFastChanges;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;
