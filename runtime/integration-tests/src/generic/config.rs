@@ -21,7 +21,6 @@ use frame_support::{
 	Parameter,
 };
 use liquidity_pools_gateway_routers::DomainRouter;
-use pallet_liquidity_pools::Router;
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::{
 	apis,

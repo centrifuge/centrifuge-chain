@@ -11533,6 +11533,7 @@ dependencies = [
  "fudge-core",
  "getrandom 0.2.10",
  "hex",
+ "hex-literal 0.3.4",
  "kusama-runtime",
  "lazy_static",
  "liquidity-pools-gateway-routers",
