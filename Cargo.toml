@@ -313,7 +313,7 @@ sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch 
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 
 # Cli specific
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"]}
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43", features = ["rocksdb"] }
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.43" }
 
 # Local dependencies
@@ -359,7 +359,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 # frontier
 fc-consensus = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = ["rocksdb"]}
+fc-db = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43", features = ["rocksdb"] }
 fc-mapping-sync = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
 fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
