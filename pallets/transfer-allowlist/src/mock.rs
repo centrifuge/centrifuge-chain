@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_mocks::pallet_mock_fees;
+use cfg_types::tokens::CurrencyId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -30,8 +30,6 @@ pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const SENDER: u64 = 0x1;
 pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
 pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
-pub(crate) const ALLOWANCE_FEE_AMOUNT: u64 = 10u64;
-pub(crate) const ALLOWANCE_FEEKEY: u8 = 0u8;
 
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -44,9 +42,8 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
-			Balances: pallet_balances,
-		  Fees: pallet_mock_fees,
-			System: frame_system,
+		  Balances: pallet_balances,
+		  System: frame_system,
 		  TransferAllowList: transfer_allowlist,
 	  }
 );
@@ -81,43 +78,6 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
-}
-
-impl pallet_mock_fees::Config for Runtime {
-	type Balance = Balance;
-	type FeeKey = u8;
-}
-
-parameter_types! {
-	  pub const DefaultFeeValue: Balance = 1;
-}
-
-#[derive(
-	Clone,
-	Copy,
-	Debug,
-	PartialOrd,
-	Ord,
-	Encode,
-	Decode,
-	Eq,
-	PartialEq,
-	MaxEncodedLen,
-	TypeInfo,
-	Deserialize,
-	Serialize,
-)]
-pub enum CurrencyId {
-	A,
-	B,
-	C,
-	D,
-}
-
-impl Default for CurrencyId {
-	fn default() -> Self {
-		Self::A
-	}
 }
 
 #[derive(
@@ -162,14 +122,16 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const TransferAllowlistFeeKey: u8 = ALLOWANCE_FEEKEY;
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
+	pub const HoldId: () = ();
 }
 
 impl transfer_allowlist::Config for Runtime {
-	type AllowanceFeeKey = TransferAllowlistFeeKey;
 	type CurrencyId = CurrencyId;
-	type Fees = Fees;
+	type Deposit = ConstU64<10>;
+	type HoldId = HoldId;
 	type Location = Location;
+	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -190,12 +152,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	e.execute_with(|| {
 		System::set_block_number(STARTING_BLOCK);
-
-		Fees::mock_fee_value(|key| match key {
-			ALLOWANCE_FEEKEY => ALLOWANCE_FEE_AMOUNT,
-			_ => panic!("No valid fee key"),
-		});
 	});
+
 	e
 }
 

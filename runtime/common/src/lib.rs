@@ -15,22 +15,45 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod tests;
-
 pub mod account_conversion;
 pub mod apis;
+pub mod changes;
 pub mod evm;
+pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use sp_core::parameter_types;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
+
+parameter_types! {
+	/// The native currency identifier of our currency id enum
+	/// to be used for Get<CurrencyId> types.
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
+
+	/// The hold identifier in our system to be used for
+	/// Get<()> types
+	pub const HoldId: HoldIdentifier = ();
+}
+
+pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
+impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
+	for AllowanceDeposit<T>
+{
+	fn get() -> Balance {
+		T::fee_value(FeeKey::AllowanceCreation)
+	}
+}
+
+/// To be used with the transfer-allowlist pallet across runtimes
+pub type HoldIdentifier = ();
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -88,92 +111,6 @@ pub mod xcm_fees {
 
 	pub fn dollar(decimals: u32) -> Balance {
 		10u128.saturating_pow(decimals)
-	}
-}
-
-pub mod fees {
-	use cfg_primitives::{
-		constants::{CENTI_CFG, TREASURY_FEE_RATIO},
-		types::Balance,
-	};
-	use frame_support::{
-		traits::{Currency, Imbalance, OnUnbalanced},
-		weights::{
-			constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
-			WeightToFeePolynomial,
-		},
-	};
-	use smallvec::smallvec;
-	use sp_arithmetic::Perbill;
-
-	pub type NegativeImbalance<R> = <pallet_balances::Pallet<R> as Currency<
-		<R as frame_system::Config>::AccountId,
-	>>::NegativeImbalance;
-
-	struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
-	impl<R> OnUnbalanced<NegativeImbalance<R>> for ToAuthor<R>
-	where
-		R: pallet_balances::Config + pallet_authorship::Config,
-	{
-		fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
-			if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
-				<pallet_balances::Pallet<R>>::resolve_creating(&author, amount);
-			}
-		}
-	}
-
-	pub struct DealWithFees<R>(sp_std::marker::PhantomData<R>);
-	impl<R> OnUnbalanced<NegativeImbalance<R>> for DealWithFees<R>
-	where
-		R: pallet_balances::Config + pallet_treasury::Config + pallet_authorship::Config,
-		pallet_treasury::Pallet<R>: OnUnbalanced<NegativeImbalance<R>>,
-	{
-		fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance<R>>) {
-			if let Some(fees) = fees_then_tips.next() {
-				// for fees, split the destination
-				let (treasury_amount, mut author_amount) = fees.ration(
-					TREASURY_FEE_RATIO.deconstruct(),
-					(Perbill::one() - TREASURY_FEE_RATIO).deconstruct(),
-				);
-				if let Some(tips) = fees_then_tips.next() {
-					// for tips, if any, 100% to author
-					tips.merge_into(&mut author_amount);
-				}
-
-				use pallet_treasury::Pallet as Treasury;
-				<Treasury<R> as OnUnbalanced<_>>::on_unbalanced(treasury_amount);
-				<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(author_amount);
-			}
-		}
-	}
-
-	/// Handles converting a weight scalar to a fee value, based on the scale
-	/// and granularity of the node's balance type.
-	///
-	/// This should typically create a mapping between the following ranges:
-	///   - [0, frame_system::MaximumBlockWeight]
-	///   - [Balance::min, Balance::max]
-	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some
-	/// examples being:
-	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to
-	///     be charged.
-	pub struct WeightToFee;
-	impl WeightToFeePolynomial for WeightToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			let p = CENTI_CFG;
-			let q = 10 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
-
-			smallvec!(WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			})
-		}
 	}
 }
 
@@ -247,125 +184,6 @@ pub mod asset_registry {
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
 			Err(())
-		}
-	}
-}
-
-pub mod changes {
-	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::RuntimeDebug;
-	use pallet_loans::entities::changes::Change as LoansChange;
-	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
-	use scale_info::TypeInfo;
-	use sp_runtime::DispatchError;
-
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoansChange<T>),
-	}
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
-			use cfg_primitives::SECONDS_PER_WEEK;
-			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
-			use pallet_pool_system::pool_types::changes::Requirement;
-			use sp_std::vec;
-
-			let epoch = Requirement::NextEpoch;
-			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
-			let blocked = Requirement::BlockedByLockedRedemptions;
-
-			let requirements = match loans_change {
-				// Requirements gathered from
-				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
-					LoanMutation::Maturity(_) => vec![week, blocked],
-					LoanMutation::MaturityExtension(_) => vec![],
-					LoanMutation::InterestPayments(_) => vec![week, blocked],
-					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-					LoanMutation::InterestRate(_) => vec![epoch],
-					LoanMutation::Internal(mutation) => match mutation {
-						InternalMutation::ValuationMethod(_) => vec![week, blocked],
-						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-						InternalMutation::LossGivenDefault(_) => vec![epoch],
-						InternalMutation::DiscountRate(_) => vec![epoch],
-					},
-				},
-				LoansChange::<T>::Policy(_) => vec![week, blocked],
-				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
-			};
-
-			PoolChangeProposal::new(requirements)
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
-			// We dont add any requirement in case of benchmarking.
-			// We assume checking requirements in the pool is something very fast and
-			// deprecable in relation to reading from any storage.
-			// If tomorrow any requirement requires a lot of time,
-			// it should be precomputed in any pool stage, to make the requirement
-			// validation as fast as possible.
-			PoolChangeProposal::new([])
-		}
-	}
-
-	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-			RuntimeChange::Loan(loan_change)
-		}
-	}
-
-	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-		type Error = DispatchError;
-
-		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-			let RuntimeChange::Loan(loan_change) = self;
-			Ok(loan_change)
-		}
-	}
-
-	pub mod fast {
-		use pallet_pool_system::pool_types::changes::Requirement;
-
-		use super::*;
-		const SECONDS_PER_WEEK: u32 = 60;
-
-		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
-
-		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-			fn from(runtime_change: RuntimeChange<T>) -> Self {
-				PoolChangeProposal::new(
-					PoolChangeProposal::from(runtime_change.0)
-						.requirements()
-						.map(|req| match req {
-							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
-							req => req,
-						}),
-				)
-			}
-		}
-
-		/// Used for building CfgChanges in pallet-loans
-		impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-			fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-				Self(loan_change.into())
-			}
-		}
-
-		/// Used for recovering LoanChange in pallet-loans
-		impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-				self.0.try_into()
-			}
 		}
 	}
 }

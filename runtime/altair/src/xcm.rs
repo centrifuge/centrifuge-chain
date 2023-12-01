@@ -32,6 +32,7 @@ use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
+	transfer_filter::PreXcmTransfer,
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::native_per_second,
 };
@@ -388,6 +389,10 @@ impl orml_xtokens::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+impl pallet_restricted_xtokens::Config for Runtime {
+	type PreTransfer = PreXcmTransfer<super::TransferAllowList, CurrencyIdConvert>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

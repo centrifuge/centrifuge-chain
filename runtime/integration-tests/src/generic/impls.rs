@@ -13,6 +13,7 @@ macro_rules! impl_runtime {
 				type MaxTranchesExt = $runtime_path::MaxTranches;
 				type RuntimeCallExt = $runtime_path::RuntimeCall;
 				type RuntimeEventExt = $runtime_path::RuntimeEvent;
+				type RuntimeOriginExt = $runtime_path::RuntimeOrigin;
 
 				const KIND: RuntimeKind = RuntimeKind::$kind;
 			}

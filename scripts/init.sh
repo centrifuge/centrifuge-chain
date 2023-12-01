@@ -64,7 +64,7 @@ start-parachain)
     --rpc-cors all \
     --rpc-methods=Unsafe \
     --log="main,info" \
-    --database=auto
+    --database=rocksdb
   ;;
 
 onboard-parachain)

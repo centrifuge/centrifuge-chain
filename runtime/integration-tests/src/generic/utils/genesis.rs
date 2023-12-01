@@ -39,7 +39,7 @@ impl<T: Runtime> Genesis<T> {
 	}
 }
 
-// Add GenesisBuild functions for initialize your pallets
+// Add GenesisBuild functions for pallet initialization.
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	pallet_balances::GenesisConfig::<T> {

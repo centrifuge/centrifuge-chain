@@ -3,6 +3,7 @@ services:
   cc_alice:
     profiles:
       - default
+    user: root
     container_name: cc-alice
     image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
     platform: "linux/x86_64"
@@ -26,7 +27,7 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --log="main,info,xcm=trace,xcm-executor=trace"
-      --database=auto
+      --database=rocksdb
       -- 
       --wasm-execution=compiled 
       --execution=wasm
