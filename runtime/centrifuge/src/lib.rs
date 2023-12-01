@@ -732,7 +732,13 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Transfer => {
 				matches!(
 					c,
-					RuntimeCall::XTokens(..) | RuntimeCall::Balances(..) | RuntimeCall::Tokens(..)
+					RuntimeCall::XTokens(..)
+						| RuntimeCall::Balances(..)
+						| RuntimeCall::Tokens(..)
+						| RuntimeCall::LiquidityPools(
+							pallet_liquidity_pools::Call::transfer { .. }
+								| pallet_liquidity_pools::Call::transfer_tranche_tokens { .. }
+						)
 				)
 			}
 		}
