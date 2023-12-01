@@ -86,7 +86,8 @@ package valuation {
 
     enum ValuationMethod {
         DiscountedCashFlows: DiscountedCashFlows
-        OutstandingDebt
+        OutstandingDebt,
+        Cash
     }
 
     ValuationMethod *--> DiscountedCashFlows
