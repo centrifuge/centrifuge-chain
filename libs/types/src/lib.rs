@@ -15,6 +15,7 @@
 #![allow(clippy::unit_arg)]
 
 //! Common-types of the Centrifuge chain.
+
 pub mod adjustments;
 pub mod consts;
 pub mod domain_address;
