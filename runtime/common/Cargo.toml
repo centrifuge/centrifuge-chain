@@ -95,6 +95,8 @@ pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-nft = { workspace = true }
 pallet-nft-sales = { workspace = true }
+pallet-oracle-feed = { workspace = true }
+pallet-oracle-data-collection = { workspace = true }
 pallet-order-book = { workspace = true }
 pallet-permissions = { workspace = true }
 pallet-pool-registry = { workspace = true }

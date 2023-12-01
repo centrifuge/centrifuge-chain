@@ -1349,6 +1349,7 @@ impl pallet_oracle_feed::Config for Runtime {
 }
 
 impl pallet_oracle_data_collection::Config for Runtime {
+	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type IsAdmin = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
@@ -1357,6 +1358,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleKey = OracleKey;
 	type OracleProvider = OracleConverterBridge<OraclePriceFeed, OrmlAssetRegistry, PoolSystem>;
 	type OracleValue = Balance;
+	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 }
 

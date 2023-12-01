@@ -13,8 +13,7 @@
 
 //! Oracle pallet to collect and aggregate oracle values.
 //!
-//! The collection admin configures the collection allowing a list of the oracle
-//! keys and from which feeders the values are collected.
+//! The collection admin configures the collection allowing a list of feeders.
 //!
 //! Later, the updating a collection will collect all values based on the admin
 //! configuration of the collection. The resulting collection is optimized to
@@ -29,14 +28,20 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{data::DataRegistry, PreConditions, ValueProvider};
-	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
+	use cfg_traits::{changes::ChangeGuard, data::DataRegistry, PreConditions, ValueProvider};
+	use frame_support::{
+		pallet_prelude::*,
+		storage::{bounded_btree_map::BoundedBTreeMap, transactional},
+	};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::{EnsureAddAssign, EnsureSubAssign, Zero};
+	use sp_runtime::{
+		traits::{EnsureAddAssign, EnsureSubAssign, Zero},
+		TransactionOutcome,
+	};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	use crate::{
-		types::{CachedCollection, KeyInfo},
+		types::{CachedCollection, Change, KeyInfo},
 		util,
 	};
 
@@ -49,6 +54,9 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Represent a runtime change
+		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
 		/// Identify an oracle value
 		type CollectionId: Parameter + Member + Copy + MaxEncodedLen;
@@ -73,13 +81,21 @@ pub mod pallet {
 		/// Used to verify collection admin permissions
 		type IsAdmin: PreConditions<(Self::AccountId, Self::CollectionId), Result = bool>;
 
+		/// Used to notify the runtime about changes that require special
+		/// treatment.
+		type ChangeGuard: ChangeGuard<
+			PoolId = Self::CollectionId,
+			ChangeId = Self::Hash,
+			Change = Self::RuntimeChange,
+		>;
+
 		/// Max size of a data collection
 		#[pallet::constant]
 		type MaxCollectionSize: Get<u32>;
 
 		/// Max number of collections
 		#[pallet::constant]
-		type MaxFeedersPerKey: Get<u32>;
+		type MaxFeedersPerKey: Get<u32> + Parameter;
 	}
 
 	/// Store all oracle values indexed by feeder
@@ -137,18 +153,19 @@ pub mod pallet {
 
 		/// Collection size reached
 		MaxCollectionSize,
+
+		/// Collection size reached
+		NoOracleCollectionChangeId,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Update the feeders associated to an specific key.
-		///
-		/// NOTE: In the future this should be go though change guard.
-		/// By now we trust in the admin to choose honest feeders without
-		/// invertor supervision
+		/// Propose an update in the feeders associated to an specific key.
+		/// The collection will only be modified once [`apply_update_feedewrs`]
+		/// be called.
 		#[pallet::weight(1_000_000)]
-		#[pallet::call_index(2)]
-		pub fn update_feeders(
+		#[pallet::call_index(1)]
+		pub fn propose_update_feeders(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
@@ -161,10 +178,37 @@ pub mod pallet {
 				Error::<T>::IsNotAdmin
 			);
 
-			Self::mutate_and_remove_if_clean(&collection_id, &key, |info| {
-				info.feeders = feeders.clone();
-				Ok(())
+			transactional::with_transaction(|| {
+				let result = Self::update_feeders(collection_id, key, feeders.clone());
+
+				// We do not want to apply the mutation,
+				// only check if there is no error in applying it
+				TransactionOutcome::Rollback(result)
 			})?;
+
+			T::ChangeGuard::note(collection_id, Change::Feeders(key, feeders).into())?;
+
+			Ok(())
+		}
+
+		/// Apply an change previously proposed by [`propose_update_feeders`] if
+		/// the conditions to get it ready are fullfilled
+		///
+		/// This call is permissionless
+		#[pallet::weight(1_000_000)]
+		#[pallet::call_index(2)]
+		pub fn apply_update_feeders(
+			origin: OriginFor<T>,
+			collection_id: T::CollectionId,
+			change_id: T::Hash,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let Change::Feeders(key, feeders) = T::ChangeGuard::released(collection_id, change_id)?
+				.try_into()
+				.map_err(|_| Error::<T>::NoOracleCollectionChangeId)?;
+
+			Self::update_feeders(collection_id, key, feeders.clone())?;
 
 			Self::deposit_event(Event::<T>::UpdatedFeeders {
 				collection_id: collection_id,
@@ -176,7 +220,9 @@ pub mod pallet {
 		}
 
 		/// Update the collection, doing the aggregation for each key in the
-		/// process
+		/// process.
+		///
+		/// This call is permissionless
 		#[pallet::weight(1_000_000)]
 		#[pallet::call_index(3)]
 		pub fn update_collection(
@@ -282,10 +328,21 @@ pub mod pallet {
 				Ok::<_, DispatchError>(())
 			})
 		}
+
+		fn update_feeders(
+			collection_id: T::CollectionId,
+			key: T::OracleKey,
+			feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+		) -> DispatchResult {
+			Self::mutate_and_remove_if_clean(&collection_id, &key, |info| {
+				info.feeders = feeders.clone();
+				Ok(())
+			})
+		}
 	}
 }
 
-mod types {
+pub mod types {
 	use cfg_traits::data::DataCollection;
 	use frame_support::{
 		dispatch::DispatchError,
@@ -336,6 +393,13 @@ mod types {
 				.cloned()
 				.ok_or_else(|| Error::<T>::KeyNotInCollection.into())
 		}
+	}
+
+	/// Change description
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	#[scale_info(skip_type_params(T))]
+	pub enum Change<T: Config> {
+		Feeders(T::OracleKey, BoundedVec<T::AccountId, T::MaxFeedersPerKey>),
 	}
 }
 
