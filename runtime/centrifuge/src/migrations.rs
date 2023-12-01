@@ -10,4 +10,4 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeCentrifuge1024 = runtime_common::migrations::balances::Migration<crate::Runtime>;
+pub type UpgradeCentrifuge1024 = ();

@@ -51,8 +51,6 @@ pub type UpgradeAltair1034 = (
 	xcm_v2_to_v3::SetSafeXcmVersion,
 	// Sets account codes for all precompiles
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
-	// Converts the old account data to the new format
-	runtime_common::migrations::balances::Migration<crate::Runtime>,
 );
 
 mod asset_registry {
