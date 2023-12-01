@@ -52,7 +52,7 @@ impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
 	}
 }
 
-/// To be used with pallet-balances accross runtimes
+/// To be used with the transfer-allowlist pallet across runtimes
 pub type HoldIdentifier = ();
 
 #[macro_export]
