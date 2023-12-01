@@ -2,19 +2,21 @@ use cfg_primitives::SECONDS_PER_WEEK;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use pallet_loans::entities::changes::{Change as LoansChange, InternalMutation, LoanMutation};
+use pallet_pool_fees::types::Change as PoolFeesChange;
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchError;
 use sp_std::{marker::PhantomData, vec, vec::Vec};
 
 /// Auxiliar type to carry all pallets bounds used by RuntimeChange
-pub trait Changeable: pallet_loans::Config {}
-impl<T: pallet_loans::Config> Changeable for T {}
+pub trait Changeable: pallet_loans::Config + pallet_pool_fees::Config {}
+impl<T: pallet_loans::Config + pallet_pool_fees::Config> Changeable for T {}
 
 /// A change done in the runtime, shared between pallets
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum RuntimeChange<T: Changeable, Options: Clone = ()> {
 	Loans(LoansChange<T>),
+	PoolFee(PoolFeesChange<T>),
 	_Unreachable(PhantomData<Options>),
 }
 
@@ -43,6 +45,10 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 				},
 				LoansChange::<T>::Policy(_) => vec![week, blocked],
 				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
+			},
+			RuntimeChange::PoolFee(pool_fees_change) => match pool_fees_change {
+				// TODO(william): Gather requirements similar to above
+				PoolFeesChange::AppendFee(_, _) => vec![week],
 			},
 			RuntimeChange::_Unreachable(_) => vec![],
 		}

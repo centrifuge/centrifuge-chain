@@ -10,9 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::pools::{FeeBucket, PoolFee};
+use cfg_types::pools::FeeBucket;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::TypeInfo;
+
+use crate::{Config, PoolFeeOf};
 
 /// Represents a fee which will be disbursed during epoch execution.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
@@ -24,9 +26,9 @@ pub struct DisbursingFee<AccountId, Balance> {
 /// Represents pool changes which might require to complete further guarding
 /// checks.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub enum Change<AccountId, Balance, Rate> {
-	AppendFee(FeeBucket, PoolFee<AccountId, Balance, Rate>),
-	RemoveFee(FeeBucket, PoolFee<AccountId, Balance, Rate>),
+#[scale_info(skip_type_params(T))]
+pub enum Change<T: Config> {
+	AppendFee(FeeBucket, PoolFeeOf<T>),
 }
 
 // NOTE: Remark feature will be a separate feature in the future (post Pool Fees

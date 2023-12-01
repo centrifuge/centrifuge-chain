@@ -135,8 +135,7 @@ pub mod pallet {
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
 		/// The source of truth for runtime changes.
-		type RuntimeChange: From<Change<Self::AccountId, Self::Balance, Self::Rate>>
-			+ TryInto<Change<Self::AccountId, Self::Balance, Self::Rate>>;
+		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
 		/// Used to notify the runtime about changes that require special
 		/// treatment.
@@ -418,7 +417,7 @@ pub mod pallet {
 		fn get_released_change(
 			pool_id: T::PoolId,
 			change_id: T::Hash,
-		) -> Result<Change<T::AccountId, T::Balance, T::Rate>, DispatchError> {
+		) -> Result<Change<T>, DispatchError> {
 			T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::ChangeIdNotPoolFees.into())
