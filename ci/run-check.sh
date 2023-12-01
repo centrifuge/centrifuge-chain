@@ -27,7 +27,12 @@ case $TARGET in
     ;;
 
   lint-taplo)
-    cargo install taplo-cli --locked
+    # The recomended installation fails because an issue in taplo, issue:
+    # https://github.com/tamasfe/taplo/issues/507
+    # Should be fixed in the next taplo release.
+    # Recomended command:
+    #   cargo install taplo-cli --locked
+    cargo install --git=https://github.com/tamasfe/taplo.git taplo-cli
     taplo fmt --check
     ;;
 
