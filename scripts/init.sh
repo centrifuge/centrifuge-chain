@@ -21,22 +21,22 @@ install-toolchain)
 
 start-relay-chain)
   echo "Starting local relay chain with Alice and Bob..."
-  docker-compose -f ./docker-compose-local-relay.yml up --remove-orphans -d
+  docker-compose -f ./docker/docker-compose-local-relay.yml up --remove-orphans -d
   ;;
 
 stop-relay-chain)
   echo "Stopping relay chain..."
-  docker-compose -f ./docker-compose-local-relay.yml down
+  docker-compose -f ./docker/docker-compose-local-relay.yml down
   ;;
 
 start-parachain-docker)
   echo "Starting local parachain with Alice..."
-  docker-compose -f ./docker-compose-local-chain.yml --profile=$cc_docker_profile up -d
+  docker-compose -f ./docker/docker-compose-local-chain.yml --profile=$cc_docker_profile up -d
   ;;
 
 stop-parachain-docker)
   echo "Stopping local parachain with Alice..."
-  docker-compose -f ./docker-compose-local-chain.yml --profile=$cc_docker_profile down
+  docker-compose -f ./docker/docker-compose-local-chain.yml --profile=$cc_docker_profile down
   ;;
 
 start-parachain)
@@ -64,7 +64,7 @@ start-parachain)
     --rpc-cors all \
     --rpc-methods=Unsafe \
     --log="main,info" \
-    --database=auto
+    --database=rocksdb
   ;;
 
 onboard-parachain)
