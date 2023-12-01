@@ -102,6 +102,7 @@ pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
+pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
@@ -206,6 +207,7 @@ std = [
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-restricted-tokens/std",
+  "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
   "pallet-scheduler/std",
   "pallet-session/std",
@@ -359,6 +361,7 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-restricted-tokens/try-runtime",
+  "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",

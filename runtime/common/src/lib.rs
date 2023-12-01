@@ -23,13 +23,37 @@ pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use sp_core::parameter_types;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
+
+parameter_types! {
+	/// The native currency identifier of our currency id enum
+	/// to be used for Get<CurrencyId> types.
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
+
+	/// The hold identifier in our system to be used for
+	/// Get<()> types
+	pub const HoldId: HoldIdentifier = ();
+}
+
+pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
+impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
+	for AllowanceDeposit<T>
+{
+	fn get() -> Balance {
+		T::fee_value(FeeKey::AllowanceCreation)
+	}
+}
+
+/// To be used with the transfer-allowlist pallet across runtimes
+pub type HoldIdentifier = ();
 
 #[macro_export]
 macro_rules! production_or_benchmark {

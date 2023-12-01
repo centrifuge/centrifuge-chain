@@ -93,7 +93,7 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, CurrencyED,
+	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -448,6 +448,7 @@ pub enum ProxyType {
 	PodOperation,
 	PodAuth,
 	PermissionManagement,
+	Transfer,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -596,6 +597,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
 					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
 			),
+			ProxyType::Transfer => {
+				matches!(
+					c,
+					RuntimeCall::XTokens(..)
+						| RuntimeCall::Balances(..)
+						| RuntimeCall::Tokens(..)
+						| RuntimeCall::LiquidityPools(
+							pallet_liquidity_pools::Call::transfer { .. }
+								| pallet_liquidity_pools::Call::transfer_tranche_tokens { .. }
+						)
+				)
+			}
 		}
 	}
 
@@ -1502,7 +1515,10 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type PreCurrency = cfg_traits::Always;
-	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreExtrTransfer = (
+		RestrictedTokens<Permissions>,
+		PreNativeTransfer<TransferAllowList>,
+	);
 	type PreFungibleInspect = FungibleInspectPassthrough;
 	type PreFungibleInspectHold = cfg_traits::Always;
 	type PreFungibleMutate = cfg_traits::Always;
@@ -1796,15 +1812,12 @@ impl pallet_block_rewards::Config for Runtime {
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
-parameter_types! {
-	pub const TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
-}
-
 impl pallet_transfer_allowlist::Config for Runtime {
-	type AllowanceFeeKey = TransferAllowlistFeeKey;
 	type CurrencyId = CurrencyId;
-	type Fees = Fees;
+	type Deposit = AllowanceDeposit<Fees>;
+	type HoldId = HoldId;
 	type Location = Location;
+	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
@@ -1908,8 +1921,9 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XTokens: pallet_restricted_xtokens::{Pallet, Call} = 124,
 		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
+		OrmlXTokens: orml_xtokens::{Pallet, Event<T>} = 126,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
@@ -2089,6 +2103,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
