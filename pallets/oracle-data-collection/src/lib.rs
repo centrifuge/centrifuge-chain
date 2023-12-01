@@ -41,6 +41,7 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	use crate::{
+		traits::AggregationProvider,
 		types::{CachedCollection, Change, KeyInfo},
 		util,
 	};
@@ -67,16 +68,20 @@ pub mod pallet {
 		/// Represent an oracle value
 		type OracleValue: Parameter + Member + Copy + MaxEncodedLen + Ord;
 
-		/// Represent the a time moment
-		type Moment: Parameter + Member + Copy + MaxEncodedLen + Ord;
+		/// Represent the time moment when the value was fed
+		type Timestamp: Parameter + Member + Copy + MaxEncodedLen + Ord;
 
 		/// A way to obtain oracle values from feeders
 		type OracleProvider: ValueProvider<
 			(Self::AccountId, Self::CollectionId),
 			Self::OracleKey,
 			Value = Self::OracleValue,
-			Timestamp = Self::Moment,
+			Timestamp = Self::Timestamp,
 		>;
+
+		/// A way to perform aggregations from a list of feeders feeding the
+		/// same keys
+		type AggregationProvider: AggregationProvider<Self::OracleValue, Self::Timestamp>;
 
 		/// Used to verify collection admin permissions
 		type IsAdmin: PreConditions<(Self::AccountId, Self::CollectionId), Result = bool>;
@@ -104,7 +109,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Moment), T::MaxCollectionSize>,
+		BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Timestamp), T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
@@ -253,7 +258,7 @@ pub mod pallet {
 
 	impl<T: Config> DataRegistry<T::OracleKey, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
-		type Data = (T::OracleValue, T::Moment);
+		type Data = (T::OracleValue, T::Timestamp);
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
@@ -378,16 +383,16 @@ pub mod types {
 
 	/// A collection cached in memory
 	pub struct CachedCollection<T: Config>(
-		pub BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Moment), T::MaxCollectionSize>,
+		pub BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Timestamp), T::MaxCollectionSize>,
 	);
 
 	impl<T: Config> DataCollection<T::OracleKey> for CachedCollection<T> {
-		type Data = (T::OracleValue, T::Moment);
+		type Data = (T::OracleValue, T::Timestamp);
 
 		fn get(
 			&self,
 			data_id: &T::OracleKey,
-		) -> Result<(T::OracleValue, T::Moment), DispatchError> {
+		) -> Result<(T::OracleValue, T::Timestamp), DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()
@@ -403,8 +408,41 @@ pub mod types {
 	}
 }
 
-mod util {
+/// Traits specifically used by this pallet
+pub mod traits {
+	/// Defined an aggregation behavior
+	pub trait AggregationProvider<Value, Timestamp> {
+		fn aggregate(pairs: impl Iterator<Item = (Value, Timestamp)>)
+			-> Option<(Value, Timestamp)>;
+	}
+}
+
+/// Provide types to use in runtime to configure this pallet
+pub mod util {
 	use sp_std::vec::Vec;
+
+	use super::traits::AggregationProvider;
+
+	/// Type that performs an aggregation using the median for values and
+	/// timestamps
+	pub struct MedianAggregation;
+
+	impl<Value, Timestamp> AggregationProvider<Value, Timestamp> for MedianAggregation
+	where
+		Value: Ord + Clone,
+		Timestamp: Ord + Clone,
+	{
+		fn aggregate(
+			pairs: impl Iterator<Item = (Value, Timestamp)>,
+		) -> Option<(Value, Timestamp)> {
+			let (mut values, mut timestamps): (Vec<_>, Vec<_>) = pairs.unzip();
+
+			let value = median(&mut values)?.clone();
+			let timestamp = median(&mut timestamps)?.clone();
+
+			Some((value, timestamp))
+		}
+	}
 
 	/// Computes fastly the median of a list of values
 	/// Extracted from orml

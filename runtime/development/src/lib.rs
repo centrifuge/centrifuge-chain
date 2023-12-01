@@ -1337,6 +1337,8 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
+	pub const MaxFeedersPerKey: u32 = 10;
 	pub const FirstValueFee: Fee = Fee::Balance(10 * CFG);
 }
 
@@ -1349,17 +1351,18 @@ impl pallet_oracle_feed::Config for Runtime {
 }
 
 impl pallet_oracle_data_collection::Config for Runtime {
+	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type IsAdmin = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
-	type MaxFeedersPerKey = ConstU32<10>;
-	type Moment = Millis;
+	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider = OracleConverterBridge<OraclePriceFeed, OrmlAssetRegistry, PoolSystem>;
 	type OracleValue = Balance;
-	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Millis;
 }
 
 parameter_types! {
