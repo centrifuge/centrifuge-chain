@@ -14,7 +14,7 @@ impl<T: pallet_loans::Config> Changeable for T {}
 /// A change done in the runtime, shared between pallets
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum RuntimeChange<T: Changeable, Options: Clone = ()> {
-	Loan(LoansChange<T>),
+	Loans(LoansChange<T>),
 	_Unreachable(PhantomData<Options>),
 }
 
@@ -25,7 +25,7 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 		let blocked = Requirement::BlockedByLockedRedemptions;
 
 		match self {
-			RuntimeChange::Loan(loans_change) => match loans_change {
+			RuntimeChange::Loans(change) => match change {
 				// Requirements gathered from
 				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
 				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
@@ -101,4 +101,4 @@ macro_rules! runtime_change_support {
 }
 
 // Add the variants you want to support for RuntimeChange
-runtime_change_support!(LoansChange, Loan);
+runtime_change_support!(LoansChange, Loans);
