@@ -45,3 +45,5 @@ pub mod pallet_uniques;
 pub mod pallet_utility;
 pub mod pallet_vesting;
 pub mod pallet_xcm;
+
+pub mod pallet_transfer_allowlist;
