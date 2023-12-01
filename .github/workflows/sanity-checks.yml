@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         target: [test-general, test-integration,
-                 lint-fmt, lint-clippy, cargo-build] # ,lint-taplo]
+                 lint-fmt, lint-clippy, cargo-build, docs-build] # ,lint-taplo]
     steps:
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
@@ -31,7 +31,7 @@ jobs:
         run: ./ci/run-check.sh
         env:
           TARGET: ${{ matrix.target }}
-          RUSTC_WRAPPER: "sccache"                  
+          RUSTC_WRAPPER: "sccache"
 
   benchmark-check:
     name: bench-check-${{ matrix.runtime }}

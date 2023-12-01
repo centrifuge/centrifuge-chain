@@ -17,6 +17,7 @@
 
 pub mod account_conversion;
 pub mod apis;
+pub mod changes;
 pub mod evm;
 pub mod fees;
 pub mod gateway;
