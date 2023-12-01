@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -122,7 +122,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(0)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer(currency_id.clone(), * amount, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer(currency_id.clone(), * amount, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -164,7 +164,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(1)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiasset(
 			origin: OriginFor<T>,
 			asset: Box<VersionedMultiAsset>,
@@ -210,7 +210,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(2)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer(currency_id.clone(), * amount, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer(currency_id.clone(), * amount, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_with_fee(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -264,7 +264,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(3)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiasset(asset, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiasset_with_fee(
 			origin: OriginFor<T>,
 			asset: Box<VersionedMultiAsset>,
@@ -315,7 +315,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(4)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multicurrencies(currencies, fee_item, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multicurrencies(currencies, fee_item, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multicurrencies(
 			origin: OriginFor<T>,
 			currencies: Vec<(T::CurrencyId, T::Balance)>,
@@ -363,7 +363,7 @@ pub mod pallet {
 		/// by the network, and if the receiving chain would handle
 		/// messages correctly.
 		#[pallet::call_index(5)]
-		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiassets(assets, fee_item, dest))]
+		#[pallet::weight(orml_xtokens::XtokensWeight::< T >::weight_of_transfer_multiassets(assets, fee_item, dest) + T::DbWeight::get().reads(4))]
 		pub fn transfer_multiassets(
 			origin: OriginFor<T>,
 			assets: Box<VersionedMultiAssets>,
