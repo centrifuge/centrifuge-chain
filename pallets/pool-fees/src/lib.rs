@@ -25,9 +25,8 @@ pub mod pallet {
 		Permissions, PoolInspect, PoolReserve, SaturatedProration, TimeAsSecs,
 	};
 	use cfg_types::{
-		fixed_point::Rate,
 		permissions::{PermissionScope, PoolRole, Role},
-		pools::FeeBucket,
+		pools::{FeeAmount, FeeAmountType, FeeAmountType::Fixed, FeeBucket, PoolFee},
 	};
 	use codec::HasCompact;
 	use frame_support::{
@@ -41,21 +40,21 @@ pub mod pallet {
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating,
 			Zero,
 		},
-		ArithmeticError, FixedPointNumber, FixedPointOperand,
+		ArithmeticError, FixedPointOperand,
 	};
 	use sp_std::vec::Vec;
 
 	use super::*;
-	use crate::{
-		types::{Change, FeeAmount, FeeAmountType, FeeAmountType::Fixed, FeeEditor, PoolFee},
-		Call::remove_fee,
-	};
+	use crate::types::{Change, DisbursingFee};
 
 	pub type PoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::Balance,
 		<T as Config>::Rate,
 	>;
+
+	pub type DisbursingFeeOf<T> =
+		DisbursingFee<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -91,7 +90,18 @@ pub mod pallet {
 		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
-		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ Into<
+				<<Self as Config>::PoolReserve as PoolInspect<
+					Self::AccountId,
+					Self::CurrencyId,
+				>>::PoolId,
+			>;
 
 		/// The tranche id type required for the investment identifier
 		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
@@ -216,6 +226,21 @@ pub mod pallet {
 	pub type FeeIdsToPoolBucket<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::FeeId, (T::PoolId, FeeBucket), OptionQuery>;
 
+	/// Represents the fees which which will be disbursed at epoch execution.
+	///
+	/// The lifetime of this storage is short: It is created during epoch
+	/// closing and consumed during epoch execution.
+	#[pallet::storage]
+	pub type DisbursingFees<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		FeeBucket,
+		BoundedVec<DisbursingFeeOf<T>, T::MaxFeesPerPoolBucket>,
+		ValueQuery,
+	>;
+
 	/// Represents accrued and pending charged fees of a particular pool
 	/// [FeeBucket].
 	///
@@ -295,7 +320,7 @@ pub mod pallet {
 		/// Execute a successful fee append proposal for the given (pool,
 		/// bucket) pair.
 		///
-		/// Origin unrestriced due to proposal gate.
+		/// Origin unrestriced due to pre-check via proposal gate.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::from_parts(10_000, 0))]
 		pub fn apply_new_fee(
@@ -303,7 +328,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			change_id: T::Hash,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
@@ -398,22 +423,6 @@ pub mod pallet {
 				.try_into()
 				.map_err(|_| Error::<T>::ChangeIdNotPoolFees.into())
 		}
-
-		/// Decrements the NAV by the provided amount.
-		///
-		/// If the NAV cannot be fully reduced by amount, returns
-		/// `Some(amount - nav)`.
-		// TODO: Maybe remove
-		fn decrement_reserve(mut reserve: T::Balance, amount: T::Balance) -> Option<T::Balance> {
-			if reserve >= amount {
-				reserve -= amount;
-				None
-			} else {
-				let remainder = amount - reserve;
-				reserve = T::Balance::zero();
-				Some(remainder)
-			}
-		}
 	}
 
 	impl<T: Config> PoolFees for Pallet<T> {
@@ -423,29 +432,40 @@ pub mod pallet {
 		type FeeBucket = FeeBucket;
 		type FeeId = T::FeeId;
 		type PoolId = T::PoolId;
-		type PoolReserve = T::PoolReserve;
 		type Rate = T::Rate;
 		type Time = T::Time;
 
-		fn pay(
+		fn pay_disbursements(
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
-			portfolio_valuation: Self::Balance,
-			epoch_duration: Self::Time,
-		) {
-			todo!("william")
+		) -> Result<(), Self::Error> {
+			let fees = DisbursingFees::<T>::take(pool_id, bucket);
+			for fee in fees.into_iter() {
+				T::PoolReserve::withdraw(pool_id.into(), fee.destination.clone(), fee.amount)
+					.map_err(|e| {
+						log::error!(
+							"Failed to withdraw fee amount {:?} from pool {:?} to {:?}",
+							fee.amount,
+							pool_id,
+							fee.destination
+						);
+						e
+					})?;
+			}
+
+			Ok(())
 		}
 
-		fn get_pool_fee_disbursements(
+		fn prepare_disbursements(
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
 			portfolio_valuation: Self::Balance,
 			reserve: Self::Balance,
 			epoch_duration: Self::Time,
-		) -> (Self::Balance, Vec<(Self::FeeId, Self::Balance)>) {
+		) -> Self::Balance {
 			let fee_structure = FeeIds::<T>::get(pool_id, bucket.clone());
 			let mut reserve = reserve;
-			let mut fees: Vec<(T::FeeId, T::Balance)> = Vec::new();
+			let mut fees: Vec<DisbursingFeeOf<T>> = Vec::new();
 
 			// Follow fee waterfall until reserve is empty
 			for fee_id in fee_structure {
@@ -459,7 +479,7 @@ pub mod pallet {
 							let fee_amount = <FeeAmount<
 								<T as pallet::Config>::Balance,
 								<T as pallet::Config>::Rate,
-							> as FeeAmountProration<T>>::saturated_prorated_amount(
+							> as FeeAmountProration<T::Balance, T::Rate, T::Time>>::saturated_prorated_amount(
 								&amount,
 								portfolio_valuation,
 								epoch_duration.clone(),
@@ -471,18 +491,17 @@ pub mod pallet {
 						}
 						FeeAmountType::ChargedUpTo { limit } => {
 							PendingFees::<T>::mutate_exists(fee_id, |maybe_pending| {
-								// TODO: Maybe Charging a limit fee needs to be stored for
-								// epoch?:
 								if let Some(pending) = maybe_pending {
 									// Pending amount might exceed the configured max
-									let max_amount = <FeeAmount<
-										<T as pallet::Config>::Balance,
-										<T as pallet::Config>::Rate,
-									> as FeeAmountProration<T>>::saturated_prorated_amount(
-										&limit,
-										portfolio_valuation,
-										epoch_duration.clone(),
-									);
+									let max_amount =
+										<FeeAmount<
+											<T as pallet::Config>::Balance,
+											<T as pallet::Config>::Rate,
+										> as FeeAmountProration<T::Balance, T::Rate, T::Time>>::saturated_prorated_amount(
+											&limit,
+											portfolio_valuation,
+											epoch_duration.clone(),
+										);
 									let amount = (*pending).min(max_amount);
 
 									if reserve >= amount {
@@ -501,12 +520,24 @@ pub mod pallet {
 						}
 					};
 
-					// TODO(remark): Check whether we need notify if fulfillments are
-					fees.push((fee_id, fee_amount));
+					if !fee_amount.is_zero() {
+						fees.push(DisbursingFeeOf::<T> {
+							amount: fee_amount,
+							destination: fee.destination,
+						});
+					}
 				}
 			}
 
-			(reserve, fees)
+			if !fees.is_empty() {
+				DisbursingFees::<T>::insert(
+					pool_id,
+					bucket,
+					BoundedVec::<DisbursingFeeOf<T>, T::MaxFeesPerPoolBucket>::truncate_from(fees),
+				);
+			}
+
+			reserve
 		}
 
 		fn charge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error> {
@@ -555,60 +586,6 @@ pub mod pallet {
 			})?;
 
 			Ok(())
-		}
-	}
-
-	impl<T: Config> FeeAmountProration<T> for FeeAmount<T::Balance, T::Rate> {
-		type Balance = T::Balance;
-		type Rate = T::Rate;
-		type Time = T::Time;
-
-		fn saturated_prorated_amount(
-			&self,
-			portfolio_valuation: T::Balance,
-			period: T::Time,
-		) -> T::Balance {
-			match self {
-				FeeAmount::ShareOfPortfolioValuation(_) => {
-					let proration: T::Rate =
-						<Self as FeeAmountProration<T>>::saturated_prorated_rate(
-							self,
-							portfolio_valuation,
-							period,
-						);
-					proration.saturating_mul_int(portfolio_valuation)
-				}
-				FeeAmount::AmountPerYear(amount) => {
-					T::Balance::saturated_proration(*amount, period)
-				}
-				FeeAmount::AmountPerMonth(amount) => {
-					T::Balance::saturated_proration(amount.saturating_mul(12u32.into()), period)
-				}
-				FeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
-			}
-		}
-
-		fn saturated_prorated_rate(
-			&self,
-			portfolio_valuation: T::Balance,
-			period: T::Time,
-		) -> T::Rate {
-			match self {
-				FeeAmount::ShareOfPortfolioValuation(rate) => {
-					T::Rate::saturated_proration(*rate, period)
-				}
-				FeeAmount::AmountPerYear(_)
-				| FeeAmount::AmountPerMonth(_)
-				| FeeAmount::AmountPerSecond(_) => {
-					let prorated_amount: T::Balance =
-						<Self as FeeAmountProration<T>>::saturated_prorated_amount(
-							self,
-							portfolio_valuation,
-							period,
-						);
-					T::Rate::saturating_from_rational(prorated_amount, portfolio_valuation)
-				}
-			}
 		}
 	}
 }

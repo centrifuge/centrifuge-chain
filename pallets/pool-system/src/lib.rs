@@ -177,11 +177,13 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
+		fee::PoolFees as PoolFeesT,
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 		PoolUpdateGuard,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
+		pools::{FeeBucket, PoolFee},
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -315,7 +317,30 @@ pub mod pallet {
 			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
 		>;
 
-		type Time: TimeAsSecs;
+		type Time: TimeAsSecs + From<u64>;
+
+		/// The identifier of a particular fee
+		type FeeId: Parameter
+			+ Member
+			+ Default
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Copy
+			+ EnsureAdd
+			+ One
+			+ Ord;
+
+		type PoolFees: PoolFeesT<
+			Balance = Self::Balance,
+			Error = DispatchError,
+			Fee = PoolFee<<Self as frame_system::Config>::AccountId, Self::Balance, Self::Rate>,
+			FeeBucket = FeeBucket,
+			FeeId = Self::FeeId,
+			PoolId = Self::PoolId,
+			// PoolReserve = Self::PoolReserve,
+			Rate = Self::Rate,
+			Time = Self::Time,
+		>;
 
 		/// Challenge time
 		#[pallet::constant]
@@ -609,6 +634,7 @@ pub mod pallet {
 				let submission_period_epoch = pool.epoch.current;
 				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
+				let epoch_last_closed = pool.epoch.last_closed;
 				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
@@ -682,11 +708,15 @@ pub mod pallet {
 						},
 					)?;
 
-				// TODO: Finish
-				// let fees_epoch_duration = now.saturating_add(pool.epoch.last_executed);
-				// let total_pool_fees = T::PoolFees::get_bucket_amount(pool_id,
-				// cfg_types::pools::FeeBucket::Top, nav, fees_epoch_duration);
-				// pool.reserve.total = pool.reserve.total.saturating_sub(total_pool_fees);
+				let epoch_duration = now.saturating_sub(epoch_last_closed);
+				let reserve_after_fees = T::PoolFees::prepare_disbursements(
+					pool_id,
+					FeeBucket::Top,
+					nav,
+					pool.reserve.total,
+					epoch_duration.into(),
+				);
+				pool.reserve.total = reserve_after_fees;
 
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
@@ -1148,15 +1178,7 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
-			// TODO: Finish
-			// last_closed is exactly the block when the reserve was deducted by the
-			// total fee amount
-			// let fees_epoch_duration = pool
-			// 	.epoch
-			// 	.last_closed
-			// 	.saturating_sub(pool.epoch.last_executed);
-			// T::PoolFees::pay(pool_id, cfg_types::pools::FeeBucket::Top, epoch.nav,
-			// fees_epoch_duration);
+			T::PoolFees::pay_disbursements(pool_id, FeeBucket::Top)?;
 
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
 

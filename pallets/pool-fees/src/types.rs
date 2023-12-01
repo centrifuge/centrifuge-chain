@@ -10,59 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::pools::FeeBucket;
+use cfg_types::pools::{FeeBucket, PoolFee};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::TypeInfo;
 
+/// Represents a fee which will be disbursed during epoch execution.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub enum FeeAmount<Balance, Rate> {
-	ShareOfPortfolioValuation(Rate),
-	// TODO: AmountPerSecond(Balance) might be sufficient
-	AmountPerYear(Balance),
-	AmountPerMonth(Balance),
-	AmountPerSecond(Balance),
-}
-
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
-pub enum FeeAmountType<Balance, Rate> {
-	/// A fixed fee is deducted automatically every epoch
-	Fixed { amount: FeeAmount<Balance, Rate> },
-
-	/// A fee can be charged up to a limit, paid every epoch
-	ChargedUpTo { limit: FeeAmount<Balance, Rate> },
-}
-
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
-pub enum FeeEditor<AccountId> {
-	Root,
-	Account(AccountId),
-}
-
-impl<AccountId> FeeEditor<AccountId>
-where
-	AccountId: PartialEq,
-{
-	pub fn matches_account(&self, who: &AccountId) -> bool {
-		match self {
-			Self::Account(account) => account == who,
-			_ => false,
-		}
-	}
-}
-
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
-pub struct PoolFee<AccountId, Balance, Rate> {
-	/// Account that the fees are sent to
+pub struct DisbursingFee<AccountId, Balance> {
+	pub amount: Balance,
 	pub destination: AccountId,
-
-	/// Account that can update this fee
-	pub editor: FeeEditor<AccountId>,
-
-	/// Amount of fees that can be charged
-	pub amount: FeeAmountType<Balance, Rate>,
 }
 
 /// Represents pool changes which might require to complete further guarding

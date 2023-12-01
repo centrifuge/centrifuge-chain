@@ -17,7 +17,6 @@ pub trait PoolFees {
 	type FeeBucket;
 	type Balance;
 	type Time;
-	type PoolReserve;
 	type Fee;
 	type FeeId;
 	type Error;
@@ -26,24 +25,22 @@ pub trait PoolFees {
 	/// Withdraw any due fees. The waterfall of fee payment follows the order of
 	/// the corresponding [FeeBucket].
 	///
-	/// Uses `PoolReserve` to withdraw from the reserve.
-	fn pay(
-		pool_id: Self::PoolId,
-		bucket: Self::FeeBucket,
-		portfolio_valuation: Self::Balance,
-		epoch_duration: Self::Time,
-	);
+	/// Assumes `prepare_disbursements` to have been executed beforehand.
+	fn pay_disbursements(pool_id: Self::PoolId, bucket: Self::FeeBucket)
+		-> Result<(), Self::Error>;
 
-	/// Get the amount of any due fees. The waterfall of fee payment follows the
-	/// order of the corresponding [FeeBucket] as long as the reserve is not
-	/// empty.
-	fn get_pool_fee_disbursements(
+	/// Determine the amount of any due fees. The waterfall of fee payment
+	/// follows the order of the corresponding [FeeBucket] as long as the
+	/// reserve is not empty.
+	///
+	/// Returns the updated reserve amount.
+	fn prepare_disbursements(
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		portfolio_valuation: Self::Balance,
 		reserve: Self::Balance,
 		epoch_duration: Self::Time,
-	) -> (Self::Balance, Vec<(Self::FeeId, Self::Balance)>);
+	) -> Self::Balance;
 
 	/// Charge a fee for the given pair of pool id and fee bucket.
 	///
@@ -73,22 +70,10 @@ pub trait PoolFees {
 }
 
 /// Trait to prorate a fee amount to a rate or amount
-pub trait FeeAmountProration<T> {
-	type Balance;
-	type Rate;
-	type Time;
+pub trait FeeAmountProration<Balance, Rate, Time> {
+	// TODO(william): Docs
+	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance;
 
 	// TODO(william): Docs
-	fn saturated_prorated_amount(
-		&self,
-		portfolio_valuation: Self::Balance,
-		period: Self::Time,
-	) -> Self::Balance;
-
-	// TODO(william): Docs
-	fn saturated_prorated_rate(
-		&self,
-		portfolio_valuation: Self::Balance,
-		period: Self::Time,
-	) -> Self::Rate;
+	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate;
 }
