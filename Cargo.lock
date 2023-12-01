@@ -1140,7 +1140,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.23"
+version = "0.10.24"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -11416,7 +11416,6 @@ dependencies = [
  "cumulus-pallet-xcmp-queue",
  "frame-support",
  "frame-system",
- "hex",
  "hex-literal 0.3.4",
  "log",
  "orml-asset-registry",
