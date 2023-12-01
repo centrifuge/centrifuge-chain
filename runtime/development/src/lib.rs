@@ -89,6 +89,7 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
+	changes::FastDelay,
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
@@ -1071,7 +1072,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1385,7 +1386,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceRegistry = PriceCollector;
 	type Quantity = Quantity;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
