@@ -42,7 +42,7 @@ pub mod pallet {
 
 	use crate::{
 		traits::AggregationProvider,
-		types::{CachedCollection, Change, KeyInfo},
+		types::{CachedCollection, Change, KeyInfo, OracleValuePair},
 		util,
 	};
 
@@ -109,7 +109,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Timestamp), T::MaxCollectionSize>,
+		BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
@@ -216,8 +216,8 @@ pub mod pallet {
 			Self::update_feeders(collection_id, key, feeders.clone())?;
 
 			Self::deposit_event(Event::<T>::UpdatedFeeders {
-				collection_id: collection_id,
-				key: key,
+				collection_id,
+				key,
 				feeders,
 			});
 
@@ -236,7 +236,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let values = Keys::<T>::iter_key_prefix(&collection_id)
+			let values = Keys::<T>::iter_key_prefix(collection_id)
 				.map(|key| Self::get(&key, &collection_id).map(|value| (key, value)))
 				.collect::<Result<Vec<_>, _>>()?;
 
@@ -248,7 +248,7 @@ pub mod pallet {
 			Collection::<T>::insert(collection_id, collection);
 
 			Self::deposit_event(Event::<T>::UpdatedCollection {
-				collection_id: collection_id,
+				collection_id,
 				keys_updated: len as u32,
 			});
 
@@ -258,7 +258,7 @@ pub mod pallet {
 
 	impl<T: Config> DataRegistry<T::OracleKey, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
-		type Data = (T::OracleValue, T::Timestamp);
+		type Data = OracleValuePair<T>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize = T::MaxCollectionSize;
 
@@ -300,7 +300,7 @@ pub mod pallet {
 		}
 
 		fn unregister_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(&collection_id, &key, |info| {
+			Self::mutate_and_remove_if_clean(*collection_id, *key, |info| {
 				info.usage_refs.ensure_sub_assign(1)?;
 
 				if info.usage_refs.is_zero() {
@@ -317,8 +317,8 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn mutate_and_remove_if_clean(
-			collection_id: &T::CollectionId,
-			key: &T::OracleKey,
+			collection_id: T::CollectionId,
+			key: T::OracleKey,
 			f: impl FnOnce(&mut KeyInfo<T>) -> DispatchResult,
 		) -> DispatchResult {
 			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
@@ -339,7 +339,7 @@ pub mod pallet {
 			key: T::OracleKey,
 			feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(&collection_id, &key, |info| {
+			Self::mutate_and_remove_if_clean(collection_id, key, |info| {
 				info.feeders = feeders.clone();
 				Ok(())
 			})
@@ -357,6 +357,8 @@ pub mod types {
 	use sp_runtime::{traits::Zero, RuntimeDebug};
 
 	use crate::pallet::{Config, Error};
+
+	pub type OracleValuePair<T> = (<T as Config>::OracleValue, <T as Config>::Timestamp);
 
 	/// Type containing the associated info to a key
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
@@ -383,16 +385,13 @@ pub mod types {
 
 	/// A collection cached in memory
 	pub struct CachedCollection<T: Config>(
-		pub BoundedBTreeMap<T::OracleKey, (T::OracleValue, T::Timestamp), T::MaxCollectionSize>,
+		pub BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
 	);
 
 	impl<T: Config> DataCollection<T::OracleKey> for CachedCollection<T> {
-		type Data = (T::OracleValue, T::Timestamp);
+		type Data = OracleValuePair<T>;
 
-		fn get(
-			&self,
-			data_id: &T::OracleKey,
-		) -> Result<(T::OracleValue, T::Timestamp), DispatchError> {
+		fn get(&self, data_id: &T::OracleKey) -> Result<OracleValuePair<T>, DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()
@@ -446,7 +445,7 @@ pub mod util {
 
 	/// Computes fastly the median of a list of values
 	/// Extracted from orml
-	pub fn median<'a, T: Ord>(items: &'a mut Vec<T>) -> Option<&'a T> {
+	pub fn median<T: Ord>(items: &mut Vec<T>) -> Option<&T> {
 		if items.is_empty() {
 			return None;
 		}
