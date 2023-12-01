@@ -32,7 +32,6 @@ cfg-primitives = { path = "../primitives", default-features = false }
 cfg-traits = { path = "../traits", default-features = false }
 cfg-utils = { path = "../utils", default-features = false }
 
-
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 hex = { version = "0.4.3", default_features = false }
