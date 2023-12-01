@@ -5,7 +5,7 @@ use pallet_loans::entities::changes::{Change as LoansChange, InternalMutation, L
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchError;
-use sp_std::vec;
+use sp_std::{marker::PhantomData, vec, vec::Vec};
 
 /// Auxiliar type to carry all pallets bounds used by RuntimeChange
 pub trait Changeable: pallet_loans::Config {}
@@ -15,7 +15,7 @@ impl<T: pallet_loans::Config> Changeable for T {}
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum RuntimeChange<T: Changeable, Options: Clone = ()> {
 	Loan(LoansChange<T>),
-	_Unreachable(std::marker::PhantomData<Options>),
+	_Unreachable(PhantomData<Options>),
 }
 
 impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
@@ -60,7 +60,7 @@ impl<T: Changeable> From<RuntimeChange<T>> for PoolChangeProposal {
 }
 
 /// Option to pass to RuntimeChange to enable fast delays
-#[derive(Clone)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct FastDelay;
 
 impl<T: Changeable> From<RuntimeChange<T, FastDelay>> for PoolChangeProposal {
@@ -80,14 +80,14 @@ impl<T: Changeable> From<RuntimeChange<T, FastDelay>> for PoolChangeProposal {
 macro_rules! runtime_change_support {
 	($change:ident, $variant:ident) => {
 		/// Used by `ChangeGuard::note()`
-		impl<T: Changeable, F: Clone> From<$change<T>> for RuntimeChange<T, F> {
-			fn from(change: $change<T>) -> RuntimeChange<T, F> {
+		impl<T: Changeable, Option: Clone> From<$change<T>> for RuntimeChange<T, Option> {
+			fn from(change: $change<T>) -> RuntimeChange<T, Option> {
 				RuntimeChange::$variant(change)
 			}
 		}
 
 		/// Used `ChangeGuard::released()`
-		impl<T: Changeable, F: Clone> TryInto<$change<T>> for RuntimeChange<T, F> {
+		impl<T: Changeable, Option: Clone> TryInto<$change<T>> for RuntimeChange<T, Option> {
 			type Error = DispatchError;
 
 			fn try_into(self) -> Result<$change<T>, DispatchError> {
