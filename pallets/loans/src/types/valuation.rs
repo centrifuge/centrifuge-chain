@@ -106,6 +106,10 @@ pub enum ValuationMethod<Rate> {
 	DiscountedCashFlow(DiscountedCashFlow<Rate>),
 	/// Outstanding debt valuation
 	OutstandingDebt,
+	/// Equal to OutstandingDebt but signals
+	/// that the given loan is i.e. an account
+	/// holding cash
+	Cash,
 }
 
 impl<Rate> ValuationMethod<Rate>
@@ -115,7 +119,7 @@ where
 	pub fn is_valid(&self) -> bool {
 		match self {
 			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate.per_year() <= One::one(),
-			ValuationMethod::OutstandingDebt => true,
+			ValuationMethod::OutstandingDebt | ValuationMethod::Cash => true,
 		}
 	}
 }
