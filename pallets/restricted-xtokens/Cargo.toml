@@ -18,8 +18,8 @@ frame-system = { workspace = true }
 sp-std = { workspace = true }
 
 # orml
-orml-xtokens = { workspace = true }
 orml-traits = { workspace = true }
+orml-xtokens = { workspace = true }
 
 # polkadot
 xcm = { workspace = true }
@@ -30,27 +30,27 @@ cfg-traits = { workspace = true }
 [features]
 default = ["std"]
 std = [
-	"serde",
-	"codec/std",
-	"sp-std/std",
-	"cfg-traits/std",
-	"frame-support/std",
-	"frame-system/std",
-	"scale-info/std",
-	"orml-xtokens/std",
-	"orml-traits/std",
-	"xcm/std"
+  "serde",
+  "codec/std",
+  "sp-std/std",
+  "cfg-traits/std",
+  "frame-support/std",
+  "frame-system/std",
+  "scale-info/std",
+  "orml-xtokens/std",
+  "orml-traits/std",
+  "xcm/std",
 ]
 
 runtime-benchmarks = [
-	"cfg-traits/runtime-benchmarks",
-	"frame-support/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
-	"orml-xtokens/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-xtokens/runtime-benchmarks",
 ]
 try-runtime = [
-	"cfg-traits/try-runtime",
-	"frame-support/try-runtime",
-	"frame-system/try-runtime",
-	"orml-xtokens/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "orml-xtokens/try-runtime",
 ]

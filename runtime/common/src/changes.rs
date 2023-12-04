@@ -65,15 +65,20 @@ pub struct FastDelay;
 
 impl<T: Changeable> From<RuntimeChange<T, FastDelay>> for PoolChangeProposal {
 	fn from(runtime_change: RuntimeChange<T, FastDelay>) -> Self {
-		let new_requirements = runtime_change
-			.requirement_list()
-			.into_iter()
-			.map(|req| match req {
-				Requirement::DelayTime(_) => Requirement::DelayTime(60), // 1 min
-				req => req,
-			});
+		if cfg!(feature = "runtime-benchmarks") {
+			PoolChangeProposal::new([])
+		} else {
+			let new_requirements =
+				runtime_change
+					.requirement_list()
+					.into_iter()
+					.map(|req| match req {
+						Requirement::DelayTime(_) => Requirement::DelayTime(60), // 1 min
+						req => req,
+					});
 
-		PoolChangeProposal::new(new_requirements)
+			PoolChangeProposal::new(new_requirements)
+		}
 	}
 }
 
