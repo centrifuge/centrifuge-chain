@@ -175,7 +175,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Propose an update in the feeders associated to an specific key.
-		/// The collection will only be modified once [`apply_update_feedewrs`]
+		/// The collection will only be modified once [`apply_update_feeders`]
 		/// be called.
 		#[pallet::weight(1_000_000)]
 		#[pallet::call_index(1)]
@@ -420,7 +420,7 @@ pub mod types {
 		}
 	}
 
-	/// Change description
+	/// Change done through a change guard.
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub enum Change<T: Config> {
