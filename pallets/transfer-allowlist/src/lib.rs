@@ -379,7 +379,7 @@ pub mod pallet {
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::remove_transfer_allowance_missing_allowance().max(T::WeightInfo::remove_transfer_allowance_delay_present()))]
+		#[pallet::weight(T::WeightInfo::remove_transfer_allowance_delay_present().max(T::WeightInfo::remove_transfer_allowance_no_delay()))]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
