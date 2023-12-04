@@ -4,9 +4,8 @@ use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64},
 };
 use sp_runtime::{
-	testing::Header,
+	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
-    testing::H256;
 };
 
 use crate::pallet as pallet_oracle_data_collection;
