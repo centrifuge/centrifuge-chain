@@ -1494,6 +1494,7 @@ impl pallet_pool_system::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FeeId = PoolFeeId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
@@ -1509,6 +1510,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
@@ -1540,6 +1542,29 @@ impl pallet_pool_registry::Config for Runtime {
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub const MaxFeesPerPoolBucket: u32 = MAX_FEES_PER_POOL_BUCKET;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = PoolSystem;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type InvestmentId = TrancheCurrency;
+	type MaxFeesPerPoolBucket = MaxFeesPerPoolBucket;
+	type Permissions = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Seconds;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
 }
 
 pub struct PoolCurrency;
@@ -1794,6 +1819,7 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 113,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 114,
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

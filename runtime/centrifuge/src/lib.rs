@@ -1490,6 +1490,7 @@ impl pallet_pool_system::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FeeId = PoolFeeId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
@@ -1505,6 +1506,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
@@ -1572,6 +1574,29 @@ impl
 			false
 		}
 	}
+}
+
+parameter_types! {
+	pub const MaxFeesPerPoolBucket: u32 = MAX_FEES_PER_POOL_BUCKET;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = PoolSystem;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type InvestmentId = TrancheCurrency;
+	type MaxFeesPerPoolBucket = MaxFeesPerPoolBucket;
+	type Permissions = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Seconds;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
 }
 
 impl pallet_permissions::Config for Runtime {
@@ -1930,6 +1955,7 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 188,
 	}
 );
 
@@ -2503,6 +2529,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
+			// TODO(william): Add pallet_pool_fees after writing benches
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2577,6 +2604,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
+			// TODO(william): Add pallet_pool_fees after writing benches
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

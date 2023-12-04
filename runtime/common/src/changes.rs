@@ -108,3 +108,4 @@ macro_rules! runtime_change_support {
 
 // Add the variants you want to support for RuntimeChange
 runtime_change_support!(LoansChange, Loans);
+runtime_change_support!(PoolFeesChange, PoolFee);

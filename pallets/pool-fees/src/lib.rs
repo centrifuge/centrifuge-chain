@@ -22,7 +22,7 @@ pub mod pallet {
 		changes::ChangeGuard,
 		fee::{FeeAmountProration, PoolFees},
 		investments::TrancheCurrency,
-		Permissions, PoolInspect, PoolReserve, SaturatedProration, TimeAsSecs,
+		Permissions, PoolInspect, PoolReserve, SaturatedProration,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -127,7 +127,7 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// Fetching method for the time of the current block
-		type Time: TimeAsSecs + Clone;
+		type Time: Clone;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
@@ -148,7 +148,6 @@ pub mod pallet {
 		/// The source of truth for pool inspection operations such as its
 		/// existence, the corresponding tranche token or the investment
 		/// currency.
-		// TODO: Required?
 		type PoolInspect: PoolInspect<
 			Self::AccountId,
 			Self::CurrencyId,
@@ -160,18 +159,12 @@ pub mod pallet {
 		type PoolReserve: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
 		/// The source of truth for pool permissions.
-		type Permission: Permissions<
+		type Permissions: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
 			Role = Role<Self::TrancheId>,
 			Error = DispatchError,
 		>;
-
-		// TODO: Some Pool types such as PoolInspect
-
-		// TODO: Type for fungibles::Hold
-
-		//
 
 		type MaxFeesPerPoolBucket: Get<u32>;
 
@@ -300,7 +293,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 			ensure!(
-				T::Permission::has(
+				T::Permissions::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
 					Role::PoolRole(PoolRole::PoolAdmin)

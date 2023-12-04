@@ -176,6 +176,9 @@ pub mod types {
 
 	/// The type for indexing pallets on a Substrate runtime
 	pub type PalletIndex = u8;
+
+	/// The representation of a pool fee identifier
+	pub type PoolFeeId = u64;
 }
 
 /// Common constants for all runtimes
@@ -272,6 +275,9 @@ pub mod constants {
 	pub const MAX_POV_SIZE: u64 = cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64;
 	/// Block storage limit in bytes. Set to 40 KB.
 	pub const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
+
+	/// The maximum amount of pool fees per fee bucket
+	pub const MAX_FEES_PER_POOL_BUCKET: u32 = 10;
 }
 
 /// Listing of parachains we integrate with.

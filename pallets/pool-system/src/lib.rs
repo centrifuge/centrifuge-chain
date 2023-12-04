@@ -317,7 +317,7 @@ pub mod pallet {
 			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
 		>;
 
-		type Time: TimeAsSecs + From<u64>;
+		type Time: TimeAsSecs;
 
 		/// The identifier of a particular fee
 		type FeeId: Parameter
@@ -337,9 +337,8 @@ pub mod pallet {
 			FeeBucket = FeeBucket,
 			FeeId = Self::FeeId,
 			PoolId = Self::PoolId,
-			// PoolReserve = Self::PoolReserve,
 			Rate = Self::Rate,
-			Time = Self::Time,
+			Time = Seconds,
 		>;
 
 		/// Challenge time

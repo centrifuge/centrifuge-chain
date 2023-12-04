@@ -266,6 +266,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -1214,6 +1215,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -1884,9 +1886,9 @@ dependencies = [
 
 [[package]]
 name = "crypto-bigint"
-version = "0.5.5"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dc92fb57ca44df6db8059111ab3af99a63d5d0f8375d9972e319a379c6bab76"
+checksum = "740fe28e594155f10cfc383984cbefd529d7396050557148f79cb0f621204124"
 dependencies = [
  "generic-array 0.14.7",
  "rand_core 0.6.4",
@@ -2820,6 +2822,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -3013,13 +3016,13 @@ dependencies = [
 
 [[package]]
 name = "ecdsa"
-version = "0.16.9"
+version = "0.16.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee27f32b5c5292967d2d4a9d7f1e0b0aed2c15daded5a60300e4abb9d8020bca"
+checksum = "a4b1e0c257a9e9f25f90ff76d7a68360ed497ee519c8e428d1825ef0000799d4"
 dependencies = [
  "der 0.7.8",
  "digest 0.10.7",
- "elliptic-curve 0.13.7",
+ "elliptic-curve 0.13.6",
  "rfc6979 0.4.0",
  "signature 2.1.0",
  "spki 0.7.2",
@@ -3114,12 +3117,12 @@ dependencies = [
 
 [[package]]
 name = "elliptic-curve"
-version = "0.13.7"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9775b22bc152ad86a0cf23f0f348b884b26add12bf741e7ffc4d4ab2ab4d205"
+checksum = "d97ca172ae9dc9f9b779a6e3a65d308f2af74e5b8c921299075bdb4a0370e914"
 dependencies = [
  "base16ct 0.2.0",
- "crypto-bigint 0.5.5",
+ "crypto-bigint 0.5.3",
  "digest 0.10.7",
  "ff 0.13.0",
  "generic-array 0.14.7",
@@ -5285,13 +5288,13 @@ dependencies = [
 
 [[package]]
 name = "k256"
-version = "0.13.2"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f01b677d82ef7a676aa37e099defd83a28e15687112cafdd112d60236b6115b"
+checksum = "cadb76004ed8e97623117f3df85b17aaa6626ab0b0831e6573f104df16cd1bcc"
 dependencies = [
  "cfg-if",
- "ecdsa 0.16.9",
- "elliptic-curve 0.13.7",
+ "ecdsa 0.16.8",
+ "elliptic-curve 0.13.6",
  "once_cell",
  "sha2 0.10.8",
 ]
