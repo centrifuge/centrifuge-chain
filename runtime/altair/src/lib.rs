@@ -1545,7 +1545,7 @@ impl pallet_pool_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxFeesPerPoolBucket: u32 = MAX_FEES_PER_POOL_BUCKET;
+	pub const MaxPoolFeesPerBucket: u32 = MAX_FEES_PER_POOL_BUCKET;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -1554,7 +1554,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
-	type MaxFeesPerPoolBucket = MaxFeesPerPoolBucket;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type Permissions = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;

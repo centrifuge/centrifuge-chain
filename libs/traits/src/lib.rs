@@ -178,6 +178,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
 
 	fn create(
 		admin: AccountId,
@@ -186,6 +187,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;

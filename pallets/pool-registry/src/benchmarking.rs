@@ -84,6 +84,7 @@ benchmarks! {
 				<T as pallet_pool_system::Config>::MaxTokenNameLength,
 				<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 				<T as pallet_pool_system::Config>::MaxTranches>,
+			PoolFeeInput = (FeeBucket, PoolFee<<T as frame_system::Config>::AccountId, <T as pallet_pool_system::Config>::Balance, <T as pallet_pool_system::Config>::Rate>),
 		>,
 	}
 	register {
@@ -101,7 +102,8 @@ benchmarks! {
 		mock::MockWriteOffPolicy::mock_worst_case_policy(|| ());
 
 		let policy = T::ModifyWriteOffPolicy::worst_case_policy();
-	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy)
+		// TODO(william): Add pool fees input
+	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy, vec![])
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);

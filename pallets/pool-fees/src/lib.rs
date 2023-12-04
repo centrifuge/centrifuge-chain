@@ -166,7 +166,7 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		type MaxFeesPerPoolBucket: Get<u32>;
+		type MaxPoolFeesPerBucket: Get<u32>;
 
 		// TODO: Enable after creating benchmarks
 		// type WeightInfo: WeightInfo;
@@ -187,7 +187,7 @@ pub mod pallet {
 		T::PoolId,
 		Blake2_128Concat,
 		FeeBucket,
-		BoundedVec<T::FeeId, T::MaxFeesPerPoolBucket>,
+		BoundedVec<T::FeeId, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
 	>;
 
@@ -229,7 +229,7 @@ pub mod pallet {
 		T::PoolId,
 		Blake2_128Concat,
 		FeeBucket,
-		BoundedVec<DisbursingFeeOf<T>, T::MaxFeesPerPoolBucket>,
+		BoundedVec<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
 	>;
 
@@ -261,7 +261,7 @@ pub mod pallet {
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
 		/// The pool bucket has reached the maximum fees size.
-		MaxFeesPerPoolBucket,
+		MaxPoolFeesPerBucket,
 		/// The change id does not belong to a pool fees change.
 		ChangeIdNotPoolFees,
 		/// The change id belongs to a pool fees change but was called in the
@@ -525,7 +525,7 @@ pub mod pallet {
 				DisbursingFees::<T>::insert(
 					pool_id,
 					bucket,
-					BoundedVec::<DisbursingFeeOf<T>, T::MaxFeesPerPoolBucket>::truncate_from(fees),
+					BoundedVec::<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>::truncate_from(fees),
 				);
 			}
 
@@ -549,7 +549,7 @@ pub mod pallet {
 		) -> Result<(), Self::Error> {
 			let fee_id = Self::generate_fee_id()?;
 			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
-				.map_err(|_| Error::<T>::MaxFeesPerPoolBucket)?;
+				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
 			CreatedFees::<T>::insert(fee_id, fee);
 			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
 

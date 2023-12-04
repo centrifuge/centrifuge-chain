@@ -286,6 +286,8 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		tranches,
 		AUSD_CURRENCY_ID,
 		MAX_RESERVE,
+		// TODO(william): Add genesis pool fees
+		vec![],
 	)
 }
 

@@ -17,7 +17,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PoolMetadata, PoolRegistrationStatus},
+	pools::{FeeBucket, PoolFee, PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
 use codec::{HasCompact, MaxEncodedLen};
@@ -57,9 +57,13 @@ type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWrite
 	<T as Config>::PoolId,
 >>::Policy;
 
+type PoolFeeInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::PoolId,
+>>::PoolFeeInput;
+
 #[frame_support::pallet]
 pub mod pallet {
-
 	use super::*;
 
 	#[pallet::config]
@@ -100,6 +104,10 @@ pub mod pallet {
 			Self::PoolId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
+			PoolFeeInput = (
+				FeeBucket,
+				PoolFee<Self::AccountId, Self::Balance, Self::InterestRate>,
+			),
 		>;
 
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
@@ -241,6 +249,7 @@ pub mod pallet {
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
 			write_off_policy: PolicyOf<T>,
+			pool_fees: Vec<PoolFeeInputOf<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -278,6 +287,7 @@ pub mod pallet {
 				tranche_inputs,
 				currency,
 				max_reserve,
+				pool_fees,
 			)
 			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?;
 
