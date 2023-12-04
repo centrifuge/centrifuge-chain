@@ -22,6 +22,10 @@ sp-runtime = { workspace = true }
 
 cfg-traits = { workspace = true }
 
+[dev-dependencies]
+sp-core = { workspace = true, features = ["std"] }
+cfg-mocks = { workspace = true, features = ["std"] }
+
 [features]
 default = ["std"]
 std = [

@@ -443,6 +443,14 @@ pub mod fees {
 		/// Pay the fee using a payer
 		fn pay(payer: &AccountId) -> DispatchResult;
 	}
+
+	/// Type to avoid paying fees
+	pub struct NoPayFee;
+	impl<AccountId> PayFee<AccountId> for NoPayFee {
+		fn pay(_: &AccountId) -> DispatchResult {
+			Ok(())
+		}
+	}
 }
 
 /// Trait to determine whether a sending account and currency have a

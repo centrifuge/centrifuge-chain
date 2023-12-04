@@ -8272,11 +8272,13 @@ dependencies = [
 name = "pallet-oracle-feed"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-traits",
  "frame-support",
  "frame-system",
  "parity-scale-codec 3.6.5",
  "scale-info",
+ "sp-core",
  "sp-runtime",
 ]
 
