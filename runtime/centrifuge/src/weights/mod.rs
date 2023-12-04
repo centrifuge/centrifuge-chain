@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 pub mod cumulus_pallet_xcmp_queue;
-pub mod frame_system;
 pub mod pallet_anchors;
 pub mod pallet_balances;
 pub mod pallet_block_rewards;
@@ -40,10 +39,9 @@ pub mod pallet_restricted_tokens;
 pub mod pallet_scheduler;
 pub mod pallet_session;
 pub mod pallet_timestamp;
+pub mod pallet_transfer_allowlist;
 pub mod pallet_treasury;
 pub mod pallet_uniques;
 pub mod pallet_utility;
 pub mod pallet_vesting;
 pub mod pallet_xcm;
-
-pub mod pallet_transfer_allowlist;
