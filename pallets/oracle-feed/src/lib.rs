@@ -22,6 +22,9 @@
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -78,10 +81,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Emits when an oracle key is fed by first time and the account has
-		/// not enough balance to pay the fees
-		NotEnoughToPayFees,
-
 		/// The key has not been fed yet
 		KeyNotFound,
 	}
