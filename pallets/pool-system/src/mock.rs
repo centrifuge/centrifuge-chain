@@ -9,7 +9,8 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
+use cfg_mocks::pallet_mock_change_guard;
+use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolFeeId, PoolId, TrancheId};
 pub use cfg_primitives::{PoolEpochId, TrancheWeight};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
@@ -68,6 +69,8 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
 		ParachainInfo: parachain_info::{Pallet, Storage},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+		MockChangeGuard: pallet_mock_change_guard,
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -290,6 +293,35 @@ impl<T> PreConditions<T> for Always {
 	}
 }
 
+impl pallet_mock_change_guard::Config for Runtime {
+	type Change = pallet_pool_fees::types::Change<Runtime>;
+	type ChangeId = H256;
+	type PoolId = PoolId;
+}
+
+parameter_types! {
+	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = MockChangeGuard;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type InvestmentId = TrancheCurrency;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type Permissions = Permissions;
+	type PoolId = PoolId;
+	type PoolInspect = PoolSystem;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = pallet_pool_fees::types::Change<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Seconds;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
+}
+
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
@@ -330,6 +362,7 @@ impl Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type FeeId = PoolFeeId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -345,6 +378,7 @@ impl Config for Runtime {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = PoolChangeProposal;

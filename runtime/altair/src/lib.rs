@@ -1545,7 +1545,7 @@ impl pallet_pool_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxPoolFeesPerBucket: u32 = MAX_FEES_PER_POOL_BUCKET;
+	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
 }
 
 impl pallet_pool_fees::Config for Runtime {

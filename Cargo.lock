@@ -8335,6 +8335,7 @@ dependencies = [
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-system",
  "pallet-timestamp",
  "parachain-info",
@@ -8352,6 +8353,7 @@ dependencies = [
 name = "pallet-pool-system"
 version = "3.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
@@ -8367,6 +8369,7 @@ dependencies = [
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parachain-info",

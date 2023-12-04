@@ -39,6 +39,7 @@ cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-permissions = { path = "../../pallets/permissions", default-features = true }
+pallet-pool-fees = { workspace = true, default-features = true }
 pallet-pool-system = { path = "../pool-system" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.43" }
@@ -59,6 +60,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
@@ -78,6 +80,7 @@ std = [
   "pallet-investments/std",
   "scale-info/std",
   "xcm/std",
+  "pallet-pool-fees/std",
   "pallet-pool-system/std",
 ]
 try-runtime = [
@@ -88,6 +91,7 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-investments/try-runtime",
   "sp-runtime/try-runtime",
 ]

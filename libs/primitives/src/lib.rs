@@ -277,7 +277,7 @@ pub mod constants {
 	pub const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
 
 	/// The maximum amount of pool fees per fee bucket
-	pub const MAX_FEES_PER_POOL_BUCKET: u32 = 10;
+	pub const MAX_POOL_FEES_PER_BUCKET: u32 = 10;
 }
 
 /// Listing of parachains we integrate with.

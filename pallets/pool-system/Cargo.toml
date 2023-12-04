@@ -39,10 +39,12 @@ pallet-investments = { path = "../../pallets/investments", default-features = fa
 
 [dev-dependencies]
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
+cfg-mocks = { workspace = true, default-features = true }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-investments = { path = "../../pallets/investments", default-features = true }
+pallet-pool-fees = { workspace = true, default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.43" }
 rand = "0.8.5"
@@ -53,6 +55,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 [features]
 default = ["std"]
 runtime-benchmarks = [
+  "cfg-mocks/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
@@ -63,10 +66,12 @@ runtime-benchmarks = [
   "orml-asset-registry/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
+  "cfg-mocks/std",
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
@@ -77,6 +82,7 @@ std = [
   "log/std",
   "orml-traits/std",
   "pallet-permissions/std",
+  "pallet-pool-fees/std",
   "pallet-timestamp/std",
   "rev_slice/std",
   "scale-info/std",
@@ -87,6 +93,7 @@ std = [
   "strum/std",
 ]
 try-runtime = [
+  "cfg-mocks/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
@@ -94,6 +101,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "lazy_static/spin_no_std",
   "pallet-permissions/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-timestamp/try-runtime",
   "sp-runtime/try-runtime",
 ]

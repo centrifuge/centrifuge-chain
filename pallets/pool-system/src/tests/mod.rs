@@ -81,6 +81,8 @@ pub mod util {
 				],
 				AUSD_CURRENCY_ID,
 				0,
+				// TODO(william): Maybe add pool fees
+				vec![],
 			)
 			.unwrap();
 		}
@@ -548,6 +550,8 @@ fn epoch() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -785,6 +789,8 @@ fn submission_period() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -974,6 +980,8 @@ fn execute_info_removed_after_epoch_execute() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1045,6 +1053,8 @@ fn pool_updates_should_be_constrained() {
 			}],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
@@ -1204,6 +1214,8 @@ fn tranche_ids_are_unique() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		assert_ok!(PoolSystem::create(
@@ -1255,6 +1267,8 @@ fn tranche_ids_are_unique() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		let pool_ids_0 = PoolSystem::pool(pool_id_0)
@@ -1293,6 +1307,8 @@ fn same_pool_id_not_possible() {
 			},],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		assert_noop!(
@@ -1310,6 +1326,8 @@ fn same_pool_id_not_possible() {
 				},],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
+				// TODO(william): Maybe add pool fees
+				vec![],
 			),
 			Error::<Runtime>::PoolInUse
 		);
@@ -1375,6 +1393,8 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
+							// TODO(william): Maybe add pool fees
+			vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1437,6 +1457,8 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
+							// TODO(william): Maybe add pool fees
+			vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1491,6 +1513,8 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
+							// TODO(william): Maybe add pool fees
+			vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1542,6 +1566,8 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				AUSD_CURRENCY_ID,
 				10_000 * CURRENCY,
+							// TODO(william): Maybe add pool fees
+			vec![],
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1587,6 +1613,8 @@ fn triger_challange_period_with_zero_solution() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1681,6 +1709,8 @@ fn min_challenge_time_is_respected() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1778,6 +1808,8 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1979,6 +2011,8 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2169,6 +2203,8 @@ fn only_usd_as_pool_currency_allowed() {
 				],
 				CurrencyId::Native,
 				200 * CURRENCY,
+				// TODO(william): Maybe add pool fees
+				vec![],
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2201,6 +2237,8 @@ fn only_usd_as_pool_currency_allowed() {
 				],
 				CurrencyId::Tranche(0, [0u8; 16]),
 				200 * CURRENCY,
+				// TODO(william): Maybe add pool fees
+				vec![],
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2232,6 +2270,8 @@ fn only_usd_as_pool_currency_allowed() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 	});
 }
@@ -2276,6 +2316,8 @@ fn creation_takes_deposit() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(0).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2313,6 +2355,8 @@ fn creation_takes_deposit() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(1).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2352,6 +2396,8 @@ fn creation_takes_deposit() {
 			],
 			AUSD_CURRENCY_ID,
 			200 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		let pool = crate::PoolDeposit::<Runtime>::get(2).unwrap();
@@ -2399,6 +2445,8 @@ fn create_tranche_token_metadata() {
 			],
 			AUSD_CURRENCY_ID,
 			10_000 * CURRENCY,
+			// TODO(william): Maybe add pool fees
+			vec![],
 		));
 
 		let pool = Pool::<Runtime>::get(3).unwrap();
