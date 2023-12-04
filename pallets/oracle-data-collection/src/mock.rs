@@ -18,6 +18,7 @@ pub type OracleKey = u8;
 pub type OracleValue = u128;
 pub type Timestamp = u64;
 pub type CollectionId = u32;
+pub type ChangeId = H256;
 
 frame_support::parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
@@ -34,7 +35,7 @@ frame_support::construct_runtime!(
 		MockProvider: cfg_mocks::value_provider::pallet,
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
 		MockChangeGuard: cfg_mocks::change_guard::pallet,
-		OracleDataCollection: pallet_oracle_data_collection,
+		OracleCollection: pallet_oracle_data_collection,
 	}
 );
 
@@ -79,7 +80,7 @@ impl cfg_mocks::pre_conditions::pallet::Config for Runtime {
 
 impl cfg_mocks::change_guard::pallet::Config for Runtime {
 	type Change = crate::types::Change<Runtime>;
-	type ChangeId = H256;
+	type ChangeId = ChangeId;
 	type PoolId = CollectionId;
 }
 

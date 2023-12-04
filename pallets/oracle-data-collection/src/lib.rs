@@ -162,6 +162,9 @@ pub mod pallet {
 		/// The key is not in the collection.
 		KeyNotInCollection,
 
+		/// The key is not registered
+		KeyNotRegistered,
+
 		/// Collection size reached
 		MaxCollectionSize,
 
@@ -242,14 +245,17 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let values = Keys::<T>::iter_key_prefix(collection_id)
-				.map(|key| Self::get(&key, &collection_id).map(|value| (key, value)))
-				.collect::<Result<Vec<_>, _>>()?;
+			let values =
+				BTreeMap::from_iter(Keys::<T>::iter_key_prefix(collection_id).filter_map(|key| {
+					Self::get(&key, &collection_id)
+						.map(|value| (key, value))
+						.ok()
+				}));
 
-			let len = values.len();
+			let collection =
+				BoundedBTreeMap::try_from(values).map_err(|()| Error::<T>::MaxCollectionSize)?;
 
-			let collection = BoundedBTreeMap::try_from(BTreeMap::from_iter(values))
-				.map_err(|()| Error::<T>::MaxCollectionSize)?;
+			let len = collection.len();
 
 			Collection::<T>::insert(collection_id, collection);
 
@@ -307,7 +313,9 @@ pub mod pallet {
 
 		fn unregister_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
 			Self::mutate_and_remove_if_clean(*collection_id, *key, |info| {
-				info.usage_refs.ensure_sub_assign(1)?;
+				info.usage_refs
+					.ensure_sub_assign(1)
+					.map_err(|_| Error::<T>::KeyNotRegistered)?;
 
 				if info.usage_refs.is_zero() {
 					Self::deposit_event(Event::<T>::RemovedKey {
@@ -328,7 +336,7 @@ pub mod pallet {
 			f: impl FnOnce(&mut KeyInfo<T>) -> DispatchResult,
 		) -> DispatchResult {
 			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
-				let info = maybe_info.as_mut().ok_or("Qed. always exists")?;
+				let info = maybe_info.get_or_insert(Default::default());
 
 				f(info)?;
 
@@ -390,6 +398,7 @@ pub mod types {
 	}
 
 	/// A collection cached in memory
+	#[derive(Clone)]
 	pub struct CachedCollection<T: Config>(
 		pub BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
 	);
@@ -402,6 +411,12 @@ pub mod types {
 				.get(data_id)
 				.cloned()
 				.ok_or_else(|| Error::<T>::KeyNotInCollection.into())
+		}
+	}
+
+	impl<T: Config> CachedCollection<T> {
+		pub fn as_vec(self) -> Vec<(T::OracleKey, OracleValuePair<T>)> {
+			self.0.into_iter().collect()
 		}
 	}
 
