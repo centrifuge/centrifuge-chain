@@ -1,5 +1,5 @@
 #[frame_support::pallet]
-pub mod pallet_mock_change_guard {
+pub mod pallet {
 	use cfg_traits::changes::ChangeGuard;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};

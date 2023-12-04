@@ -2,9 +2,8 @@ use frame_support::{
 	sp_io::TestExternalities,
 	traits::{ConstU16, ConstU32, ConstU64},
 };
-use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
+	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
 };
 

@@ -24,6 +24,9 @@ sp-std = { workspace = true }
 cfg-traits = { workspace = true }
 cfg-types = { workspace = true }
 
+[dev-dependencies]
+cfg-mocks = { workspace = true, features = ["std"] }
+
 [features]
 default = ["std"]
 std = [
