@@ -336,6 +336,11 @@ pub trait PreConditions<T> {
 	type Result;
 
 	fn check(t: T) -> Self::Result;
+
+	/// Perform the required changes to satisfy the `check()` method in a
+	/// successful way
+	#[cfg(feature = "runtime-benchmarks")]
+	fn satisfy(_t: T) {}
 }
 
 #[impl_for_tuples(1, 10)]
@@ -460,7 +465,7 @@ pub mod fees {
 		/// Allows to initialize an initial state required for a pallet that
 		/// calls `pay()`.
 		#[cfg(feature = "runtime-benchmarks")]
-		fn add_pay_requirements(payer: &AccountId);
+		fn add_pay_requirements(_payer: &AccountId) {}
 	}
 
 	/// Type to avoid paying fees
@@ -469,9 +474,6 @@ pub mod fees {
 		fn pay(_: &AccountId) -> DispatchResult {
 			Ok(())
 		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_pay_requirements(_: &AccountId) {}
 	}
 }
 

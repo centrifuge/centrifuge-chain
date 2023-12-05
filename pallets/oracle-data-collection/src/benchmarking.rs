@@ -1,3 +1,4 @@
+use cfg_traits::PreConditions;
 use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_system::RawOrigin;
 
@@ -31,6 +32,8 @@ mod benchmarks {
 
 		let admin: T::AccountId = whitelisted_caller();
 
+		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
+
 		let feeders = (0..n)
 			.map(|i| account("feeder", i, 0))
 			.collect::<Vec<_>>()
@@ -54,6 +57,8 @@ mod benchmarks {
 		init_mocks();
 
 		let admin: T::AccountId = whitelisted_caller();
+
+		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
 
 		let feeders = (0..n)
 			.map(|i| account("feeder", i, 0))
@@ -84,6 +89,8 @@ mod benchmarks {
 		init_mocks();
 
 		let admin: T::AccountId = whitelisted_caller();
+
+		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
 
 		// m keys with n feeders
 		for k in 0..m {

@@ -757,5 +757,15 @@ pub mod permissions {
 				Role::PoolRole(PoolRole::PoolAdmin),
 			)
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn satisfy((account_id, pool_id): (AccountId, PoolId)) {
+			P::add(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+			.unwrap();
+		}
 	}
 }

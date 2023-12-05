@@ -28,8 +28,5 @@ pub mod pallet {
 		fn pay(a: &T::AccountId) -> DispatchResult {
 			execute_call!(a)
 		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn add_pay_requirements(_: &T::AccountId) {}
 	}
 }
