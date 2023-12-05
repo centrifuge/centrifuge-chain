@@ -33,7 +33,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
+use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -683,4 +683,15 @@ pub trait ValueProvider<Source, Key> {
 	type Timestamp;
 
 	fn get(source: &Source, id: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError>;
+}
+
+/// A provider that never returns a value
+pub struct NoProvider<Value, Timestamp>(PhantomData<(Value, Timestamp)>);
+impl<Source, Key, Value, Timestamp> ValueProvider<Source, Key> for NoProvider<Value, Timestamp> {
+	type Timestamp = Timestamp;
+	type Value = Value;
+
+	fn get(_: &Source, _: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError> {
+		Err(DispatchError::Other("No value"))
+	}
 }

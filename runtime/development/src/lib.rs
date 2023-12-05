@@ -1348,7 +1348,7 @@ impl pallet_oracle_feed::Config for Runtime {
 	type OracleValue = Quantity;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_oracle_feed::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_oracle_feed::WeightInfo<Self>;
 }
 
 impl pallet_oracle_data_collection::Config for Runtime {

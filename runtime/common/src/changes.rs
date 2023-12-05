@@ -1,12 +1,11 @@
-use cfg_primitives::SECONDS_PER_WEEK;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
-use pallet_loans::entities::changes::{Change as LoansChange, InternalMutation, LoanMutation};
+use pallet_loans::entities::changes::Change as LoansChange;
 use pallet_oracle_data_collection::types::Change as OracleCollectionChange;
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchError;
-use sp_std::{marker::PhantomData, vec, vec::Vec};
+use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Auxiliar type to carry all pallets bounds used by RuntimeChange
 pub trait Changeable: pallet_loans::Config + pallet_oracle_data_collection::Config {}
@@ -21,7 +20,17 @@ pub enum RuntimeChange<T: Changeable, Options: Clone = ()> {
 }
 
 impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
+	#[cfg(feature = "runtime-benchmarks")]
 	fn requirement_list(self) -> Vec<Requirement> {
+		Vec::default()
+	}
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	fn requirement_list(self) -> Vec<Requirement> {
+		use cfg_primitives::SECONDS_PER_WEEK;
+		use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
+		use sp_std::vec;
+
 		let epoch = Requirement::NextEpoch;
 		let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 		let blocked = Requirement::BlockedByLockedRedemptions;
@@ -56,11 +65,7 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 
 impl<T: Changeable> From<RuntimeChange<T>> for PoolChangeProposal {
 	fn from(runtime_change: RuntimeChange<T>) -> Self {
-		if cfg!(feature = "runtime-benchmarks") {
-			PoolChangeProposal::new([])
-		} else {
-			PoolChangeProposal::new(runtime_change.requirement_list())
-		}
+		PoolChangeProposal::new(runtime_change.requirement_list())
 	}
 }
 
@@ -70,20 +75,15 @@ pub struct FastDelay;
 
 impl<T: Changeable> From<RuntimeChange<T, FastDelay>> for PoolChangeProposal {
 	fn from(runtime_change: RuntimeChange<T, FastDelay>) -> Self {
-		if cfg!(feature = "runtime-benchmarks") {
-			PoolChangeProposal::new([])
-		} else {
-			let new_requirements =
-				runtime_change
-					.requirement_list()
-					.into_iter()
-					.map(|req| match req {
-						Requirement::DelayTime(_) => Requirement::DelayTime(60), // 1 min
-						req => req,
-					});
+		let new_requirements = runtime_change
+			.requirement_list()
+			.into_iter()
+			.map(|req| match req {
+				Requirement::DelayTime(_) => Requirement::DelayTime(60), // 1 min
+				req => req,
+			});
 
-			PoolChangeProposal::new(new_requirements)
-		}
+		PoolChangeProposal::new(new_requirements)
 	}
 }
 

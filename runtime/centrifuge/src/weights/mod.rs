@@ -30,6 +30,7 @@ pub mod pallet_liquidity_rewards;
 pub mod pallet_loans;
 pub mod pallet_migration_manager;
 pub mod pallet_multisig;
+pub mod pallet_oracle_feed;
 pub mod pallet_order_book;
 pub mod pallet_permissions;
 pub mod pallet_pool_registry;
