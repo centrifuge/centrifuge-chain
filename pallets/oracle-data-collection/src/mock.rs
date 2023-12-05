@@ -14,7 +14,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type AccountId = u64;
-pub type OracleKey = u8;
+pub type OracleKey = u32;
 pub type OracleValue = u128;
 pub type Timestamp = u64;
 pub type CollectionId = u32;
@@ -22,7 +22,7 @@ pub type ChangeId = H256;
 
 frame_support::parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
-	pub const MaxFeedersPerKey: u32 = 3;
+	pub const MaxFeedersPerKey: u32 = 10;
 }
 
 frame_support::construct_runtime!(
@@ -89,7 +89,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type ChangeGuard = MockChangeGuard;
 	type CollectionId = CollectionId;
 	type IsAdmin = MockIsAdmin;
-	type MaxCollectionSize = ConstU32<5>;
+	type MaxCollectionSize = ConstU32<10>;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
 	type OracleProvider = MockProvider;
