@@ -672,6 +672,7 @@ fn centrifuge_genesis(
 		polkadot_xcm: centrifuge_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 		},
+		sudo: Default::default(),
 	}
 }
 

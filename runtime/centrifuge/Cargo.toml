@@ -10,6 +10,10 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
+# WARNING: This dependency should never be merged into production. The purpose is to streamline chopsticks integration.
+pallet-sudo = { workspace = true }
+
+# third-party dependencies
 codec = { package = "parity-scale-codec", workspace = true }
 getrandom = { workspace = true }
 hex = { workspace = true }
@@ -128,7 +132,6 @@ pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
-pallet-sudo = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-transaction-payment = { workspace = true }
 pallet-transfer-allowlist = { workspace = true }
