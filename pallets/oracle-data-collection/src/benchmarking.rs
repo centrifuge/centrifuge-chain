@@ -1,8 +1,12 @@
-use cfg_traits::PreConditions;
+use cfg_traits::{changes::ChangeGuard, PreConditions};
 use frame_benchmarking::{v2::*, whitelisted_caller};
+use frame_support::storage::bounded_vec::BoundedVec;
 use frame_system::RawOrigin;
 
-use crate::pallet::{Call, Collection, Config, Pallet};
+use crate::{
+	pallet::{Call, Collection, Config, Pallet},
+	types::Change,
+};
 
 #[cfg(test)]
 fn init_mocks() {
@@ -14,6 +18,27 @@ fn init_mocks() {
 		Ok(Default::default())
 	});
 	MockProvider::mock_get(|_, _| Ok((Default::default(), Default::default())));
+}
+
+mod util {
+	use super::*;
+
+	pub fn last_change_id_for<T>(
+		key: T::OracleKey,
+		feeders: &BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+	) -> T::Hash
+	where
+		T: Config,
+		T::CollectionId: Default,
+	{
+		// We need to call noted again to obtain the ChangeId used previously.
+		// (that is idempotent for the same change)
+		T::ChangeGuard::note(
+			T::CollectionId::default(),
+			Change::<T>::Feeders(key, feeders.clone()).into(),
+		)
+		.unwrap()
+	}
 }
 
 #[benchmarks(
@@ -60,7 +85,7 @@ mod benchmarks {
 
 		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
 
-		let feeders = (0..n)
+		let feeders: BoundedVec<_, _> = (0..n)
 			.map(|i| account("feeder", i, 0))
 			.collect::<Vec<_>>()
 			.try_into()
@@ -70,14 +95,14 @@ mod benchmarks {
 			RawOrigin::Signed(admin.clone()).into(),
 			T::CollectionId::default(),
 			T::OracleKey::default(),
-			feeders,
+			feeders.clone(),
 		)?;
 
 		#[extrinsic_call]
 		apply_update_feeders(
 			RawOrigin::Signed(admin),
 			T::CollectionId::default(),
-			T::Hash::default(),
+			util::last_change_id_for::<T>(T::OracleKey::default(), &feeders),
 		);
 
 		Ok(())
@@ -94,7 +119,8 @@ mod benchmarks {
 
 		// m keys with n feeders
 		for k in 0..m {
-			let feeders = (0..n)
+			let key = T::OracleKey::from(k);
+			let feeders: BoundedVec<_, _> = (0..n)
 				.map(|i| account("feeder", i, 0))
 				.collect::<Vec<_>>()
 				.try_into()
@@ -103,14 +129,14 @@ mod benchmarks {
 			Pallet::<T>::propose_update_feeders(
 				RawOrigin::Signed(admin.clone()).into(),
 				T::CollectionId::default(),
-				T::OracleKey::from(k),
-				feeders,
+				key,
+				feeders.clone(),
 			)?;
 
 			Pallet::<T>::apply_update_feeders(
 				RawOrigin::Signed(admin.clone()).into(),
 				T::CollectionId::default(),
-				T::Hash::default(),
+				util::last_change_id_for::<T>(key, &feeders),
 			)?;
 		}
 
