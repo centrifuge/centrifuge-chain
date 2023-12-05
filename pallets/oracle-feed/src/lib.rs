@@ -25,13 +25,21 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod weights;
+
 pub use pallet::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{fees::PayFee, ValueProvider};
 	use frame_support::{pallet_prelude::*, traits::Time};
 	use frame_system::pallet_prelude::*;
+
+	use crate::weights::WeightInfo;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -56,6 +64,9 @@ pub mod pallet {
 
 		/// Fee for the first time a feeder feeds a value
 		type FirstValuePayFee: PayFee<Self::AccountId>;
+
+		/// The weight information for this pallet extrinsics.
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Store all oracle values indexed by feeder
@@ -90,32 +101,39 @@ pub mod pallet {
 		/// Permissionles call to feed an oracle key from a source with value.
 		/// The first time the value is set, an extra fee is required for the
 		/// feeder.
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(T::WeightInfo::feed_first())]
 		#[pallet::call_index(0)]
 		pub fn feed(
 			origin: OriginFor<T>,
 			key: T::OracleKey,
 			value: T::OracleValue,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			FedValues::<T>::mutate(&who, key, |prev_value| {
-				if prev_value.is_none() {
-					T::FirstValuePayFee::pay(&who)?;
-				}
+				let new_weight = match prev_value {
+					None => {
+						T::FirstValuePayFee::pay(&who)?;
+						// The weight used is the predefined one.
+						None
+					}
+					Some(_) => {
+						// The weight used is less than the predefined,
+						// because we do not need to pay an extra fee
+						Some(T::WeightInfo::feed_again())
+					}
+				};
 
 				*prev_value = Some((value, T::Time::now()));
 
-				Ok::<_, DispatchError>(())
-			})?;
+				Self::deposit_event(Event::<T>::Fed {
+					account_id: who.clone(),
+					key,
+					value,
+				});
 
-			Self::deposit_event(Event::<T>::Fed {
-				account_id: who,
-				key,
-				value,
-			});
-
-			Ok(())
+				Ok(new_weight.into())
+			})
 		}
 	}
 

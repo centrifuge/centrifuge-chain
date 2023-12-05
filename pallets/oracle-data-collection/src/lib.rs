@@ -369,6 +369,7 @@ pub mod types {
 		storage::{bounded_btree_map::BoundedBTreeMap, bounded_vec::BoundedVec},
 	};
 	use sp_runtime::{traits::Zero, RuntimeDebug};
+	use sp_std::vec::Vec;
 
 	use crate::pallet::{Config, Error};
 

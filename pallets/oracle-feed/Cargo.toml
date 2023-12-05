@@ -22,6 +22,9 @@ sp-runtime = { workspace = true }
 
 cfg-traits = { workspace = true }
 
+# Optionals for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
 [dev-dependencies]
 cfg-mocks = { workspace = true, features = ["std"] }
 
@@ -32,6 +35,15 @@ std = [
   "scale-info/std",
   "frame-support/std",
   "frame-system/std",
+  "frame-benchmarking?/std",
   "sp-runtime/std",
   "cfg-traits/std",
+]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
 ]

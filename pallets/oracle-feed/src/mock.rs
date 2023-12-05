@@ -69,6 +69,7 @@ impl pallet_oracle_feed::Config for Runtime {
 	type OracleValue = OracleValue;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = MockTime;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> TestExternalities {
