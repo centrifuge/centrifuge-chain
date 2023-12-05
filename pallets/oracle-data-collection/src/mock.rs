@@ -97,6 +97,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type RuntimeChange = crate::types::Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Timestamp = Timestamp;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> TestExternalities {

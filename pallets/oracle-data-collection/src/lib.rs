@@ -56,6 +56,7 @@ pub mod pallet {
 		traits::AggregationProvider,
 		types::{CachedCollection, Change, KeyInfo, OracleValuePair},
 		util,
+		weights::WeightInfo,
 	};
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -113,6 +114,9 @@ pub mod pallet {
 		/// Max number of collections
 		#[pallet::constant]
 		type MaxFeedersPerKey: Get<u32> + Parameter;
+
+		/// The weight information for this pallet extrinsics.
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Store all oracle values indexed by feeder
@@ -183,8 +187,8 @@ pub mod pallet {
 		/// Propose an update in the feeders associated to an specific key.
 		/// The collection will only be modified once [`apply_update_feeders`]
 		/// be called.
-		#[pallet::weight(1_000_000)]
-		#[pallet::call_index(1)]
+		#[pallet::weight(T::WeightInfo::propose_update_feeders(T::MaxFeedersPerKey::get()))]
+		#[pallet::call_index(0)]
 		pub fn propose_update_feeders(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
@@ -215,8 +219,8 @@ pub mod pallet {
 		/// the conditions to get it ready are fullfilled
 		///
 		/// This call is permissionless
-		#[pallet::weight(1_000_000)]
-		#[pallet::call_index(2)]
+		#[pallet::weight(T::WeightInfo::apply_update_feeders(T::MaxFeedersPerKey::get()))]
+		#[pallet::call_index(1)]
 		pub fn apply_update_feeders(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
@@ -243,8 +247,11 @@ pub mod pallet {
 		/// process.
 		///
 		/// This call is permissionless
-		#[pallet::weight(1_000_000)]
-		#[pallet::call_index(3)]
+		#[pallet::weight(T::WeightInfo::update_collection(
+			T::MaxFeedersPerKey::get(),
+			T::MaxCollectionSize::get(),
+		))]
+		#[pallet::call_index(2)]
 		pub fn update_collection(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
