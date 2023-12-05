@@ -452,7 +452,7 @@ pub mod fees {
 		/// Allows to initialize an initial state required for a pallet that
 		/// calls pay a fee
 		#[cfg(feature = "runtime-benchmarks")]
-		fn add_fee_requirements(from: &Self::AccountId, fee: Fee<Self::Balance, Self::FeeKey>);
+		fn add_fee_requirements(_from: &Self::AccountId, _fee: Fee<Self::Balance, Self::FeeKey>) {}
 	}
 
 	/// Trait to pay fees
@@ -707,6 +707,11 @@ pub trait ValueProvider<Source, Key> {
 	type Timestamp;
 
 	fn get(source: &Source, id: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError>;
+
+	/// Allows to initialize an initial state required for a pallet that
+	/// calls `get()`.
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(_: &Source, _: &Key) {}
 }
 
 /// A provider that never returns a value

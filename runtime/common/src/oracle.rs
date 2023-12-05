@@ -180,4 +180,13 @@ where
 
 		Ok((balance, timestamp))
 	}
+
+	/// Allows to initialize an initial state required for a pallet that
+	/// calls `get()`.
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set((account_id, pool_id): &(AccountId, PoolId), key: &OracleKey) {
+		// TODO
+		// initialize pool
+		// initialize asset_registry
+	}
 }
