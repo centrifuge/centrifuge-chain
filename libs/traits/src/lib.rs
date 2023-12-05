@@ -404,6 +404,15 @@ pub mod fees {
 		Key(FeeKey),
 	}
 
+	impl<Balance: Copy, FeeKey: Clone> Fee<Balance, FeeKey> {
+		pub fn value<F: Fees<Balance = Balance, FeeKey = FeeKey>>(&self) -> Balance {
+			match self {
+				Fee::Balance(value) => *value,
+				Fee::Key(key) => F::fee_value(key.clone()),
+			}
+		}
+	}
+
 	/// A trait that used to deal with fees
 	pub trait Fees {
 		type AccountId;
@@ -434,6 +443,11 @@ pub mod fees {
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls pay a fee
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_fee_requirements(from: &Self::AccountId, fee: Fee<Self::Balance, Self::FeeKey>);
 	}
 
 	/// Trait to pay fees
@@ -442,6 +456,11 @@ pub mod fees {
 	pub trait PayFee<AccountId> {
 		/// Pay the fee using a payer
 		fn pay(payer: &AccountId) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls `pay()`.
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_pay_requirements(payer: &AccountId);
 	}
 
 	/// Type to avoid paying fees
@@ -450,6 +469,9 @@ pub mod fees {
 		fn pay(_: &AccountId) -> DispatchResult {
 			Ok(())
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_pay_requirements(_: &AccountId) {}
 	}
 }
 

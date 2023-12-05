@@ -71,5 +71,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			execute_call!((a, b))
 		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_fee_requirements(_: &Self::AccountId, _: Fee<Self::Balance, Self::FeeKey>) {}
 	}
 }

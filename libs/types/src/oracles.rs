@@ -34,3 +34,10 @@ impl From<u32> for OracleKey {
 		OracleKey::Isin(isin)
 	}
 }
+
+#[cfg(feature = "runtime-benchmarks")]
+impl Default for OracleKey {
+	fn default() -> Self {
+		OracleKey::Isin(Default::default())
+	}
+}
