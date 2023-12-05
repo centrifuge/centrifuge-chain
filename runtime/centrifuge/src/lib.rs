@@ -1735,6 +1735,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Timestamp = Millis;
+	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -2573,6 +2574,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
+			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
+			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2648,6 +2651,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
+			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
+			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

@@ -1364,6 +1364,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
 	type Timestamp = Millis;
+	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -2667,7 +2668,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
-			//add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
+			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2725,7 +2726,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
-			//list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
