@@ -40,7 +40,7 @@ pub enum PoolRegistrationStatus {
 	Unregistered,
 }
 
-// TODO(william): Docs
+/// The representation of a pool fee, its editor and destination address
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
 pub struct PoolFee<AccountId, Balance, Rate> {
@@ -54,7 +54,7 @@ pub struct PoolFee<AccountId, Balance, Rate> {
 	pub amount: FeeAmountType<Balance, Rate>,
 }
 
-// TODO(william): Docs
+/// The editor enum of pool fees
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
@@ -67,7 +67,7 @@ impl<AccountId> FeeEditor<AccountId>
 where
 	AccountId: PartialEq,
 {
-	// TODO(william): Docs
+	/// Checks whether the given account matches the wrapped fee editor address
 	pub fn matches_account(&self, who: &AccountId) -> bool {
 		match self {
 			Self::Account(account) => account == who,
@@ -76,7 +76,7 @@ where
 	}
 }
 
-// TODO(william): Docs
+/// The fee amount wrapper type
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
@@ -88,7 +88,7 @@ pub enum FeeAmountType<Balance, Rate> {
 	ChargedUpTo { limit: FeeAmount<Balance, Rate> },
 }
 
-// TODO(william): Docs
+/// The fee amount
 
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum FeeAmount<Balance, Rate> {
@@ -99,7 +99,7 @@ pub enum FeeAmount<Balance, Rate> {
 	AmountPerSecond(Balance),
 }
 
-// TODO(william): Docs
+/// The priority segregation of pool fees
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
 pub enum FeeBucket {

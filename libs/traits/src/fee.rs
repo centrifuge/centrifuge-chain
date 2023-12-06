@@ -71,9 +71,9 @@ pub trait PoolFees {
 
 /// Trait to prorate a fee amount to a rate or amount
 pub trait FeeAmountProration<Balance, Rate, Time> {
-	// TODO(william): Docs
+	/// Returns the prorated amount based on the NAV passed time period.
 	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance;
 
-	// TODO(william): Docs
+	/// Returns the proratio based on the NAV and passed time period.
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate;
 }
