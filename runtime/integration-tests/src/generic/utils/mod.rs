@@ -116,6 +116,7 @@ pub fn create_empty_pool<T: Runtime>(admin: AccountId, pool_id: PoolId, currency
 		Balance::MAX,
 		None,
 		BoundedVec::default(),
+		vec![],
 	)
 	.unwrap();
 

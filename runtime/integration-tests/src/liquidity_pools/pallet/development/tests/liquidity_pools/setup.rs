@@ -285,6 +285,7 @@ pub fn create_currency_pool(pool_id: u64, currency_id: CurrencyId, currency_deci
 		],
 		currency_id,
 		currency_decimals,
+		vec![],
 	));
 }
 
