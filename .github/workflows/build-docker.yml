@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   release:
-    types: [unpublished] # GITHUB_REF == tag pushed with the release
+    types: [created] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
