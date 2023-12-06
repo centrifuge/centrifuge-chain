@@ -14,6 +14,10 @@
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
 pub mod types;
 
 #[frame_support::pallet]
@@ -368,8 +372,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let fee = crate::pallet::CreatedFees::<T>::get(fee_id)
-				.ok_or(crate::pallet::Error::<T>::FeeNotFound)?;
+			let fee = CreatedFees::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
 			ensure!(fee.destination == who, Error::<T>::UnauthorizedCharge);
 
 			<Self as PoolFees>::charge_fee(fee_id, amount)?;
@@ -389,8 +392,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let fee = crate::pallet::CreatedFees::<T>::get(fee_id)
-				.ok_or(crate::pallet::Error::<T>::FeeNotFound)?;
+			let fee = CreatedFees::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
 			ensure!(fee.destination == who, Error::<T>::UnauthorizedCharge);
 
 			<Self as PoolFees>::uncharge_fee(fee_id, amount)?;

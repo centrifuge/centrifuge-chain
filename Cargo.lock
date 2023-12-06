@@ -8300,6 +8300,7 @@ dependencies = [
 name = "pallet-pool-fees"
 version = "0.0.1"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
@@ -8307,6 +8308,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec 3.6.5",
  "scale-info",
