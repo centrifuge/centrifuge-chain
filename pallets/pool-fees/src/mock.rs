@@ -20,11 +20,12 @@ use cfg_primitives::{Balance, PoolFeeId, PoolId, TrancheId};
 use cfg_traits::{Millis, Seconds};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
-	permissions::PermissionScope,
-	pools::{FeeAmount, FeeAmountType, FeeEditor},
+	permissions::{PermissionScope, PoolRole, Role},
+	pools::{FeeAmount, FeeAmountType, FeeBucket, FeeEditor},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
+	assert_ok,
 	pallet_prelude::ConstU32,
 	parameter_types,
 	traits::{ConstU128, ConstU16, ConstU64, UnixTime},
@@ -34,6 +35,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	DispatchError,
 };
 
 use crate::{pallet as pallet_pool_fees, types::Change, PoolFeeOf};
@@ -48,10 +50,17 @@ pub const EDITOR: AccountId = 2;
 pub const DESTINATION: AccountId = 3;
 pub const ANY: AccountId = 100;
 
+pub const NOT_ADMIN: [AccountId; 3] = [EDITOR, DESTINATION, ANY];
+pub const NOT_EDITOR: [AccountId; 3] = [ADMIN, DESTINATION, ANY];
+pub const NOT_DESTINATION: [AccountId; 3] = [ADMIN, EDITOR, ANY];
+
 pub const POOL: PoolId = 1;
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 pub const TEN_PERCENT: f64 = 0.1;
 pub const TEN_BPS: f64 = 0.01;
+
+pub const ERR_CHANGE_GUARD_RELEASE: DispatchError =
+	DispatchError::Other("ChangeGuard release disabled if not mocked via config_change_mocks");
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 
@@ -215,6 +224,7 @@ pub fn advance_time(elapsed: Duration) {
 	Timer::set_timestamp(Timer::get() + elapsed.as_millis() as u64);
 }
 
+// TODO: Combine helper functions
 pub fn new_fee(amount: FeeAmountType<Balance, Rate>) -> PoolFeeOf<Runtime> {
 	PoolFeeOf::<Runtime> {
 		destination: DESTINATION,
@@ -252,4 +262,73 @@ pub fn fees() -> Vec<PoolFeeOf<Runtime>> {
 		.into_iter()
 		.map(|amount| new_fee(amount))
 		.collect()
+}
+
+// TODO: Remove
+#[macro_export]
+macro_rules! ensure_extrinsic_success {
+	($func:path, $func_name:expr) => {
+		for (i, fee) in fees().into_iter().enumerate() {
+			assert!(
+				$func(
+					RuntimeOrigin::signed(ADMIN),
+					POOL,
+					FeeBucket::Top,
+					fee.clone(),
+				)
+				.is_ok(),
+				"Failed to execute call {} with fee {fee:?} at fee iter position {i}",
+				$func_name
+			);
+		}
+	};
+}
+
+pub(crate) fn config_mocks() {
+	MockPermissions::mock_add(|_, _, _| Ok(()));
+	MockPermissions::mock_has(|_, _, _| true);
+	MockPools::mock_pool_exists(|_| true);
+	MockPools::mock_account_for(|_| 0);
+	MockPools::mock_withdraw(|_, _, _| Ok(()));
+	MockPools::mock_deposit(|_, _, _| Ok(()));
+	MockPools::mock_bench_create_pool(|_, _| {});
+	MockPools::mock_bench_investor_setup(|_, _, _| {});
+	MockPermissions::mock_has(|scope, who, role| {
+		matches!(scope, PermissionScope::Pool(id) if id == POOL)
+			&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))
+			&& who == ADMIN
+	});
+	MockChangeGuard::mock_note(|_, change| Ok(sp_core::H256::default()));
+	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
+}
+
+pub(crate) fn config_change_mocks(fee: &PoolFeeOf<Runtime>) {
+	let pool_fee = fee.clone();
+	MockChangeGuard::mock_note({
+		move |pool_id, change| {
+			assert_eq!(pool_id, POOL);
+			assert_eq!(change, Change::AppendFee(FeeBucket::Top, pool_fee.clone()));
+			Ok(CHANGE_ID)
+		}
+	});
+
+	MockChangeGuard::mock_released({
+		let pool_fee = fee.clone();
+		move |pool_id, change_id| {
+			assert_eq!(pool_id, POOL);
+			assert_eq!(change_id, CHANGE_ID);
+			Ok(Change::AppendFee(FeeBucket::Top, pool_fee.clone()))
+		}
+	});
+}
+
+pub(crate) fn add_fees(pool_fees: Vec<PoolFeeOf<Runtime>>) {
+	for fee in pool_fees.into_iter() {
+		config_change_mocks(&fee);
+		assert_ok!(PoolFees::apply_new_fee(
+			RuntimeOrigin::signed(ANY),
+			POOL,
+			CHANGE_ID
+		));
+	}
 }

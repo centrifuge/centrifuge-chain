@@ -18,6 +18,7 @@ pallet-balances = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true }
+rand = "0.8.5"
 
 [dependencies]
 codec = { package = "parity-scale-codec", workspace = true, features = ["derive"] }

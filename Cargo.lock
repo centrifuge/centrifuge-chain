@@ -8313,6 +8313,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec 3.6.5",
+ "rand 0.8.5",
  "scale-info",
  "sp-arithmetic",
  "sp-core",

@@ -349,7 +349,12 @@ pub mod pallet {
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let fee = CreatedFees::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
+			#[cfg(feature = "std")]
+			{
+				println!("Removing fee id {fee_id:?}");
+				println!("Created Fees: {:?}", CreatedFees::<T>::get(fee_id));
+			}
+			let fee = CreatedFees::<T>::get(fee_id).ok_or_else(|| Error::<T>::FeeNotFound)?;
 			ensure!(
 				fee.editor.matches_account(&who),
 				Error::<T>::UnauthorizedEdit
@@ -550,11 +555,16 @@ pub mod pallet {
 			fee: Self::Fee,
 		) -> Result<(), Self::Error> {
 			let fee_id = Self::generate_fee_id()?;
+
 			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
 				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
 			CreatedFees::<T>::insert(fee_id, fee);
 			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
-
+			#[cfg(feature = "std")]
+			{
+				println!("Adding fee id {fee_id:?}");
+				println!("Created Fees: {:?}", CreatedFees::<T>::get(fee_id));
+			}
 			Ok(())
 		}
 
@@ -566,10 +576,13 @@ pub mod pallet {
 					.as_ref()
 					.map(|(pool_id, bucket)| {
 						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
+							{
+								println!("Mutate exists during removal with pool id {pool_id:?}, bucket {bucket:?} and fee ids {fee_ids:?}");
+								println!("Binary search {:?}", fee_ids.binary_search(&fee_id));
+							}
 							let pos = fee_ids
 								.binary_search(&fee_id)
-								.err()
-								.ok_or(Error::<T>::FeeNotFound)?;
+								.map_err(|_| Error::<T>::FeeNotFound)?;
 							fee_ids.remove(pos);
 							Ok::<(), DispatchError>(())
 						})
