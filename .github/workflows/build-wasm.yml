@@ -1,5 +1,7 @@
 on:
   push:
+    branches:
+      - publish-to-release
     tags:
       - '*'
   pull_request:
@@ -48,7 +50,7 @@ jobs:
           docker run --rm  --user root --platform=linux/amd64
           -e PACKAGE=${{ matrix.package }} -v /home/runner/.cargo:/cargo-home  
           -v ${{ github.workspace }}:/build paritytech/srtool:1.73.0-0.12.0
-          /srtool/build --app
+          /srtool/build --app --save
 
       # Alternative way of running SRTool that allows for "script-like" execution,
       # extremely useful to debug:
@@ -67,6 +69,11 @@ jobs:
       #       du -sh /cargo-home/*
       #       echo "---- RUNNING BUILD ----"
       #       /srtool/build --save
+      
+      - name: List files in workspace
+        run: |
+          echo "---- Listing Workspace Files ----"
+          find /runtime/${runtime_name}/target/ -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
 
       - name: Upload srtool report
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 #v3.1.3
