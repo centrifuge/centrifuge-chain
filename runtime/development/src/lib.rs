@@ -142,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1033,
+	spec_version: 1035,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -2011,7 +2011,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1033,
+	crate::migrations::UpgradeDevelopment1035,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -2632,6 +2632,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_liquidity_pools, LiquidityPools);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
+			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2688,6 +2689,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_liquidity_pools, LiquidityPools);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
+			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

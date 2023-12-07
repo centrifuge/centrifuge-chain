@@ -25,7 +25,7 @@ jobs:
         package: [altair-runtime, centrifuge-runtime, development-runtime]
     name: ${{ matrix.target }}-${{ matrix.package }}
     steps:
-    # PREP  
+    # PREP
       - name: Check out code
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab #3.5.2
 
@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 #v3.1.3
         with:
           name: srtool-wasm-report.txt
-          path: ./${{ matrix.package }}-srtool-wasm-report.json      
+          path: ./${{ matrix.package }}-srtool-wasm-report.json
 
       - id: 'auth'
         if: github.event_name != 'pull_request'
