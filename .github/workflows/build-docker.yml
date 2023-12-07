@@ -1,10 +1,13 @@
 name: Docker Build
 on:
   # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
+  workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
   push:
     branches: [main]
   release:
-    types: [created] # GITHUB_REF == tag pushed with the release
+    # Release logic:
+    #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
+    types: [published, released, prereleased, created, edited ] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
