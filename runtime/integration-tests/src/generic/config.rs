@@ -6,7 +6,8 @@ use cfg_primitives::{
 };
 use cfg_traits::Millis;
 use cfg_types::{
-	fixed_point::{Quantity, Rate},
+	domain_address::Domain,
+	fixed_point::{Quantity, Rate, Ratio},
 	investments::InvestmentPortfolio,
 	locations::Location,
 	oracles::OracleKey,
@@ -21,6 +22,7 @@ use frame_support::{
 	Parameter,
 };
 use liquidity_pools_gateway_routers::DomainRouter;
+use pallet_liquidity_pools::Message;
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::{
 	apis,
@@ -67,8 +69,11 @@ pub trait Runtime:
 		ModifyPool = pallet_pool_system::Pallet<Self>,
 		ModifyWriteOffPolicy = pallet_loans::Pallet<Self>,
 	> + pallet_permissions::Config<Role = Role, Scope = PermissionScope<PoolId, CurrencyId>>
-	+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = Balance>
-	+ pallet_loans::Config<
+	+ pallet_investments::Config<
+		InvestmentId = TrancheCurrency,
+		Amount = Balance,
+		BalanceRatio = Ratio,
+	> + pallet_loans::Config<
 		Balance = Balance,
 		PoolId = PoolId,
 		LoanId = LoanId,
@@ -102,11 +107,30 @@ pub trait Runtime:
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
 	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
-	+ pallet_liquidity_pools::Config<CurrencyId = CurrencyId, Balance = Balance>
-	+ pallet_liquidity_pools_gateway::Config<Router = DomainRouter<Self>>
-	+ pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
+	+ pallet_liquidity_pools::Config<
+		CurrencyId = CurrencyId,
+		Balance = Balance,
+		PoolId = PoolId,
+		TrancheId = TrancheId,
+		TrancheCurrency = TrancheCurrency,
+		BalanceRatio = Ratio,
+	> + pallet_liquidity_pools_gateway::Config<
+		Router = DomainRouter<Self>,
+		Message = Message<Domain, PoolId, TrancheId, Balance, Quantity>,
+	> + pallet_xcm_transactor::Config<CurrencyId = CurrencyId>
 	+ pallet_ethereum::Config
 	+ pallet_ethereum_transaction::Config
+	+ pallet_order_book::Config<
+		Balance = Balance,
+		AssetCurrencyId = CurrencyId,
+		OrderIdNonce = u64,
+		SellRatio = Ratio,
+	> + pallet_foreign_investments::Config<
+		Balance = Balance,
+		InvestmentId = TrancheCurrency,
+		CurrencyId = CurrencyId,
+		TokenSwapOrderId = u64,
+	>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -130,7 +154,6 @@ pub trait Runtime:
 	/// events to RuntimeEvent in tests.
 	type RuntimeEventExt: Parameter
 		+ Member
-		+ From<frame_system::Event<Self>>
 		+ Debug
 		+ IsType<<Self as frame_system::Config>::RuntimeEvent>
 		+ TryInto<frame_system::Event<Self>>
@@ -138,13 +161,19 @@ pub trait Runtime:
 		+ TryInto<pallet_transaction_payment::Event<Self>>
 		+ TryInto<pallet_loans::Event<Self>>
 		+ TryInto<pallet_pool_system::Event<Self>>
+		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
-		+ From<orml_oracle::Event<Self>>;
+		+ From<orml_oracle::Event<Self>>
+		+ From<pallet_foreign_investments::Event<Self>>
+		+ From<pallet_investments::Event<Self>>
+		+ From<orml_tokens::Event<Self>>
+		+ From<pallet_liquidity_pools_gateway::Event<Self>>
+		+ From<pallet_order_book::Event<Self>>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>

@@ -22,8 +22,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-mod add_allow_upgrade;
-mod foreign_investments;
 pub(crate) mod setup;
 mod transfers;
 
