@@ -57,8 +57,11 @@ pub mod pallet {
 		<T as Config>::Rate,
 	>;
 
-	pub type DisbursingFeeOf<T> =
-		DisbursingFee<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
+	pub type DisbursingFeeOf<T> = DisbursingFee<
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::Balance,
+		<T as Config>::FeeId,
+	>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -254,7 +257,39 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		Proposed {
+			pool_id: T::PoolId,
+			bucket: FeeBucket,
+			fee: PoolFeeOf<T>,
+		},
+		Added {
+			pool_id: T::PoolId,
+			bucket: FeeBucket,
+			fee_id: T::FeeId,
+			fee: PoolFeeOf<T>,
+		},
+		Removed {
+			pool_id: T::PoolId,
+			bucket: FeeBucket,
+			fee_id: T::FeeId,
+		},
+		Charged {
+			fee_id: T::FeeId,
+			amount: T::Balance,
+			pending: T::Balance,
+		},
+		Uncharged {
+			fee_id: T::FeeId,
+			amount: T::Balance,
+			pending: T::Balance,
+		},
+		Paid {
+			fee_id: T::FeeId,
+			amount: T::Balance,
+			destination: T::AccountId,
+		},
+	}
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -310,6 +345,12 @@ pub mod pallet {
 				Change::AppendFee(bucket.clone(), fee.clone()).into(),
 			)?;
 
+			Self::deposit_event(Event::<T>::Proposed {
+				pool_id,
+				bucket,
+				fee,
+			});
+
 			Ok(())
 		}
 
@@ -330,10 +371,8 @@ pub mod pallet {
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
-			let (bucket, fee) = match Self::get_released_change(pool_id, change_id)? {
-				Change::AppendFee(bucket, fee) => Ok((bucket, fee)),
-				_ => Err(Error::<T>::ChangeIdUnrelated),
-			}?;
+			let (bucket, fee) = Self::get_released_change(pool_id, change_id)
+				.map(|Change::AppendFee(bucket, fee)| (bucket, fee))?;
 
 			Self::add_fee(pool_id, bucket, fee)?;
 
@@ -349,11 +388,6 @@ pub mod pallet {
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			#[cfg(feature = "std")]
-			{
-				println!("Removing fee id {fee_id:?}");
-				println!("Created Fees: {:?}", CreatedFees::<T>::get(fee_id));
-			}
 			let fee = CreatedFees::<T>::get(fee_id).ok_or_else(|| Error::<T>::FeeNotFound)?;
 			ensure!(
 				fee.editor.matches_account(&who),
@@ -450,6 +484,12 @@ pub mod pallet {
 						);
 						e
 					})?;
+
+				Self::deposit_event(Event::<T>::Paid {
+					fee_id: fee.fee_id,
+					amount: fee.amount,
+					destination: fee.destination,
+				})
 			}
 
 			Ok(())
@@ -483,38 +523,30 @@ pub mod pallet {
 								portfolio_valuation,
 								epoch_duration.clone(),
 							)
-							.min(portfolio_valuation);
+							.min(reserve);
 
 							reserve = reserve.saturating_sub(fee_amount);
 							fee_amount
 						}
 						FeeAmountType::ChargedUpTo { limit } => {
-							PendingFees::<T>::mutate_exists(fee_id, |maybe_pending| {
-								if let Some(pending) = maybe_pending {
-									// Pending amount might exceed the configured max
-									let max_amount =
-										<FeeAmount<
-											<T as pallet::Config>::Balance,
-											<T as pallet::Config>::Rate,
-										> as FeeAmountProration<T::Balance, T::Rate, T::Time>>::saturated_prorated_amount(
-											&limit,
-											portfolio_valuation,
-											epoch_duration.clone(),
-										);
-									let amount = (*pending).min(max_amount);
+							PendingFees::<T>::mutate(fee_id, |pending| {
+								// Pending amount might exceed the configured max
+								let max_amount =
+									<FeeAmount<
+										<T as pallet::Config>::Balance,
+										<T as pallet::Config>::Rate,
+									> as FeeAmountProration<T::Balance, T::Rate, T::Time>>::saturated_prorated_amount(
+										&limit,
+										portfolio_valuation,
+										epoch_duration.clone(),
+									);
 
-									if reserve >= amount {
-										*maybe_pending = None;
-										reserve -= amount;
-										amount
-									} else {
-										let pending_remainder = amount - reserve;
-										*maybe_pending = Some(pending_remainder);
-										amount - pending_remainder
-									}
-								} else {
-									T::Balance::zero()
-								}
+								let chargeable_amount = (*pending).min(max_amount);
+								let fee_amount = reserve.min(chargeable_amount);
+								*pending = (*pending).saturating_sub(fee_amount);
+								reserve = reserve.saturating_sub(chargeable_amount);
+
+								fee_amount
 							})
 						}
 					};
@@ -523,6 +555,7 @@ pub mod pallet {
 						fees.push(DisbursingFeeOf::<T> {
 							amount: fee_amount,
 							destination: fee.destination,
+							fee_id,
 						});
 					}
 				}
@@ -540,13 +573,35 @@ pub mod pallet {
 		}
 
 		fn charge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error> {
-			PendingFees::<T>::mutate(fee_id, |pending| pending.ensure_add_assign(amount))
-				.map_err(|e| e.into())
+			let pending = PendingFees::<T>::mutate(fee_id, |pending| {
+				pending.ensure_add_assign(amount)?;
+				Ok(pending.clone())
+			})
+			.map_err(|e: DispatchError| e)?;
+
+			Self::deposit_event(Event::<T>::Charged {
+				fee_id,
+				amount,
+				pending,
+			});
+
+			Ok(())
 		}
 
 		fn uncharge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error> {
-			PendingFees::<T>::mutate(fee_id, |pending| pending.ensure_sub_assign(amount))
-				.map_err(|e| e.into())
+			let pending = PendingFees::<T>::mutate(fee_id, |pending| {
+				pending.ensure_sub_assign(amount)?;
+				Ok(pending.clone())
+			})
+			.map_err(|e: DispatchError| e)?;
+
+			Self::deposit_event(Event::<T>::Uncharged {
+				fee_id,
+				amount,
+				pending,
+			});
+
+			Ok(())
 		}
 
 		fn add_fee(
@@ -558,13 +613,16 @@ pub mod pallet {
 
 			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
 				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-			CreatedFees::<T>::insert(fee_id, fee);
-			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
-			#[cfg(feature = "std")]
-			{
-				println!("Adding fee id {fee_id:?}");
-				println!("Created Fees: {:?}", CreatedFees::<T>::get(fee_id));
-			}
+			CreatedFees::<T>::insert(fee_id, fee.clone());
+			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket.clone()));
+
+			Self::deposit_event(Event::<T>::Added {
+				pool_id,
+				bucket,
+				fee,
+				fee_id,
+			});
+
 			Ok(())
 		}
 
@@ -576,18 +634,24 @@ pub mod pallet {
 					.as_ref()
 					.map(|(pool_id, bucket)| {
 						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
-							{
-								println!("Mutate exists during removal with pool id {pool_id:?}, bucket {bucket:?} and fee ids {fee_ids:?}");
-								println!("Binary search {:?}", fee_ids.binary_search(&fee_id));
-							}
 							let pos = fee_ids
-								.binary_search(&fee_id)
-								.map_err(|_| Error::<T>::FeeNotFound)?;
+								.iter()
+								.position(|id| id == &fee_id)
+								.ok_or(Error::<T>::FeeNotFound)?;
 							fee_ids.remove(pos);
-							Ok::<(), DispatchError>(())
+
+							Ok::<(T::PoolId, FeeBucket), DispatchError>((*pool_id, bucket.clone()))
 						})
 					})
-					.transpose()?;
+					.transpose()?
+					.map(|(pool_id, bucket)| {
+						Self::deposit_event(Event::<T>::Removed {
+							pool_id,
+							bucket,
+							fee_id,
+						});
+					});
+
 				*maybe_key = None;
 				Ok::<(), DispatchError>(())
 			})?;
