@@ -120,9 +120,9 @@ pub mod pallet {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn bench_create_funded_pool(a: Self::PoolId, b: &Self::AccountId) {}
+		fn bench_create_funded_pool(_: Self::PoolId, _: &Self::AccountId) {}
 
-		fn bench_investor_setup(a: Self::PoolId, b: Self::AccountId, c: Self::Balance) {}
+		fn bench_investor_setup(_: Self::PoolId, _: Self::AccountId, _: Self::Balance) {}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -130,6 +130,8 @@ pub mod pallet {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
-		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {}
+		fn bench_default_investment_id(_: Self::PoolId) -> Self::InvestmentId {
+			unimplemented!();
+		}
 	}
 }
