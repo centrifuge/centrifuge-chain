@@ -99,7 +99,7 @@ impl<T: Config> InternalActivePricing<T> {
 					origination_date,
 				)?)
 			}
-			ValuationMethod::OutstandingDebt => Ok(debt),
+			ValuationMethod::OutstandingDebt | ValuationMethod::Cash => Ok(debt),
 		}
 	}
 

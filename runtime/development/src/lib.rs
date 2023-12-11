@@ -89,10 +89,11 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
+	changes::FastDelay,
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, CurrencyED,
+	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -141,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1033,
+	spec_version: 1035,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -447,6 +448,7 @@ pub enum ProxyType {
 	PodOperation,
 	PodAuth,
 	PermissionManagement,
+	Transfer,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -595,6 +597,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
 					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
 			),
+			ProxyType::Transfer => {
+				matches!(
+					c,
+					RuntimeCall::XTokens(..)
+						| RuntimeCall::Balances(..)
+						| RuntimeCall::Tokens(..)
+						| RuntimeCall::LiquidityPools(
+							pallet_liquidity_pools::Call::transfer { .. }
+								| pallet_liquidity_pools::Call::transfer_tranche_tokens { .. }
+						)
+				)
+			}
 		}
 	}
 
@@ -1071,7 +1085,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -1385,7 +1399,7 @@ impl pallet_loans::Config for Runtime {
 	type PriceRegistry = PriceCollector;
 	type Quantity = Quantity;
 	type Rate = Rate;
-	type RuntimeChange = runtime_common::changes::fast::RuntimeChange<Runtime>;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
@@ -1501,7 +1515,10 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type PreCurrency = cfg_traits::Always;
-	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreExtrTransfer = (
+		RestrictedTokens<Permissions>,
+		PreNativeTransfer<TransferAllowList>,
+	);
 	type PreFungibleInspect = FungibleInspectPassthrough;
 	type PreFungibleInspectHold = cfg_traits::Always;
 	type PreFungibleMutate = cfg_traits::Always;
@@ -1795,15 +1812,12 @@ impl pallet_block_rewards::Config for Runtime {
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
-parameter_types! {
-	pub const TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
-}
-
 impl pallet_transfer_allowlist::Config for Runtime {
-	type AllowanceFeeKey = TransferAllowlistFeeKey;
 	type CurrencyId = CurrencyId;
-	type Fees = Fees;
+	type Deposit = AllowanceDeposit<Fees>;
+	type HoldId = HoldId;
 	type Location = Location;
+	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
@@ -1907,8 +1921,9 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XTokens: pallet_restricted_xtokens::{Pallet, Call} = 124,
 		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
+		OrmlXTokens: orml_xtokens::{Pallet, Event<T>} = 126,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
@@ -1996,7 +2011,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1033,
+	crate::migrations::UpgradeDevelopment1035,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -2088,6 +2103,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2616,6 +2632,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_liquidity_pools, LiquidityPools);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
+			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2672,6 +2689,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_liquidity_pools, LiquidityPools);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
+			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

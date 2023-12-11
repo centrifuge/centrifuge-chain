@@ -16,6 +16,7 @@ fudge = { workspace = true }
 fudge-core = { workspace = true }
 getrandom = { workspace = true }
 hex = { workspace = true }
+hex-literal = { workspace = true }
 lazy_static = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
@@ -136,6 +137,7 @@ pallet-pool-system = { workspace = true, features = ["std"] }
 pallet-preimage = { workspace = true, features = ["std"] }
 pallet-proxy = { workspace = true, features = ["std"] }
 pallet-restricted-tokens = { workspace = true, features = ["std"] }
+pallet-restricted-xtokens = { workspace = true, features = ["std"] }
 pallet-rewards = { workspace = true, features = ["std"] }
 pallet-scheduler = { workspace = true, features = ["std"] }
 pallet-session = { workspace = true, features = ["std"] }

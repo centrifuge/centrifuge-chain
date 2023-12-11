@@ -66,13 +66,12 @@ mod common {
 	use super::*;
 
 	pub fn initialize_state_for_loans<E: Env<T>, T: Runtime>() -> E {
-		let mut env = E::from_storage(
+		let mut env = E::from_parachain_storage(
 			Genesis::<T>::default()
 				.add(genesis::balances(T::ExistentialDeposit::get() + FOR_FEES))
 				.add(genesis::assets(vec![Usd6::ID]))
 				.add(genesis::tokens(vec![(Usd6::ID, Usd6::ED)]))
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.parachain_state_mut(|| {

@@ -13,7 +13,7 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
-	benchmarking::PoolBenchmarkHelper,
+	benchmarking::FundedPoolBenchmarkHelper,
 	changes::ChangeGuard,
 	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
@@ -76,8 +76,6 @@ fn config_mocks() {
 	MockPools::mock_account_for(|_| 0);
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPools::mock_bench_create_pool(|_, _| {});
-	MockPools::mock_bench_investor_setup(|_, _, _| {});
 	MockPrices::mock_feed_value(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
 	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
@@ -95,8 +93,11 @@ where
 	T::CollectionId: From<u16>,
 	T::ItemId: From<u16>,
 	T::PriceId: From<u32>,
-	T::Pool:
-		PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
+	T::Pool: FundedPoolBenchmarkHelper<
+		PoolId = T::PoolId,
+		AccountId = T::AccountId,
+		Balance = T::Balance,
+	>,
 	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 {
 	fn prepare_benchmark() -> T::PoolId {
@@ -106,7 +107,7 @@ where
 		let pool_id = Default::default();
 
 		let pool_admin = account("pool_admin", 0, 0);
-		T::Pool::bench_create_pool(pool_id, &pool_admin);
+		T::Pool::bench_create_funded_pool(pool_id, &pool_admin);
 
 		let loan_admin = account("loan_admin", 0, 0);
 		T::Permissions::add(
@@ -333,7 +334,7 @@ benchmarks! {
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
-		T::Pool: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
+		T::Pool: FundedPoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
 		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 	}
 

@@ -102,6 +102,7 @@ pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
+pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
@@ -129,7 +130,33 @@ std = [
   # Substrate related
   "frame-support/std",
   "frame-system/std",
+  "log/std",
+  "orml-asset-registry/std",
+  "orml-oracle/std",
   "orml-traits/std",
+  "orml-tokens/std",
+  "pallet-anchors/std",
+  "pallet-authorship/std",
+  "pallet-balances/std",
+  "pallet-base-fee/std",
+  "pallet-data-collector/std",
+  "pallet-ethereum/std",
+  "pallet-evm-chain-id/std",
+  "pallet-evm-precompile-blake2/std",
+  "pallet-evm-precompile-bn128/std",
+  "pallet-evm-precompile-dispatch/std",
+  "pallet-evm-precompile-modexp/std",
+  "pallet-evm-precompile-sha3fips/std",
+  "pallet-evm-precompile-simple/std",
+  "pallet-evm/std",
+  "pallet-investments/std",
+  "pallet-liquidity-pools-gateway/std",
+  "pallet-liquidity-pools/std",
+  "pallet-loans/std",
+  "pallet-pool-system/std",
+  "pallet-restricted-tokens/std",
+  "pallet-treasury/std",
+  "parachain-info/std",
   "polkadot-parachain/std",
   "scale-info/std",
   "serde/std",
@@ -212,6 +239,7 @@ std = [
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-restricted-tokens/std",
+  "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
   "pallet-scheduler/std",
   "pallet-session/std",
@@ -366,6 +394,7 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-restricted-tokens/try-runtime",
+  "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",

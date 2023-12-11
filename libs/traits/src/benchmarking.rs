@@ -14,10 +14,19 @@
 pub trait PoolBenchmarkHelper {
 	type PoolId;
 	type AccountId;
-	type Balance;
 
 	/// Create a pool for the given the pool id and the admin.
 	fn bench_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
+}
+
+/// Benchmark utility to create funded pools
+pub trait FundedPoolBenchmarkHelper {
+	type PoolId;
+	type AccountId;
+	type Balance;
+
+	/// Create a pool for the given the pool id and the admin.
+	fn bench_create_funded_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
 
 	/// Prepare user to be able to invest, i.e. fund with pool currency and give
 	/// permissions.

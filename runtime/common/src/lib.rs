@@ -17,18 +17,43 @@
 
 pub mod account_conversion;
 pub mod apis;
+pub mod changes;
 pub mod evm;
 pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use sp_core::parameter_types;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
+
+parameter_types! {
+	/// The native currency identifier of our currency id enum
+	/// to be used for Get<CurrencyId> types.
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
+
+	/// The hold identifier in our system to be used for
+	/// Get<()> types
+	pub const HoldId: HoldIdentifier = ();
+}
+
+pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
+impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
+	for AllowanceDeposit<T>
+{
+	fn get() -> Balance {
+		T::fee_value(FeeKey::AllowanceCreation)
+	}
+}
+
+/// To be used with the transfer-allowlist pallet across runtimes
+pub type HoldIdentifier = ();
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -159,125 +184,6 @@ pub mod asset_registry {
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
 			Err(())
-		}
-	}
-}
-
-pub mod changes {
-	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::RuntimeDebug;
-	use pallet_loans::entities::changes::Change as LoansChange;
-	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
-	use scale_info::TypeInfo;
-	use sp_runtime::DispatchError;
-
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoansChange<T>),
-	}
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
-			use cfg_primitives::SECONDS_PER_WEEK;
-			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
-			use pallet_pool_system::pool_types::changes::Requirement;
-			use sp_std::vec;
-
-			let epoch = Requirement::NextEpoch;
-			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
-			let blocked = Requirement::BlockedByLockedRedemptions;
-
-			let requirements = match loans_change {
-				// Requirements gathered from
-				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
-					LoanMutation::Maturity(_) => vec![week, blocked],
-					LoanMutation::MaturityExtension(_) => vec![],
-					LoanMutation::InterestPayments(_) => vec![week, blocked],
-					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-					LoanMutation::InterestRate(_) => vec![epoch],
-					LoanMutation::Internal(mutation) => match mutation {
-						InternalMutation::ValuationMethod(_) => vec![week, blocked],
-						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-						InternalMutation::LossGivenDefault(_) => vec![epoch],
-						InternalMutation::DiscountRate(_) => vec![epoch],
-					},
-				},
-				LoansChange::<T>::Policy(_) => vec![week, blocked],
-				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
-			};
-
-			PoolChangeProposal::new(requirements)
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
-			// We dont add any requirement in case of benchmarking.
-			// We assume checking requirements in the pool is something very fast and
-			// deprecable in relation to reading from any storage.
-			// If tomorrow any requirement requires a lot of time,
-			// it should be precomputed in any pool stage, to make the requirement
-			// validation as fast as possible.
-			PoolChangeProposal::new([])
-		}
-	}
-
-	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-			RuntimeChange::Loan(loan_change)
-		}
-	}
-
-	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-		type Error = DispatchError;
-
-		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-			let RuntimeChange::Loan(loan_change) = self;
-			Ok(loan_change)
-		}
-	}
-
-	pub mod fast {
-		use pallet_pool_system::pool_types::changes::Requirement;
-
-		use super::*;
-		const SECONDS_PER_WEEK: u32 = 60;
-
-		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
-
-		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-			fn from(runtime_change: RuntimeChange<T>) -> Self {
-				PoolChangeProposal::new(
-					PoolChangeProposal::from(runtime_change.0)
-						.requirements()
-						.map(|req| match req {
-							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
-							req => req,
-						}),
-				)
-			}
-		}
-
-		/// Used for building CfgChanges in pallet-loans
-		impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-			fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-				Self(loan_change.into())
-			}
-		}
-
-		/// Used for recovering LoanChange in pallet-loans
-		impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-				self.0.try_into()
-			}
 		}
 	}
 }

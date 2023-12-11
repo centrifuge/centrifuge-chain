@@ -80,7 +80,7 @@ use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, CurrencyED,
+	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -437,6 +437,7 @@ pub enum ProxyType {
 	PodOperation,
 	PodAuth,
 	PermissionManagement,
+	Transfer,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -581,6 +582,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
 					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
 			),
+			ProxyType::Transfer => {
+				matches!(
+					c,
+					RuntimeCall::XTokens(..)
+						| RuntimeCall::Balances(..)
+						| RuntimeCall::Tokens(..)
+						| RuntimeCall::LiquidityPools(
+							pallet_liquidity_pools::Call::transfer { .. }
+								| pallet_liquidity_pools::Call::transfer_tranche_tokens { .. }
+						)
+				)
+			}
 		}
 	}
 
@@ -1104,7 +1117,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type PreCurrency = cfg_traits::Always;
-	type PreExtrTransfer = cfg_traits::Always;
+	type PreExtrTransfer = PreNativeTransfer<TransferAllowList>;
 	type PreFungibleInspect = FungibleInspectPassthrough;
 	type PreFungibleInspectHold = cfg_traits::Always;
 	type PreFungibleMutate = cfg_traits::Always;
@@ -1728,6 +1741,17 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+impl pallet_transfer_allowlist::Config for Runtime {
+	type CurrencyId = CurrencyId;
+	type Deposit = AllowanceDeposit<Fees>;
+	type HoldId = HoldId;
+	type Location = Location;
+	type NativeCurrency = NativeCurrency;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1794,14 +1818,16 @@ construct_runtime!(
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 113,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 114,
+		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Config, Event<T>, Origin} = 121,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XTokens: pallet_restricted_xtokens::{Pallet, Call} = 124,
 		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
+		OrmlXTokens: orml_xtokens::{Pallet, Event<T>} = 126,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
@@ -1961,6 +1987,8 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use cfg_types::locations::Location;
+use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2464,6 +2492,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
+			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2540,6 +2569,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
+			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
