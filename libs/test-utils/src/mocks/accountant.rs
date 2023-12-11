@@ -167,12 +167,12 @@ macro_rules! impl_mock_accountant {
 			}
 
 			#[cfg(feature = "runtime-benchmarks")]
-			impl<Tokens> cfg_traits::benchmarking::PoolBenchmarkHelper for $name<Tokens> {
+			impl<Tokens> cfg_traits::benchmarking::FundedPoolBenchmarkHelper for $name<Tokens> {
 				type AccountId = $account_id;
 				type Balance = $balance;
 				type PoolId = ();
 
-				fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+				fn bench_create_funded_pool(_: Self::PoolId, _: &Self::AccountId) {}
 
 				fn bench_investor_setup(_: Self::PoolId, _: Self::AccountId, _: Self::Balance) {}
 			}
