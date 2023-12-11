@@ -56,22 +56,22 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      # - name: Build and push centrifugeio/centrifuge-chain
-      #   uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 #v5
-      #   with:
-      #     context: .
-      #     file: ./docker/centrifuge-chain/Dockerfile
-      #     build-args: |
-      #       FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-      #     push: ${{ github.event_name != 'pull_request' }}
-      #     tags: ${{ steps.meta.outputs.tags }}
-      #     # Cache options:
-      #     # https://docs.docker.com/build/ci/github-actions/cache/
-      #     cache-from: type=gha
-      #     # cache-from: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}
-      #     # https://docs.docker.com/build/cache/backends/inline/
-      #     cache-to: type=gha, mode=max
-      #     # cache-to: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}, mode=max
+      - name: Build and push centrifugeio/centrifuge-chain
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 #v5
+        with:
+          context: .
+          file: ./docker/centrifuge-chain/Dockerfile
+          build-args: |
+            FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          # Cache options:
+          # https://docs.docker.com/build/ci/github-actions/cache/
+          cache-from: type=gha
+          # cache-from: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}
+          # https://docs.docker.com/build/cache/backends/inline/
+          cache-to: type=gha, mode=max
+          # cache-to: type=registry,ref=centrifugeio/centrifuge-chain:${{ github.ref }}, mode=max
 
       - name: Update DockerHub descriptions
         if: contains(github.ref, 'refs/tags/release-v')
@@ -89,7 +89,8 @@ jobs:
         with:
           append_body: true
           body: |
-            Docker tags updated: ${{ steps.meta.outputs.tags }}
+            **Docker tags:** 
+               ${{ steps.meta.outputs.tags }}
 
       - if: failure()
         name: Check available space after build failed
