@@ -12,7 +12,6 @@ use xcm::{
 
 use crate::utils::{AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED};
 
-mod liquidity_pools;
 mod routers;
 
 /// Register AUSD in the asset registry.

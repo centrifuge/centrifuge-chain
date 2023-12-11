@@ -6063,6 +6063,460 @@ mod development {
 			);
 		}
 	}
+
+	mod transfers {
+		use super::*;
+
+		fn transfer_non_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let initial_balance = 2 * AUSD_ED;
+				let amount = initial_balance / 2;
+				let dest_address = DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
+				let currency_id = AUSD_CURRENCY_ID;
+				let source_account = Keyring::Charlie;
+
+				// Mint sufficient balance
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
+					0
+				);
+				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
+					currency_id,
+					&source_account.into(),
+					initial_balance
+				));
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
+					initial_balance
+				);
+
+				// Only `ForeignAsset` can be transferred
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(source_account.into()).into(),
+						CurrencyId::Tranche(42u64, [0u8; 16]),
+						dest_address.clone(),
+						amount,
+					),
+					pallet_liquidity_pools::Error::<T>::InvalidTransferCurrency
+				);
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(source_account.into()).into(),
+						CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
+						dest_address.clone(),
+						amount,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotFound
+				);
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(source_account.into()).into(),
+						CurrencyId::Native,
+						dest_address.clone(),
+						amount,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotFound
+				);
+
+				// Cannot transfer as long as cross chain transferability is disabled
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(source_account.into()).into(),
+						currency_id,
+						dest_address.clone(),
+						initial_balance,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
+				);
+
+				// Enable LiquidityPools transferability
+				enable_liquidity_pool_transferability::<T>(currency_id);
+
+				// Cannot transfer more than owned
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer(
+						RawOrigin::Signed(source_account.into()).into(),
+						currency_id,
+						dest_address.clone(),
+						initial_balance.saturating_add(1),
+					),
+					orml_tokens::Error::<T>::BalanceTooLow
+				);
+
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
+					RawOrigin::Signed(source_account.into()).into(),
+					currency_id,
+					dest_address.clone(),
+					amount,
+				));
+
+				// The account to which the currency should have been transferred
+				// to on Centrifuge for bookkeeping purposes.
+				let domain_account: AccountId = Domain::convert(dest_address.domain());
+				// Verify that the correct amount of the token was transferred
+				// to the dest domain account on Centrifuge.
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(currency_id, &domain_account),
+					amount
+				);
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
+					initial_balance - amount
+				);
+			});
+		}
+
+		fn transfer_non_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let amount = DEFAULT_BALANCE_GLMR / 2;
+				let currency_id = AUSD_CURRENCY_ID;
+				let receiver: AccountId = Keyring::Bob.into();
+
+				// Mock incoming decrease message
+				let msg = LiquidityPoolMessage::Transfer {
+					currency: general_currency_index::<T>(currency_id),
+					// sender is irrelevant for other -> local
+					sender: Keyring::Alice.into(),
+					receiver: receiver.clone().into(),
+					amount,
+				};
+
+				assert_eq!(orml_tokens::Pallet::<T>::total_issuance(currency_id), 0);
+
+				// Finally, verify that we can now transfer the tranche to the destination
+				// address
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+					msg
+				));
+
+				// Verify that the correct amount was minted
+				assert_eq!(
+					orml_tokens::Pallet::<T>::total_issuance(currency_id),
+					amount
+				);
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(currency_id, &receiver),
+					amount
+				);
+
+				// Verify empty transfers throw
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						LiquidityPoolMessage::Transfer {
+							currency: general_currency_index::<T>(currency_id),
+							sender: Keyring::Alice.into(),
+							receiver: receiver.into(),
+							amount: 0,
+						},
+					),
+					pallet_liquidity_pools::Error::<T>::InvalidTransferAmount
+				);
+			});
+		}
+
+		fn transfer_tranche_tokens_from_local<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let pool_id = DEFAULT_POOL_ID;
+				let amount = 100_000;
+				let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+				let receiver = Keyring::Bob;
+
+				// Create the pool
+				create_ausd_pool::<T>(pool_id);
+
+				let tranche_tokens: CurrencyId = cfg_types::tokens::TrancheCurrency::generate(
+					pool_id,
+					default_tranche_id::<T>(pool_id),
+				)
+				.into();
+
+				// Verify that we first need the destination address to be whitelisted
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						dest_address.clone(),
+						amount,
+					),
+					pallet_liquidity_pools::Error::<T>::UnauthorizedTransfer
+				);
+
+				// Make receiver the MembersListAdmin of this Pool
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					receiver.into(),
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+				));
+
+				// Whitelist destination as TrancheInvestor of this Pool
+				let valid_until = u64::MAX;
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					RawOrigin::Signed(receiver.into()).into(),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						default_tranche_id::<T>(pool_id),
+						valid_until
+					)),
+				));
+
+				// Call the pallet_liquidity_pools::Pallet::<T>::update_member which ensures the
+				// destination address is whitelisted.
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::update_member(
+					RawOrigin::Signed(receiver.into()).into(),
+					pool_id,
+					default_tranche_id::<T>(pool_id),
+					dest_address.clone(),
+					valid_until,
+				));
+
+				// Give receiver enough Tranche balance to be able to transfer it
+				assert_ok!(orml_tokens::Pallet::<T>::deposit(
+					tranche_tokens,
+					&receiver.into(),
+					amount
+				));
+
+				// Finally, verify that we can now transfer the tranche to the destination
+				// address
+				assert_ok!(
+					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+						RawOrigin::Signed(receiver.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						dest_address.clone(),
+						amount,
+					)
+				);
+
+				// The account to which the tranche should have been transferred
+				// to on Centrifuge for bookkeeping purposes.
+				let domain_account: AccountId = Domain::convert(dest_address.domain());
+
+				// Verify that the correct amount of the Tranche token was transferred
+				// to the dest domain account on Centrifuge.
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &domain_account),
+					amount
+				);
+				assert!(
+					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &receiver.into())
+						.is_zero()
+				);
+			});
+		}
+
+		fn transfer_tranche_tokens_to_local<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				// Create new pool
+				let pool_id = DEFAULT_POOL_ID;
+				create_ausd_pool::<T>(pool_id);
+
+				let amount = 100_000_000;
+				let receiver: AccountId = Keyring::Bob.into();
+				let sender: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+				let sending_domain_locator =
+					Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
+				let tranche_id = default_tranche_id::<T>(pool_id);
+				let tranche_tokens: CurrencyId =
+					cfg_types::tokens::TrancheCurrency::generate(pool_id, tranche_id).into();
+				let valid_until = u64::MAX;
+
+				// Fund `DomainLocator` account of origination domain tranche tokens are
+				// transferred from this account instead of minting
+				assert_ok!(orml_tokens::Pallet::<T>::mint_into(
+					tranche_tokens,
+					&sending_domain_locator,
+					amount
+				));
+
+				// Mock incoming decrease message
+				let msg = LiquidityPoolMessage::TransferTrancheTokens {
+					pool_id,
+					tranche_id,
+					sender: sender.address(),
+					domain: Domain::Centrifuge,
+					receiver: receiver.clone().into(),
+					amount,
+				};
+
+				// Verify that we first need the receiver to be whitelisted
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						msg.clone()
+					),
+					pallet_liquidity_pools::Error::<T>::UnauthorizedTransfer
+				);
+
+				// Make receiver the MembersListAdmin of this Pool
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					receiver.clone(),
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+				));
+
+				// Whitelist destination as TrancheInvestor of this Pool
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					RawOrigin::Signed(receiver.clone()).into(),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					receiver.clone(),
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::TrancheInvestor(
+						default_tranche_id::<T>(pool_id),
+						valid_until
+					)),
+				));
+
+				// Finally, verify that we can now transfer the tranche to the destination
+				// address
+				assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+					DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+					msg
+				));
+
+				// Verify that the correct amount of the Tranche token was transferred
+				// to the dest domain account on Centrifuge.
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(tranche_tokens, &receiver),
+					amount
+				);
+				assert!(orml_tokens::Pallet::<T>::free_balance(
+					tranche_tokens,
+					&sending_domain_locator
+				)
+				.is_zero());
+			});
+		}
+
+		/// Try to transfer tranches for non-existing pools or invalid tranche
+		/// ids for existing pools.
+		fn transferring_invalid_tranche_tokens_should_fail<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+
+				let valid_pool_id: u64 = 42;
+				create_ausd_pool::<T>(valid_pool_id);
+				let valid_tranche_id = default_tranche_id::<T>(valid_pool_id);
+				let valid_until = u64::MAX;
+				let transfer_amount = 42;
+				let invalid_pool_id = valid_pool_id + 1;
+				let invalid_tranche_id = valid_tranche_id.map(|i| i.saturating_add(1));
+				assert!(pallet_pool_system::Pallet::<T>::pool(invalid_pool_id).is_none());
+
+				// Make Keyring::Bob the MembersListAdmin of both pools
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					Keyring::Bob.into(),
+					PermissionScope::Pool(valid_pool_id),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+				));
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					Role::PoolRole(PoolRole::PoolAdmin),
+					Keyring::Bob.into(),
+					PermissionScope::Pool(invalid_pool_id),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+				));
+
+				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
+				// (invalid_pool_id, valid_tranche_id)
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					RawOrigin::Signed(Keyring::Bob.into()).into(),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					PermissionScope::Pool(invalid_pool_id),
+					Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
+				));
+				assert_ok!(pallet_permissions::Pallet::<T>::add(
+					RawOrigin::Signed(Keyring::Bob.into()).into(),
+					Role::PoolRole(PoolRole::InvestorAdmin),
+					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
+					PermissionScope::Pool(valid_pool_id),
+					Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
+				));
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						invalid_pool_id,
+						valid_tranche_id,
+						dest_address.clone(),
+						transfer_amount
+					),
+					pallet_liquidity_pools::Error::<T>::PoolNotFound
+				);
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						valid_pool_id,
+						invalid_tranche_id,
+						dest_address,
+						transfer_amount
+					),
+					pallet_liquidity_pools::Error::<T>::TrancheNotFound
+				);
+			});
+		}
+
+		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_from_local);
+		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_to_local);
+		crate::test_for_runtimes!([development], transfer_tranche_tokens_from_local);
+		crate::test_for_runtimes!([development], transfer_tranche_tokens_to_local);
+		crate::test_for_runtimes!(
+			[development],
+			transferring_invalid_tranche_tokens_should_fail
+		);
+	}
 }
 
 mod altair {
