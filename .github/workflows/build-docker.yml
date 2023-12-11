@@ -80,6 +80,14 @@ jobs:
           repository: centrifuge/centrifuge-chain
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
+          
+      - name: Update GitHub release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          append_body: true
+          body: |
+            Docker Image: [`${{ steps.meta.outputs.tags[0] }}`](https://hub.docker.com/layers/centrifugeio/centrifuge-chain/${{ steps.meta.outputs.tags[0] }})
 
       - if: failure()
         name: Check available space after build failed
