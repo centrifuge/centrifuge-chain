@@ -172,7 +172,7 @@ macro_rules! impl_mock_accountant {
 				type Balance = $balance;
 				type PoolId = ();
 
-				fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+				fn bench_create_funded_pool(_: Self::PoolId, _: &Self::AccountId) {}
 
 				fn bench_investor_setup(_: Self::PoolId, _: Self::AccountId, _: Self::Balance) {}
 			}
