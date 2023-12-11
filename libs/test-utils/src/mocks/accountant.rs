@@ -167,7 +167,7 @@ macro_rules! impl_mock_accountant {
 			}
 
 			#[cfg(feature = "runtime-benchmarks")]
-			impl<Tokens> cfg_traits::benchmarking::PoolBenchmarkHelper for $name<Tokens> {
+			impl<Tokens> cfg_traits::benchmarking::FundedPoolBenchmarkHelper for $name<Tokens> {
 				type AccountId = $account_id;
 				type Balance = $balance;
 				type PoolId = ();

@@ -15,7 +15,7 @@ use cfg_primitives::CFG;
 use cfg_traits::{
 	benchmarking::{
 		BenchForeignInvestmentSetupInfo, ForeignInvestmentBenchmarkHelper,
-		InvestmentIdBenchmarkHelper, OrderBookBenchmarkHelper, PoolBenchmarkHelper,
+		FundedPoolBenchmarkHelper, InvestmentIdBenchmarkHelper, OrderBookBenchmarkHelper,
 	},
 	investments::{ForeignInvestment, OrderManager},
 };
@@ -41,8 +41,11 @@ impl<T: Config> ForeignInvestmentBenchmarkHelper for Pallet<T>
 where
 	T::Balance: From<u128>,
 	T::CurrencyId: From<CurrencyId>,
-	T::PoolInspect: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>
-		+ InvestmentIdBenchmarkHelper<PoolId = T::PoolId, InvestmentId = T::InvestmentId>,
+	T::PoolInspect: FundedPoolBenchmarkHelper<
+			PoolId = T::PoolId,
+			AccountId = T::AccountId,
+			Balance = T::Balance,
+		> + InvestmentIdBenchmarkHelper<PoolId = T::PoolId, InvestmentId = T::InvestmentId>,
 	T::TokenSwaps: OrderBookBenchmarkHelper<
 		AccountId = T::AccountId,
 		Balance = T::Balance,
@@ -66,7 +69,10 @@ where
 	) -> BenchForeignInvestmentSetupInfo<Self::AccountId, Self::InvestmentId, Self::CurrencyId> {
 		let pool_id = Default::default();
 		let pool_admin: T::AccountId = frame_benchmarking::account("pool_admin", 0, 0);
-		<T::PoolInspect as PoolBenchmarkHelper>::bench_create_pool(pool_id, &pool_admin);
+		<T::PoolInspect as FundedPoolBenchmarkHelper>::bench_create_funded_pool(
+			pool_id,
+			&pool_admin,
+		);
 
 		// Add bidirectional trading pair and fund both accounts
 		let (investor, funded_trader) =
@@ -88,7 +94,7 @@ where
 		);
 
 		// Grant investor permissions
-		<T::PoolInspect as PoolBenchmarkHelper>::bench_investor_setup(
+		<T::PoolInspect as FundedPoolBenchmarkHelper>::bench_investor_setup(
 			pool_id,
 			investor.clone(),
 			T::Balance::zero(),

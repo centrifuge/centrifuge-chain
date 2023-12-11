@@ -64,22 +64,6 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
-
-		pub fn mock_bench_create_pool(f: impl Fn(T::PoolId, &T::AccountId) + 'static) {
-			register_call!(move |(a, b)| f(a, b));
-		}
-
-		pub fn mock_bench_investor_setup(
-			f: impl Fn(T::PoolId, T::AccountId, T::Balance) + 'static,
-		) {
-			register_call!(move |(a, b, c)| f(a, b, c));
-		}
-
-		pub fn mock_bench_default_investment_id(
-			f: impl Fn(T::PoolId) -> T::TrancheCurrency + 'static + 'static,
-		) {
-			register_call!(f);
-		}
 	}
 
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
@@ -131,18 +115,14 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
+	impl<T: Config> cfg_traits::benchmarking::FundedPoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn bench_create_pool(a: Self::PoolId, b: &Self::AccountId) {
-			execute_call!((a, b))
-		}
+		fn bench_create_funded_pool(a: Self::PoolId, b: &Self::AccountId) {}
 
-		fn bench_investor_setup(a: Self::PoolId, b: Self::AccountId, c: Self::Balance) {
-			execute_call!((a, b, c))
-		}
+		fn bench_investor_setup(a: Self::PoolId, b: Self::AccountId, c: Self::Balance) {}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -150,8 +130,6 @@ pub mod pallet {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
-		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {
-			execute_call!(a)
-		}
+		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {}
 	}
 }
