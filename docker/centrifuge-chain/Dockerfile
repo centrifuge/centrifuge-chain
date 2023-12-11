@@ -36,7 +36,7 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 		io.centrifuge.image.created="${BUILD_DATE}"
 
 	# Add chain resources to image
-	COPY res /resources/
+	COPY node/res /resources/
 
 	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
 
