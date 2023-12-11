@@ -51,10 +51,7 @@ use crate::{
 		},
 		relay::{Hrmp as RelayHrmp, RuntimeOrigin as RelayRuntimeOrigin},
 	},
-	liquidity_pools::pallet::development::{
-		setup::{centrifuge_account, cfg, sibling_account},
-		tests::register_ausd,
-	},
+	liquidity_pools::pallet::development::setup::{centrifuge_account, cfg, sibling_account},
 	utils::{
 		accounts::Keyring,
 		env,

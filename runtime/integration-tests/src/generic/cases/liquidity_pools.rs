@@ -1,7 +1,9 @@
-use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_primitives::{
+	currency_decimals, parachains, AccountId, Balance, CouncilCollective, PoolId, TrancheId,
+};
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, OrderManager, TrancheCurrency},
-	liquidity_pools::InboundQueue,
+	liquidity_pools::{InboundQueue, OutboundQueue},
 	ConversionToAssetBalance, IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate,
 	Seconds,
 };
@@ -11,6 +13,7 @@ use cfg_types::{
 	investments::{
 		ForeignInvestmentInfo, InvestCollection, InvestmentAccount, RedeemCollection, Swap,
 	},
+	locations::Location,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
@@ -22,13 +25,16 @@ use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{RawOrigin, Weight},
+	pallet_prelude::GenesisBuild,
 	traits::{
-		fungibles::{Inspect, Mutate},
+		fungible::Mutate as FungibleMutate,
+		fungibles::{Inspect, Mutate as FungiblesMutate},
 		OriginTrait, PalletInfo,
 	},
 };
 use liquidity_pools_gateway_routers::{
-	DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE,
+	AxelarEVMRouter, AxelarXCMRouter, DomainRouter, EVMDomain, EVMRouter, EthereumXCMRouter,
+	FeeValues, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
 use pallet_foreign_investments::{
@@ -39,17 +45,23 @@ use pallet_foreign_investments::{
 };
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
+use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
-use polkadot_parachain::primitives::Id;
+use polkadot_core_primitives::BlakeTwo256;
+use polkadot_parachain::primitives::{Id, ValidationCode};
+use polkadot_runtime_parachains::{
+	paras,
+	paras::{ParaGenesisArgs, ParaKind},
+};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	foreign_investments::IdentityPoolCurrencyConverter,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
 };
-use sp_core::{Get, H160};
+use sp_core::{Get, H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert as C2, EnsureAdd, One, Zero},
+	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert as C2, EnsureAdd, Hash, One, Zero},
 	BoundedVec, DispatchError, FixedPointNumber, Perquintill, SaturatedConversion, WeakBoundedVec,
 };
 use xcm::{
@@ -68,7 +80,7 @@ use crate::{
 		config::Runtime,
 		env::{Blocks, Env},
 		envs::fudge_env::{handle::FudgeHandle, FudgeEnv, FudgeSupport},
-		utils::{genesis, genesis::Genesis},
+		utils::{democracy::execute_via_democracy, genesis, genesis::Genesis},
 	},
 	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
 };
@@ -6517,6 +6529,310 @@ mod development {
 			transferring_invalid_tranche_tokens_should_fail
 		);
 	}
+
+	mod routers {
+		use super::*;
+
+		mod axelar_evm {
+			use super::*;
+
+			mod utils {
+				use super::*;
+
+				pub fn get_council_members() -> Vec<Keyring> {
+					vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
+				}
+
+				pub fn set_domain_router_call<T: Runtime>(
+					domain: Domain,
+					router: DomainRouter<T>,
+				) -> T::RuntimeCallExt {
+					LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
+				}
+
+				pub fn mint_balance_into_derived_account<T: Runtime>(
+					env: &mut impl Env<T>,
+					address: H160,
+					balance: u128,
+				) {
+					let chain_id = env.parachain_state(|| pallet_evm_chain_id::Pallet::<T>::get());
+
+					let derived_account = AccountConverter::<T, ()>::convert_evm_address(
+						chain_id,
+						address.to_fixed_bytes(),
+					);
+
+					env.parachain_state_mut(|| {
+						pallet_balances::Pallet::<T>::mint_into(&derived_account.into(), balance)
+							.unwrap()
+					});
+				}
+			}
+
+			use utils::*;
+
+			fn test_via_outbound_queue<T: Runtime + FudgeSupport>() {
+				let mut env = FudgeEnv::<T>::from_parachain_storage(
+					Genesis::<T>::default()
+						.add(genesis::balances::<T>(cfg(1_000)))
+						.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+							get_council_members(),
+						))
+						.storage(),
+				);
+
+				let test_domain = Domain::EVM(1);
+
+				let axelar_contract_address = H160::from_low_u64_be(1);
+				let axelar_contract_code: Vec<u8> = vec![0, 0, 0];
+				let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
+				let liquidity_pools_contract_address = H160::from_low_u64_be(2);
+
+				env.parachain_state_mut(|| {
+					pallet_evm::AccountCodes::<T>::insert(
+						axelar_contract_address,
+						axelar_contract_code,
+					)
+				});
+
+				let transaction_call_cost = env
+					.parachain_state(|| <T as pallet_evm::Config>::config().gas_transaction_call);
+
+				let evm_domain = EVMDomain {
+					target_contract_address: axelar_contract_address,
+					target_contract_hash: axelar_contract_hash,
+					fee_values: FeeValues {
+						value: U256::from(10),
+						gas_limit: U256::from(transaction_call_cost + 10_000),
+						gas_price: U256::from(10),
+					},
+				};
+
+				let axelar_evm_router = AxelarEVMRouter::<T> {
+					router: EVMRouter {
+						evm_domain,
+						_marker: Default::default(),
+					},
+					evm_chain: BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+						"ethereum".as_bytes().to_vec(),
+					)
+					.unwrap(),
+					_marker: Default::default(),
+					liquidity_pools_contract_address,
+				};
+
+				let test_router = DomainRouter::<T>::AxelarEVM(axelar_evm_router);
+
+				let set_domain_router_call =
+					set_domain_router_call(test_domain.clone(), test_router.clone());
+
+				let council_threshold = 2;
+				let voting_period = 3;
+
+				execute_via_democracy::<T>(
+					&mut env,
+					get_council_members(),
+					set_domain_router_call,
+					council_threshold,
+					voting_period,
+					0,
+					0,
+				);
+
+				let sender = Keyring::Alice.to_account_id();
+				let gateway_sender = env.parachain_state(|| {
+					<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
+				});
+
+				let gateway_sender_h160: H160 = H160::from_slice(
+					&<sp_core::crypto::AccountId32 as AsRef<[u8; 32]>>::as_ref(&gateway_sender)
+						[0..20],
+				);
+
+				// Note how both the target address and the gateway sender need to have some
+				// balance.
+				mint_balance_into_derived_account::<T>(
+					&mut env,
+					axelar_contract_address,
+					cfg(1_000_000_000),
+				);
+				mint_balance_into_derived_account::<T>(
+					&mut env,
+					gateway_sender_h160,
+					cfg(1_000_000),
+				);
+
+				let msg = LiquidityPoolMessage::Transfer {
+					currency: 0,
+					sender: Keyring::Alice.to_account_id().into(),
+					receiver: Keyring::Bob.to_account_id().into(),
+					amount: 1_000u128,
+				};
+
+				assert_ok!(env.parachain_state(|| {
+					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
+						sender,
+						test_domain,
+						msg,
+					)
+				}));
+			}
+
+			crate::test_for_runtimes!([development], test_via_outbound_queue);
+		}
+
+		mod ethereum_xcm {
+			use super::*;
+
+			mod utils {
+				use super::*;
+
+				pub fn submit_test_fn<T: Runtime + FudgeSupport>(
+					router_creation_fn: RouterCreationFn<T>,
+				) {
+					let mut env = FudgeEnv::<T>::from_parachain_storage(
+						Genesis::default()
+							.add(genesis::balances::<T>(cfg(1_000)))
+							.storage(),
+					);
+
+					setup_test(&mut env);
+
+					env.parachain_state_mut(|| {
+						let domain_router = router_creation_fn(
+							MultiLocation {
+								parents: 1,
+								interior: X1(Parachain(T::FudgeHandle::SIBLING_ID)),
+							}
+							.into(),
+							crate::utils::GLMR_CURRENCY_ID,
+						);
+
+						assert_ok!(
+							pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+								<T as frame_system::Config>::RuntimeOrigin::root(),
+								TEST_DOMAIN,
+								domain_router,
+							)
+						);
+
+						let msg =
+							Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
+								currency: 0,
+								sender: Keyring::Alice.into(),
+								receiver: Keyring::Bob.into(),
+								amount: 1_000u128,
+							};
+
+						assert_ok!(
+							<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
+								Keyring::Alice.into(),
+								TEST_DOMAIN,
+								msg.clone(),
+							)
+						);
+
+						assert_noop!(
+							<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
+								Keyring::Alice.into(),
+								Domain::EVM(1285),
+								msg.clone(),
+							),
+							pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound,
+						);
+					});
+				}
+
+				type RouterCreationFn<T> =
+					Box<dyn Fn(VersionedMultiLocation, CurrencyId) -> DomainRouter<T>>;
+
+				pub fn get_axelar_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
+				{
+					Box::new(
+						|location: VersionedMultiLocation,
+						 currency_id: CurrencyId|
+						 -> DomainRouter<T> {
+							let router = AxelarXCMRouter::<T> {
+								router: XCMRouter {
+									xcm_domain: XcmDomain {
+										location: Box::new(
+											location.try_into().expect("Bad xcm domain location"),
+										),
+										ethereum_xcm_transact_call_index: BoundedVec::truncate_from(
+											vec![38, 0],
+										),
+										contract_address: H160::from_low_u64_be(11),
+										max_gas_limit: 700_000,
+										transact_required_weight_at_most: Default::default(),
+										overall_weight: Default::default(),
+										fee_currency: currency_id,
+										fee_amount: dollar(18).saturating_div(5),
+									},
+									_marker: Default::default(),
+								},
+								axelar_target_chain: BoundedVec::<
+									u8,
+									ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>,
+								>::try_from("ethereum".as_bytes().to_vec())
+								.unwrap(),
+								axelar_target_contract: H160::from_low_u64_be(111),
+								_marker: Default::default(),
+							};
+
+							DomainRouter::AxelarXCM(router)
+						},
+					)
+				}
+
+				pub fn get_ethereum_xcm_router_fn<T: Runtime + FudgeSupport>() -> RouterCreationFn<T>
+				{
+					Box::new(
+						|location: VersionedMultiLocation,
+						 currency_id: CurrencyId|
+						 -> DomainRouter<T> {
+							let router = EthereumXCMRouter::<T> {
+								router: XCMRouter {
+									xcm_domain: XcmDomain {
+										location: Box::new(
+											location.try_into().expect("Bad xcm domain location"),
+										),
+										ethereum_xcm_transact_call_index: BoundedVec::truncate_from(
+											vec![38, 0],
+										),
+										contract_address: H160::from_low_u64_be(11),
+										max_gas_limit: 700_000,
+										transact_required_weight_at_most: Default::default(),
+										overall_weight: Default::default(),
+										fee_currency: currency_id,
+										fee_amount: dollar(18).saturating_div(5),
+									},
+									_marker: Default::default(),
+								},
+								_marker: Default::default(),
+							};
+
+							DomainRouter::EthereumXCM(router)
+						},
+					)
+				}
+			}
+
+			use utils::*;
+
+			const TEST_DOMAIN: Domain = Domain::EVM(1);
+
+			fn submit_ethereum_xcm<T: Runtime + FudgeSupport>() {
+				submit_test_fn::<T>(get_ethereum_xcm_router_fn::<T>());
+			}
+
+			fn submit_axelar_xcm<T: Runtime + FudgeSupport>() {
+				submit_test_fn::<T>(get_axelar_xcm_router_fn::<T>());
+			}
+
+			crate::test_for_runtimes!([development], submit_ethereum_xcm);
+			crate::test_for_runtimes!([development], submit_axelar_xcm);
+		}
+	}
 }
 
 mod altair {
@@ -8032,22 +8348,6 @@ mod centrifuge {
 	}
 
 	mod restricted_transfers {
-		use cfg_types::{
-			domain_address::{Domain, DomainAddress},
-			locations::Location,
-		};
-		use frame_support::{pallet_prelude::GenesisBuild, traits::fungibles::Mutate, BoundedVec};
-		use liquidity_pools_gateway_routers::{
-			DomainRouter, EthereumXCMRouter, XCMRouter, XcmDomain,
-		};
-		use polkadot_parachain::primitives::ValidationCode;
-		use polkadot_runtime_parachains::{
-			paras,
-			paras::{ParaGenesisArgs, ParaKind},
-		};
-		use sp_core::{Hasher, H160};
-		use sp_runtime::traits::BlakeTwo256;
-
 		use super::*;
 		use crate::generic::envs::runtime_env::RuntimeEnv;
 

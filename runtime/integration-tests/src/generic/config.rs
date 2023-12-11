@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use cfg_primitives::{
-	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, Header, Index, ItemId, LoanId,
-	PoolId, Signature, TrancheId,
+	AccountId, Address, AuraId, Balance, BlockNumber, CollectionId, CouncilCollective, Header,
+	Index, ItemId, LoanId, PoolId, Signature, TrancheId,
 };
 use cfg_traits::Millis;
 use cfg_types::{
@@ -18,7 +18,7 @@ use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
-	traits::{IsType, OriginTrait},
+	traits::{Currency, IsType, OriginTrait},
 	Parameter,
 };
 use liquidity_pools_gateway_routers::DomainRouter;
@@ -53,6 +53,7 @@ pub trait Runtime:
 		BlockNumber = BlockNumber,
 		Lookup = AccountIdLookup<AccountId, ()>,
 		RuntimeOrigin = Self::RuntimeOriginExt,
+		Hash = H256,
 	> + pallet_pool_system::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
@@ -130,7 +131,10 @@ pub trait Runtime:
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
 		TokenSwapOrderId = u64,
-	>
+	> + pallet_preimage::Config
+	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
+	+ pallet_democracy::Config<Currency = Self::CurrencyExt>
+	+ pallet_evm_chain_id::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -147,7 +151,11 @@ pub trait Runtime:
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
-		+ From<orml_oracle::Call<Self>>;
+		+ From<orml_oracle::Call<Self>>
+		+ From<pallet_preimage::Call<Self>>
+		+ From<pallet_collective::Call<Self, CouncilCollective>>
+		+ From<pallet_democracy::Call<Self>>
+		+ From<pallet_liquidity_pools_gateway::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
@@ -173,7 +181,10 @@ pub trait Runtime:
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
 		+ From<pallet_liquidity_pools_gateway::Event<Self>>
-		+ From<pallet_order_book::Event<Self>>;
+		+ From<pallet_order_book::Event<Self>>
+		+ From<pallet_preimage::Event<Self>>
+		+ From<pallet_collective::Event<Self, CouncilCollective>>
+		+ From<pallet_democracy::Event<Self>>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>
@@ -181,6 +192,8 @@ pub trait Runtime:
 		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall>
 		+ From<pallet_ethereum::RawOrigin>
 		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>;
+
+	type CurrencyExt: Currency<Self::AccountId, Balance = Balance>;
 
 	/// Block used by the runtime
 	type Block: Block<

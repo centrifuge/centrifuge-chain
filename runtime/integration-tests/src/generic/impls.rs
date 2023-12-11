@@ -10,6 +10,7 @@ macro_rules! impl_runtime {
 			impl Runtime for $runtime_path::Runtime {
 				type Api = Self;
 				type Block = $runtime_path::Block;
+				type CurrencyExt = <$runtime_path::Runtime as pallet_democracy::Config>::Currency;
 				type MaxTranchesExt = $runtime_path::MaxTranches;
 				type RuntimeCallExt = $runtime_path::RuntimeCall;
 				type RuntimeEventExt = $runtime_path::RuntimeEvent;
