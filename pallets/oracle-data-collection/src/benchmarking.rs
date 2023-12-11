@@ -1,4 +1,4 @@
-use cfg_traits::{changes::ChangeGuard, PreConditions};
+use cfg_traits::{changes::ChangeGuard, PreConditions, ValueProvider};
 use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_support::storage::bounded_vec::BoundedVec;
 use frame_system::RawOrigin;
@@ -120,6 +120,10 @@ mod benchmarks {
 		// m keys with n feeders
 		for k in 0..m {
 			let key = T::OracleKey::from(k);
+
+			// Set the required state for this key
+			T::OracleProvider::set(&(admin.clone(), T::CollectionId::default()), &key);
+
 			let feeders: BoundedVec<_, _> = (0..n)
 				.map(|i| account("feeder", i, 0))
 				.collect::<Vec<_>>()

@@ -148,21 +148,14 @@ pub mod benchmarks_util {
 
 /// A provider bridge that transform generic quantity representation of a price
 /// into a balance denominated in a pool currency.
-pub struct OracleConverterBridge<Provider, AssetRegistry, Pools>(
-	PhantomData<(Provider, AssetRegistry, Pools)>,
-);
+pub struct OracleConverterBridge<Provider, Runtime>(PhantomData<(Provider, Runtime)>);
 
-const NO_CURRENCY_ERROR: DispatchError =
-	DispatchError::Other("OracleConverterBridge: No currency for pool");
-const NO_METADATA_ERROR: DispatchError =
-	DispatchError::Other("OracleConverterBridge: No metadata for currency");
-
-impl<Provider, AssetRegistry, Pools> ValueProvider<(AccountId, PoolId), OracleKey>
-	for OracleConverterBridge<Provider, AssetRegistry, Pools>
+impl<Provider, Runtime> ValueProvider<(AccountId, PoolId), OracleKey>
+	for OracleConverterBridge<Provider, Runtime>
 where
 	Provider: ValueProvider<AccountId, OracleKey, Value = Quantity>,
-	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
-	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+	Runtime: orml_asset_registry::Config<AssetId = CurrencyId>
+		+ pallet_pool_system::Config<PoolId = PoolId, CurrencyId = CurrencyId>,
 {
 	type Timestamp = Provider::Timestamp;
 	type Value = Balance;
@@ -173,8 +166,12 @@ where
 	) -> Result<(Balance, Self::Timestamp), DispatchError> {
 		let (value, timestamp) = Provider::get(account_id, key)?;
 
-		let currency = Pools::currency_for(*pool_id).ok_or(NO_CURRENCY_ERROR)?;
-		let metadata = AssetRegistry::metadata(&currency).ok_or(NO_METADATA_ERROR)?;
+		let currency = pallet_pool_system::Pallet::<Runtime>::currency_for(*pool_id).ok_or(
+			DispatchError::Other("OracleConverterBridge: No currency for pool"),
+		)?;
+		let metadata = orml_asset_registry::Pallet::<Runtime>::metadata(&currency).ok_or(
+			DispatchError::Other("OracleConverterBridge: No metadata for currency"),
+		)?;
 
 		let balance = fixed_point_to_balance(value, metadata.decimals.ensure_into()?)?;
 
@@ -184,9 +181,13 @@ where
 	/// Allows to initialize an initial state required for a pallet that
 	/// calls `get()`.
 	#[cfg(feature = "runtime-benchmarks")]
-	fn set((account_id, pool_id): &(AccountId, PoolId), key: &OracleKey) {
-		// TODO
-		// initialize pool
-		// initialize asset_registry
+	fn set((_, pool_id): &(AccountId, PoolId), _: &OracleKey) {
+		use cfg_traits::benchmarking::PoolBenchmarkHelper;
+		use frame_benchmarking::account;
+
+		if !pallet_pool_system::Pallet::<Runtime>::pool_exists(*pool_id) {
+			let admin = account("OracleConverterBridge::admin", 0, 0);
+			pallet_pool_system::Pallet::<Runtime>::bench_create_pool(pool_id, admin);
+		}
 	}
 }

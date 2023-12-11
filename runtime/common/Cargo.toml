@@ -120,6 +120,9 @@ pallet-xcm = { workspace = true }
 pallet-xcm-transactor = { workspace = true }
 parachain-info = { workspace = true }
 
+# Optionals for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
 [dev-dependencies]
 cfg-mocks = { workspace = true }
 
@@ -132,6 +135,7 @@ std = [
   # Substrate related
   "frame-support/std",
   "frame-system/std",
+  "frame-benchmarking?/std",
   "orml-traits/std",
   "polkadot-parachain/std",
   "scale-info/std",
@@ -232,6 +236,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks", # Optional enabled
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
 

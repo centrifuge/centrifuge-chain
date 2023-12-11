@@ -1359,7 +1359,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
-	type OracleProvider = OracleConverterBridge<OraclePriceFeed, OrmlAssetRegistry, PoolSystem>;
+	type OracleProvider = OracleConverterBridge<OraclePriceFeed, Runtime>;
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
