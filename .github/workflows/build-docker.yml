@@ -82,7 +82,7 @@ jobs:
           enable-url-completion: true
           
       - name: Update GitHub release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && matrix.target == 'release'
         uses: softprops/action-gh-release@v1
         with:
           append_body: true
