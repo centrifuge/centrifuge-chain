@@ -7,7 +7,7 @@ on:
   release:
     # Release logic:
     #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
-    types: [published, released, prereleased, created, edited ] # GITHUB_REF == tag pushed with the release
+    types: [published, released, edited ] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
