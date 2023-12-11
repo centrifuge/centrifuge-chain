@@ -14,7 +14,7 @@ case $TARGET in
     ;;
 
   test-general)
-    cargo test --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
+    cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   test-integration)
