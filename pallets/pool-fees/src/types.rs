@@ -18,9 +18,10 @@ use crate::{Config, PoolFeeOf};
 
 /// Represents a fee which will be disbursed during epoch execution.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub struct DisbursingFee<AccountId, Balance> {
+pub struct DisbursingFee<AccountId, Balance, FeeId> {
 	pub amount: Balance,
 	pub destination: AccountId,
+	pub fee_id: FeeId,
 }
 
 /// Represents pool changes which might require to complete further guarding
