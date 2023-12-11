@@ -89,7 +89,7 @@ jobs:
         with:
           append_body: true
           body: |
-            Docker Image: [`${{ steps.meta.outputs.tags[0] }}`](https://hub.docker.com/layers/centrifugeio/centrifuge-chain/${{ steps.meta.outputs.tags[0] }})
+            Docker tags updated: ${{ steps.meta.outputs.tags }}
 
       - if: failure()
         name: Check available space after build failed
