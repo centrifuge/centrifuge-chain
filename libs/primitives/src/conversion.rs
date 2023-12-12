@@ -95,7 +95,6 @@ pub fn balance_to_fixed_point<
 ) -> Result<FixedPoint, ArithmeticError> {
 	let magnitude = ensure_pow(IntoBalance::from(10), decimals)?;
 
-	let balance: FixedPoint::Inner = balance.into();
 	let balance = match FixedPoint::DIV.cmp(&magnitude) {
 		Ordering::Greater => {
 			let extra = FixedPoint::DIV.ensure_div(magnitude)?;
