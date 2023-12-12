@@ -15,3 +15,7 @@
 
 pub mod nav;
 pub mod orml_asset_registry;
+
+// README! Before adding a mock here,
+// evaluate first if the mock can be built using mock-builder under
+// `cfg-mocks` crate.
