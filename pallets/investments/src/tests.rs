@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::fixed_point::Rate;
+use cfg_types::fixed_point::Quantity;
 use frame_support::{assert_noop, assert_ok};
 use pallet_investments::Event;
 use sp_arithmetic::{traits::Saturating, Perquintill};
@@ -622,7 +622,7 @@ fn update_redeem_fails_when_collect_needed() {
 fn fulfillment_flow_for_everything_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 2, 10);
+		let PRICE: Quantity = price_of(1, 2, 10);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -821,7 +821,7 @@ fn fulfillment_partially_works_low_price() {
 	//      * Collects and orders from users must overflow correctly too
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 288, 334);
+		let PRICE: Quantity = price_of(1, 288, 334);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -1507,7 +1507,7 @@ fn fulfillment_partially_works_high_price() {
 	//      * Collects and orders from users must overflow correctly too
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 288, 335);
+		let PRICE: Quantity = price_of(1, 288, 335);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2183,7 +2183,7 @@ fn fulfillment_partially_works_high_price() {
 fn fulfillment_of_zero_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 20, 10);
+		let PRICE: Quantity = price_of(1, 20, 10);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2506,7 +2506,7 @@ fn fulfillment_of_zero_works() {
 fn collecting_fully_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 288, 334);
+		let PRICE: Quantity = price_of(1, 288, 334);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT_A = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2818,7 +2818,7 @@ fn collecting_fully_works() {
 fn collecting_over_max_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 288, 335);
+		let PRICE: Quantity = price_of(1, 288, 335);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]

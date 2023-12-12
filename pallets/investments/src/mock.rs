@@ -17,7 +17,7 @@ pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
 use cfg_traits::{investments::OrderManager, PreConditions};
 use cfg_types::{
-	fixed_point::Rate,
+	fixed_point::Quantity,
 	investments::{InvestmentAccount, InvestmentInfo},
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
@@ -26,7 +26,13 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
-	traits::{GenesisBuild, Nothing},
+	traits::{
+		tokens::{
+			fungibles::{Inspect, Mutate},
+			Fortitude, Precision, Preservation,
+		},
+		GenesisBuild, Nothing,
+	},
 	RuntimeDebug,
 };
 use orml_traits::GetByKey;
@@ -38,7 +44,12 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	DispatchResult,
 };
-use sp_std::convert::{TryFrom, TryInto};
+use sp_std::{
+	cell::RefCell,
+	collections::btree_map::BTreeMap,
+	convert::{TryFrom, TryInto},
+	rc::Rc,
+};
 
 pub use crate as pallet_investments;
 
@@ -55,7 +66,8 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Storage, Event<T>}
+		Balances: pallet_balances::{Pallet, Storage, Event<T>},
+		MockAccountant: cfg_mocks::pallet_mock_pools,
 	}
 );
 
@@ -136,6 +148,7 @@ impl pallet_balances::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+/*
 cfg_test_utils::mocks::accountant::impl_mock_accountant!(
 	MockAccountant,
 	MockAccountId,
@@ -143,6 +156,16 @@ cfg_test_utils::mocks::accountant::impl_mock_accountant!(
 	CurrencyId,
 	Balance
 );
+*/
+
+impl cfg_mocks::pallet_mock_pools::Config for MockRuntime {
+	type Balance = Balance;
+	type BalanceRatio = Quantity;
+	type CurrencyId = CurrencyId;
+	type PoolId = PoolId;
+	type TrancheCurrency = InvestmentId;
+	type TrancheId = TrancheId;
+}
 
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
@@ -160,9 +183,10 @@ parameter_types! {
 }
 
 impl pallet_investments::Config for MockRuntime {
-	type Accountant = MockAccountant<OrmlTokens>;
+	//type Accountant = MockAccountant<OrmlTokens>;
+	type Accountant = MockAccountant;
 	type Amount = Balance;
-	type BalanceRatio = Rate;
+	type BalanceRatio = Quantity;
 	type CollectedInvestmentHook = NoopCollectHook;
 	type CollectedRedemptionHook = NoopCollectHook;
 	type InvestmentId = InvestmentId;
@@ -334,8 +358,14 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		MockAccountant::<OrmlTokens>::init(accountant_mock::Genesis {
-			infos: vec![
+		let mut externalities = TestExternalities::new(storage);
+		externalities.execute_with(|| {
+			// We need to set this, otherwise on genesis (i.e. 0)
+			// no events are stored
+			System::set_block_number(1);
+
+			// Mocked behaviour for the accountant
+			let state = Rc::new(RefCell::new(BTreeMap::from([
 				(
 					INVESTMENT_0_0,
 					InvestmentInfo {
@@ -352,15 +382,55 @@ impl TestExternalitiesBuilder {
 						payment_currency: AUSD_CURRENCY_ID,
 					},
 				),
-			],
+			])));
+
+			MockAccountant::mock_info({
+				let state = state.clone();
+				move |id| Ok(state.borrow().get(&id).unwrap().clone())
+			});
+
+			MockAccountant::mock_balance(|id, who| OrmlTokens::balance(id.into(), who));
+
+			MockAccountant::mock_transfer({
+				let state = state.clone();
+				move |id, source, dest, amount| {
+					let _ = state.borrow().get(&id).unwrap();
+					<OrmlTokens as Mutate<MockAccountId>>::transfer(
+						id.into(),
+						source,
+						dest,
+						amount,
+						Preservation::Expendable,
+					)
+					.map(|_| ())
+				}
+			});
+
+			MockAccountant::mock_InvestmentAccountant_deposit({
+				let state = state.clone();
+				move |buyer, id, amount| {
+					let _ = state.borrow().get(&id).unwrap();
+					<OrmlTokens as Mutate<MockAccountId>>::mint_into(id.into(), buyer, amount)
+						.map(|_| ())
+				}
+			});
+
+			MockAccountant::mock_InvestmentAccountant_withdraw({
+				let state = state.clone();
+				move |seller, id, amount| {
+					let _ = state.borrow().get(&id).unwrap();
+					<OrmlTokens as Mutate<MockAccountId>>::burn_from(
+						id.into(),
+						seller,
+						amount,
+						Precision::Exact,
+						Fortitude::Polite,
+					)
+					.map(|_| ())
+				}
+			});
 		});
 
-		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| {
-			// We need to set this, otherwise on genesis (i.e. 0)
-			// no events are stored
-			System::set_block_number(1);
-		});
 		externalities
 	}
 }
@@ -438,20 +508,20 @@ pub(crate) fn redeem_x_per_investor(amount: Balance) -> DispatchResult {
 /// # E.g.
 /// ```rust
 /// use cfg_primitives::Balance;
-/// use cfg_types::Rate;
+/// use cfg_types::fixed_point::Quantity;
 ///
 /// let rate = crate::mock::price_of(3, 5, 100);
 /// assert_eq!(rate.into_inner(), 3050000000000000000000000000) // I.e. price is 3,05
 /// ```
-pub(crate) fn price_of(full: Balance, dec_n: Balance, dec_d: Balance) -> Rate {
-	let full = Rate::from_inner(Rate::DIV.saturating_mul(full));
-	let decimals = Rate::saturating_from_rational(dec_n, dec_d);
+pub(crate) fn price_of(full: Balance, dec_n: Balance, dec_d: Balance) -> Quantity {
+	let full = Quantity::from_inner(Quantity::DIV.saturating_mul(full));
+	let decimals = Quantity::saturating_from_rational(dec_n, dec_d);
 
 	full.add(decimals)
 }
 
 /// Creates a fulfillment of given perc and price
-pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithPrice<Rate> {
+pub(crate) fn fulfillment_of(perc: Perquintill, price: Quantity) -> FulfillmentWithPrice<Quantity> {
 	FulfillmentWithPrice {
 		of_amount: perc,
 		price,
@@ -460,26 +530,26 @@ pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithP
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on both invest and redeem
 /// side
-pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Quantity>) -> DispatchResult {
 	fulfill_invest_x(fulfillment)?;
 	fulfill_redeem_x(fulfillment)
 }
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
-pub(crate) fn fulfill_invest_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+pub(crate) fn fulfill_invest_x(fulfillment: FulfillmentWithPrice<Quantity>) -> DispatchResult {
 	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
-pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Quantity>) -> DispatchResult {
 	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
 /// Invest 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
-pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Quantity>) -> DispatchResult {
 	invest_x_per_investor(50 * CURRENCY)?;
 
 	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
@@ -490,7 +560,7 @@ pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 /// the given fulfillment.
 pub(crate) fn invest_x_fulfill_x(
 	invest_per_investor: Balance,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	invest_x_per_investor(invest_per_investor)?;
 
@@ -502,7 +572,7 @@ pub(crate) fn invest_x_fulfill_x(
 /// the given fulfillment.
 pub(crate) fn invest_x_per_fulfill_x(
 	invest_per_investor: Vec<(MockAccountId, Balance)>,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	for (who, amount) in invest_per_investor {
 		Investments::update_invest_order(RuntimeOrigin::signed(who), INVESTMENT_0_0, amount)?;
@@ -515,7 +585,7 @@ pub(crate) fn invest_x_per_fulfill_x(
 /// and fulfills the given fulfillment.
 pub(crate) fn invest_x_runner_fulfill_x<F>(
 	invest_per_investor: Balance,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 	runner: F,
 ) -> DispatchResult
 where
@@ -529,7 +599,7 @@ where
 
 /// Redeem 50 * CURRENCY per TrancheHolder into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
-pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Quantity>) -> DispatchResult {
 	redeem_x_per_investor(50 * CURRENCY)?;
 
 	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0);
@@ -540,7 +610,7 @@ pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 /// the given fulfillment.
 pub(crate) fn redeem_x_fulfill_x(
 	redeem_per_investor: Balance,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	redeem_x_per_investor(redeem_per_investor)?;
 
@@ -552,7 +622,7 @@ pub(crate) fn redeem_x_fulfill_x(
 /// the given fulfillment.
 pub(crate) fn redeem_x_per_fulfill_x(
 	redeem_per_investor: Vec<(MockAccountId, Balance)>,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 ) -> DispatchResult {
 	for (who, amount) in redeem_per_investor {
 		Investments::update_redeem_order(RuntimeOrigin::signed(who), INVESTMENT_0_0, amount)?;
@@ -565,7 +635,7 @@ pub(crate) fn redeem_x_per_fulfill_x(
 /// closure and fulfills the given fulfillment.
 pub(crate) fn redeem_x_runner_fulfill_x<F>(
 	redeem_per_investor: Balance,
-	fulfillment: FulfillmentWithPrice<Rate>,
+	fulfillment: FulfillmentWithPrice<Quantity>,
 	runner: F,
 ) -> DispatchResult
 where

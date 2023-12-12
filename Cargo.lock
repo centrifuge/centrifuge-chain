@@ -7877,6 +7877,7 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
