@@ -5,7 +5,7 @@ services:
       - default
     user: root
     container_name: cc-alice
-    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-latest}"
     platform: "linux/x86_64"
     ports:
       - "30355:30333"
@@ -38,7 +38,7 @@ services:
     profiles:
       - old
     container_name: cc-alice
-    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-latest}"
     platform: "linux/x86_64"
     ports:
       - "30355:30333"
