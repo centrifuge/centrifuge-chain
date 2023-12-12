@@ -3,7 +3,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, OrderManager, TrancheCurrency},
-	liquidity_pools::{InboundQueue, OutboundQueue},
+	liquidity_pools::{Codec, InboundQueue, OutboundQueue},
 	ConversionToAssetBalance, IdentityCurrencyConversion, Permissions, PoolInspect, PoolMutate,
 	Seconds,
 };
@@ -45,7 +45,7 @@ use pallet_foreign_investments::{
 };
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
-use pallet_liquidity_pools_gateway::Call as LiquidityPoolsGatewayCall;
+use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
 use polkadot_core_primitives::BlakeTwo256;
 use polkadot_parachain::primitives::{Id, ValidationCode};
@@ -230,6 +230,10 @@ mod utils {
 		amount * dollar(currency_decimals::NATIVE)
 	}
 
+	pub fn cfg_fee() -> Balance {
+		fee(currency_decimals::NATIVE)
+	}
+
 	pub fn dollar(decimals: u32) -> Balance {
 		10u128.saturating_pow(decimals)
 	}
@@ -244,6 +248,21 @@ mod utils {
 		// NOTE: it is possible that in different machines this value may differ. We
 		// shall see.
 		fee_per_second.div_euclid(10_000) * 8
+	}
+
+	pub fn set_domain_router_call<T: Runtime>(
+		domain: Domain,
+		router: DomainRouter<T>,
+	) -> T::RuntimeCallExt {
+		LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
+	}
+
+	pub fn add_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
+		LiquidityPoolsGatewayCall::add_instance { instance }.into()
+	}
+
+	pub fn remove_instance_call<T: Runtime>(instance: DomainAddress) -> T::RuntimeCallExt {
+		LiquidityPoolsGatewayCall::remove_instance { instance }.into()
 	}
 }
 
@@ -926,6 +945,10 @@ mod development {
 				orml_asset_registry::Pallet<T>,
 			>::to_asset_balance(MinFulfillmentAmountNative::get(), currency_id)
 			.expect("CurrencyId should be registered in AssetRegistry")
+		}
+
+		pub fn get_council_members() -> Vec<Keyring> {
+			vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
 		}
 	}
 
@@ -6520,6 +6543,198 @@ mod development {
 			});
 		}
 
+		fn transfer_cfg_to_sibling<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
+			let alice_initial_balance = cfg(1_000);
+			let transfer_amount = cfg(5);
+			let cfg_in_sibling = CurrencyId::ForeignAsset(12);
+
+			// CFG Metadata
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 18,
+				name: "Development".into(),
+				symbol: "CFG".into(),
+				existential_deposit: 1_000_000_000_000,
+				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+					1,
+					X2(
+						Parachain(T::FudgeHandle::PARA_ID),
+						general_key(parachains::polkadot::centrifuge::CFG_KEY),
+					),
+				))),
+				additional: CustomMetadata {
+					transferability: CrossChainTransferability::Xcm(Default::default()),
+					..CustomMetadata::default()
+				},
+			};
+
+			env.parachain_state_mut(|| {
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.into()),
+					alice_initial_balance
+				);
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&parachain_account(
+						T::FudgeHandle::SIBLING_ID
+					)),
+					0
+				);
+
+				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					meta.clone(),
+					Some(CurrencyId::Native),
+				));
+			});
+
+			env.sibling_state_mut(|| {
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(cfg_in_sibling, &Keyring::Bob.into()),
+					0
+				);
+
+				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					meta,
+					Some(cfg_in_sibling)
+				));
+			});
+
+			env.parachain_state_mut(|| {
+				assert_ok!(pallet_restricted_xtokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					CurrencyId::Native,
+					transfer_amount,
+					Box::new(
+						MultiLocation::new(
+							1,
+							X2(
+								Parachain(T::FudgeHandle::SIBLING_ID),
+								Junction::AccountId32 {
+									network: None,
+									id: Keyring::Bob.into(),
+								},
+							),
+						)
+						.into()
+					),
+					WeightLimit::Limited(8_000_000_000_000.into()),
+				));
+
+				// Confirm that Keyring::Alice's balance is initial balance - amount transferred
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.into()),
+					alice_initial_balance - transfer_amount
+				);
+
+				// Verify that the amount transferred is now part of the sibling account here
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&parachain_account(
+						T::FudgeHandle::SIBLING_ID
+					)),
+					transfer_amount
+				);
+			});
+
+			env.pass(Blocks::ByNumber(1));
+
+			env.sibling_state(|| {
+				let current_balance =
+					orml_tokens::Pallet::<T>::free_balance(cfg_in_sibling, &Keyring::Bob.into());
+
+				// Verify that Keyring::Bob now has (amount transferred - fee)
+				assert_eq!(current_balance, transfer_amount - fee(18));
+
+				// Sanity check for the actual amount Keyring::Bob ends up with
+				assert_eq!(current_balance, 4992960800000000000);
+			});
+		}
+
+		fn transfer_cfg_to_and_from_sibling<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			// In order to be able to transfer CFG from Moonbeam to Development, we need to
+			// first send CFG from Development to Moonbeam, or else it fails since it'd be
+			// like Moonbeam had minted CFG on their side.
+			transfer_cfg_to_sibling::<T>(&mut env);
+
+			let para_to_sibling_transfer_amount = cfg(5);
+
+			let alice_balance = cfg(1_000) - para_to_sibling_transfer_amount;
+			let bob_balance = para_to_sibling_transfer_amount - fee(18);
+			let charlie_balance = cfg(1_000);
+
+			let sibling_to_para_transfer_amount = cfg(4);
+			// Note: This asset was registered in `transfer_cfg_to_sibling`
+			let cfg_in_sibling = CurrencyId::ForeignAsset(12);
+
+			env.parachain_state(|| {
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.into()),
+					alice_balance
+				);
+			});
+
+			env.sibling_state_mut(|| {
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&parachain_account(
+						T::FudgeHandle::PARA_ID
+					)),
+					0
+				);
+
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(cfg_in_sibling, &Keyring::Bob.into()),
+					bob_balance
+				);
+			});
+
+			env.sibling_state_mut(|| {
+				assert_ok!(pallet_restricted_xtokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Bob.into()).into(),
+					cfg_in_sibling,
+					sibling_to_para_transfer_amount,
+					Box::new(
+						MultiLocation::new(
+							1,
+							X2(
+								Parachain(T::FudgeHandle::PARA_ID),
+								Junction::AccountId32 {
+									network: None,
+									id: Keyring::Charlie.into(),
+								}
+							)
+						)
+						.into()
+					),
+					WeightLimit::Limited(8_000_000_000_000.into()),
+				));
+
+				// Confirm that Charlie's balance is initial balance - amount transferred
+				assert_eq!(
+					orml_tokens::Pallet::<T>::free_balance(cfg_in_sibling, &Keyring::Bob.into()),
+					bob_balance - sibling_to_para_transfer_amount
+				);
+			});
+
+			env.pass(Blocks::ByNumber(2));
+
+			env.parachain_state(|| {
+				// Verify that Charlie's balance equals the amount transferred - fee
+				assert_eq!(
+					pallet_balances::Pallet::<T>::free_balance(&Into::<AccountId>::into(
+						Keyring::Charlie
+					)),
+					charlie_balance + sibling_to_para_transfer_amount - cfg_fee(),
+				);
+			});
+		}
+
 		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_from_local);
 		crate::test_for_runtimes!([development], transfer_non_tranche_tokens_to_local);
 		crate::test_for_runtimes!([development], transfer_tranche_tokens_from_local);
@@ -6528,6 +6743,7 @@ mod development {
 			[development],
 			transferring_invalid_tranche_tokens_should_fail
 		);
+		crate::test_for_runtimes!([development], transfer_cfg_to_and_from_sibling);
 	}
 
 	mod routers {
@@ -6538,17 +6754,6 @@ mod development {
 
 			mod utils {
 				use super::*;
-
-				pub fn get_council_members() -> Vec<Keyring> {
-					vec![Keyring::Alice, Keyring::Bob, Keyring::Charlie]
-				}
-
-				pub fn set_domain_router_call<T: Runtime>(
-					domain: Domain,
-					router: DomainRouter<T>,
-				) -> T::RuntimeCallExt {
-					LiquidityPoolsGatewayCall::set_domain_router { domain, router }.into()
-				}
 
 				pub fn mint_balance_into_derived_account<T: Runtime>(
 					env: &mut impl Env<T>,
@@ -6832,6 +7037,134 @@ mod development {
 			crate::test_for_runtimes!([development], submit_ethereum_xcm);
 			crate::test_for_runtimes!([development], submit_axelar_xcm);
 		}
+	}
+
+	mod gateway {
+		use super::*;
+
+		fn add_remove_instances<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::<T>::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+						get_council_members(),
+					))
+					.storage(),
+			);
+
+			let test_instance = DomainAddress::EVM(1, [0; 20]);
+
+			let add_instance_call = add_instance_call::<T>(test_instance.clone());
+
+			let council_threshold = 2;
+			let voting_period = 3;
+
+			let (prop_index, ref_index) = execute_via_democracy::<T>(
+				&mut env,
+				get_council_members(),
+				add_instance_call,
+				council_threshold,
+				voting_period,
+				0,
+				0,
+			);
+
+			let expected_event = pallet_liquidity_pools_gateway::Event::<T>::InstanceAdded {
+				instance: test_instance.clone(),
+			};
+
+			env.pass(Blocks::UntilEvent {
+				event: expected_event.clone().into(),
+				limit: 3,
+			});
+
+			env.check_event(expected_event);
+
+			let remove_instance_call = remove_instance_call::<T>(test_instance.clone());
+
+			execute_via_democracy::<T>(
+				&mut env,
+				get_council_members(),
+				remove_instance_call,
+				council_threshold,
+				voting_period,
+				prop_index,
+				ref_index,
+			);
+
+			let expected_event = pallet_liquidity_pools_gateway::Event::<T>::InstanceRemoved {
+				instance: test_instance.clone(),
+			};
+
+			env.pass(Blocks::UntilEvent {
+				event: expected_event.clone().into(),
+				limit: 3,
+			});
+
+			env.check_event(expected_event);
+		}
+
+		fn process_msg<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::<T>::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+						get_council_members(),
+					))
+					.storage(),
+			);
+
+			let test_instance = DomainAddress::EVM(1, [0; 20]);
+
+			let add_instance_call = add_instance_call::<T>(test_instance.clone());
+
+			let council_threshold = 2;
+			let voting_period = 3;
+
+			execute_via_democracy::<T>(
+				&mut env,
+				get_council_members(),
+				add_instance_call,
+				council_threshold,
+				voting_period,
+				0,
+				0,
+			);
+
+			let expected_event = pallet_liquidity_pools_gateway::Event::<T>::InstanceAdded {
+				instance: test_instance.clone(),
+			};
+
+			env.pass(Blocks::UntilEvent {
+				event: expected_event.clone().into(),
+				limit: 3,
+			});
+
+			env.check_event(expected_event);
+
+			let msg = LiquidityPoolMessage::AddPool { pool_id: 123 };
+
+			let encoded_msg = msg.serialize();
+
+			let gateway_msg = BoundedVec::<
+				u8,
+				<T as pallet_liquidity_pools_gateway::Config>::MaxIncomingMessageSize,
+			>::try_from(encoded_msg)
+			.unwrap();
+
+			env.parachain_state_mut(|| {
+				assert_noop!(
+					pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
+						GatewayOrigin::Domain(test_instance).into(),
+						gateway_msg,
+					),
+					pallet_liquidity_pools::Error::<T>::InvalidIncomingMessage,
+				);
+			});
+		}
+
+		crate::test_for_runtimes!([development], add_remove_instances);
+		crate::test_for_runtimes!([development], process_msg);
 	}
 }
 
@@ -7994,10 +8327,6 @@ mod centrifuge {
 				meta,
 				Some(NO_XCM_ASSET_ID)
 			));
-		}
-
-		pub fn cfg_fee() -> Balance {
-			fee(currency_decimals::NATIVE)
 		}
 
 		// The fee associated with transferring DOT tokens

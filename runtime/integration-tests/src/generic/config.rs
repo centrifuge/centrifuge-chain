@@ -191,7 +191,8 @@ pub trait Runtime:
 		+ Clone
 		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall>
 		+ From<pallet_ethereum::RawOrigin>
-		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>;
+		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
+		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;
 
 	type CurrencyExt: Currency<Self::AccountId, Balance = Balance>;
 
