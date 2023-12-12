@@ -46,6 +46,7 @@ case $TARGET in
   docs-build)
     RUSTDOCFLAGS="-D warnings" cargo doc --all --no-deps
     ;;
+
   subalfred)
     # Find all child directories containing Cargo.toml files
     # TODO: Filter by crates found in the workspace

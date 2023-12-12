@@ -1,5 +1,5 @@
 [badges]
-travis-ci = { repository = "centrifuge/centrifuge-chain", branch = "master" }
+travis-ci = { repository = "centrifuge/centrifuge-chain", branch = "main" }
 maintenance = { status = "actively-developed" }
 is-it-maintained-issue-resolution = { repository = "centrifuge/centrifuge-chain" }
 is-it-maintained-open-issues = { repository = "centrifuge/centrifuge-chain" }
@@ -122,14 +122,6 @@ pallet-evm = { workspace = true, default-features = true }
 substrate-build-script-utils = { workspace = true, default-features = true }
 vergen = { workspace = true, default-features = true }
 
-[dev-dependencies]
-frame-system = { workspace = true, default-features = true }
-getrandom = { workspace = true, features = ["js"] }
-pallet-transaction-payment = { workspace = true, default-features = true }
-sc-service-test = { workspace = true, default-features = true }
-sp-keyring = { workspace = true, default-features = true }
-tempfile = { workspace = true }
-
 [features]
 default = ["cli"]
 runtime-benchmarks = [
@@ -161,7 +153,6 @@ try-runtime = [
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
   "development-runtime/try-runtime",
-  "frame-system/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-ethereum/try-runtime",
   "pallet-evm/try-runtime",
