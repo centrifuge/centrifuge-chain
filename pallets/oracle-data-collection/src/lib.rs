@@ -183,8 +183,8 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Propose an update in the feeders associated to an specific key.
-		/// The collection will only be modified once [`apply_update_feeders`]
-		/// be called.
+		/// The collection will only be modified once
+		/// [`Pallet::apply_update_feeders`] be called.
 		#[pallet::weight(T::WeightInfo::propose_update_feeders(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(0)]
 		pub fn propose_update_feeders(
@@ -213,8 +213,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Apply an change previously proposed by [`propose_update_feeders`] if
-		/// the conditions to get it ready are fullfilled
+		/// Apply an change previously proposed by
+		/// [`Pallet::propose_update_feeders`] if the conditions to get it ready
+		/// are fullfilled
 		///
 		/// This call is permissionless
 		#[pallet::weight(T::WeightInfo::apply_update_feeders(T::MaxFeedersPerKey::get()))]
