@@ -26,7 +26,7 @@ cfg-traits = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-mocks = { workspace = true, features = ["std"] }
+cfg-mocks = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -46,4 +46,11 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-mocks/try-runtime",
 ]
