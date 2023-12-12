@@ -148,16 +148,6 @@ impl pallet_balances::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-/*
-cfg_test_utils::mocks::accountant::impl_mock_accountant!(
-	MockAccountant,
-	MockAccountId,
-	InvestmentId,
-	CurrencyId,
-	Balance
-);
-*/
-
 impl cfg_mocks::pallet_mock_pools::Config for MockRuntime {
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
