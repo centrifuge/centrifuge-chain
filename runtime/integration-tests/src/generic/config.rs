@@ -18,7 +18,7 @@ use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
-	traits::{Currency, IsType, OriginTrait},
+	traits::{IsType, OriginTrait},
 	Parameter,
 };
 use liquidity_pools_gateway_routers::DomainRouter;
@@ -133,7 +133,7 @@ pub trait Runtime:
 		TokenSwapOrderId = u64,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
-	+ pallet_democracy::Config<Currency = Self::CurrencyExt>
+	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_evm_chain_id::Config
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
@@ -193,8 +193,6 @@ pub trait Runtime:
 		+ From<pallet_ethereum::RawOrigin>
 		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;
-
-	type CurrencyExt: Currency<Self::AccountId, Balance = Balance>;
 
 	/// Block used by the runtime
 	type Block: Block<
