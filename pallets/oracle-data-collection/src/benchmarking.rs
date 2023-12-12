@@ -1,4 +1,4 @@
-use cfg_traits::{changes::ChangeGuard, PreConditions, ValueProvider};
+use cfg_traits::{benchmarking::PoolBenchmarkHelper, changes::ChangeGuard, ValueProvider};
 use frame_benchmarking::{v2::*, whitelisted_caller};
 use frame_support::storage::bounded_vec::BoundedVec;
 use frame_system::RawOrigin;
@@ -13,11 +13,11 @@ fn init_mocks() {
 	use crate::mock::{MockChangeGuard, MockIsAdmin, MockProvider};
 
 	MockIsAdmin::mock_check(|_| true);
+	MockProvider::mock_get(|_, _| Ok(Some((Default::default(), Default::default()))));
 	MockChangeGuard::mock_note(|_, change| {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(Default::default())
 	});
-	MockProvider::mock_get(|_, _| Ok((Default::default(), Default::default())));
 }
 
 mod util {
@@ -31,8 +31,7 @@ mod util {
 		T: Config,
 		T::CollectionId: Default,
 	{
-		// We need to call noted again to obtain the ChangeId used previously.
-		// (that is idempotent for the same change)
+		// Emulate to note a change to later apply it
 		T::ChangeGuard::note(
 			T::CollectionId::default(),
 			Change::<T>::Feeders(key, feeders.clone()).into(),
@@ -45,7 +44,10 @@ mod util {
     where
         T::CollectionId: Default,
         T::OracleKey: Default + From<u32>,
+        T::OracleValue: Default,
+        T::Timestamp: Default,
         T::Hash: Default,
+        T::ChangeGuard: PoolBenchmarkHelper<PoolId = T::CollectionId, AccountId = T::AccountId>,
     )]
 mod benchmarks {
 	use super::*;
@@ -57,7 +59,7 @@ mod benchmarks {
 
 		let admin: T::AccountId = whitelisted_caller();
 
-		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
+		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders = (0..n)
 			.map(|i| account("feeder", i, 0))
@@ -83,20 +85,13 @@ mod benchmarks {
 
 		let admin: T::AccountId = whitelisted_caller();
 
-		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
+		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders: BoundedVec<_, _> = (0..n)
 			.map(|i| account("feeder", i, 0))
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
-
-		Pallet::<T>::propose_update_feeders(
-			RawOrigin::Signed(admin.clone()).into(),
-			T::CollectionId::default(),
-			T::OracleKey::default(),
-			feeders.clone(),
-		)?;
 
 		#[extrinsic_call]
 		apply_update_feeders(
@@ -115,27 +110,25 @@ mod benchmarks {
 
 		let admin: T::AccountId = whitelisted_caller();
 
-		T::IsAdmin::satisfy((admin.clone(), T::CollectionId::default()));
+		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
-		// m keys with n feeders
+		let feeders: BoundedVec<T::AccountId, _> = (0..n)
+			.map(|i| account("feeder", i, 0))
+			.collect::<Vec<_>>()
+			.try_into()
+			.unwrap();
+
+		// n feeders using m keys
 		for k in 0..m {
 			let key = T::OracleKey::from(k);
 
-			// Set the required state for this key
-			T::OracleProvider::set(&(admin.clone(), T::CollectionId::default()), &key);
-
-			let feeders: BoundedVec<_, _> = (0..n)
-				.map(|i| account("feeder", i, 0))
-				.collect::<Vec<_>>()
-				.try_into()
-				.unwrap();
-
-			Pallet::<T>::propose_update_feeders(
-				RawOrigin::Signed(admin.clone()).into(),
-				T::CollectionId::default(),
-				key,
-				feeders.clone(),
-			)?;
+			for feeder in feeders.iter() {
+				T::OracleProvider::set(
+					&(feeder.clone(), T::CollectionId::default()),
+					&key,
+					Default::default(),
+				);
+			}
 
 			Pallet::<T>::apply_update_feeders(
 				RawOrigin::Signed(admin.clone()).into(),
@@ -145,7 +138,7 @@ mod benchmarks {
 		}
 
 		#[extrinsic_call]
-		update_collection(RawOrigin::Signed(admin), Default::default());
+		update_collection(RawOrigin::Signed(admin), T::CollectionId::default());
 
 		assert_eq!(
 			Collection::<T>::get(T::CollectionId::default()).len() as u32,

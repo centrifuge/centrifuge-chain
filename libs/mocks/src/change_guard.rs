@@ -49,4 +49,12 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type PoolId = T::PoolId;
+
+		fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+	}
 }

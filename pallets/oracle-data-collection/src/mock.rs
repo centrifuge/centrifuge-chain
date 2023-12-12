@@ -69,8 +69,7 @@ impl frame_system::Config for Runtime {
 impl cfg_mocks::value_provider::pallet::Config for Runtime {
 	type Key = OracleKey;
 	type Source = (AccountId, CollectionId);
-	type Timestamp = Timestamp;
-	type Value = OracleValue;
+	type Value = (OracleValue, Timestamp);
 }
 
 impl cfg_mocks::pre_conditions::pallet::Config for Runtime {

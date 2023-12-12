@@ -57,7 +57,7 @@ pub mod pallet {
 		type OracleKey: Parameter + Member + Copy + MaxEncodedLen;
 
 		/// Represent an oracle value
-		type OracleValue: Parameter + Member + Copy + MaxEncodedLen;
+		type OracleValue: Parameter + Member + Copy + MaxEncodedLen + Default;
 
 		/// A way to obtain the current time
 		type Time: Time;
@@ -88,12 +88,6 @@ pub mod pallet {
 			key: T::OracleKey,
 			value: T::OracleValue,
 		},
-	}
-
-	#[pallet::error]
-	pub enum Error<T> {
-		/// The key has not been fed yet
-		KeyNotFound,
 	}
 
 	#[pallet::call]
@@ -138,14 +132,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ValueProvider<T::AccountId, T::OracleKey> for Pallet<T> {
-		type Timestamp = MomentOf<T>;
-		type Value = T::OracleValue;
+		type Value = (T::OracleValue, MomentOf<T>);
 
 		fn get(
 			source: &T::AccountId,
 			id: &T::OracleKey,
-		) -> Result<(Self::Value, Self::Timestamp), DispatchError> {
-			FedValues::<T>::get(source, id).ok_or(Error::<T>::KeyNotFound.into())
+		) -> Result<Option<Self::Value>, DispatchError> {
+			Ok(FedValues::<T>::get(source, id))
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn set(source: &T::AccountId, key: &T::OracleKey, value: Self::Value) {
+			FedValues::<T>::insert(source, key, value)
 		}
 	}
 }

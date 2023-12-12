@@ -55,7 +55,6 @@ pub mod pallet {
 	use crate::{
 		traits::AggregationProvider,
 		types::{CachedCollection, Change, KeyInfo, OracleValuePair},
-		util,
 		weights::WeightInfo,
 	};
 
@@ -88,8 +87,7 @@ pub mod pallet {
 		type OracleProvider: ValueProvider<
 			(Self::AccountId, Self::CollectionId),
 			Self::OracleKey,
-			Value = Self::OracleValue,
-			Timestamp = Self::Timestamp,
+			Value = OracleValuePair<Self>,
 		>;
 
 		/// A way to perform aggregations from a list of feeders feeding the
@@ -258,12 +256,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let values =
-				BTreeMap::from_iter(Keys::<T>::iter_key_prefix(collection_id).filter_map(|key| {
-					Self::get(&key, &collection_id)
-						.map(|value| (key, value))
-						.ok()
-				}));
+			let values = Keys::<T>::iter_key_prefix(collection_id)
+				.filter_map(|key| match Self::get(&key, &collection_id) {
+					Ok(value) => Some(Ok((key, value))),
+					Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
+					Err(err) => Some(Err(err)),
+				})
+				.collect::<Result<BTreeMap<_, _>, _>>()?;
 
 			let collection =
 				BoundedBTreeMap::try_from(values).map_err(|()| Error::<T>::MaxCollectionSize)?;
@@ -295,15 +294,13 @@ pub mod pallet {
 			let fed_values = key_info
 				.feeders
 				.into_iter()
-				.map(|feeder| T::OracleProvider::get(&(feeder, *collection_id), key))
+				.filter_map(|feeder| {
+					T::OracleProvider::get(&(feeder, *collection_id), key).transpose()
+				})
 				.collect::<Result<Vec<_>, _>>()?;
 
-			let (mut values, mut timestamps): (Vec<_>, Vec<_>) = fed_values.into_iter().unzip();
-
-			let value = util::median(&mut values).ok_or(Error::<T>::KeyNotInCollection)?;
-			let timestamp = util::median(&mut timestamps).ok_or(Error::<T>::KeyNotInCollection)?;
-
-			Ok((*value, *timestamp))
+			T::AggregationProvider::aggregate(fed_values)
+				.ok_or(Error::<T>::KeyNotInCollection.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
@@ -446,8 +443,9 @@ pub mod types {
 pub mod traits {
 	/// Defined an aggregation behavior
 	pub trait AggregationProvider<Value, Timestamp> {
-		fn aggregate(pairs: impl Iterator<Item = (Value, Timestamp)>)
-			-> Option<(Value, Timestamp)>;
+		fn aggregate(
+			pairs: impl IntoIterator<Item = (Value, Timestamp)>,
+		) -> Option<(Value, Timestamp)>;
 	}
 }
 
@@ -467,9 +465,9 @@ pub mod util {
 		Timestamp: Ord + Clone,
 	{
 		fn aggregate(
-			pairs: impl Iterator<Item = (Value, Timestamp)>,
+			pairs: impl IntoIterator<Item = (Value, Timestamp)>,
 		) -> Option<(Value, Timestamp)> {
-			let (mut values, mut timestamps): (Vec<_>, Vec<_>) = pairs.unzip();
+			let (mut values, mut timestamps): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
 
 			let value = median(&mut values)?.clone();
 			let timestamp = median(&mut timestamps)?.clone();

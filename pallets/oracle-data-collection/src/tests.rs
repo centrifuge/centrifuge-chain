@@ -17,6 +17,8 @@ const FEEDER_3: AccountId = 12;
 const COLLECTION_ID: CollectionId = 1;
 const KEY_A: OracleKey = 1;
 const KEY_B: OracleKey = 2;
+const KEY_ERR: OracleKey = 3;
+const KEY_NONE: OracleKey = 4;
 const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 
 mod mock {
@@ -52,15 +54,21 @@ mod mock {
 	pub fn prepare_provider() {
 		MockProvider::mock_get(|(account, collection_id), key| {
 			assert_eq!(collection_id, &COLLECTION_ID);
-			Ok(match (account, key) {
-				(&FEEDER_1, &KEY_A) => (100, 50),
-				(&FEEDER_2, &KEY_A) => (101, 45),
-				(&FEEDER_3, &KEY_A) => (102, 55),
-				(&FEEDER_1, &KEY_B) => (1000, 500),
-				(&FEEDER_2, &KEY_B) => (1010, 450),
-				(&FEEDER_3, &KEY_B) => (1020, 550),
+			match (account, key) {
+				(&FEEDER_1, &KEY_A) => Ok(Some((100, 50))),
+				(&FEEDER_2, &KEY_A) => Ok(Some((101, 45))),
+				(&FEEDER_3, &KEY_A) => Ok(Some((102, 55))),
+				(&FEEDER_1, &KEY_B) => Ok(Some((1000, 500))),
+				(&FEEDER_2, &KEY_B) => Ok(None),
+				(&FEEDER_3, &KEY_B) => Ok(None),
+				(&FEEDER_1, &KEY_ERR) => Err(DispatchError::Other("get err")),
+				(&FEEDER_2, &KEY_ERR) => Err(DispatchError::Other("get err")),
+				(&FEEDER_3, &KEY_ERR) => Err(DispatchError::Other("get err")),
+				(&FEEDER_1, &KEY_NONE) => Ok(None),
+				(&FEEDER_2, &KEY_NONE) => Ok(None),
+				(&FEEDER_3, &KEY_NONE) => Ok(None),
 				_ => unreachable!(),
-			})
+			}
 		});
 	}
 }
@@ -200,6 +208,7 @@ fn update_collection() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_feeders(KEY_NONE, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
 		mock::prepare_provider();
 
@@ -211,8 +220,24 @@ fn update_collection() {
 		let collection = OracleCollection::collection(&COLLECTION_ID);
 		assert_eq!(
 			collection.as_vec(),
-			vec![(KEY_A, (101, 50)), (KEY_B, (1010, 500))]
+			vec![(KEY_A, (101, 50)), (KEY_B, (1000, 500))]
 		)
+	});
+}
+
+#[test]
+fn update_collection_with_errs() {
+	new_test_ext().execute_with(|| {
+		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_feeders(KEY_ERR, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		mock::prepare_provider();
+
+		assert_err!(
+			OracleCollection::update_collection(RuntimeOrigin::signed(ANY), COLLECTION_ID),
+			DispatchError::Other("get err")
+		);
 	});
 }
 
@@ -251,7 +276,7 @@ fn update_collection_with_feeders_but_no_values() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
-		MockProvider::mock_get(|(_, _), _| Err(DispatchError::Other("No value")));
+		MockProvider::mock_get(|(_, _), _| Ok(None));
 
 		assert_ok!(OracleCollection::update_collection(
 			RuntimeOrigin::signed(ANY),
@@ -270,7 +295,7 @@ fn update_collection_exceed_size() {
 	new_test_ext().execute_with(|| {
 		let max_size = <<Runtime as Config>::MaxCollectionSize as Get<u32>>::get();
 
-		MockProvider::mock_get(|(_, _), _| Ok((0, 0)));
+		MockProvider::mock_get(|(_, _), _| Ok(Some((0, 0))));
 
 		for i in 0..(max_size + 1) {
 			util::update_feeders(KEY_A + i as OracleKey, vec![FEEDER_1, FEEDER_2, FEEDER_3]);

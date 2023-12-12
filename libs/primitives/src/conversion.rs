@@ -3,6 +3,7 @@ use sp_arithmetic::{
 	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::traits::EnsureInto;
+use sp_std::cmp::Ordering;
 
 /// Transform a fixed point number to a Balance.
 /// The resulting Balance will be represented with the `decimals` given.
@@ -67,6 +68,47 @@ pub fn fixed_point_to_balance<
 	};
 
 	new_integer_part.ensure_add(new_frac_part)
+}
+
+/// Transform a balance to a fixed point number.
+/// Inverse operation of [`fixed_point_to_balance`]
+///
+/// ```rust
+/// use cfg_primitives::conversion::balance_to_fixed_point;
+/// # use frame_support::assert_ok;
+/// # use sp_arithmetic::fixed_point::FixedU64;
+///
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 0), FixedU64::from_inner(2_123_456_789_000_000_000));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 3), FixedU64::from_inner(2_123_456_789_000_000));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 6), FixedU64::from_inner(2_123_456_789_000));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 9), FixedU64::from_inner(2_123_456_789));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 12), FixedU64::from_inner(2_123_456));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 15), FixedU64::from_inner(2_123));
+/// assert_ok!(balance_to_fixed_point(2_123_456_789, 18), FixedU64::from_inner(2));
+/// ```
+pub fn balance_to_fixed_point<
+	FixedPoint: FixedPointNumber<Inner = IntoBalance>,
+	IntoBalance: BaseArithmetic + Copy,
+>(
+	balance: IntoBalance,
+	decimals: usize,
+) -> Result<FixedPoint, ArithmeticError> {
+	let magnitude = ensure_pow(IntoBalance::from(10), decimals)?;
+
+	let balance: FixedPoint::Inner = balance.into();
+	let balance = match FixedPoint::DIV.cmp(&magnitude) {
+		Ordering::Greater => {
+			let extra = FixedPoint::DIV.ensure_div(magnitude)?;
+			balance.ensure_mul(extra)?
+		}
+		Ordering::Less => {
+			let extra = magnitude.ensure_div(FixedPoint::DIV)?;
+			balance.ensure_div(extra)?
+		}
+		Ordering::Equal => balance,
+	};
+
+	Ok(FixedPoint::from_inner(balance))
 }
 
 /// Converts a `uint` `Balance` of one precision into a `Balance` of another

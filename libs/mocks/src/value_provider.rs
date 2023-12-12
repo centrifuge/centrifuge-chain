@@ -9,7 +9,6 @@ pub mod pallet {
 		type Source;
 		type Key;
 		type Value;
-		type Timestamp;
 	}
 
 	#[pallet::pallet]
@@ -25,17 +24,16 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn mock_get(
-			f: impl Fn(&T::Source, &T::Key) -> Result<(T::Value, T::Timestamp), DispatchError> + 'static,
+			f: impl Fn(&T::Source, &T::Key) -> Result<Option<T::Value>, DispatchError> + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 	}
 
 	impl<T: Config> ValueProvider<T::Source, T::Key> for Pallet<T> {
-		type Timestamp = T::Timestamp;
 		type Value = T::Value;
 
-		fn get(a: &T::Source, b: &T::Key) -> Result<(Self::Value, Self::Timestamp), DispatchError> {
+		fn get(a: &T::Source, b: &T::Key) -> Result<Option<Self::Value>, DispatchError> {
 			execute_call!((a, b))
 		}
 	}

@@ -146,48 +146,69 @@ pub mod benchmarks_util {
 	}
 }
 
+/// Get the decimals for the pool currency
+pub fn decimals_for_pool<Pools, AssetRegistry>(pool_id: PoolId) -> Result<u32, DispatchError>
+where
+	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
+{
+	let currency = Pools::currency_for(pool_id).ok_or(DispatchError::Other(
+		"OracleConverterBridge: No currency for pool",
+	))?;
+
+	let metadata = AssetRegistry::metadata(&currency).ok_or(DispatchError::Other(
+		"OracleConverterBridge: No metadata for currency",
+	))?;
+
+	Ok(metadata.decimals)
+}
+
 /// A provider bridge that transform generic quantity representation of a price
 /// into a balance denominated in a pool currency.
-pub struct OracleConverterBridge<Provider, Runtime>(PhantomData<(Provider, Runtime)>);
+pub struct OracleConverterBridge<Provider, Pools, AssetRegistry>(
+	PhantomData<(Provider, Pools, AssetRegistry)>,
+);
 
-impl<Provider, Runtime> ValueProvider<(AccountId, PoolId), OracleKey>
-	for OracleConverterBridge<Provider, Runtime>
+impl<Provider, Pools, AssetRegistry> ValueProvider<(AccountId, PoolId), OracleKey>
+	for OracleConverterBridge<Provider, Pools, AssetRegistry>
 where
-	Provider: ValueProvider<AccountId, OracleKey, Value = Quantity>,
-	Runtime: orml_asset_registry::Config<AssetId = CurrencyId>
-		+ pallet_pool_system::Config<PoolId = PoolId, CurrencyId = CurrencyId>,
+	Provider: ValueProvider<AccountId, OracleKey, Value = (Quantity, Millis)>,
+	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
 {
-	type Timestamp = Provider::Timestamp;
-	type Value = Balance;
+	type Value = (Balance, Millis);
 
 	fn get(
 		(account_id, pool_id): &(AccountId, PoolId),
 		key: &OracleKey,
-	) -> Result<(Balance, Self::Timestamp), DispatchError> {
-		let (value, timestamp) = Provider::get(account_id, key)?;
+	) -> Result<Option<Self::Value>, DispatchError> {
+		match Provider::get(account_id, key)? {
+			Some((quantity, timestamp)) => {
+				let decimals =
+					decimals_for_pool::<Pools, AssetRegistry>(*pool_id)?.ensure_into()?;
+				let balance = fixed_point_to_balance(quantity, decimals)?;
 
-		let currency = pallet_pool_system::Pallet::<Runtime>::currency_for(*pool_id).ok_or(
-			DispatchError::Other("OracleConverterBridge: No currency for pool"),
-		)?;
-		let metadata = orml_asset_registry::Pallet::<Runtime>::metadata(&currency).ok_or(
-			DispatchError::Other("OracleConverterBridge: No metadata for currency"),
-		)?;
-
-		let balance = fixed_point_to_balance(value, metadata.decimals.ensure_into()?)?;
-
-		Ok((balance, timestamp))
+				Ok(Some((balance, timestamp)))
+			}
+			None => Ok(None),
+		}
 	}
 
-	/// Allows to initialize an initial state required for a pallet that
-	/// calls `get()`.
 	#[cfg(feature = "runtime-benchmarks")]
-	fn set((_, pool_id): &(AccountId, PoolId), _: &OracleKey) {
-		use cfg_traits::benchmarking::PoolBenchmarkHelper;
-		use frame_benchmarking::account;
+	fn set(
+		(account_id, pool_id): &(AccountId, PoolId),
+		key: &OracleKey,
+		(balance, timestamp): (Balance, Millis),
+	) {
+		use cfg_primitives::conversion::balance_to_fixed_point;
 
-		if !pallet_pool_system::Pallet::<Runtime>::pool_exists(*pool_id) {
-			let admin = account("OracleConverterBridge::admin", 0, 0);
-			pallet_pool_system::Pallet::<Runtime>::bench_create_pool(pool_id, admin);
-		}
+		let decimals = decimals_for_pool::<Pools, AssetRegistry>(*pool_id)
+			.unwrap()
+			.ensure_into()
+			.unwrap();
+
+		let fixed_point = balance_to_fixed_point(balance, decimals).unwrap();
+
+		Provider::set(account_id, key, (fixed_point, timestamp));
 	}
 }

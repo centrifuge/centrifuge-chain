@@ -115,6 +115,14 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type PoolId = T::PoolId;
+
+		fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> cfg_traits::benchmarking::FundedPoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
 		type Balance = T::Balance;

@@ -704,23 +704,19 @@ impl IntoSeconds for Millis {
 
 pub trait ValueProvider<Source, Key> {
 	type Value;
-	type Timestamp;
 
-	fn get(source: &Source, id: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError>;
+	fn get(source: &Source, id: &Key) -> Result<Option<Self::Value>, DispatchError>;
 
-	/// Allows to initialize an initial state required for a pallet that
-	/// calls `get()`.
 	#[cfg(feature = "runtime-benchmarks")]
-	fn set(_: &Source, _: &Key) {}
+	fn set(_source: &Source, _key: &Key, _value: Self::Value) {}
 }
 
 /// A provider that never returns a value
-pub struct NoProvider<Value, Timestamp>(PhantomData<(Value, Timestamp)>);
-impl<Source, Key, Value, Timestamp> ValueProvider<Source, Key> for NoProvider<Value, Timestamp> {
-	type Timestamp = Timestamp;
+pub struct NoProvider<Value>(PhantomData<Value>);
+impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
 	type Value = Value;
 
-	fn get(_: &Source, _: &Key) -> Result<(Self::Value, Self::Timestamp), DispatchError> {
+	fn get(_: &Source, _: &Key) -> Result<Option<Self::Value>, DispatchError> {
 		Err(DispatchError::Other("No value"))
 	}
 }
