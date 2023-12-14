@@ -26,7 +26,7 @@ pub mod pallet {
 		type Balance;
 		type BalanceRatio;
 		type CurrencyId;
-		type TrancheCurrency: Default;
+		type TrancheCurrency;
 	}
 
 	#[pallet::pallet]
@@ -103,6 +103,13 @@ pub mod pallet {
 			f: impl Fn(&T::AccountId, T::TrancheCurrency, T::Balance) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		pub fn mock_bench_default_investment_id(
+			f: impl Fn(T::PoolId) -> T::TrancheCurrency + 'static,
+		) {
+			register_call!(f);
 		}
 	}
 
@@ -202,8 +209,8 @@ pub mod pallet {
 		type InvestmentId = T::TrancheCurrency;
 		type PoolId = T::PoolId;
 
-		fn bench_default_investment_id(_: Self::PoolId) -> Self::InvestmentId {
-			T::TrancheCurrency::default()
+		fn bench_default_investment_id(a: Self::PoolId) -> Self::InvestmentId {
+			execute_call!(a)
 		}
 	}
 }
