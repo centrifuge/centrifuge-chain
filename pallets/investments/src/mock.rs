@@ -42,7 +42,7 @@ use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-	DispatchResult,
+	DispatchError, DispatchResult,
 };
 use sp_std::{
 	cell::RefCell,
@@ -355,74 +355,88 @@ impl TestExternalitiesBuilder {
 			System::set_block_number(1);
 
 			// Mocked behaviour for the accountant
-			let state = Rc::new(RefCell::new(BTreeMap::from([
-				(
-					INVESTMENT_0_0,
-					InvestmentInfo {
-						owner: Owner::get(),
-						id: INVESTMENT_0_0,
-						payment_currency: AUSD_CURRENCY_ID,
-					},
-				),
-				(
-					INVESTMENT_0_1,
-					InvestmentInfo {
-						owner: Owner::get(),
-						id: INVESTMENT_0_1,
-						payment_currency: AUSD_CURRENCY_ID,
-					},
-				),
-			])));
-
-			MockAccountant::mock_info({
-				let state = state.clone();
-				move |id| Ok(state.borrow().get(&id).unwrap().clone())
-			});
-
-			MockAccountant::mock_balance(|id, who| OrmlTokens::balance(id.into(), who));
-
-			MockAccountant::mock_transfer({
-				let state = state.clone();
-				move |id, source, dest, amount| {
-					let _ = state.borrow().get(&id).unwrap();
-					<OrmlTokens as Mutate<MockAccountId>>::transfer(
-						id.into(),
-						source,
-						dest,
-						amount,
-						Preservation::Expendable,
-					)
-					.map(|_| ())
-				}
-			});
-
-			MockAccountant::mock_InvestmentAccountant_deposit({
-				let state = state.clone();
-				move |buyer, id, amount| {
-					let _ = state.borrow().get(&id).unwrap();
-					<OrmlTokens as Mutate<MockAccountId>>::mint_into(id.into(), buyer, amount)
-						.map(|_| ())
-				}
-			});
-
-			MockAccountant::mock_InvestmentAccountant_withdraw({
-				let state = state.clone();
-				move |seller, id, amount| {
-					let _ = state.borrow().get(&id).unwrap();
-					<OrmlTokens as Mutate<MockAccountId>>::burn_from(
-						id.into(),
-						seller,
-						amount,
-						Precision::Exact,
-						Fortitude::Polite,
-					)
-					.map(|_| ())
-				}
-			});
+			configure_accountant_mock();
 		});
 
 		externalities
 	}
+}
+
+fn configure_accountant_mock() {
+	let state = Rc::new(RefCell::new(BTreeMap::from([
+		(
+			INVESTMENT_0_0,
+			InvestmentInfo {
+				owner: Owner::get(),
+				id: INVESTMENT_0_0,
+				payment_currency: AUSD_CURRENCY_ID,
+			},
+		),
+		(
+			INVESTMENT_0_1,
+			InvestmentInfo {
+				owner: Owner::get(),
+				id: INVESTMENT_0_1,
+				payment_currency: AUSD_CURRENCY_ID,
+			},
+		),
+	])));
+
+	fn get<E: Clone>(
+		state: &Rc<RefCell<BTreeMap<InvestmentId, E>>>,
+		id: InvestmentId,
+	) -> Result<E, DispatchError> {
+		state
+			.borrow()
+			.get(&id)
+			.cloned()
+			.ok_or(DispatchError::Other("Not found"))
+	}
+
+	MockAccountant::mock_info({
+		let state = state.clone();
+		move |id| get(&state, id)
+	});
+
+	MockAccountant::mock_balance(|id, who| OrmlTokens::balance(id.into(), who));
+
+	MockAccountant::mock_transfer({
+		let state = state.clone();
+		move |id, source, dest, amount| {
+			let _ = get(&state, id)?;
+			<OrmlTokens as Mutate<MockAccountId>>::transfer(
+				id.into(),
+				source,
+				dest,
+				amount,
+				Preservation::Expendable,
+			)
+			.map(|_| ())
+		}
+	});
+
+	MockAccountant::mock_InvestmentAccountant_deposit({
+		let state = state.clone();
+		move |buyer, id, amount| {
+			let _ = get(&state, id)?;
+			<OrmlTokens as Mutate<MockAccountId>>::mint_into(id.into(), buyer, amount).map(|_| ())
+		}
+	});
+
+	MockAccountant::mock_InvestmentAccountant_withdraw({
+		let state = state.clone();
+		move |seller, id, amount| {
+			let _ = get(&state, id)?;
+			<OrmlTokens as Mutate<MockAccountId>>::burn_from(
+				id.into(),
+				seller,
+				amount,
+				Precision::Exact,
+				Fortitude::Polite,
+			)
+			.map(|_| ())
+		}
+	});
 }
 
 pub(crate) fn last_event() -> RuntimeEvent {
