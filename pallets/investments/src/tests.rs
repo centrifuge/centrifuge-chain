@@ -2783,7 +2783,7 @@ fn collecting_fully_works() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				n_last_event(3),
+				n_last_event(4),
 				Event::InvestCollectedWithoutActivePosition {
 					investment_id: INVESTMENT_0_0,
 					who: TrancheHolderC::get()
