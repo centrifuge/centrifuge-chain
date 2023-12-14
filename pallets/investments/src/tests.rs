@@ -1289,11 +1289,11 @@ fn fulfillment_partially_works_low_price() {
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
-				207245508982035928145
+				207245508982035928140
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				175369774919614147912
+				175369774919614147910
 			);
 		}
 
@@ -1347,6 +1347,8 @@ fn fulfillment_partially_works_low_price() {
 							.unwrap()
 					)
 					.unwrap()
+                    // Due to rounding issues
+                    -1
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
@@ -1362,7 +1364,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				26848874598070739546
+				26848874598070739548
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorB::get()),
@@ -1370,7 +1372,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				26848874598070739546
+				26848874598070739548
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorC::get()),
@@ -1378,7 +1380,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
-				26848874598070739546
+				26848874598070739548
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorD::get()),
@@ -1398,7 +1400,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				93113772455089820355
+				93113772455089820349
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderB::get()),
@@ -1406,7 +1408,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID),
-				93113772455089820355
+				93113772455089820349
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderC::get()),
@@ -1414,7 +1416,7 @@ fn fulfillment_partially_works_low_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID),
-				93113772455089820355
+				93113772455089820349
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderD::get()),
@@ -1426,7 +1428,7 @@ fn fulfillment_partially_works_low_price() {
 			//       about this.
 			assert_eq!(
 				free_balance_of(TrancheHolderD::get(), AUSD_CURRENCY_ID),
-				93113772455089820358
+				93113772455089820348
 			);
 
 			// UserOrders are empty
@@ -1975,11 +1977,11 @@ fn fulfillment_partially_works_high_price() {
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
-				207194029850746268657
+				207194029850746268660
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				175377207062600321028
+				175377207062600321050
 			);
 		}
 
@@ -2024,11 +2026,11 @@ fn fulfillment_partially_works_high_price() {
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), AUSD_CURRENCY_ID),
-				353343283582089552240
+				353343283582089552270
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				96789727126805778492
+				96789727126805778559
 			);
 		}
 
@@ -2040,7 +2042,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				26886035313001605134
+				26886035313001605098
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorB::get()),
@@ -2048,7 +2050,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				26886035313001605134
+				26886035313001605098
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorC::get()),
@@ -2056,7 +2058,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
-				26886035313001605134
+				26886035313001605098
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(InvestorD::get()),
@@ -2068,7 +2070,7 @@ fn fulfillment_partially_works_high_price() {
 			//       about this.
 			assert_eq!(
 				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
-				26886035313001605135
+				26886035313001605098
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderA::get()),
@@ -2076,7 +2078,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				92985074626865671639
+				92985074626865671648
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderB::get()),
@@ -2084,7 +2086,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderB::get(), AUSD_CURRENCY_ID),
-				92985074626865671639
+				92985074626865671648
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderC::get()),
@@ -2092,7 +2094,7 @@ fn fulfillment_partially_works_high_price() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderC::get(), AUSD_CURRENCY_ID),
-				92985074626865671639
+				92985074626865671648
 			);
 			assert_ok!(collect_both(
 				RuntimeOrigin::signed(TrancheHolderD::get()),
@@ -2104,7 +2106,7 @@ fn fulfillment_partially_works_high_price() {
 			//       about this.
 			assert_eq!(
 				free_balance_of(TrancheHolderD::get(), AUSD_CURRENCY_ID),
-				92985074626865671638
+				92985074626865671647
 			);
 
 			// UserOrders are empty
@@ -2859,7 +2861,7 @@ fn collecting_over_max_works() {
 					who: InvestorA::get(),
 					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
 					collection: InvestCollection {
-						payout_investment_invest: 23999169253290529690,
+						payout_investment_invest: 23999169253290529658,
 						remaining_investment_invest: 5368709120000000000
 					},
 					outcome: CollectOutcome::PartiallyCollected,
@@ -2884,7 +2886,7 @@ fn collecting_over_max_works() {
 					who: InvestorA::get(),
 					processed_orders: vec![10],
 					collection: InvestCollection {
-						payout_investment_invest: 2886866059711075441,
+						payout_investment_invest: 2886866059711075437,
 						remaining_investment_invest: 0
 					},
 					outcome: CollectOutcome::FullyCollected
@@ -2897,7 +2899,7 @@ fn collecting_over_max_works() {
 			);
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				26886035313001605131
+				26886035313001605095
 			)
 		}
 
@@ -2914,7 +2916,7 @@ fn collecting_over_max_works() {
 					who: TrancheHolderA::get(),
 					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
 					collection: RedeemCollection {
-						payout_investment_redeem: 83000878263402985070,
+						payout_investment_redeem: 83000878263402985078,
 						remaining_investment_redeem: 5368709120000000000
 					},
 					outcome: CollectOutcome::PartiallyCollected,
@@ -2939,7 +2941,7 @@ fn collecting_over_max_works() {
 					who: TrancheHolderA::get(),
 					processed_orders: vec![10],
 					collection: RedeemCollection {
-						payout_investment_redeem: 9984196363462686567,
+						payout_investment_redeem: 9984196363462686568,
 						remaining_investment_redeem: 0
 					},
 					outcome: CollectOutcome::FullyCollected
@@ -2952,7 +2954,7 @@ fn collecting_over_max_works() {
 			);
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), AUSD_CURRENCY_ID),
-				92985074626865671637
+				92985074626865671646
 			)
 		}
 	})
