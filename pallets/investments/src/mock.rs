@@ -362,7 +362,7 @@ impl TestExternalitiesBuilder {
 	}
 }
 
-fn configure_accountant_mock() {
+pub fn configure_accountant_mock() {
 	let state = Rc::new(RefCell::new(BTreeMap::from([
 		(
 			INVESTMENT_0_0,

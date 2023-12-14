@@ -26,7 +26,7 @@ pub mod pallet {
 		type Balance;
 		type BalanceRatio;
 		type CurrencyId;
-		type TrancheCurrency;
+		type TrancheCurrency: Default;
 	}
 
 	#[pallet::pallet]
@@ -203,7 +203,7 @@ pub mod pallet {
 		type PoolId = T::PoolId;
 
 		fn bench_default_investment_id(_: Self::PoolId) -> Self::InvestmentId {
-			unimplemented!();
+			T::TrancheCurrency::default()
 		}
 	}
 }
