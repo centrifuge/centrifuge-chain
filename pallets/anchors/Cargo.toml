@@ -32,7 +32,6 @@ pallet-aura = { git = "https://github.com/paritytech/substrate", default-feature
 
 [dev-dependencies]
 pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 
@@ -72,6 +71,7 @@ std = [
   "frame-system/std",
   "pallet-aura/std",
   "pallet-timestamp/std",
+  "pallet-balances/std",
   "scale-info/std",
   "serde/std",
   "sp-arithmetic/std",

@@ -323,7 +323,7 @@ pub fn run() -> Result<()> {
 		}
 		Some(Subcommand::Revert(cmd)) => construct_async_run!(|components, cli, cmd, config| {
 			let aux_revert = Box::new(move |client, _, blocks| {
-				grandpa::revert(client, blocks)?;
+				sc_consensus_grandpa::revert(client, blocks)?;
 				Ok(())
 			});
 			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))

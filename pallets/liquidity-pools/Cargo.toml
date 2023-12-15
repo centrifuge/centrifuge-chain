@@ -1,7 +1,7 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge Liquidity Pools Pallet"
-edition = "2018"
+edition = "2021"
 license = "LGPL-3.0"
 name = "pallet-liquidity-pools"
 repository = "https://github.com/centrifuge/centrifuge-chain"
@@ -62,8 +62,8 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
-  "pallet-balances",
-  "orml-tokens",
+  "pallet-balances/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
@@ -101,11 +101,11 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
   "frame-system/try-runtime",
   "pallet-ethereum/try-runtime",
+  "pallet-balances/try-runtime",
   "fp-self-contained/try-runtime",
   "sp-runtime/try-runtime",
 ]
