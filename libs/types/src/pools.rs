@@ -159,13 +159,11 @@ where
 	}
 
 	pub fn checked_mutate_payable(&mut self, mut f: impl FnMut(&mut Balance)) {
-		match *self {
-			Self::ChargedUpTo {
-				ref mut payable, ..
-			} => {
-				f(payable);
-			}
-			_ => {}
+		if let Self::ChargedUpTo {
+			ref mut payable, ..
+		} = *self
+		{
+			f(payable);
 		}
 	}
 

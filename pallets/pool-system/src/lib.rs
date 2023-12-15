@@ -177,9 +177,9 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		fee::PoolFees as PoolFeesT,
+		fee::AddPoolFees,
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
-		PoolUpdateGuard,
+		EpochTransitionHook, PoolUpdateGuard,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
@@ -319,29 +319,23 @@ pub mod pallet {
 
 		type Time: TimeAsSecs;
 
-		/// The identifier of a particular fee
-		type FeeId: Parameter
-			+ Member
-			+ Default
-			+ TypeInfo
-			+ MaxEncodedLen
-			+ Copy
-			+ EnsureAdd
-			+ One
-			+ Ord;
-
-		type PoolFees: PoolFeesT<
-			Balance = Self::Balance,
+		/// Add pool fees
+		type AddFees: AddPoolFees<
 			Error = DispatchError,
 			Fee = PoolFee<
 				<Self as frame_system::Config>::AccountId,
 				FeeType<Self::Balance, Self::Rate>,
 			>,
 			FeeBucket = FeeBucket,
-			FeeId = Self::FeeId,
 			PoolId = Self::PoolId,
-			Rate = Self::Rate,
+		>;
+
+		/// Epoch transition hook required for Pool Fees
+		type OnEpochTransition: EpochTransitionHook<
+			Balance = Self::Balance,
+			PoolId = Self::PoolId,
 			Time = Seconds,
+			Error = DispatchError,
 		>;
 
 		/// Challenge time
@@ -711,14 +705,12 @@ pub mod pallet {
 					)?;
 
 				let epoch_duration = now.saturating_sub(epoch_last_closed);
-				let reserve_after_fees = T::PoolFees::prepare_disbursements(
+				T::OnEpochTransition::on_closing(
 					pool_id,
-					FeeBucket::Top,
 					nav,
-					pool.reserve.total,
+					&mut pool.reserve.total,
 					epoch_duration.into(),
-				);
-				pool.reserve.total = reserve_after_fees;
+				)?;
 
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
@@ -1180,7 +1172,7 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
-			T::PoolFees::pay_disbursements(pool_id, FeeBucket::Top)?;
+			T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
 
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
 

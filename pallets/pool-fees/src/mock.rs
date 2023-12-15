@@ -13,7 +13,6 @@
 
 use cfg_mocks::{pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools};
 use cfg_primitives::{Balance, PoolFeeId, PoolId, TrancheId};
-use cfg_traits::fee::PoolFees as _;
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::{PermissionScope, PoolRole, Role},

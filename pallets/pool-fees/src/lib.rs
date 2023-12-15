@@ -24,9 +24,9 @@ pub mod types;
 pub mod pallet {
 	use cfg_traits::{
 		changes::ChangeGuard,
-		fee::{FeeAmountProration, PoolFees},
+		fee::{AddPoolFees, FeeAmountProration},
 		investments::TrancheCurrency,
-		Permissions, PoolInspect, PoolReserve, SaturatedProration, Seconds,
+		EpochTransitionHook, Permissions, PoolInspect, PoolReserve, SaturatedProration, Seconds,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -383,7 +383,7 @@ pub mod pallet {
 				Error::<T>::UnauthorizedEdit
 			);
 
-			<Self as PoolFees>::remove_fee(fee_id)?;
+			Self::do_remove_fee(fee_id)?;
 
 			Ok(())
 		}
@@ -484,22 +484,15 @@ pub mod pallet {
 				.try_into()
 				.map_err(|_| Error::<T>::ChangeIdNotPoolFees.into())
 		}
-	}
 
-	impl<T: Config> PoolFees for Pallet<T> {
-		type Balance = T::Balance;
-		type Error = DispatchError;
-		type Fee = PoolFeeOf<T>;
-		type FeeBucket = FeeBucket;
-		type FeeId = T::FeeId;
-		type PoolId = T::PoolId;
-		type Rate = T::Rate;
-		type Time = Seconds;
-
-		fn pay_disbursements(
-			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
-		) -> Result<(), Self::Error> {
+		/// Withdraw any due fees. The waterfall of fee payment follows the
+		/// order of the corresponding [FeeBucket].
+		///
+		/// Assumes `prepare_disbursements` to have been executed beforehand.
+		pub(crate) fn pay_disbursements(
+			pool_id: T::PoolId,
+			bucket: FeeBucket,
+		) -> Result<(), DispatchError> {
 			let fees = DisbursingFees::<T>::take(pool_id, bucket);
 			for fee in fees.into_iter() {
 				T::PoolReserve::withdraw(pool_id.into(), fee.destination.clone(), fee.amount)
@@ -523,15 +516,19 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn prepare_disbursements(
-			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
-			portfolio_valuation: Self::Balance,
-			reserve: Self::Balance,
-			epoch_duration: Self::Time,
-		) -> Self::Balance {
+		/// Determine the amount of any due fees. The waterfall of fee payment
+		/// follows the order of the corresponding [FeeBucket] as long as the
+		/// reserve is not empty.
+		///
+		/// Returns the updated reserve amount.
+		pub(crate) fn prepare_disbursements(
+			pool_id: T::PoolId,
+			bucket: FeeBucket,
+			portfolio_valuation: T::Balance,
+			reserve: &mut T::Balance,
+			epoch_duration: Seconds,
+		) {
 			let fee_structure = FeeIds::<T>::get(pool_id, bucket.clone());
-			let mut reserve = reserve;
 
 			let fees: Vec<DisbursingFeeOf<T>> = fee_structure
 				.into_iter()
@@ -567,8 +564,8 @@ pub mod pallet {
 							};
 
 							// Disbursement amount is limited by reserve
-							let disbursement = fee_amount.min(reserve);
-							reserve = reserve.saturating_sub(disbursement);
+							let disbursement = fee_amount.min(*reserve);
+							*reserve = reserve.saturating_sub(disbursement);
 
 							// Update fee amounts
 							fee.amount.checked_mutate_pending(|pending| {
@@ -603,34 +600,13 @@ pub mod pallet {
 					BoundedVec::<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>::truncate_from(fees),
 				);
 			}
-
-			reserve
 		}
 
-		fn add_fee(
-			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
-			fee: Self::Fee,
-		) -> Result<(), Self::Error> {
-			let fee_id = Self::generate_fee_id()?;
-
-			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
-				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-
-			CreatedFees::<T>::insert(fee_id, PendingPoolFeeOf::<T>::from(fee.clone()));
-			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket.clone()));
-
-			Self::deposit_event(Event::<T>::Added {
-				pool_id,
-				bucket,
-				fee,
-				fee_id,
-			});
-
-			Ok(())
-		}
-
-		fn remove_fee(fee_id: Self::FeeId) -> Result<(), Self::Error> {
+		/// Entirely remove a stored fee from the given pair of pool id and fee
+		/// bucket.
+		///
+		/// NOTE: Assumes call permissions are separately checked beforehand.
+		fn do_remove_fee(fee_id: T::FeeId) -> Result<(), DispatchError> {
 			CreatedFees::<T>::remove(fee_id);
 			FeeIdsToPoolBucket::<T>::mutate_exists(fee_id, |maybe_key| {
 				maybe_key
@@ -658,6 +634,60 @@ pub mod pallet {
 				*maybe_key = None;
 				Ok::<(), DispatchError>(())
 			})?;
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> AddPoolFees for Pallet<T> {
+		type Error = DispatchError;
+		type Fee = PoolFeeOf<T>;
+		type FeeBucket = FeeBucket;
+		type PoolId = T::PoolId;
+
+		fn add_fee(
+			pool_id: Self::PoolId,
+			bucket: Self::FeeBucket,
+			fee: Self::Fee,
+		) -> Result<(), Self::Error> {
+			let fee_id = Self::generate_fee_id()?;
+
+			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
+				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+
+			CreatedFees::<T>::insert(fee_id, PendingPoolFeeOf::<T>::from(fee.clone()));
+			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket.clone()));
+
+			Self::deposit_event(Event::<T>::Added {
+				pool_id,
+				bucket,
+				fee,
+				fee_id,
+			});
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> EpochTransitionHook for Pallet<T> {
+		type Balance = T::Balance;
+		type Error = DispatchError;
+		type PoolId = T::PoolId;
+		type Time = Seconds;
+
+		fn on_closing(
+			pool_id: Self::PoolId,
+			nav: Self::Balance,
+			reserve: &mut Self::Balance,
+			epoch_duration: Self::Time,
+		) -> Result<(), Self::Error> {
+			Self::prepare_disbursements(pool_id, FeeBucket::Top, nav, reserve, epoch_duration);
+
+			Ok(())
+		}
+
+		fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error> {
+			Self::pay_disbursements(pool_id, FeeBucket::Top)?;
 
 			Ok(())
 		}

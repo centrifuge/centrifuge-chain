@@ -595,6 +595,26 @@ pub trait StatusNotificationHook {
 	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
 }
 
+/// Trait to signal an epoch transition.
+pub trait EpochTransitionHook {
+	type Balance;
+	type PoolId;
+	type Time;
+	type Error;
+
+	/// Hook into the closing of an epoch
+	fn on_closing(
+		pool_id: Self::PoolId,
+		nav: Self::Balance,
+		reserve: &mut Self::Balance,
+		epoch_duration: Self::Time,
+	) -> Result<(), Self::Error>;
+
+	/// Hook into the execution of an epoch before any investment and
+	/// redemption fulfillments
+	fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error>;
+}
+
 /// Trait to synchronously provide a currency conversion estimation for foreign
 /// currencies into/from pool currencies.
 pub trait IdentityCurrencyConversion {

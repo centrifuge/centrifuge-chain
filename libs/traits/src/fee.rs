@@ -10,37 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// TODO: Docs
-// TODO: Enable paying without FeeBucket knowledge or expose buckets
-pub trait PoolFees {
+/// Trait to add fees to a pool
+pub trait AddPoolFees {
 	type PoolId;
 	type FeeBucket;
-	type Balance;
-	type Time;
 	type Fee;
-	type FeeId;
 	type Error;
-	type Rate;
-
-	/// Withdraw any due fees. The waterfall of fee payment follows the order of
-	/// the corresponding [FeeBucket].
-	///
-	/// Assumes `prepare_disbursements` to have been executed beforehand.
-	fn pay_disbursements(pool_id: Self::PoolId, bucket: Self::FeeBucket)
-		-> Result<(), Self::Error>;
-
-	/// Determine the amount of any due fees. The waterfall of fee payment
-	/// follows the order of the corresponding [FeeBucket] as long as the
-	/// reserve is not empty.
-	///
-	/// Returns the updated reserve amount.
-	fn prepare_disbursements(
-		pool_id: Self::PoolId,
-		bucket: Self::FeeBucket,
-		portfolio_valuation: Self::Balance,
-		reserve: Self::Balance,
-		epoch_duration: Self::Time,
-	) -> Self::Balance;
 
 	/// Add a new fee to the pool and bucket.
 	///
@@ -50,12 +25,6 @@ pub trait PoolFees {
 		bucket: Self::FeeBucket,
 		fee: Self::Fee,
 	) -> Result<(), Self::Error>;
-
-	/// Entirely remove a stored fee from the given pair of pool id and fee
-	/// bucket.
-	///
-	/// NOTE: Assumes call permissions are separately checked beforehand.
-	fn remove_fee(fee_id: Self::FeeId) -> Result<(), Self::Error>;
 }
 
 /// Trait to prorate a fee amount to a rate or amount

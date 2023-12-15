@@ -12,7 +12,7 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::PoolFees,
+	fee::AddPoolFees,
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
@@ -191,7 +191,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		}
 
 		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
-			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
+			T::AddFees::add_fee(pool_id, fee_bucket, pool_fee)?;
 		}
 
 		let pool_details = PoolDetails {

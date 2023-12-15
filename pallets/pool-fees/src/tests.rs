@@ -384,7 +384,6 @@ mod extrinsics {
 
 mod disbursements {
 	use cfg_primitives::SECONDS_PER_YEAR;
-	use cfg_traits::fee::PoolFees as PoolFeesT;
 	use cfg_types::{
 		fixed_point::Rate,
 		pools::{FeeAmount, FeeType},
@@ -412,8 +411,8 @@ mod disbursements {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
-
-						let res_pre_fees = NAV;
+						let res_post_fees = &mut NAV.clone();
+						let res_pre_fees = res_post_fees.clone();
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 						let fee_amount = res_pre_fees / 10;
 
@@ -423,15 +422,15 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume 10% of reserve
-						let res_post_fees = PoolFees::prepare_disbursements(
+						PoolFees::prepare_disbursements(
 							POOL,
 							BUCKET,
 							NAV,
-							res_pre_fees,
+							res_post_fees,
 							SECONDS_PER_YEAR,
 						);
 
-						assert_eq!(res_post_fees, res_pre_fees - fee_amount);
+						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(
 							DisbursingFees::<Runtime>::get(POOL, BUCKET),
 							Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -450,7 +449,8 @@ mod disbursements {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
-						let res_pre_fees = NAV / 100;
+						let res_post_fees: &mut Balance = &mut (NAV.clone() / 100);
+						let res_pre_fees = res_post_fees.clone();
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 
 						let fee = new_fee(FeeType::Fixed {
@@ -459,15 +459,15 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume entire reserve
-						let res_post_fees = PoolFees::prepare_disbursements(
+						PoolFees::prepare_disbursements(
 							POOL,
 							BUCKET,
 							NAV,
-							res_pre_fees,
+							res_post_fees,
 							SECONDS_PER_YEAR,
 						);
 
-						assert_eq!(res_post_fees, 0);
+						assert_eq!(*res_post_fees, 0);
 						assert_eq!(
 							DisbursingFees::<Runtime>::get(POOL, BUCKET),
 							Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -489,7 +489,8 @@ mod disbursements {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
-						let res_pre_fees = (2 * SECONDS_PER_YEAR).into();
+						let res_post_fees: &mut Balance = &mut (2 * SECONDS_PER_YEAR).into();
+						let res_pre_fees = res_post_fees.clone();
 						let amount_per_second = 1;
 						let fee_amount = SECONDS_PER_YEAR.into();
 
@@ -499,15 +500,15 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume 10% of reserve
-						let res_post_fees = PoolFees::prepare_disbursements(
+						PoolFees::prepare_disbursements(
 							POOL,
 							BUCKET,
 							NAV,
-							res_pre_fees,
+							res_post_fees,
 							SECONDS_PER_YEAR,
 						);
 
-						assert_eq!(res_post_fees, res_pre_fees - fee_amount);
+						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(
 							DisbursingFees::<Runtime>::get(POOL, BUCKET),
 							Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -526,7 +527,8 @@ mod disbursements {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
-						let res_pre_fees = (SECONDS_PER_YEAR / 2).into();
+						let res_post_fees: &mut Balance = &mut (SECONDS_PER_YEAR / 2).into();
+						let res_pre_fees = res_post_fees.clone();
 						let amount_per_second = 1;
 
 						let fee = new_fee(FeeType::Fixed {
@@ -535,15 +537,15 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume entire reserve
-						let res_post_fees = PoolFees::prepare_disbursements(
+						PoolFees::prepare_disbursements(
 							POOL,
 							BUCKET,
 							NAV,
-							res_pre_fees,
+							res_post_fees,
 							SECONDS_PER_YEAR,
 						);
 
-						assert_eq!(res_post_fees, 0);
+						assert_eq!(*res_post_fees, 0);
 						assert_eq!(
 							DisbursingFees::<Runtime>::get(POOL, BUCKET),
 							Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -574,7 +576,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 
 							let fee = new_fee(FeeType::ChargedUpTo {
@@ -582,15 +585,15 @@ mod disbursements {
 							});
 							add_fees(vec![fee.clone()]);
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees);
+							assert_eq!(*res_post_fees, res_pre_fees);
 							assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
 							pay_single_fee_and_assert(fee_id, 0);
 						});
@@ -601,7 +604,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10 - 1;
 
@@ -616,15 +620,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - charged_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -643,7 +647,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10;
 
@@ -658,15 +663,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - charged_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -685,7 +690,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let max_chargeable_amount = NAV / 10;
 							let charged_amount = max_chargeable_amount + 1;
@@ -701,15 +707,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - max_chargeable_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -729,7 +735,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV / 100;
+							let res_post_fees = &mut (NAV.clone() / 100);
+							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10;
 							let fee_amount = res_pre_fees;
@@ -745,15 +752,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, 0);
+							assert_eq!(*res_post_fees, 0);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -783,7 +790,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let amount_per_second = 1;
 
 							let fee = new_fee(FeeType::ChargedUpTo {
@@ -791,15 +799,15 @@ mod disbursements {
 							});
 							add_fees(vec![fee.clone()]);
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees);
+							assert_eq!(*res_post_fees, res_pre_fees);
 							assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
 							pay_single_fee_and_assert(fee_id, 0);
 						});
@@ -810,7 +818,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let amount_per_second = 1;
 							let charged_amount = (SECONDS_PER_YEAR - 1).into();
 
@@ -825,15 +834,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - charged_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -852,7 +861,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let amount_per_second = 1;
 							let charged_amount = SECONDS_PER_YEAR.into();
 
@@ -867,15 +877,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - charged_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -894,7 +904,8 @@ mod disbursements {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_post_fees = &mut NAV.clone();
+							let res_pre_fees = res_post_fees.clone();
 							let amount_per_second = 1;
 							let max_chargeable_amount = SECONDS_PER_YEAR.into();
 							let charged_amount = max_chargeable_amount + 1;
@@ -910,15 +921,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, res_pre_fees - max_chargeable_amount);
+							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -938,7 +949,8 @@ mod disbursements {
 							config_mocks();
 							let fee_id = 1;
 							let amount_per_second = 1;
-							let res_pre_fees = (SECONDS_PER_YEAR / 2).into();
+							let res_post_fees: &mut Balance = &mut (SECONDS_PER_YEAR / 2).into();
+							let res_pre_fees = res_post_fees.clone();
 							let charged_amount = SECONDS_PER_YEAR.into();
 							let fee_amount = res_pre_fees;
 
@@ -953,15 +965,15 @@ mod disbursements {
 								charged_amount
 							));
 
-							let res_post_fees = PoolFees::prepare_disbursements(
+							PoolFees::prepare_disbursements(
 								POOL,
 								BUCKET,
 								NAV,
-								res_pre_fees,
+								res_post_fees,
 								SECONDS_PER_YEAR,
 							);
 
-							assert_eq!(res_post_fees, 0);
+							assert_eq!(*res_post_fees, 0);
 							assert_eq!(
 								DisbursingFees::<Runtime>::get(POOL, BUCKET),
 								Disbursements::truncate_from(vec![DisbursingFeeOf::<Runtime> {
@@ -994,7 +1006,8 @@ mod disbursements {
 			new_test_ext().execute_with(|| {
 				config_mocks();
 				let charged_fee_ids = vec![2, 3];
-				let res_pre_fees = NAV;
+				let res_post_fees = &mut NAV.clone();
+				let res_pre_fees = res_post_fees.clone();
 				let annual_rate = Rate::saturating_from_rational(1, 100);
 				let fixed_fee_amount = NAV / 100;
 				let amount_per_seconds = vec![2, 1];
@@ -1026,15 +1039,9 @@ mod disbursements {
 					charged_fee_ids[1],
 					charged_y1[1]
 				));
-				let res_post_fees = PoolFees::prepare_disbursements(
-					POOL,
-					BUCKET,
-					NAV,
-					res_pre_fees,
-					SECONDS_PER_YEAR,
-				);
+				PoolFees::prepare_disbursements(POOL, BUCKET, NAV, res_post_fees, SECONDS_PER_YEAR);
 				assert_eq!(
-					res_post_fees,
+					*res_post_fees,
 					res_pre_fees - fixed_fee_amount - charged_y1[0] - payable[1]
 				);
 				assert_eq!(
@@ -1097,8 +1104,9 @@ mod disbursements {
 					.into(),
 				);
 
-				// Year 2: Make reserve insufficient to handle all fees (last fee falls short)
-				let res_pre_fees = fixed_fee_amount + charged_y2[0] + 1;
+				// Year 2: Make reserve insufficient to handle all fees (last fee
+				// falls short
+				*res_post_fees = fixed_fee_amount + charged_y2[0] + 1;
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
 					charged_fee_ids[0],
@@ -1109,14 +1117,8 @@ mod disbursements {
 					charged_fee_ids[1],
 					charged_y2[1]
 				));
-				let res_post_fees = PoolFees::prepare_disbursements(
-					POOL,
-					BUCKET,
-					NAV,
-					res_pre_fees,
-					SECONDS_PER_YEAR,
-				);
-				assert_eq!(res_post_fees, 0);
+				PoolFees::prepare_disbursements(POOL, BUCKET, NAV, res_post_fees, SECONDS_PER_YEAR);
+				assert_eq!(*res_post_fees, 0);
 				assert_eq!(
 					DisbursingFees::<Runtime>::get(POOL, BUCKET),
 					Disbursements::truncate_from(vec![

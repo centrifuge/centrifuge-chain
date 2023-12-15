@@ -23,7 +23,7 @@ use cfg_traits::{
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	pools::{FeeBucket, PoolFee},
+	pools::{FeeBucket, FeeType, PoolFee},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -145,6 +145,7 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 }
 
 impl pallet_pool_system::Config for Test {
+	type AddFees = PoolFees;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
@@ -154,7 +155,6 @@ impl pallet_pool_system::Config for Test {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type FeeId = PoolFeeId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -164,13 +164,13 @@ impl pallet_pool_system::Config for Test {
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = FakeNav;
+	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
-	type PoolFees = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_system::pool_types::changes::PoolChangeProposal;
@@ -249,7 +249,7 @@ impl<
 	>;
 	type PoolFeeInput = (
 		FeeBucket,
-		PoolFee<T::AccountId, Self::Balance, <T as pallet_pool_system::Config>::Rate>,
+		PoolFee<T::AccountId, FeeType<Self::Balance, <T as pallet_pool_system::Config>::Rate>>,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
