@@ -25,7 +25,7 @@ mod util {
 
 	pub fn last_change_id_for<T>(
 		key: T::OracleKey,
-		feeders: &BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+		feeders: &BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 	) -> T::Hash
 	where
 		T: Config,
@@ -47,6 +47,7 @@ mod util {
         T::OracleValue: Default,
         T::Timestamp: Default,
         T::Hash: Default,
+        T::FeederId: From<T::AccountId>,
         T::ChangeGuard: PoolBenchmarkHelper<PoolId = T::CollectionId, AccountId = T::AccountId>,
     )]
 mod benchmarks {
@@ -62,7 +63,7 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders = (0..n)
-			.map(|i| account("feeder", i, 0))
+			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
@@ -88,7 +89,7 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders: BoundedVec<_, _> = (0..n)
-			.map(|i| account("feeder", i, 0))
+			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
@@ -112,8 +113,8 @@ mod benchmarks {
 
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
-		let feeders: BoundedVec<T::AccountId, _> = (0..n)
-			.map(|i| account("feeder", i, 0))
+		let feeders: BoundedVec<T::FeederId, _> = (0..n)
+			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();

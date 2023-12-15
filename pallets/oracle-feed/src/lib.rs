@@ -74,7 +74,7 @@ pub mod pallet {
 	pub(crate) type FedValues<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::AccountId,
+		Option<T::AccountId>,
 		Blake2_128Concat,
 		T::OracleKey,
 		(T::OracleValue, MomentOf<T>),
@@ -84,7 +84,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		Fed {
-			account_id: T::AccountId,
+			account_id: Option<T::AccountId>,
 			key: T::OracleKey,
 			value: T::OracleValue,
 		},
@@ -95,26 +95,27 @@ pub mod pallet {
 		/// Permissionles call to feed an oracle key from a source with value.
 		/// The first time the value is set, an extra fee is required for the
 		/// feeder.
-		#[pallet::weight(T::WeightInfo::feed_first())]
+		#[pallet::weight(T::WeightInfo::feed_with_fee())]
 		#[pallet::call_index(0)]
 		pub fn feed(
 			origin: OriginFor<T>,
 			key: T::OracleKey,
 			value: T::OracleValue,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
+			let who = ensure_signed_or_root(origin)?;
 
 			FedValues::<T>::mutate(&who, key, |prev_value| {
-				let new_weight = match prev_value {
-					None => {
-						T::FirstValuePayFee::pay(&who)?;
+				let new_weight = match (&prev_value, &who) {
+					(None, Some(account_id)) => {
+						T::FirstValuePayFee::pay(account_id)?;
+
 						// The weight used is the predefined one.
 						None
 					}
-					Some(_) => {
+					_ => {
 						// The weight used is less than the predefined,
 						// because we do not need to pay an extra fee
-						Some(T::WeightInfo::feed_again())
+						Some(T::WeightInfo::feed_without_fee())
 					}
 				};
 
@@ -131,18 +132,18 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ValueProvider<T::AccountId, T::OracleKey> for Pallet<T> {
+	impl<T: Config> ValueProvider<Option<T::AccountId>, T::OracleKey> for Pallet<T> {
 		type Value = (T::OracleValue, MomentOf<T>);
 
 		fn get(
-			source: &T::AccountId,
+			source: &Option<T::AccountId>,
 			id: &T::OracleKey,
 		) -> Result<Option<Self::Value>, DispatchError> {
 			Ok(FedValues::<T>::get(source, id))
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
-		fn set(source: &T::AccountId, key: &T::OracleKey, value: Self::Value) {
+		fn set(source: &Option<T::AccountId>, key: &T::OracleKey, value: Self::Value) {
 			FedValues::<T>::insert(source, key, value)
 		}
 	}

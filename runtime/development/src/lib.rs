@@ -1355,6 +1355,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
+	type FeederId = Option<AccountId>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;

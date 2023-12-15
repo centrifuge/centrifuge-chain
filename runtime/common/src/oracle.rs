@@ -169,20 +169,20 @@ pub struct OracleConverterBridge<Provider, Pools, AssetRegistry>(
 	PhantomData<(Provider, Pools, AssetRegistry)>,
 );
 
-impl<Provider, Pools, AssetRegistry> ValueProvider<(AccountId, PoolId), OracleKey>
+impl<Provider, Pools, AssetRegistry> ValueProvider<(Option<AccountId>, PoolId), OracleKey>
 	for OracleConverterBridge<Provider, Pools, AssetRegistry>
 where
-	Provider: ValueProvider<AccountId, OracleKey, Value = (Quantity, Millis)>,
+	Provider: ValueProvider<Option<AccountId>, OracleKey, Value = (Quantity, Millis)>,
 	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
 	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
 {
 	type Value = (Balance, Millis);
 
 	fn get(
-		(account_id, pool_id): &(AccountId, PoolId),
+		(feeder_id, pool_id): &(Option<AccountId>, PoolId),
 		key: &OracleKey,
 	) -> Result<Option<Self::Value>, DispatchError> {
-		match Provider::get(account_id, key)? {
+		match Provider::get(feeder_id, key)? {
 			Some((quantity, timestamp)) => {
 				let decimals =
 					decimals_for_pool::<Pools, AssetRegistry>(*pool_id)?.ensure_into()?;
@@ -196,7 +196,7 @@ where
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn set(
-		(account_id, pool_id): &(AccountId, PoolId),
+		(feeder_id, pool_id): &(Option<AccountId>, PoolId),
 		key: &OracleKey,
 		(balance, timestamp): (Balance, Millis),
 	) {
@@ -209,6 +209,6 @@ where
 
 		let fixed_point = balance_to_fixed_point(balance, decimals).unwrap();
 
-		Provider::set(account_id, key, (fixed_point, timestamp));
+		Provider::set(feeder_id, key, (fixed_point, timestamp));
 	}
 }

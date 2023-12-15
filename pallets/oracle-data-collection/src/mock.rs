@@ -87,6 +87,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type AggregationProvider = crate::util::MedianAggregation;
 	type ChangeGuard = MockChangeGuard;
 	type CollectionId = CollectionId;
+	type FeederId = AccountId;
 	type IsAdmin = MockIsAdmin;
 	type MaxCollectionSize = ConstU32<10>;
 	type MaxFeedersPerKey = MaxFeedersPerKey;

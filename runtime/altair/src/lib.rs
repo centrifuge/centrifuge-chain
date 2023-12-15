@@ -1371,6 +1371,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
+	type FeederId = Option<AccountId>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
@@ -1852,10 +1853,8 @@ construct_runtime!(
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 113,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 114,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 115,
-		// TODO: Add `Call` type once we ensure the correct behavior
-		OraclePriceFeed: pallet_oracle_feed::{Pallet, Storage, Event<T>} = 116,
-		// TODO: Add `Call` type once we ensure the correct behavior
-		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Storage, Event<T>} = 117,
+		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 116,
+		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

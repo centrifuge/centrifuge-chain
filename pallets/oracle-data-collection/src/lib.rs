@@ -71,6 +71,9 @@ pub mod pallet {
 		/// Represent a runtime change
 		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
+		/// Identify a feeder
+		type FeederId: Parameter + Member + MaxEncodedLen;
+
 		/// Identify an oracle value
 		type CollectionId: Parameter + Member + Copy + MaxEncodedLen;
 
@@ -85,7 +88,7 @@ pub mod pallet {
 
 		/// A way to obtain oracle values from feeders
 		type OracleProvider: ValueProvider<
-			(Self::AccountId, Self::CollectionId),
+			(Self::FeederId, Self::CollectionId),
 			Self::OracleKey,
 			Value = OracleValuePair<Self>,
 		>;
@@ -154,7 +157,7 @@ pub mod pallet {
 		UpdatedFeeders {
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		},
 		UpdatedCollection {
 			collection_id: T::CollectionId,
@@ -191,7 +194,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -362,7 +365,7 @@ pub mod pallet {
 		fn update_feeders(
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
 			Self::mutate_and_remove_if_clean(collection_id, key, |info| {
 				info.feeders = feeders.clone();
@@ -390,7 +393,7 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct KeyInfo<T: Config> {
-		pub feeders: BoundedVec<T::AccountId, T::MaxFeedersPerKey>,
+		pub feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		pub usage_refs: u32,
 	}
 
@@ -436,7 +439,7 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub enum Change<T: Config> {
-		Feeders(T::OracleKey, BoundedVec<T::AccountId, T::MaxFeedersPerKey>),
+		Feeders(T::OracleKey, BoundedVec<T::FeederId, T::MaxFeedersPerKey>),
 	}
 }
 

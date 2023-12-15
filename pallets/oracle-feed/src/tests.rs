@@ -20,19 +20,36 @@ fn feed() {
 		});
 
 		assert_ok!(OracleFeed::feed(RuntimeOrigin::signed(FEEDER), KEY, VALUE1));
-		assert_ok!(OracleFeed::get(&FEEDER, &KEY), Some((VALUE1, TIMESTAMP1)));
+		assert_ok!(
+			OracleFeed::get(&Some(FEEDER), &KEY),
+			Some((VALUE1, TIMESTAMP1))
+		);
 
 		MockTime::mock_now(|| TIMESTAMP2);
 		MockPayFee::mock_pay(|_| unreachable!("Feeding the same key again do not require fees"));
 
 		assert_ok!(OracleFeed::feed(RuntimeOrigin::signed(FEEDER), KEY, VALUE2));
-		assert_ok!(OracleFeed::get(&FEEDER, &KEY), Some((VALUE2, TIMESTAMP2)));
+		assert_ok!(
+			OracleFeed::get(&Some(FEEDER), &KEY),
+			Some((VALUE2, TIMESTAMP2))
+		);
+	});
+}
+
+#[test]
+fn feed_root() {
+	new_test_ext().execute_with(|| {
+		MockTime::mock_now(|| TIMESTAMP1);
+		MockPayFee::mock_pay(|_| unreachable!("Feeding from root does not require fees"));
+
+		assert_ok!(OracleFeed::feed(RuntimeOrigin::root(), KEY, VALUE1));
+		assert_ok!(OracleFeed::get(&None, &KEY), Some((VALUE1, TIMESTAMP1)));
 	});
 }
 
 #[test]
 fn get_unfeeded() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OracleFeed::get(&FEEDER, &KEY), None);
+		assert_ok!(OracleFeed::get(&Some(FEEDER), &KEY), None);
 	});
 }

@@ -19,7 +19,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn feed_first() -> Result<(), BenchmarkError> {
+	fn feed_with_fee() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -38,7 +38,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn feed_again() -> Result<(), BenchmarkError> {
+	fn feed_without_fee() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 

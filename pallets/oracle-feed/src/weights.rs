@@ -14,16 +14,16 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn feed_first() -> Weight;
-	fn feed_again() -> Weight;
+	fn feed_with_fee() -> Weight;
+	fn feed_without_fee() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn feed_first() -> Weight {
+	fn feed_with_fee() -> Weight {
 		Weight::zero()
 	}
 
-	fn feed_again() -> Weight {
+	fn feed_without_fee() -> Weight {
 		Weight::zero()
 	}
 }
