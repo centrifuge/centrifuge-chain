@@ -4,14 +4,14 @@ set -e
 
 cmd=$1
 # The runtime we want to use
-parachain="${PARA_CHAIN_SPEC:-altair-local}"
+parachain="${PARA_CHAIN_SPEC:-centrifuge-local}"
 # The parachain Id we want to use
 para_id="${PARA_ID:-2000}"
 # The tmp base directory
 base_dir=/tmp/centrifuge-chain
 # Option to use the Docker image to export state & wasm
 docker_onboard="${DOCKER_ONBOARD:-false}"
-cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-test-main-latest}"
+cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-latest}"
 cc_docker_profile="${PARA_DOCKER_PROFILE:-default}"
 
 case $cmd in
@@ -41,7 +41,7 @@ stop-parachain-docker)
 
 start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
-  cargo build --release --features=fast-runtime
+  cargo build -p centrifuge-chain --release --features=fast-runtime
 
   parachain_dir=$base_dir/parachain/${para_id}
   mkdir -p $parachain_dir;
@@ -92,6 +92,6 @@ onboard-parachain)
 
 benchmark)
   pallet=$2
-  cargo run --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
+  cargo run -p centrifuge-chain --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
   ;;
 esac

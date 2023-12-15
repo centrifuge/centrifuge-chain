@@ -473,7 +473,9 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
 	use cfg_traits::{
-		benchmarking::{InvestmentIdBenchmarkHelper, PoolBenchmarkHelper},
+		benchmarking::{
+			FundedPoolBenchmarkHelper, InvestmentIdBenchmarkHelper, PoolBenchmarkHelper,
+		},
 		investments::Investment,
 	};
 	use cfg_types::{
@@ -488,20 +490,13 @@ mod benchmarks_utils {
 	use super::*;
 
 	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
+	const FUNDS: u128 = u64::max_value() as u128;
 
-	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
-	where
-		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
-		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
-	{
+	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
-		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
-			const FUNDS: u128 = u64::max_value() as u128;
-			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
-
 			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
 				frame_support::assert_ok!(T::AssetRegistry::register_asset(
 					Some(POOL_CURRENCY),
@@ -554,8 +549,23 @@ mod benchmarks_utils {
 				// TODO(william): Add genesis pool fees
 				vec![],
 			));
+		}
+	}
+
+	impl<T: Config<CurrencyId = CurrencyId>> FundedPoolBenchmarkHelper for Pallet<T>
+	where
+		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
+		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn bench_create_funded_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+			Self::bench_create_pool(pool_id, admin);
 
 			// Fund pool account
+			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			frame_support::assert_ok!(T::Tokens::mint_into(
 				POOL_CURRENCY,

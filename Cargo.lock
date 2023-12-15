@@ -272,6 +272,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
@@ -420,9 +421,9 @@ checksum = "f52f63c5c1316a16a4b35eaac8b76a98248961a533f061684cb2a7cb0eafb6c6"
 
 [[package]]
 name = "array-bytes"
-version = "6.1.0"
+version = "6.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b1c5a481ec30a5abd8dfbd94ab5cf1bb4e9a66be7f1b3b322f2f1170c200fd"
+checksum = "de17a919934ad8c5cc99a1a74de4e2dab95d6121a8f27f94755ff525b630382c"
 
 [[package]]
 name = "arrayref"
@@ -716,14 +717,6 @@ source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5
 dependencies = [
  "hash-db 0.16.0",
  "log",
-]
-
-[[package]]
-name = "binary-merkle-tree"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "hash-db 0.16.0",
 ]
 
 [[package]]
@@ -1046,7 +1039,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.34"
+version = "0.10.35"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1077,10 +1070,8 @@ dependencies = [
  "fp-storage",
  "frame-benchmarking",
  "frame-benchmarking-cli",
- "frame-system",
  "frame-system-benchmarking",
  "futures",
- "getrandom 0.2.10",
  "hex-literal 0.3.4",
  "jsonrpsee",
  "log",
@@ -1088,7 +1079,6 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-pool-system",
- "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec 3.6.5",
  "polkadot-cli",
@@ -1107,7 +1097,6 @@ dependencies = [
  "sc-rpc",
  "sc-rpc-api",
  "sc-service",
- "sc-service-test",
  "sc-sysinfo",
  "sc-telemetry",
  "sc-tracing",
@@ -1121,7 +1110,6 @@ dependencies = [
  "sp-consensus-aura",
  "sp-core",
  "sp-io",
- "sp-keyring",
  "sp-keystore",
  "sp-offchain",
  "sp-runtime",
@@ -1131,7 +1119,6 @@ dependencies = [
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
- "tempfile",
  "try-runtime-cli",
  "url",
  "vergen",
@@ -1140,7 +1127,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.23"
+version = "0.10.24"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1221,6 +1208,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
@@ -2387,7 +2375,7 @@ name = "cumulus-relay-chain-minimal-node"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.43#b8999fce0f61fb757f9e57e326cda48e70137019"
 dependencies = [
- "array-bytes 6.1.0",
+ "array-bytes 6.2.0",
  "async-trait",
  "cumulus-primitives-core",
  "cumulus-relay-chain-interface",
@@ -2748,7 +2736,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.32"
+version = "0.10.35"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2828,6 +2816,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
@@ -6358,7 +6347,7 @@ dependencies = [
 [[package]]
 name = "mock-builder"
 version = "0.1.1"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#8a67d0cf0e7c2544e918bb01ef9f70fc1c6108ec"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#ec9159d06c01f2ce3d9733779c6cfb2be9e6cc10"
 dependencies = [
  "frame-support",
 ]
@@ -7228,7 +7217,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
 dependencies = [
  "array-bytes 4.2.0",
- "binary-merkle-tree 4.0.0-dev (git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43)",
+ "binary-merkle-tree",
  "frame-support",
  "frame-system",
  "log",
@@ -7877,8 +7866,8 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
- "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -8499,6 +8488,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-restricted-xtokens"
+version = "0.0.1"
+dependencies = [
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-xtokens",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "serde",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "pallet-rewards"
 version = "0.1.0"
 dependencies = [
@@ -8514,21 +8519,6 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-root-testing"
-version = "1.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec 3.6.5",
- "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -8772,7 +8762,6 @@ dependencies = [
 name = "pallet-transfer-allowlist"
 version = "0.1.0"
 dependencies = [
- "cfg-mocks",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -11255,7 +11244,7 @@ name = "rococo-runtime"
 version = "0.9.43"
 source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.43#ba42b9ce51d25bdaf52d2c61e0763a6e3da50d25"
 dependencies = [
- "binary-merkle-tree 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.43)",
+ "binary-merkle-tree",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -11487,6 +11476,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
@@ -11547,6 +11537,7 @@ dependencies = [
  "fudge-core",
  "getrandom 0.2.10",
  "hex",
+ "hex-literal 0.3.4",
  "kusama-runtime",
  "lazy_static",
  "liquidity-pools-gateway-routers",
@@ -11602,6 +11593,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-restricted-tokens",
+ "pallet-restricted-xtokens",
  "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
@@ -12785,44 +12777,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-futures",
-]
-
-[[package]]
-name = "sc-service-test"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "array-bytes 4.2.0",
- "async-channel",
- "fdlimit",
- "futures",
- "log",
- "parity-scale-codec 3.6.5",
- "parking_lot 0.12.1",
- "sc-block-builder",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-executor",
- "sc-network",
- "sc-network-common",
- "sc-network-sync",
- "sc-service",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-state-machine",
- "sp-storage",
- "sp-tracing",
- "sp-trie",
- "substrate-test-runtime",
- "substrate-test-runtime-client",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -14465,100 +14419,6 @@ dependencies = [
  "sp-state-machine",
  "sp-trie",
  "trie-db",
-]
-
-[[package]]
-name = "substrate-test-client"
-version = "2.0.1"
-source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "array-bytes 4.2.0",
- "async-trait",
- "futures",
- "parity-scale-codec 3.6.5",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-executor",
- "sc-offchain",
- "sc-service",
- "serde",
- "serde_json",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
-]
-
-[[package]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "array-bytes 6.1.0",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "log",
- "memory-db",
- "pallet-babe",
- "pallet-balances",
- "pallet-beefy-mmr",
- "pallet-root-testing",
- "pallet-sudo",
- "pallet-timestamp",
- "parity-scale-codec 3.6.5",
- "sc-service",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-consensus-beefy",
- "sp-consensus-grandpa",
- "sp-core",
- "sp-debug-derive",
- "sp-externalities",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-offchain",
- "sp-runtime",
- "sp-runtime-interface",
- "sp-session",
- "sp-state-machine",
- "sp-std",
- "sp-transaction-pool",
- "sp-trie",
- "sp-version",
- "substrate-wasm-builder",
- "trie-db",
-]
-
-[[package]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
-dependencies = [
- "futures",
- "parity-scale-codec 3.6.5",
- "sc-block-builder",
- "sc-chain-spec",
- "sc-client-api",
- "sc-consensus",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-runtime",
- "substrate-test-client",
- "substrate-test-runtime",
 ]
 
 [[package]]
@@ -16742,3 +16602,28 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "sc-service-test"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
+
+[[patch.unused]]
+name = "substrate-test-client"
+version = "2.0.1"
+source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"
+
+[[patch.unused]]
+name = "substrate-test-client"
+version = "2.0.1"
+source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.43#5e49f6e44820affccaf517fd22af564f4b495d40"

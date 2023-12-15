@@ -1,6 +1,7 @@
 use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
+use cfg_types::ParaId;
 use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
@@ -30,11 +31,26 @@ pub struct RuntimeEnv<T: Runtime> {
 	parachain_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	sibling_ext: Rc<RefCell<sp_io::TestExternalities>>,
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
+	pending_xcm: Vec<(ParaId, Vec<u8>)>,
 	_config: PhantomData<T>,
 }
 
+impl<T: Runtime> Default for RuntimeEnv<T> {
+	fn default() -> Self {
+		Self::from_storage(Default::default(), Default::default(), Default::default())
+	}
+}
+
 impl<T: Runtime> Env<T> for RuntimeEnv<T> {
-	fn from_storage(mut parachain_storage: Storage, mut sibling_storage: Storage) -> Self {
+	fn from_parachain_storage(parachain_storage: Storage) -> Self {
+		Self::from_storage(Default::default(), parachain_storage, Default::default())
+	}
+
+	fn from_storage(
+		mut _relay_storage: Storage,
+		mut parachain_storage: Storage,
+		mut sibling_storage: Storage,
+	) -> Self {
 		// Needed for the aura usage
 		pallet_aura::GenesisConfig::<T> {
 			authorities: vec![AuraId::from(Public([0; 32]))],
@@ -61,6 +77,7 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			parachain_ext: Rc::new(RefCell::new(parachain_ext)),
 			sibling_ext: Rc::new(RefCell::new(sibling_ext)),
 			pending_extrinsics: Vec::default(),
+			pending_xcm: Vec::default(),
 			_config: PhantomData,
 		}
 	}
@@ -241,13 +258,12 @@ mod tests {
 	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_now<T: Runtime>() {
-		let mut env = RuntimeEnv::<T>::from_storage(
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_now(
@@ -264,13 +280,12 @@ mod tests {
 	}
 
 	fn correct_nonce_for_submit_later<T: Runtime>() {
-		let mut env = RuntimeEnv::<T>::from_storage(
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(

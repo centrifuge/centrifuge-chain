@@ -26,13 +26,15 @@ use pallet_liquidity_pools::hooks::{
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
+	transfer_filter::PreLpTransfer,
 };
 use sp_runtime::traits::One;
 
 use crate::{
 	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
 	LiquidityPoolsGateway, LocationToAccountId, OrderBook, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TreasuryAccount,
+	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TransferAllowList,
+	TreasuryAccount,
 };
 
 parameter_types! {
@@ -78,6 +80,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
+	type PreTransferFilter = PreLpTransfer<TransferAllowList>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;

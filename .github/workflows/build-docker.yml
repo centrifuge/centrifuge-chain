@@ -1,10 +1,13 @@
 name: Docker Build
 on:
   # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
+  workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
   push:
     branches: [main]
   release:
-    types: [unpublished] # GITHUB_REF == tag pushed with the release
+    # Release logic:
+    #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
+    types: [ created ] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
@@ -18,11 +21,12 @@ jobs:
       matrix:
         target: [ release, test ]
     runs-on: ubuntu-latest-8-cores
+    permissions:
+      contents: write    
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
         with:
           fetch-depth: 0
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
       - name: DockerHub Login
@@ -78,6 +82,15 @@ jobs:
           repository: centrifuge/centrifuge-chain
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
+          
+      - name: Update GitHub release
+        if: github.event_name == 'release' && matrix.target == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          append_body: true
+          body: |
+            **Docker tags:** 
+               ${{ steps.meta.outputs.tags }}
 
       - if: failure()
         name: Check available space after build failed
