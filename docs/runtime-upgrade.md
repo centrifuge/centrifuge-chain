@@ -11,7 +11,7 @@ This must be done before releasing a new version of any of our runtimes to ensur
     ```sh
     PARA_CHAIN_SPEC=centrifuge-local CC_DOCKER_TAG=<DOCKER_TAG> ./scripts/init.sh start-parachain-docker
     ```
-    The `DOCKER_TAG` has the following format: `test-main-<DATE>-<COMMIT_HASH>`.
+    The `DOCKER_TAG` has the following format: `main-<COMMIT_HASH>-<DATE>`.
     You can see the available `DOCKER_TAG`s [here](https://hub.docker.com/r/centrifugeio/centrifuge-chain/tags)
 
     Open the **Centrifuge Local** client [here](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9946#/explorer)

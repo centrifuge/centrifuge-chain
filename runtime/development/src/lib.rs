@@ -776,7 +776,7 @@ impl pallet_democracy::Config for Runtime {
 	/// Period in blocks where an external proposal may not be re-submitted
 	/// after being vetoed.
 	type CooloffPeriod = CooloffPeriod;
-	type Currency = Tokens;
+	type Currency = Balances;
 	/// The minimum period of locking and the period between a proposal being
 	/// approved and enacted.
 	///

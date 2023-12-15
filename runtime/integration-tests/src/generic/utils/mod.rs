@@ -9,6 +9,7 @@
 //! Divide this utilities into files when it grows
 
 pub mod currency;
+pub mod democracy;
 pub mod genesis;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
