@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::pools::FeeBucket;
+use cfg_types::pools::PoolFeeBucket;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::TypeInfo;
 
@@ -29,7 +29,7 @@ pub struct DisbursingFee<AccountId, Balance, FeeId> {
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 #[scale_info(skip_type_params(T))]
 pub enum Change<T: Config> {
-	AppendFee(FeeBucket, PoolFeeOf<T>),
+	AppendFee(PoolFeeBucket, PoolFeeOf<T>),
 }
 
 // NOTE: Remark feature will be a separate feature in the future (post Pool Fees

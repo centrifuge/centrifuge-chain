@@ -17,7 +17,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{FeeBucket, FeeType, PoolFee, PoolMetadata, PoolRegistrationStatus},
+	pools::{PoolFee, PoolFeeBucket, PoolFeeType, PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
 use codec::{HasCompact, MaxEncodedLen};
@@ -105,8 +105,8 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 			PoolFeeInput = (
-				FeeBucket,
-				PoolFee<Self::AccountId, FeeType<Self::Balance, Self::InterestRate>>,
+				PoolFeeBucket,
+				PoolFee<Self::AccountId, PoolFeeType<Self::Balance, Self::InterestRate>>,
 			),
 		>;
 

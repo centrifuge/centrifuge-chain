@@ -51,25 +51,25 @@ pub struct PoolFee<AccountId, FeeType> {
 	pub destination: AccountId,
 
 	/// Account that can update this fee
-	pub editor: FeeEditor<AccountId>,
+	pub editor: PoolFeeEditor<AccountId>,
 
 	/// Amount of fees that can be charged
 	pub amount: FeeType,
 }
 
-impl<AccountId, Balance, Rate> From<PoolFee<AccountId, FeeType<Balance, Rate>>>
-	for PoolFee<AccountId, PendingFeeType<Balance, Rate>>
+impl<AccountId, Balance, Rate> From<PoolFee<AccountId, PoolFeeType<Balance, Rate>>>
+	for PoolFee<AccountId, PendingPoolFeeType<Balance, Rate>>
 where
 	Balance: Default + Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
 	Rate: Clone,
 {
-	fn from(fee: PoolFee<AccountId, FeeType<Balance, Rate>>) -> Self {
+	fn from(fee: PoolFee<AccountId, PoolFeeType<Balance, Rate>>) -> Self {
 		let amount = match fee.amount {
-			FeeType::Fixed { limit } => PendingFeeType::Fixed {
+			PoolFeeType::Fixed { limit } => PendingPoolFeeType::Fixed {
 				limit,
 				pending: Balance::default(),
 			},
-			FeeType::ChargedUpTo { limit } => PendingFeeType::ChargedUpTo {
+			PoolFeeType::ChargedUpTo { limit } => PendingPoolFeeType::ChargedUpTo {
 				limit,
 				pending: Balance::default(),
 				payable: Balance::default(),
@@ -87,12 +87,12 @@ where
 /// The editor enum of pool fees
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum FeeEditor<AccountId> {
+pub enum PoolFeeEditor<AccountId> {
 	Root,
 	Account(AccountId),
 }
 
-impl<AccountId> FeeEditor<AccountId>
+impl<AccountId> PoolFeeEditor<AccountId>
 where
 	AccountId: PartialEq,
 {
@@ -108,37 +108,37 @@ where
 /// The fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum FeeType<Balance, Rate> {
+pub enum PoolFeeType<Balance, Rate> {
 	/// A fixed fee is deducted automatically every epoch
-	Fixed { limit: FeeAmount<Balance, Rate> },
+	Fixed { limit: PoolFeeAmount<Balance, Rate> },
 
 	/// A fee can be charged up to a limit, paid every epoch
-	ChargedUpTo { limit: FeeAmount<Balance, Rate> },
+	ChargedUpTo { limit: PoolFeeAmount<Balance, Rate> },
 }
 
 /// The pending fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum PendingFeeType<Balance, Rate>
+pub enum PendingPoolFeeType<Balance, Rate>
 where
 	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
 	Rate: Clone,
 {
 	/// A fixed fee is deducted automatically every epoch
 	Fixed {
-		limit: FeeAmount<Balance, Rate>,
+		limit: PoolFeeAmount<Balance, Rate>,
 		pending: Balance,
 	},
 
 	/// A fee can be charged up to a limit, paid every epoch
 	ChargedUpTo {
-		limit: FeeAmount<Balance, Rate>,
+		limit: PoolFeeAmount<Balance, Rate>,
 		pending: Balance,
 		payable: Balance,
 	},
 }
 
-impl<Balance, Rate> PendingFeeType<Balance, Rate>
+impl<Balance, Rate> PendingPoolFeeType<Balance, Rate>
 where
 	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
 	Rate: Clone,
@@ -167,23 +167,23 @@ where
 		}
 	}
 
-	pub fn get_limit(&self) -> &FeeAmount<Balance, Rate> {
+	pub fn get_limit(&self) -> &PoolFeeAmount<Balance, Rate> {
 		match self {
-			PendingFeeType::Fixed { limit, .. } => limit,
-			PendingFeeType::ChargedUpTo { limit, .. } => limit,
+			PendingPoolFeeType::Fixed { limit, .. } => limit,
+			PendingPoolFeeType::ChargedUpTo { limit, .. } => limit,
 		}
 	}
 
 	pub fn get_pending(&self) -> &Balance {
 		match self {
-			PendingFeeType::Fixed { pending, .. } => pending,
-			PendingFeeType::ChargedUpTo { pending, .. } => pending,
+			PendingPoolFeeType::Fixed { pending, .. } => pending,
+			PendingPoolFeeType::ChargedUpTo { pending, .. } => pending,
 		}
 	}
 
 	pub fn get_payable(&self) -> Option<&Balance> {
 		match self {
-			PendingFeeType::ChargedUpTo { payable, .. } => Some(payable),
+			PendingPoolFeeType::ChargedUpTo { payable, .. } => Some(payable),
 			_ => None,
 		}
 	}
@@ -191,7 +191,7 @@ where
 
 /// The fee amount
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-pub enum FeeAmount<Balance, Rate> {
+pub enum PoolFeeAmount<Balance, Rate> {
 	ShareOfPortfolioValuation(Rate),
 	// TODO: AmountPerSecond(Balance) might be sufficient
 	AmountPerYear(Balance),
@@ -202,21 +202,21 @@ pub enum FeeAmount<Balance, Rate> {
 /// The priority segregation of pool fees
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum FeeBucket {
+pub enum PoolFeeBucket {
 	/// Fees that are charged first, before any redemptions, investments,
 	/// repayments or originations
 	Top,
 	// Future: AfterTranche(TrancheId)
 }
 
-impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for FeeAmount<Balance, Rate>
+impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for PoolFeeAmount<Balance, Rate>
 where
 	Rate: SaturatedProration<Time = Time> + FixedPointNumber,
 	Balance: From<Time> + From<u32> + SaturatedProration<Time = Time> + FixedPointOperand,
 {
 	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance {
 		match self {
-			FeeAmount::ShareOfPortfolioValuation(_) => {
+			PoolFeeAmount::ShareOfPortfolioValuation(_) => {
 				let proration: Rate =
 					<Self as FeeAmountProration<Balance, Rate, Time>>::saturated_prorated_rate(
 						self,
@@ -225,20 +225,22 @@ where
 					);
 				proration.saturating_mul_int(portfolio_valuation)
 			}
-			FeeAmount::AmountPerYear(amount) => Balance::saturated_proration(*amount, period),
-			FeeAmount::AmountPerMonth(amount) => {
+			PoolFeeAmount::AmountPerYear(amount) => Balance::saturated_proration(*amount, period),
+			PoolFeeAmount::AmountPerMonth(amount) => {
 				Balance::saturated_proration(amount.saturating_mul(12u32.into()), period)
 			}
-			FeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
+			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
 		}
 	}
 
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate {
 		match self {
-			FeeAmount::ShareOfPortfolioValuation(rate) => Rate::saturated_proration(*rate, period),
-			FeeAmount::AmountPerYear(_)
-			| FeeAmount::AmountPerMonth(_)
-			| FeeAmount::AmountPerSecond(_) => {
+			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
+				Rate::saturated_proration(*rate, period)
+			}
+			PoolFeeAmount::AmountPerYear(_)
+			| PoolFeeAmount::AmountPerMonth(_)
+			| PoolFeeAmount::AmountPerSecond(_) => {
 				let prorated_amount: Balance =
 					<Self as FeeAmountProration<Balance, Rate, Time>>::saturated_prorated_amount(
 						self,

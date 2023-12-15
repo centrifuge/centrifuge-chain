@@ -23,7 +23,7 @@ use cfg_traits::{
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	pools::{FeeBucket, FeeType, PoolFee},
+	pools::{PoolFee, PoolFeeBucket, PoolFeeType},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -248,8 +248,8 @@ impl<
 		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
 	type PoolFeeInput = (
-		FeeBucket,
-		PoolFee<T::AccountId, FeeType<Self::Balance, <T as pallet_pool_system::Config>::Rate>>,
+		PoolFeeBucket,
+		PoolFee<T::AccountId, PoolFeeType<Self::Balance, <T as pallet_pool_system::Config>::Rate>>,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,

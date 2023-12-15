@@ -386,7 +386,7 @@ mod disbursements {
 	use cfg_primitives::SECONDS_PER_YEAR;
 	use cfg_types::{
 		fixed_point::Rate,
-		pools::{FeeAmount, FeeType},
+		pools::{PoolFeeAmount, PoolFeeType},
 	};
 	use frame_support::traits::fungibles::Inspect;
 	use sp_runtime::BoundedVec;
@@ -416,8 +416,8 @@ mod disbursements {
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 						let fee_amount = res_pre_fees / 10;
 
-						let fee = new_fee(FeeType::Fixed {
-							limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+						let fee = new_fee(PoolFeeType::Fixed {
+							limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -453,8 +453,8 @@ mod disbursements {
 						let res_pre_fees = res_post_fees.clone();
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 
-						let fee = new_fee(FeeType::Fixed {
-							limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+						let fee = new_fee(PoolFeeType::Fixed {
+							limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -494,8 +494,8 @@ mod disbursements {
 						let amount_per_second = 1;
 						let fee_amount = SECONDS_PER_YEAR.into();
 
-						let fee = new_fee(FeeType::Fixed {
-							limit: FeeAmount::AmountPerSecond(amount_per_second),
+						let fee = new_fee(PoolFeeType::Fixed {
+							limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -531,8 +531,8 @@ mod disbursements {
 						let res_pre_fees = res_post_fees.clone();
 						let amount_per_second = 1;
 
-						let fee = new_fee(FeeType::Fixed {
-							limit: FeeAmount::AmountPerSecond(amount_per_second),
+						let fee = new_fee(PoolFeeType::Fixed {
+							limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -580,8 +580,8 @@ mod disbursements {
 							let res_pre_fees = res_post_fees.clone();
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -609,8 +609,8 @@ mod disbursements {
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10 - 1;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -652,8 +652,8 @@ mod disbursements {
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -696,8 +696,8 @@ mod disbursements {
 							let max_chargeable_amount = NAV / 10;
 							let charged_amount = max_chargeable_amount + 1;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -741,8 +741,8 @@ mod disbursements {
 							let charged_amount = NAV / 10;
 							let fee_amount = res_pre_fees;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -794,8 +794,8 @@ mod disbursements {
 							let res_pre_fees = res_post_fees.clone();
 							let amount_per_second = 1;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::AmountPerSecond(amount_per_second),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -823,8 +823,8 @@ mod disbursements {
 							let amount_per_second = 1;
 							let charged_amount = (SECONDS_PER_YEAR - 1).into();
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::AmountPerSecond(amount_per_second),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -866,8 +866,8 @@ mod disbursements {
 							let amount_per_second = 1;
 							let charged_amount = SECONDS_PER_YEAR.into();
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::AmountPerSecond(amount_per_second),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -910,8 +910,8 @@ mod disbursements {
 							let max_chargeable_amount = SECONDS_PER_YEAR.into();
 							let charged_amount = max_chargeable_amount + 1;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::AmountPerSecond(amount_per_second),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -954,8 +954,8 @@ mod disbursements {
 							let charged_amount = SECONDS_PER_YEAR.into();
 							let fee_amount = res_pre_fees;
 
-							let fee = new_fee(FeeType::ChargedUpTo {
-								limit: FeeAmount::AmountPerSecond(amount_per_second),
+							let fee = new_fee(PoolFeeType::ChargedUpTo {
+								limit: PoolFeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
 
@@ -1016,14 +1016,14 @@ mod disbursements {
 				let charged_y2 = vec![payable[0], payable[1]];
 
 				let fees = vec![
-					new_fee(FeeType::Fixed {
-						limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+					new_fee(PoolFeeType::Fixed {
+						limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
 					}),
-					new_fee(FeeType::ChargedUpTo {
-						limit: FeeAmount::AmountPerSecond(amount_per_seconds[0]),
+					new_fee(PoolFeeType::ChargedUpTo {
+						limit: PoolFeeAmount::AmountPerSecond(amount_per_seconds[0]),
 					}),
-					new_fee(FeeType::ChargedUpTo {
-						limit: FeeAmount::AmountPerSecond(amount_per_seconds[1]),
+					new_fee(PoolFeeType::ChargedUpTo {
+						limit: PoolFeeAmount::AmountPerSecond(amount_per_seconds[1]),
 					}),
 				];
 				add_fees(fees.clone());

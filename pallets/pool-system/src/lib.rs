@@ -183,7 +183,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
-		pools::{FeeBucket, FeeType, PoolFee},
+		pools::{PoolFee, PoolFeeBucket, PoolFeeType},
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -324,9 +324,9 @@ pub mod pallet {
 			Error = DispatchError,
 			Fee = PoolFee<
 				<Self as frame_system::Config>::AccountId,
-				FeeType<Self::Balance, Self::Rate>,
+				PoolFeeType<Self::Balance, Self::Rate>,
 			>,
-			FeeBucket = FeeBucket,
+			FeeBucket = PoolFeeBucket,
 			PoolId = Self::PoolId,
 		>;
 

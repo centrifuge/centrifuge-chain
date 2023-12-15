@@ -16,7 +16,7 @@ use cfg_primitives::{Balance, PoolFeeId, PoolId, TrancheId};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{FeeAmount, FeeBucket, FeeEditor, FeeType, PendingFeeType},
+	pools::{PendingPoolFeeType, PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
@@ -53,7 +53,7 @@ pub const NOT_DESTINATION: [AccountId; 3] = [ADMIN, EDITOR, ANY];
 pub const POOL: PoolId = 1;
 pub const POOL_CURRENCY: CurrencyId = 42;
 pub const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
-pub const BUCKET: FeeBucket = FeeBucket::Top;
+pub const BUCKET: PoolFeeBucket = PoolFeeBucket::Top;
 
 pub const NAV: Balance = 1_000_000_000_000_000;
 
@@ -235,28 +235,28 @@ pub(crate) fn config_change_mocks(fee: &PoolFeeOf<Runtime>) {
 	});
 }
 
-pub fn new_fee(amount: FeeType<Balance, Rate>) -> PoolFeeOf<Runtime> {
+pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeOf<Runtime> {
 	PoolFeeOf::<Runtime> {
 		destination: DESTINATION,
-		editor: FeeEditor::Account(EDITOR),
+		editor: PoolFeeEditor::Account(EDITOR),
 		amount,
 	}
 }
 
-pub fn fee_amounts() -> Vec<FeeType<Balance, Rate>> {
+pub fn fee_amounts() -> Vec<PoolFeeType<Balance, Rate>> {
 	let amounts = vec![
-		FeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
-		FeeAmount::AmountPerSecond(1),
+		PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
+		PoolFeeAmount::AmountPerSecond(1),
 	];
 
 	amounts
 		.into_iter()
 		.map(|amount| {
 			vec![
-				FeeType::ChargedUpTo {
+				PoolFeeType::ChargedUpTo {
 					limit: amount.clone(),
 				},
-				FeeType::Fixed { limit: amount },
+				PoolFeeType::Fixed { limit: amount },
 			]
 		})
 		.flatten()
@@ -264,14 +264,14 @@ pub fn fee_amounts() -> Vec<FeeType<Balance, Rate>> {
 }
 
 pub fn default_fixed_fee() -> PoolFeeOf<Runtime> {
-	new_fee(FeeType::Fixed {
-		limit: FeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
+	new_fee(PoolFeeType::Fixed {
+		limit: PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
 	})
 }
 
 pub fn default_chargeable_fee() -> PoolFeeOf<Runtime> {
-	new_fee(FeeType::ChargedUpTo {
-		limit: FeeAmount::AmountPerSecond(1),
+	new_fee(PoolFeeType::ChargedUpTo {
+		limit: PoolFeeAmount::AmountPerSecond(1),
 	})
 }
 
@@ -286,7 +286,7 @@ pub fn default_chargeable_fees() -> Vec<PoolFeeOf<Runtime>> {
 	default_fees()
 		.into_iter()
 		.filter(|fee| match fee.amount {
-			FeeType::ChargedUpTo { .. } => true,
+			PoolFeeType::ChargedUpTo { .. } => true,
 			_ => false,
 		})
 		.collect()
@@ -360,11 +360,11 @@ pub fn assert_pending_fee(
 ) {
 	let mut pending_fee: PendingPoolFeeOf<Runtime> = fee.into();
 	match pending_fee.amount {
-		PendingFeeType::Fixed { limit, .. } => {
-			pending_fee.amount = PendingFeeType::Fixed { limit, pending };
+		PendingPoolFeeType::Fixed { limit, .. } => {
+			pending_fee.amount = PendingPoolFeeType::Fixed { limit, pending };
 		}
-		PendingFeeType::ChargedUpTo { limit, .. } => {
-			pending_fee.amount = PendingFeeType::ChargedUpTo {
+		PendingPoolFeeType::ChargedUpTo { limit, .. } => {
+			pending_fee.amount = PendingPoolFeeType::ChargedUpTo {
 				limit,
 				pending,
 				payable,

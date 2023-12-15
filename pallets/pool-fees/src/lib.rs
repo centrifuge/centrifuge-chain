@@ -30,7 +30,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		pools::{FeeAmount, FeeBucket, FeeType, PendingFeeType, PoolFee},
+		pools::{PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeType},
 	};
 	use codec::HasCompact;
 	use frame_support::{
@@ -53,12 +53,12 @@ pub mod pallet {
 
 	pub type PoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
-		FeeType<<T as Config>::Balance, <T as Config>::Rate>,
+		PoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
 	>;
 
 	pub type PendingPoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
-		PendingFeeType<<T as Config>::Balance, <T as Config>::Rate>,
+		PendingPoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
 	>;
 
 	pub type DisbursingFeeOf<T> = DisbursingFee<
@@ -180,7 +180,8 @@ pub mod pallet {
 		// type WeightInfo: WeightInfo;
 	}
 
-	/// Maps a pool to their corresponding fee ids with [FeeBucket] granularity.
+	/// Maps a pool to their corresponding fee ids with [PoolFeeBucket]
+	/// granularity.
 	///
 	/// The lifetime of this storage is expected to be forever as it directly
 	/// linked to a liquidity pool.
@@ -194,7 +195,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::PoolId,
 		Blake2_128Concat,
-		FeeBucket,
+		PoolFeeBucket,
 		BoundedVec<T::FeeId, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
 	>;
@@ -219,13 +220,13 @@ pub mod pallet {
 	pub type CreatedFees<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::FeeId, PendingPoolFeeOf<T>, OptionQuery>;
 
-	/// Maps a fee identifier to the corresponding pool and [FeeBucket].
+	/// Maps a fee identifier to the corresponding pool and [PoolFeeBucket].
 	///
 	/// Follows the lifetime of the corresponding fee and thus aligns with the
 	/// one of [CreatedFees].
 	#[pallet::storage]
 	pub type FeeIdsToPoolBucket<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::FeeId, (T::PoolId, FeeBucket), OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::FeeId, (T::PoolId, PoolFeeBucket), OptionQuery>;
 
 	/// Represents the fees which which will be disbursed at epoch execution.
 	///
@@ -237,7 +238,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::PoolId,
 		Blake2_128Concat,
-		FeeBucket,
+		PoolFeeBucket,
 		BoundedVec<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
 	>;
@@ -247,18 +248,18 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		Proposed {
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 			fee: PoolFeeOf<T>,
 		},
 		Added {
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 			fee_id: T::FeeId,
 			fee: PoolFeeOf<T>,
 		},
 		Removed {
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 			fee_id: T::FeeId,
 		},
 		Charged {
@@ -311,7 +312,7 @@ pub mod pallet {
 		pub fn propose_new_fee(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 			fee: PoolFeeOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -408,7 +409,7 @@ pub mod pallet {
 				);
 
 				match fee.amount {
-					PendingFeeType::ChargedUpTo { mut pending, .. } => {
+					PendingPoolFeeType::ChargedUpTo { mut pending, .. } => {
 						pending.ensure_add_assign(amount)?;
 						fee.amount.checked_mutate_pending(|p| {
 							*p = pending;
@@ -448,7 +449,7 @@ pub mod pallet {
 				);
 
 				match fee.amount {
-					PendingFeeType::ChargedUpTo { mut pending, .. } => {
+					PendingPoolFeeType::ChargedUpTo { mut pending, .. } => {
 						pending.ensure_sub_assign(amount)?;
 						fee.amount.checked_mutate_pending(|p| {
 							*p = pending;
@@ -486,12 +487,12 @@ pub mod pallet {
 		}
 
 		/// Withdraw any due fees. The waterfall of fee payment follows the
-		/// order of the corresponding [FeeBucket].
+		/// order of the corresponding [PoolFeeBucket].
 		///
 		/// Assumes `prepare_disbursements` to have been executed beforehand.
 		pub(crate) fn pay_disbursements(
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 		) -> Result<(), DispatchError> {
 			let fees = DisbursingFees::<T>::take(pool_id, bucket);
 			for fee in fees.into_iter() {
@@ -517,13 +518,13 @@ pub mod pallet {
 		}
 
 		/// Determine the amount of any due fees. The waterfall of fee payment
-		/// follows the order of the corresponding [FeeBucket] as long as the
-		/// reserve is not empty.
+		/// follows the order of the corresponding [PoolFeeBucket] as long as
+		/// the reserve is not empty.
 		///
 		/// Returns the updated reserve amount.
 		pub(crate) fn prepare_disbursements(
 			pool_id: T::PoolId,
-			bucket: FeeBucket,
+			bucket: PoolFeeBucket,
 			portfolio_valuation: T::Balance,
 			reserve: &mut T::Balance,
 			epoch_duration: Seconds,
@@ -536,8 +537,10 @@ pub mod pallet {
 					CreatedFees::<T>::mutate(fee_id, |maybe_fee| {
 						if let Some(ref mut fee) = maybe_fee {
 							let (limit, pending, maybe_payable) = match fee.amount.clone() {
-								PendingFeeType::Fixed { limit, pending } => (limit, pending, None),
-								PendingFeeType::ChargedUpTo {
+								PendingPoolFeeType::Fixed { limit, pending } => {
+									(limit, pending, None)
+								}
+								PendingPoolFeeType::ChargedUpTo {
 									limit,
 									pending,
 									payable,
@@ -545,7 +548,7 @@ pub mod pallet {
 							};
 
 							// Determine payable amount since last update based on epoch duration
-							let epoch_amount = <FeeAmount<
+							let epoch_amount = <PoolFeeAmount<
 								<T as Config>::Balance,
 								<T as Config>::Rate,
 							> as FeeAmountProration<T::Balance, T::Rate, Seconds>>::saturated_prorated_amount(
@@ -571,10 +574,8 @@ pub mod pallet {
 							fee.amount.checked_mutate_pending(|pending| {
 								*pending = pending.saturating_sub(disbursement)
 							});
-							fee.amount.checked_mutate_payable(|payable_x| {
-								*payable_x = payable_x
-									.saturating_add(epoch_amount)
-									.saturating_sub(disbursement)
+							fee.amount.checked_mutate_payable(|p| {
+								*p = p.saturating_add(epoch_amount).saturating_sub(disbursement)
 							});
 
 							if disbursement.is_zero() {
@@ -619,7 +620,10 @@ pub mod pallet {
 								.ok_or(Error::<T>::FeeNotFound)?;
 							fee_ids.remove(pos);
 
-							Ok::<(T::PoolId, FeeBucket), DispatchError>((*pool_id, bucket.clone()))
+							Ok::<(T::PoolId, PoolFeeBucket), DispatchError>((
+								*pool_id,
+								bucket.clone(),
+							))
 						})
 					})
 					.transpose()?
@@ -642,7 +646,7 @@ pub mod pallet {
 	impl<T: Config> AddPoolFees for Pallet<T> {
 		type Error = DispatchError;
 		type Fee = PoolFeeOf<T>;
-		type FeeBucket = FeeBucket;
+		type FeeBucket = PoolFeeBucket;
 		type PoolId = T::PoolId;
 
 		fn add_fee(
@@ -681,13 +685,13 @@ pub mod pallet {
 			reserve: &mut Self::Balance,
 			epoch_duration: Self::Time,
 		) -> Result<(), Self::Error> {
-			Self::prepare_disbursements(pool_id, FeeBucket::Top, nav, reserve, epoch_duration);
+			Self::prepare_disbursements(pool_id, PoolFeeBucket::Top, nav, reserve, epoch_duration);
 
 			Ok(())
 		}
 
 		fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error> {
-			Self::pay_disbursements(pool_id, FeeBucket::Top)?;
+			Self::pay_disbursements(pool_id, PoolFeeBucket::Top)?;
 
 			Ok(())
 		}
