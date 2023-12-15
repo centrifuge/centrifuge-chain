@@ -22,7 +22,7 @@ use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
 use sp_core::storage::StateVersion;
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{AccountIdConversion, One, Zero},
 	FixedPointNumber, Perquintill, TokenError,
 };
 
@@ -30,7 +30,9 @@ use crate::{
 	mock,
 	mock::*,
 	pallet,
-	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
+	pool_types::{
+		PoolChanges, PoolDetails, PoolLocator, PoolParameters, PoolStatus, ReserveDetails,
+	},
 	tranches::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
 		TrancheInput, TrancheSolution, TrancheType, Tranches,

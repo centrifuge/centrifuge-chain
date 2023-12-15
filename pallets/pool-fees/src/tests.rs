@@ -5,17 +5,19 @@ use sp_arithmetic::FixedPointNumber;
 
 use super::*;
 use crate::mock::{
-	add_fees, config_change_mocks, config_mocks, default_fees, default_fixed_fee, new_fee,
-	new_test_ext, OrmlTokens, PoolFees, Runtime, RuntimeOrigin, System, ADMIN, ANY, BUCKET,
-	CHANGE_ID, DESTINATION, EDITOR, ERR_CHANGE_GUARD_RELEASE, NOT_ADMIN, NOT_DESTINATION,
-	NOT_EDITOR, POOL,
+	add_fees, assert_pending_fee, config_change_mocks, config_mocks, default_chargeable_fees,
+	default_fees, default_fixed_fee, new_fee, new_test_ext, OrmlTokens, PoolFees, Runtime,
+	RuntimeOrigin, System, ADMIN, ANY, BUCKET, CHANGE_ID, DESTINATION, EDITOR,
+	ERR_CHANGE_GUARD_RELEASE, NOT_ADMIN, NOT_DESTINATION, NOT_EDITOR, POOL,
 };
+
+// TODO: CannotCharge
+// TODO: Pending for fixed
 
 mod extrinsics {
 	use super::*;
 
 	mod should_work {
-
 		use super::*;
 
 		#[test]
@@ -122,17 +124,17 @@ mod extrinsics {
 		fn charge_fee_works() {
 			new_test_ext().execute_with(|| {
 				config_mocks();
-				let pool_fees = default_fees();
+				let pool_fees = default_chargeable_fees();
 				add_fees(pool_fees.clone());
 
-				for i in 1..=pool_fees.len() {
-					let fee_id = i as u64;
+				for (i, fee) in pool_fees.into_iter().enumerate() {
+					let fee_id = (i + 1) as u64;
 					assert_ok!(PoolFees::charge_fee(
 						RuntimeOrigin::signed(DESTINATION),
 						fee_id,
 						1000
 					));
-					assert_eq!(PendingFees::<Runtime>::get(fee_id), 1000);
+					assert_pending_fee(fee_id, fee.clone(), 1000, 0);
 					System::assert_last_event(
 						Event::<Runtime>::Charged {
 							fee_id,
@@ -147,7 +149,7 @@ mod extrinsics {
 						fee_id,
 						337
 					));
-					assert_eq!(PendingFees::<Runtime>::get(fee_id), 1337);
+					assert_pending_fee(fee_id, fee.clone(), 1337, 0);
 					System::assert_last_event(
 						Event::<Runtime>::Charged {
 							fee_id,
@@ -164,12 +166,13 @@ mod extrinsics {
 		fn uncharge_fee_works() {
 			new_test_ext().execute_with(|| {
 				config_mocks();
-				let pool_fees = default_fees();
+
+				let pool_fees = default_chargeable_fees();
 				add_fees(pool_fees.clone());
 				let mut rng = rand::thread_rng();
 
-				for i in 1..=pool_fees.len() {
-					let fee_id = i as u64;
+				for (i, fee) in pool_fees.into_iter().enumerate() {
+					let fee_id = (i + 1) as u64;
 					let charge_amount: Balance = rng.gen_range(1..u128::MAX);
 					let uncharge_amount: Balance = rng.gen_range(1..=charge_amount);
 
@@ -184,10 +187,7 @@ mod extrinsics {
 						fee_id,
 						uncharge_amount
 					));
-					assert_eq!(
-						PendingFees::<Runtime>::get(fee_id),
-						charge_amount - uncharge_amount
-					);
+					assert_pending_fee(fee_id, fee.clone(), charge_amount - uncharge_amount, 0);
 
 					System::assert_last_event(
 						Event::<Runtime>::Uncharged {
@@ -207,6 +207,7 @@ mod extrinsics {
 		use sp_runtime::DispatchError;
 
 		use super::*;
+		use crate::mock::default_chargeable_fee;
 
 		#[test]
 		fn propose_new_fee_wrong_origin() {
@@ -326,7 +327,7 @@ mod extrinsics {
 		fn charge_fee_overflow() {
 			new_test_ext().execute_with(|| {
 				config_mocks();
-				add_fees(vec![default_fixed_fee()]);
+				add_fees(vec![default_chargeable_fee()]);
 
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
@@ -344,7 +345,7 @@ mod extrinsics {
 		fn uncharge_fee_wrong_origin() {
 			new_test_ext().execute_with(|| {
 				config_mocks();
-				add_fees(vec![default_fixed_fee()]);
+				add_fees(vec![default_chargeable_fee()]);
 
 				for account in NOT_DESTINATION {
 					assert_noop!(
@@ -370,7 +371,7 @@ mod extrinsics {
 		fn uncharge_fee_overflow() {
 			new_test_ext().execute_with(|| {
 				config_mocks();
-				add_fees(vec![default_fixed_fee()]);
+				add_fees(vec![default_chargeable_fee()]);
 
 				assert_noop!(
 					PoolFees::uncharge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1),
@@ -386,7 +387,7 @@ mod disbursements {
 	use cfg_traits::fee::PoolFees as PoolFeesT;
 	use cfg_types::{
 		fixed_point::Rate,
-		pools::{FeeAmount, FeeAmountType},
+		pools::{FeeAmount, FeeType},
 	};
 	use frame_support::traits::fungibles::Inspect;
 	use sp_runtime::BoundedVec;
@@ -416,8 +417,8 @@ mod disbursements {
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 						let fee_amount = res_pre_fees / 10;
 
-						let fee = new_fee(FeeAmountType::Fixed {
-							amount: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+						let fee = new_fee(FeeType::Fixed {
+							limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -452,8 +453,8 @@ mod disbursements {
 						let res_pre_fees = NAV / 100;
 						let annual_rate = Rate::saturating_from_rational(1, 10);
 
-						let fee = new_fee(FeeAmountType::Fixed {
-							amount: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+						let fee = new_fee(FeeType::Fixed {
+							limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -492,8 +493,8 @@ mod disbursements {
 						let amount_per_second = 1;
 						let fee_amount = SECONDS_PER_YEAR.into();
 
-						let fee = new_fee(FeeAmountType::Fixed {
-							amount: FeeAmount::AmountPerSecond(amount_per_second),
+						let fee = new_fee(FeeType::Fixed {
+							limit: FeeAmount::AmountPerSecond(amount_per_second),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -528,8 +529,8 @@ mod disbursements {
 						let res_pre_fees = (SECONDS_PER_YEAR / 2).into();
 						let amount_per_second = 1;
 
-						let fee = new_fee(FeeAmountType::Fixed {
-							amount: FeeAmount::AmountPerSecond(amount_per_second),
+						let fee = new_fee(FeeType::Fixed {
+							limit: FeeAmount::AmountPerSecond(amount_per_second),
 						});
 						add_fees(vec![fee.clone()]);
 
@@ -567,6 +568,7 @@ mod disbursements {
 
 				mod share_of_portfolio {
 					use super::*;
+					use crate::mock::assert_pending_fee;
 					#[test]
 					fn empty_charge() {
 						new_test_ext().execute_with(|| {
@@ -575,7 +577,7 @@ mod disbursements {
 							let res_pre_fees = NAV;
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
@@ -603,7 +605,7 @@ mod disbursements {
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10 - 1;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
@@ -645,7 +647,7 @@ mod disbursements {
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
@@ -688,7 +690,7 @@ mod disbursements {
 							let max_chargeable_amount = NAV / 10;
 							let charged_amount = max_chargeable_amount + 1;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
@@ -716,7 +718,7 @@ mod disbursements {
 									fee_id,
 								}])
 							);
-							assert_eq!(PendingFees::<Runtime>::get(fee_id), 1);
+							assert_pending_fee(fee_id, fee.clone(), 1, 0);
 
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
@@ -732,7 +734,7 @@ mod disbursements {
 							let charged_amount = NAV / 10;
 							let fee_amount = res_pre_fees;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 							});
 							add_fees(vec![fee.clone()]);
@@ -760,9 +762,11 @@ mod disbursements {
 									fee_id,
 								}])
 							);
-							assert_eq!(
-								PendingFees::<Runtime>::get(fee_id),
-								charged_amount - fee_amount
+							assert_pending_fee(
+								fee_id,
+								fee.clone(),
+								charged_amount - fee_amount,
+								charged_amount - fee_amount,
 							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
@@ -772,6 +776,7 @@ mod disbursements {
 
 				mod amount_per_second {
 					use super::*;
+					use crate::mock::assert_pending_fee;
 
 					#[test]
 					fn empty_charge() {
@@ -781,7 +786,7 @@ mod disbursements {
 							let res_pre_fees = NAV;
 							let amount_per_second = 1;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
@@ -809,7 +814,7 @@ mod disbursements {
 							let amount_per_second = 1;
 							let charged_amount = (SECONDS_PER_YEAR - 1).into();
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
@@ -851,7 +856,7 @@ mod disbursements {
 							let amount_per_second = 1;
 							let charged_amount = SECONDS_PER_YEAR.into();
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
@@ -894,7 +899,7 @@ mod disbursements {
 							let max_chargeable_amount = SECONDS_PER_YEAR.into();
 							let charged_amount = max_chargeable_amount + 1;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
@@ -922,7 +927,7 @@ mod disbursements {
 									fee_id,
 								}])
 							);
-							assert_eq!(PendingFees::<Runtime>::get(fee_id), 1);
+							assert_pending_fee(fee_id, fee.clone(), 1, 0);
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
 					}
@@ -937,7 +942,7 @@ mod disbursements {
 							let charged_amount = SECONDS_PER_YEAR.into();
 							let fee_amount = res_pre_fees;
 
-							let fee = new_fee(FeeAmountType::ChargedUpTo {
+							let fee = new_fee(FeeType::ChargedUpTo {
 								limit: FeeAmount::AmountPerSecond(amount_per_second),
 							});
 							add_fees(vec![fee.clone()]);
@@ -965,9 +970,11 @@ mod disbursements {
 									fee_id,
 								}])
 							);
-							assert_eq!(
-								PendingFees::<Runtime>::get(fee_id),
-								charged_amount - fee_amount
+							assert_pending_fee(
+								fee_id,
+								fee.clone(),
+								charged_amount - fee_amount,
+								charged_amount - fee_amount,
 							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
@@ -980,6 +987,7 @@ mod disbursements {
 
 	mod waterfall {
 		use super::*;
+		use crate::mock::assert_pending_fee;
 
 		#[test]
 		fn fixed_charged_charged() {
@@ -990,20 +998,18 @@ mod disbursements {
 				let annual_rate = Rate::saturating_from_rational(1, 100);
 				let fixed_fee_amount = NAV / 100;
 				let amount_per_seconds = vec![2, 1];
-				let max_chargeable_amounts =
-					vec![(2 * SECONDS_PER_YEAR).into(), SECONDS_PER_YEAR.into()];
-				let charged_amounts_year_1 = vec![1, 2 * max_chargeable_amounts[1]];
-				let charged_amounts_year_2 =
-					vec![max_chargeable_amounts[0], max_chargeable_amounts[1]];
+				let payable = vec![(2 * SECONDS_PER_YEAR).into(), SECONDS_PER_YEAR.into()];
+				let charged_y1 = vec![1, 2 * payable[1]];
+				let charged_y2 = vec![payable[0], payable[1]];
 
 				let fees = vec![
-					new_fee(FeeAmountType::Fixed {
-						amount: FeeAmount::ShareOfPortfolioValuation(annual_rate),
+					new_fee(FeeType::Fixed {
+						limit: FeeAmount::ShareOfPortfolioValuation(annual_rate),
 					}),
-					new_fee(FeeAmountType::ChargedUpTo {
+					new_fee(FeeType::ChargedUpTo {
 						limit: FeeAmount::AmountPerSecond(amount_per_seconds[0]),
 					}),
-					new_fee(FeeAmountType::ChargedUpTo {
+					new_fee(FeeType::ChargedUpTo {
 						limit: FeeAmount::AmountPerSecond(amount_per_seconds[1]),
 					}),
 				];
@@ -1013,12 +1019,12 @@ mod disbursements {
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
 					charged_fee_ids[0],
-					charged_amounts_year_1[0]
+					charged_y1[0]
 				));
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
 					charged_fee_ids[1],
-					charged_amounts_year_1[1]
+					charged_y1[1]
 				));
 				let res_post_fees = PoolFees::prepare_disbursements(
 					POOL,
@@ -1029,9 +1035,7 @@ mod disbursements {
 				);
 				assert_eq!(
 					res_post_fees,
-					res_pre_fees
-						- fixed_fee_amount - charged_amounts_year_1[0]
-						- max_chargeable_amounts[1]
+					res_pre_fees - fixed_fee_amount - charged_y1[0] - payable[1]
 				);
 				assert_eq!(
 					DisbursingFees::<Runtime>::get(POOL, BUCKET),
@@ -1042,29 +1046,31 @@ mod disbursements {
 							fee_id: 1,
 						},
 						DisbursingFeeOf::<Runtime> {
-							amount: charged_amounts_year_1[0],
+							amount: charged_y1[0],
 							destination: DESTINATION,
 							fee_id: charged_fee_ids[0],
 						},
 						DisbursingFeeOf::<Runtime> {
-							amount: max_chargeable_amounts[1],
+							amount: payable[1],
 							destination: DESTINATION,
 							fee_id: charged_fee_ids[1],
 						}
 					])
 				);
-				assert_eq!(PendingFees::<Runtime>::get(charged_fee_ids[0]), 0);
-				assert_eq!(
-					PendingFees::<Runtime>::get(charged_fee_ids[1]),
-					max_chargeable_amounts[1]
+				assert_pending_fee(
+					charged_fee_ids[0],
+					fees[1].clone(),
+					0,
+					payable[0] - charged_y1[0],
 				);
+				assert_pending_fee(charged_fee_ids[1], fees[2].clone(), payable[1], 0);
 
 				// Pay disbursements
 				assert_ok!(PoolFees::pay_disbursements(POOL, BUCKET));
 				assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
 				assert_eq!(
 					OrmlTokens::balance(POOL_CURRENCY, &DESTINATION),
-					fixed_fee_amount + charged_amounts_year_1[0] + max_chargeable_amounts[1]
+					fixed_fee_amount + charged_y1[0] + payable[1]
 				);
 				System::assert_has_event(
 					Event::Paid {
@@ -1077,7 +1083,7 @@ mod disbursements {
 				System::assert_has_event(
 					Event::Paid {
 						fee_id: charged_fee_ids[0],
-						amount: charged_amounts_year_1[0],
+						amount: charged_y1[0],
 						destination: DESTINATION,
 					}
 					.into(),
@@ -1085,23 +1091,23 @@ mod disbursements {
 				System::assert_last_event(
 					Event::Paid {
 						fee_id: charged_fee_ids[1],
-						amount: max_chargeable_amounts[1],
+						amount: payable[1],
 						destination: DESTINATION,
 					}
 					.into(),
 				);
 
-				// Year 2: Reserve is insufficient to handle all fees
-				let res_pre_fees = fixed_fee_amount + charged_amounts_year_2[0] + 1;
+				// Year 2: Make reserve insufficient to handle all fees (last fee falls short)
+				let res_pre_fees = fixed_fee_amount + charged_y2[0] + 1;
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
 					charged_fee_ids[0],
-					charged_amounts_year_2[0]
+					charged_y2[0]
 				));
 				assert_ok!(PoolFees::charge_fee(
 					RuntimeOrigin::signed(DESTINATION),
 					charged_fee_ids[1],
-					charged_amounts_year_2[1]
+					charged_y2[1]
 				));
 				let res_post_fees = PoolFees::prepare_disbursements(
 					POOL,
@@ -1120,7 +1126,7 @@ mod disbursements {
 							fee_id: 1,
 						},
 						DisbursingFeeOf::<Runtime> {
-							amount: charged_amounts_year_2[0],
+							amount: charged_y2[0],
 							destination: DESTINATION,
 							fee_id: charged_fee_ids[0],
 						},
@@ -1131,10 +1137,17 @@ mod disbursements {
 						}
 					])
 				);
-				assert_eq!(PendingFees::<Runtime>::get(charged_fee_ids[0]), 0);
-				assert_eq!(
-					PendingFees::<Runtime>::get(charged_fee_ids[1]),
-					2 * max_chargeable_amounts[1] - 1
+				assert_pending_fee(
+					charged_fee_ids[0],
+					fees[1].clone(),
+					0,
+					2 * payable[0] - charged_y1[0] - charged_y2[0],
+				);
+				assert_pending_fee(
+					charged_fee_ids[1],
+					fees[2].clone(),
+					2 * payable[1] - 1,
+					payable[1] - 1,
 				);
 
 				// Pay disbursements
@@ -1142,11 +1155,7 @@ mod disbursements {
 				assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
 				assert_eq!(
 					OrmlTokens::balance(POOL_CURRENCY, &DESTINATION),
-					2 * fixed_fee_amount
-						+ charged_amounts_year_1[0]
-						+ max_chargeable_amounts[1]
-						+ charged_amounts_year_2[0]
-						+ 1
+					2 * fixed_fee_amount + charged_y1[0] + payable[1] + charged_y2[0] + 1
 				);
 				System::assert_has_event(
 					Event::Paid {
@@ -1159,7 +1168,7 @@ mod disbursements {
 				System::assert_has_event(
 					Event::Paid {
 						fee_id: charged_fee_ids[0],
-						amount: charged_amounts_year_2[0],
+						amount: charged_y2[0],
 						destination: DESTINATION,
 					}
 					.into(),
@@ -1176,8 +1185,6 @@ mod disbursements {
 		}
 
 		// TODO
-		// fn fixed_charged_insufficient_reserve
-		// fn charged_fixed_sufficient_reserve
 		// fn charged_fixed_insufficient_reserve
 	}
 }

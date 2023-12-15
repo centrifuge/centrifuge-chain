@@ -19,7 +19,7 @@ use cfg_traits::{
 use cfg_types::{
 	epoch::EpochState,
 	investments::InvestmentInfo,
-	pools::{FeeBucket, PoolFee},
+	pools::{FeeBucket, FeeType, PoolFee},
 };
 use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
@@ -113,7 +113,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
 	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
-	type PoolFeeInput = (FeeBucket, PoolFee<T::AccountId, T::Balance, T::Rate>);
+	type PoolFeeInput = (
+		FeeBucket,
+		PoolFee<T::AccountId, FeeType<T::Balance, T::Rate>>,
+	);
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(
@@ -123,7 +126,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		pool_fees: Vec<(FeeBucket, PoolFee<T::AccountId, T::Balance, T::Rate>)>,
+		pool_fees: Vec<(
+			FeeBucket,
+			PoolFee<T::AccountId, FeeType<T::Balance, T::Rate>>,
+		)>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);

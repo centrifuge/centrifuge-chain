@@ -13,7 +13,10 @@
 use cfg_traits::{fee::FeeAmountProration, SaturatedProration};
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
+use sp_arithmetic::{
+	traits::{CheckedAdd, CheckedSub, EnsureAdd, EnsureSub},
+	FixedPointNumber, FixedPointOperand,
+};
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
@@ -43,7 +46,7 @@ pub enum PoolRegistrationStatus {
 /// The representation of a pool fee, its editor and destination address
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub struct PoolFee<AccountId, Balance, Rate> {
+pub struct PoolFee<AccountId, FeeType> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
 
@@ -51,11 +54,37 @@ pub struct PoolFee<AccountId, Balance, Rate> {
 	pub editor: FeeEditor<AccountId>,
 
 	/// Amount of fees that can be charged
-	pub amount: FeeAmountType<Balance, Rate>,
+	pub amount: FeeType,
+}
+
+impl<AccountId, Balance, Rate> From<PoolFee<AccountId, FeeType<Balance, Rate>>>
+	for PoolFee<AccountId, PendingFeeType<Balance, Rate>>
+where
+	Balance: Default + Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
+	Rate: Clone,
+{
+	fn from(fee: PoolFee<AccountId, FeeType<Balance, Rate>>) -> Self {
+		let amount = match fee.amount {
+			FeeType::Fixed { limit } => PendingFeeType::Fixed {
+				limit,
+				pending: Balance::default(),
+			},
+			FeeType::ChargedUpTo { limit } => PendingFeeType::ChargedUpTo {
+				limit,
+				pending: Balance::default(),
+				payable: Balance::default(),
+			},
+		};
+
+		Self {
+			amount,
+			destination: fee.destination,
+			editor: fee.editor,
+		}
+	}
 }
 
 /// The editor enum of pool fees
-
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
 pub enum FeeEditor<AccountId> {
@@ -77,19 +106,92 @@ where
 }
 
 /// The fee amount wrapper type
-
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum FeeAmountType<Balance, Rate> {
+pub enum FeeType<Balance, Rate> {
 	/// A fixed fee is deducted automatically every epoch
-	Fixed { amount: FeeAmount<Balance, Rate> },
+	Fixed { limit: FeeAmount<Balance, Rate> },
 
 	/// A fee can be charged up to a limit, paid every epoch
 	ChargedUpTo { limit: FeeAmount<Balance, Rate> },
 }
 
-/// The fee amount
+/// The pending fee amount wrapper type
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
+pub enum PendingFeeType<Balance, Rate>
+where
+	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
+	Rate: Clone,
+{
+	/// A fixed fee is deducted automatically every epoch
+	Fixed {
+		limit: FeeAmount<Balance, Rate>,
+		pending: Balance,
+	},
+
+	/// A fee can be charged up to a limit, paid every epoch
+	ChargedUpTo {
+		limit: FeeAmount<Balance, Rate>,
+		pending: Balance,
+		payable: Balance,
+	},
+}
+
+impl<Balance, Rate> PendingFeeType<Balance, Rate>
+where
+	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
+	Rate: Clone,
+{
+	pub fn checked_mutate_pending(&mut self, mut f: impl FnMut(&mut Balance)) {
+		match *self {
+			Self::Fixed {
+				ref mut pending, ..
+			} => {
+				f(pending);
+			}
+			Self::ChargedUpTo {
+				ref mut pending, ..
+			} => {
+				f(pending);
+			}
+		}
+	}
+
+	pub fn checked_mutate_payable(&mut self, mut f: impl FnMut(&mut Balance)) {
+		match *self {
+			Self::ChargedUpTo {
+				ref mut payable, ..
+			} => {
+				f(payable);
+			}
+			_ => {}
+		}
+	}
+
+	pub fn get_limit(&self) -> &FeeAmount<Balance, Rate> {
+		match self {
+			PendingFeeType::Fixed { limit, .. } => limit,
+			PendingFeeType::ChargedUpTo { limit, .. } => limit,
+		}
+	}
+
+	pub fn get_pending(&self) -> &Balance {
+		match self {
+			PendingFeeType::Fixed { pending, .. } => pending,
+			PendingFeeType::ChargedUpTo { pending, .. } => pending,
+		}
+	}
+
+	pub fn get_payable(&self) -> Option<&Balance> {
+		match self {
+			PendingFeeType::ChargedUpTo { payable, .. } => Some(payable),
+			_ => None,
+		}
+	}
+}
+
+/// The fee amount
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum FeeAmount<Balance, Rate> {
 	ShareOfPortfolioValuation(Rate),

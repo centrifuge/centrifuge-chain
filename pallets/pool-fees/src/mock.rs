@@ -13,11 +13,11 @@
 
 use cfg_mocks::{pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools};
 use cfg_primitives::{Balance, PoolFeeId, PoolId, TrancheId};
-use cfg_traits::{fee::PoolFees as _, Seconds};
+use cfg_traits::fee::PoolFees as _;
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{FeeAmount, FeeAmountType, FeeBucket, FeeEditor},
+	pools::{FeeAmount, FeeBucket, FeeEditor, FeeType, PendingFeeType},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
@@ -39,7 +39,7 @@ use sp_runtime::{
 
 use crate::{
 	pallet as pallet_pool_fees, types::Change, CreatedFees, DisbursingFees, Event, FeeIds,
-	FeeIdsToPoolBucket, LastFeeId, PendingFees, PoolFeeOf,
+	FeeIdsToPoolBucket, LastFeeId, PendingPoolFeeOf, PoolFeeOf,
 };
 
 pub const ADMIN: AccountId = 1;
@@ -190,7 +190,6 @@ impl pallet_pool_fees::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Seconds;
 	type Tokens = OrmlTokens;
 	type TrancheId = TrancheId;
 }
@@ -237,19 +236,7 @@ pub(crate) fn config_change_mocks(fee: &PoolFeeOf<Runtime>) {
 	});
 }
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(storage);
-
-	// Bumping to one enables events
-	ext.execute_with(|| System::set_block_number(1));
-	ext
-}
-
-pub fn new_fee(amount: FeeAmountType<Balance, Rate>) -> PoolFeeOf<Runtime> {
+pub fn new_fee(amount: FeeType<Balance, Rate>) -> PoolFeeOf<Runtime> {
 	PoolFeeOf::<Runtime> {
 		destination: DESTINATION,
 		editor: FeeEditor::Account(EDITOR),
@@ -257,7 +244,7 @@ pub fn new_fee(amount: FeeAmountType<Balance, Rate>) -> PoolFeeOf<Runtime> {
 	}
 }
 
-pub fn fee_amounts() -> Vec<FeeAmountType<Balance, Rate>> {
+pub fn fee_amounts() -> Vec<FeeType<Balance, Rate>> {
 	let amounts = vec![
 		FeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
 		FeeAmount::AmountPerSecond(1),
@@ -267,10 +254,10 @@ pub fn fee_amounts() -> Vec<FeeAmountType<Balance, Rate>> {
 		.into_iter()
 		.map(|amount| {
 			vec![
-				FeeAmountType::ChargedUpTo {
+				FeeType::ChargedUpTo {
 					limit: amount.clone(),
 				},
-				FeeAmountType::Fixed { amount },
+				FeeType::Fixed { limit: amount },
 			]
 		})
 		.flatten()
@@ -278,8 +265,14 @@ pub fn fee_amounts() -> Vec<FeeAmountType<Balance, Rate>> {
 }
 
 pub fn default_fixed_fee() -> PoolFeeOf<Runtime> {
-	new_fee(FeeAmountType::Fixed {
-		amount: FeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
+	new_fee(FeeType::Fixed {
+		limit: FeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
+	})
+}
+
+pub fn default_chargeable_fee() -> PoolFeeOf<Runtime> {
+	new_fee(FeeType::ChargedUpTo {
+		limit: FeeAmount::AmountPerSecond(1),
 	})
 }
 
@@ -287,6 +280,16 @@ pub fn default_fees() -> Vec<PoolFeeOf<Runtime>> {
 	fee_amounts()
 		.into_iter()
 		.map(|amount| new_fee(amount))
+		.collect()
+}
+
+pub fn default_chargeable_fees() -> Vec<PoolFeeOf<Runtime>> {
+	default_fees()
+		.into_iter()
+		.filter(|fee| match fee.amount {
+			FeeType::ChargedUpTo { .. } => true,
+			_ => false,
+		})
 		.collect()
 }
 
@@ -309,12 +312,14 @@ pub(crate) fn add_fees(pool_fees: Vec<PoolFeeOf<Runtime>>) {
 			.into_iter()
 			.find(|id| id == &fee_id)
 			.is_some());
-		assert_eq!(CreatedFees::<Runtime>::get(fee_id), Some(fee.clone()));
+		assert_eq!(
+			CreatedFees::<Runtime>::get(fee_id),
+			Some(fee.clone().into())
+		);
 		assert_eq!(
 			FeeIdsToPoolBucket::<Runtime>::get(fee_id),
 			Some((POOL, BUCKET))
 		);
-		assert!(PendingFees::<Runtime>::get(fee_id).is_zero());
 
 		System::assert_last_event(
 			Event::<Runtime>::Added {
@@ -346,4 +351,39 @@ pub fn pay_single_fee_and_assert(
 			.into(),
 		);
 	}
+}
+
+pub fn assert_pending_fee(
+	fee_id: PoolFeeId,
+	fee: PoolFeeOf<Runtime>,
+	pending: Balance,
+	payable: Balance,
+) {
+	let mut pending_fee: PendingPoolFeeOf<Runtime> = fee.into();
+	match pending_fee.amount {
+		PendingFeeType::Fixed { limit, .. } => {
+			pending_fee.amount = PendingFeeType::Fixed { limit, pending };
+		}
+		PendingFeeType::ChargedUpTo { limit, .. } => {
+			pending_fee.amount = PendingFeeType::ChargedUpTo {
+				limit,
+				pending,
+				payable,
+			};
+		}
+	};
+
+	assert_eq!(CreatedFees::<Runtime>::get(fee_id), Some(pending_fee));
+}
+
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	let storage = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(storage);
+
+	// Bumping to one enables events
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }

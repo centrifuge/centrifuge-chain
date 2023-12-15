@@ -208,7 +208,6 @@ impl pallet_pool_fees::Config for Test {
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Test>;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Seconds;
 	type Tokens = OrmlTokens;
 	type TrancheId = TrancheId;
 }

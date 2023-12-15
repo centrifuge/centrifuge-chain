@@ -317,7 +317,6 @@ impl pallet_pool_fees::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Seconds;
 	type Tokens = Tokens;
 	type TrancheId = TrancheId;
 }

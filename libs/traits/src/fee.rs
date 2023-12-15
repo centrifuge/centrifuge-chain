@@ -42,17 +42,6 @@ pub trait PoolFees {
 		epoch_duration: Self::Time,
 	) -> Self::Balance;
 
-	/// Charge a fee for the given pair of pool id and fee bucket.
-	///
-	/// NOTE: Assumes call permissions are separately checked beforehand.
-	fn charge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error>;
-
-	/// Cancel a previously charged fee for the given pair of pool id and fee
-	/// bucket.
-	///
-	/// NOTE: Assumes call permissions are separately checked beforehand.
-	fn uncharge_fee(fee_id: Self::FeeId, amount: Self::Balance) -> Result<(), Self::Error>;
-
 	/// Add a new fee to the pool and bucket.
 	///
 	/// NOTE: Assumes call permissions are separately checked beforehand.
