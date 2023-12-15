@@ -130,8 +130,6 @@ pub mod pallet {
 		type Rate: Parameter
 			+ Member
 			+ sp_runtime::FixedPointNumber
-			+ sp_runtime::traits::EnsureMul
-			+ sp_runtime::traits::EnsureDiv
 			+ SaturatedProration<Time = Seconds>
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
