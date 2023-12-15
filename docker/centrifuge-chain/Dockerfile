@@ -4,13 +4,13 @@
 FROM --platform=linux/amd64 docker.io/paritytech/ci-linux:production as builder
   # Defaults
 	ENV RUST_BACKTRACE 1
-  
+
   # RustUp
 	COPY ./scripts scripts
 	COPY rust-toolchain.toml ./
 	# RUN rustup update && rustup default
 	ENV PATH=~/.cargo/bin:$PATH
-	RUN	scripts/install_toolchain.sh 
+	RUN	scripts/install_toolchain.sh
 
   # BUILD
 	ARG RUSTC_WRAPPER=''
@@ -20,8 +20,7 @@ FROM --platform=linux/amd64 docker.io/paritytech/ci-linux:production as builder
 	WORKDIR /centrifuge-chain
 	ARG FEATURES=""
 	RUN	FEATURES=$(echo ${FEATURES} | tr -d '"') \
-		cargo build --locked --release --features=${FEATURES}
-
+		cargo build -p centrifuge-chain --locked --release --features=${FEATURES}
 
 # ===== SECOND STAGE ======
 # IF we were to publish binaries that we can always trust we could skip the first part
@@ -37,16 +36,16 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 		io.centrifuge.image.created="${BUILD_DATE}"
 
 	# Add chain resources to image
-	COPY res /resources/
+	COPY node/res /resources/
 
 	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
 
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
-	
+
 	# Because of the following, all data and config directories need to be owned by UID and GID 1000
 	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge
-	
-	RUN mkdir -p /data && \ 
+
+	RUN mkdir -p /data && \
 		chown -R centrifuge:centrifuge /data && \
 		chown -R centrifuge:centrifuge /resources && \
 		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \

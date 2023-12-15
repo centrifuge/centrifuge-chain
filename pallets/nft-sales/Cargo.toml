@@ -56,7 +56,6 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
-  "pallet-uniques/runtime-benchmarks",
 ]
 std = [
   "codec/std",
@@ -71,6 +70,7 @@ std = [
   "cfg-primitives/std",
   "frame-benchmarking/std",
   "scale-info/std",
+  "pallet-uniques?/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
