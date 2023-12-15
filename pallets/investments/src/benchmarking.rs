@@ -37,6 +37,11 @@ where
 		let pool_id = Default::default();
 		let pool_admin = account("pool_admin", 0, 0);
 
+		#[cfg(test)]
+		crate::mock::MockAccountant::mock_bench_default_investment_id(|_| {
+			crate::mock::InvestmentId::default()
+		});
+
 		T::Accountant::bench_create_funded_pool(pool_id, &pool_admin);
 		T::Accountant::bench_default_investment_id(pool_id)
 	}
@@ -56,6 +61,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn update_invest_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		crate::mock::configure_accountant_mock();
+
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
@@ -70,6 +78,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn update_redeem_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		crate::mock::configure_accountant_mock();
+
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = investment_id.into();
@@ -84,6 +95,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn collect_investments(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		crate::mock::configure_accountant_mock();
+
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id = T::Accountant::info(investment_id)?.payment_currency;
@@ -110,6 +124,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn collect_redemptions(n: Linear<1, 10>) -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		crate::mock::configure_accountant_mock();
+
 		let caller: T::AccountId = whitelisted_caller();
 		let investment_id = Helper::<T>::get_investment_id();
 		let currency_id: CurrencyOf<T> = investment_id.into();

@@ -6344,7 +6344,7 @@ dependencies = [
 [[package]]
 name = "mock-builder"
 version = "0.1.1"
-source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#8a67d0cf0e7c2544e918bb01ef9f70fc1c6108ec"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#ec9159d06c01f2ce3d9733779c6cfb2be9e6cc10"
 dependencies = [
  "frame-support",
 ]
@@ -7863,8 +7863,8 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
- "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
