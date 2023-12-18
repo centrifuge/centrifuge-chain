@@ -343,7 +343,8 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			from_loan_id: T::LoanId,
 			to_loan_id: T::LoanId,
-			amount: T::Balance,
+			repaid_amount: RepaidInput<T>,
+			borrow_amount: PrincipalInput<T>,
 		},
 	}
 
@@ -826,13 +827,13 @@ pub mod pallet {
 				Err(Error::<T>::UnrelatedChangeId)?
 			};
 
-			let (amount, _count) = Self::transfer_debt_action(
+			let (_, _count) = Self::transfer_debt_action(
 				&who,
 				pool_id,
 				from_loan_id,
 				to_loan_id,
-				repaid_amount,
-				borrow_amount,
+				repaid_amount.clone(),
+				borrow_amount.clone(),
 				true,
 			)?;
 
@@ -840,7 +841,8 @@ pub mod pallet {
 				pool_id,
 				from_loan_id,
 				to_loan_id,
-				amount,
+				repaid_amount,
+				borrow_amount,
 			});
 
 			Ok(())
