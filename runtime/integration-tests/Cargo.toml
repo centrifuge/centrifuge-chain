@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
+parity-scale-codec = { workspace = true }
 ethabi = { workspace = true, features = ["std"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }

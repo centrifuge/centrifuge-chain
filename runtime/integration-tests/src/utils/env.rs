@@ -14,7 +14,6 @@
 use std::collections::HashMap;
 
 use cfg_primitives::{AuraId, BlockNumber, Index};
-use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::{
@@ -30,6 +29,7 @@ use fudge::{
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
+use parity_scale_codec::{Decode, Encode};
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use polkadot_runtime_parachains::{configuration, configuration::HostConfiguration, dmp};
@@ -85,7 +85,7 @@ pub mod macros {
 			use frame_support::assert_ok;
 			use frame_system::EventRecord as __hidden_EventRecord;
 			use sp_core::H256 as __hidden_H256;
-			use codec::Decode as _;
+			use parity_scale_codec::Decode as _;
 
 			use crate::utils::env::macros::{extra_counts, extra_guards};
 
@@ -176,7 +176,7 @@ pub mod macros {
 			use frame_system::EventRecord as __hidden_EventRecord;
 			use crate::utils::env::macros::{extra_guards, extra_counts};
 			use sp_core::H256 as __hidden_H256;
-			use codec::Decode as _;
+			use parity_scale_codec::Decode as _;
 
 
 			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
@@ -263,7 +263,7 @@ pub mod macros {
 		($env:expr, $chain:expr, $event:ty, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
 			use frame_system::EventRecord as __hidden_EventRecord;
 			use sp_core::H256 as __hidden_H256;
-			use codec::Decode as _;
+			use parity_scale_codec::Decode as _;
 
 			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
 			let event_records: Vec<__hidden_EventRecord<RuntimeEvent, __hidden_H256>> = scale_events
@@ -309,7 +309,7 @@ pub mod macros {
 	macro_rules! run {
 		// ($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
 		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr$(,)?)+);*) => {{
-				use codec::Encode as _;
+				use parity_scale_codec::Encode as _;
 
 				trait CallAssimilator {
 					fn assimilate(self, calls: &mut Vec<$call>);

@@ -182,11 +182,11 @@ mod asset_registry {
 mod orml_tokens_migration {
 	use cfg_primitives::{AccountId, Balance};
 	use cfg_types::tokens::CurrencyId;
-	use codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::traits::tokens::{Fortitude, Precision};
 	use orml_tokens::AccountData;
+	use parity_scale_codec::{Decode, Encode};
 	#[cfg(feature = "try-runtime")]
 	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;

@@ -13,9 +13,9 @@
 use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
 use cfg_types::{domain_address::DomainAddress, locations::Location, tokens::CurrencyId};
-use codec::Encode;
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
+use parity_scale_codec::Encode;
 use sp_core::Hasher;
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert},

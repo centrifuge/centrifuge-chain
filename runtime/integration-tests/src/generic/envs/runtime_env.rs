@@ -2,7 +2,6 @@ use std::{cell::RefCell, marker::PhantomData, mem, rc::Rc};
 
 use cfg_primitives::{AuraId, Balance, BlockNumber, Header};
 use cfg_types::ParaId;
-use codec::Encode;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
@@ -10,6 +9,7 @@ use frame_support::{
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
+use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
