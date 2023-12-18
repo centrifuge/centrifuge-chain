@@ -9,9 +9,9 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-parity-scale-codec = { workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
 smallvec = { workspace = true }

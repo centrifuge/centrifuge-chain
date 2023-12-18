@@ -10,10 +10,10 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-parity-scale-codec = { workspace = true }
 getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true, optional = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 static_assertions = { workspace = true }

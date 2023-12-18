@@ -25,11 +25,11 @@ wasm-opt = false
 [dependencies]
 async-trait = { workspace = true, default-features = true }
 clap = { workspace = true, default-features = true }
-parity-scale-codec = { default-features = true, workspace = true }
 futures = { workspace = true, default-features = true }
 hex-literal = { workspace = true, default-features = true }
 jsonrpsee = { workspace = true, default-features = true }
 log = { workspace = true, default-features = true }
+parity-scale-codec = { default-features = true, workspace = true }
 serde = { workspace = true, default-features = true }
 url = { workspace = true, default-features = true }
 
