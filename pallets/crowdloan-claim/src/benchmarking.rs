@@ -143,13 +143,13 @@ fn get_balance<T: Config>(amount: u128) -> T::Balance {
 
 // In order to detangle from sp-core/fullCrypto which seems to be missing some
 // trait implementations
-#[derive(codec::Encode, codec::Decode)]
+#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode)]
 struct Signature(pub [u8; 64]);
 
-#[derive(codec::Encode, codec::Decode)]
+#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode)]
 struct SignatureEcdsa(pub [u8; 65]);
 
-#[derive(codec::Encode, codec::Decode)]
+#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode)]
 enum MultiSignature {
 	/// An Ed25519 signature.
 	Ed25519(Signature),
@@ -171,7 +171,7 @@ fn get_account_para_ed25519<T: Config>() -> ParachainAccountIdOf<T> {
 		11, 164, 80, 205, 180, 87, 88, 208, 16, 60, 59, 83, 186,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_account_para_ecdsa<T: Config>() -> ParachainAccountIdOf<T> {
@@ -180,7 +180,7 @@ fn get_account_para_ecdsa<T: Config>() -> ParachainAccountIdOf<T> {
 		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_account_para_sr25519<T: Config>() -> ParachainAccountIdOf<T> {
@@ -189,7 +189,7 @@ fn get_account_para_sr25519<T: Config>() -> ParachainAccountIdOf<T> {
 		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_signature_ecdsa<T: Config>() -> sp_runtime::MultiSignature {
@@ -203,7 +203,7 @@ fn get_signature_ecdsa<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = SignatureEcdsa(msg);
 	let local_multisig = MultiSignature::Ecdsa(local_sig);
 
-	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
 fn get_signature_sr25519<T: Config>() -> sp_runtime::MultiSignature {
@@ -217,7 +217,7 @@ fn get_signature_sr25519<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = Signature(msg);
 	let local_multisig = MultiSignature::Sr25519(local_sig);
 
-	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
 fn get_signature_ed25519<T: Config>() -> sp_runtime::MultiSignature {
@@ -230,7 +230,7 @@ fn get_signature_ed25519<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = Signature(msg);
 	let local_multisig = MultiSignature::Ed25519(local_sig);
 
-	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
 fn get_account_relay_ecdsa<T: Config>() -> T::RelayChainAccountId {
@@ -239,7 +239,7 @@ fn get_account_relay_ecdsa<T: Config>() -> T::RelayChainAccountId {
 		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_account_relay_sr25519<T: Config>() -> T::RelayChainAccountId {
@@ -248,7 +248,7 @@ fn get_account_relay_sr25519<T: Config>() -> T::RelayChainAccountId {
 		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_account_relay_ed25519<T: Config>() -> T::RelayChainAccountId {
@@ -257,7 +257,7 @@ fn get_account_relay_ed25519<T: Config>() -> T::RelayChainAccountId {
 		11, 164, 80, 205, 180, 87, 88, 208, 16, 60, 59, 83, 186,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_proof<T: Config>(
@@ -272,23 +272,23 @@ fn get_proof<T: Config>(
 
 	// 10-leaf tree
 	let leaf_hash_0: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
 	let leaf_hash_1: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
 	let leaf_hash_3: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
 	let leaf_hash_4: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
 	let leaf_hash_5: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
 	let leaf_hash_6: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
 	let leaf_hash_7: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
 	let leaf_hash_8: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
 	let leaf_hash_9: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
 	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
 	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);
 	let node_3 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_6, leaf_hash_7);
@@ -310,24 +310,24 @@ fn get_root<T: Config>(relay: T::RelayChainAccountId, contribution: T::Balance) 
 
 	// 10-leaf tree
 	let leaf_hash_0: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
 	let leaf_hash_1: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
 	let leaf_hash_2: T::Hash = leaf_hash;
 	let leaf_hash_3: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
 	let leaf_hash_4: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
 	let leaf_hash_5: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
 	let leaf_hash_6: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
 	let leaf_hash_7: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
 	let leaf_hash_8: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
 	let leaf_hash_9: T::Hash =
-		codec::Decode::decode(&mut codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
+		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
 	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
 	let node_1 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_2, leaf_hash_3);
 	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);

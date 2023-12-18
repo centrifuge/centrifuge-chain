@@ -18,7 +18,7 @@ use cfg_mocks::{
 };
 use cfg_traits::Millis;
 use cfg_types::{permissions::PermissionScope, tokens::TrancheCurrency};
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,

@@ -40,7 +40,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
+	use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{

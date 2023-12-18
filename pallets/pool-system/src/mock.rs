@@ -21,7 +21,7 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Encode;
+use parity_scale_codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
 	sp_std::marker::PhantomData,

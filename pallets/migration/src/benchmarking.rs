@@ -16,7 +16,7 @@ use super::*;
 benchmarks! {
 	finalize{
 		let additional_issuance: <T as pallet_balances::Config>::Balance =
-			codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
+			parity_scale_codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
 
 		Pallet::<T>::migrate_balances_issuance(RawOrigin::Root.into(), additional_issuance).unwrap();
 	}: finalize(RawOrigin::Root)
@@ -48,14 +48,14 @@ benchmarks! {
 			let mut bytes_id = [0u8; 32];
 			bytes_id.copy_from_slice(key[start_byte..].as_ref());
 			let id = AccountId32::from(bytes_id);
-			let id: <T as frame_system::Config>::AccountId = codec::Decode::decode(&mut codec::Encode::encode(&id).as_slice()).unwrap();
+			let id: <T as frame_system::Config>::AccountId = parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&id).as_slice()).unwrap();
 
 			assert!(frame_system::Pallet::<T>::account_exists(&id));
 		}
   }
   migrate_balances_issuance{
 		let additional_issuance: <T as pallet_balances::Config>::Balance =
-			codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
+			parity_scale_codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
 
 		let old_issuance: <T as pallet_balances::Config>::Balance = pallet_balances::Pallet::<T>::total_issuance().into();
 
@@ -80,13 +80,13 @@ benchmarks! {
 			let key: Vec<u8> = vesting.key.iter().cloned().collect();
 			let vesting: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
 			T::BlockNumber> =
-				codec::Decode::decode(&mut vesting.value[..].as_ref()).unwrap();
+				parity_scale_codec::Decode::decode(&mut vesting.value[..].as_ref()).unwrap();
 
 			let start_byte = key.len() - 32;
 			let mut bytes_id = [0u8; 32];
 			bytes_id.copy_from_slice(&key[start_byte..]);
-			let account_id: T::AccountId = codec::Decode::decode(
-				&mut codec::Encode::encode(
+			let account_id: T::AccountId = parity_scale_codec::Decode::decode(
+				&mut parity_scale_codec::Encode::encode(
 					&AccountId32::from(bytes_id)
 				).as_slice()
 			).unwrap();
@@ -145,13 +145,13 @@ benchmarks! {
 					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
 						<T as frame_system::Config>::AccountId,
 					>>::Balance,
-				) = codec::Decode::decode(&mut proxy.value[..].as_ref()).unwrap();
+				) = parity_scale_codec::Decode::decode(&mut proxy.value[..].as_ref()).unwrap();
 
 			let start_byte = key.len() - 32;
 			let mut bytes_id = [0u8; 32];
 			bytes_id.copy_from_slice(&key[start_byte..]);
-			let account_id: T::AccountId = codec::Decode::decode(
-				&mut codec::Encode::encode(
+			let account_id: T::AccountId = parity_scale_codec::Decode::decode(
+				&mut parity_scale_codec::Encode::encode(
 					&AccountId32::from(bytes_id)
 				).as_slice()
 			).unwrap();
@@ -185,7 +185,7 @@ impl_benchmark_test_suite!(
 fn inject_total_issuance() {
 	storage::unhashed::put_raw(
 		&test_data::balances_total_issuance::TOTAL_ISSUANCE.key[..],
-		codec::Encode::encode(&test_data::balances_total_issuance::TOTAL_ISSUANCE.value).as_slice(),
+		parity_scale_codec::Encode::encode(&test_data::balances_total_issuance::TOTAL_ISSUANCE.value).as_slice(),
 	);
 }
 

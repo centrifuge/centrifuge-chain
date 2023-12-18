@@ -18,7 +18,7 @@ use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,

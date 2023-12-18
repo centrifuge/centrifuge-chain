@@ -7,7 +7,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult, ensure, pallet_prelude::MaxEncodedLen, traits::Currency,
 };

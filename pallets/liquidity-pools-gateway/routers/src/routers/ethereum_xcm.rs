@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_traits::liquidity_pools::Codec;
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Bytes, Contract};
 use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 use scale_info::TypeInfo;

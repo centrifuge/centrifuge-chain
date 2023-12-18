@@ -22,7 +22,7 @@ use cfg_types::{
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	parameter_types,

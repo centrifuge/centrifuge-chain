@@ -1,6 +1,6 @@
 use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
-use codec::{Decode, Encode, Input};
+use parity_scale_codec::{Decode, Encode, Input};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
@@ -732,7 +732,7 @@ impl<
 		}
 	}
 
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		let call_type = input.read_byte()?;
 
 		match call_type {
@@ -881,7 +881,7 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 			}),
-			_ => Err(codec::Error::from(
+			_ => Err(parity_scale_codec::Error::from(
 				"Unsupported decoding for this Message variant",
 			)),
 		}
@@ -889,7 +889,7 @@ impl<
 }
 
 /// Decode a type that implements our custom [Codec] trait
-pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, parity_scale_codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 

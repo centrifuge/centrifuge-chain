@@ -20,7 +20,7 @@ use cfg_types::{
 	pools::{PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
-use codec::{HasCompact, MaxEncodedLen};
+use parity_scale_codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::asset_registry::{Inspect, Mutate};

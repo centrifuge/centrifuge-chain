@@ -77,7 +77,7 @@ pub mod migrations {
 }
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
-use codec::FullCodec;
+use parity_scale_codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{

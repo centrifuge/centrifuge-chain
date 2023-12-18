@@ -12,7 +12,7 @@
 
 use cfg_traits::Seconds;
 use cfg_types::{epoch::EpochState, pools::TrancheMetadata};
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,

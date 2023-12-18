@@ -9,7 +9,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::fees::{self, Fee, FeeKey};
-use codec::EncodeLike;
+use parity_scale_codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},

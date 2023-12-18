@@ -12,7 +12,7 @@
 //!
 //! To buy an NFT, users will call `buy`.
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{self, Mutate as FungiblesMutate},
 	tokens::nonfungibles::{self, Inspect as _, Transfer as _},

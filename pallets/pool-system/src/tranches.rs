@@ -22,7 +22,7 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CustomMetadata},
 };
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,

@@ -42,10 +42,10 @@ pub mod weights;
 #[derive(
 	PartialEq,
 	Clone,
-	codec::Encode,
-	codec::Decode,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
 	scale_info::TypeInfo,
-	codec::MaxEncodedLen,
+	parity_scale_codec::MaxEncodedLen,
 	frame_support::RuntimeDebugNoBound,
 )]
 pub struct SourceConverter {

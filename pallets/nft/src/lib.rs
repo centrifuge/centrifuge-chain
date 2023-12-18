@@ -40,7 +40,7 @@ pub mod weights;
 use cfg_primitives::types::FixedArray;
 use cfg_traits::fees::{Fee, Fees};
 use chainbridge::types::ResourceId;
-use codec::FullCodec;
+use parity_scale_codec::FullCodec;
 pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 use sp_core::H256;

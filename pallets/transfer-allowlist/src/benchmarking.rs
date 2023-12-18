@@ -13,7 +13,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use cfg_types::tokens::CurrencyId;
-use codec::EncodeLike;
+use parity_scale_codec::EncodeLike;
 use frame_benchmarking::*;
 use frame_support::{
 	pallet_prelude::Get,

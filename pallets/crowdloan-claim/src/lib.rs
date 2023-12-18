@@ -60,7 +60,7 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 use cfg_traits::Reward;
-use codec::Encode;
+use parity_scale_codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::{fmt::Debug, DispatchResult},

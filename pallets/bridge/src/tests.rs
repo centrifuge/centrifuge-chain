@@ -18,7 +18,7 @@
 // ----------------------------------------------------------------------------
 
 use cfg_primitives::constants::CFG;
-use codec::Encode;
+use parity_scale_codec::Encode;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::{LockableCurrency, WithdrawReasons},

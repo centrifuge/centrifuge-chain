@@ -79,7 +79,7 @@ pub mod pallet {
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
-	use codec::HasCompact;
+	use parity_scale_codec::HasCompact;
 	use entities::{
 		changes::{Change, LoanMutation},
 		input::{PrincipalInput, RepaidInput},

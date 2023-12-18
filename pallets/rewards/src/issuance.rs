@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::rewards::RewardIssuance;
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 use frame_support::traits::{fungibles::Mutate, tokens::Preservation};
 use sp_runtime::{traits::Get, DispatchResult};
 use sp_std::marker::PhantomData;

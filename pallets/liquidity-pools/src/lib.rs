@@ -47,7 +47,7 @@ use cfg_types::{
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{
 		fungibles::{Inspect, Mutate},
@@ -124,7 +124,7 @@ pub mod pallet {
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
 		EVMChainId,
 	};
-	use codec::HasCompact;
+	use parity_scale_codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{traits::Zero, DispatchError};
@@ -1095,7 +1095,7 @@ pub mod pallet {
 
 #[cfg(test)]
 mod tests {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 
 	use crate::Domain;
 

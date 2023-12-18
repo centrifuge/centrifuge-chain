@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::Seconds;
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{

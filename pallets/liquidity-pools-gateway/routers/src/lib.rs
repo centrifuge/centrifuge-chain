@@ -28,7 +28,7 @@ pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
 pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
 
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult, Weight},
 	ensure,
