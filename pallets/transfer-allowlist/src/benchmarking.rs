@@ -13,13 +13,13 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use cfg_types::tokens::CurrencyId;
-use parity_scale_codec::EncodeLike;
 use frame_benchmarking::*;
 use frame_support::{
 	pallet_prelude::Get,
 	traits::{fungible::Unbalanced, tokens::Precision, Currency, ReservableCurrency},
 };
 use frame_system::RawOrigin;
+use parity_scale_codec::EncodeLike;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One},

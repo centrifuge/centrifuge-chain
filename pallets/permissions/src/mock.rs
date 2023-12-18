@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
 	parameter_types,
@@ -24,25 +23,50 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::traits::AccountIdConversion;
 
 ///! Mock environment setup for testing the pallet-permissions
 use crate::{self as pallet_permissions};
 
-#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum OrganisationRole {
 	SeniorExeutive,
 	HeadOfSaubermaching,
 	Admin,
 }
 
-#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum XcmRole {
 	Sender,
 	Receiver,
 }
 
-#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum Role {
 	Organisation(OrganisationRole),
 	Xcm(XcmRole),
@@ -68,7 +92,14 @@ bitflags::bitflags! {
 }
 
 #[derive(
-	parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
 )]
 pub struct Storage {
 	org: OrgStorage,
@@ -85,7 +116,14 @@ impl Default for Storage {
 }
 
 #[derive(
-	parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
 )]
 pub enum Scope {
 	PalletA,

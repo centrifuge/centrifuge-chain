@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::CurrencyId;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64},
 	Deserialize, Serialize,
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{

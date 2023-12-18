@@ -4,7 +4,6 @@ use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, R
 use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
-use parity_scale_codec::{Decode, Encode};
 use cumulus_primitives_core::{
 	Instruction, MultiAsset, MultiLocation, PalletInstance, Parachain, SendError, Xcm, XcmHash,
 };
@@ -21,6 +20,7 @@ use pallet_evm::{
 	PrecompileSet, SubstrateBlockHashMapping,
 };
 use pallet_liquidity_pools_gateway::EnsureLocal;
+use parity_scale_codec::{Decode, Encode};
 use sp_core::{crypto::AccountId32, ByteArray, ConstU16, ConstU32, ConstU64, H160, H256, U256};
 use sp_runtime::{
 	testing::Header,

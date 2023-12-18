@@ -40,7 +40,6 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{
@@ -51,6 +50,7 @@ pub mod pallet {
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
+	use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::{
 		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub},

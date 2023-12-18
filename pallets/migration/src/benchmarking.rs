@@ -185,7 +185,10 @@ impl_benchmark_test_suite!(
 fn inject_total_issuance() {
 	storage::unhashed::put_raw(
 		&test_data::balances_total_issuance::TOTAL_ISSUANCE.key[..],
-		parity_scale_codec::Encode::encode(&test_data::balances_total_issuance::TOTAL_ISSUANCE.value).as_slice(),
+		parity_scale_codec::Encode::encode(
+			&test_data::balances_total_issuance::TOTAL_ISSUANCE.value,
+		)
+		.as_slice(),
 	);
 }
 

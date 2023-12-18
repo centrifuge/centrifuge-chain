@@ -1,7 +1,7 @@
 use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
-use parity_scale_codec::{Decode, Encode, Input};
 use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
 
@@ -889,7 +889,9 @@ impl<
 }
 
 /// Decode a type that implements our custom [Codec] trait
-pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, parity_scale_codec::Error> {
+pub fn deserialize<const S: usize, O: Codec, I: Input>(
+	input: &mut I,
+) -> Result<O, parity_scale_codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 

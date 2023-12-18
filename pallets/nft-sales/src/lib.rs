@@ -12,12 +12,12 @@
 //!
 //! To buy an NFT, users will call `buy`.
 #![cfg_attr(not(feature = "std"), no_std)]
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{self, Mutate as FungiblesMutate},
 	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
 };
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
 pub use weights::WeightInfo;

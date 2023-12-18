@@ -77,7 +77,6 @@ pub mod migrations {
 }
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
-use parity_scale_codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
@@ -88,6 +87,7 @@ use frame_support::{
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
+use parity_scale_codec::FullCodec;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
 

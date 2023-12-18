@@ -7,11 +7,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 
-use parity_scale_codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult, ensure, pallet_prelude::MaxEncodedLen, traits::Currency,
 };
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 pub use weights::*;
 

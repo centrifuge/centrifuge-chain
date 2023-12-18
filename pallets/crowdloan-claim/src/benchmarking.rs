@@ -203,7 +203,10 @@ fn get_signature_ecdsa<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = SignatureEcdsa(msg);
 	let local_multisig = MultiSignature::Ecdsa(local_sig);
 
-	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice(),
+	)
+	.unwrap()
 }
 
 fn get_signature_sr25519<T: Config>() -> sp_runtime::MultiSignature {
@@ -217,7 +220,10 @@ fn get_signature_sr25519<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = Signature(msg);
 	let local_multisig = MultiSignature::Sr25519(local_sig);
 
-	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice(),
+	)
+	.unwrap()
 }
 
 fn get_signature_ed25519<T: Config>() -> sp_runtime::MultiSignature {
@@ -230,7 +236,10 @@ fn get_signature_ed25519<T: Config>() -> sp_runtime::MultiSignature {
 	let local_sig = Signature(msg);
 	let local_multisig = MultiSignature::Ed25519(local_sig);
 
-	parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+	parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&local_multisig).as_slice(),
+	)
+	.unwrap()
 }
 
 fn get_account_relay_ecdsa<T: Config>() -> T::RelayChainAccountId {
@@ -271,24 +280,42 @@ fn get_proof<T: Config>(
 	let mut sorted_hashed: Vec<T::Hash> = Vec::new();
 
 	// 10-leaf tree
-	let leaf_hash_0: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
-	let leaf_hash_1: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
-	let leaf_hash_3: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
-	let leaf_hash_4: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
-	let leaf_hash_5: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
-	let leaf_hash_6: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
-	let leaf_hash_7: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
-	let leaf_hash_8: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
-	let leaf_hash_9: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
+	let leaf_hash_0: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_1: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_3: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_4: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_5: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_6: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_7: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_8: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_9: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice(),
+	)
+	.unwrap();
 	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
 	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);
 	let node_3 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_6, leaf_hash_7);
@@ -309,25 +336,43 @@ fn get_root<T: Config>(relay: T::RelayChainAccountId, contribution: T::Balance) 
 	let leaf_hash: T::Hash = <T as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
-	let leaf_hash_0: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
-	let leaf_hash_1: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
+	let leaf_hash_0: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[0u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_1: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[1u32; 32]).as_slice(),
+	)
+	.unwrap();
 	let leaf_hash_2: T::Hash = leaf_hash;
-	let leaf_hash_3: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
-	let leaf_hash_4: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice()).unwrap();
-	let leaf_hash_5: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice()).unwrap();
-	let leaf_hash_6: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice()).unwrap();
-	let leaf_hash_7: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice()).unwrap();
-	let leaf_hash_8: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
-	let leaf_hash_9: T::Hash =
-		parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
+	let leaf_hash_3: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[2u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_4: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[3u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_5: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[4u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_6: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[5u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_7: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[6u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_8: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[7u32; 32]).as_slice(),
+	)
+	.unwrap();
+	let leaf_hash_9: T::Hash = parity_scale_codec::Decode::decode(
+		&mut parity_scale_codec::Encode::encode(&[8u32; 32]).as_slice(),
+	)
+	.unwrap();
 	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
 	let node_1 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_2, leaf_hash_3);
 	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);

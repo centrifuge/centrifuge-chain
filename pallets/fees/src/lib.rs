@@ -9,12 +9,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::fees::{self, Fee, FeeKey};
-use parity_scale_codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 };
 pub use pallet::*;
+use parity_scale_codec::EncodeLike;
 use sp_std::vec::Vec;
 
 #[cfg(test)]

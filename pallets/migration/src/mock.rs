@@ -16,13 +16,13 @@
 //! The main components implemented in this module is a mock runtime
 //! and some helper functions.
 
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
 	sp_runtime::traits::ConvertInto,
 	traits::{ConstU32, Contains, InstanceFilter, WithdrawReasons},
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},

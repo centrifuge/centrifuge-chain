@@ -79,7 +79,10 @@ fn migrate_system_account() {
 			let test_index = rng.gen_range(0..SYSTEM_ACCOUNT.len());
 
 			let account: AccountInfo<Index, AccountData<Balance>> =
-				parity_scale_codec::Decode::decode(&mut SYSTEM_ACCOUNT[test_index].value[..].as_ref()).unwrap();
+				parity_scale_codec::Decode::decode(
+					&mut SYSTEM_ACCOUNT[test_index].value[..].as_ref(),
+				)
+				.unwrap();
 
 			let mut bytes_id: [u8; 32] = [0; 32];
 
@@ -244,8 +247,10 @@ fn migrate_vesting_vesting() {
 
 			let test_index = rng.gen_range(0..VESTING_VESTING.len());
 
-			let vesting: VestingInfo<Balance, BlockNumber> =
-				parity_scale_codec::Decode::decode(&mut VESTING_VESTING[test_index].value[..].as_ref()).unwrap();
+			let vesting: VestingInfo<Balance, BlockNumber> = parity_scale_codec::Decode::decode(
+				&mut VESTING_VESTING[test_index].value[..].as_ref(),
+			)
+			.unwrap();
 
 			let mut bytes_id: [u8; 32] = [0; 32];
 
@@ -378,7 +383,8 @@ fn migrate_proxy_proxies() {
 			let proxy_info: (
 				BoundedVec<ProxyDefinition<AccountId, ProxyType, BlockNumber>, MaxProxies>,
 				Balance,
-			) = parity_scale_codec::Decode::decode(&mut proxies[test_index].value[..].as_ref()).unwrap();
+			) = parity_scale_codec::Decode::decode(&mut proxies[test_index].value[..].as_ref())
+				.unwrap();
 
 			let mut bytes_id: [u8; 32] = [0; 32];
 
