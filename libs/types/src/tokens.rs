@@ -17,8 +17,8 @@ use cfg_primitives::{
 	Balance, PalletIndex,
 };
 use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
-use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -326,7 +326,7 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 
 pub mod before {
 	use cfg_primitives::{PoolId, TrancheId};
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 
 	use crate::tokens::{ForeignAssetId, StakingCurrency};
@@ -495,8 +495,8 @@ mod tests {
 	#[cfg(test)]
 	mod tests {
 		use cfg_primitives::TrancheId;
-		use codec::Encode;
 		use hex::FromHex;
+		use parity_scale_codec::Encode;
 
 		use super::StakingCurrency;
 		use crate::{tokens as after, tokens::before};

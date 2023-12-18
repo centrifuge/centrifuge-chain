@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::OrderId;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
 use sp_runtime::{traits::Zero, DispatchError, DispatchResult};

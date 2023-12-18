@@ -11,7 +11,7 @@ version = "2.0.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 hex = { version = "0.4.3", default_features = false }
@@ -31,7 +31,7 @@ std = [
   "sp-std/std",
   "pallet-timestamp/std",
   "pallet-aura/std",
-  "codec/std",
+  "parity-scale-codec/std",
   "scale-info/std",
   "sp-consensus-aura/std",
   "hex/std",
