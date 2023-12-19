@@ -20,7 +20,6 @@ use cfg_types::{
 	fixed_point::Rate,
 	tokens::{CurrencyId, CustomMetadata, GeneralCurrencyIndex},
 };
-use codec::Encode;
 use ethabi::{Contract, Function, Param, ParamType, Token};
 use ethereum::{LegacyTransaction, TransactionAction, TransactionSignature, TransactionV2};
 use frame_support::{assert_err, assert_ok, dispatch::RawOrigin};
@@ -29,6 +28,7 @@ use hex::ToHex;
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
 use pallet_evm::{AddressMapping, FeeCalculator};
 use pallet_liquidity_pools::Message;
+use parity_scale_codec::Encode;
 use runtime_common::{account_conversion::AccountConverter, evm::precompile::LP_AXELAR_GATEWAY};
 use sp_core::{Get, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};

@@ -18,8 +18,8 @@
 // ----------------------------------------------------------------------------
 
 use cfg_primitives::MILLISECS_PER_DAY;
-use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
+use parity_scale_codec::Encode;
 use sp_runtime::traits::{BadOrigin, Hash};
 
 use crate::{

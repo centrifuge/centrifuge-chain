@@ -1,6 +1,6 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
-use codec::Encode;
+use parity_scale_codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},

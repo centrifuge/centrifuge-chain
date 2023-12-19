@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode, MaxEncodedLen};
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
 	parameter_types,
@@ -24,25 +23,50 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::traits::AccountIdConversion;
 
 ///! Mock environment setup for testing the pallet-permissions
 use crate::{self as pallet_permissions};
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum OrganisationRole {
 	SeniorExeutive,
 	HeadOfSaubermaching,
 	Admin,
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum XcmRole {
 	Sender,
 	Receiver,
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+)]
 pub enum Role {
 	Organisation(OrganisationRole),
 	Xcm(XcmRole),
@@ -50,7 +74,7 @@ pub enum Role {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
+		#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct OrgStorage: u32 {
 			const SENIOR_EXEC = 0b00000001;
 			const HEAD_OF_SAUBERMACHING  = 0b00000010;
@@ -60,7 +84,7 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
+		#[derive(parity_scale_codec::Encode, parity_scale_codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct XcmStorage: u32 {
 			const SENDER = 0b00000001;
 			const RECEIVER  = 0b00000010;
@@ -68,7 +92,14 @@ bitflags::bitflags! {
 }
 
 #[derive(
-	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
 )]
 pub struct Storage {
 	org: OrgStorage,
@@ -85,7 +116,14 @@ impl Default for Storage {
 }
 
 #[derive(
-	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
+	scale_info::TypeInfo,
+	Debug,
+	Clone,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
 )]
 pub enum Scope {
 	PalletA,

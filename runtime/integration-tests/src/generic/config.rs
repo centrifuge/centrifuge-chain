@@ -14,7 +14,6 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -24,6 +23,7 @@ use frame_support::{
 use liquidity_pools_gateway_routers::DomainRouter;
 use pallet_liquidity_pools::Message;
 use pallet_transaction_payment::CurrencyAdapter;
+use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},

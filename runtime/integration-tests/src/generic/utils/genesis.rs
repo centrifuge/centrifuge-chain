@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
-use codec::Encode;
 use frame_support::traits::GenesisBuild;
+use parity_scale_codec::Encode;
 use sp_core::crypto::AccountId32;
 use sp_runtime::Storage;
 

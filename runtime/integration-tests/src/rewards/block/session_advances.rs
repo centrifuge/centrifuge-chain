@@ -13,9 +13,9 @@
 use cfg_primitives::AccountId;
 use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::{CurrencyId, StakingCurrency};
-use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_collator_selection::Call as CollatorSelectionCall;
+use parity_scale_codec::Encode;
 use sp_runtime::{traits::Zero, Storage};
 use tokio::runtime::Handle;
 

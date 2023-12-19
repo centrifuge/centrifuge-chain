@@ -5,9 +5,9 @@ pub mod pallet {
 		TrancheTokenPrice,
 	};
 	use cfg_types::investments::InvestmentInfo;
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_std::fmt::Debug;
 

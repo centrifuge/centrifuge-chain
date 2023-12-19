@@ -1,8 +1,8 @@
 use cfg_primitives::SECONDS_PER_WEEK;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use pallet_loans::entities::changes::{Change as LoansChange, InternalMutation, LoanMutation};
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchError;
 use sp_std::{marker::PhantomData, vec, vec::Vec};

@@ -37,7 +37,6 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CustomMetadata, StakingCurrency, TrancheCurrency},
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use constants::currency::*;
 use fp_rpc::TransactionStatus;
 use frame_support::{
@@ -73,6 +72,7 @@ use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPasst
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::{
 	account_conversion::AccountConverter,

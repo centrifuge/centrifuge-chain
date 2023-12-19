@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{Properties, Seconds, TimeAsSecs};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::Get, BoundedVec};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -82,7 +82,7 @@ where
 
 bitflags::bitflags! {
 	/// The current admin roles we support
-	#[derive(codec::Encode, codec::Decode, TypeInfo, MaxEncodedLen)]
+	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 	pub struct PoolAdminRoles: u32 {
 		const POOL_ADMIN = 0b00000001;
 		const BORROWER  = 0b00000010;
@@ -94,7 +94,7 @@ bitflags::bitflags! {
 	}
 
 	/// The current admin roles we support
-	#[derive(codec::Encode, codec::Decode, TypeInfo, MaxEncodedLen)]
+	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 	pub struct CurrencyAdminRoles: u32 {
 		const PERMISSIONED_ASSET_MANAGER = 0b00000001;
 		const PERMISSIONED_ASSET_ISSUER  = 0b00000010;
