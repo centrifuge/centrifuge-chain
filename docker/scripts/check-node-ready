@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Contact port 9933 and store the response
+response=$(curl -s http://localhost:9933/health)
+
+# Extract the number of peers and the syncing status from the response
+peers=$(echo "$response" | jq '.peers')
+isSyncing=$(echo "$response" | jq '.isSyncing')
+
+# Check that the number of peers is more than 0
+if [ "$peers" -gt 0 ]; then
+    echo "Node has peers."
+else
+    echo "Error: Node has no peers. Check the logs"
+    exit 1
+fi
+
+# Check that syncing is false
+if [ "$isSyncing" == "false" ]; then
+    echo "Node is synched."
+else
+    echo "Error: Node is still syncing but has peers. Check again later"
+    exit 1
+fi
+
+echo "Health check passed."
+exit 0

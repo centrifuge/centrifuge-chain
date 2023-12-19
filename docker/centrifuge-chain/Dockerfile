@@ -35,24 +35,29 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 		io.centrifuge.image.source="https://github.com/centrifuge/centrifuge-chain/blob/main/docker/centrifuge-chain/Dockerfile" \
 		io.centrifuge.image.created="${BUILD_DATE}"
 
-	# Add chain resources to image
-	COPY node/res /resources/
-
-	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /usr/local/bin
+	RUN apt-get update && apt-get install -y curl jq
 
 	RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* ;
 
 	# Because of the following, all data and config directories need to be owned by UID and GID 1000
 	RUN useradd -m -u 1000 -U -s /bin/sh -d /centrifuge centrifuge
+	
 
-	RUN mkdir -p /data && \
+	COPY node/res /resources/
+	COPY --from=builder /centrifuge-chain/target/release/centrifuge-chain /centrifuge/bin/
+	COPY ./docker/scripts/ /centrifuge/scripts/
+
+	RUN mkdir -p /data && \ 
 		chown -R centrifuge:centrifuge /data && \
 		chown -R centrifuge:centrifuge /resources && \
 		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
-		chown -R centrifuge:centrifuge /centrifuge/
-
-	COPY ./docker/scripts/entrypoint.sh /centrifuge/entrypoint.sh
-	RUN chown -R centrifuge:centrifuge /centrifuge/entrypoint.sh && chmod +x /centrifuge/entrypoint.sh
+		chown -R centrifuge:centrifuge /centrifuge/ 
+	RUN chmod -R +x /centrifuge/bin/ \
+		chmod -R +x /centrifuge/scripts/
+	
+	# Alternative: create symlinks on /usr/local/bin or similar
+	ENV PATH=/centrifuge/scripts/:$PATH
+	ENV PATH=/centrifuge/bin/:$PATH
 
 # Running as an non-root is a good security practice
 # in some cases the container can be forced to run as root overriding the next line
@@ -65,5 +70,5 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
-ENTRYPOINT ["/centrifuge/entrypoint.sh"]
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["--help"]
