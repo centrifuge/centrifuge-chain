@@ -749,8 +749,9 @@ impl<const DIV: u128> SaturatedProration for FixedU128<DIV> {
 	type Time = Seconds;
 
 	fn saturated_proration(annual_rate: Self, period: Self::Time) -> Self {
-		let time = period.saturating_div(SECONDS_PER_YEAR);
-		annual_rate.saturating_mul(Self::from_integer(time.into()))
+		let annual_amount = annual_rate.saturating_mul(Self::from_integer(period.into()));
+
+		annual_amount.saturating_div_ceil(&Self::from_integer(SECONDS_PER_YEAR.into()))
 	}
 }
 

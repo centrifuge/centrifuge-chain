@@ -204,8 +204,6 @@ pub(crate) fn config_mocks() {
 			.map_err(|e: DispatchError| e)
 	});
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPools::mock_bench_create_pool(|_, _| {});
-	MockPools::mock_bench_investor_setup(|_, _, _| {});
 	MockPermissions::mock_has(|scope, who, role| {
 		matches!(scope, PermissionScope::Pool(id) if id == POOL)
 			&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))

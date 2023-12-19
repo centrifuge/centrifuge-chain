@@ -10,15 +10,19 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, TrancheTokenPrice};
+use cfg_primitives::{constants::SECONDS_PER_YEAR, conversion::fixed_point_to_balance, Balance};
+use cfg_traits::{
+	investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, PoolNAV, TrancheTokenPrice,
+};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	pools::TrancheMetadata,
+	pools::{PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeType, TrancheMetadata},
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
+use pallet_pool_fees::{DisbursingFeeOf, PoolFeeOf};
 use rand::Rng;
 use sp_core::storage::StateVersion;
 use sp_runtime::{
@@ -519,9 +523,8 @@ fn epoch() {
 		let borrower = 3;
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
 			pool_owner.clone(),
@@ -758,9 +761,8 @@ fn submission_period() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
 			pool_owner.clone(),
@@ -948,9 +950,8 @@ fn execute_info_removed_after_epoch_execute() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
@@ -1161,9 +1162,8 @@ fn tranche_ids_are_unique() {
 			}
 		};
 
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
 			0,
@@ -1338,9 +1338,8 @@ fn same_pool_id_not_possible() {
 fn valid_tranche_structure_is_enforced() {
 	new_test_ext().execute_with(|| {
 		let pool_id_0 = 0u64;
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_noop!(
@@ -1581,9 +1580,8 @@ fn triger_challange_period_with_zero_solution() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
@@ -1677,9 +1675,8 @@ fn min_challenge_time_is_respected() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
@@ -1776,9 +1773,8 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
@@ -1979,9 +1975,8 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
@@ -2170,9 +2165,8 @@ fn only_usd_as_pool_currency_allowed() {
 		let pool_owner = 2_u64;
 
 		// Initialize pool with initial investments
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		assert_noop!(
@@ -2279,9 +2273,8 @@ fn only_usd_as_pool_currency_allowed() {
 #[test]
 fn creation_takes_deposit() {
 	new_test_ext().execute_with(|| {
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			/ Rate::saturating_from_integer(SECONDS_PER_YEAR)
 			+ One::one();
 
 		// Pool creation one:
@@ -2704,6 +2697,410 @@ mod changes {
 			assert_noop!(
 				PoolSystem::released(DEFAULT_POOL_ID, change_id),
 				Error::<Runtime>::ChangeNotReady // Blocked by the second requirement
+			);
+		});
+	}
+}
+
+mod pool_fees {
+	use super::*;
+
+	#[test]
+	fn execute_epoch_without_fees() {
+		new_test_ext().execute_with(|| {
+			let pool_owner = 2_u64;
+			let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
+			let investment_amount = DEFAULT_POOL_MAX_RESERVE / 10;
+			let interest_rate = Rate::saturating_from_rational(10, 100);
+			let fulfillment_rate = Perquintill::from_percent(25);
+			let nav_amount = investment_amount / 2 + 2_345_000;
+			let nav_reduction_redemption = nav_amount / 100 * 100;
+			let adjustment_amount =
+				fulfillment_rate * (investment_amount + nav_reduction_redemption);
+
+			// Initialize pool with initial investments
+			let senior_interest_rate =
+				interest_rate / Rate::saturating_from_integer(SECONDS_PER_YEAR) + One::one();
+			assert_ok!(PoolSystem::create(
+				pool_owner.clone(),
+				pool_owner.clone(),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					}
+				],
+				AUSD_CURRENCY_ID,
+				DEFAULT_POOL_MAX_RESERVE,
+				vec![],
+			));
+			test_nav_up(DEFAULT_POOL_ID, nav_amount);
+
+			// Force min_epoch_time to 0 without using update
+			// as this breaks the runtime-defined pool
+			// parameter bounds and update will not allow this.
+			//
+			// Also force initital reserve to not be empty
+			Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+				maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+				Ok(())
+			})
+			.unwrap();
+
+			// Advance a block to incur pool fees
+			next_block();
+
+			// Invest to set NAV and reserve to non-zero
+			invest_close_and_collect(
+				DEFAULT_POOL_ID,
+				vec![
+					(0, JuniorTrancheId::get(), investment_amount),
+					(1, SeniorTrancheId::get(), investment_amount),
+				],
+			);
+
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				2 * investment_amount
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+
+			// Attempt to redeem everything
+			assert_ok!(Investments::update_redeem_order(
+				RuntimeOrigin::signed(0),
+				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				investment_amount
+			));
+			assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+
+			assert_ok!(PoolSystem::submit_solution(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: fulfillment_rate,
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					}
+				]
+			));
+
+			next_block();
+
+			assert_ok!(PoolSystem::execute_epoch(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID
+			));
+			assert!(!EpochExecution::<Runtime>::contains_key(DEFAULT_POOL_ID));
+
+			dbg!(investment_amount);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount - adjustment_amount,
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				2 * investment_amount - adjustment_amount,
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+
+			// Redemption is pending because pool fees consumed entire reserve
+			assert_eq!(
+				pallet_investments::RedeemOrders::<Runtime>::get(
+					0,
+					TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get())
+				)
+				.expect("Pool reserve is empty")
+				.amount(),
+				investment_amount
+			);
+
+			next_block();
+
+			assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount - adjustment_amount,
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				0,
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+		});
+	}
+	#[test]
+	fn execute_epoch_with_fees() {
+		use cfg_traits::PoolInspect;
+		use orml_traits::MultiCurrency;
+
+		new_test_ext().execute_with(|| {
+			let pool_owner = 2_u64;
+			let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
+			let investment_amount = DEFAULT_POOL_MAX_RESERVE / 10;
+			let interest_rate = Rate::saturating_from_rational(10, 100);
+			let fulfillment_rate = Perquintill::from_percent(50);
+			let nav_amount = investment_amount / 2 + 2_345_000;
+			let nav_reduction_redemption = nav_amount / 100 * 100;
+			let fee_amount = nav_amount / 10;
+			let adjustment_amount =
+				fulfillment_rate * (investment_amount + nav_reduction_redemption);
+
+			let fees: Vec<(PoolFeeBucket, pallet_pool_fees::PoolFeeOf<Runtime>)> =
+				default_pool_fees()
+					.into_iter()
+					.map(|fee| (PoolFeeBucket::Top, fee))
+					.collect();
+
+			// Initialize pool with initial investments
+			let senior_interest_rate =
+				interest_rate / Rate::saturating_from_integer(SECONDS_PER_YEAR) + One::one();
+			assert_ok!(PoolSystem::create(
+				pool_owner.clone(),
+				pool_owner.clone(),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					}
+				],
+				AUSD_CURRENCY_ID,
+				DEFAULT_POOL_MAX_RESERVE,
+				fees,
+				// vec![]
+			));
+			test_nav_up(DEFAULT_POOL_ID, nav_amount);
+
+			// Force min_epoch_time to 0 without using update
+			// as this breaks the runtime-defined pool
+			// parameter bounds and update will not allow this.
+			Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+				maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+				Ok(())
+			})
+			.unwrap();
+
+			// Invest to prepare increment of reserve from 0 to 2 * investment_amount
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				0
+			);
+			invest_close_and_collect(
+				DEFAULT_POOL_ID,
+				vec![
+					(0, JuniorTrancheId::get(), investment_amount),
+					(1, SeniorTrancheId::get(), investment_amount),
+				],
+			);
+			assert!(
+				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				2 * investment_amount
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+
+			// Redeem one of two investments, close and execute epoch
+			assert_ok!(Investments::update_redeem_order(
+				RuntimeOrigin::signed(0),
+				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				investment_amount
+			));
+			assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+			assert!(
+				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
+			);
+			assert_ok!(PoolSystem::submit_solution(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: fulfillment_rate,
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					}
+				]
+			));
+			assert_ok!(PoolSystem::execute_epoch(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID
+			));
+			assert!(!EpochExecution::<Runtime>::contains_key(DEFAULT_POOL_ID));
+			assert!(
+				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount - adjustment_amount,
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				2 * investment_amount - adjustment_amount,
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+
+			// TODO: Check comment
+			// Redemption is pending because pool fees consumed entire reserve
+			assert_eq!(
+				pallet_investments::RedeemOrders::<Runtime>::get(
+					0,
+					TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get())
+				)
+				.expect("Pool reserve is empty")
+				.amount(),
+				investment_amount
+			);
+
+			// Closing epoch to trigger first pool fee disbursement preparation
+			next_block();
+			assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.total,
+				2 * investment_amount - adjustment_amount - fee_amount,
+			);
+			assert_eq!(
+				Pool::<Runtime>::get(DEFAULT_POOL_ID)
+					.expect("Pool exists")
+					.reserve
+					.available,
+				0,
+			);
+			assert_eq!(
+				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				(nav_amount, 0)
+			);
+			assert_eq!(
+				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top)
+					.into_inner(),
+				vec![DisbursingFeeOf::<Runtime> {
+					amount: fee_amount,
+					destination: DEFAULT_FEE_DESTINATION,
+					fee_id: 1
+				}]
+			);
+
+			assert_ok!(PoolSystem::submit_solution(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: fulfillment_rate,
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					}
+				]
+			));
+			assert_ok!(PoolSystem::execute_epoch(
+				pool_owner_origin.clone(),
+				DEFAULT_POOL_ID
+			));
+			assert_eq!(
+				Balances::free_balance(DEFAULT_FEE_DESTINATION),
+				nav_amount / 10
 			);
 		});
 	}

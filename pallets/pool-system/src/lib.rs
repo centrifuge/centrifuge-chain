@@ -630,6 +630,14 @@ pub mod pallet {
 				let submission_period_epoch = pool.epoch.current;
 				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
+				let epoch_duration = now.saturating_sub(pool.epoch.last_closed);
+				T::OnEpochTransition::on_closing(
+					pool_id,
+					nav,
+					&mut pool.reserve.total,
+					epoch_duration.into(),
+				)?;
+
 				let epoch_last_closed = pool.epoch.last_closed;
 				pool.start_next_epoch(now)?;
 
@@ -703,14 +711,6 @@ pub mod pallet {
 							Ok(epoch_tranche)
 						},
 					)?;
-
-				let epoch_duration = now.saturating_sub(epoch_last_closed);
-				T::OnEpochTransition::on_closing(
-					pool_id,
-					nav,
-					&mut pool.reserve.total,
-					epoch_duration.into(),
-				)?;
 
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
