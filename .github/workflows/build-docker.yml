@@ -22,7 +22,8 @@ jobs:
         target: [ release, test ]
     runs-on: ubuntu-latest-8-cores
     permissions:
-      contents: write    
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
         with:
@@ -41,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 #v5
         with:
-          images: centrifugeio/centrifuge-chain
+          images: ${{ github.event_name != 'pull_request' && 'centrifugeio/centrifuge-chain' || 'ghcr.io/centrifuge/centrifuge-chain' }} 
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
@@ -63,7 +64,8 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          push: ${{ github.event_name != 'pull_request' }}
+          # Always push, either to ghcr or Dockerhub
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
