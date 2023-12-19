@@ -50,8 +50,8 @@ FROM --platform=linux/amd64 docker.io/library/ubuntu:jammy
 	RUN mkdir -p /data && \ 
 		chown -R centrifuge:centrifuge /data && \
 		chown -R centrifuge:centrifuge /resources && \
-		chown -R centrifuge:centrifuge /usr/local/bin/centrifuge-chain && \
 		chown -R centrifuge:centrifuge /centrifuge/ 
+		
 	RUN chmod -R +x /centrifuge/bin/ \
 		chmod -R +x /centrifuge/scripts/
 	
