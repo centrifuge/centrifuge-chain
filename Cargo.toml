@@ -64,6 +64,7 @@ smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
 parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 log = "0.4"
 getrandom = { version = "0.2", features = ["js"] }
@@ -123,7 +124,6 @@ polkadot-service = { git = "https://github.com/paritytech/polkadot", default-fea
 # Substrate
 node-primitives = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-service = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sc-service-test = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sc-executor = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
@@ -444,13 +444,9 @@ substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate",
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-substrate-test-client = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-substrate-test-runtime = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-substrate-test-runtime-client = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 node-primitives = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 pallet-nomination-pools = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-sc-service-test = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sc-network-transactions = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-beefy = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-grandpa = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
@@ -657,7 +653,6 @@ substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate",
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
-substrate-test-client = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sc-network-transactions = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }
 sp-consensus-beefy = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.43" }

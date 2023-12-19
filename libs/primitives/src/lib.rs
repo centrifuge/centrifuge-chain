@@ -23,10 +23,10 @@ pub use types::*;
 
 /// Common types for all runtimes
 pub mod types {
-	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use frame_support::traits::EitherOfDiverse;
 	use frame_system::EnsureRoot;
 	use pallet_collective::EnsureProportionAtLeast;
+	use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -341,7 +341,7 @@ pub mod liquidity_pools {
 }
 
 pub mod xcm {
-	use codec::{Compact, Encode};
+	use parity_scale_codec::{Compact, Encode};
 	use sp_io::hashing::blake2_256;
 	use sp_std::{borrow::Borrow, marker::PhantomData, vec::Vec};
 	use xcm::prelude::{

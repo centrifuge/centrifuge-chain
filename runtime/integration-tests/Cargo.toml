@@ -9,7 +9,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
 ethabi = { workspace = true, features = ["std"] }
 ethereum = { workspace = true, features = ["std"] }
 fudge = { workspace = true }
@@ -18,6 +17,7 @@ getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
+parity-scale-codec = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

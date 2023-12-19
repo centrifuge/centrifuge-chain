@@ -1,11 +1,11 @@
 use std::{fmt::Debug, sync::Arc};
 
-use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_pool_system::{
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
+use parity_scale_codec::Codec;
 use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;

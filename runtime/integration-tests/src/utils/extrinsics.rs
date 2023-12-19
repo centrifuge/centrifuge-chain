@@ -16,8 +16,8 @@
 use cfg_primitives::{
 	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Index as CentrifugeIndex,
 };
-use codec::Encode;
 use node_primitives::Index as RelayIndex;
+use parity_scale_codec::Encode;
 use polkadot_core_primitives::{AccountId as RelayAccountId, BlockId as RelayBlockId};
 use sc_client_api::client::BlockBackend;
 use sp_core::H256;
@@ -220,9 +220,9 @@ where
 }
 
 mod tests {
-	use codec::Encode;
 	use fudge::primitives::Chain;
 	use pallet_balances::Call as BalancesCall;
+	use parity_scale_codec::Encode;
 	use sp_runtime::Storage;
 	use tokio::runtime::Handle;
 

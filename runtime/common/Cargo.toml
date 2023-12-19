@@ -9,9 +9,9 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
 hex-literal = { workspace = true }
 log = { workspace = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
 smallvec = { workspace = true }
@@ -129,7 +129,7 @@ cfg-mocks = { workspace = true }
 [features]
 default = ["std"]
 std = [
-  "codec/std",
+  "parity-scale-codec/std",
   "log/std",
 
   # Substrate related

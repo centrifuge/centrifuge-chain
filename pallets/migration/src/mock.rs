@@ -16,13 +16,13 @@
 //! The main components implemented in this module is a mock runtime
 //! and some helper functions.
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
 	sp_runtime::traits::ConvertInto,
 	traits::{ConstU32, Contains, InstanceFilter, WithdrawReasons},
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
@@ -280,7 +280,7 @@ pub(crate) fn get_account() -> AccountId {
 		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 pub(crate) fn reward_events() -> Vec<pallet_migration_manager::Event<Runtime>> {

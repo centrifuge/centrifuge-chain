@@ -130,7 +130,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type DistributionId: PartialEq
 			+ Copy
-			+ codec::FullCodec
+			+ parity_scale_codec::FullCodec
 			+ MaxEncodedLen
 			+ Default
 			+ TypeInfo
@@ -141,13 +141,13 @@ pub mod pallet {
 		type Balance: tokens::Balance
 			+ FixedPointOperand
 			+ TryFrom<Self::IBalance>
-			+ codec::FullCodec
+			+ parity_scale_codec::FullCodec
 			+ TypeInfo
 			+ MaxEncodedLen;
 
 		type IBalance: FixedPointOperand
 			+ TryFrom<Self::Balance>
-			+ codec::FullCodec
+			+ parity_scale_codec::FullCodec
 			+ TypeInfo
 			+ MaxEncodedLen
 			+ EnsureAdd
@@ -157,7 +157,7 @@ pub mod pallet {
 			+ sp_std::fmt::Debug
 			+ Default;
 
-		type Rate: FixedPointNumber + codec::FullCodec + TypeInfo + MaxEncodedLen;
+		type Rate: FixedPointNumber + parity_scale_codec::FullCodec + TypeInfo + MaxEncodedLen;
 
 		type MaxCurrencyMovements: Get<u32> + sp_std::fmt::Debug;
 	}

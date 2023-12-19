@@ -3,6 +3,7 @@ use frame_support::RuntimeDebug;
 use pallet_loans::entities::changes::Change as LoansChange;
 use pallet_oracle_data_collection::types::Change as OracleCollectionChange;
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchError;
 use sp_std::{marker::PhantomData, vec::Vec};

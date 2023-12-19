@@ -8,7 +8,7 @@ repository.workspace = true
 version = "0.0.1"
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 
@@ -31,7 +31,7 @@ cfg-traits = { workspace = true }
 default = ["std"]
 std = [
   "serde",
-  "codec/std",
+  "parity-scale-codec/std",
   "sp-std/std",
   "cfg-traits/std",
   "frame-support/std",

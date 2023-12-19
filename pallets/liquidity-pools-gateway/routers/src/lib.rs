@@ -28,7 +28,6 @@ pub const XCM_INSTRUCTION_WEIGHT: u64 = 1_000_000_000;
 pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
 
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult, Weight},
 	ensure,
@@ -36,6 +35,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::OriginFor;
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, H256, U256};
 use sp_runtime::traits::{BlakeTwo256, Hash};

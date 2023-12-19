@@ -10,11 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Codec;
 use pallet_pool_system::{
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
+use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_runtime::traits::Get;
 use sp_std::vec::Vec;

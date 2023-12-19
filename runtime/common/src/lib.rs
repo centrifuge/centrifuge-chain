@@ -118,13 +118,13 @@ pub mod xcm_fees {
 pub mod asset_registry {
 	use cfg_primitives::types::{AccountId, Balance};
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		dispatch::RawOrigin,
 		sp_std::marker::PhantomData,
 		traits::{EnsureOrigin, EnsureOriginWithArg},
 	};
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
@@ -362,7 +362,7 @@ pub mod investment_portfolios {
 }
 
 pub mod xcm_transactor {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
 	use sp_std::{vec, vec::Vec};
 	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};

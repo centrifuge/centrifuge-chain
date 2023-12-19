@@ -18,7 +18,6 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
@@ -26,6 +25,7 @@ use frame_support::{
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
@@ -378,8 +378,8 @@ impl<T> PreConditions<T> for Never {
 }
 
 pub mod fees {
-	use codec::FullCodec;
 	use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
+	use parity_scale_codec::FullCodec;
 	use scale_info::TypeInfo;
 	use sp_runtime::traits::MaybeSerializeDeserialize;
 

@@ -47,7 +47,6 @@ use cfg_types::{
 	tokens::GeneralCurrencyIndex,
 };
 use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{
 		fungibles::{Inspect, Mutate},
@@ -57,6 +56,7 @@ use frame_support::{
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Convert},
@@ -124,9 +124,9 @@ pub mod pallet {
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
 		EVMChainId,
 	};
-	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
 	use frame_system::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
 	use xcm::latest::MultiLocation;
 
@@ -1095,7 +1095,7 @@ pub mod pallet {
 
 #[cfg(test)]
 mod tests {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 
 	use crate::Domain;
 

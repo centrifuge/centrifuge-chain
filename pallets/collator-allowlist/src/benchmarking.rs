@@ -34,5 +34,5 @@ fn get_account<T: Config>() -> T::ValidatorId {
 		133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
 	];
 
-	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+	parity_scale_codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }

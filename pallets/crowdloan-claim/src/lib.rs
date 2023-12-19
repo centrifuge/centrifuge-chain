@@ -60,7 +60,6 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 use cfg_traits::Reward;
-use codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::{fmt::Debug, DispatchResult},
@@ -72,6 +71,7 @@ use frame_support::{
 use frame_system::ensure_root;
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
+use parity_scale_codec::Encode;
 use proofs::{Hasher, Proof, Verifier};
 use sp_core::crypto::AccountId32;
 use sp_runtime::{

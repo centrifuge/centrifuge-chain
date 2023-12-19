@@ -1,7 +1,6 @@
 use std::ops::Add;
 
 use cfg_primitives::{Balance, BlockNumber, CouncilCollective};
-use codec::Encode;
 use frame_support::{
 	dispatch::{GetDispatchInfo, Weight},
 	traits::Bounded,
@@ -12,6 +11,7 @@ use pallet_democracy::{
 	Vote,
 };
 use pallet_preimage::Call as PreimageCall;
+use parity_scale_codec::Encode;
 use sp_core::H256;
 use sp_runtime::traits::{BlakeTwo256, Hash};
 

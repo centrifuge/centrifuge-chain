@@ -10,10 +10,10 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true }
 getrandom = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true, optional = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 static_assertions = { workspace = true }
@@ -148,7 +148,7 @@ substrate-wasm-builder = { workspace = true }
 default = ["std"]
 
 std = [
-  "codec/std",
+  "parity-scale-codec/std",
   "getrandom/std",
   "hex/std",
   "scale-info/std",

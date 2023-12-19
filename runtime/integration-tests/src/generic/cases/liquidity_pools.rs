@@ -21,7 +21,6 @@ use cfg_types::{
 	xcm::XcmMetadata,
 };
 use cfg_utils::vec_to_fixed_array;
-use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{RawOrigin, Weight},
@@ -47,6 +46,7 @@ use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
+use parity_scale_codec::Encode;
 use polkadot_core_primitives::BlakeTwo256;
 use polkadot_parachain::primitives::{Id, ValidationCode};
 use polkadot_runtime_parachains::{

@@ -13,8 +13,8 @@
 
 use cfg_traits::IdentityCurrencyConversion;
 use cfg_types::investments::Swap;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::fmt::Debug, RuntimeDebugNoBound};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 
