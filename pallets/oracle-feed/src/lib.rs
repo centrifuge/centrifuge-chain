@@ -13,9 +13,14 @@
 
 //! Oracle pallet to feed values.
 //! Feeding is permissionless given an initial fee for each key.
-//! This pallet do not aggregate/validate any, it just store them by account as
-//! they come. It's expected other pallet read this storage and
-//! aggregate/validate the values.
+//!
+//!
+//! //! ### Assumptions
+//!
+//! This pallet neither aggregates nor validates anything. It just stores values
+//! by account as they come. It's expected that another pallet reads the storage
+//! of this pallet and provides aggregation and validation methods to the
+//! values.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

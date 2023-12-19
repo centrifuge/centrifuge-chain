@@ -15,9 +15,11 @@
 //!
 //! The collection admin configures the collection allowing a list of feeders.
 //!
-//! Later, the updating a collection will collect all values based on the admin
+//! Later, updating a collection will collect all values based on the admin
 //! configuration of the collection. The resulting collection is optimized to
-//! iterate though all values in jus one read.
+//! iterate through all values in just one read.
+//!
+//! # Assumptions
 //!
 //! This pallet is not fed with external values, you need to configure a
 //! `ValueProvider` to provide it with oracle values.
@@ -131,7 +133,7 @@ pub mod pallet {
 	>;
 
 	/// Store the keys that are registed for this collection
-	/// Only keys registered in this stored can be used to create the collection
+	/// Only keys registered in this store can be used to create the collection
 	#[pallet::storage]
 	pub(crate) type Keys<T: Config> = StorageDoubleMap<
 		_,
@@ -179,15 +181,15 @@ pub mod pallet {
 		/// Collection size reached
 		MaxCollectionSize,
 
-		/// Collection size reached
+		/// The change id does not correspond to an oracle collection change
 		NoOracleCollectionChangeId,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Propose an update in the feeders associated to an specific key.
+		/// Propose an update of feeders associated to a specific key.
 		/// The collection will only be modified once
-		/// [`Pallet::apply_update_feeders`] be called.
+		/// [`Pallet::apply_update_feeders`] is called.
 		#[pallet::weight(T::WeightInfo::propose_update_feeders(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(0)]
 		pub fn propose_update_feeders(
@@ -218,9 +220,9 @@ pub mod pallet {
 
 		/// Apply an change previously proposed by
 		/// [`Pallet::propose_update_feeders`] if the conditions to get it ready
-		/// are fullfilled
+		/// are fullfilled.
 		///
-		/// This call is permissionless
+		/// This call is permissionless.
 		#[pallet::weight(T::WeightInfo::apply_update_feeders(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(1)]
 		pub fn apply_update_feeders(
@@ -248,7 +250,7 @@ pub mod pallet {
 		/// Update the collection, doing the aggregation for each key in the
 		/// process.
 		///
-		/// This call is permissionless
+		/// This call is permissionless.
 		#[pallet::weight(T::WeightInfo::update_collection(
 			T::MaxFeedersPerKey::get(),
 			T::MaxCollectionSize::get(),
