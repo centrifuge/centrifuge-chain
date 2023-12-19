@@ -94,11 +94,13 @@ mod benchmarks {
 			.try_into()
 			.unwrap();
 
+		let change_id = util::last_change_id_for::<T>(T::OracleKey::default(), &feeders);
+
 		#[extrinsic_call]
 		apply_update_feeders(
 			RawOrigin::Signed(admin),
 			T::CollectionId::default(),
-			util::last_change_id_for::<T>(T::OracleKey::default(), &feeders),
+			change_id,
 		);
 
 		Ok(())
