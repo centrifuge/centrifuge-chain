@@ -124,7 +124,10 @@ pub mod pallet {
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
 		EVMChainId,
 	};
-	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
+	use frame_support::{
+		pallet_prelude::*,
+		traits::tokens::{Fortitude, Precision, Preservation},
+	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
@@ -641,14 +644,15 @@ pub mod pallet {
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
-			// Transfer to the domain account for bookkeeping
-			T::Tokens::transfer(
+			// Burn token as we are never the reserve for LP tokens that are not tranche
+			// tokens.
+			T::Tokens::burn_from(
 				currency_id,
 				&who,
-				&Domain::convert(receiver.domain()),
 				amount,
-				// NOTE: Here, we allow death
-				Preservation::Expendable,
+				Precision::Exact,
+				// NOTE: We are enforcing it, as the system needs that
+				Fortitude::Force,
 			)?;
 
 			T::OutboundQueue::submit(
