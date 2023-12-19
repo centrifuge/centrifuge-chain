@@ -8,7 +8,10 @@ use cfg_types::{
 	oracles::OracleKey,
 	tokens::{CurrencyId, CustomMetadata},
 };
+use frame_support::{traits::OriginTrait, RuntimeDebugNoBound};
 use orml_traits::{asset_registry, CombineData, DataProviderExtended, OnNewData};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureInto, Zero},
 	DispatchError,
@@ -146,6 +149,25 @@ pub mod benchmarks_util {
 	}
 }
 
+#[derive(Clone, RuntimeDebugNoBound, TypeInfo, Encode, Decode, MaxEncodedLen)]
+#[scale_info(skip_type_params(O))]
+pub struct Feeder<O: OriginTrait>(O::PalletsOrigin);
+
+impl<O: OriginTrait> PartialEq for Feeder<O> {
+	fn eq(&self, other: &Self) -> bool {
+		self.0.eq(&other.0)
+	}
+}
+
+impl<O: OriginTrait> Eq for Feeder<O> {}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl<O: OriginTrait<AccountId = AccountId>> From<u32> for Feeder<O> {
+	fn from(value: u32) -> Self {
+		Self(O::signed(frame_benchmarking::account("feeder", value, 0)).into_caller())
+	}
+}
+
 /// Get the decimals for the pool currency
 pub fn decimals_for_pool<Pools, AssetRegistry>(pool_id: PoolId) -> Result<u32, DispatchError>
 where
@@ -165,24 +187,25 @@ where
 
 /// A provider bridge that transform generic quantity representation of a price
 /// into a balance denominated in a pool currency.
-pub struct OracleConverterBridge<Provider, Pools, AssetRegistry>(
-	PhantomData<(Provider, Pools, AssetRegistry)>,
+pub struct OracleConverterBridge<Origin, Provider, Pools, AssetRegistry>(
+	PhantomData<(Origin, Provider, Pools, AssetRegistry)>,
 );
 
-impl<Provider, Pools, AssetRegistry> ValueProvider<(Option<AccountId>, PoolId), OracleKey>
-	for OracleConverterBridge<Provider, Pools, AssetRegistry>
+impl<Origin, Provider, Pools, AssetRegistry> ValueProvider<(Feeder<Origin>, PoolId), OracleKey>
+	for OracleConverterBridge<Origin, Provider, Pools, AssetRegistry>
 where
-	Provider: ValueProvider<Option<AccountId>, OracleKey, Value = (Quantity, Millis)>,
+	Origin: OriginTrait,
+	Provider: ValueProvider<Origin, OracleKey, Value = (Quantity, Millis)>,
 	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
 	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
 {
 	type Value = (Balance, Millis);
 
 	fn get(
-		(feeder_id, pool_id): &(Option<AccountId>, PoolId),
+		(feeder, pool_id): &(Feeder<Origin>, PoolId),
 		key: &OracleKey,
 	) -> Result<Option<Self::Value>, DispatchError> {
-		match Provider::get(feeder_id, key)? {
+		match Provider::get(&feeder.0.clone().into(), key)? {
 			Some((quantity, timestamp)) => {
 				let decimals =
 					decimals_for_pool::<Pools, AssetRegistry>(*pool_id)?.ensure_into()?;
@@ -196,7 +219,7 @@ where
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn set(
-		(feeder_id, pool_id): &(Option<AccountId>, PoolId),
+		(feeder, pool_id): &(Feeder<Origin>, PoolId),
 		key: &OracleKey,
 		(balance, timestamp): (Balance, Millis),
 	) {
@@ -209,6 +232,6 @@ where
 
 		let fixed_point = balance_to_fixed_point(balance, decimals).unwrap();
 
-		Provider::set(feeder_id, key, (fixed_point, timestamp));
+		Provider::set(&feeder.0.clone().into(), key, (fixed_point, timestamp));
 	}
 }

@@ -47,7 +47,7 @@ mod util {
         T::OracleValue: Default,
         T::Timestamp: Default,
         T::Hash: Default,
-        T::FeederId: From<T::AccountId>,
+        T::FeederId: From<u32>,
         T::ChangeGuard: PoolBenchmarkHelper<PoolId = T::CollectionId, AccountId = T::AccountId>,
     )]
 mod benchmarks {
@@ -63,7 +63,7 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders = (0..n)
-			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
+			.map(Into::into)
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
@@ -89,7 +89,7 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders: BoundedVec<_, _> = (0..n)
-			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
+			.map(Into::into)
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();
@@ -114,7 +114,7 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		let feeders: BoundedVec<T::FeederId, _> = (0..n)
-			.map(|i| account::<T::AccountId>("feeder", i, 0).into())
+			.map(Into::into)
 			.collect::<Vec<_>>()
 			.try_into()
 			.unwrap();

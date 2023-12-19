@@ -36,7 +36,10 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{fees::PayFee, ValueProvider};
-	use frame_support::{pallet_prelude::*, traits::Time};
+	use frame_support::{
+		pallet_prelude::*,
+		traits::{OriginTrait, Time},
+	};
 	use frame_system::pallet_prelude::*;
 
 	use crate::weights::WeightInfo;
@@ -44,6 +47,7 @@ pub mod pallet {
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+	type Feeder<T> = <<T as frame_system::Config>::RuntimeOrigin as OriginTrait>::PalletsOrigin;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -63,10 +67,13 @@ pub mod pallet {
 		type Time: Time;
 
 		/// Fee for the first time a feeder feeds a value
-		type FirstValuePayFee: PayFee<Self::AccountId>;
+		type FirstValuePayFee: PayFee<<Self::RuntimeOrigin as OriginTrait>::AccountId>;
 
 		/// The weight information for this pallet extrinsics.
 		type WeightInfo: WeightInfo;
+
+		/// Ensure the feeder origin
+		type FeederOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	}
 
 	/// Store all oracle values indexed by feeder
@@ -74,7 +81,7 @@ pub mod pallet {
 	pub(crate) type FedValues<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		Option<T::AccountId>,
+		Feeder<T>,
 		Blake2_128Concat,
 		T::OracleKey,
 		(T::OracleValue, MomentOf<T>),
@@ -84,7 +91,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		Fed {
-			account_id: Option<T::AccountId>,
+			feeder: Feeder<T>,
 			key: T::OracleKey,
 			value: T::OracleValue,
 		},
@@ -102,12 +109,15 @@ pub mod pallet {
 			key: T::OracleKey,
 			value: T::OracleValue,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed_or_root(origin)?;
+			let _ = T::FeederOrigin::ensure_origin(origin.clone())?;
 
-			FedValues::<T>::mutate(&who, key, |prev_value| {
-				let new_weight = match (&prev_value, &who) {
+			let feeder = origin.clone().into_caller();
+			let signed_account = origin.as_signed();
+
+			FedValues::<T>::mutate(&feeder, key, |prev_value| {
+				let new_weight = match (&prev_value, signed_account) {
 					(None, Some(account_id)) => {
-						T::FirstValuePayFee::pay(account_id)?;
+						T::FirstValuePayFee::pay(&account_id)?;
 
 						// The weight used is the predefined one.
 						None
@@ -122,7 +132,7 @@ pub mod pallet {
 				*prev_value = Some((value, T::Time::now()));
 
 				Self::deposit_event(Event::<T>::Fed {
-					account_id: who.clone(),
+					feeder: feeder.clone(),
 					key,
 					value,
 				});
@@ -132,19 +142,19 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ValueProvider<Option<T::AccountId>, T::OracleKey> for Pallet<T> {
+	impl<T: Config> ValueProvider<T::RuntimeOrigin, T::OracleKey> for Pallet<T> {
 		type Value = (T::OracleValue, MomentOf<T>);
 
 		fn get(
-			source: &Option<T::AccountId>,
+			source: &T::RuntimeOrigin,
 			id: &T::OracleKey,
 		) -> Result<Option<Self::Value>, DispatchError> {
-			Ok(FedValues::<T>::get(source, id))
+			Ok(FedValues::<T>::get(source.caller(), id))
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
-		fn set(source: &Option<T::AccountId>, key: &T::OracleKey, value: Self::Value) {
-			FedValues::<T>::insert(source, key, value)
+		fn set(source: &T::RuntimeOrigin, key: &T::OracleKey, value: Self::Value) {
+			FedValues::<T>::insert(source.caller(), key, value)
 		}
 	}
 }

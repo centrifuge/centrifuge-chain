@@ -1,7 +1,8 @@
 use frame_support::{
 	sp_io::TestExternalities,
-	traits::{ConstU16, ConstU32, ConstU64},
+	traits::{ConstU16, ConstU32, ConstU64, EitherOfDiverse},
 };
+use frame_system::{EnsureRoot, EnsureSigned};
 use sp_runtime::{
 	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
@@ -64,6 +65,7 @@ impl cfg_mocks::pallet_mock_time::Config for Runtime {
 impl cfg_mocks::pallet_mock_pay_fee::Config for Runtime {}
 
 impl pallet_oracle_feed::Config for Runtime {
+	type FeederOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
 	type FirstValuePayFee = MockPayFee;
 	type OracleKey = OracleKey;
 	type OracleValue = OracleValue;

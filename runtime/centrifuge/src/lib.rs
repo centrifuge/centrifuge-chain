@@ -45,8 +45,9 @@ use frame_support::{
 	pallet_prelude::{DispatchError, DispatchResult},
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
-		OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
+		AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
+		LockIdentifier, OnFinalize, PalletInfoAccess, U128CurrencyToVote, UnixTime,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -82,7 +83,7 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
-	oracle::OracleConverterBridge,
+	oracle::{Feeder, OracleConverterBridge},
 	permissions::PoolAdminCheck,
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
@@ -1714,6 +1715,7 @@ parameter_types! {
 }
 
 impl pallet_oracle_feed::Config for Runtime {
+	type FeederOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
 	type FirstValuePayFee = FeeToTreasury<Fees, FirstValueFee>;
 	type OracleKey = OracleKey;
 	type OracleValue = Quantity;
@@ -1726,12 +1728,13 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
-	type FeederId = Option<AccountId>;
+	type FeederId = Feeder<RuntimeOrigin>;
 	type IsAdmin = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;
-	type OracleProvider = OracleConverterBridge<OraclePriceFeed, PoolSystem, OrmlAssetRegistry>;
+	type OracleProvider =
+		OracleConverterBridge<RuntimeOrigin, OraclePriceFeed, PoolSystem, OrmlAssetRegistry>;
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

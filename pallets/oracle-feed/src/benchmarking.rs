@@ -1,6 +1,8 @@
 use cfg_traits::fees::PayFee;
 use frame_benchmarking::{v2::*, whitelisted_caller};
+use frame_support::traits::OriginTrait;
 use frame_system::RawOrigin;
+use parity_scale_codec::Decode;
 
 use crate::pallet::{Call, Config, Pallet};
 
@@ -14,6 +16,8 @@ fn init_mocks() {
     where
         T::OracleKey: Default,
         T::OracleValue: Default,
+        <T::RuntimeOrigin as OriginTrait>::AccountId: Clone + Decode,
+        T::RuntimeOrigin: From<RawOrigin<<T::RuntimeOrigin as OriginTrait>::AccountId>>,
 )]
 mod benchmarks {
 	use super::*;
@@ -23,7 +27,7 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let feeder: T::AccountId = whitelisted_caller();
+		let feeder: <T::RuntimeOrigin as OriginTrait>::AccountId = whitelisted_caller();
 
 		T::FirstValuePayFee::add_pay_requirements(&feeder);
 
@@ -42,7 +46,7 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let feeder: T::AccountId = whitelisted_caller();
+		let feeder: <T::RuntimeOrigin as OriginTrait>::AccountId = whitelisted_caller();
 
 		T::FirstValuePayFee::add_pay_requirements(&feeder);
 
