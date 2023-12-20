@@ -51,8 +51,8 @@ pub mod pallet {
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
-	type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
-	type Feeder<T> = <<T as frame_system::Config>::RuntimeOrigin as OriginTrait>::PalletsOrigin;
+	pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+	pub type Feeder<T> = <<T as frame_system::Config>::RuntimeOrigin as OriginTrait>::PalletsOrigin;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -161,5 +161,13 @@ pub mod pallet {
 		fn set(source: &T::RuntimeOrigin, key: &T::OracleKey, value: Self::Value) {
 			FedValues::<T>::insert(source.caller(), key, value)
 		}
+	}
+}
+
+pub mod util {
+	use crate::pallet::{Config, MomentOf};
+
+	pub const fn size_of_feed<T: Config>() -> u32 {
+		std::mem::size_of::<(T::OracleKey, T::OracleValue, MomentOf<T>)>() as u32
 	}
 }
