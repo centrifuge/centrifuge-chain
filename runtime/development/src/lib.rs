@@ -1339,7 +1339,7 @@ impl pallet_membership::Config for Runtime {
 parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxFeedersPerKey: u32 = 10;
-	pub const FirstValueFee: Fee = deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>());
+	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 }
 
 impl pallet_oracle_feed::Config for Runtime {
