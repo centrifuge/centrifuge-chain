@@ -11,7 +11,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
-      - "docker/centrifuge-chain/Dockerfile"
+      - "docker/"
+      - ".dockerignore"
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
   cancel-in-progress: true
@@ -30,11 +31,21 @@ jobs:
           fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
+
       - name: DockerHub Login
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: GHCR login (PRs only)
+        if: github.event_name == 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}          
 
       - run: echo "NOW=$(date -u +%y-%m-%d)" >> $GITHUB_ENV
 
