@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeCentrifuge1024 = burn_unburned::Migration<super::Runtime>;
+pub type UpgradeCentrifuge1025 = burn_unburned::Migration<super::Runtime>;
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
 //
