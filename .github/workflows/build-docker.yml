@@ -23,8 +23,8 @@ jobs:
         target: [ release, test ]
     runs-on: ubuntu-latest-8-cores
     permissions:
-      contents: write
-      id-token: write
+      contents: write # to update the GH release w/ Docker tags
+      packages: write # to upload images to ghcr
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
         with:
