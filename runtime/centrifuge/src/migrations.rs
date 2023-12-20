@@ -36,10 +36,7 @@ mod burn_unburned {
 		OnRuntimeUpgrade,
 	};
 	use pallet_order_book::weights::Weight;
-	use sp_runtime::{
-		traits::{Convert, Get},
-		TryRuntimeError,
-	};
+	use sp_runtime::traits::{Convert, Get};
 
 	pub struct Migration<T>
 	where
@@ -53,7 +50,7 @@ mod burn_unburned {
 		T: orml_tokens::Config<CurrencyId = CurrencyId> + frame_system::Config,
 	{
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, TryRuntimeError> {
+		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, sp_runtime::TryRuntimeError> {
 			use sp_runtime::traits::Zero;
 
 			let pre_data = orml_tokens::Accounts::<T>::get(
@@ -103,7 +100,7 @@ mod burn_unburned {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), TryRuntimeError> {
+		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), sp_runtime::TryRuntimeError> {
 			use sp_runtime::traits::Zero;
 
 			let post_data = orml_tokens::Accounts::<T>::get(
