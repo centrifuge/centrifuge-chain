@@ -804,14 +804,6 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				Error::<T>::NotPoolAdmin
-			);
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
@@ -819,7 +811,7 @@ pub mod pallet {
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			T::OutboundQueue::submit(
-				T::TreasuryAccount::get(),
+				who,
 				domain,
 				Message::UpdateTrancheTokenMetadata {
 					pool_id,
