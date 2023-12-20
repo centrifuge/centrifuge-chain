@@ -19,6 +19,7 @@ scale-info = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 cfg-traits = { workspace = true }
 
@@ -37,6 +38,7 @@ std = [
   "frame-system/std",
   "frame-benchmarking?/std",
   "sp-runtime/std",
+  "sp-std/std",
   "cfg-traits/std",
 ]
 runtime-benchmarks = [

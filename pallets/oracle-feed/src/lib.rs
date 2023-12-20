@@ -168,6 +168,6 @@ pub mod util {
 	use crate::pallet::{Config, MomentOf};
 
 	pub const fn size_of_feed<T: Config>() -> u32 {
-		std::mem::size_of::<(T::OracleKey, T::OracleValue, MomentOf<T>)>() as u32
+		sp_std::mem::size_of::<(T::OracleKey, T::OracleValue, MomentOf<T>)>() as u32
 	}
 }
