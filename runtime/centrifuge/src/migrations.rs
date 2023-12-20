@@ -25,9 +25,7 @@ pub type UpgradeCentrifuge1024 = burn_unburned::Migration<super::Runtime>;
 // GNU General Public License for more details.
 
 mod burn_unburned {
-	use sp_std::vec::Vec;
-
-	const LOG_PREFIX: &'static str = "BurnUnburnedMigration: ";
+	const LOG_PREFIX: &str = "BurnUnburnedMigration: ";
 	const LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	const ETH_DOMAIN: Domain = Domain::EVM(1);
 
@@ -39,7 +37,7 @@ mod burn_unburned {
 	};
 	use pallet_order_book::weights::Weight;
 	use sp_runtime::{
-		traits::{Convert, Get, Zero},
+		traits::{Convert, Get},
 		TryRuntimeError,
 	};
 
@@ -55,7 +53,9 @@ mod burn_unburned {
 		T: orml_tokens::Config<CurrencyId = CurrencyId> + frame_system::Config,
 	{
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, TryRuntimeError> {
+			use sp_runtime::traits::Zero;
+
 			let pre_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				LP_ETH_USDC,
@@ -72,7 +72,7 @@ mod burn_unburned {
 				pre_data.free
 			);
 
-			Ok(Vec::new())
+			Ok(sp_std::vec::Vec::new())
 		}
 
 		fn on_runtime_upgrade() -> Weight {
@@ -103,7 +103,9 @@ mod burn_unburned {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+		fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), TryRuntimeError> {
+			use sp_runtime::traits::Zero;
+
 			let post_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				LP_ETH_USDC,
