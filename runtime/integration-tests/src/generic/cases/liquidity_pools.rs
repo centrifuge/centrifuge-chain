@@ -1727,20 +1727,10 @@ mod development {
 
 				let tranche_id = default_tranche_id::<T>(pool_id);
 
-				// Should throw if called by anything but `PoolAdmin`
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						pool_id,
-						tranche_id,
-						Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-					),
-					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
-				);
-
+				// Moving the update to another domain can be called by anyone
 				assert_ok!(
 					pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						pool_id,
 						tranche_id,
 						Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
