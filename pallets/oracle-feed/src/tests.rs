@@ -1,7 +1,7 @@
 use cfg_traits::ValueProvider;
-use frame_support::assert_ok;
+use frame_support::{assert_ok, traits::OriginTrait};
 
-use crate::mock::*;
+use crate::{mock::*, Event};
 
 const FEEDER: AccountId = 1;
 const KEY: OracleKey = 23;
@@ -23,6 +23,15 @@ fn feed() {
 		assert_ok!(
 			OracleFeed::get(&RuntimeOrigin::signed(FEEDER), &KEY),
 			Some((VALUE1, TIMESTAMP1))
+		);
+
+		System::assert_last_event(
+			Event::<Runtime>::Fed {
+				feeder: RuntimeOrigin::signed(FEEDER).into_caller(),
+				key: KEY,
+				value: VALUE1,
+			}
+			.into(),
 		);
 
 		MockTime::mock_now(|| TIMESTAMP2);

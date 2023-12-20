@@ -105,5 +105,9 @@ pub fn new_test_ext() -> TestExternalities {
 		.build_storage::<Runtime>()
 		.unwrap();
 
-	TestExternalities::new(storage)
+	let mut ext = TestExternalities::new(storage);
+
+	// Bumping to one enables events
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }

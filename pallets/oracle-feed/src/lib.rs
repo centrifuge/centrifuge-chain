@@ -105,8 +105,8 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Permissionles call to feed an oracle key from a source with value.
-		/// The first time the value is set, an extra fee is required for the
-		/// feeder.
+		/// The first time a value is set for a key, an extra fee is required
+		/// for the feeder.
 		#[pallet::weight(T::WeightInfo::feed_with_fee())]
 		#[pallet::call_index(0)]
 		pub fn feed(

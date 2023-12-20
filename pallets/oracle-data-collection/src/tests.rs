@@ -4,7 +4,7 @@ use sp_runtime::{testing::H256, traits::Get, DispatchError};
 
 use crate::{
 	mock::*,
-	pallet::{Config, Error, Keys},
+	pallet::{Config, Error, Event, Keys},
 	types::Change,
 };
 
@@ -118,7 +118,7 @@ fn updating_feeders() {
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			KEY_A,
-			feeders
+			feeders.clone(),
 		));
 
 		assert_ok!(OracleCollection::apply_update_feeders(
@@ -126,6 +126,15 @@ fn updating_feeders() {
 			COLLECTION_ID,
 			CHANGE_ID,
 		));
+
+		System::assert_last_event(
+			Event::<Runtime>::UpdatedFeeders {
+				collection_id: COLLECTION_ID,
+				key: KEY_A,
+				feeders,
+			}
+			.into(),
+		);
 	});
 }
 
@@ -155,8 +164,21 @@ fn register() {
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 1);
 
+		System::assert_last_event(
+			Event::<Runtime>::AddedKey {
+				collection_id: COLLECTION_ID,
+				key: KEY_A,
+			}
+			.into(),
+		);
+
+		System::reset_events();
+
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 2);
+
+		// Only first register call dispatch the event
+		assert_eq!(System::event_count(), 0);
 	});
 }
 
@@ -166,11 +188,24 @@ fn unregister() {
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 
+		System::reset_events();
+
 		assert_ok!(OracleCollection::unregister_id(&KEY_A, &COLLECTION_ID));
 		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 1);
 
+		// Only last unregister call dispatch the event
+		assert_eq!(System::event_count(), 0);
+
 		assert_ok!(OracleCollection::unregister_id(&KEY_A, &COLLECTION_ID));
 		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 0);
+
+		System::assert_last_event(
+			Event::<Runtime>::RemovedKey {
+				collection_id: COLLECTION_ID,
+				key: KEY_A,
+			}
+			.into(),
+		);
 
 		assert_err!(
 			OracleCollection::unregister_id(&KEY_A, &COLLECTION_ID),
@@ -221,7 +256,15 @@ fn update_collection() {
 		assert_eq!(
 			collection.as_vec(),
 			vec![(KEY_A, (101, 50)), (KEY_B, (1000, 500))]
-		)
+		);
+
+		System::assert_last_event(
+			Event::<Runtime>::UpdatedCollection {
+				collection_id: COLLECTION_ID,
+				keys_updated: 2,
+			}
+			.into(),
+		);
 	});
 }
 
@@ -250,7 +293,15 @@ fn update_collection_empty() {
 		));
 
 		let collection = OracleCollection::collection(&COLLECTION_ID);
-		assert!(collection.as_vec().is_empty())
+		assert!(collection.as_vec().is_empty());
+
+		System::assert_last_event(
+			Event::<Runtime>::UpdatedCollection {
+				collection_id: COLLECTION_ID,
+				keys_updated: 0,
+			}
+			.into(),
+		);
 	});
 }
 
@@ -267,7 +318,7 @@ fn update_collection_with_registrations_but_no_feeders() {
 		let collection = OracleCollection::collection(&COLLECTION_ID);
 
 		// Registered keys without associated feeder are skipped from the collection
-		assert!(collection.as_vec().is_empty())
+		assert!(collection.as_vec().is_empty());
 	});
 }
 
@@ -286,7 +337,7 @@ fn update_collection_with_feeders_but_no_values() {
 		let collection = OracleCollection::collection(&COLLECTION_ID);
 
 		// Keys with no values are skipped from the collection
-		assert!(collection.as_vec().is_empty())
+		assert!(collection.as_vec().is_empty());
 	});
 }
 
