@@ -8878,6 +8878,8 @@ mod centrifuge {
 					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
 				);
 
+				let total_issuance_pre = orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC);
+
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					LP_ETH_USDC,
@@ -8885,11 +8887,9 @@ mod centrifuge {
 					lp_eth_usdc(TRANSFER_AMOUNT),
 				));
 
-				let domain_acc = Domain::convert(Domain::EVM(1));
-
 				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &domain_acc),
-					lp_eth_usdc(TRANSFER_AMOUNT),
+					orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC),
+					total_issuance_pre - lp_eth_usdc(TRANSFER_AMOUNT),
 				);
 			});
 		}
