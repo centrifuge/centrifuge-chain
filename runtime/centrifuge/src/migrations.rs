@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeCentrifuge1024 = (burn_unburned::Migration<super::Runtime>);
+pub type UpgradeCentrifuge1024 = burn_unburned::Migration<super::Runtime>;
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
 //
@@ -26,6 +26,8 @@ pub type UpgradeCentrifuge1024 = (burn_unburned::Migration<super::Runtime>);
 
 mod burn_unburned {
 	use sp_std::vec::Vec;
+
+	const LOG_PREFIX: &'static str = "BurnUnburnedMigration: ";
 	const LP_ETH_USDC: CurrencyId = CurrencyId::ForeignAsset(100_001);
 	const ETH_DOMAIN: Domain = Domain::EVM(1);
 
@@ -62,11 +64,13 @@ mod burn_unburned {
 			);
 
 			if !pre_data.frozen.is_zero() && !pre_data.reserved.is_zero() {
-				log::error!("AccountData of Ethereum domain account has non free balances...");
+				log::error!(
+					"{LOG_PREFIX} AccountData of Ethereum domain account has non free balances..."
+				);
 			}
 
 			log::info!(
-				"AccountData of Ethereum domain account has free balance of: {:?}",
+				"{LOG_PREFIX} AccountData of Ethereum domain account has free balance of: {:?}",
 				pre_data.free
 			);
 
@@ -87,8 +91,13 @@ mod burn_unburned {
 				Fortitude::Force,
 			) {
 				log::error!(
-					"Burning from Ethereum domain account failed with: {:?}. Migration failed...",
+					"{LOG_PREFIX} Burning from Ethereum domain account failed with: {:?}. Migration failed...",
 					e
+				);
+			} else {
+				log::info!(
+					"{LOG_PREFIX} Successfully burned {:?} LP_ETH_USDC from Ethereum domain account",
+					data.free
 				);
 			}
 
@@ -107,8 +116,10 @@ mod burn_unburned {
 				&& !post_data.reserved.is_zero()
 			{
 				log::error!(
-					"AccountDatat of Ethereum domain account SHOULD be zero. Migration failed."
+					"{LOG_PREFIX} AccountData of Ethereum domain account SHOULD be zero. Migration failed."
 				);
+			} else {
+				log::info!("{LOG_PREFIX} Migration successfully finished.")
 			}
 
 			Ok(())
