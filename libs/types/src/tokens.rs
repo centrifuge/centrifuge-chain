@@ -286,11 +286,11 @@ pub enum CrossChainTransferability {
 
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
-		matches!(self, Self::Xcm(..) | Self::All(..))
+		matches!(self, Self::Xcm(..))
 	}
 
 	pub fn includes_liquidity_pools(self) -> bool {
-		matches!(self, Self::LiquidityPools | Self::All(..))
+		matches!(self, Self::LiquidityPools)
 	}
 }
 

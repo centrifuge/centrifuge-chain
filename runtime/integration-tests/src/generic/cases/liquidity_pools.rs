@@ -94,7 +94,7 @@ mod utils {
 
 	pub fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
 		match transferability {
-			CrossChainTransferability::Xcm(x) | CrossChainTransferability::All(x) => Some(x),
+			CrossChainTransferability::Xcm(x) => Some(x),
 			_ => None,
 		}
 	}

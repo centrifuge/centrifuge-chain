@@ -46,24 +46,22 @@ mod burn_unburned {
 	pub struct Migration<T>
 	where
 		T: orml_tokens::Config + frame_system::Config,
-		<T as orml_tokens::Config>::CurrencyId: From<CurrencyId>,
 	{
 		_phantom: sp_std::marker::PhantomData<T>,
 	}
 
 	impl<T> OnRuntimeUpgrade for Migration<T>
 	where
-		T: orml_tokens::Config + frame_system::Config,
-		<T as orml_tokens::Config>::CurrencyId: From<CurrencyId>,
+		T: orml_tokens::Config<CurrencyId = CurrencyId> + frame_system::Config,
 	{
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
 			let pre_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				T::CurrencyId::from(LP_ETH_USDC),
+				LP_ETH_USDC,
 			);
 
-			if !pre_data.frozen.is_zero() && !pre_data.reserved.is_zero() {
+			if !pre_data.frozen.is_zero() || !pre_data.reserved.is_zero() {
 				log::error!(
 					"{LOG_PREFIX} AccountData of Ethereum domain account has non free balances..."
 				);
@@ -80,11 +78,11 @@ mod burn_unburned {
 		fn on_runtime_upgrade() -> Weight {
 			let data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				T::CurrencyId::from(LP_ETH_USDC),
+				LP_ETH_USDC,
 			);
 
 			if let Err(e) = orml_tokens::Pallet::<T>::burn_from(
-				T::CurrencyId::from(LP_ETH_USDC),
+				LP_ETH_USDC,
 				&<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
 				data.free,
 				Precision::Exact,
@@ -108,12 +106,12 @@ mod burn_unburned {
 		fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
 			let post_data = orml_tokens::Accounts::<T>::get(
 				<Domain as Convert<_, T::AccountId>>::convert(ETH_DOMAIN),
-				T::CurrencyId::from(LP_ETH_USDC),
+				LP_ETH_USDC,
 			);
 
 			if !post_data.free.is_zero()
-				&& !post_data.frozen.is_zero()
-				&& !post_data.reserved.is_zero()
+				|| !post_data.frozen.is_zero()
+				|| !post_data.reserved.is_zero()
 			{
 				log::error!(
 					"{LOG_PREFIX} AccountData of Ethereum domain account SHOULD be zero. Migration failed."
