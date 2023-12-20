@@ -282,9 +282,6 @@ pub enum CrossChainTransferability {
 
 	/// The asset is only transferable through Centrifuge Liquidity Pools
 	LiquidityPools,
-
-	/// The asset is transferable through all available options
-	All(XcmMetadata),
 }
 
 impl CrossChainTransferability {
