@@ -78,6 +78,7 @@ pub mod pallet {
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
+		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
 	use codec::HasCompact;
 	use entities::{
@@ -104,7 +105,6 @@ pub mod pallet {
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
-		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
 		WrittenOffError,
 	};
@@ -128,7 +128,7 @@ pub mod pallet {
 		/// Represent a runtime change
 		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
-		/// Identify a curreny.
+		/// Identify a currency.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
@@ -1155,6 +1155,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
+	// TODO: Check with team about state of comment
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
