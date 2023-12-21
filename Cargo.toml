@@ -31,6 +31,8 @@ members = [
   "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
+  "pallets/oracle-feed",
+  "pallets/oracle-data-collection",
   "pallets/order-book",
   "pallets/permissions",
   "pallets/pool-system",
@@ -60,7 +62,6 @@ hex-literal = { version = "0.3.4" }
 hex = { version = "0.4.3", default_features = false }
 smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 log = "0.4"
@@ -268,6 +269,8 @@ pallet-loans = { path = "pallets/loans", default-features = false }
 pallet-migration-manager = { path = "pallets/migration", default-features = false }
 pallet-nft = { path = "pallets/nft", default-features = false }
 pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
+pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
+pallet-oracle-data-collection = { path = "pallets/oracle-data-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
 pallet-permissions = { path = "pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "pallets/pool-registry", default-features = false }

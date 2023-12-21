@@ -33,7 +33,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
+use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -336,6 +336,11 @@ pub trait PreConditions<T> {
 	type Result;
 
 	fn check(t: T) -> Self::Result;
+
+	/// Perform the required changes to satisfy the `check()` method in a
+	/// successful way
+	#[cfg(feature = "runtime-benchmarks")]
+	fn satisfy(_t: T) {}
 }
 
 #[impl_for_tuples(1, 10)]
@@ -404,6 +409,15 @@ pub mod fees {
 		Key(FeeKey),
 	}
 
+	impl<Balance: Copy, FeeKey: Clone> Fee<Balance, FeeKey> {
+		pub fn value<F: Fees<Balance = Balance, FeeKey = FeeKey>>(&self) -> Balance {
+			match self {
+				Fee::Balance(value) => *value,
+				Fee::Key(key) => F::fee_value(key.clone()),
+			}
+		}
+	}
+
 	/// A trait that used to deal with fees
 	pub trait Fees {
 		type AccountId;
@@ -434,13 +448,32 @@ pub mod fees {
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls pay a fee
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_fee_requirements(_from: &Self::AccountId, _fee: Fee<Self::Balance, Self::FeeKey>) {}
 	}
 
 	/// Trait to pay fees
-	/// This trait can be used by pallet to just pay fees without worring about
-	/// the value or where the fee goes.
+	/// This trait can be used by a pallet to just pay fees without worring
+	/// about the value or where the fee goes.
 	pub trait PayFee<AccountId> {
-		fn pay(who: &AccountId) -> DispatchResult;
+		/// Pay the fee using a payer
+		fn pay(payer: &AccountId) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls `pay()`.
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_pay_requirements(_payer: &AccountId) {}
+	}
+
+	/// Type to avoid paying fees
+	pub struct NoPayFee;
+	impl<AccountId> PayFee<AccountId> for NoPayFee {
+		fn pay(_: &AccountId) -> DispatchResult {
+			Ok(())
+		}
 	}
 }
 
@@ -666,5 +699,24 @@ pub trait IntoSeconds {
 impl IntoSeconds for Millis {
 	fn into_seconds(self) -> Seconds {
 		self / 1000
+	}
+}
+
+pub trait ValueProvider<Source, Key> {
+	type Value;
+
+	fn get(source: &Source, id: &Key) -> Result<Option<Self::Value>, DispatchError>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(_source: &Source, _key: &Key, _value: Self::Value) {}
+}
+
+/// A provider that never returns a value
+pub struct NoProvider<Value>(PhantomData<Value>);
+impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
+	type Value = Value;
+
+	fn get(_: &Source, _: &Key) -> Result<Option<Self::Value>, DispatchError> {
+		Err(DispatchError::Other("No value"))
 	}
 }

@@ -264,6 +264,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -1199,6 +1201,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -2806,6 +2810,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -8239,6 +8245,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-oracle-data-collection"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-oracle-feed"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-order-book"
 version = "0.1.0"
 dependencies = [
@@ -11385,6 +11421,7 @@ dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.4",
@@ -11436,6 +11473,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",
@@ -11553,6 +11592,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",

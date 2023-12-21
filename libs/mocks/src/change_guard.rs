@@ -1,5 +1,5 @@
 #[frame_support::pallet]
-pub mod pallet_mock_change_guard {
+pub mod pallet {
 	use cfg_traits::changes::ChangeGuard;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
@@ -48,5 +48,13 @@ pub mod pallet_mock_change_guard {
 		fn released(a: T::PoolId, b: T::ChangeId) -> Result<T::Change, DispatchError> {
 			execute_call!((a, b))
 		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::benchmarking::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type PoolId = T::PoolId;
+
+		fn bench_create_pool(_: Self::PoolId, _: &Self::AccountId) {}
 	}
 }

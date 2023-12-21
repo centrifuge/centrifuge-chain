@@ -86,36 +86,54 @@ impl WeightToFeePolynomial for WeightToFee {
 	}
 }
 
+/// See doc from PayFee
 pub struct FeeToTreasury<F, V>(sp_std::marker::PhantomData<(F, V)>);
 impl<
 		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToTreasury<F, V>
 {
-	fn pay(who: &AccountId) -> DispatchResult {
-		F::fee_to_treasury(who, V::get())
+	fn pay(payer: &AccountId) -> DispatchResult {
+		F::fee_to_treasury(payer, V::get())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_pay_requirements(payer: &AccountId) {
+		F::add_fee_requirements(payer, V::get());
 	}
 }
 
+/// See doc from PayFee
 pub struct FeeToAuthor<F, V>(sp_std::marker::PhantomData<(F, V)>);
 impl<
 		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToAuthor<F, V>
 {
-	fn pay(who: &AccountId) -> DispatchResult {
-		F::fee_to_author(who, V::get())
+	fn pay(payer: &AccountId) -> DispatchResult {
+		F::fee_to_author(payer, V::get())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_pay_requirements(payer: &AccountId) {
+		F::add_fee_requirements(payer, V::get());
 	}
 }
 
+/// See doc from PayFee
 pub struct FeeToBurn<F, V>(sp_std::marker::PhantomData<(F, V)>);
 impl<
 		F: Fees<AccountId = AccountId, Balance = Balance, FeeKey = FeeKey>,
 		V: Get<Fee<Balance, FeeKey>>,
 	> PayFee<AccountId> for FeeToBurn<F, V>
 {
-	fn pay(who: &AccountId) -> DispatchResult {
-		F::fee_to_burn(who, V::get())
+	fn pay(payer: &AccountId) -> DispatchResult {
+		F::fee_to_burn(payer, V::get())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_pay_requirements(payer: &AccountId) {
+		F::add_fee_requirements(payer, V::get());
 	}
 }
 

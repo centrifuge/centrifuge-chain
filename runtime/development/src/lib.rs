@@ -30,7 +30,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	consts::pools::*,
-	fee_keys::FeeKey,
+	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
 	ids::PRICE_ORACLE_PALLET_ID,
 	investments::InvestmentPortfolio,
@@ -90,7 +90,9 @@ use runtime_common::{
 	account_conversion::AccountConverter,
 	asset_registry,
 	changes::FastDelay,
-	fees::{DealWithFees, WeightToFee},
+	fees::{DealWithFees, FeeToTreasury, WeightToFee},
+	oracle::{Feeder, OracleConverterBridge},
+	permissions::PoolAdminCheck,
 	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
@@ -1335,6 +1337,40 @@ impl pallet_membership::Config for Runtime {
 }
 
 parameter_types! {
+	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
+	pub const MaxFeedersPerKey: u32 = 10;
+	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+}
+
+impl pallet_oracle_feed::Config for Runtime {
+	type FeederOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
+	type FirstValuePayFee = FeeToTreasury<Fees, FirstValueFee>;
+	type OracleKey = OracleKey;
+	type OracleValue = Quantity;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type WeightInfo = weights::pallet_oracle_feed::WeightInfo<Self>;
+}
+
+impl pallet_oracle_data_collection::Config for Runtime {
+	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
+	type ChangeGuard = PoolSystem;
+	type CollectionId = PoolId;
+	type FeederId = Feeder<RuntimeOrigin>;
+	type IsAdmin = PoolAdminCheck<Permissions>;
+	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxFeedersPerKey = MaxFeedersPerKey;
+	type OracleKey = OracleKey;
+	type OracleProvider =
+		OracleConverterBridge<RuntimeOrigin, OraclePriceFeed, PoolSystem, OrmlAssetRegistry>;
+	type OracleValue = Balance;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
+	type RuntimeEvent = RuntimeEvent;
+	type Timestamp = Millis;
+	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
+}
+
+parameter_types! {
 	pub const MaxFeedValues: u32 = 500;
 }
 
@@ -1915,6 +1951,8 @@ construct_runtime!(
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
+		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
+		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 119,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2633,6 +2671,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
+			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
+			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2690,6 +2730,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
+			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
+			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
