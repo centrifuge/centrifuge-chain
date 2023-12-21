@@ -102,7 +102,8 @@ pub trait Runtime:
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
 	+ parachain_info::Config
-	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
+	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
+	+ pallet_oracle_data_collection::Config<OracleKey = OracleKey, OracleValue = Balance>
 	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
@@ -151,7 +152,8 @@ pub trait Runtime:
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
-		+ From<orml_oracle::Call<Self>>
+		+ From<pallet_oracle_feed::Call<Self>>
+		+ From<pallet_oracle_data_collection::Call<Self>>
 		+ From<pallet_preimage::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
@@ -176,7 +178,8 @@ pub trait Runtime:
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
-		+ From<orml_oracle::Event<Self>>
+		+ From<pallet_oracle_feed::Event<Self>>
+		+ From<pallet_oracle_data_collection::Event<Self>>
 		+ From<pallet_foreign_investments::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>

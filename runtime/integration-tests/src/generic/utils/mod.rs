@@ -187,6 +187,5 @@ pub fn collect_redemptions<T: Runtime>(
 }
 
 pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
-	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values.try_into().unwrap())
-		.unwrap();
+	// TODO
 }
