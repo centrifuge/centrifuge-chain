@@ -124,7 +124,10 @@ pub mod pallet {
 		tokens::{CustomMetadata, LiquidityPoolsWrappedToken},
 		EVMChainId,
 	};
-	use frame_support::{pallet_prelude::*, traits::tokens::Preservation};
+	use frame_support::{
+		pallet_prelude::*,
+		traits::tokens::{Fortitude, Precision, Preservation},
+	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
 	use sp_runtime::{traits::Zero, DispatchError};
@@ -330,6 +333,8 @@ pub mod pallet {
 		MissingRouter,
 		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
+		/// Senders balance is insufficient for transfer amount
+		BalanceTooLow,
 		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
 		/// Failed to build Ethereum_Xcm call.
@@ -641,14 +646,30 @@ pub mod pallet {
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
-			// Transfer to the domain account for bookkeeping
-			T::Tokens::transfer(
+			// NOTE: This check is needed as `burn_from` has not a good error resolution and
+			//       might return `Arithmetic` errors.
+			ensure!(
+				T::Tokens::reducible_balance(
+					currency_id,
+					&who,
+					Preservation::Expendable,
+					// NOTE: We do not know whether there are locks or so, so we are using user
+					//       privilege
+					Fortitude::Polite
+				) >= amount,
+				Error::<T>::BalanceTooLow
+			);
+
+			// Burn token as we are never the reserve for LP tokens that are not tranche
+			// tokens.
+			T::Tokens::burn_from(
 				currency_id,
 				&who,
-				&Domain::convert(receiver.domain()),
 				amount,
-				// NOTE: Here, we allow death
-				Preservation::Expendable,
+				Precision::Exact,
+				// NOTE: We do not know whether there are locks or so, so we are using user
+				//       privilege
+				Fortitude::Polite,
 			)?;
 
 			T::OutboundQueue::submit(
@@ -800,14 +821,6 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				Error::<T>::NotPoolAdmin
-			);
 			let investment_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			let metadata = T::AssetRegistry::metadata(&investment_id.into())
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
@@ -815,7 +828,7 @@ pub mod pallet {
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			T::OutboundQueue::submit(
-				T::TreasuryAccount::get(),
+				who,
 				domain,
 				Message::UpdateTrancheTokenMetadata {
 					pool_id,

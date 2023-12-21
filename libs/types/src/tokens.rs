@@ -282,18 +282,15 @@ pub enum CrossChainTransferability {
 
 	/// The asset is only transferable through Centrifuge Liquidity Pools
 	LiquidityPools,
-
-	/// The asset is transferable through all available options
-	All(XcmMetadata),
 }
 
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
-		matches!(self, Self::Xcm(..) | Self::All(..))
+		matches!(self, Self::Xcm(..))
 	}
 
 	pub fn includes_liquidity_pools(self) -> bool {
-		matches!(self, Self::LiquidityPools | Self::All(..))
+		matches!(self, Self::LiquidityPools)
 	}
 }
 
