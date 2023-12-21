@@ -3,7 +3,6 @@ pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
-	use orml_traits::{DataFeeder, DataProvider};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -12,8 +11,6 @@ pub mod pallet {
 		type Collection: DataCollection<Self::DataId, Data = Self::Data>;
 		type Data;
 		type DataElem;
-		#[cfg(feature = "runtime-benchmarks")]
-		type MaxCollectionSize: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -60,8 +57,6 @@ pub mod pallet {
 	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
 		type Collection = T::Collection;
 		type Data = T::Data;
-		#[cfg(feature = "runtime-benchmarks")]
-		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(a: &T::DataId, b: &T::CollectionId) -> Result<T::Data, DispatchError> {
 			execute_call!((a, b))
@@ -77,18 +72,6 @@ pub mod pallet {
 
 		fn unregister_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
 			execute_call!((a, b))
-		}
-	}
-
-	impl<T: Config> DataProvider<T::DataId, T::DataElem> for Pallet<T> {
-		fn get(a: &T::DataId) -> Option<T::DataElem> {
-			execute_call!(a)
-		}
-	}
-
-	impl<T: Config> DataFeeder<T::DataId, T::DataElem, T::AccountId> for Pallet<T> {
-		fn feed_value(a: Option<T::AccountId>, b: T::DataId, c: T::DataElem) -> DispatchResult {
-			execute_call!((a, b, c))
 		}
 	}
 

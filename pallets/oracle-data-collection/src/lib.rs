@@ -263,10 +263,17 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let values = Keys::<T>::iter_key_prefix(collection_id)
-				.filter_map(|key| match Self::get(&key, &collection_id) {
-					Ok(value) => Some(Ok((key, value))),
-					Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
-					Err(err) => Some(Err(err)),
+				.filter_map(|key| {
+					let value = <Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(
+						&key,
+						&collection_id,
+					);
+
+					match value {
+						Ok(value) => Some(Ok((key, value))),
+						Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
+						Err(err) => Some(Err(err)),
+					}
 				})
 				.collect::<Result<BTreeMap<_, _>, _>>()?;
 
@@ -289,8 +296,6 @@ pub mod pallet {
 	impl<T: Config> DataRegistry<T::OracleKey, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
 		type Data = OracleValuePair<T>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(
 			key: &T::OracleKey,
@@ -373,6 +378,34 @@ pub mod pallet {
 				info.feeders = feeders.clone();
 				Ok(())
 			})
+		}
+	}
+
+	impl<T: Config> ValueProvider<(T::FeederId, T::CollectionId), T::OracleKey> for Pallet<T> {
+		type Value = OracleValuePair<T>;
+
+		fn get(
+			source: &(T::FeederId, T::CollectionId),
+			key: &T::OracleKey,
+		) -> Result<Option<Self::Value>, DispatchError> {
+			T::OracleProvider::get(source, key)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn set(
+			(feeder, collection_id): &(T::FeederId, T::CollectionId),
+			key: &T::OracleKey,
+			value: Self::Value,
+		) {
+			T::OracleProvider::set(&(feeder.clone(), *collection_id), key, value);
+
+			let aggregated_value =
+				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, collection_id)
+					.unwrap();
+
+			Collection::<T>::mutate(collection_id, |collection| {
+				collection.try_insert(*key, aggregated_value).unwrap();
+			});
 		}
 	}
 }
