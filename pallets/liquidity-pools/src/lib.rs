@@ -333,6 +333,8 @@ pub mod pallet {
 		MissingRouter,
 		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
+		/// Senders balance is insufficient for transfer amount
+		BalanceTooLow,
 		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
 		/// Failed to build Ethereum_Xcm call.
@@ -644,6 +646,20 @@ pub mod pallet {
 
 			T::PreTransferFilter::check((who.clone(), receiver.clone(), currency_id))?;
 
+			// NOTE: This check is needed as `burn_from` has not a good error resolution and
+			//       might return `Arithmetic` errors.
+			ensure!(
+				T::Tokens::reducible_balance(
+					currency_id,
+					&who,
+					Preservation::Expendable,
+					// NOTE: We do not know whether there are locks or so, so we are using user
+					//       privilege
+					Fortitude::Polite
+				) >= amount,
+				Error::<T>::BalanceTooLow
+			);
+
 			// Burn token as we are never the reserve for LP tokens that are not tranche
 			// tokens.
 			T::Tokens::burn_from(
@@ -651,8 +667,9 @@ pub mod pallet {
 				&who,
 				amount,
 				Precision::Exact,
-				// NOTE: We are enforcing it, as the system needs that
-				Fortitude::Force,
+				// NOTE: We do not know whether there are locks or so, so we are using user
+				//       privilege
+				Fortitude::Polite,
 			)?;
 
 			T::OutboundQueue::submit(

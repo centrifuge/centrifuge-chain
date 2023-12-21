@@ -6174,8 +6174,10 @@ mod development {
 						dest_address.clone(),
 						initial_balance.saturating_add(1),
 					),
-					orml_tokens::Error::<T>::BalanceTooLow
+					pallet_liquidity_pools::Error::<T>::BalanceTooLow
 				);
+
+				let pre_total_issuance = orml_tokens::Pallet::<T>::total_issuance(currency_id);
 
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(source_account.into()).into(),
@@ -6184,14 +6186,9 @@ mod development {
 					amount,
 				));
 
-				// The account to which the currency should have been transferred
-				// to on Centrifuge for bookkeeping purposes.
-				let domain_account: AccountId = Domain::convert(dest_address.domain());
-				// Verify that the correct amount of the token was transferred
-				// to the dest domain account on Centrifuge.
 				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(currency_id, &domain_account),
-					amount
+					orml_tokens::Pallet::<T>::total_issuance(currency_id),
+					pre_total_issuance - amount
 				);
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
