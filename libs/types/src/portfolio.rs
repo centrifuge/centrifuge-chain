@@ -24,6 +24,7 @@ use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 // It will be updated on these scenarios:
 //   1. When we are calculating portfolio valuation for a pool.
 //   2. When there is borrow or repay or write off on a loan under this pool
+//   3. When pool fee disbursement is prepared
 // So the portfolio valuation could be:
 // 	 - Approximate when current time != last_updated
 // 	 - Exact when current time == last_updated
@@ -155,7 +156,7 @@ where
 pub enum PortfolioValuationUpdateType {
 	/// Portfolio Valuation was fully recomputed to an exact value
 	Exact,
-	/// Portfolio Valuation was updated inexactly based on loan status changes
+	/// Portfolio Valuation was updated inexactly based on status changes
 	Inexact,
 }
 

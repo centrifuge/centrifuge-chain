@@ -173,6 +173,7 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -182,6 +183,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	type Permissions = MockPermissions;
 	type PoolId = PoolId;
 	type PoolInspect = MockPools;
@@ -334,7 +336,7 @@ pub fn pay_single_fee_and_assert(
 	fee_id: <Runtime as pallet_pool_fees::Config>::FeeId,
 	fee_amount: Balance,
 ) {
-	assert_ok!(PoolFees::pay_disbursements(POOL, BUCKET));
+	assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
 	assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
 	assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), fee_amount);
 

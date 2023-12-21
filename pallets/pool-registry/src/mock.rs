@@ -192,6 +192,7 @@ impl pallet_mock_change_guard::Config for Test {
 
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 }
 
 impl pallet_pool_fees::Config for Test {
@@ -201,6 +202,7 @@ impl pallet_pool_fees::Config for Test {
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	type Permissions = PermissionsMock;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;

@@ -30,7 +30,7 @@ use frame_support::{
 	assert_ok, parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
-	Blake2_128, StorageHasher,
+	Blake2_128, PalletId, StorageHasher,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -345,6 +345,7 @@ impl pallet_mock_change_guard::Config for Runtime {
 
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -354,6 +355,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = PoolFeesPalletId;
 	type Permissions = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
