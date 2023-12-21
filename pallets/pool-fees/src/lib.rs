@@ -26,45 +26,46 @@ pub mod pallet {
 		changes::ChangeGuard,
 		fee::{AddPoolFees, FeeAmountProration},
 		investments::TrancheCurrency,
-		EpochTransitionHook, Permissions, PoolInspect, PoolReserve, SaturatedProration, Seconds,
+		EpochTransitionHook, Permissions, PoolInspect, PoolNAV, PoolReserve, SaturatedProration,
+		Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
 		pools::{PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeType},
+		portfolio,
+		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
 	use codec::HasCompact;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::fungibles::{Inspect, Mutate},
+		traits::{
+			fungibles::{Inspect, Mutate},
+			tokens,
+		},
 		weights::Weight,
+		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_arithmetic::{
-		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating,
-			Zero,
-		},
+		traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
+	use sp_runtime::{traits::AccountIdConversion, SaturatedConversion};
 	use sp_std::vec::Vec;
 
 	use super::*;
-	use crate::types::{Change, DisbursingFee};
+	use crate::types::Change;
 
 	pub type PoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
+		<T as Config>::FeeId,
 		PoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
 	>;
 
 	pub type PendingPoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
-		PendingPoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
-	>;
-
-	pub type DisbursingFeeOf<T> = DisbursingFee<
-		<T as frame_system::Config>::AccountId,
-		<T as Config>::Balance,
 		<T as Config>::FeeId,
+		PendingPoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
 	>;
 
 	#[pallet::pallet]
@@ -86,16 +87,20 @@ pub mod pallet {
 			+ Ord;
 
 		/// The source of truth for the balance of accounts
-		type Balance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
+		// type Balance: Parameter
+		// 	+ Member
+		// 	+ AtLeast32BitUnsigned
+		// 	+ Default
+		// 	+ Copy
+		// 	+ FixedPointOperand
+		// 	+ SaturatedProration<Time = Seconds>
+		// 	+ From<Seconds>
+		// 	+ MaybeSerializeDeserialize
+		// 	+ MaxEncodedLen;
+		type Balance: tokens::Balance
 			+ FixedPointOperand
 			+ SaturatedProration<Time = Seconds>
-			+ From<Seconds>
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+			+ From<Seconds>;
 
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
@@ -172,7 +177,29 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
+		/// The pool fee bound per bucket. If multiplied with the number of
+		/// bucket variants, this yields the max number of fees per pool.
 		type MaxPoolFeesPerBucket: Get<u32>;
+
+		// TODO: Should be MaxPoolFeesPerBucket * PoolFeeBucket::iter().count() as u32
+		type MaxFeesPerPool: Get<u32>;
+
+		/// Identifier of this pallet used as an account which temporarily
+		/// stores disbursing fees in between closing and executing an epoch.
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		/// Fetching method for the time of the current block
+		type Time: TimeAsSecs;
+
+		/// The provider for the positive pool NAV on which pool fees are
+		/// dependent.
+		type PositiveNAV: PoolNAV<Self::PoolId, Self::Balance>;
+
+		/// The maximum age of the positive NAV.
+		///
+		/// NOTE: Temporary solution until accounting pallet.s
+		type MaxAgePositiveNAV: Get<Seconds>;
 
 		// TODO: Enable after creating benchmarks
 		// type WeightInfo: WeightInfo;
@@ -181,12 +208,7 @@ pub mod pallet {
 	/// Maps a pool to their corresponding fee ids with [PoolFeeBucket]
 	/// granularity.
 	///
-	/// The lifetime of this storage is expected to be forever as it directly
-	/// linked to a liquidity pool.
-	///
-	/// NOTE: In general, epoch executions happen at different times for
-	/// different pools. Thus, there should be no need to iterate over this
-	/// storage at any time.
+	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
 	#[pallet::storage]
 	pub type FeeIds<T: Config> = StorageDoubleMap<
 		_,
@@ -200,80 +222,92 @@ pub mod pallet {
 
 	/// Source of truth for the last created fee identifier.
 	///
-	/// Once a fee has gone through the ChangeGuard, this storage is incremented
-	/// and used for the new fee.
+	/// Lifetime: Forever.
 	#[pallet::storage]
 	pub type LastFeeId<T: Config> = StorageValue<_, T::FeeId, ValueQuery>;
 
-	/// Maps a fee id to their corresponding fee info. This includes the fee
-	/// limit as well as pending and payable amounts.
-	///
-	/// The lifetime of this storage is expected to be forever as it directly
-	/// linked to a liquidity pool.
-	///
-	/// NOTE: In general, epoch executions happen at different times for
-	/// different pools. Thus, there should be no need to iterate over this
-	/// storage at any time.
-	#[pallet::storage]
-	pub type CreatedFees<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::FeeId, PendingPoolFeeOf<T>, OptionQuery>;
-
 	/// Maps a fee identifier to the corresponding pool and [PoolFeeBucket].
 	///
-	/// Follows the lifetime of the corresponding fee and thus aligns with the
-	/// one of [CreatedFees].
+	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
 	#[pallet::storage]
 	pub type FeeIdsToPoolBucket<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::FeeId, (T::PoolId, PoolFeeBucket), OptionQuery>;
 
-	/// Represents the fees which which will be disbursed at epoch execution.
+	/// Represents the active fees for a given pool id and fee bucket. For each
+	/// fee, the limit as well as pending, disbursement and payable amounts are
+	/// included.
 	///
-	/// The lifetime of this storage is short: It is created during epoch
-	/// closing and consumed during epoch execution.
+	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
 	#[pallet::storage]
-	pub type DisbursingFees<T: Config> = StorageDoubleMap<
+	pub type ActiveFees<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
 		Blake2_128Concat,
 		PoolFeeBucket,
-		BoundedVec<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>,
+		BoundedVec<PendingPoolFeeOf<T>, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
+	>;
+
+	/// Stores the (negative) portfolio valuation associated to each pool
+	/// derived from the pending fee amounts.
+	///
+	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
+	#[pallet::storage]
+	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		portfolio::PortfolioValuation<T::Balance, T::FeeId, T::MaxFeesPerPool>,
+		ValueQuery,
+		InitialPortfolioValuation<T::Time>,
 	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// A new pool fee was proposed.
 		Proposed {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			fee: PoolFeeOf<T>,
 		},
+		/// A previously proposed and approved pool fee was added.
 		Added {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			fee_id: T::FeeId,
 			fee: PoolFeeOf<T>,
 		},
+		/// A pool fee was removed.
 		Removed {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			fee_id: T::FeeId,
 		},
+		/// A pool fee was charged.
 		Charged {
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
+		/// A pool fee was uncharged.
 		Uncharged {
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
+		/// A pool fee was paid.
 		Paid {
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			destination: T::AccountId,
+		},
+		/// The portfolio valuation for a pool was updated.
+		PortfolioValuationUpdated {
+			pool_id: T::PoolId,
+			valuation: T::Balance,
+			update_type: PortfolioValuationUpdateType,
 		},
 	}
 
@@ -283,6 +317,10 @@ pub mod pallet {
 		FeeNotFound,
 		/// A pool could not be found.
 		PoolNotFound,
+		/// The positive pool NAV is unavailable.
+		NoPositiveNAV,
+		/// The last update of the positive pool NAV is too far in the past.
+		PositiveNAVTooOld,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
 		/// The pool bucket has reached the maximum fees size.
@@ -370,17 +408,27 @@ pub mod pallet {
 		/// Remove a fee.
 		///
 		/// Origin must be the fee editor.
-		// TODO: Discuss whether ChangeGuard needed
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::from_parts(10_000, 0))]
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let fee = CreatedFees::<T>::get(fee_id).ok_or_else(|| Error::<T>::FeeNotFound)?;
-			ensure!(
-				fee.editor.matches_account(&who),
-				Error::<T>::UnauthorizedEdit
-			);
+			FeeIdsToPoolBucket::<T>::get(fee_id)
+				.map(|(pool_id, bucket)| {
+					ActiveFees::<T>::get(pool_id, bucket)
+						.into_iter()
+						.find(|fee| fee.id == fee_id)
+				})
+				.flatten()
+				.map(|fee| {
+					ensure!(
+						fee.editor.matches_account(&who),
+						Error::<T>::UnauthorizedEdit
+					);
+					Ok::<_, DispatchError>(())
+				})
+				.transpose()?
+				.ok_or(Error::<T>::FeeNotFound)?;
 
 			Self::do_remove_fee(fee_id)?;
 
@@ -399,8 +447,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = CreatedFees::<T>::mutate(fee_id, |maybe_fee| {
-				let fee = maybe_fee.as_mut().ok_or(Error::<T>::FeeNotFound)?;
+			let pending = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -409,6 +456,7 @@ pub mod pallet {
 				match fee.amount {
 					PendingPoolFeeType::ChargedUpTo { mut pending, .. } => {
 						pending.ensure_add_assign(amount)?;
+						// TODO: Might not be necessary
 						fee.amount.checked_mutate_pending(|p| {
 							*p = pending;
 						});
@@ -439,8 +487,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = CreatedFees::<T>::mutate(fee_id, |maybe_fee| {
-				let fee = maybe_fee.as_mut().ok_or(Error::<T>::FeeNotFound)?;
+			let pending = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -449,6 +496,7 @@ pub mod pallet {
 				match fee.amount {
 					PendingPoolFeeType::ChargedUpTo { mut pending, .. } => {
 						pending.ensure_sub_assign(amount)?;
+						// TODO: Might not be necessary
 						fee.amount.checked_mutate_pending(|p| {
 							*p = pending;
 						});
@@ -457,6 +505,7 @@ pub mod pallet {
 					_ => Err(DispatchError::from(Error::<T>::CannotBeCharged)),
 				}
 			})?;
+
 			Self::deposit_event(Event::<T>::Uncharged {
 				fee_id,
 				amount,
@@ -465,9 +514,58 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Update the negative portfolio valuation via pending amounts of the
+		/// pool's active fees. Also updates the latter if the last update
+		/// happened in the past.
+		///
+		/// NOTE: There can be fee amounts which are dependent on the positive
+		/// NAV. Therefore, we enforce this to have been updated in the current
+		/// timestamp. In the future, this coupling will be handled by an
+		/// accounting pallet.
+		#[pallet::call_index(5)]
+		#[pallet::weight(Weight::from_parts(10_000, 0))]
+		pub fn update_portfolio_valuation(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+
+			let (_, _count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
+
+			// Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
+			Ok(Some(T::DbWeight::get().reads(1)).into())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Mutate fee id entry in ActiveFees
+		fn mutate_active_fee(
+			fee_id: T::FeeId,
+			mut f: impl FnMut(&mut PendingPoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
+		) -> Result<T::Balance, DispatchError> {
+			let (pool_id, bucket) =
+				FeeIdsToPoolBucket::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
+
+			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
+				let pos = fees
+					.iter()
+					.position(|fee| fee.id == fee_id)
+					.ok_or(Error::<T>::FeeNotFound)?;
+
+				if let Some(fee) = fees.get_mut(pos) {
+					f(fee)
+				} else {
+					Ok(T::Balance::zero())
+				}
+			})
+		}
+
 		fn generate_fee_id() -> Result<T::FeeId, ArithmeticError> {
 			LastFeeId::<T>::try_mutate(|last_fee_id| {
 				last_fee_id.ensure_add_assign(One::one())?;
@@ -484,121 +582,97 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::ChangeIdNotPoolFees.into())
 		}
 
-		/// Withdraw any due fees. The waterfall of fee payment follows the
-		/// order of the corresponding [PoolFeeBucket].
-		///
-		/// Assumes `prepare_disbursements` to have been executed beforehand.
-		pub(crate) fn pay_disbursements(
+		/// Transfer any due fees from the Pallet account to the corresponding
+		/// destination. The waterfall of fee payment follows the order of the
+		/// corresponding [PoolFeeBucket].
+		pub(crate) fn pay_active_fees(
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 		) -> Result<(), DispatchError> {
-			let fees = DisbursingFees::<T>::take(pool_id, bucket);
-			for fee in fees.into_iter() {
-				T::PoolReserve::withdraw(pool_id.into(), fee.destination.clone(), fee.amount)
-					.map_err(|e| {
-						log::error!(
-							"Failed to withdraw fee amount {:?} from pool {:?} to {:?}",
-							fee.amount,
-							pool_id,
-							fee.destination
-						);
-						e
-					})?;
+			let pool_currency =
+				T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
-				Self::deposit_event(Event::<T>::Paid {
-					fee_id: fee.fee_id,
-					amount: fee.amount,
-					destination: fee.destination,
-				})
-			}
+			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
+				for fee in fees.iter_mut() {
+					T::Tokens::transfer(
+						pool_currency,
+						&T::PalletId::get().into_account_truncating(),
+						&fee.destination,
+						*fee.amount.disbursement(),
+						// TODO: Ensure if account can indeed be killed
+						frame_support::traits::tokens::Preservation::Expendable,
+					)?;
 
-			Ok(())
+					fee.amount
+						.checked_mutate_disbursement(|d| *d = T::Balance::zero());
+				}
+
+				Ok(())
+			})
 		}
 
-		/// Determine the amount of any due fees. The waterfall of fee payment
-		/// follows the order of the corresponding [PoolFeeBucket] as long as
-		/// the reserve is not empty.
+		/// Update the pending, disbursement and payable fee amounts based on
+		/// the positive NAV and time difference since the last update.
 		///
-		/// Returns the updated reserve amount.
-		pub(crate) fn prepare_disbursements(
+		/// For each fee in the order of the waterfall, decrements the provided
+		/// `reserve` by the payable fee amount to determine disbursements.
+		/// Returns the final `reserve` amount.
+		pub(crate) fn update_active_fees(
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			portfolio_valuation: T::Balance,
-			reserve: &mut T::Balance,
+			reserve: T::Balance,
 			epoch_duration: Seconds,
-		) {
-			let fee_structure = FeeIds::<T>::get(pool_id, bucket.clone());
+		) -> T::Balance {
+			let mut reserve = reserve;
 
-			let fees: Vec<DisbursingFeeOf<T>> = fee_structure
-				.into_iter()
-				.filter_map(|fee_id| {
-					CreatedFees::<T>::mutate(fee_id, |maybe_fee| {
-						if let Some(ref mut fee) = maybe_fee {
-							let (limit, pending, maybe_payable) = match fee.amount.clone() {
-								PendingPoolFeeType::Fixed { limit, pending } => {
-									(limit, pending, None)
-								}
-								PendingPoolFeeType::ChargedUpTo {
-									limit,
-									pending,
-									payable,
-								} => (limit, pending, Some(payable)),
-							};
+			ActiveFees::<T>::mutate(pool_id, bucket.clone(), |fees| {
+				for fee in fees.iter_mut() {
+					let (limit, pending, maybe_payable) = match fee.amount.clone() {
+						PendingPoolFeeType::Fixed { limit, pending, .. } => (limit, pending, None),
+						PendingPoolFeeType::ChargedUpTo {
+							limit,
+							pending,
+							payable,
+							..
+						} => (limit, pending, Some(payable)),
+					};
 
-							// Determine payable amount since last update based on epoch duration
-							let epoch_amount = <PoolFeeAmount<
-								<T as Config>::Balance,
-								<T as Config>::Rate,
-							> as FeeAmountProration<T::Balance, T::Rate, Seconds>>::saturated_prorated_amount(
-								&limit,
-								portfolio_valuation,
-								epoch_duration,
-							);
+					// Determine payable amount since last update based on epoch duration
+					let epoch_amount = <PoolFeeAmount<
+						<T as Config>::Balance,
+						<T as Config>::Rate,
+					> as FeeAmountProration<T::Balance, T::Rate, Seconds>>::saturated_prorated_amount(
+						&limit,
+						portfolio_valuation,
+						epoch_duration,
+					);
 
-							let fee_amount = match maybe_payable {
-								Some(payable) => {
-									let payable_amount = payable.saturating_add(epoch_amount);
-									pending.min(payable_amount)
-								}
-								// NOTE: Implicitly assuming Fixed fee because of missing payable
-								None => epoch_amount.saturating_add(pending),
-							};
-
-							// Disbursement amount is limited by reserve
-							let disbursement = fee_amount.min(*reserve);
-							*reserve = reserve.saturating_sub(disbursement);
-
-							// Update fee amounts
-							fee.amount.checked_mutate_pending(|pending| {
-								*pending = pending.saturating_sub(disbursement)
-							});
-							fee.amount.checked_mutate_payable(|p| {
-								*p = p.saturating_add(epoch_amount).saturating_sub(disbursement)
-							});
-
-							if disbursement.is_zero() {
-								None
-							} else {
-								Some(DisbursingFeeOf::<T> {
-									amount: disbursement,
-									destination: fee.destination.clone(),
-									fee_id,
-								})
-							}
-						} else {
-							None
+					let fee_amount = match maybe_payable {
+						Some(payable) => {
+							let payable_amount = payable.saturating_add(epoch_amount);
+							pending.min(payable_amount)
 						}
-					})
-				})
-				.collect();
+						// NOTE: Implicitly assuming Fixed fee because of missing payable
+						None => epoch_amount.saturating_add(pending),
+					};
 
-			if !fees.is_empty() {
-				DisbursingFees::<T>::insert(
-					pool_id,
-					bucket,
-					BoundedVec::<DisbursingFeeOf<T>, T::MaxPoolFeesPerBucket>::truncate_from(fees),
-				);
-			}
+					// Disbursement amount is limited by reserve
+					let disbursement = fee_amount.min(reserve);
+					reserve = reserve.saturating_sub(disbursement);
+
+					// Update fee amounts
+					fee.amount
+						.checked_mutate_pending(|p| *p = p.saturating_sub(disbursement));
+					fee.amount.checked_mutate_payable(|p| {
+						*p = p.saturating_add(epoch_amount).saturating_sub(disbursement)
+					});
+					fee.amount
+						.checked_mutate_disbursement(|d| *d = d.saturating_add(disbursement));
+				}
+			});
+
+			reserve
 		}
 
 		/// Entirely remove a stored fee from the given pair of pool id and fee
@@ -606,11 +680,20 @@ pub mod pallet {
 		///
 		/// NOTE: Assumes call permissions are separately checked beforehand.
 		fn do_remove_fee(fee_id: T::FeeId) -> Result<(), DispatchError> {
-			CreatedFees::<T>::remove(fee_id);
 			FeeIdsToPoolBucket::<T>::mutate_exists(fee_id, |maybe_key| {
 				maybe_key
 					.as_ref()
 					.map(|(pool_id, bucket)| {
+						ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
+							let pos = fees
+								.iter()
+								.position(|fee| fee.id == fee_id)
+								.ok_or(Error::<T>::FeeNotFound)?;
+							fees.remove(pos);
+
+							Ok::<(), DispatchError>(())
+						})?;
+
 						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
 							let pos = fee_ids
 								.iter()
@@ -639,6 +722,55 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn update_portfolio_valuation_for_pool(
+			pool_id: T::PoolId,
+		) -> Result<(T::Balance, u32), DispatchError> {
+			let now = T::Time::now();
+
+			// Ensure the positive NAV has been updated this block
+			let (nav, nav_last_updated) =
+				T::PositiveNAV::nav(pool_id).ok_or(Error::<T>::NoPositiveNAV)?;
+			// TODO: This blocks pool closing even if pool.parameters.max_nav_age > 0
+			ensure!(
+				now.saturating_sub(nav_last_updated) <= T::MaxAgePositiveNAV::get(),
+				Error::<T>::PositiveNAVTooOld
+			);
+
+			let fee_nav = PortfolioValuation::<T>::get(pool_id);
+			let time_diff = T::Time::now().saturating_sub(fee_nav.last_updated());
+
+			// Force update of pending amounts if last done in past block
+			if !time_diff.is_zero() {
+				for bucket in PoolFeeBucket::iterator() {
+					Self::update_active_fees(pool_id, bucket, nav, T::Balance::zero(), time_diff);
+				}
+			}
+
+			// Derive valuation from pending fee amounts
+			let values = PoolFeeBucket::iterator()
+				.map(|bucket| {
+					let fees = ActiveFees::<T>::get(pool_id, bucket);
+					fees.iter()
+						.map(|fee| (fee.id, *fee.amount.pending()))
+						.collect::<Vec<_>>()
+				})
+				.flatten()
+				.collect::<Vec<_>>();
+
+			let portfolio =
+				portfolio::PortfolioValuation::from_values(T::Time::now(), values.clone())?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				valuation,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok((valuation, values.len().saturated_into()))
+		}
 	}
 
 	impl<T: Config> AddPoolFees for Pallet<T> {
@@ -654,10 +786,14 @@ pub mod pallet {
 		) -> Result<(), Self::Error> {
 			let fee_id = Self::generate_fee_id()?;
 
-			FeeIds::<T>::mutate(pool_id, bucket.clone(), |list| list.try_push(fee_id))
-				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-
-			CreatedFees::<T>::insert(fee_id, PendingPoolFeeOf::<T>::from(fee.clone()));
+			FeeIds::<T>::mutate(pool_id.clone(), bucket.clone(), |list| {
+				list.try_push(fee_id)
+			})
+			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+			ActiveFees::<T>::mutate(pool_id, bucket.clone(), |list| {
+				list.try_push(PendingPoolFeeOf::<T>::from(fee.clone()))
+			})
+			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
 			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket.clone()));
 
 			Self::deposit_event(Event::<T>::Added {
@@ -677,19 +813,26 @@ pub mod pallet {
 		type PoolId = T::PoolId;
 		type Time = Seconds;
 
-		fn on_closing(
+		fn on_closing_mutate_reserve(
 			pool_id: Self::PoolId,
 			nav: Self::Balance,
 			reserve: &mut Self::Balance,
 			epoch_duration: Self::Time,
 		) -> Result<(), Self::Error> {
-			Self::prepare_disbursements(pool_id, PoolFeeBucket::Top, nav, reserve, epoch_duration);
+			*reserve = Self::update_active_fees(
+				pool_id,
+				PoolFeeBucket::Top,
+				nav,
+				reserve.clone(),
+				epoch_duration,
+			);
+			Self::update_portfolio_valuation_for_pool(pool_id)?;
 
 			Ok(())
 		}
 
 		fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error> {
-			Self::pay_disbursements(pool_id, PoolFeeBucket::Top)?;
+			Self::pay_active_fees(pool_id, PoolFeeBucket::Top)?;
 
 			Ok(())
 		}

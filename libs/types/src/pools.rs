@@ -46,7 +46,7 @@ pub enum PoolRegistrationStatus {
 /// The representation of a pool fee, its editor and destination address
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub struct PoolFee<AccountId, FeeType> {
+pub struct PoolFee<AccountId, FeeId, FeeType> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
 
@@ -55,24 +55,30 @@ pub struct PoolFee<AccountId, FeeType> {
 
 	/// Amount of fees that can be charged
 	pub amount: FeeType,
+
+	/// The identifier
+	pub id: FeeId,
 }
 
-impl<AccountId, Balance, Rate> From<PoolFee<AccountId, PoolFeeType<Balance, Rate>>>
-	for PoolFee<AccountId, PendingPoolFeeType<Balance, Rate>>
+impl<AccountId, Balance, FeeId, Rate> From<PoolFee<AccountId, FeeId, PoolFeeType<Balance, Rate>>>
+	for PoolFee<AccountId, FeeId, PendingPoolFeeType<Balance, Rate>>
 where
 	Balance: Default + Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
 	Rate: Clone,
+	FeeId: Clone,
 {
-	fn from(fee: PoolFee<AccountId, PoolFeeType<Balance, Rate>>) -> Self {
+	fn from(fee: PoolFee<AccountId, FeeId, PoolFeeType<Balance, Rate>>) -> Self {
 		let amount = match fee.amount {
 			PoolFeeType::Fixed { limit } => PendingPoolFeeType::Fixed {
 				limit,
 				pending: Balance::default(),
+				disbursement: Balance::default(),
 			},
 			PoolFeeType::ChargedUpTo { limit } => PendingPoolFeeType::ChargedUpTo {
 				limit,
 				pending: Balance::default(),
 				payable: Balance::default(),
+				disbursement: Balance::default(),
 			},
 		};
 
@@ -80,6 +86,7 @@ where
 			amount,
 			destination: fee.destination,
 			editor: fee.editor,
+			id: fee.id,
 		}
 	}
 }
@@ -105,6 +112,7 @@ where
 	}
 }
 
+// TODO: Improve name, maybe `PoolFeeDetails`
 /// The fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
@@ -128,6 +136,7 @@ where
 	Fixed {
 		limit: PoolFeeAmount<Balance, Rate>,
 		pending: Balance,
+		disbursement: Balance,
 	},
 
 	/// A fee can be charged up to a limit, paid every epoch
@@ -135,6 +144,7 @@ where
 		limit: PoolFeeAmount<Balance, Rate>,
 		pending: Balance,
 		payable: Balance,
+		disbursement: Balance,
 	},
 }
 
@@ -147,13 +157,26 @@ where
 		match *self {
 			Self::Fixed {
 				ref mut pending, ..
-			} => {
-				f(pending);
 			}
-			Self::ChargedUpTo {
+			| Self::ChargedUpTo {
 				ref mut pending, ..
 			} => {
 				f(pending);
+			}
+		}
+	}
+
+	pub fn checked_mutate_disbursement(&mut self, mut f: impl FnMut(&mut Balance)) {
+		match *self {
+			Self::Fixed {
+				ref mut disbursement,
+				..
+			}
+			| Self::ChargedUpTo {
+				ref mut disbursement,
+				..
+			} => {
+				f(disbursement);
 			}
 		}
 	}
@@ -167,24 +190,31 @@ where
 		}
 	}
 
-	pub fn get_limit(&self) -> &PoolFeeAmount<Balance, Rate> {
+	pub fn limit(&self) -> &PoolFeeAmount<Balance, Rate> {
 		match self {
-			PendingPoolFeeType::Fixed { limit, .. } => limit,
-			PendingPoolFeeType::ChargedUpTo { limit, .. } => limit,
+			PendingPoolFeeType::Fixed { limit, .. }
+			| PendingPoolFeeType::ChargedUpTo { limit, .. } => limit,
 		}
 	}
 
-	pub fn get_pending(&self) -> &Balance {
+	pub fn pending(&self) -> &Balance {
 		match self {
-			PendingPoolFeeType::Fixed { pending, .. } => pending,
-			PendingPoolFeeType::ChargedUpTo { pending, .. } => pending,
+			PendingPoolFeeType::Fixed { pending, .. }
+			| PendingPoolFeeType::ChargedUpTo { pending, .. } => pending,
 		}
 	}
 
-	pub fn get_payable(&self) -> Option<&Balance> {
+	pub fn payable(&self) -> Option<&Balance> {
 		match self {
 			PendingPoolFeeType::ChargedUpTo { payable, .. } => Some(payable),
 			_ => None,
+		}
+	}
+
+	pub fn disbursement(&self) -> &Balance {
+		match self {
+			PendingPoolFeeType::Fixed { disbursement, .. }
+			| PendingPoolFeeType::ChargedUpTo { disbursement, .. } => disbursement,
 		}
 	}
 }
@@ -200,13 +230,19 @@ pub enum PoolFeeAmount<Balance, Rate> {
 }
 
 /// The priority segregation of pool fees
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone, Copy)]
 
 pub enum PoolFeeBucket {
 	/// Fees that are charged first, before any redemptions, investments,
 	/// repayments or originations
 	Top,
 	// Future: AfterTranche(TrancheId)
+}
+
+impl PoolFeeBucket {
+	pub fn iterator() -> impl Iterator<Item = PoolFeeBucket> {
+		[Self::Top].iter().copied()
+	}
 }
 
 impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for PoolFeeAmount<Balance, Rate>

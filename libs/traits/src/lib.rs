@@ -603,7 +603,7 @@ pub trait EpochTransitionHook {
 	type Error;
 
 	/// Hook into the closing of an epoch
-	fn on_closing(
+	fn on_closing_mutate_reserve(
 		pool_id: Self::PoolId,
 		nav: Self::Balance,
 		reserve: &mut Self::Balance,
