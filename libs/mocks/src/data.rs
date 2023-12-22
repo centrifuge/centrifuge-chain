@@ -1,6 +1,9 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::data::{DataCollection, DataRegistry};
+	use cfg_traits::{
+		data::{DataCollection, DataRegistry},
+		ValueProvider,
+	};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -46,12 +49,6 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
-
-		pub fn mock_feed_value(
-			f: impl Fn(Option<T::AccountId>, T::DataId, T::DataElem) -> DispatchResult + 'static,
-		) {
-			register_call!(move |(a, b, c)| f(a, b, c));
-		}
 	}
 
 	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
@@ -72,6 +69,18 @@ pub mod pallet {
 
 		fn unregister_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
 			execute_call!((a, b))
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> ValueProvider<(u32, T::CollectionId), T::DataId> for Pallet<T> {
+		type Value = T::Data;
+
+		fn get(
+			_: &(u32, T::CollectionId),
+			_: &T::DataId,
+		) -> Result<Option<Self::Value>, DispatchError> {
+			unimplemented!()
 		}
 	}
 

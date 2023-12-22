@@ -381,26 +381,29 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ValueProvider<(T::FeederId, T::CollectionId), T::OracleKey> for Pallet<T> {
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> ValueProvider<(u32, T::CollectionId), T::OracleKey> for Pallet<T>
+	where
+		T::FeederId: From<u32>,
+	{
 		type Value = OracleValuePair<T>;
 
 		fn get(
-			source: &(T::FeederId, T::CollectionId),
+			&(id, collection_id): &(u32, T::CollectionId),
 			key: &T::OracleKey,
 		) -> Result<Option<Self::Value>, DispatchError> {
-			T::OracleProvider::get(source, key)
+			T::OracleProvider::get(&(T::FeederId::from(id), collection_id), key)
 		}
 
-		#[cfg(feature = "runtime-benchmarks")]
 		fn set(
-			(feeder, collection_id): &(T::FeederId, T::CollectionId),
+			&(id, collection_id): &(u32, T::CollectionId),
 			key: &T::OracleKey,
 			value: Self::Value,
 		) {
-			T::OracleProvider::set(&(feeder.clone(), *collection_id), key, value);
+			T::OracleProvider::set(&(T::FeederId::from(id), collection_id), key, value);
 
 			let aggregated_value =
-				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, collection_id)
+				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, &collection_id)
 					.unwrap();
 
 			Collection::<T>::mutate(collection_id, |collection| {
