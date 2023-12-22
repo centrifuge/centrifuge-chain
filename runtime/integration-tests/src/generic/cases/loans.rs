@@ -249,6 +249,10 @@ mod call {
 			change_id,
 		}
 	}
+
+	pub fn update_portfolio_valuation<T: Runtime>() -> pallet_loans::Call<T> {
+		pallet_loans::Call::update_portfolio_valuation { pool_id: POOL_A }
+	}
 }
 
 /// Test the basic loan flow, which consist in:
@@ -312,6 +316,8 @@ fn oracle_priced<T: Runtime>() {
 	env.pass(Blocks::BySeconds(SECONDS_PER_MINUTE / 2));
 
 	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_a = loan_portfolio.present_value;
+
 	env.parachain_state_mut(|| {
 		// Give required tokens to the borrower to be able to repay the interest accrued
 		// until this moment
@@ -320,6 +326,12 @@ fn oracle_priced<T: Runtime>() {
 		// Oracle modify the value
 		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
 	});
+
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_b = loan_portfolio.present_value;
+
+	// The valuation by the oracle has been changed
+	assert_ne!(present_value_price_a, present_value_price_b);
 
 	env.submit_now(
 		BORROWER,
@@ -334,7 +346,62 @@ fn oracle_priced<T: Runtime>() {
 /// Test using oracles to valuate a portfolio.
 /// The oracle values used by the portfilio comes from the oracle
 /// collection
-fn portfolio_valuated_by_oracle<T: Runtime>() {}
+fn portfolio_valuated_by_oracle<T: Runtime>() {
+	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, &[Feeder::root()]);
+	});
+
+	let info = env.parachain_state(|| {
+		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
+		common::default_loan_info::<T>(now, common::default_external_pricing())
+	});
+	env.submit_now(BORROWER, call::create(&info)).unwrap();
+
+	let loan_id = common::last_loan_id(&env);
+
+	env.submit_now(BORROWER, call::borrow_external(loan_id))
+		.unwrap();
+
+	// There is no price fed, so the price comes from the one used as settement
+	// price when borrowing
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	env.parachain_state_mut(|| {
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
+	});
+
+	let loan_portfolio = env.parachain_state(|| T::Api::portfolio_loan(POOL_A, loan_id).unwrap());
+	let present_value_price_b = loan_portfolio.present_value;
+
+	// There is a price fed, but the collection is not updated yet,
+	// so the price still comes from the one used as settement price when
+	// borrowing
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	let total_portfolio_value = env.parachain_state(|| {
+		<pallet_loans::Pallet<T> as cfg_traits::PoolNAV<PoolId, Balance>>::nav(POOL_A).unwrap()
+	});
+
+	assert_ne!(present_value_price_b, total_portfolio_value.0);
+
+	// We finally update the collection
+	env.parachain_state_mut(|| {
+		utils::oracle::update_collection::<T>(ANY.id(), POOL_A);
+	});
+
+	env.submit_now(ANY, call::update_portfolio_valuation())
+		.unwrap();
+
+	let total_portfolio_value = env.parachain_state(|| {
+		<pallet_loans::Pallet<T> as cfg_traits::PoolNAV<PoolId, Balance>>::nav(POOL_A).unwrap()
+	});
+
+	assert_eq!(present_value_price_b, total_portfolio_value.0);
+}
 
 fn update_maturity_extension<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
@@ -375,4 +442,5 @@ fn update_maturity_extension<T: Runtime>() {
 
 crate::test_for_runtimes!(all, internal_priced);
 crate::test_for_runtimes!(all, oracle_priced);
+crate::test_for_runtimes!(all, portfolio_valuated_by_oracle);
 crate::test_for_runtimes!(all, update_maturity_extension);
