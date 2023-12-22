@@ -25,8 +25,9 @@ use pallet_loans::{
 		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
 	},
 };
-use runtime_common::apis::{
-	runtime_decl_for_loans_api::LoansApiV1, runtime_decl_for_pools_api::PoolsApiV1,
+use runtime_common::{
+	apis::{runtime_decl_for_loans_api::LoansApiV1, runtime_decl_for_pools_api::PoolsApiV1},
+	oracle::Feeder,
 };
 
 use crate::{
@@ -290,10 +291,12 @@ fn internal_priced<T: Runtime>() {
 
 /// Test using oracles to price the loan
 fn oracle_priced<T: Runtime>() {
-	/*
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
-	env.parachain_state_mut(|| utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_A)]));
+	env.parachain_state_mut(|| {
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, &[Feeder::root()]);
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_A);
+	});
 
 	let info = env.parachain_state(|| {
 		let now = <pallet_timestamp::Pallet<T> as TimeAsSecs>::now();
@@ -315,7 +318,7 @@ fn oracle_priced<T: Runtime>() {
 		utils::give_tokens::<T>(BORROWER.id(), Usd6::ID, loan_portfolio.outstanding_interest);
 
 		// Oracle modify the value
-		utils::feed_oracle::<T>(vec![(PRICE_A, PRICE_VALUE_B)])
+		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_B);
 	});
 
 	env.submit_now(
@@ -326,8 +329,12 @@ fn oracle_priced<T: Runtime>() {
 
 	// Closing the loan succesfully means that the loan has been fully repaid
 	env.submit_now(BORROWER, call::close(loan_id)).unwrap();
-	*/
 }
+
+/// Test using oracles to valuate a portfolio.
+/// The oracle values used by the portfilio comes from the oracle
+/// collection
+fn portfolio_valuated_by_oracle<T: Runtime>() {}
 
 fn update_maturity_extension<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();

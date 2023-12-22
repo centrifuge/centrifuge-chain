@@ -17,7 +17,21 @@ use sp_std::marker::PhantomData;
 
 #[derive(Clone, RuntimeDebugNoBound, TypeInfo, Encode, Decode, MaxEncodedLen)]
 #[scale_info(skip_type_params(O))]
-pub struct Feeder<O: OriginTrait>(O::PalletsOrigin);
+pub struct Feeder<O: OriginTrait>(pub O::PalletsOrigin);
+
+impl<O: OriginTrait<AccountId = AccountId>> Feeder<O> {
+	pub fn signed(account: AccountId) -> Self {
+		Self(O::signed(account).into_caller())
+	}
+
+	pub fn root() -> Self {
+		Self(O::root().into_caller())
+	}
+
+	pub fn none() -> Self {
+		Self(O::none().into_caller())
+	}
+}
 
 impl<O: OriginTrait> PartialEq for Feeder<O> {
 	fn eq(&self, other: &Self) -> bool {
