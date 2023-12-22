@@ -1,0 +1,58 @@
+[package]
+description = "Pallet to collect and aggregate oracle feed values into easy iterable collection"
+name = "pallet-oracle-data-collection"
+version = "1.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+cfg-traits = { workspace = true }
+
+# Optionals for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
+
+[dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
+
+[features]
+default = ["std"]
+std = [
+  "parity-scale-codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking?/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
+]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks", # Optional enabled
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-mocks/try-runtime",
+]

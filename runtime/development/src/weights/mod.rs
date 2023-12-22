@@ -30,6 +30,8 @@ pub mod pallet_loans;
 pub mod pallet_migration_manager;
 pub mod pallet_multisig;
 pub mod pallet_nft_sales;
+pub mod pallet_oracle_data_collection;
+pub mod pallet_oracle_feed;
 pub mod pallet_order_book;
 pub mod pallet_permissions;
 pub mod pallet_pool_registry;
