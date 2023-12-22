@@ -22,7 +22,7 @@ use cfg_types::{
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
-use pallet_pool_fees::{DisbursingFeeOf, PoolFeeOf};
+use pallet_pool_fees::{DisbursingFeeOf, PoolFeeInfoOf};
 use rand::Rng;
 use sp_core::storage::StateVersion;
 use sp_runtime::{
@@ -2898,7 +2898,7 @@ mod pool_fees {
 			let adjustment_amount =
 				fulfillment_rate * (investment_amount + nav_reduction_redemption);
 
-			let fees: Vec<(PoolFeeBucket, pallet_pool_fees::PoolFeeOf<Runtime>)> =
+			let fees: Vec<(PoolFeeBucket, pallet_pool_fees::PoolFeeInfoOf<Runtime>)> =
 				default_pool_fees()
 					.into_iter()
 					.map(|fee| (PoolFeeBucket::Top, fee))

@@ -35,7 +35,7 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pool_fees::PoolFeeOf;
+use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
 use sp_arithmetic::FixedPointNumber;
 use sp_core::H256;
@@ -72,9 +72,9 @@ pub const DEFAULT_FEE_DESTINATION: MockAccountId = 101;
 pub const POOL_FEE_FIXED_RATE_MULTIPLIER: u64 = SECONDS_PER_YEAR / 12;
 pub const POOL_FEE_CHARGED_AMOUNT_PER_SECOND: Balance = 1000;
 
-pub fn default_pool_fees() -> Vec<PoolFeeOf<Runtime>> {
+pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 	vec![
-		PoolFeeOf::<Runtime> {
+		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
 			editor: DEFAUL_FEE_EDITOR,
 			amount: PoolFeeType::Fixed {
@@ -86,7 +86,7 @@ pub fn default_pool_fees() -> Vec<PoolFeeOf<Runtime>> {
 				)),
 			},
 		},
-		PoolFeeOf::<Runtime> {
+		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
 			editor: DEFAUL_FEE_EDITOR,
 			amount: PoolFeeType::ChargedUpTo {
@@ -346,6 +346,8 @@ impl pallet_mock_change_guard::Config for Runtime {
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	pub const MaxFeesPerPool: u32 = MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::count_variants();
+	pub const MagAgePosNAV: Seconds = 0;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -354,15 +356,19 @@ impl pallet_pool_fees::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
+	type MaxAgePosNAV = MagAgePosNAV;
+	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
 	type Permissions = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
 	type PoolReserve = PoolSystem;
+	type PosNAV = FakeNav;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = TrancheId;
 }

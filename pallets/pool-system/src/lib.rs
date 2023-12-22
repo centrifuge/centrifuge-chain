@@ -183,7 +183,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
-		pools::{PoolFee, PoolFeeBucket, PoolFeeType},
+		pools::{PoolFeeBucket, PoolFeeInfo},
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -322,9 +322,10 @@ pub mod pallet {
 		/// Add pool fees
 		type AddFees: AddPoolFees<
 			Error = DispatchError,
-			Fee = PoolFee<
+			FeeInfo = PoolFeeInfo<
 				<Self as frame_system::Config>::AccountId,
-				PoolFeeType<Self::Balance, Self::Rate>,
+				Self::Balance,
+				Self::Rate,
 			>,
 			FeeBucket = PoolFeeBucket,
 			PoolId = Self::PoolId,
@@ -609,6 +610,11 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				// TODO: Remove
+				#[cfg(feature = "std")]
+				{
+					dbg!(&pool.reserve.clone());
+				}
 				ensure!(
 					!EpochExecution::<T>::contains_key(pool_id),
 					Error::<T>::InSubmissionPeriod
@@ -630,15 +636,16 @@ pub mod pallet {
 				let submission_period_epoch = pool.epoch.current;
 				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
+				// Hook needs to be executing before starting next epoch because of setting
+				// `reserve.available` to zero
 				let epoch_duration = now.saturating_sub(pool.epoch.last_closed);
-				T::OnEpochTransition::on_closing(
+				T::OnEpochTransition::on_closing_mutate_reserve(
 					pool_id,
 					nav,
 					&mut pool.reserve.total,
 					epoch_duration.into(),
 				)?;
 
-				let epoch_last_closed = pool.epoch.last_closed;
 				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
@@ -662,6 +669,9 @@ pub mod pallet {
 				// Get the orders
 				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
 
+				// TODO(William): Fix for pool fees which are skipped here despite timestampt
+				// being updated Maybe okay not to do anything if we prepare disbursements
+				// beforehand
 				if orders.all_are_zero() {
 					pool.tranches.combine_with_mut_residual_top(
 						&epoch_tranche_prices,
@@ -1172,6 +1182,11 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
+			// TODO: Remove
+			#[cfg(feature = "std")]
+			{
+				dbg!(&pool.reserve);
+			}
 			T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
 
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
@@ -1208,6 +1223,13 @@ pub mod pallet {
 				},
 			)?;
 
+			// TODO: Remove
+			#[cfg(feature = "std")]
+			{
+				dbg!(&pool.reserve.total);
+				dbg!(&epoch.nav);
+				dbg!(&executed_amounts);
+			}
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
 				pool.reserve.total,

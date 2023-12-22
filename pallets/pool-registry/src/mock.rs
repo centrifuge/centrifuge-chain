@@ -201,15 +201,19 @@ impl pallet_pool_fees::Config for Test {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
+	type MaxAgePosNAV = MagAgePosNAV;
+	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	type Permissions = PermissionsMock;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
 	type PoolReserve = PoolSystem;
+	type PosNAV = Loans;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Test>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Tokens = OrmlTokens;
 	type TrancheId = TrancheId;
 }

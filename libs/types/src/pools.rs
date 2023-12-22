@@ -43,7 +43,11 @@ pub enum PoolRegistrationStatus {
 	Unregistered,
 }
 
-/// The representation of a pool fee, its editor and destination address
+/// The dynamic representation of a pool fee, its editor and destination
+/// address.
+///
+/// The pending and disbursement fee amounts are frequently updated based on the
+/// positive NAV.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
 pub struct PoolFee<AccountId, FeeId, FeeType> {
@@ -60,14 +64,27 @@ pub struct PoolFee<AccountId, FeeId, FeeType> {
 	pub id: FeeId,
 }
 
-impl<AccountId, Balance, FeeId, Rate> From<PoolFee<AccountId, FeeId, PoolFeeType<Balance, Rate>>>
-	for PoolFee<AccountId, FeeId, PendingPoolFeeType<Balance, Rate>>
+/// The static representation of a pool fee used for creation.
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+
+pub struct PoolFeeInfo<AccountId, Balance, Rate> {
+	/// Account that the fees are sent to
+	pub destination: AccountId,
+
+	/// Account that can update this fee
+	pub editor: PoolFeeEditor<AccountId>,
+
+	/// Amount of fees that can be charged
+	pub amount: PoolFeeType<Balance, Rate>,
+}
+
+impl<AccountId, Balance, FeeId, Rate> PoolFee<AccountId, FeeId, PendingPoolFeeType<Balance, Rate>>
 where
 	Balance: Default + Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
 	Rate: Clone,
 	FeeId: Clone,
 {
-	fn from(fee: PoolFee<AccountId, FeeId, PoolFeeType<Balance, Rate>>) -> Self {
+	pub fn from_info(fee: PoolFeeInfo<AccountId, Balance, Rate>, fee_id: FeeId) -> Self {
 		let amount = match fee.amount {
 			PoolFeeType::Fixed { limit } => PendingPoolFeeType::Fixed {
 				limit,
@@ -86,7 +103,7 @@ where
 			amount,
 			destination: fee.destination,
 			editor: fee.editor,
-			id: fee.id,
+			id: fee_id,
 		}
 	}
 }
@@ -242,6 +259,17 @@ pub enum PoolFeeBucket {
 impl PoolFeeBucket {
 	pub fn iterator() -> impl Iterator<Item = PoolFeeBucket> {
 		[Self::Top].iter().copied()
+	}
+
+	/// Hacky solution to count the number of enum variants.
+	///
+	/// Required to bound the max number of pool fees.
+	pub const fn count_variants() -> u32 {
+		let mut counter = 0;
+		match PoolFeeBucket::Top {
+			PoolFeeBucket::Top => counter += 1,
+		}
+		counter
 	}
 }
 

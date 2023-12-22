@@ -14,7 +14,7 @@
 pub trait AddPoolFees {
 	type PoolId;
 	type FeeBucket;
-	type Fee;
+	type FeeInfo;
 	type Error;
 
 	/// Add a new fee to the pool and bucket.
@@ -23,7 +23,7 @@ pub trait AddPoolFees {
 	fn add_fee(
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
-		fee: Self::Fee,
+		fee: Self::FeeInfo,
 	) -> Result<(), Self::Error>;
 }
 

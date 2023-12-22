@@ -11,8 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use core::time::Duration;
+
 use cfg_mocks::{pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools};
-use cfg_primitives::{Balance, PoolFeeId, PoolId, TrancheId};
+use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
+use cfg_traits::{Millis, Seconds};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::{PermissionScope, PoolRole, Role},
@@ -27,6 +30,7 @@ use frame_support::{
 		fungibles::{Inspect, Mutate},
 		ConstU128, ConstU16, ConstU64,
 	},
+	PalletId,
 };
 use sp_arithmetic::{traits::Zero, FixedPointNumber};
 use sp_core::H256;
@@ -35,11 +39,15 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	DispatchError,
 };
+use sp_std::vec::Vec;
 
 use crate::{
-	pallet as pallet_pool_fees, types::Change, CreatedFees, DisbursingFees, Event, FeeIds,
-	FeeIdsToPoolBucket, LastFeeId, PendingPoolFeeOf, PoolFeeOf,
+	pallet as pallet_pool_fees, types::Change, ActiveFees, Event, FeeIds, FeeIdsToPoolBucket,
+	LastFeeId, PoolFeeInfoOf, PoolFeeOf,
 };
+
+pub const BLOCK_TIME: Duration = Duration::from_secs(12);
+pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
 
 pub const ADMIN: AccountId = 1;
 pub const EDITOR: AccountId = 2;
@@ -74,11 +82,13 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
+		Timestamp: pallet_timestamp,
 		Balances: pallet_balances,
 		MockPools: pallet_mock_pools,
 		MockPermissions: pallet_mock_permissions,
 		MockChangeGuard: pallet_mock_change_guard,
 		OrmlTokens: orml_tokens,
+		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
 		PoolFees: pallet_pool_fees
 	}
 );
@@ -171,9 +181,24 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_timestamp::Config for Runtime {
+	type MinimumPeriod = ConstU64<BLOCK_TIME_MS>;
+	type Moment = Millis;
+	type OnTimestampSet = ();
+	type WeightInfo = ();
+}
+
+impl cfg_test_utils::mocks::nav::Config for Runtime {
+	type Balance = Balance;
+	type ClassId = CollectionId;
+	type PoolId = PoolId;
+}
+
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET * PoolFeeBucket::count_variants();
+	pub const MagAgePosNAV: Seconds = 0;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -182,15 +207,19 @@ impl pallet_pool_fees::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
+	type MaxAgePosNAV = MagAgePosNAV;
+	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
-	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	type PalletId = PoolFeesPalletId;
 	type Permissions = MockPermissions;
 	type PoolId = PoolId;
 	type PoolInspect = MockPools;
 	type PoolReserve = MockPools;
+	type PosNAV = FakeNav;
 	type Rate = Rate;
 	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Tokens = OrmlTokens;
 	type TrancheId = TrancheId;
 }
@@ -215,7 +244,7 @@ pub(crate) fn config_mocks() {
 	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
 }
 
-pub(crate) fn config_change_mocks(fee: &PoolFeeOf<Runtime>) {
+pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {
 	let pool_fee = fee.clone();
 	MockChangeGuard::mock_note({
 		move |pool_id, change| {
@@ -235,8 +264,28 @@ pub(crate) fn config_change_mocks(fee: &PoolFeeOf<Runtime>) {
 	});
 }
 
-pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeOf<Runtime> {
-	PoolFeeOf::<Runtime> {
+pub fn test_nav_up(pool_id: u64, amount: Balance) {
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) + amount,
+		FakeNav::latest(pool_id).1,
+	);
+}
+
+pub fn test_nav_down(pool_id: u64, amount: Balance) {
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) - amount,
+		FakeNav::latest(pool_id).1,
+	);
+}
+
+pub fn test_nav_update(pool_id: u64, amount: Balance, now: Seconds) {
+	FakeNav::update(pool_id, amount, now)
+}
+
+pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeInfoOf<Runtime> {
+	PoolFeeInfoOf::<Runtime> {
 		destination: DESTINATION,
 		editor: PoolFeeEditor::Account(EDITOR),
 		amount,
@@ -263,26 +312,33 @@ pub fn fee_amounts() -> Vec<PoolFeeType<Balance, Rate>> {
 		.collect()
 }
 
-pub fn default_fixed_fee() -> PoolFeeOf<Runtime> {
+pub fn get_disbursements() -> Vec<Balance> {
+	ActiveFees::<Runtime>::get(POOL, BUCKET)
+		.into_iter()
+		.map(|fee| fee.amount.disbursement().clone())
+		.collect()
+}
+
+pub fn default_fixed_fee() -> PoolFeeInfoOf<Runtime> {
 	new_fee(PoolFeeType::Fixed {
 		limit: PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(1, 10)),
 	})
 }
 
-pub fn default_chargeable_fee() -> PoolFeeOf<Runtime> {
+pub fn default_chargeable_fee() -> PoolFeeInfoOf<Runtime> {
 	new_fee(PoolFeeType::ChargedUpTo {
 		limit: PoolFeeAmount::AmountPerSecond(1),
 	})
 }
 
-pub fn default_fees() -> Vec<PoolFeeOf<Runtime>> {
+pub fn default_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 	fee_amounts()
 		.into_iter()
 		.map(|amount| new_fee(amount))
 		.collect()
 }
 
-pub fn default_chargeable_fees() -> Vec<PoolFeeOf<Runtime>> {
+pub fn default_chargeable_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 	default_fees()
 		.into_iter()
 		.filter(|fee| match fee.amount {
@@ -293,7 +349,7 @@ pub fn default_chargeable_fees() -> Vec<PoolFeeOf<Runtime>> {
 }
 
 /// Add the given fees to the storage and ensure storage integrity
-pub(crate) fn add_fees(pool_fees: Vec<PoolFeeOf<Runtime>>) {
+pub(crate) fn add_fees(pool_fees: Vec<PoolFeeInfoOf<Runtime>>) {
 	for fee in pool_fees.into_iter() {
 		config_change_mocks(&fee);
 		let last_fee_id = LastFeeId::<Runtime>::get();
@@ -311,10 +367,7 @@ pub(crate) fn add_fees(pool_fees: Vec<PoolFeeOf<Runtime>>) {
 			.into_iter()
 			.find(|id| id == &fee_id)
 			.is_some());
-		assert_eq!(
-			CreatedFees::<Runtime>::get(fee_id),
-			Some(fee.clone().into())
-		);
+		assert_ok!(PoolFees::get_active_fee(fee_id));
 		assert_eq!(
 			FeeIdsToPoolBucket::<Runtime>::get(fee_id),
 			Some((POOL, BUCKET))
@@ -337,7 +390,11 @@ pub fn pay_single_fee_and_assert(
 	fee_amount: Balance,
 ) {
 	assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
-	assert!(DisbursingFees::<Runtime>::get(POOL, BUCKET).is_empty());
+	assert!(PoolFees::get_active_fee(fee_id)
+		.expect("Fee exists")
+		.amount
+		.disbursement()
+		.is_zero());
 	assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), fee_amount);
 
 	if !fee_amount.is_zero() {
@@ -354,25 +411,31 @@ pub fn pay_single_fee_and_assert(
 
 pub fn assert_pending_fee(
 	fee_id: PoolFeeId,
-	fee: PoolFeeOf<Runtime>,
+	fee: PoolFeeInfoOf<Runtime>,
 	pending: Balance,
 	payable: Balance,
+	disbursement: Balance,
 ) {
-	let mut pending_fee: PendingPoolFeeOf<Runtime> = fee.into();
+	let mut pending_fee = PoolFeeOf::<Runtime>::from_info(fee, fee_id);
 	match pending_fee.amount {
 		PendingPoolFeeType::Fixed { limit, .. } => {
-			pending_fee.amount = PendingPoolFeeType::Fixed { limit, pending };
+			pending_fee.amount = PendingPoolFeeType::Fixed {
+				limit,
+				pending,
+				disbursement,
+			};
 		}
 		PendingPoolFeeType::ChargedUpTo { limit, .. } => {
 			pending_fee.amount = PendingPoolFeeType::ChargedUpTo {
 				limit,
 				pending,
 				payable,
+				disbursement,
 			};
 		}
 	};
 
-	assert_eq!(CreatedFees::<Runtime>::get(fee_id), Some(pending_fee));
+	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

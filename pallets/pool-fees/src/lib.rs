@@ -31,7 +31,7 @@ pub mod pallet {
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		pools::{PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeType},
+		pools::{PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeInfo},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
@@ -56,13 +56,13 @@ pub mod pallet {
 	use super::*;
 	use crate::types::Change;
 
-	pub type PoolFeeOf<T> = PoolFee<
+	pub type PoolFeeInfoOf<T> = PoolFeeInfo<
 		<T as frame_system::Config>::AccountId,
-		<T as Config>::FeeId,
-		PoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
+		<T as Config>::Balance,
+		<T as Config>::Rate,
 	>;
 
-	pub type PendingPoolFeeOf<T> = PoolFee<
+	pub type PoolFeeOf<T> = PoolFee<
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::FeeId,
 		PendingPoolFeeType<<T as Config>::Balance, <T as Config>::Rate>,
@@ -87,16 +87,6 @@ pub mod pallet {
 			+ Ord;
 
 		/// The source of truth for the balance of accounts
-		// type Balance: Parameter
-		// 	+ Member
-		// 	+ AtLeast32BitUnsigned
-		// 	+ Default
-		// 	+ Copy
-		// 	+ FixedPointOperand
-		// 	+ SaturatedProration<Time = Seconds>
-		// 	+ From<Seconds>
-		// 	+ MaybeSerializeDeserialize
-		// 	+ MaxEncodedLen;
 		type Balance: tokens::Balance
 			+ FixedPointOperand
 			+ SaturatedProration<Time = Seconds>
@@ -194,12 +184,13 @@ pub mod pallet {
 
 		/// The provider for the positive pool NAV on which pool fees are
 		/// dependent.
-		type PositiveNAV: PoolNAV<Self::PoolId, Self::Balance>;
+		type PosNAV: PoolNAV<Self::PoolId, Self::Balance>;
 
 		/// The maximum age of the positive NAV.
 		///
-		/// NOTE: Temporary solution until accounting pallet.s
-		type MaxAgePositiveNAV: Get<Seconds>;
+		/// NOTE: Temporary solution until accounting pallet.
+		#[pallet::constant]
+		type MaxAgePosNAV: Get<Seconds>;
 
 		// TODO: Enable after creating benchmarks
 		// type WeightInfo: WeightInfo;
@@ -245,7 +236,7 @@ pub mod pallet {
 		T::PoolId,
 		Blake2_128Concat,
 		PoolFeeBucket,
-		BoundedVec<PendingPoolFeeOf<T>, T::MaxPoolFeesPerBucket>,
+		BoundedVec<PoolFeeOf<T>, T::MaxPoolFeesPerBucket>,
 		ValueQuery,
 	>;
 
@@ -270,14 +261,14 @@ pub mod pallet {
 		Proposed {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
-			fee: PoolFeeOf<T>,
+			fee: PoolFeeInfoOf<T>,
 		},
 		/// A previously proposed and approved pool fee was added.
 		Added {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			fee_id: T::FeeId,
-			fee: PoolFeeOf<T>,
+			fee: PoolFeeInfoOf<T>,
 		},
 		/// A pool fee was removed.
 		Removed {
@@ -318,9 +309,9 @@ pub mod pallet {
 		/// A pool could not be found.
 		PoolNotFound,
 		/// The positive pool NAV is unavailable.
-		NoPositiveNAV,
+		NoPosNAV,
 		/// The last update of the positive pool NAV is too far in the past.
-		PositiveNAVTooOld,
+		PosNAVTooOld,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
 		/// The pool bucket has reached the maximum fees size.
@@ -349,7 +340,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
-			fee: PoolFeeOf<T>,
+			fee: PoolFeeInfoOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -413,23 +404,11 @@ pub mod pallet {
 		pub fn remove_fee(origin: OriginFor<T>, fee_id: T::FeeId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			FeeIdsToPoolBucket::<T>::get(fee_id)
-				.map(|(pool_id, bucket)| {
-					ActiveFees::<T>::get(pool_id, bucket)
-						.into_iter()
-						.find(|fee| fee.id == fee_id)
-				})
-				.flatten()
-				.map(|fee| {
-					ensure!(
-						fee.editor.matches_account(&who),
-						Error::<T>::UnauthorizedEdit
-					);
-					Ok::<_, DispatchError>(())
-				})
-				.transpose()?
-				.ok_or(Error::<T>::FeeNotFound)?;
-
+			let fee = Self::get_active_fee(fee_id)?;
+			ensure!(
+				fee.editor.matches_account(&who),
+				Error::<T>::UnauthorizedEdit
+			);
 			Self::do_remove_fee(fee_id)?;
 
 			Ok(())
@@ -544,10 +523,21 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn get_active_fee(fee_id: T::FeeId) -> Result<PoolFeeOf<T>, DispatchError> {
+			Ok(FeeIdsToPoolBucket::<T>::get(fee_id)
+				.map(|(pool_id, bucket)| {
+					ActiveFees::<T>::get(pool_id, bucket)
+						.into_iter()
+						.find(|fee| fee.id == fee_id)
+				})
+				.flatten()
+				.ok_or(Error::<T>::FeeNotFound)?)
+		}
+
 		/// Mutate fee id entry in ActiveFees
 		fn mutate_active_fee(
 			fee_id: T::FeeId,
-			mut f: impl FnMut(&mut PendingPoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
+			mut f: impl FnMut(&mut PoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
 		) -> Result<T::Balance, DispatchError> {
 			let (pool_id, bucket) =
 				FeeIdsToPoolBucket::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
@@ -729,12 +719,11 @@ pub mod pallet {
 			let now = T::Time::now();
 
 			// Ensure the positive NAV has been updated this block
-			let (nav, nav_last_updated) =
-				T::PositiveNAV::nav(pool_id).ok_or(Error::<T>::NoPositiveNAV)?;
+			let (nav, nav_last_updated) = T::PosNAV::nav(pool_id).ok_or(Error::<T>::NoPosNAV)?;
 			// TODO: This blocks pool closing even if pool.parameters.max_nav_age > 0
 			ensure!(
-				now.saturating_sub(nav_last_updated) <= T::MaxAgePositiveNAV::get(),
-				Error::<T>::PositiveNAVTooOld
+				now.saturating_sub(nav_last_updated) <= T::MaxAgePosNAV::get(),
+				Error::<T>::PosNAVTooOld
 			);
 
 			let fee_nav = PortfolioValuation::<T>::get(pool_id);
@@ -775,14 +764,14 @@ pub mod pallet {
 
 	impl<T: Config> AddPoolFees for Pallet<T> {
 		type Error = DispatchError;
-		type Fee = PoolFeeOf<T>;
 		type FeeBucket = PoolFeeBucket;
+		type FeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
 
 		fn add_fee(
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
-			fee: Self::Fee,
+			fee: Self::FeeInfo,
 		) -> Result<(), Self::Error> {
 			let fee_id = Self::generate_fee_id()?;
 
@@ -791,7 +780,7 @@ pub mod pallet {
 			})
 			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
 			ActiveFees::<T>::mutate(pool_id, bucket.clone(), |list| {
-				list.try_push(PendingPoolFeeOf::<T>::from(fee.clone()))
+				list.try_push(PoolFeeOf::<T>::from_info(fee.clone(), fee_id))
 			})
 			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
 			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket.clone()));

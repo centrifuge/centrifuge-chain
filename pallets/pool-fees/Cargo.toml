@@ -14,6 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
+cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
