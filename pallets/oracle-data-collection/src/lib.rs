@@ -333,7 +333,7 @@ pub mod pallet {
 		}
 
 		fn unregister_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(*collection_id, *key, |info| {
+			Self::mutate_and_remove_keys_if_clean(*collection_id, *key, |info| {
 				info.usage_refs
 					.ensure_sub_assign(1)
 					.map_err(|_| Error::<T>::KeyNotRegistered)?;
@@ -351,7 +351,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn mutate_and_remove_if_clean(
+		fn mutate_and_remove_keys_if_clean(
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
 			f: impl FnOnce(&mut KeyInfo<T>) -> DispatchResult,
@@ -374,7 +374,7 @@ pub mod pallet {
 			key: T::OracleKey,
 			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(collection_id, key, |info| {
+			Self::mutate_and_remove_keys_if_clean(collection_id, key, |info| {
 				info.feeders = feeders.clone();
 				Ok(())
 			})
@@ -400,7 +400,15 @@ pub mod pallet {
 			key: &T::OracleKey,
 			value: Self::Value,
 		) {
-			T::OracleProvider::set(&(T::FeederId::from(id), collection_id), key, value);
+			let feeder = T::FeederId::from(id);
+			T::OracleProvider::set(&(feeder.clone(), collection_id), key, value);
+
+			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
+				let info = maybe_info.get_or_insert(Default::default());
+				if !info.feeders.contains(&feeder) {
+					info.feeders.try_push(feeder).unwrap();
+				}
+			});
 
 			let aggregated_value =
 				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, &collection_id)
