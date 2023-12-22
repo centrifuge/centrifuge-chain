@@ -70,7 +70,7 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> cfg_traits::data::ValueProvider<(u32, T::CollectionId), T::DataId> for Pallet<T> {
+	impl<T: Config> cfg_traits::ValueProvider<(u32, T::CollectionId), T::DataId> for Pallet<T> {
 		type Value = T::Data;
 
 		fn get(
