@@ -37,7 +37,6 @@ members = [
   "pallets/permissions",
   "pallets/pool-system",
   "pallets/pool-registry",
-  "pallets/data-collector",
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
   "pallets/transfer-allowlist",
@@ -255,7 +254,6 @@ pallet-claims = { path = "pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
 pallet-crowdloan-claim = { path = "pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "pallets/crowdloan-reward", default-features = false }
-pallet-data-collector = { path = "pallets/data-collector", default-features = false }
 pallet-ethereum-transaction = { path = "pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "pallets/fees", default-features = false }
 pallet-foreign-investments = { path = "pallets/foreign-investments", default-features = false }
