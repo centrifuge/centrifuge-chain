@@ -59,7 +59,6 @@ WORKDIR /centrifuge
 # checks
 RUN ldd /usr/local/bin/centrifuge-chain && \
 	/usr/local/bin/centrifuge-chain --version
-RUN set -e && command -v check-node-ready && command -v entrypoint.sh
 
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]

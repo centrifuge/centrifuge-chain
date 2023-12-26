@@ -76,7 +76,6 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       - name: Build and push centrifugeio/centrifuge-chain
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 #v5
         with:
@@ -84,8 +83,6 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-            BUILD_DATE=${{ env.NOW }}
-            VERSION=${{env.VERSION}}
           # Always push, either to ghcr or Dockerhub
           push: true
           tags: ${{ steps.meta.outputs.tags }}
