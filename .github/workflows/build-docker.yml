@@ -11,7 +11,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
-      - "docker/"
+      - "docker/centrifuge-chain"
+      - "docker/scripts"
       - ".dockerignore"
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
@@ -33,11 +34,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
 
-      # - name: DockerHub Registry Login
-      #   uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
-      #   with:
-      #     username: ${{ secrets.DOCKER_HUB_USERNAME }}
-      #     password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - name: DockerHub Registry Login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Github Registry login
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
@@ -61,6 +62,12 @@ jobs:
             type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
             type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
+          labels: |
+            org.opencontainers.image.vendor="K/F Labs" \
+            org.opencontainers.image.authors="protocol@k-f.co" \	
+            org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
+            org.opencontainers.image.base.name="ubuntu/jammy" \
+            org.opencontainers.image.base.digest="ubuntu@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b" 
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
