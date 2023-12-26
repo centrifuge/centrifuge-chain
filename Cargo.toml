@@ -243,6 +243,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.43" }
+pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.43", default-features = false }
 
 # Centrifuge pallets
 axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
@@ -285,7 +286,7 @@ cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 cfg-mocks = { path = "libs/mocks", default-features = false }
 
-# Centrifuge uuntimes
+# Centrifuge runtimes
 runtime-common = { path = "runtime/common", default-features = false }
 development-runtime = { path = "runtime/development", default-features = false }
 altair-runtime = { path = "runtime/altair", default-features = false }

@@ -1819,6 +1819,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+		pub const MaxRemarksPerCall: u32 = 10;
+}
+
+impl pallet_remarks::Config for Runtime {
+	type MaxRemarksPerCall = MaxRemarksPerCall;
+	type Remark = Remark;
+	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1918,6 +1931,9 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
+
+		// our pallets part 2
+		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
 	}
 );
 
@@ -2076,7 +2092,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::transfer_filter::PreNativeTransfer;
+use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2608,6 +2624,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
+			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2667,6 +2684,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_remarks, Remarks);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
