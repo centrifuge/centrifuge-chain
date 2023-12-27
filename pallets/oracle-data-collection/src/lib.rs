@@ -45,7 +45,9 @@ pub mod pallet {
 	use cfg_traits::{changes::ChangeGuard, data::DataRegistry, PreConditions, ValueProvider};
 	use frame_support::{
 		pallet_prelude::*,
-		storage::{bounded_btree_map::BoundedBTreeMap, transactional},
+		storage::{
+			bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet, transactional,
+		},
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{
@@ -74,7 +76,7 @@ pub mod pallet {
 		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
 		/// Identify a feeder
-		type FeederId: Parameter + Member + MaxEncodedLen;
+		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
 
 		/// Identify an oracle value
 		type CollectionId: Parameter + Member + Copy + MaxEncodedLen;
@@ -159,7 +161,7 @@ pub mod pallet {
 		UpdatedFeeders {
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
+			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
 		},
 		UpdatedCollection {
 			collection_id: T::CollectionId,
@@ -196,7 +198,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
+			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -372,7 +374,7 @@ pub mod pallet {
 		fn update_feeders(
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
-			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
+			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
 			Self::mutate_and_remove_keys_if_clean(collection_id, key, |info| {
 				info.feeders = feeders.clone();
@@ -406,7 +408,7 @@ pub mod pallet {
 			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
 				let info = maybe_info.get_or_insert(Default::default());
 				if !info.feeders.contains(&feeder) {
-					info.feeders.try_push(feeder).unwrap();
+					info.feeders.try_insert(feeder).unwrap();
 				}
 			});
 
@@ -426,7 +428,7 @@ pub mod types {
 	use frame_support::{
 		dispatch::DispatchError,
 		pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
-		storage::{bounded_btree_map::BoundedBTreeMap, bounded_vec::BoundedVec},
+		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
 	};
 	use sp_runtime::{traits::Zero, RuntimeDebug};
 	use sp_std::vec::Vec;
@@ -439,7 +441,7 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct KeyInfo<T: Config> {
-		pub feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
+		pub feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
 		pub usage_refs: u32,
 	}
 
@@ -485,7 +487,10 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub enum Change<T: Config> {
-		Feeders(T::OracleKey, BoundedVec<T::FeederId, T::MaxFeedersPerKey>),
+		Feeders(
+			T::OracleKey,
+			BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
+		),
 	}
 }
 
@@ -501,7 +506,9 @@ pub mod traits {
 
 /// Provide types to use in runtime to configure this pallet
 pub mod util {
-	use sp_std::vec::Vec;
+	use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, traits::Get};
+	use sp_runtime::DispatchError;
+	use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 	use super::traits::AggregationProvider;
 
@@ -538,5 +545,15 @@ pub mod util {
 		// Won't panic as `items` ensured not empty.
 		let (_, item, _) = items.select_nth_unstable(mid_index);
 		Some(item)
+	}
+
+	pub fn feeders_from<T: Ord, Size: Get<u32>>(
+		feeders: impl IntoIterator<Item = T>,
+	) -> Result<BoundedBTreeSet<T, Size>, DispatchError> {
+		feeders
+			.into_iter()
+			.collect::<BTreeSet<T>>()
+			.try_into()
+			.map_err(|()| DispatchError::Other("Feeder list too long"))
 	}
 }

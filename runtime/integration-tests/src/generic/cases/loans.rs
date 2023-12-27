@@ -298,7 +298,7 @@ fn oracle_priced<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	env.parachain_state_mut(|| {
-		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, &[Feeder::root()]);
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, [Feeder::root()]);
 		utils::oracle::feed_from_root::<T>(PRICE_A, PRICE_VALUE_A);
 	});
 
@@ -350,7 +350,7 @@ fn portfolio_valuated_by_oracle<T: Runtime>() {
 	let mut env = common::initialize_state_for_loans::<RuntimeEnv<T>, T>();
 
 	env.parachain_state_mut(|| {
-		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, &[Feeder::root()]);
+		utils::oracle::update_feeders::<T>(POOL_ADMIN.id(), POOL_A, PRICE_A, [Feeder::root()]);
 	});
 
 	let info = env.parachain_state(|| {
