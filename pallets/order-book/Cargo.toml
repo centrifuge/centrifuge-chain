@@ -1,6 +1,6 @@
 [package]
 name = "pallet-order-book"
-description = "Pallet to add order book for currency exchanges. Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1"
+description = "Pallet to add order book for currency exchanges. Initially based off Zeitgeist orderbook found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook"
 version = "0.1.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 homepage = "https://centrifuge.io"
