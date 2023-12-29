@@ -3,7 +3,11 @@
 
 use cfg_primitives::{conversion, Balance, CFG};
 use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
+use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
+use xcm::VersionedMultiLocation;
+
+use crate::generic::{config::Runtime, envs::fudge_env::FudgeSupport};
 
 pub const fn cfg(amount: Balance) -> Balance {
 	amount * CFG
@@ -102,4 +106,23 @@ impl CurrencyInfo for Usd18 {
 
 pub const fn usd18(amount: Balance) -> Balance {
 	amount * Usd18::UNIT
+}
+
+pub fn register_currency<T: Runtime + FudgeSupport, C: CurrencyInfo>(
+	location: Option<VersionedMultiLocation>,
+) {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: C::DECIMALS,
+		name: C::NAME.into(),
+		symbol: C::SYMBOL.into(),
+		existential_deposit: C::ED,
+		location,
+		additional: C::CUSTOM,
+	};
+
+	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
+		<T as frame_system::Config>::RuntimeOrigin::root(),
+		meta,
+		Some(C::ID)
+	));
 }

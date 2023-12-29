@@ -1,11 +1,6 @@
 use cfg_primitives::Balance;
-use cfg_types::tokens::{CrossChainTransferability, CustomMetadata};
-use frame_support::{
-	assert_err, assert_ok,
-	traits::{Get, OriginTrait},
-};
+use frame_support::{assert_err, assert_ok, traits::Get};
 use frame_system::RawOrigin;
-use orml_traits::asset_registry::AssetMetadata;
 use sp_runtime::{traits::StaticLookup, DispatchResult};
 use xcm::{
 	prelude::Parachain,
@@ -24,7 +19,7 @@ use crate::{
 		},
 		utils::{
 			self,
-			currency::{cfg, usd6, CurrencyInfo, Usd6},
+			currency::{cfg, register_currency, usd6, CurrencyInfo, Usd6},
 			genesis::{self, Genesis},
 		},
 	},
@@ -71,7 +66,10 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 	setup_xcm(&mut env);
 
 	env.parachain_state_mut(|| {
-		register_currency::<T, Usd6>();
+		register_currency::<T, Usd6>(Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X1(Parachain(T::FudgeHandle::SIBLING_ID)),
+		))));
 	});
 
 	let call = pallet_restricted_xtokens::Call::transfer {
@@ -95,29 +93,6 @@ fn configure_proxy_and_x_transfer<T: Runtime + FudgeSupport>(
 	.into();
 
 	configure_proxy_and_call::<T>(env, proxy_type, call)
-}
-
-pub fn register_currency<T: Runtime + FudgeSupport, C: CurrencyInfo>() {
-	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: C::DECIMALS,
-		name: C::NAME.into(),
-		symbol: C::SYMBOL.into(),
-		existential_deposit: C::ED,
-		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-			1,
-			X1(Parachain(T::FudgeHandle::SIBLING_ID)),
-		))),
-		additional: CustomMetadata {
-			transferability: CrossChainTransferability::Xcm(Default::default()),
-			..CustomMetadata::default()
-		},
-	};
-
-	assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-		<T as frame_system::Config>::RuntimeOrigin::root(),
-		meta,
-		Some(C::ID)
-	));
 }
 
 fn configure_proxy_and_call<T: Runtime>(
