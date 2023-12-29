@@ -158,14 +158,10 @@ pub trait Runtime:
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
-<<<<<<< HEAD
 		+ From<pallet_oracle_feed::Call<Self>>
 		+ From<pallet_oracle_data_collection::Call<Self>>
-=======
-		+ From<orml_oracle::Call<Self>>
 		+ From<pallet_restricted_tokens::Call<Self>>
 		+ From<pallet_restricted_xtokens::Call<Self>>
->>>>>>> 79e4f71c6 (proxy tests)
 		+ From<pallet_preimage::Call<Self>>
 		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
