@@ -27,6 +27,7 @@ use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
+	oracle::Feeder,
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -102,8 +103,13 @@ pub trait Runtime:
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
 	+ parachain_info::Config
-	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
-	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
+	+ pallet_oracle_data_collection::Config<
+		OracleKey = OracleKey,
+		OracleValue = Balance,
+		FeederId = Feeder<Self::RuntimeOriginExt>,
+		CollectionId = PoolId,
+	> + orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
@@ -151,7 +157,8 @@ pub trait Runtime:
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
-		+ From<orml_oracle::Call<Self>>
+		+ From<pallet_oracle_feed::Call<Self>>
+		+ From<pallet_oracle_data_collection::Call<Self>>
 		+ From<pallet_preimage::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
@@ -176,7 +183,8 @@ pub trait Runtime:
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
-		+ From<orml_oracle::Event<Self>>
+		+ From<pallet_oracle_feed::Event<Self>>
+		+ From<pallet_oracle_data_collection::Event<Self>>
 		+ From<pallet_foreign_investments::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
@@ -189,7 +197,7 @@ pub trait Runtime:
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>
 		+ Clone
-		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall>
+		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall, AccountId = AccountId>
 		+ From<pallet_ethereum::RawOrigin>
 		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;

@@ -15,7 +15,7 @@ pub mod genesis;
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
-	fixed_point::Quantity,
+	fixed_point::Ratio,
 	oracles::OracleKey,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
@@ -24,6 +24,7 @@ use cfg_types::{
 use frame_support::BoundedVec;
 use frame_system::RawOrigin;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
+use runtime_common::oracle::Feeder;
 use sp_runtime::{
 	traits::{One, StaticLookup},
 	Perquintill,
@@ -32,6 +33,17 @@ use sp_runtime::{
 use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
+
+fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
+where
+	T::RuntimeEventExt: TryInto<E>,
+{
+	frame_system::Pallet::<T>::events()
+		.into_iter()
+		.rev()
+		.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
+		.flatten()
+}
 
 pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (CollectionId, ItemId)) {
 	pallet_uniques::Pallet::<T>::force_create(
@@ -186,7 +198,55 @@ pub fn collect_redemptions<T: Runtime>(
 	.unwrap();
 }
 
-pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
-	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values.try_into().unwrap())
+pub fn last_change_id<T: Runtime>() -> T::Hash {
+	find_event::<T, _, _>(|e| match e {
+		pallet_pool_system::Event::<T>::ProposedChange { change_id, .. } => Some(change_id),
+		_ => None,
+	})
+	.unwrap()
+}
+
+pub mod oracle {
+	use super::*;
+
+	pub fn feed_from_root<T: Runtime>(key: OracleKey, value: Ratio) {
+		pallet_oracle_feed::Pallet::<T>::feed(RawOrigin::Root.into(), key, value).unwrap();
+	}
+
+	pub fn update_feeders<T: Runtime>(
+		admin: AccountId,
+		pool_id: PoolId,
+		price_id: OracleKey,
+		feeders: &[Feeder<T::RuntimeOriginExt>],
+	) {
+		pallet_oracle_data_collection::Pallet::<T>::propose_update_feeders(
+			RawOrigin::Signed(admin.clone()).into(),
+			pool_id,
+			price_id,
+			feeders
+				.iter()
+				.cloned()
+				.collect::<Vec<_>>()
+				.try_into()
+				.unwrap(),
+		)
 		.unwrap();
+
+		let change_id = last_change_id::<T>();
+
+		pallet_oracle_data_collection::Pallet::<T>::apply_update_feeders(
+			RawOrigin::Signed(admin).into(), //or any account
+			pool_id,
+			change_id,
+		)
+		.unwrap();
+	}
+
+	pub fn update_collection<T: Runtime>(any: AccountId, pool_id: PoolId) {
+		pallet_oracle_data_collection::Pallet::<T>::update_collection(
+			RawOrigin::Signed(any).into(),
+			pool_id,
+		)
+		.unwrap();
+	}
 }

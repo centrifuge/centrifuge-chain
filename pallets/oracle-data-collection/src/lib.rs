@@ -263,10 +263,17 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let values = Keys::<T>::iter_key_prefix(collection_id)
-				.filter_map(|key| match Self::get(&key, &collection_id) {
-					Ok(value) => Some(Ok((key, value))),
-					Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
-					Err(err) => Some(Err(err)),
+				.filter_map(|key| {
+					let value = <Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(
+						&key,
+						&collection_id,
+					);
+
+					match value {
+						Ok(value) => Some(Ok((key, value))),
+						Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
+						Err(err) => Some(Err(err)),
+					}
 				})
 				.collect::<Result<BTreeMap<_, _>, _>>()?;
 
@@ -289,8 +296,6 @@ pub mod pallet {
 	impl<T: Config> DataRegistry<T::OracleKey, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
 		type Data = OracleValuePair<T>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(
 			key: &T::OracleKey,
@@ -328,7 +333,7 @@ pub mod pallet {
 		}
 
 		fn unregister_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(*collection_id, *key, |info| {
+			Self::mutate_and_remove_keys_if_clean(*collection_id, *key, |info| {
 				info.usage_refs
 					.ensure_sub_assign(1)
 					.map_err(|_| Error::<T>::KeyNotRegistered)?;
@@ -346,7 +351,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn mutate_and_remove_if_clean(
+		fn mutate_and_remove_keys_if_clean(
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
 			f: impl FnOnce(&mut KeyInfo<T>) -> DispatchResult,
@@ -369,10 +374,49 @@ pub mod pallet {
 			key: T::OracleKey,
 			feeders: BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
 		) -> DispatchResult {
-			Self::mutate_and_remove_if_clean(collection_id, key, |info| {
+			Self::mutate_and_remove_keys_if_clean(collection_id, key, |info| {
 				info.feeders = feeders.clone();
 				Ok(())
 			})
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> ValueProvider<(u32, T::CollectionId), T::OracleKey> for Pallet<T>
+	where
+		T::FeederId: From<u32>,
+	{
+		type Value = OracleValuePair<T>;
+
+		fn get(
+			&(id, collection_id): &(u32, T::CollectionId),
+			key: &T::OracleKey,
+		) -> Result<Option<Self::Value>, DispatchError> {
+			T::OracleProvider::get(&(T::FeederId::from(id), collection_id), key)
+		}
+
+		fn set(
+			&(id, collection_id): &(u32, T::CollectionId),
+			key: &T::OracleKey,
+			value: Self::Value,
+		) {
+			let feeder = T::FeederId::from(id);
+			T::OracleProvider::set(&(feeder.clone(), collection_id), key, value);
+
+			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
+				let info = maybe_info.get_or_insert(Default::default());
+				if !info.feeders.contains(&feeder) {
+					info.feeders.try_push(feeder).unwrap();
+				}
+			});
+
+			let aggregated_value =
+				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, &collection_id)
+					.unwrap();
+
+			Collection::<T>::mutate(collection_id, |collection| {
+				collection.try_insert(*key, aggregated_value).unwrap();
+			});
 		}
 	}
 }
