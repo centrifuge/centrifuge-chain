@@ -2,7 +2,10 @@
 //! considered at this level.
 
 use cfg_primitives::{conversion, Balance, CFG};
-use cfg_types::tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata};
+use cfg_types::{
+	tokens::{AssetMetadata, CrossChainTransferability, CurrencyId, CustomMetadata},
+	xcm::XcmMetadata,
+};
 use frame_support::{assert_ok, traits::OriginTrait};
 use sp_runtime::FixedPointNumber;
 use xcm::VersionedMultiLocation;
@@ -67,6 +70,9 @@ pub struct Usd6;
 impl CurrencyInfo for Usd6 {
 	const CUSTOM: CustomMetadata = CustomMetadata {
 		pool_currency: true,
+		transferability: CrossChainTransferability::Xcm(XcmMetadata {
+			fee_per_second: Some(1_000),
+		}),
 		..CONST_DEFAULT_CUSTOM
 	};
 	const DECIMALS: u32 = 6;
