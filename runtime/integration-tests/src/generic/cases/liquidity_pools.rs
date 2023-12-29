@@ -85,7 +85,7 @@ use crate::{
 	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
 };
 
-mod utils {
+pub mod utils {
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
