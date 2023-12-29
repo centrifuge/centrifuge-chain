@@ -1,7 +1,7 @@
 use cfg_primitives::Balance;
 use cfg_types::tokens::{CrossChainTransferability, CustomMetadata};
 use frame_support::{
-	assert_ok,
+	assert_err, assert_ok,
 	traits::{Get, OriginTrait},
 };
 use frame_system::RawOrigin;
@@ -158,126 +158,174 @@ fn development_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(development_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_transfer::<T>(
+		development_runtime::ProxyType::Transfer
+	));
 }
 
 fn development_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(development_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(development_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn development_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(development_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(development_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn development_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(development_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_x_transfer::<T>(
+		development_runtime::ProxyType::Transfer
+	));
 }
 
 fn development_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(development_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(development_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn development_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = development_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(development_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(development_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn altair_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(altair_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_transfer::<T>(
+		altair_runtime::ProxyType::Transfer
+	));
 }
 
 fn altair_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(altair_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(altair_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn altair_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(altair_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(altair_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn altair_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(altair_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_x_transfer::<T>(
+		altair_runtime::ProxyType::Transfer
+	));
 }
 
 fn altair_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(altair_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(altair_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn altair_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = altair_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(altair_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(altair_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn centrifuge_transfer_with_proxy_transfer<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(centrifuge_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_transfer::<T>(
+		centrifuge_runtime::ProxyType::Transfer
+	));
 }
 
 fn centrifuge_transfer_with_proxy_borrow<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(centrifuge_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(centrifuge_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn centrifuge_transfer_with_proxy_invest<T: Runtime>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_transfer::<T>(centrifuge_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_transfer::<T>(centrifuge_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn centrifuge_x_transfer_with_proxy_transfer<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(centrifuge_runtime::ProxyType::Transfer).is_ok());
+	assert_ok!(configure_proxy_and_x_transfer::<T>(
+		centrifuge_runtime::ProxyType::Transfer
+	));
 }
 
 fn centrifuge_x_transfer_with_proxy_borrow<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(centrifuge_runtime::ProxyType::Borrow).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(centrifuge_runtime::ProxyType::Borrow),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 fn centrifuge_x_transfer_with_proxy_invest<T: Runtime + FudgeSupport>()
 where
 	T: pallet_proxy::Config<ProxyType = centrifuge_runtime::ProxyType>,
 {
-	assert!(configure_proxy_and_x_transfer::<T>(centrifuge_runtime::ProxyType::Invest).is_err());
+	assert_err!(
+		configure_proxy_and_x_transfer::<T>(centrifuge_runtime::ProxyType::Invest),
+		frame_system::Error::<T>::CallFiltered,
+	);
 }
 
 crate::test_for_runtimes!([development], development_transfer_with_proxy_transfer);
