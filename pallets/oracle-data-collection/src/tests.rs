@@ -1,5 +1,5 @@
 use cfg_traits::data::DataRegistry;
-use frame_support::{assert_err, assert_ok, storage::bounded_vec::BoundedVec};
+use frame_support::{assert_err, assert_ok, storage::bounded_btree_set::BoundedBTreeSet};
 use sp_runtime::{testing::H256, traits::Get, DispatchError};
 
 use crate::{
@@ -26,7 +26,7 @@ mod mock {
 
 	pub fn prepare_update_feeders(
 		key: OracleKey,
-		feeders: &BoundedVec<AccountId, MaxFeedersPerKey>,
+		feeders: &BoundedBTreeSet<AccountId, MaxFeedersPerKey>,
 	) {
 		MockChangeGuard::mock_note({
 			let feeders = feeders.clone();
@@ -76,8 +76,8 @@ mod mock {
 mod util {
 	use super::*;
 
-	pub fn update_feeders(key: OracleKey, feeders: Vec<AccountId>) {
-		let feeders: BoundedVec<_, _> = feeders.try_into().unwrap();
+	pub fn update_feeders(key: OracleKey, feeders: impl IntoIterator<Item = AccountId>) {
+		let feeders = crate::util::feeders_from(feeders).unwrap();
 
 		MockChangeGuard::mock_note(|_, _| Ok(CHANGE_ID));
 		MockChangeGuard::mock_released({
@@ -110,7 +110,7 @@ mod util {
 #[test]
 fn updating_feeders() {
 	new_test_ext().execute_with(|| {
-		let feeders: BoundedVec<_, _> = vec![FEEDER_1, FEEDER_2].try_into().unwrap();
+		let feeders = crate::util::feeders_from([FEEDER_1, FEEDER_2]).unwrap();
 
 		mock::prepare_update_feeders(KEY_A, &feeders);
 
@@ -141,7 +141,7 @@ fn updating_feeders() {
 #[test]
 fn updating_feeders_wrong_admin() {
 	new_test_ext().execute_with(|| {
-		let feeders: BoundedVec<_, _> = vec![FEEDER_1, FEEDER_2].try_into().unwrap();
+		let feeders = crate::util::feeders_from([FEEDER_1, FEEDER_2]).unwrap();
 
 		mock::prepare_update_feeders(KEY_A, &feeders);
 		MockIsAdmin::mock_check(|_| false);

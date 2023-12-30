@@ -41,6 +41,20 @@ impl<O: OriginTrait> PartialEq for Feeder<O> {
 
 impl<O: OriginTrait> Eq for Feeder<O> {}
 
+impl<O: OriginTrait> PartialOrd for Feeder<O> {
+	fn partial_cmp(&self, other: &Self) -> Option<sp_std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl<O: OriginTrait> Ord for Feeder<O> {
+	fn cmp(&self, other: &Self) -> sp_std::cmp::Ordering {
+		// Since the inner object could not be Ord,
+		// we compare their encoded representations
+		self.0.encode().cmp(&other.encode())
+	}
+}
+
 #[cfg(feature = "runtime-benchmarks")]
 impl<O: OriginTrait<AccountId = AccountId>> From<u32> for Feeder<O> {
 	fn from(value: u32) -> Self {

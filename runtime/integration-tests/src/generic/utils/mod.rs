@@ -217,18 +217,13 @@ pub mod oracle {
 		admin: AccountId,
 		pool_id: PoolId,
 		price_id: OracleKey,
-		feeders: &[Feeder<T::RuntimeOriginExt>],
+		feeders: impl IntoIterator<Item = Feeder<T::RuntimeOriginExt>>,
 	) {
 		pallet_oracle_data_collection::Pallet::<T>::propose_update_feeders(
 			RawOrigin::Signed(admin.clone()).into(),
 			pool_id,
 			price_id,
-			feeders
-				.iter()
-				.cloned()
-				.collect::<Vec<_>>()
-				.try_into()
-				.unwrap(),
+			pallet_oracle_data_collection::util::feeders_from(feeders).unwrap(),
 		)
 		.unwrap();
 
