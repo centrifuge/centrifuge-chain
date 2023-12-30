@@ -43,9 +43,7 @@ impl<O: OriginTrait> Eq for Feeder<O> {}
 
 impl<O: OriginTrait> PartialOrd for Feeder<O> {
 	fn partial_cmp(&self, other: &Self) -> Option<sp_std::cmp::Ordering> {
-		// Since the inner object could not be PartialOrd,
-		// we compare their encoded representations
-		self.0.encode().partial_cmp(&other.encode())
+		Some(self.cmp(other))
 	}
 }
 
