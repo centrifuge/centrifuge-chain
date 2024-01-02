@@ -124,10 +124,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxFeedersPerKey: Get<u32> + Parameter;
 
-		/// Max age a value is considered outdated
-		#[pallet::constant]
-		type DefaultValueMaxAge: Get<Self::Timestamp>;
-
 		/// The weight information for this pallet extrinsics.
 		type WeightInfo: WeightInfo;
 	}
@@ -152,14 +148,8 @@ pub mod pallet {
 
 	/// Store all oracle values indexed by feeder
 	#[pallet::storage]
-	pub(crate) type CollectionMaxAges<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::CollectionId,
-		T::Timestamp,
-		ValueQuery,
-		T::DefaultValueMaxAge,
-	>;
+	pub(crate) type CollectionMaxAges<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CollectionId, T::Timestamp, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -442,10 +432,12 @@ pub mod pallet {
 			collection_id: &T::CollectionId,
 			timestamp: T::Timestamp,
 		) -> DispatchResult {
-			ensure!(
-				T::Time::now().ensure_sub(timestamp)? < CollectionMaxAges::<T>::get(collection_id),
-				Error::<T>::OracleValueOutdated,
-			);
+			if let Some(threshold) = CollectionMaxAges::<T>::get(collection_id) {
+				ensure!(
+					T::Time::now().ensure_sub(timestamp)? < threshold,
+					Error::<T>::OracleValueOutdated,
+				);
+			}
 
 			Ok(())
 		}
