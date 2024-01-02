@@ -48,10 +48,11 @@ pub mod pallet {
 		storage::{
 			bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet, transactional,
 		},
+		traits::Time,
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{
-		traits::{EnsureAddAssign, EnsureSubAssign, Zero},
+		traits::{EnsureAddAssign, EnsureSub, EnsureSubAssign, Zero},
 		TransactionOutcome,
 	};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
@@ -88,7 +89,10 @@ pub mod pallet {
 		type OracleValue: Parameter + Member + Copy + MaxEncodedLen + Ord;
 
 		/// Represent the time moment when the value was fed
-		type Timestamp: Parameter + Member + Copy + MaxEncodedLen + Ord;
+		type Timestamp: Parameter + Member + Copy + MaxEncodedLen + Ord + EnsureSub;
+
+		/// A way to obtain the current time
+		type Time: Time<Moment = Self::Timestamp>;
 
 		/// A way to obtain oracle values from feeders
 		type OracleProvider: ValueProvider<
@@ -120,19 +124,18 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxFeedersPerKey: Get<u32> + Parameter;
 
+		/// Max age a value is considered outdated
+		#[pallet::constant]
+		type DefaultValueMaxAge: Get<Self::Timestamp>;
+
 		/// The weight information for this pallet extrinsics.
 		type WeightInfo: WeightInfo;
 	}
 
 	/// Store all oracle values indexed by feeder
 	#[pallet::storage]
-	pub(crate) type Collection<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::CollectionId,
-		BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
-		ValueQuery,
-	>;
+	pub(crate) type Collection<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CollectionId, CachedCollection<T>, ValueQuery>;
 
 	/// Store the keys that are registed for this collection
 	/// Only keys registered in this store can be used to create the collection
@@ -145,6 +148,17 @@ pub mod pallet {
 		T::OracleKey,
 		KeyInfo<T>,
 		ValueQuery,
+	>;
+
+	/// Store all oracle values indexed by feeder
+	#[pallet::storage]
+	pub(crate) type CollectionMaxAges<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::CollectionId,
+		T::Timestamp,
+		ValueQuery,
+		T::DefaultValueMaxAge,
 	>;
 
 	#[pallet::event]
@@ -185,6 +199,9 @@ pub mod pallet {
 
 		/// The change id does not correspond to an oracle collection change
 		NoOracleCollectionChangeId,
+
+		/// The oracle value has passed the collection max age.
+		OracleValueOutdated,
 	}
 
 	#[pallet::call]
@@ -264,6 +281,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
+			let mut older_timestamp = T::Time::now();
+
 			let values = Keys::<T>::iter_key_prefix(collection_id)
 				.filter_map(|key| {
 					let value = <Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(
@@ -272,7 +291,12 @@ pub mod pallet {
 					);
 
 					match value {
-						Ok(value) => Some(Ok((key, value))),
+						Ok((value, timestamp)) => {
+							if timestamp < older_timestamp {
+								older_timestamp = timestamp;
+							}
+							Some(Ok((key, (value, timestamp))))
+						}
 						Err(err) if err == Error::<T>::KeyNotInCollection.into() => None,
 						Err(err) => Some(Err(err)),
 					}
@@ -284,12 +308,38 @@ pub mod pallet {
 
 			let len = collection.len();
 
-			Collection::<T>::insert(collection_id, collection);
+			Collection::<T>::insert(
+				collection_id,
+				CachedCollection {
+					content: collection,
+					older_timestamp,
+				},
+			);
 
 			Self::deposit_event(Event::<T>::UpdatedCollection {
 				collection_id,
 				keys_updated: len as u32,
 			});
+
+			Ok(())
+		}
+
+		/// Sets the minimum
+		#[pallet::weight(T::WeightInfo::set_collection_max_age())]
+		#[pallet::call_index(3)]
+		pub fn set_collection_max_age(
+			origin: OriginFor<T>,
+			collection_id: T::CollectionId,
+			duration: T::Timestamp,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			ensure!(
+				T::IsAdmin::check((who, collection_id)),
+				Error::<T>::IsNotAdmin
+			);
+
+			CollectionMaxAges::<T>::insert(collection_id, duration);
 
 			Ok(())
 		}
@@ -312,12 +362,18 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<_>, _>>()?;
 
-			T::AggregationProvider::aggregate(fed_values)
-				.ok_or(Error::<T>::KeyNotInCollection.into())
+			let (value, timestamp) = T::AggregationProvider::aggregate(fed_values)
+				.ok_or(Error::<T>::KeyNotInCollection)?;
+
+			Self::ensure_valid_timestamp(collection_id, timestamp)?;
+
+			Ok((value, timestamp))
 		}
 
-		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
-			CachedCollection(Collection::<T>::get(collection_id))
+		fn collection(collection_id: &T::CollectionId) -> Result<Self::Collection, DispatchError> {
+			let collection = Collection::<T>::get(collection_id);
+			Self::ensure_valid_timestamp(collection_id, collection.older_timestamp)?; //TODO
+			Ok(collection)
 		}
 
 		fn register_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
@@ -381,6 +437,18 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		fn ensure_valid_timestamp(
+			collection_id: &T::CollectionId,
+			timestamp: T::Timestamp,
+		) -> DispatchResult {
+			ensure!(
+				T::Time::now().ensure_sub(timestamp)? < CollectionMaxAges::<T>::get(collection_id),
+				Error::<T>::OracleValueOutdated,
+			);
+
+			Ok(())
+		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -416,8 +484,9 @@ pub mod pallet {
 				<Self as DataRegistry<T::OracleKey, T::CollectionId>>::get(key, &collection_id)
 					.unwrap();
 
-			Collection::<T>::mutate(collection_id, |collection| {
-				collection.try_insert(*key, aggregated_value).unwrap();
+			Collection::<T>::mutate(collection_id, |cached| {
+				cached.content.try_insert(*key, aggregated_value).unwrap();
+				cached.older_timestamp = T::Time::now();
 			});
 		}
 	}
@@ -429,6 +498,7 @@ pub mod types {
 		dispatch::DispatchError,
 		pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
 		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
+		traits::Time,
 	};
 	use sp_runtime::{traits::Zero, RuntimeDebug};
 	use sp_std::vec::Vec;
@@ -461,16 +531,27 @@ pub mod types {
 	}
 
 	/// A collection cached in memory
-	#[derive(Clone)]
-	pub struct CachedCollection<T: Config>(
-		pub BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
-	);
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	#[scale_info(skip_type_params(T))]
+	pub struct CachedCollection<T: Config> {
+		pub content: BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
+		pub older_timestamp: T::Timestamp,
+	}
+
+	impl<T: Config> Default for CachedCollection<T> {
+		fn default() -> Self {
+			CachedCollection {
+				content: Default::default(),
+				older_timestamp: T::Time::now(),
+			}
+		}
+	}
 
 	impl<T: Config> DataCollection<T::OracleKey> for CachedCollection<T> {
 		type Data = OracleValuePair<T>;
 
 		fn get(&self, data_id: &T::OracleKey) -> Result<OracleValuePair<T>, DispatchError> {
-			self.0
+			self.content
 				.get(data_id)
 				.cloned()
 				.ok_or_else(|| Error::<T>::KeyNotInCollection.into())
@@ -479,7 +560,7 @@ pub mod types {
 
 	impl<T: Config> CachedCollection<T> {
 		pub fn as_vec(self) -> Vec<(T::OracleKey, OracleValuePair<T>)> {
-			self.0.into_iter().collect()
+			self.content.into_iter().collect()
 		}
 	}
 
