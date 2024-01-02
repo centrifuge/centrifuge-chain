@@ -111,6 +111,7 @@ pub trait Runtime:
 		CollectionId = PoolId,
 	> + orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
+	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
 	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
@@ -159,7 +160,10 @@ pub trait Runtime:
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
 		+ From<pallet_oracle_feed::Call<Self>>
 		+ From<pallet_oracle_data_collection::Call<Self>>
+		+ From<pallet_restricted_tokens::Call<Self>>
+		+ From<pallet_restricted_xtokens::Call<Self>>
 		+ From<pallet_preimage::Call<Self>>
+		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
 		+ From<pallet_liquidity_pools_gateway::Call<Self>>;
@@ -177,6 +181,7 @@ pub trait Runtime:
 		+ TryInto<pallet_loans::Event<Self>>
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
+		+ TryInto<pallet_proxy::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
@@ -192,6 +197,7 @@ pub trait Runtime:
 		+ From<pallet_order_book::Event<Self>>
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
+		+ From<pallet_proxy::Event<Self>>
 		+ From<pallet_democracy::Event<Self>>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
