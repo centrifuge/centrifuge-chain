@@ -20,6 +20,8 @@ pub type Timestamp = u64;
 pub type CollectionId = u32;
 pub type ChangeId = H256;
 
+pub const NOW: Timestamp = 1000;
+
 frame_support::parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxFeedersPerKey: u32 = 10;
@@ -35,6 +37,7 @@ frame_support::construct_runtime!(
 		MockProvider: cfg_mocks::value_provider::pallet,
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
 		MockChangeGuard: cfg_mocks::change_guard::pallet,
+		MockTime: cfg_mocks::time::pallet,
 		OracleCollection: pallet_oracle_data_collection,
 	}
 );
@@ -83,6 +86,10 @@ impl cfg_mocks::change_guard::pallet::Config for Runtime {
 	type PoolId = CollectionId;
 }
 
+impl cfg_mocks::time::pallet::Config for Runtime {
+	type Moment = Timestamp;
+}
+
 impl pallet_oracle_data_collection::Config for Runtime {
 	type AggregationProvider = crate::util::MedianAggregation;
 	type ChangeGuard = MockChangeGuard;
@@ -96,6 +103,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleValue = OracleValue;
 	type RuntimeChange = crate::types::Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = MockTime;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 }
@@ -108,6 +116,9 @@ pub fn new_test_ext() -> TestExternalities {
 	let mut ext = TestExternalities::new(storage);
 
 	// Bumping to one enables events
-	ext.execute_with(|| System::set_block_number(1));
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		MockTime::mock_now(|| NOW);
+	});
 	ext
 }

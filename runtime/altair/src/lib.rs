@@ -1354,6 +1354,7 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Timestamp = Millis;
 	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
 }
