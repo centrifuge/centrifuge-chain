@@ -8,7 +8,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::pallet as pallet_oracle_data_collection;
+use crate::pallet as pallet_oracle_collection;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -38,7 +38,7 @@ frame_support::construct_runtime!(
 		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
 		MockChangeGuard: cfg_mocks::change_guard::pallet,
 		MockTime: cfg_mocks::time::pallet,
-		OracleCollection: pallet_oracle_data_collection,
+		OracleCollection: pallet_oracle_collection,
 	}
 );
 
@@ -90,7 +90,7 @@ impl cfg_mocks::time::pallet::Config for Runtime {
 	type Moment = Timestamp;
 }
 
-impl pallet_oracle_data_collection::Config for Runtime {
+impl pallet_oracle_collection::Config for Runtime {
 	type AggregationProvider = crate::util::MedianAggregation;
 	type ChangeGuard = MockChangeGuard;
 	type CollectionId = CollectionId;

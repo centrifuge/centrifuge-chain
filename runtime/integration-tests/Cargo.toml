@@ -128,7 +128,7 @@ pallet-migration-manager = { workspace = true, features = ["std"] }
 pallet-multisig = { workspace = true, features = ["std"] }
 pallet-nft = { workspace = true, features = ["std"] }
 pallet-nft-sales = { workspace = true, features = ["std"] }
-pallet-oracle-data-collection = { workspace = true, features = ["std"] }
+pallet-oracle-collection = { workspace = true, features = ["std"] }
 pallet-oracle-feed = { workspace = true, features = ["std"] }
 pallet-order-book = { workspace = true, features = ["std"] }
 pallet-permissions = { workspace = true, features = ["std"] }
