@@ -274,7 +274,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let mut older_timestamp = T::Time::now();
+			let mut older_value_timestamp = T::Time::now();
 
 			let values = Keys::<T>::iter_key_prefix(collection_id)
 				.filter_map(|key| {
@@ -285,8 +285,8 @@ pub mod pallet {
 
 					match value {
 						Ok((value, timestamp)) => {
-							if timestamp < older_timestamp {
-								older_timestamp = timestamp;
+							if timestamp < older_value_timestamp {
+								older_value_timestamp = timestamp;
 							}
 							Some(Ok((key, (value, timestamp))))
 						}
@@ -305,7 +305,7 @@ pub mod pallet {
 				collection_id,
 				CachedCollection {
 					content: collection,
-					older_timestamp,
+					older_value_timestamp,
 				},
 			);
 
@@ -380,7 +380,7 @@ pub mod pallet {
 
 		fn collection(collection_id: &T::CollectionId) -> Result<Self::Collection, DispatchError> {
 			let collection = Collection::<T>::get(collection_id);
-			Self::ensure_valid_timestamp(collection_id, collection.older_timestamp)?; //TODO
+			Self::ensure_valid_timestamp(collection_id, collection.older_value_timestamp)?;
 			Ok(collection)
 		}
 
@@ -496,7 +496,7 @@ pub mod pallet {
 
 			Collection::<T>::mutate(collection_id, |cached| {
 				cached.content.try_insert(*key, aggregated_value).unwrap();
-				cached.older_timestamp = T::Time::now();
+				cached.older_value_timestamp = T::Time::now();
 			});
 		}
 	}
@@ -570,21 +570,22 @@ pub mod types {
 	#[scale_info(skip_type_params(T))]
 	pub struct CachedCollection<T: Config> {
 		pub content: BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
-		pub older_timestamp: T::Timestamp,
+		pub older_value_timestamp: T::Timestamp,
 	}
 
 	impl<T: Config> Default for CachedCollection<T> {
 		fn default() -> Self {
 			Self {
 				content: Default::default(),
-				older_timestamp: T::Time::now(),
+				older_value_timestamp: T::Time::now(),
 			}
 		}
 	}
 
 	impl<T: Config> PartialEq for CachedCollection<T> {
 		fn eq(&self, other: &Self) -> bool {
-			self.content == other.content && self.older_timestamp == other.older_timestamp
+			self.content == other.content
+				&& self.older_value_timestamp == other.older_value_timestamp
 		}
 	}
 
