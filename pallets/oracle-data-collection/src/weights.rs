@@ -14,17 +14,13 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn set_collection_max_age() -> Weight;
 	fn propose_update_feeders(feeders: u32) -> Weight;
 	fn apply_update_feeders(feeders: u32) -> Weight;
 	fn update_collection(feeders: u32, keys: u32) -> Weight;
+	fn set_collection_max_age() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn set_collection_max_age() -> Weight {
-		Weight::zero()
-	}
-
 	fn propose_update_feeders(_: u32) -> Weight {
 		Weight::zero()
 	}
@@ -34,6 +30,10 @@ impl WeightInfo for () {
 	}
 
 	fn update_collection(_: u32, _: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn set_collection_max_age() -> Weight {
 		Weight::zero()
 	}
 }
