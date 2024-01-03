@@ -104,7 +104,7 @@ pub trait Runtime:
 	> + cumulus_pallet_parachain_system::Config
 	+ parachain_info::Config
 	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
-	+ pallet_oracle_data_collection::Config<
+	+ pallet_oracle_collection::Config<
 		OracleKey = OracleKey,
 		OracleValue = Balance,
 		FeederId = Feeder<Self::RuntimeOriginExt>,
@@ -159,7 +159,7 @@ pub trait Runtime:
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
 		+ From<pallet_oracle_feed::Call<Self>>
-		+ From<pallet_oracle_data_collection::Call<Self>>
+		+ From<pallet_oracle_collection::Call<Self>>
 		+ From<pallet_restricted_tokens::Call<Self>>
 		+ From<pallet_restricted_xtokens::Call<Self>>
 		+ From<pallet_preimage::Call<Self>>
@@ -189,7 +189,7 @@ pub trait Runtime:
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
 		+ From<pallet_oracle_feed::Event<Self>>
-		+ From<pallet_oracle_data_collection::Event<Self>>
+		+ From<pallet_oracle_collection::Event<Self>>
 		+ From<pallet_foreign_investments::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>

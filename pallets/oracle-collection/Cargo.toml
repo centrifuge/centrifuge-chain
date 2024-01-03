@@ -1,6 +1,6 @@
 [package]
 description = "Pallet to collect and aggregate oracle feed values into easy iterable collection"
-name = "pallet-oracle-data-collection"
+name = "pallet-oracle-collection"
 version = "1.0.0"
 authors.workspace = true
 edition.workspace = true
