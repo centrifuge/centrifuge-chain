@@ -115,7 +115,6 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-use strum::IntoEnumIterator;
 use xcm_executor::XcmExecutor;
 
 pub use crate::xcm::*;
@@ -1122,18 +1121,16 @@ impl pallet_pool_registry::Config for Runtime {
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::iter().count();
+	pub const MaxFeesPerPool: u32 = MAX_FEES_PER_POOL;
 	pub const MagAgePosNAV: Seconds = 0;
 }
-
-static_assertions::const_assert!(MaxPoolFeesPerBucket <= MaxFeesPerPool);
 
 impl pallet_pool_fees::Config for Runtime {
 	type Balance = Balance;
 	type ChangeGuard = PoolSystem;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type IsPoolAdmin = PoolAdminCheck;
+	type IsPoolAdmin = PoolAdminCheck<Permissions>;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
@@ -1891,7 +1888,7 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 72,
 
-		// our pallets
+		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
@@ -1921,7 +1918,6 @@ construct_runtime!(
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
 		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 119,
-		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 120,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1950,6 +1946,9 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
+
+		// our pallets part 2
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 	}
 );
 

@@ -34,7 +34,6 @@ pub mod pallet {
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
-	use codec::HasCompact;
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
@@ -45,6 +44,7 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use sp_arithmetic::{
 		traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating, Zero},
 		ArithmeticError, FixedPointOperand,
@@ -99,11 +99,10 @@ pub mod pallet {
 		/// outgoing
 		type Rate: Parameter
 			+ Member
-			+ sp_runtime::FixedPointNumber
+			+ cfg_types::fixed_point::FixedPointNumberExtension
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
-			+ MaxEncodedLen
-			+ From<Seconds>;
+			+ MaxEncodedLen;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
@@ -642,7 +641,7 @@ pub mod pallet {
 							fees.remove(pos);
 
 							Ok::<(), DispatchError>(())
-						});
+						})?;
 
 						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
 							let pos = fee_ids

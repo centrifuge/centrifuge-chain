@@ -276,6 +276,11 @@ pub mod constants {
 	/// Block storage limit in bytes. Set to 40 KB.
 	pub const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
 
+	/// The maximum number of fees per pool.
+	///
+	/// NOTE: Must be ge than [MAX_POOL_FEES_PER_BUCKET].
+	pub const MAX_FEES_PER_POOL: u32 = 200;
+
 	/// The maximum number of pool fees per pool fee bucket
 	pub const MAX_POOL_FEES_PER_BUCKET: u32 = 100;
 }

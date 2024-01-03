@@ -201,6 +201,7 @@ impl pallet_pool_fees::Config for Test {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
+	type IsPoolAdmin = PoolAdminCheck<Permissions>;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;

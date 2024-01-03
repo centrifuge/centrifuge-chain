@@ -22,7 +22,7 @@ pallet-timestamp = { workspace = true, default-features = true }
 rand = "0.8.5"
 
 [dependencies]
-codec = { package = "parity-scale-codec", workspace = true, features = ["derive"] }
+parity-scale-codec = { workspace = true }
 log = { workspace = true }
 scale-info = { workspace = true, features = ["derive"] }
 strum = { workspace = true }
@@ -57,7 +57,7 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
-  "codec/std",
+  "parity-scale-codec/std",
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking/std",

@@ -103,7 +103,6 @@ use sp_std::{marker::PhantomData, prelude::*};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-use strum::IntoEnumIterator;
 use xcm_executor::XcmExecutor;
 
 pub mod constants;
@@ -1533,7 +1532,7 @@ impl pallet_pool_registry::Config for Runtime {
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::iter().count();
+	pub const MaxFeesPerPool: u32 = MAX_FEES_PER_POOL;
 	pub const MagAgePosNAV: Seconds = 0;
 }
 
@@ -1542,6 +1541,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type ChangeGuard = PoolSystem;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
+	type IsPoolAdmin = PoolAdminCheck<Permissions>;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
