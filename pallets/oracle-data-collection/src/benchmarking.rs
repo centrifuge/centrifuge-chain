@@ -4,7 +4,7 @@ use frame_system::RawOrigin;
 
 use crate::{
 	pallet::{Call, Collection, Config, Pallet},
-	types::Change,
+	types::{Change, CollectionInfo},
 };
 
 #[cfg(test)]
@@ -133,10 +133,10 @@ mod benchmarks {
 		}
 
 		// Worst case expect to read the max age
-		Pallet::<T>::set_collection_max_age(
+		Pallet::<T>::set_collection_info(
 			RawOrigin::Signed(admin.clone()).into(),
 			T::CollectionId::default(),
-			T::Timestamp::default(),
+			CollectionInfo::default(),
 		)
 		.unwrap();
 
@@ -154,7 +154,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn set_collection_max_age() -> Result<(), BenchmarkError> {
+	fn set_collection_info() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -163,10 +163,10 @@ mod benchmarks {
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
 		#[extrinsic_call]
-		set_collection_max_age(
+		set_collection_info(
 			RawOrigin::Signed(admin),
 			T::CollectionId::default(),
-			T::Timestamp::default(),
+			CollectionInfo::default(),
 		);
 
 		Ok(())

@@ -18,7 +18,7 @@ impl<T: frame_system::Config> pallet_oracle_data_collection::WeightInfo for Weig
 		Weight::zero()
 	}
 
-	fn set_collection_max_age() -> Weight {
+	fn set_collection_info() -> Weight {
 		Weight::zero()
 	}
 }

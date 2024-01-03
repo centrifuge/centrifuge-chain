@@ -59,7 +59,7 @@ pub mod pallet {
 
 	use crate::{
 		traits::AggregationProvider,
-		types::{CachedCollection, Change, KeyInfo, OracleValuePair},
+		types::{self, CachedCollection, Change, KeyInfo, OracleValuePair},
 		weights::WeightInfo,
 	};
 
@@ -148,8 +148,8 @@ pub mod pallet {
 
 	/// Store all oracle values indexed by feeder
 	#[pallet::storage]
-	pub(crate) type CollectionMaxAges<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::CollectionId, T::Timestamp, OptionQuery>;
+	pub(crate) type CollectionInfo<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CollectionId, types::CollectionInfo<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -192,6 +192,9 @@ pub mod pallet {
 
 		/// The oracle value has passed the collection max age.
 		OracleValueOutdated,
+
+		/// The amount of feeders for a key is not enough
+		NotEnoughFeeders,
 	}
 
 	#[pallet::call]
@@ -314,13 +317,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Sets the minimum
-		#[pallet::weight(T::WeightInfo::set_collection_max_age())]
+		/// Sets a associated information to a collection.
+		#[pallet::weight(T::WeightInfo::set_collection_info())]
 		#[pallet::call_index(3)]
-		pub fn set_collection_max_age(
+		pub fn set_collection_info(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
-			duration: T::Timestamp,
+			info: types::CollectionInfo<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -329,7 +332,7 @@ pub mod pallet {
 				Error::<T>::IsNotAdmin
 			);
 
-			CollectionMaxAges::<T>::insert(collection_id, duration);
+			CollectionInfo::<T>::insert(collection_id, info);
 
 			Ok(())
 		}
@@ -343,7 +346,9 @@ pub mod pallet {
 			key: &T::OracleKey,
 			collection_id: &T::CollectionId,
 		) -> Result<Self::Data, DispatchError> {
+			let min_feeders = CollectionInfo::<T>::get(collection_id).min_feeders;
 			let key_info = Keys::<T>::get(collection_id, key);
+
 			let fed_values = key_info
 				.feeders
 				.into_iter()
@@ -352,10 +357,23 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<_>, _>>()?;
 
-			let (value, timestamp) = T::AggregationProvider::aggregate(fed_values)
-				.ok_or(Error::<T>::KeyNotInCollection)?;
+			if fed_values.len() < (min_feeders as usize) {
+				Err(Error::<T>::NotEnoughFeeders)?
+			}
 
-			Self::ensure_valid_timestamp(collection_id, timestamp)?;
+			let updated_fed_values = fed_values
+				.into_iter()
+				.filter(|(_, timestamp)| {
+					Self::ensure_valid_timestamp(collection_id, *timestamp).is_ok()
+				})
+				.collect::<Vec<_>>();
+
+			if updated_fed_values.len() < (min_feeders as usize) {
+				Err(Error::<T>::OracleValueOutdated)?
+			}
+
+			let (value, timestamp) = T::AggregationProvider::aggregate(updated_fed_values)
+				.ok_or(Error::<T>::KeyNotInCollection)?;
 
 			Ok((value, timestamp))
 		}
@@ -432,9 +450,9 @@ pub mod pallet {
 			collection_id: &T::CollectionId,
 			timestamp: T::Timestamp,
 		) -> DispatchResult {
-			if let Some(threshold) = CollectionMaxAges::<T>::get(collection_id) {
+			if let Some(duration) = CollectionInfo::<T>::get(collection_id).value_duration {
 				ensure!(
-					T::Time::now().ensure_sub(timestamp)? <= threshold,
+					T::Time::now().ensure_sub(timestamp)? <= duration,
 					Error::<T>::OracleValueOutdated,
 				);
 			}
@@ -491,6 +509,7 @@ pub mod types {
 		pallet_prelude::{Decode, Encode, MaxEncodedLen, TypeInfo},
 		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
 		traits::Time,
+		RuntimeDebugNoBound,
 	};
 	use sp_runtime::{traits::Zero, RuntimeDebug};
 	use sp_std::vec::Vec;
@@ -522,6 +541,30 @@ pub mod types {
 		}
 	}
 
+	/// Information of a collection
+	#[derive(
+		Encode, Decode, PartialEq, Eq, Clone, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen,
+	)]
+	#[scale_info(skip_type_params(T))]
+	pub struct CollectionInfo<T: Config> {
+		/// Maximum duration to consider an oracle value non-outdated.
+		/// An oracle value is consider updated if its timestam is higher
+		/// than `now() - value_duration`
+		pub value_duration: Option<T::Timestamp>,
+
+		/// Minimun number of feeders to succesfully aggregate a value.
+		pub min_feeders: u32,
+	}
+
+	impl<T: Config> Default for CollectionInfo<T> {
+		fn default() -> Self {
+			Self {
+				value_duration: None,
+				min_feeders: 0,
+			}
+		}
+	}
+
 	/// A collection cached in memory
 	#[derive(Encode, Decode, Clone, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
@@ -532,7 +575,7 @@ pub mod types {
 
 	impl<T: Config> Default for CachedCollection<T> {
 		fn default() -> Self {
-			CachedCollection {
+			Self {
 				content: Default::default(),
 				older_timestamp: T::Time::now(),
 			}

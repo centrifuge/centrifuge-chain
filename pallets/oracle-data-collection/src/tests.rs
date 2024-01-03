@@ -5,7 +5,7 @@ use sp_runtime::{testing::H256, traits::Get, DispatchError};
 use crate::{
 	mock::*,
 	pallet::{Config, Error, Event, Keys},
-	types::Change,
+	types::{Change, CollectionInfo},
 };
 
 const ADMIN: AccountId = 1;
@@ -110,13 +110,16 @@ mod util {
 		MockIsAdmin::mock_check(|_| panic!("no check() mock"));
 	}
 
-	pub fn set_max_age(duration: Timestamp) {
+	pub fn set_collection_info(duration: Timestamp, limit: u32) {
 		MockIsAdmin::mock_check(|_| true);
 
-		assert_ok!(OracleCollection::set_collection_max_age(
+		assert_ok!(OracleCollection::set_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
-			duration,
+			CollectionInfo {
+				value_duration: Some(duration),
+				min_feeders: limit,
+			}
 		));
 
 		MockIsAdmin::mock_check(|_| panic!("no check() mock"));
@@ -179,10 +182,10 @@ fn update_collection_max_age() {
 	new_test_ext().execute_with(|| {
 		MockIsAdmin::mock_check(|_| true);
 
-		assert_ok!(OracleCollection::set_collection_max_age(
+		assert_ok!(OracleCollection::set_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
-			50
+			CollectionInfo::default(),
 		));
 	});
 }
@@ -193,10 +196,10 @@ fn update_collection_max_age_wrong_admin() {
 		MockIsAdmin::mock_check(|_| false);
 
 		assert_err!(
-			OracleCollection::set_collection_max_age(
+			OracleCollection::set_collection_info(
 				RuntimeOrigin::signed(ADMIN),
 				COLLECTION_ID,
-				50
+				CollectionInfo::default(),
 			),
 			Error::<Runtime>::IsNotAdmin
 		);
@@ -299,7 +302,7 @@ fn getting_value_not_found() {
 fn getting_value_but_outdated() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_max_age(NOT_ENOUGH_MAX_AGE);
+		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 1);
 
 		mock::prepare_provider();
 		assert_err!(
@@ -343,7 +346,7 @@ fn update_collection_with_max_age() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_max_age(ENOUGH_MAX_AGE);
+		util::set_collection_info(ENOUGH_MAX_AGE, 0);
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -364,7 +367,7 @@ fn update_collection_outdated() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_max_age(NOT_ENOUGH_MAX_AGE);
+		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 1);
 
 		mock::prepare_provider();
 		assert_err!(
@@ -375,11 +378,11 @@ fn update_collection_outdated() {
 }
 
 #[test]
-fn update_collection_but_getting_elements_out_of_time() {
+fn update_collection_outdated_with_min_feeder() {
 	new_test_ext().execute_with(|| {
 		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_max_age(ENOUGH_MAX_AGE);
+		util::set_collection_info(45, 1);
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -387,7 +390,42 @@ fn update_collection_but_getting_elements_out_of_time() {
 			COLLECTION_ID
 		));
 
-		util::set_max_age(NOT_ENOUGH_MAX_AGE);
+		let collection = OracleCollection::collection(&COLLECTION_ID).unwrap();
+		assert_eq!(
+			collection.as_vec(),
+			vec![(KEY_A, (102, NOW - 45)), (KEY_B, (1000, NOW))]
+		);
+	});
+}
+
+#[test]
+fn update_collection_without_min_feeder() {
+	new_test_ext().execute_with(|| {
+		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::set_collection_info(ENOUGH_MAX_AGE, 2);
+
+		mock::prepare_provider();
+		assert_err!(
+			OracleCollection::update_collection(RuntimeOrigin::signed(ANY), COLLECTION_ID),
+			Error::<Runtime>::NotEnoughFeeders
+		);
+	});
+}
+
+#[test]
+fn update_collection_but_getting_elements_out_of_time() {
+	new_test_ext().execute_with(|| {
+		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::set_collection_info(ENOUGH_MAX_AGE, 0);
+
+		mock::prepare_provider();
+		assert_ok!(OracleCollection::update_collection(
+			RuntimeOrigin::signed(ANY),
+			COLLECTION_ID
+		));
+
+		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 0);
 
 		assert_err!(
 			OracleCollection::collection(&COLLECTION_ID),
