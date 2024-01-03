@@ -80,7 +80,6 @@ pub mod pallet {
 		permissions::{PermissionScope, PoolRole, Role},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
-	use codec::HasCompact;
 	use entities::{
 		changes::{Change, LoanMutation},
 		input::{PrincipalInput, RepaidInput},
@@ -95,6 +94,7 @@ pub mod pallet {
 		},
 	};
 	use frame_system::pallet_prelude::*;
+	use parity_scale_codec::HasCompact;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::{FixedPointNumber, PerThing};
 	use sp_runtime::{

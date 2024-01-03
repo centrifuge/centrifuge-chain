@@ -14,7 +14,6 @@ use cfg_types::{
 	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Codec;
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -24,9 +23,11 @@ use frame_support::{
 use liquidity_pools_gateway_routers::DomainRouter;
 use pallet_liquidity_pools::Message;
 use pallet_transaction_payment::CurrencyAdapter;
+use parity_scale_codec::Codec;
 use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
+	oracle::Feeder,
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -102,9 +103,15 @@ pub trait Runtime:
 		NativeFungible = pallet_balances::Pallet<Self>,
 	> + cumulus_pallet_parachain_system::Config
 	+ parachain_info::Config
-	+ orml_oracle::Config<OracleKey = OracleKey, OracleValue = Quantity>
-	+ orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
+	+ pallet_oracle_feed::Config<OracleKey = OracleKey, OracleValue = Ratio>
+	+ pallet_oracle_data_collection::Config<
+		OracleKey = OracleKey,
+		OracleValue = Balance,
+		FeederId = Feeder<Self::RuntimeOriginExt>,
+		CollectionId = PoolId,
+	> + orml_xtokens::Config<CurrencyId = CurrencyId, Balance = Balance>
 	+ pallet_xcm::Config
+	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
 	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
@@ -151,8 +158,12 @@ pub trait Runtime:
 		+ From<pallet_investments::Call<Self>>
 		+ From<pallet_loans::Call<Self>>
 		+ From<cumulus_pallet_parachain_system::Call<Self>>
-		+ From<orml_oracle::Call<Self>>
+		+ From<pallet_oracle_feed::Call<Self>>
+		+ From<pallet_oracle_data_collection::Call<Self>>
+		+ From<pallet_restricted_tokens::Call<Self>>
+		+ From<pallet_restricted_xtokens::Call<Self>>
 		+ From<pallet_preimage::Call<Self>>
+		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
 		+ From<pallet_liquidity_pools_gateway::Call<Self>>;
@@ -170,13 +181,15 @@ pub trait Runtime:
 		+ TryInto<pallet_loans::Event<Self>>
 		+ TryInto<pallet_pool_system::Event<Self>>
 		+ TryInto<pallet_liquidity_pools_gateway::Event<Self>>
+		+ TryInto<pallet_proxy::Event<Self>>
 		+ From<frame_system::Event<Self>>
 		+ From<pallet_balances::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<pallet_transaction_payment::Event<Self>>
 		+ From<pallet_loans::Event<Self>>
 		+ From<pallet_pool_system::Event<Self>>
-		+ From<orml_oracle::Event<Self>>
+		+ From<pallet_oracle_feed::Event<Self>>
+		+ From<pallet_oracle_data_collection::Event<Self>>
 		+ From<pallet_foreign_investments::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
@@ -184,12 +197,13 @@ pub trait Runtime:
 		+ From<pallet_order_book::Event<Self>>
 		+ From<pallet_preimage::Event<Self>>
 		+ From<pallet_collective::Event<Self, CouncilCollective>>
+		+ From<pallet_proxy::Event<Self>>
 		+ From<pallet_democracy::Event<Self>>;
 
 	type RuntimeOriginExt: Into<Result<RawOrigin<Self::AccountId>, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<RawOrigin<Self::AccountId>>
 		+ Clone
-		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall>
+		+ OriginTrait<Call = <Self as frame_system::Config>::RuntimeCall, AccountId = AccountId>
 		+ From<pallet_ethereum::RawOrigin>
 		+ Into<Result<pallet_ethereum::Origin, <Self as frame_system::Config>::RuntimeOrigin>>
 		+ From<pallet_liquidity_pools_gateway::GatewayOrigin>;

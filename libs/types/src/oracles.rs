@@ -1,5 +1,5 @@
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,15 @@ pub enum OracleKey {
 impl From<u32> for OracleKey {
 	fn from(value: u32) -> Self {
 		// Any u32 value always fits into 12 bytes
-		let isin = Isin::try_from(&(value as u128).to_be_bytes()[0..12]).unwrap();
+		let value_to_array = &(value as u128).to_le_bytes()[0..12];
+		let isin = Isin::try_from(value_to_array).unwrap();
 		OracleKey::Isin(isin)
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl Default for OracleKey {
+	fn default() -> Self {
+		OracleKey::Isin(Default::default())
 	}
 }

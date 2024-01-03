@@ -18,6 +18,7 @@ mod cases {
 	mod investments;
 	mod liquidity_pools;
 	mod loans;
+	mod proxy;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.
@@ -62,8 +63,6 @@ macro_rules! test_for_runtimes {
             $(
                 #[tokio::test]
                 async fn $runtime_name() {
-                    crate::utils::logs::init_logs();
-
                     $test_name::<$runtime_name::Runtime>()
                 }
             )*

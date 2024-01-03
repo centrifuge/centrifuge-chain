@@ -25,7 +25,6 @@ use cfg_types::{
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
 	sp_std::marker::PhantomData,
@@ -37,6 +36,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_fees::PoolFeeInfoOf;
 use pallet_restricted_tokens::TransferDetails;
+use parity_scale_codec::Encode;
 use sp_arithmetic::FixedPointNumber;
 use sp_core::H256;
 use sp_runtime::{

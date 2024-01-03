@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{fee::FeeAmountProration, Seconds};
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{
 	traits::{CheckedAdd, CheckedSub, EnsureAdd, EnsureSub},

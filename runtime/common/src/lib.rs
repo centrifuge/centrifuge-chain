@@ -118,13 +118,13 @@ pub mod xcm_fees {
 pub mod asset_registry {
 	use cfg_primitives::types::{AccountId, Balance};
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		dispatch::RawOrigin,
 		sp_std::marker::PhantomData,
 		traits::{EnsureOrigin, EnsureOriginWithArg},
 	};
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
@@ -362,7 +362,7 @@ pub mod investment_portfolios {
 }
 
 pub mod xcm_transactor {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
 	use sp_std::{vec, vec::Vec};
 	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
@@ -728,6 +728,44 @@ pub mod origin {
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
+		}
+	}
+}
+
+pub mod permissions {
+	use cfg_primitives::{AccountId, PoolId};
+	use cfg_traits::{Permissions, PreConditions};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::CurrencyId,
+	};
+	use sp_std::marker::PhantomData;
+
+	/// Check if an account has a pool admin role
+	pub struct PoolAdminCheck<P>(PhantomData<P>);
+
+	impl<P> PreConditions<(AccountId, PoolId)> for PoolAdminCheck<P>
+	where
+		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+	{
+		type Result = bool;
+
+		fn check((account_id, pool_id): (AccountId, PoolId)) -> bool {
+			P::has(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn satisfy((account_id, pool_id): (AccountId, PoolId)) {
+			P::add(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+			.unwrap();
 		}
 	}
 }

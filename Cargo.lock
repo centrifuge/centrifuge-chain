@@ -223,7 +223,6 @@ dependencies = [
  "log",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -242,7 +241,6 @@ dependencies = [
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
- "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -264,6 +262,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-fees",
@@ -1127,7 +1127,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.24"
+version = "0.10.25"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -1159,7 +1159,6 @@ dependencies = [
  "log",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -1178,7 +1177,6 @@ dependencies = [
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
- "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -1200,6 +1198,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-fees",
@@ -2769,7 +2769,6 @@ dependencies = [
  "liquidity-pools-gateway-routers",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -2788,7 +2787,6 @@ dependencies = [
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
- "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -2810,6 +2808,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-fees",
@@ -6914,24 +6914,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orml-oracle"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43#28a2e6f0df9540d91db4018c7ecebb8bfc217a2a"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-traits",
- "orml-utilities",
- "parity-scale-codec 3.6.5",
- "scale-info",
- "serde",
- "sp-application-crypto",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.43#28a2e6f0df9540d91db4018c7ecebb8bfc217a2a"
@@ -7449,26 +7431,6 @@ dependencies = [
  "parity-scale-codec 3.6.5",
  "scale-info",
  "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-data-collector"
-version = "1.0.0"
-dependencies = [
- "cfg-traits",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-oracle",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec 3.6.5",
- "scale-info",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -8241,6 +8203,36 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-oracle-data-collection"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-oracle-feed"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -11422,12 +11414,12 @@ dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.4",
  "log",
  "orml-asset-registry",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -11445,7 +11437,6 @@ dependencies = [
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
- "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -11473,6 +11464,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-fees",
@@ -11548,7 +11541,6 @@ dependencies = [
  "liquidity-pools-gateway-routers",
  "node-primitives",
  "orml-asset-registry",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",
@@ -11567,7 +11559,6 @@ dependencies = [
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
- "pallet-data-collector",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-ethereum",
@@ -11591,6 +11582,8 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
+ "pallet-oracle-data-collection",
+ "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
  "pallet-pool-registry",

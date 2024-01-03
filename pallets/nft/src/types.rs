@@ -19,7 +19,7 @@
 
 // Runtime common types
 use cfg_primitives::types::FixedArray;
-use codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode};
 // Routines for building and validating proofs
 use proofs::{Hasher, Verifier};
 use scale_info::TypeInfo;

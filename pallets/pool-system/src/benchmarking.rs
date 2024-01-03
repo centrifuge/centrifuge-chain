@@ -18,10 +18,10 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
+use parity_scale_codec::EncodeLike;
 use sp_std::vec;
 
 use super::*;

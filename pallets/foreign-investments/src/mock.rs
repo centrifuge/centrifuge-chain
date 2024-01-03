@@ -6,8 +6,8 @@ use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{
 	ExecutedForeignCollect, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo, Swap,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{

@@ -360,8 +360,8 @@ mod filter {
 }
 
 #[derive(
-	codec::Encode,
-	codec::Decode,
+	parity_scale_codec::Encode,
+	parity_scale_codec::Decode,
 	Clone,
 	Copy,
 	Debug,
@@ -370,7 +370,7 @@ mod filter {
 	PartialEq,
 	Eq,
 	scale_info::TypeInfo,
-	codec::MaxEncodedLen,
+	parity_scale_codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {

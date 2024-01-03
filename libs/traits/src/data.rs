@@ -22,10 +22,6 @@ pub trait DataRegistry<DataId, CollectionId> {
 	/// Represents a data
 	type Data;
 
-	/// Identify the max number a collection can reach.
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxCollectionSize: sp_runtime::traits::Get<u32>;
-
 	/// Return the last data value for a data id in a collection
 	fn get(data_id: &DataId, collection_id: &CollectionId) -> Result<Self::Data, DispatchError>;
 

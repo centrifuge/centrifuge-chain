@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
-use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+use parity_scale_codec::Codec;
 use runtime_common::apis::{RewardDomain, RewardsApi as RewardsRuntimeApi};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;

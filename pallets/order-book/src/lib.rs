@@ -42,7 +42,6 @@ pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
 	use cfg_types::{investments::Swap, tokens::CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -53,6 +52,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{

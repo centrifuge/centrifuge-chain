@@ -21,7 +21,6 @@ use cfg_types::{
 	xcm::XcmMetadata,
 };
 use cfg_utils::vec_to_fixed_array;
-use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::{RawOrigin, Weight},
@@ -47,6 +46,7 @@ use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
 use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheType};
+use parity_scale_codec::Encode;
 use polkadot_core_primitives::BlakeTwo256;
 use polkadot_parachain::primitives::{Id, ValidationCode};
 use polkadot_runtime_parachains::{
@@ -85,7 +85,7 @@ use crate::{
 	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
 };
 
-mod utils {
+pub mod utils {
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
@@ -94,7 +94,7 @@ mod utils {
 
 	pub fn xcm_metadata(transferability: CrossChainTransferability) -> Option<XcmMetadata> {
 		match transferability {
-			CrossChainTransferability::Xcm(x) | CrossChainTransferability::All(x) => Some(x),
+			CrossChainTransferability::Xcm(x) => Some(x),
 			_ => None,
 		}
 	}
@@ -1727,20 +1727,10 @@ mod development {
 
 				let tranche_id = default_tranche_id::<T>(pool_id);
 
-				// Should throw if called by anything but `PoolAdmin`
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						pool_id,
-						tranche_id,
-						Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
-					),
-					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
-				);
-
+				// Moving the update to another domain can be called by anyone
 				assert_ok!(
 					pallet_liquidity_pools::Pallet::<T>::update_tranche_token_metadata(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
 						pool_id,
 						tranche_id,
 						Domain::EVM(MOONBEAM_EVM_CHAIN_ID),
@@ -6184,8 +6174,10 @@ mod development {
 						dest_address.clone(),
 						initial_balance.saturating_add(1),
 					),
-					orml_tokens::Error::<T>::BalanceTooLow
+					pallet_liquidity_pools::Error::<T>::BalanceTooLow
 				);
+
+				let pre_total_issuance = orml_tokens::Pallet::<T>::total_issuance(currency_id);
 
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(source_account.into()).into(),
@@ -6194,14 +6186,9 @@ mod development {
 					amount,
 				));
 
-				// The account to which the currency should have been transferred
-				// to on Centrifuge for bookkeeping purposes.
-				let domain_account: AccountId = Domain::convert(dest_address.domain());
-				// Verify that the correct amount of the token was transferred
-				// to the dest domain account on Centrifuge.
 				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(currency_id, &domain_account),
-					amount
+					orml_tokens::Pallet::<T>::total_issuance(currency_id),
+					pre_total_issuance - amount
 				);
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(currency_id, &source_account.into()),
@@ -8878,6 +8865,8 @@ mod centrifuge {
 					pallet_transfer_allowlist::Error::<T>::NoAllowanceForDestination
 				);
 
+				let total_issuance_pre = orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC);
+
 				assert_ok!(pallet_liquidity_pools::Pallet::<T>::transfer(
 					RawOrigin::Signed(Keyring::Alice.into()).into(),
 					LP_ETH_USDC,
@@ -8885,11 +8874,9 @@ mod centrifuge {
 					lp_eth_usdc(TRANSFER_AMOUNT),
 				));
 
-				let domain_acc = Domain::convert(Domain::EVM(1));
-
 				assert_eq!(
-					orml_tokens::Pallet::<T>::free_balance(LP_ETH_USDC, &domain_acc),
-					lp_eth_usdc(TRANSFER_AMOUNT),
+					orml_tokens::Pallet::<T>::total_issuance(LP_ETH_USDC),
+					total_issuance_pre - lp_eth_usdc(TRANSFER_AMOUNT),
 				);
 			});
 		}

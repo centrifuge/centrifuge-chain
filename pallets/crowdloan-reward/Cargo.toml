@@ -13,7 +13,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # General dependencies
-codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
 # Substrae dependencies
@@ -47,7 +47,7 @@ runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
 ]
 std = [
-  "codec/std",
+  "parity-scale-codec/std",
   "scale-info/std",
   "sp-std/std",
   "frame-support/std",

@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Balance;
-use codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

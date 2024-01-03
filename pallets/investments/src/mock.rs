@@ -22,7 +22,6 @@ use cfg_types::{
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
@@ -36,6 +35,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::GetByKey;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};

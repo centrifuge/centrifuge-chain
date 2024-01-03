@@ -18,10 +18,10 @@ use cfg_traits::{
 	TryConvert,
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
-use codec::{EncodeLike, FullCodec};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
 use frame_system::pallet_prelude::OriginFor;
 pub use pallet::*;
+use parity_scale_codec::{EncodeLike, FullCodec};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;

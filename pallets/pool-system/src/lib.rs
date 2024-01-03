@@ -18,7 +18,6 @@ use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -34,6 +33,7 @@ use orml_traits::{
 	Change,
 };
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use pool_types::{
 	changes::{NotedPoolChange, PoolChangeProposal},
 	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,

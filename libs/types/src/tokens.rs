@@ -17,8 +17,8 @@ use cfg_primitives::{
 	Balance, PalletIndex,
 };
 use cfg_traits::investments::TrancheCurrency as TrancheCurrencyT;
-use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -282,18 +282,15 @@ pub enum CrossChainTransferability {
 
 	/// The asset is only transferable through Centrifuge Liquidity Pools
 	LiquidityPools,
-
-	/// The asset is transferable through all available options
-	All(XcmMetadata),
 }
 
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
-		matches!(self, Self::Xcm(..) | Self::All(..))
+		matches!(self, Self::Xcm(..))
 	}
 
 	pub fn includes_liquidity_pools(self) -> bool {
-		matches!(self, Self::LiquidityPools | Self::All(..))
+		matches!(self, Self::LiquidityPools)
 	}
 }
 
@@ -326,7 +323,7 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 
 pub mod before {
 	use cfg_primitives::{PoolId, TrancheId};
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 
 	use crate::tokens::{ForeignAssetId, StakingCurrency};
@@ -495,8 +492,8 @@ mod tests {
 	#[cfg(test)]
 	mod tests {
 		use cfg_primitives::TrancheId;
-		use codec::Encode;
 		use hex::FromHex;
+		use parity_scale_codec::Encode;
 
 		use super::StakingCurrency;
 		use crate::{tokens as after, tokens::before};

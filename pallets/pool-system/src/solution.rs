@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::MaxEncodedLen;
 use frame_support::sp_runtime::traits::Convert;
+use parity_scale_codec::MaxEncodedLen;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
 	traits::{EnsureFixedPointNumber, EnsureSub},
