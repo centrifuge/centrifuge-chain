@@ -434,7 +434,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			if let Some(threshold) = CollectionMaxAges::<T>::get(collection_id) {
 				ensure!(
-					T::Time::now().ensure_sub(timestamp)? < threshold,
+					T::Time::now().ensure_sub(timestamp)? <= threshold,
 					Error::<T>::OracleValueOutdated,
 				);
 			}
