@@ -548,7 +548,7 @@ pub mod types {
 	#[scale_info(skip_type_params(T))]
 	pub struct CollectionInfo<T: Config> {
 		/// Maximum duration to consider an oracle value non-outdated.
-		/// An oracle value is consider updated if its timestam is higher
+		/// An oracle value is consider updated if its timestamp is higher
 		/// than `now() - value_duration`
 		pub value_duration: Option<T::Timestamp>,
 
