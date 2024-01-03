@@ -280,7 +280,7 @@ where
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate {
 		match self {
 			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
-				saturated_time_proration(*rate, period.into())
+				saturated_rate_proration(*rate, period.into())
 			}
 			PoolFeeAmount::AmountPerYear(_)
 			| PoolFeeAmount::AmountPerMonth(_)
@@ -297,7 +297,6 @@ where
 	}
 }
 
-// TODO: Add tests
 /// Converts an annual balance amount into its proratio based on the given
 /// period duration.
 pub fn saturated_balance_proration<
@@ -310,17 +309,16 @@ pub fn saturated_balance_proration<
 	amount.div(cfg_primitives::SECONDS_PER_YEAR.into())
 }
 
-// TODO: Add tests
 /// Converts an annual rate into its proratio based on the given
 /// period duration.
-pub fn saturated_time_proration<Rate: FixedPointNumberExtension>(
+pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 	annual_rate: Rate,
 	period: Seconds,
 ) -> Rate {
 	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period.into()));
 
 	rate.saturating_div_ceil(&Rate::saturating_from_integer::<u64>(
-		cfg_primitives::SECONDS_PER_YEAR.into(),
+		cfg_primitives::SECONDS_PER_YEAR,
 	))
 }
 
@@ -337,5 +335,107 @@ mod tests {
 				<= (cfg_primitives::MAX_FEES_PER_POOL * PoolFeeBucket::iter().count() as u32),
 			"Need to bump MAX_FEES_PER_POOL after adding variant(s) to PoolFeeBuckets"
 		);
+	}
+
+	mod saturated_proration {
+		use cfg_primitives::SECONDS_PER_YEAR;
+		use sp_arithmetic::traits::{One, Zero};
+
+		use super::*;
+		use crate::fixed_point::Rate;
+
+		type Balance = u128;
+
+		#[test]
+		fn balance_zero() {
+			assert_eq!(
+				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 0),
+				0
+			);
+			assert_eq!(
+				saturated_balance_proration::<Balance>(0u128, SECONDS_PER_YEAR),
+				0
+			);
+			assert_eq!(
+				saturated_balance_proration::<Balance>((SECONDS_PER_YEAR - 1).into(), 1),
+				0
+			);
+			assert_eq!(
+				saturated_balance_proration::<Balance>(1u128, SECONDS_PER_YEAR - 1),
+				0
+			);
+		}
+
+		#[test]
+		fn balance_one() {
+			assert_eq!(
+				saturated_balance_proration::<Balance>(SECONDS_PER_YEAR.into(), 1),
+				1u128
+			);
+			assert_eq!(
+				saturated_balance_proration::<Balance>(1u128, SECONDS_PER_YEAR),
+				1u128
+			);
+		}
+		#[test]
+		fn balance_overflow() {
+			assert_eq!(
+				saturated_balance_proration::<Balance>(u128::MAX, u64::MAX),
+				u128::MAX / u128::from(SECONDS_PER_YEAR)
+			);
+		}
+
+		#[test]
+		fn rate_zero() {
+			assert_eq!(
+				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 0),
+				Rate::zero()
+			);
+			assert_eq!(
+				saturated_rate_proration::<Rate>(Rate::zero(), SECONDS_PER_YEAR),
+				Rate::zero()
+			);
+			assert!(
+				saturated_rate_proration::<Rate>(
+					Rate::from_integer((SECONDS_PER_YEAR - 1).into()),
+					1
+				) > Rate::zero()
+			);
+			assert!(
+				saturated_rate_proration::<Rate>(Rate::one(), SECONDS_PER_YEAR - 1) > Rate::zero()
+			);
+		}
+
+		#[test]
+		fn rate_one() {
+			assert_eq!(
+				saturated_rate_proration::<Rate>(Rate::from_integer(SECONDS_PER_YEAR.into()), 1),
+				Rate::one()
+			);
+			assert_eq!(
+				saturated_rate_proration::<Rate>(Rate::one(), SECONDS_PER_YEAR),
+				Rate::one()
+			);
+		}
+		#[test]
+		fn rate_overflow() {
+			let left_bound = Rate::from_integer(10790);
+			let right_bound = Rate::from_integer(10791);
+
+			let rate = saturated_rate_proration::<Rate>(
+				Rate::from_integer(u128::from(u128::MAX / 10u128.pow(27))),
+				1,
+			);
+			assert!(left_bound < rate);
+			assert!(rate < right_bound);
+
+			assert!(saturated_rate_proration::<Rate>(Rate::one(), u64::MAX) > left_bound);
+			assert!(saturated_rate_proration::<Rate>(Rate::one(), u64::MAX) < right_bound);
+
+			assert!(saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) > left_bound);
+			assert!(
+				saturated_rate_proration::<Rate>(Rate::from_integer(2), u64::MAX) < right_bound
+			);
+		}
 	}
 }
