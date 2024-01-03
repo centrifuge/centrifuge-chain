@@ -17,6 +17,7 @@ hex-literal = { workspace = true, optional = true }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 static_assertions = { workspace = true }
+strum = { workspace = true }
 
 sp-api = { workspace = true }
 sp-block-builder = { workspace = true }
@@ -152,6 +153,7 @@ std = [
   "hex/std",
   "scale-info/std",
   "serde/std",
+  "strum/std",
 
   # Substrate related
   "sp-api/std",

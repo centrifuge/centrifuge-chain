@@ -18,7 +18,6 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::{Balance, SECONDS_PER_YEAR};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
@@ -690,22 +689,5 @@ pub trait IntoSeconds {
 impl IntoSeconds for Millis {
 	fn into_seconds(self) -> Seconds {
 		self / 1000
-	}
-}
-
-/// Trait to convert a prorated interest
-pub trait SaturatedProration {
-	type Time;
-
-	fn saturated_proration(annual: Self, period: Self::Time) -> Self;
-}
-
-impl SaturatedProration for Balance {
-	type Time = Seconds;
-
-	fn saturated_proration(annual: Self, period: Self::Time) -> Self {
-		annual
-			.saturating_div(SECONDS_PER_YEAR.into())
-			.saturating_mul(period.into())
 	}
 }

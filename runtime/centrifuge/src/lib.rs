@@ -103,6 +103,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
+use strum::IntoEnumIterator;
 use xcm_executor::XcmExecutor;
 
 pub mod evm;
@@ -1596,28 +1597,23 @@ impl
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::count_variants();
+	pub const MaxFeesPerPool: u32 = MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::iter().count();
 	pub const MagAgePosNAV: Seconds = 0;
 }
 
-static_assertions::const_assert!(
-	MAX_POOL_FEES_PER_BUCKET
-		<= MAX_POOL_FEES_PER_BUCKET * cfg_types::pools::PoolFeeBucket::count_variants()
-);
+static_assertions::const_assert!(MaxPoolFeesPerBucket <= MaxFeesPerPool);
 
 impl pallet_pool_fees::Config for Runtime {
 	type Balance = Balance;
 	type ChangeGuard = PoolSystem;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type InvestmentId = TrancheCurrency;
+	type IsPoolAdmin = PoolAdminCheck;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
-	type Permissions = Permissions;
 	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
 	type PoolReserve = PoolSystem;
 	type PosNAV = Loans;
 	type Rate = Rate;
@@ -1625,7 +1621,6 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type TrancheId = TrancheId;
 }
 
 impl pallet_permissions::Config for Runtime {

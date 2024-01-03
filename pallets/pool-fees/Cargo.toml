@@ -25,6 +25,7 @@ rand = "0.8.5"
 codec = { package = "parity-scale-codec", workspace = true, features = ["derive"] }
 log = { workspace = true }
 scale-info = { workspace = true, features = ["derive"] }
+strum = { workspace = true }
 
 frame-benchmarking.workspace = true
 frame-support.workspace = true
@@ -70,7 +71,7 @@ std = [
   "sp-runtime/std",
   "sp-arithmetic/std",
   "sp-std/std",
-  "pallet-timestamp/std",
+  "strum/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

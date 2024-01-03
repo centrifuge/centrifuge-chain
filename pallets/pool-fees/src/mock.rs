@@ -197,7 +197,7 @@ impl cfg_test_utils::mocks::nav::Config for Runtime {
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET * PoolFeeBucket::count_variants();
+	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET * PoolFeeBucket::iter().count();
 	pub const MagAgePosNAV: Seconds = 0;
 }
 
@@ -206,14 +206,11 @@ impl pallet_pool_fees::Config for Runtime {
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type InvestmentId = TrancheCurrency;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
-	type Permissions = MockPermissions;
 	type PoolId = PoolId;
-	type PoolInspect = MockPools;
 	type PoolReserve = MockPools;
 	type PosNAV = FakeNav;
 	type Rate = Rate;
@@ -221,7 +218,6 @@ impl pallet_pool_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = OrmlTokens;
-	type TrancheId = TrancheId;
 }
 
 pub(crate) fn config_mocks() {

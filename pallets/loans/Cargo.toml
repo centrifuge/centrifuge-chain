@@ -25,7 +25,7 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 
-strum = { version = "0.24", default-features = false, features = ["derive"] }
+strum = { workspace = true }
 
 # Optionals for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }

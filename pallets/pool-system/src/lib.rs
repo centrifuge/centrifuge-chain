@@ -321,7 +321,6 @@ pub mod pallet {
 
 		/// Add pool fees
 		type AddFees: AddPoolFees<
-			Error = DispatchError,
 			FeeInfo = PoolFeeInfo<
 				<Self as frame_system::Config>::AccountId,
 				Self::Balance,

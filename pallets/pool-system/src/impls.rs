@@ -126,10 +126,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		pool_fees: Vec<(
-			PoolFeeBucket,
-			PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
-		)>,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);

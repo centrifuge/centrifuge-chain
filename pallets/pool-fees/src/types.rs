@@ -23,15 +23,3 @@ use crate::{Config, PoolFeeInfoOf};
 pub enum Change<T: Config> {
 	AppendFee(PoolFeeBucket, PoolFeeInfoOf<T>),
 }
-
-// NOTE: Remark feature will be a separate feature in the future (post Pool Fees
-// MVP). The following enum is necessary to deliver the MVP.
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-
-pub enum Remark<Hash, LoanId, Meta> {
-	Loan { id: LoanId, meta: Meta },
-	IpfsHash(Hash),
-	Metadata(Meta),
-}
-
-pub type IpfsHash = [u8; 46];

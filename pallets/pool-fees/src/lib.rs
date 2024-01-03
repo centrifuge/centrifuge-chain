@@ -25,13 +25,12 @@ pub mod pallet {
 	use cfg_traits::{
 		changes::ChangeGuard,
 		fee::{AddPoolFees, FeeAmountProration},
-		investments::TrancheCurrency,
-		EpochTransitionHook, Permissions, PoolInspect, PoolNAV, PoolReserve, SaturatedProration,
-		Seconds, TimeAsSecs,
+		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
-		permissions::{PermissionScope, PoolRole, Role},
-		pools::{PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeInfo},
+		pools::{
+			PendingPoolFeeType, PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeInfo,
+		},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
@@ -52,6 +51,7 @@ pub mod pallet {
 	};
 	use sp_runtime::{traits::AccountIdConversion, SaturatedConversion};
 	use sp_std::vec::Vec;
+	use strum::IntoEnumIterator;
 
 	use super::*;
 	use crate::types::Change;
@@ -87,48 +87,23 @@ pub mod pallet {
 			+ Ord;
 
 		/// The source of truth for the balance of accounts
-		type Balance: tokens::Balance
-			+ FixedPointOperand
-			+ SaturatedProration<Time = Seconds>
-			+ From<Seconds>;
+		type Balance: tokens::Balance + FixedPointOperand + From<Seconds>;
 
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
-		type PoolId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ Into<
-				<<Self as Config>::PoolReserve as PoolInspect<
-					Self::AccountId,
-					Self::CurrencyId,
-				>>::PoolId,
-			>;
-
-		/// The tranche id type required for the investment identifier
-		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
-
-		/// The investment identifying type required for the investment type
-		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Clone
-			+ Member
-			+ Parameter
-			+ Copy
-			+ MaxEncodedLen;
+		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 
 		/// Type for price ratio for cost of incoming currency relative to
 		/// outgoing
 		type Rate: Parameter
 			+ Member
 			+ sp_runtime::FixedPointNumber
-			+ SaturatedProration<Time = Seconds>
 			+ MaybeSerializeDeserialize
 			+ TypeInfo
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ From<Seconds>;
 
 		/// The type for handling transfers, burning and minting of
 		/// multi-assets.
@@ -146,26 +121,17 @@ pub mod pallet {
 			Change = Self::RuntimeChange,
 		>;
 
-		/// The source of truth for pool inspection operations such as its
-		/// existence, the corresponding tranche token or the investment
-		/// currency.
-		type PoolInspect: PoolInspect<
+		/// The source of truth for pool existence and provider for pool reserve
+		/// operations required to withdraw fees.
+		type PoolReserve: PoolReserve<
 			Self::AccountId,
 			Self::CurrencyId,
+			Balance = Self::Balance,
 			PoolId = Self::PoolId,
-			TrancheId = Self::TrancheId,
 		>;
 
-		/// The provider for pool reserve operations required to withdraw fees.
-		type PoolReserve: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
-
-		/// The source of truth for pool permissions.
-		type Permissions: Permissions<
-			Self::AccountId,
-			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId>,
-			Error = DispatchError,
-		>;
+		/// Used to verify pool admin permissions
+		type IsPoolAdmin: PreConditions<(Self::AccountId, Self::PoolId), Result = bool>;
 
 		/// The pool fee bound per bucket. If multiplied with the number of
 		/// bucket variants, this yields the max number of fees per pool.
@@ -345,15 +311,11 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::PoolInspect::pool_exists(pool_id),
+				T::PoolReserve::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
 			ensure!(
-				T::Permissions::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
+				T::IsPoolAdmin::check((who, pool_id)),
 				Error::<T>::NotPoolAdmin
 			);
 
@@ -385,7 +347,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			ensure!(
-				T::PoolInspect::pool_exists(pool_id),
+				T::PoolReserve::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
 			let (bucket, fee) = Self::get_released_change(pool_id, change_id)
@@ -406,7 +368,7 @@ pub mod pallet {
 
 			let fee = Self::get_active_fee(fee_id)?;
 			ensure!(
-				fee.editor.matches_account(&who),
+				matches!(fee.editor, PoolFeeEditor::Account(account) if account == who),
 				Error::<T>::UnauthorizedEdit
 			);
 			Self::do_remove_fee(fee_id)?;
@@ -511,7 +473,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			ensure!(
-				T::PoolInspect::pool_exists(pool_id),
+				T::PoolReserve::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
 
@@ -580,7 +542,7 @@ pub mod pallet {
 			bucket: PoolFeeBucket,
 		) -> Result<(), DispatchError> {
 			let pool_currency =
-				T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
+				T::PoolReserve::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
@@ -611,11 +573,9 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			portfolio_valuation: T::Balance,
-			reserve: T::Balance,
+			mut reserve: T::Balance,
 			epoch_duration: Seconds,
 		) -> T::Balance {
-			let mut reserve = reserve;
-
 			ActiveFees::<T>::mutate(pool_id, bucket.clone(), |fees| {
 				for fee in fees.iter_mut() {
 					let (limit, pending, maybe_payable) = match fee.amount.clone() {
@@ -682,7 +642,7 @@ pub mod pallet {
 							fees.remove(pos);
 
 							Ok::<(), DispatchError>(())
-						})?;
+						});
 
 						FeeIds::<T>::mutate(pool_id, bucket, |fee_ids| {
 							let pos = fee_ids
@@ -731,13 +691,13 @@ pub mod pallet {
 
 			// Force update of pending amounts if last done in past block
 			if !time_diff.is_zero() {
-				for bucket in PoolFeeBucket::iterator() {
+				for bucket in PoolFeeBucket::iter() {
 					Self::update_active_fees(pool_id, bucket, nav, T::Balance::zero(), time_diff);
 				}
 			}
 
 			// Derive valuation from pending fee amounts
-			let values = PoolFeeBucket::iterator()
+			let values = PoolFeeBucket::iter()
 				.map(|bucket| {
 					let fees = ActiveFees::<T>::get(pool_id, bucket);
 					fees.iter()
@@ -763,7 +723,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> AddPoolFees for Pallet<T> {
-		type Error = DispatchError;
 		type FeeBucket = PoolFeeBucket;
 		type FeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
@@ -772,7 +731,7 @@ pub mod pallet {
 			pool_id: Self::PoolId,
 			bucket: Self::FeeBucket,
 			fee: Self::FeeInfo,
-		) -> Result<(), Self::Error> {
+		) -> Result<(), DispatchError> {
 			let fee_id = Self::generate_fee_id()?;
 
 			FeeIds::<T>::mutate(pool_id.clone(), bucket.clone(), |list| {

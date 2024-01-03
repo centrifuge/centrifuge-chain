@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{fee::FeeAmountProration, SaturatedProration};
+use cfg_traits::{fee::FeeAmountProration, Seconds};
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{
@@ -18,6 +18,7 @@ use sp_arithmetic::{
 	FixedPointNumber, FixedPointOperand,
 };
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
+use strum::{EnumCount, EnumIter};
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
@@ -114,19 +115,6 @@ where
 pub enum PoolFeeEditor<AccountId> {
 	Root,
 	Account(AccountId),
-}
-
-impl<AccountId> PoolFeeEditor<AccountId>
-where
-	AccountId: PartialEq,
-{
-	/// Checks whether the given account matches the wrapped fee editor address
-	pub fn matches_account(&self, who: &AccountId) -> bool {
-		match self {
-			Self::Account(account) => account == who,
-			_ => false,
-		}
-	}
 }
 
 // TODO: Improve name, maybe `PoolFeeDetails`
@@ -247,7 +235,9 @@ pub enum PoolFeeAmount<Balance, Rate> {
 }
 
 /// The priority segregation of pool fees
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone, Copy)]
+#[derive(
+	Debug, Encode, Decode, EnumIter, EnumCount, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone, Copy,
+)]
 
 pub enum PoolFeeBucket {
 	/// Fees that are charged first, before any redemptions, investments,
@@ -256,27 +246,11 @@ pub enum PoolFeeBucket {
 	// Future: AfterTranche(TrancheId)
 }
 
-impl PoolFeeBucket {
-	pub fn iterator() -> impl Iterator<Item = PoolFeeBucket> {
-		[Self::Top].iter().copied()
-	}
-
-	/// Hacky solution to count the number of enum variants.
-	///
-	/// Required to bound the max number of pool fees.
-	pub const fn count_variants() -> u32 {
-		let mut counter = 0;
-		match PoolFeeBucket::Top {
-			PoolFeeBucket::Top => counter += 1,
-		}
-		counter
-	}
-}
-
 impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for PoolFeeAmount<Balance, Rate>
 where
-	Rate: SaturatedProration<Time = Time> + FixedPointNumber,
-	Balance: From<Time> + From<u32> + SaturatedProration<Time = Time> + FixedPointOperand,
+	Rate: FixedPointNumber + From<Seconds>,
+	Balance: From<Seconds> + FixedPointOperand + sp_std::ops::Div<Output = Balance>,
+	Time: Into<Seconds>,
 {
 	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance {
 		match self {
@@ -289,18 +263,18 @@ where
 					);
 				proration.saturating_mul_int(portfolio_valuation)
 			}
-			PoolFeeAmount::AmountPerYear(amount) => Balance::saturated_proration(*amount, period),
+			PoolFeeAmount::AmountPerYear(amount) => saturated_proration(*amount, period.into()),
 			PoolFeeAmount::AmountPerMonth(amount) => {
-				Balance::saturated_proration(amount.saturating_mul(12u32.into()), period)
+				saturated_proration(amount.saturating_mul(12u64.into()), period.into())
 			}
-			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
+			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into().into()),
 		}
 	}
 
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate {
 		match self {
 			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
-				Rate::saturated_proration(*rate, period)
+				saturated_proration(*rate, period.into())
 			}
 			PoolFeeAmount::AmountPerYear(_)
 			| PoolFeeAmount::AmountPerMonth(_)
@@ -315,4 +289,16 @@ where
 			}
 		}
 	}
+}
+
+// TODO: Test
+/// Converts an annual amount into its proratio based on the given period
+/// duration.
+pub fn saturated_proration<
+	Value: From<Seconds> + sp_arithmetic::traits::Saturating + sp_std::ops::Div<Output = Value>,
+>(
+	annual: Value,
+	period: Seconds,
+) -> Value {
+	annual.saturating_mul(period.into()) / cfg_primitives::SECONDS_PER_YEAR.into()
 }

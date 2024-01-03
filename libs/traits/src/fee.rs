@@ -10,12 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_runtime::DispatchError;
+
 /// Trait to add fees to a pool
 pub trait AddPoolFees {
 	type PoolId;
 	type FeeBucket;
 	type FeeInfo;
-	type Error;
 
 	/// Add a new fee to the pool and bucket.
 	///
@@ -24,7 +25,7 @@ pub trait AddPoolFees {
 		pool_id: Self::PoolId,
 		bucket: Self::FeeBucket,
 		fee: Self::FeeInfo,
-	) -> Result<(), Self::Error>;
+	) -> Result<(), DispatchError>;
 }
 
 /// Trait to prorate a fee amount to a rate or amount
@@ -32,6 +33,6 @@ pub trait FeeAmountProration<Balance, Rate, Time> {
 	/// Returns the prorated amount based on the NAV passed time period.
 	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance;
 
-	/// Returns the proratio based on the NAV and passed time period.
+	/// Returns the proratio rate based on the NAV and passed time period.
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate;
 }

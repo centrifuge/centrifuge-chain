@@ -13,8 +13,6 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use cfg_primitives::SECONDS_PER_YEAR;
-use cfg_traits::{SaturatedProration, Seconds};
 use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -742,16 +740,6 @@ impl<const DIV: u128> Zero for FixedU128<DIV> {
 impl<const DIV: u128> One for FixedU128<DIV> {
 	fn one() -> Self {
 		Self::from_inner(Self::DIV)
-	}
-}
-
-impl<const DIV: u128> SaturatedProration for FixedU128<DIV> {
-	type Time = Seconds;
-
-	fn saturated_proration(annual_rate: Self, period: Self::Time) -> Self {
-		let annual_amount = annual_rate.saturating_mul(Self::from_integer(period.into()));
-
-		annual_amount.saturating_div_ceil(&Self::from_integer(SECONDS_PER_YEAR.into()))
 	}
 }
 

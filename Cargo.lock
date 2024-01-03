@@ -1243,6 +1243,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
+ "strum",
  "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
@@ -1367,6 +1368,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
+ "strum",
  "xcm",
 ]
 
@@ -2851,6 +2853,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
+ "strum",
  "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
@@ -8310,6 +8313,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "strum",
 ]
 
 [[package]]
