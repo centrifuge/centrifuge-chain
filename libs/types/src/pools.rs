@@ -13,10 +13,7 @@
 use cfg_traits::{fee::FeeAmountProration, Seconds};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::{
-	traits::{CheckedAdd, CheckedSub, EnsureAdd, EnsureSub},
-	FixedPointOperand,
-};
+use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
 use strum::{EnumCount, EnumIter};
 
@@ -53,7 +50,7 @@ pub enum PoolRegistrationStatus {
 /// positive NAV.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub struct PoolFee<AccountId, FeeId, FeeType> {
+pub struct PoolFee<AccountId, FeeId, FeeAmounts> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
 
@@ -61,7 +58,7 @@ pub struct PoolFee<AccountId, FeeId, FeeType> {
 	pub editor: PoolFeeEditor<AccountId>,
 
 	/// Amount of fees that can be charged
-	pub amount: FeeType,
+	pub amounts: FeeAmounts,
 
 	/// The identifier
 	pub id: FeeId,
@@ -78,32 +75,27 @@ pub struct PoolFeeInfo<AccountId, Balance, Rate> {
 	pub editor: PoolFeeEditor<AccountId>,
 
 	/// Amount of fees that can be charged
-	pub amount: PoolFeeType<Balance, Rate>,
+	pub fee_type: PoolFeeType<Balance, Rate>,
 }
 
-impl<AccountId, Balance, FeeId, Rate> PoolFee<AccountId, FeeId, PendingPoolFeeType<Balance, Rate>>
+impl<AccountId, Balance, FeeId, Rate> PoolFee<AccountId, FeeId, PoolFeeAmounts<Balance, Rate>>
 where
-	Balance: Default + Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
-	Rate: Clone,
-	FeeId: Clone,
+	Balance: Default,
 {
 	pub fn from_info(fee: PoolFeeInfo<AccountId, Balance, Rate>, fee_id: FeeId) -> Self {
-		let amount = match fee.amount {
-			PoolFeeType::Fixed { limit } => PendingPoolFeeType::Fixed {
-				limit,
-				pending: Balance::default(),
-				disbursement: Balance::default(),
-			},
-			PoolFeeType::ChargedUpTo { limit } => PendingPoolFeeType::ChargedUpTo {
-				limit,
-				pending: Balance::default(),
-				payable: Balance::default(),
-				disbursement: Balance::default(),
-			},
+		let payable = match fee.fee_type {
+			PoolFeeType::ChargedUpTo { .. } => Some(Balance::default()),
+			PoolFeeType::Fixed { .. } => None,
+		};
+		let amount = PoolFeeAmounts {
+			payable,
+			fee_type: fee.fee_type,
+			pending: Balance::default(),
+			disbursement: Balance::default(),
 		};
 
 		Self {
-			amount,
+			amounts: amount,
 			destination: fee.destination,
 			editor: fee.editor,
 			id: fee_id,
@@ -119,7 +111,6 @@ pub enum PoolFeeEditor<AccountId> {
 	Account(AccountId),
 }
 
-// TODO: Improve name, maybe `PoolFeeDetails`
 /// The fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
@@ -134,94 +125,17 @@ pub enum PoolFeeType<Balance, Rate> {
 /// The pending fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 
-pub enum PendingPoolFeeType<Balance, Rate>
-where
-	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
-	Rate: Clone,
-{
-	/// A fixed fee is deducted automatically every epoch
-	Fixed {
-		limit: PoolFeeAmount<Balance, Rate>,
-		pending: Balance,
-		disbursement: Balance,
-	},
-
-	/// A fee can be charged up to a limit, paid every epoch
-	ChargedUpTo {
-		limit: PoolFeeAmount<Balance, Rate>,
-		pending: Balance,
-		payable: Balance,
-		disbursement: Balance,
-	},
+pub struct PoolFeeAmounts<Balance, Rate> {
+	pub fee_type: PoolFeeType<Balance, Rate>,
+	pub pending: Balance,
+	pub disbursement: Balance,
+	pub payable: Option<Balance>,
 }
 
-impl<Balance, Rate> PendingPoolFeeType<Balance, Rate>
-where
-	Balance: Clone + CheckedSub + CheckedAdd + EnsureSub + EnsureAdd,
-	Rate: Clone,
-{
-	pub fn checked_mutate_pending(&mut self, mut f: impl FnMut(&mut Balance)) {
-		match *self {
-			Self::Fixed {
-				ref mut pending, ..
-			}
-			| Self::ChargedUpTo {
-				ref mut pending, ..
-			} => {
-				f(pending);
-			}
-		}
-	}
-
-	pub fn checked_mutate_disbursement(&mut self, mut f: impl FnMut(&mut Balance)) {
-		match *self {
-			Self::Fixed {
-				ref mut disbursement,
-				..
-			}
-			| Self::ChargedUpTo {
-				ref mut disbursement,
-				..
-			} => {
-				f(disbursement);
-			}
-		}
-	}
-
-	pub fn checked_mutate_payable(&mut self, mut f: impl FnMut(&mut Balance)) {
-		if let Self::ChargedUpTo {
-			ref mut payable, ..
-		} = *self
-		{
-			f(payable);
-		}
-	}
-
+impl<Balance, Rate> PoolFeeAmounts<Balance, Rate> {
 	pub fn limit(&self) -> &PoolFeeAmount<Balance, Rate> {
-		match self {
-			PendingPoolFeeType::Fixed { limit, .. }
-			| PendingPoolFeeType::ChargedUpTo { limit, .. } => limit,
-		}
-	}
-
-	pub fn pending(&self) -> &Balance {
-		match self {
-			PendingPoolFeeType::Fixed { pending, .. }
-			| PendingPoolFeeType::ChargedUpTo { pending, .. } => pending,
-		}
-	}
-
-	pub fn payable(&self) -> Option<&Balance> {
-		match self {
-			PendingPoolFeeType::ChargedUpTo { payable, .. } => Some(payable),
-			_ => None,
-		}
-	}
-
-	pub fn disbursement(&self) -> &Balance {
-		match self {
-			PendingPoolFeeType::Fixed { disbursement, .. }
-			| PendingPoolFeeType::ChargedUpTo { disbursement, .. } => disbursement,
+		match &self.fee_type {
+			PoolFeeType::Fixed { limit } | PoolFeeType::ChargedUpTo { limit } => limit,
 		}
 	}
 }
@@ -315,7 +229,7 @@ pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 	annual_rate: Rate,
 	period: Seconds,
 ) -> Rate {
-	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period.into()));
+	let rate = annual_rate.saturating_mul(Rate::saturating_from_integer::<u64>(period));
 
 	rate.saturating_div_ceil(&Rate::saturating_from_integer::<u64>(
 		cfg_primitives::SECONDS_PER_YEAR,

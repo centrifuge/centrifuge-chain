@@ -77,7 +77,7 @@ pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
 			editor: DEFAUL_FEE_EDITOR,
-			amount: PoolFeeType::Fixed {
+			fee_type: PoolFeeType::Fixed {
 				// For simplicity, we take 10% per block to simulate fees on a per-block basis
 				// because advancing one full year takes too long
 				limit: PoolFeeAmount::ShareOfPortfolioValuation(Rate::saturating_from_rational(
@@ -89,7 +89,7 @@ pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
 			editor: DEFAUL_FEE_EDITOR,
-			amount: PoolFeeType::ChargedUpTo {
+			fee_type: PoolFeeType::ChargedUpTo {
 				limit: PoolFeeAmount::AmountPerSecond(POOL_FEE_CHARGED_AMOUNT_PER_SECOND),
 			},
 		},

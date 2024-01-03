@@ -13,13 +13,16 @@
 
 use core::time::Duration;
 
-use cfg_mocks::{pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools};
+use cfg_mocks::{
+	pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools,
+	pre_conditions::pallet as pallet_mock_pre_conditions,
+};
 use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
 use cfg_traits::{Millis, Seconds};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
-	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PendingPoolFeeType, PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
+	permissions::PermissionScope,
+	pools::{PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
@@ -85,7 +88,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Balances: pallet_balances,
 		MockPools: pallet_mock_pools,
-		MockPermissions: pallet_mock_permissions,
+		MockIsAdmin: pallet_mock_pre_conditions,
 		MockChangeGuard: pallet_mock_change_guard,
 		OrmlTokens: orml_tokens,
 		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
@@ -194,6 +197,11 @@ impl cfg_test_utils::mocks::nav::Config for Runtime {
 	type PoolId = PoolId;
 }
 
+impl pallet_mock_pre_conditions::Config for Runtime {
+	type Conditions = (AccountId, PoolId);
+	type Result = bool;
+}
+
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
@@ -206,7 +214,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type IsPoolAdmin = PoolAdminCheck<Permissions>;
+	type IsPoolAdmin = MockIsAdmin;
 	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
@@ -222,8 +230,7 @@ impl pallet_pool_fees::Config for Runtime {
 }
 
 pub(crate) fn config_mocks() {
-	MockPermissions::mock_add(|_, _, _| Ok(()));
-	MockPermissions::mock_has(|_, _, _| true);
+	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
 	MockPools::mock_pool_exists(|id| id == POOL);
 	MockPools::mock_account_for(|_| 0);
 	MockPools::mock_withdraw(|_, recipient, amount| {
@@ -232,11 +239,6 @@ pub(crate) fn config_mocks() {
 			.map_err(|e: DispatchError| e)
 	});
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPermissions::mock_has(|scope, who, role| {
-		matches!(scope, PermissionScope::Pool(id) if id == POOL)
-			&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))
-			&& who == ADMIN
-	});
 	MockChangeGuard::mock_note(|_, _| Ok(H256::default()));
 	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
 }
@@ -285,7 +287,7 @@ pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeInfoOf<Runtime> {
 	PoolFeeInfoOf::<Runtime> {
 		destination: DESTINATION,
 		editor: PoolFeeEditor::Account(EDITOR),
-		amount,
+		fee_type: amount,
 	}
 }
 
@@ -312,7 +314,7 @@ pub fn fee_amounts() -> Vec<PoolFeeType<Balance, Rate>> {
 pub fn get_disbursements() -> Vec<Balance> {
 	ActiveFees::<Runtime>::get(POOL, BUCKET)
 		.into_iter()
-		.map(|fee| fee.amount.disbursement().clone())
+		.map(|fee| fee.amounts.disbursement.clone())
 		.collect()
 }
 
@@ -338,7 +340,7 @@ pub fn default_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 pub fn default_chargeable_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 	default_fees()
 		.into_iter()
-		.filter(|fee| match fee.amount {
+		.filter(|fee| match fee.fee_type {
 			PoolFeeType::ChargedUpTo { .. } => true,
 			_ => false,
 		})
@@ -389,8 +391,8 @@ pub fn pay_single_fee_and_assert(
 	assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
 	assert!(PoolFees::get_active_fee(fee_id)
 		.expect("Fee exists")
-		.amount
-		.disbursement()
+		.amounts
+		.disbursement
 		.is_zero());
 	assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), fee_amount);
 
@@ -414,23 +416,9 @@ pub fn assert_pending_fee(
 	disbursement: Balance,
 ) {
 	let mut pending_fee = PoolFeeOf::<Runtime>::from_info(fee, fee_id);
-	match pending_fee.amount {
-		PendingPoolFeeType::Fixed { limit, .. } => {
-			pending_fee.amount = PendingPoolFeeType::Fixed {
-				limit,
-				pending,
-				disbursement,
-			};
-		}
-		PendingPoolFeeType::ChargedUpTo { limit, .. } => {
-			pending_fee.amount = PendingPoolFeeType::ChargedUpTo {
-				limit,
-				pending,
-				payable,
-				disbursement,
-			};
-		}
-	};
+	pending_fee.amounts.disbursement = disbursement;
+	pending_fee.amounts.pending = pending;
+	pending_fee.amounts.payable = Some(payable);
 
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
