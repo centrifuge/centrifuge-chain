@@ -637,7 +637,7 @@ pub trait EpochTransitionHook {
 	/// Hook into the closing of an epoch
 	fn on_closing_mutate_reserve(
 		pool_id: Self::PoolId,
-		nav: Self::Balance,
+		assets_under_management: Self::Balance,
 		reserve: &mut Self::Balance,
 		epoch_duration: Self::Time,
 	) -> Result<(), Self::Error>;

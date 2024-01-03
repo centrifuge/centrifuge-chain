@@ -220,6 +220,14 @@ pub mod pallet {
 		InitialPortfolioValuation<T::Time>,
 	>;
 
+	/// Stores the (positive) portfolio valuation associated to each pool
+	/// derived from the AUM of the previous epoch.
+	///
+	/// Lifetime of a storage entry: Forever, inherited from pool lifetime.
+	#[pallet::storage]
+	pub(crate) type AssetsUnderManagement<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, T::Balance, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -543,6 +551,12 @@ pub mod pallet {
 						frame_support::traits::tokens::Preservation::Expendable,
 					)?;
 
+					Self::deposit_event(Event::<T>::Paid {
+						fee_id: fee.id,
+						amount: fee.amounts.disbursement,
+						destination: fee.destination.clone(),
+					});
+
 					fee.amounts.disbursement = T::Balance::zero();
 				}
 
@@ -580,6 +594,7 @@ pub mod pallet {
 					let fee_amount = match fee.amounts.payable {
 						Some(payable) => {
 							let payable_amount = payable.saturating_add(epoch_amount);
+							fee.amounts.payable = Some(payable_amount);
 							fee.amounts.pending.min(payable_amount)
 						}
 						// NOTE: Implicitly assuming Fixed fee because of missing payable
@@ -734,14 +749,22 @@ pub mod pallet {
 
 		fn on_closing_mutate_reserve(
 			pool_id: Self::PoolId,
-			nav: Self::Balance,
+			assets_under_management: Self::Balance,
 			reserve: &mut Self::Balance,
 			epoch_duration: Self::Time,
 		) -> Result<(), Self::Error> {
+			// Set current AUM for next epoch's closing
+			let aum_last_epoch = AssetsUnderManagement::<T>::mutate(pool_id, |aum| {
+				let aum_last_epoch = *aum;
+				*aum = assets_under_management;
+				aum_last_epoch
+			});
+
+			// Update fees and NAV based on last epoch's AUM
 			*reserve = Self::update_active_fees(
 				pool_id,
 				PoolFeeBucket::Top,
-				nav,
+				aum_last_epoch,
 				*reserve,
 				epoch_duration,
 			);

@@ -39,7 +39,7 @@ use sp_arithmetic::{traits::Zero, FixedPointNumber};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	DispatchError,
 };
 use sp_std::vec::Vec;
@@ -233,6 +233,7 @@ pub(crate) fn config_mocks() {
 	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
 	MockPools::mock_pool_exists(|id| id == POOL);
 	MockPools::mock_account_for(|_| 0);
+	MockPools::mock_currency_for(|_| Some(POOL_CURRENCY));
 	MockPools::mock_withdraw(|_, recipient, amount| {
 		OrmlTokens::mint_into(POOL_CURRENCY, &recipient, amount)
 			.map(|_| ())
@@ -431,6 +432,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = sp_io::TestExternalities::new(storage);
 
 	// Bumping to one enables events
-	ext.execute_with(|| System::set_block_number(1));
+	ext.execute_with(|| {
+		System::set_block_number(1);
+
+		// Fund pallet account
+		OrmlTokens::mint_into(
+			POOL_CURRENCY,
+			&<Runtime as pallet_pool_fees::Config>::PalletId::get().into_account_truncating(),
+			u128::MAX,
+		)
+		.unwrap();
+	});
 	ext
 }

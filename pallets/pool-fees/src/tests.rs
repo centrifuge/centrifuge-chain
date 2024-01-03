@@ -402,7 +402,7 @@ mod disbursements {
 			mod share_of_portfolio_valuation {
 				use super::*;
 				#[test]
-				fn sufficient_reserve() {
+				fn sufficient_reserve_sfs() {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
@@ -432,7 +432,7 @@ mod disbursements {
 				}
 
 				#[test]
-				fn insufficient_reserve() {
+				fn insufficient_reserve_sfs() {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
@@ -464,7 +464,7 @@ mod disbursements {
 			mod amount_per_second {
 				use super::*;
 				#[test]
-				fn sufficient_reserve() {
+				fn sufficient_reserve_sfa() {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
@@ -494,7 +494,7 @@ mod disbursements {
 				}
 
 				#[test]
-				fn insufficient_reserve() {
+				fn insufficient_reserve_sfa() {
 					new_test_ext().execute_with(|| {
 						config_mocks();
 						let fee_id = 1;
@@ -535,7 +535,7 @@ mod disbursements {
 					use super::*;
 					use crate::mock::assert_pending_fee;
 					#[test]
-					fn empty_charge() {
+					fn empty_charge_scfs() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -562,7 +562,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn below_max_charge_sufficient_reserve() {
+					fn below_max_charge_sufficient_reserve_scfs() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -597,7 +597,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn max_charge_sufficient_reserve() {
+					fn max_charge_sufficient_reserve_scfs() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -632,7 +632,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn excess_charge_sufficient_reserve() {
+					fn excess_charge_sufficient_reserve_scfs() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -662,21 +662,21 @@ mod disbursements {
 
 							assert_eq!(res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
-							assert_pending_fee(fee_id, fee.clone(), 1, 0, 0);
+							assert_pending_fee(fee_id, fee.clone(), 1, 0, max_chargeable_amount);
 
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
 					}
 
 					#[test]
-					fn insufficient_reserve() {
+					fn insufficient_reserve_scfs() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
-							let res_pre_fees = NAV;
+							let res_pre_fees = NAV / 100;
 							let annual_rate = Rate::saturating_from_rational(1, 10);
 							let charged_amount = NAV / 10;
-							let fee_amount = res_pre_fees / 100;
+							let fee_amount = res_pre_fees;
 
 							let fee = new_fee(PoolFeeType::ChargedUpTo {
 								limit: PoolFeeAmount::ShareOfPortfolioValuation(annual_rate),
@@ -704,7 +704,7 @@ mod disbursements {
 								fee.clone(),
 								charged_amount - fee_amount,
 								charged_amount - fee_amount,
-								0,
+								fee_amount,
 							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
@@ -717,7 +717,7 @@ mod disbursements {
 					use crate::mock::assert_pending_fee;
 
 					#[test]
-					fn empty_charge() {
+					fn empty_charge_scfa() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -744,7 +744,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn below_max_charge_sufficient_reserve() {
+					fn below_max_charge_sufficient_reserve_scfa() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -779,7 +779,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn max_charge_sufficient_reserve() {
+					fn max_charge_sufficient_reserve_scfa() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -814,7 +814,7 @@ mod disbursements {
 					}
 
 					#[test]
-					fn excess_charge_sufficient_reserve() {
+					fn excess_charge_sufficient_reserve_scfa() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
@@ -844,18 +844,18 @@ mod disbursements {
 
 							assert_eq!(res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
-							assert_pending_fee(fee_id, fee.clone(), 1, 0, 0);
+							assert_pending_fee(fee_id, fee.clone(), 1, 0, max_chargeable_amount);
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
 					}
 
 					#[test]
-					fn insufficient_reserve() {
+					fn insufficient_reserve_scfa() {
 						new_test_ext().execute_with(|| {
 							config_mocks();
 							let fee_id = 1;
 							let amount_per_second = 1;
-							let res_pre_fees: Balance = (SECONDS_PER_YEAR / 2).into();
+							let res_pre_fees: Balance = (SECONDS_PER_YEAR / 2 + 1).into();
 							let charged_amount = SECONDS_PER_YEAR.into();
 							let fee_amount = res_pre_fees;
 
@@ -885,7 +885,7 @@ mod disbursements {
 								fee.clone(),
 								charged_amount - fee_amount,
 								charged_amount - fee_amount,
-								0,
+								fee_amount,
 							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
@@ -952,9 +952,15 @@ mod disbursements {
 					fees[1].clone(),
 					0,
 					payable[0] - charged_y1[0],
-					0,
+					charged_y1[0],
 				);
-				assert_pending_fee(charged_fee_ids[1], fees[2].clone(), payable[1], 0, 0);
+				assert_pending_fee(
+					charged_fee_ids[1],
+					fees[2].clone(),
+					payable[1],
+					0,
+					charged_y1[1] - payable[1],
+				);
 
 				// Pay disbursements
 				assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
@@ -1013,14 +1019,14 @@ mod disbursements {
 					fees[1].clone(),
 					0,
 					2 * payable[0] - charged_y1[0] - charged_y2[0],
-					0,
+					charged_y2[0],
 				);
 				assert_pending_fee(
 					charged_fee_ids[1],
 					fees[2].clone(),
 					2 * payable[1] - 1,
 					payable[1] - 1,
-					0,
+					1,
 				);
 
 				// Pay disbursements
