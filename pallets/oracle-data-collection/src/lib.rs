@@ -450,7 +450,7 @@ pub mod pallet {
 			collection_id: &T::CollectionId,
 			timestamp: T::Timestamp,
 		) -> DispatchResult {
-			if let Some(duration) = CollectionInfo::<T>::get(collection_id).value_duration {
+			if let Some(duration) = CollectionInfo::<T>::get(collection_id).value_lifetime {
 				ensure!(
 					T::Time::now().ensure_sub(timestamp)? <= duration,
 					Error::<T>::OracleValueOutdated,
@@ -549,8 +549,8 @@ pub mod types {
 	pub struct CollectionInfo<T: Config> {
 		/// Maximum duration to consider an oracle value non-outdated.
 		/// An oracle value is consider updated if its timestamp is higher
-		/// than `now() - value_duration`
-		pub value_duration: Option<T::Timestamp>,
+		/// than `now() - value_lifetime`
+		pub value_lifetime: Option<T::Timestamp>,
 
 		/// Minimun number of feeders to succesfully aggregate a value.
 		pub min_feeders: u32,
@@ -559,7 +559,7 @@ pub mod types {
 	impl<T: Config> Default for CollectionInfo<T> {
 		fn default() -> Self {
 			Self {
-				value_duration: None,
+				value_lifetime: None,
 				min_feeders: 0,
 			}
 		}

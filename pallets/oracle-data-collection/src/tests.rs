@@ -117,7 +117,7 @@ mod util {
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CollectionInfo {
-				value_duration: Some(duration),
+				value_lifetime: Some(duration),
 				min_feeders: limit,
 			}
 		));
