@@ -523,7 +523,7 @@ pub mod types {
 	}
 
 	/// A collection cached in memory
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	#[derive(Encode, Decode, Clone, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct CachedCollection<T: Config> {
 		pub content: BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
@@ -536,6 +536,12 @@ pub mod types {
 				content: Default::default(),
 				older_timestamp: T::Time::now(),
 			}
+		}
+	}
+
+	impl<T: Config> PartialEq for CachedCollection<T> {
+		fn eq(&self, other: &Self) -> bool {
+			self.content == other.content && self.older_timestamp == other.older_timestamp
 		}
 	}
 
