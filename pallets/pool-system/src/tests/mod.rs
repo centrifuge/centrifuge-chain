@@ -10,19 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{constants::SECONDS_PER_YEAR, conversion::fixed_point_to_balance, Balance};
+use cfg_primitives::{constants::SECONDS_PER_YEAR, Balance};
 use cfg_traits::{
 	investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, PoolNAV, TrancheTokenPrice,
 };
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	pools::{PoolFee, PoolFeeAmount, PoolFeeBucket, PoolFeeType, TrancheMetadata},
+	pools::{PoolFeeBucket, TrancheMetadata},
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
-use pallet_pool_fees::{DisbursingFeeOf, PoolFeeInfoOf};
 use rand::Rng;
 use sp_core::storage::StateVersion;
 use sp_runtime::{
@@ -2703,6 +2702,8 @@ mod changes {
 }
 
 mod pool_fees {
+	use frame_support::traits::fungibles::Inspect;
+
 	use super::*;
 
 	#[test]
@@ -2886,12 +2887,10 @@ mod pool_fees {
 	}
 	#[test]
 	fn execute_epoch_with_fees() {
-		use cfg_traits::PoolInspect;
-		use orml_traits::MultiCurrency;
-
 		new_test_ext().execute_with(|| {
 			let pool_owner = 2_u64;
 			let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
+			let fees_account = PoolFees::account_id();
 			let investment_amount = DEFAULT_POOL_MAX_RESERVE / 10;
 			let interest_rate = Rate::saturating_from_rational(10, 100);
 			let fulfillment_rate = Perquintill::from_percent(50);
@@ -2937,8 +2936,7 @@ mod pool_fees {
 				],
 				AUSD_CURRENCY_ID,
 				DEFAULT_POOL_MAX_RESERVE,
-				fees,
-				// vec![]
+				fees.clone(),
 			));
 			test_nav_up(DEFAULT_POOL_ID, nav_amount);
 
@@ -2967,9 +2965,8 @@ mod pool_fees {
 					(1, SeniorTrancheId::get(), investment_amount),
 				],
 			);
-			assert!(
-				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
-			);
+			assert_pending_fees(DEFAULT_POOL_ID, vec![(0, 0, None), (0, 0, Some(0))]);
+
 			assert_eq!(
 				Pool::<Runtime>::get(DEFAULT_POOL_ID)
 					.expect("Pool exists")
@@ -2997,9 +2994,9 @@ mod pool_fees {
 				investment_amount
 			));
 			assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
-			assert!(
-				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
-			);
+			assert_pending_fees(DEFAULT_POOL_ID, vec![(0, 0, None), (0, 0, Some(0))]);
+			assert_eq!(OrmlTokens::balance(AUSD_CURRENCY_ID, &fees_account), 0);
+
 			assert_ok!(PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				DEFAULT_POOL_ID,
@@ -3019,9 +3016,13 @@ mod pool_fees {
 				DEFAULT_POOL_ID
 			));
 			assert!(!EpochExecution::<Runtime>::contains_key(DEFAULT_POOL_ID));
-			assert!(
-				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top).is_empty()
+			assert_pending_fees(DEFAULT_POOL_ID, vec![(0, 0, None), (0, 0, Some(0))]);
+			assert_eq!(OrmlTokens::balance(AUSD_CURRENCY_ID, &fees_account), 0);
+			assert_eq!(
+				OrmlTokens::balance(AUSD_CURRENCY_ID, &DEFAULT_FEE_DESTINATION),
+				0,
 			);
+
 			assert_eq!(
 				Pool::<Runtime>::get(DEFAULT_POOL_ID)
 					.expect("Pool exists")
@@ -3076,14 +3077,27 @@ mod pool_fees {
 					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
+			assert_pending_fees(
+				DEFAULT_POOL_ID,
+				vec![
+					(0, fee_amount, None),
+					(
+						0,
+						0,
+						Some(
+							POOL_FEE_CHARGED_AMOUNT_PER_SECOND
+								* 12 * Balance::from(System::block_number()),
+						),
+					),
+				],
+			);
 			assert_eq!(
-				pallet_pool_fees::DisbursingFees::<Runtime>::get(0, PoolFeeBucket::Top)
-					.into_inner(),
-				vec![DisbursingFeeOf::<Runtime> {
-					amount: fee_amount,
-					destination: DEFAULT_FEE_DESTINATION,
-					fee_id: 1
-				}]
+				OrmlTokens::balance(AUSD_CURRENCY_ID, &fees_account),
+				fee_amount
+			);
+			assert_eq!(
+				OrmlTokens::balance(AUSD_CURRENCY_ID, &DEFAULT_FEE_DESTINATION),
+				0,
 			);
 
 			assert_ok!(PoolSystem::submit_solution(
@@ -3104,9 +3118,10 @@ mod pool_fees {
 				pool_owner_origin.clone(),
 				DEFAULT_POOL_ID
 			));
+			assert_eq!(OrmlTokens::balance(AUSD_CURRENCY_ID, &fees_account), 0);
 			assert_eq!(
-				Balances::free_balance(DEFAULT_FEE_DESTINATION),
-				nav_amount / 10
+				OrmlTokens::balance(AUSD_CURRENCY_ID, &DEFAULT_FEE_DESTINATION),
+				fee_amount,
 			);
 		});
 	}

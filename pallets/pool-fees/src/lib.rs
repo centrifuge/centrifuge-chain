@@ -468,6 +468,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// The account ID of the pool fees.
+		///
+		/// This actually does computation. If you need to keep using it, then
+		/// make sure you cache the value and only call this once.
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		pub fn get_active_fee(fee_id: T::FeeId) -> Result<PoolFeeOf<T>, DispatchError> {
 			Ok(FeeIdsToPoolBucket::<T>::get(fee_id)
 				.and_then(|(pool_id, bucket)| {
@@ -744,6 +752,7 @@ pub mod pallet {
 			});
 
 			// Update fees and NAV based on last epoch's AUM
+			let res_pre_fees = reserve.clone();
 			*reserve = Self::update_active_fees(
 				pool_id,
 				PoolFeeBucket::Top,
@@ -752,6 +761,23 @@ pub mod pallet {
 				epoch_duration,
 			);
 			Self::update_portfolio_valuation_for_pool(pool_id)?;
+
+			// Transfer disbursement amount from pool account to pallet sovereign account
+			let total_fee_amount = res_pre_fees.saturating_sub(*reserve);
+			if !total_fee_amount.is_zero() {
+				let pool_currency =
+					T::PoolReserve::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
+				let pool_account = T::PoolReserve::account_for(pool_id);
+
+				T::Tokens::transfer(
+					pool_currency,
+					&pool_account,
+					&T::PalletId::get().into_account_truncating(),
+					total_fee_amount,
+					// TODO: Ensure if account can indeed be killed
+					frame_support::traits::tokens::Preservation::Expendable,
+				)?;
+			}
 
 			Ok(())
 		}

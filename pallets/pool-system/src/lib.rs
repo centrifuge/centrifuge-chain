@@ -613,11 +613,6 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				// TODO: Remove
-				#[cfg(feature = "std")]
-				{
-					dbg!(&pool.reserve.clone());
-				}
 				ensure!(
 					!EpochExecution::<T>::contains_key(pool_id),
 					Error::<T>::InSubmissionPeriod
@@ -1190,11 +1185,6 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
-			// TODO: Remove
-			#[cfg(feature = "std")]
-			{
-				dbg!(&pool.reserve);
-			}
 			T::OnEpochTransition::on_execution_pre_fulfillments(pool_id)?;
 
 			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
@@ -1231,13 +1221,6 @@ pub mod pallet {
 				},
 			)?;
 
-			// TODO: Remove
-			#[cfg(feature = "std")]
-			{
-				dbg!(&pool.reserve.total);
-				dbg!(&epoch.nav);
-				dbg!(&executed_amounts);
-			}
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
 				pool.reserve.total,

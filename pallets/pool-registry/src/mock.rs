@@ -11,7 +11,9 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
-use cfg_mocks::{pallet_mock_change_guard, pallet_mock_write_off_policy};
+use cfg_mocks::{
+	pallet_mock_change_guard, pallet_mock_pre_conditions, pallet_mock_write_off_policy,
+};
 use cfg_primitives::{
 	Balance as BalanceType, BlockNumber, CollectionId, PoolEpochId, PoolFeeId, PoolId, TrancheId,
 	TrancheWeight,
@@ -23,7 +25,7 @@ use cfg_traits::{
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	pools::{PoolFee, PoolFeeBucket, PoolFeeType},
+	pools::{PoolFeeBucket, PoolFeeInfo},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -171,6 +173,7 @@ impl pallet_pool_system::Config for Test {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_system::pool_types::changes::PoolChangeProposal;
@@ -192,6 +195,7 @@ impl pallet_mock_change_guard::Config for Test {
 
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_FEES_PER_POOL;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 }
 
@@ -200,21 +204,17 @@ impl pallet_pool_fees::Config for Test {
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type InvestmentId = TrancheCurrency;
-	type IsPoolAdmin = PoolAdminCheck<Permissions>;
+	type IsPoolAdmin = MockIsAdmin;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
-	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	type Permissions = PermissionsMock;
+	type PalletId = PoolFeesPalletId;
 	type PoolId = PoolId;
-	type PoolInspect = PoolSystem;
 	type PoolReserve = PoolSystem;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Test>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = OrmlTokens;
-	type TrancheId = TrancheId;
 }
 
 parameter_types! {
@@ -254,7 +254,11 @@ impl<
 	>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
-		PoolFee<T::AccountId, PoolFeeType<Self::Balance, <T as pallet_pool_system::Config>::Rate>>,
+		PoolFeeInfo<
+			T::AccountId,
+			<T as pallet_pool_registry::Config>::Balance,
+			<T as pallet_pool_system::Config>::Rate,
+		>,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
@@ -374,6 +378,11 @@ impl pallet_investments::Config for Test {
 	type WeightInfo = ();
 }
 
+impl pallet_mock_pre_conditions::Config for Test {
+	type Conditions = (AccountId, PoolId);
+	type Result = bool;
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test
@@ -393,6 +402,7 @@ frame_support::construct_runtime!(
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		MockWriteOffPolicy: pallet_mock_write_off_policy,
 		MockChangeGuard: pallet_mock_change_guard,
+		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>},
 	}
 );

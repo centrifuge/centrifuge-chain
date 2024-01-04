@@ -18,7 +18,7 @@ use cfg_mocks::{
 	pre_conditions::pallet as pallet_mock_pre_conditions,
 };
 use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
-use cfg_traits::{Millis, Seconds};
+use cfg_traits::Millis;
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::PermissionScope,
@@ -396,6 +396,7 @@ pub fn assert_pending_fee(
 	let mut pending_fee = PoolFeeOf::<Runtime>::from_info(fee, fee_id);
 	pending_fee.amounts.disbursement = disbursement;
 	pending_fee.amounts.pending = pending;
+	// TODO: Add support for `None`
 	pending_fee.amounts.payable = Some(payable);
 
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));

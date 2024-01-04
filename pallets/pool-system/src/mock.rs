@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_mocks::pallet_mock_change_guard;
+use cfg_mocks::{pallet_mock_change_guard, pallet_mock_pre_conditions};
 use cfg_primitives::{
 	Balance, BlockNumber, CollectionId, PoolFeeId, PoolId, TrancheId, SECONDS_PER_YEAR,
 };
@@ -21,7 +21,7 @@ use cfg_traits::{
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
-	pools::{PoolFee, PoolFeeAmount, PoolFeeEditor, PoolFeeType},
+	pools::{PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -67,7 +67,7 @@ pub const DEFAULT_POOL_ID: PoolId = 0;
 pub const DEFAULT_POOL_OWNER: MockAccountId = 10;
 pub const DEFAULT_POOL_MAX_RESERVE: Balance = 10_000 * CURRENCY;
 
-pub const DEFAUL_FEE_EDITOR: PoolFeeEditor<MockAccountId> = PoolFeeEditor::Account(100);
+pub const DEFAULT_FEE_EDITOR: PoolFeeEditor<MockAccountId> = PoolFeeEditor::Account(100);
 pub const DEFAULT_FEE_DESTINATION: MockAccountId = 101;
 pub const POOL_FEE_FIXED_RATE_MULTIPLIER: u64 = SECONDS_PER_YEAR / 12;
 pub const POOL_FEE_CHARGED_AMOUNT_PER_SECOND: Balance = 1000;
@@ -76,7 +76,7 @@ pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 	vec![
 		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
-			editor: DEFAUL_FEE_EDITOR,
+			editor: DEFAULT_FEE_EDITOR,
 			fee_type: PoolFeeType::Fixed {
 				// For simplicity, we take 10% per block to simulate fees on a per-block basis
 				// because advancing one full year takes too long
@@ -88,12 +88,38 @@ pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 		},
 		PoolFeeInfoOf::<Runtime> {
 			destination: DEFAULT_FEE_DESTINATION,
-			editor: DEFAUL_FEE_EDITOR,
+			editor: DEFAULT_FEE_EDITOR,
 			fee_type: PoolFeeType::ChargedUpTo {
 				limit: PoolFeeAmount::AmountPerSecond(POOL_FEE_CHARGED_AMOUNT_PER_SECOND),
 			},
 		},
 	]
+}
+
+pub fn assert_pending_fees(
+	pool_id: PoolId,
+	pending_disbursement_payable: Vec<(Balance, Balance, Option<Balance>)>,
+) {
+	let fees = default_pool_fees();
+	let active_fees = pallet_pool_fees::ActiveFees::<Runtime>::get(pool_id, PoolFeeBucket::Top);
+
+	assert_eq!(fees.len(), pending_disbursement_payable.len());
+	assert_eq!(fees.len(), active_fees.len());
+
+	for i in 0..fees.len() {
+		let active_fee = active_fees.get(i).unwrap();
+		let fee = fees.get(i).unwrap();
+		let (pending, disbursement, payable) = pending_disbursement_payable.get(i).unwrap();
+
+		dbg!(active_fee);
+		dbg!(pending, disbursement, payable);
+		assert_eq!(active_fee.destination, fee.destination);
+		assert_eq!(active_fee.editor, fee.editor);
+		assert_eq!(active_fee.amounts.fee_type, fee.fee_type);
+		assert_eq!(active_fee.amounts.pending, *pending);
+		assert_eq!(active_fee.amounts.disbursement, *disbursement);
+		assert_eq!(active_fee.amounts.payable, *payable);
+	}
 }
 
 // Configure a mock runtime to test the pallet.
@@ -114,6 +140,7 @@ frame_support::construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		MockChangeGuard: pallet_mock_change_guard,
+		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -343,6 +370,11 @@ impl pallet_mock_change_guard::Config for Runtime {
 	type PoolId = PoolId;
 }
 
+impl pallet_mock_pre_conditions::Config for Runtime {
+	type Conditions = (MockAccountId, PoolId);
+	type Result = bool;
+}
+
 parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
@@ -354,7 +386,7 @@ impl pallet_pool_fees::Config for Runtime {
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
-	type IsPoolAdmin = PoolAdminCheck<Permissions>;
+	type IsPoolAdmin = MockIsAdmin;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
@@ -424,6 +456,7 @@ impl Config for Runtime {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = PoolChangeProposal;

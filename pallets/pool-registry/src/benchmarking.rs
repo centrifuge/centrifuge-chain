@@ -15,7 +15,7 @@
 use cfg_primitives::PoolEpochId;
 use cfg_traits::investments::TrancheCurrency as _;
 use cfg_types::{
-	pools::{PoolFee, PoolFeeType, TrancheMetadata},
+	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
 };
 use frame_benchmarking::benchmarks;
@@ -84,7 +84,7 @@ benchmarks! {
 				<T as pallet_pool_system::Config>::MaxTokenNameLength,
 				<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 				<T as pallet_pool_system::Config>::MaxTranches>,
-			PoolFeeInput = (PoolFeeBucket, PoolFee<<T as frame_system::Config>::AccountId, PoolFeeType <<T as pallet_pool_system::Config>::Balance, <T as pallet_pool_system::Config>::Rate>>),
+			PoolFeeInput = PoolFeeInputOf<T>,
 		>,
 	}
 	register {
