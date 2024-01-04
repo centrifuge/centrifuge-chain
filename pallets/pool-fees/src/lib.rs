@@ -150,13 +150,13 @@ pub mod pallet {
 
 		/// The provider for the positive pool NAV on which pool fees are
 		/// dependent.
-		type PosNAV: PoolNAV<Self::PoolId, Self::Balance>;
+		type AssetsUnderManagementNAV: PoolNAV<Self::PoolId, Self::Balance>;
 
 		/// The maximum age of the positive NAV.
 		///
 		/// NOTE: Temporary solution until accounting pallet.
 		#[pallet::constant]
-		type MaxAgePosNAV: Get<Seconds>;
+		type MaxNAVAge: Get<Seconds>;
 
 		// TODO: Enable after creating benchmarks
 		// type WeightInfo: WeightInfo;
@@ -670,10 +670,11 @@ pub mod pallet {
 			let now = T::Time::now();
 
 			// Ensure the positive NAV has been updated this block
-			let (nav, nav_last_updated) = T::PosNAV::nav(pool_id).ok_or(Error::<T>::NoPosNAV)?;
+			let (nav, nav_last_updated) =
+				T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoPosNAV)?;
 			// TODO: This blocks pool closing even if pool.parameters.max_nav_age > 0
 			ensure!(
-				now.saturating_sub(nav_last_updated) <= T::MaxAgePosNAV::get(),
+				now.saturating_sub(nav_last_updated) <= T::MaxNAVAge::get(),
 				Error::<T>::PosNAVTooOld
 			);
 
@@ -776,6 +777,25 @@ pub mod pallet {
 		fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error> {
 			Self::pay_active_fees(pool_id, PoolFeeBucket::Top)?;
 
+			Ok(())
+		}
+	}
+
+	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
+		type ClassId = ();
+		type RuntimeOrigin = T::RuntimeOrigin;
+
+		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Seconds)> {
+			let portfolio = PortfolioValuation::<T>::get(pool_id);
+			Some((portfolio.value(), portfolio.last_updated()))
+		}
+
+		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
+			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
+		}
+
+		fn initialise(_: OriginFor<T>, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
+			// This PoolFees implementation does not need to initialize explicitly.
 			Ok(())
 		}
 	}

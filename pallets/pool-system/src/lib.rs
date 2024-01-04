@@ -300,7 +300,11 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		type NAV: PoolNAV<Self::PoolId, Self::Balance>;
+		/// The provider for the positive NAV
+		type AssetsUnderManagementNAV: PoolNAV<Self::PoolId, Self::Balance>;
+
+		/// The provider for the negative NAV
+		type PoolFeesNAV: PoolNAV<Self::PoolId, Self::Balance>;
 
 		type TrancheCurrency: Into<Self::CurrencyId>
 			+ Clone
@@ -625,25 +629,32 @@ pub mod pallet {
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
-				let (nav, nav_last_updated) = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-
+				// Get positive NAV from AUM
+				let (nav_aum, aum_last_updated) =
+					T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 				ensure!(
-					now.saturating_sub(nav_last_updated) <= pool.parameters.max_nav_age,
+					now.saturating_sub(aum_last_updated) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 
-				let submission_period_epoch = pool.epoch.current;
-				let total_assets = nav.ensure_add(pool.reserve.total)?;
-
-				// Hook needs to be executing before starting next epoch because of setting
-				// `reserve.available` to zero
+				// Calculate fees to get negative NAV
 				let epoch_duration = now.saturating_sub(pool.epoch.last_closed);
 				T::OnEpochTransition::on_closing_mutate_reserve(
 					pool_id,
-					nav,
+					nav_aum,
 					&mut pool.reserve.total,
 					epoch_duration.into(),
 				)?;
+				let (nav_fees, fees_last_updated) =
+					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+				ensure!(
+					now.saturating_sub(fees_last_updated) <= pool.parameters.max_nav_age,
+					Error::<T>::NAVTooOld
+				);
+
+				let nav = nav_aum.saturating_sub(nav_fees);
+				let submission_period_epoch = pool.epoch.current;
+				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
 				pool.start_next_epoch(now)?;
 
@@ -667,10 +678,6 @@ pub mod pallet {
 
 				// Get the orders
 				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
-
-				// TODO(William): Fix for pool fees which are skipped here despite timestampt
-				// being updated Maybe okay not to do anything if we prepare disbursements
-				// beforehand
 				if orders.all_are_zero() {
 					pool.tranches.combine_with_mut_residual_top(
 						&epoch_tranche_prices,
@@ -722,8 +729,10 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					epoch: submission_period_epoch,
+					// TODO(william): Maybe switch to total_assets. If, apply to tranche ratio &
+					// rebalance update in epoch execution.
 					nav,
+					epoch: submission_period_epoch,
 					reserve: pool.reserve.total,
 					max_reserve: pool.reserve.max,
 					tranches: EpochExecutionTranches::new(epoch_tranches),

@@ -1170,7 +1170,7 @@ pub mod pallet {
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
-			// This Loans implementation does not need to initialize explicitally.
+			// This Loans implementation does not need to initialize explicitly.
 			Ok(())
 		}
 	}

@@ -210,18 +210,18 @@ parameter_types! {
 }
 
 impl pallet_pool_fees::Config for Runtime {
+	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type IsPoolAdmin = MockIsAdmin;
-	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxNAVAge = MagAgePosNAV;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
 	type PoolId = PoolId;
 	type PoolReserve = MockPools;
-	type PosNAV = FakeNav;
 	type Rate = Rate;
 	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

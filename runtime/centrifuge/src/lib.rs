@@ -1502,6 +1502,7 @@ impl pallet_pool_registry::Config for Runtime {
 impl pallet_pool_system::Config for Runtime {
 	type AddFees = PoolFees;
 	type AssetRegistry = OrmlAssetRegistry;
+	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -1518,7 +1519,6 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = Loans;
 	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
@@ -1526,6 +1526,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
@@ -1603,18 +1604,18 @@ parameter_types! {
 }
 
 impl pallet_pool_fees::Config for Runtime {
+	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type ChangeGuard = PoolSystem;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type IsPoolAdmin = PoolAdminCheck<Permissions>;
-	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxNAVAge = MagAgePosNAV;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
 	type PoolId = PoolId;
 	type PoolReserve = PoolSystem;
-	type PosNAV = Loans;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;

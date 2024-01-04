@@ -147,6 +147,7 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 impl pallet_pool_system::Config for Test {
 	type AddFees = PoolFees;
 	type AssetRegistry = RegistryMock;
+	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -163,7 +164,6 @@ impl pallet_pool_system::Config for Test {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = FakeNav;
 	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
@@ -196,21 +196,21 @@ parameter_types! {
 }
 
 impl pallet_pool_fees::Config for Test {
+	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type InvestmentId = TrancheCurrency;
 	type IsPoolAdmin = PoolAdminCheck<Permissions>;
-	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxNAVAge = MagAgePosNAV;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	type Permissions = PermissionsMock;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
 	type PoolReserve = PoolSystem;
-	type PosNAV = Loans;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_fees::types::Change<Test>;
 	type RuntimeEvent = RuntimeEvent;

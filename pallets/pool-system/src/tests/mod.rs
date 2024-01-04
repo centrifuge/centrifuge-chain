@@ -2791,7 +2791,8 @@ mod pool_fees {
 				2 * investment_amount
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 
@@ -2842,7 +2843,8 @@ mod pool_fees {
 				2 * investment_amount - adjustment_amount,
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 
@@ -2876,7 +2878,8 @@ mod pool_fees {
 				0,
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 		});
@@ -2982,7 +2985,8 @@ mod pool_fees {
 				2 * investment_amount
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 
@@ -3033,7 +3037,8 @@ mod pool_fees {
 				2 * investment_amount - adjustment_amount,
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 
@@ -3067,7 +3072,8 @@ mod pool_fees {
 				0,
 			);
 			assert_eq!(
-				<Runtime as Config>::NAV::nav(DEFAULT_POOL_ID).expect("Pool exists"),
+				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
+					.expect("Pool exists"),
 				(nav_amount, 0)
 			);
 			assert_eq!(
