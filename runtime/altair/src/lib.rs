@@ -1345,7 +1345,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
-	type IsAdmin = PoolAdminCheck<Permissions>;
+	type IsEditor = PoolAdminCheck<Permissions>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;

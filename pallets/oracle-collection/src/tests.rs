@@ -90,7 +90,7 @@ mod util {
 		});
 		MockIsAdmin::mock_check(|_| true);
 
-		OracleCollection::propose_update_feeders(
+		OracleCollection::propose_update_key_feeders(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			key,
@@ -98,7 +98,7 @@ mod util {
 		)
 		.unwrap();
 
-		OracleCollection::apply_update_feeders(
+		OracleCollection::apply_update_key_feeders(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CHANGE_ID,
@@ -113,7 +113,7 @@ mod util {
 	pub fn set_collection_info(duration: Timestamp, limit: u32) {
 		MockIsAdmin::mock_check(|_| true);
 
-		assert_ok!(OracleCollection::set_collection_info(
+		assert_ok!(OracleCollection::create_collection(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CollectionInfo {
@@ -133,21 +133,21 @@ fn updating_feeders() {
 
 		mock::prepare_update_feeders(KEY_A, &feeders);
 
-		assert_ok!(OracleCollection::propose_update_feeders(
+		assert_ok!(OracleCollection::propose_update_key_feeders(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			KEY_A,
 			feeders.clone(),
 		));
 
-		assert_ok!(OracleCollection::apply_update_feeders(
+		assert_ok!(OracleCollection::apply_update_key_feeders(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CHANGE_ID,
 		));
 
 		System::assert_last_event(
-			Event::<Runtime>::UpdatedFeeders {
+			Event::<Runtime>::UpdatedKeyFeeders {
 				collection_id: COLLECTION_ID,
 				key: KEY_A,
 				feeders,
@@ -166,13 +166,13 @@ fn updating_feeders_wrong_admin() {
 		MockIsAdmin::mock_check(|_| false);
 
 		assert_err!(
-			OracleCollection::propose_update_feeders(
+			OracleCollection::propose_update_key_feeders(
 				RuntimeOrigin::signed(ADMIN),
 				COLLECTION_ID,
 				KEY_A,
 				feeders
 			),
-			Error::<Runtime>::IsNotAdmin
+			Error::<Runtime>::IsNotEditor
 		);
 	});
 }
@@ -182,7 +182,7 @@ fn update_collection_max_age() {
 	new_test_ext().execute_with(|| {
 		MockIsAdmin::mock_check(|_| true);
 
-		assert_ok!(OracleCollection::set_collection_info(
+		assert_ok!(OracleCollection::create_collection(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CollectionInfo::default(),
@@ -196,12 +196,12 @@ fn update_collection_max_age_wrong_admin() {
 		MockIsAdmin::mock_check(|_| false);
 
 		assert_err!(
-			OracleCollection::set_collection_info(
+			OracleCollection::create_collection(
 				RuntimeOrigin::signed(ADMIN),
 				COLLECTION_ID,
 				CollectionInfo::default(),
 			),
-			Error::<Runtime>::IsNotAdmin
+			Error::<Runtime>::IsNotEditor
 		);
 	});
 }

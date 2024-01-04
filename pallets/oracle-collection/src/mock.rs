@@ -95,7 +95,7 @@ impl pallet_oracle_collection::Config for Runtime {
 	type ChangeGuard = MockChangeGuard;
 	type CollectionId = CollectionId;
 	type FeederId = AccountId;
-	type IsAdmin = MockIsAdmin;
+	type IsEditor = MockIsEditor;
 	type MaxCollectionSize = ConstU32<10>;
 	type MaxFeedersPerKey = MaxFeedersPerKey;
 	type OracleKey = OracleKey;

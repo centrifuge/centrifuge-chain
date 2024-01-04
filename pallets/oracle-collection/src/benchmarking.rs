@@ -125,7 +125,7 @@ mod benchmarks {
 				);
 			}
 
-			Pallet::<T>::apply_update_feeders(
+			Pallet::<T>::apply_update_key_feeders(
 				RawOrigin::Signed(admin.clone()).into(),
 				T::CollectionId::default(),
 				util::last_change_id_for::<T>(key, feeders.clone()),
@@ -133,7 +133,7 @@ mod benchmarks {
 		}
 
 		// Worst case expect to read the max age
-		Pallet::<T>::set_collection_info(
+		Pallet::<T>::create_collection(
 			RawOrigin::Signed(admin.clone()).into(),
 			T::CollectionId::default(),
 			CollectionInfo::default(),
