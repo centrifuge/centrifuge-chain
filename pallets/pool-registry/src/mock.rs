@@ -196,7 +196,6 @@ parameter_types! {
 }
 
 impl pallet_pool_fees::Config for Test {
-	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type ChangeGuard = MockChangeGuard;
 	type CurrencyId = CurrencyId;
@@ -204,7 +203,6 @@ impl pallet_pool_fees::Config for Test {
 	type InvestmentId = TrancheCurrency;
 	type IsPoolAdmin = PoolAdminCheck<Permissions>;
 	type MaxFeesPerPool = MaxFeesPerPool;
-	type MaxNAVAge = MagAgePosNAV;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	type Permissions = PermissionsMock;

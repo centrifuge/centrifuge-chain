@@ -1123,7 +1123,6 @@ parameter_types! {
 	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
 	pub const MaxFeesPerPool: u32 = MAX_FEES_PER_POOL;
-	pub const MagAgePosNAV: Seconds = 0;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -1132,13 +1131,11 @@ impl pallet_pool_fees::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type FeeId = PoolFeeId;
 	type IsPoolAdmin = PoolAdminCheck<Permissions>;
-	type MaxAgePosNAV = MagAgePosNAV;
 	type MaxFeesPerPool = MaxFeesPerPool;
 	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
 	type PalletId = PoolFeesPalletId;
 	type PoolId = PoolId;
 	type PoolReserve = PoolSystem;
-	type PosNAV = Loans;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;

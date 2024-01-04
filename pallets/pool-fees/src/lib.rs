@@ -137,7 +137,7 @@ pub mod pallet {
 		/// bucket variants, this yields the max number of fees per pool.
 		type MaxPoolFeesPerBucket: Get<u32>;
 
-		// TODO: Should be MaxPoolFeesPerBucket * PoolFeeBucket::iter().count() as u32
+		/// The upper bound for the total number of fees per pool.
 		type MaxFeesPerPool: Get<u32>;
 
 		/// Identifier of this pallet used as an account which temporarily
@@ -147,16 +147,6 @@ pub mod pallet {
 
 		/// Fetching method for the time of the current block
 		type Time: TimeAsSecs;
-
-		/// The provider for the positive pool NAV on which pool fees are
-		/// dependent.
-		type AssetsUnderManagementNAV: PoolNAV<Self::PoolId, Self::Balance>;
-
-		/// The maximum age of the positive NAV.
-		///
-		/// NOTE: Temporary solution until accounting pallet.
-		#[pallet::constant]
-		type MaxNAVAge: Get<Seconds>;
 
 		// TODO: Enable after creating benchmarks
 		// type WeightInfo: WeightInfo;
@@ -282,10 +272,6 @@ pub mod pallet {
 		FeeNotFound,
 		/// A pool could not be found.
 		PoolNotFound,
-		/// The positive pool NAV is unavailable.
-		NoPosNAV,
-		/// The last update of the positive pool NAV is too far in the past.
-		PosNAVTooOld,
 		/// Only the PoolAdmin can execute a given operation.
 		NotPoolAdmin,
 		/// The pool bucket has reached the maximum fees size.
@@ -667,24 +653,20 @@ pub mod pallet {
 		fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
 		) -> Result<(T::Balance, u32), DispatchError> {
-			let now = T::Time::now();
-
-			// Ensure the positive NAV has been updated this block
-			let (nav, nav_last_updated) =
-				T::AssetsUnderManagementNAV::nav(pool_id).ok_or(Error::<T>::NoPosNAV)?;
-			// TODO: This blocks pool closing even if pool.parameters.max_nav_age > 0
-			ensure!(
-				now.saturating_sub(nav_last_updated) <= T::MaxNAVAge::get(),
-				Error::<T>::PosNAVTooOld
-			);
-
+			let nav_aum = AssetsUnderManagement::<T>::get(pool_id);
 			let fee_nav = PortfolioValuation::<T>::get(pool_id);
 			let time_diff = T::Time::now().saturating_sub(fee_nav.last_updated());
 
 			// Force update of pending amounts if last done in past block
 			if !time_diff.is_zero() {
 				for bucket in PoolFeeBucket::iter() {
-					Self::update_active_fees(pool_id, bucket, nav, T::Balance::zero(), time_diff);
+					Self::update_active_fees(
+						pool_id,
+						bucket,
+						nav_aum,
+						T::Balance::zero(),
+						time_diff,
+					);
 				}
 			}
 
