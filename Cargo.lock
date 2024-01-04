@@ -262,7 +262,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -1197,7 +1197,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -2804,7 +2804,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -8201,7 +8201,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-oracle-data-collection"
+name = "pallet-oracle-collection"
 version = "1.0.0"
 dependencies = [
  "cfg-mocks",
@@ -11427,7 +11427,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -11544,7 +11544,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
