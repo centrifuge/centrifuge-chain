@@ -23,6 +23,7 @@ pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod remarks;
 pub mod transfer_filter;
 pub mod xcm;
 
