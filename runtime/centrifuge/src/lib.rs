@@ -1697,8 +1697,8 @@ impl pallet_oracle_feed::Config for Runtime {
 	type WeightInfo = weights::pallet_oracle_feed::WeightInfo<Self>;
 }
 
-impl pallet_oracle_data_collection::Config for Runtime {
-	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
+impl pallet_oracle_collection::Config for Runtime {
+	type AggregationProvider = pallet_oracle_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
@@ -1711,8 +1711,9 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Timestamp = Millis;
-	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_oracle_collection::WeightInfo<Self>;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
@@ -1897,7 +1898,7 @@ construct_runtime!(
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 109,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 110,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 111,
-		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 112,
+		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2511,7 +2512,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
-			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2588,7 +2589,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	pallet_liquidity_rewards, LiquidityRewards);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
-			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
+			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

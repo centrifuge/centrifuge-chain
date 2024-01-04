@@ -4,12 +4,12 @@ use frame_system::RawOrigin;
 
 use crate::{
 	pallet::{Call, Collection, Config, Pallet},
-	types::Change,
+	types::{Change, CollectionInfo},
 };
 
 #[cfg(test)]
 fn init_mocks() {
-	use crate::mock::{MockChangeGuard, MockIsAdmin, MockProvider};
+	use crate::mock::{MockChangeGuard, MockIsAdmin, MockProvider, MockTime};
 
 	MockIsAdmin::mock_check(|_| true);
 	MockProvider::mock_get(|_, _| Ok(Some((Default::default(), Default::default()))));
@@ -17,6 +17,7 @@ fn init_mocks() {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(Default::default())
 	});
+	MockTime::mock_now(|| 0);
 }
 
 mod util {
@@ -131,12 +132,41 @@ mod benchmarks {
 			)?;
 		}
 
+		// Worst case expect to read the max age
+		Pallet::<T>::set_collection_info(
+			RawOrigin::Signed(admin.clone()).into(),
+			T::CollectionId::default(),
+			CollectionInfo::default(),
+		)
+		.unwrap();
+
 		#[extrinsic_call]
 		update_collection(RawOrigin::Signed(admin), T::CollectionId::default());
 
 		assert_eq!(
-			Collection::<T>::get(T::CollectionId::default()).len() as u32,
+			Collection::<T>::get(T::CollectionId::default())
+				.content
+				.len() as u32,
 			m
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn set_collection_info() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let admin: T::AccountId = whitelisted_caller();
+
+		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
+
+		#[extrinsic_call]
+		set_collection_info(
+			RawOrigin::Signed(admin),
+			T::CollectionId::default(),
+			CollectionInfo::default(),
 		);
 
 		Ok(())

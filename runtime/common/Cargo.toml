@@ -93,7 +93,7 @@ pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-nft = { workspace = true }
 pallet-nft-sales = { workspace = true }
-pallet-oracle-data-collection = { workspace = true }
+pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
 pallet-permissions = { workspace = true }
@@ -230,7 +230,7 @@ std = [
   "pallet-multisig/std",
   "pallet-nft/std",
   "pallet-nft-sales/std",
-  "pallet-oracle-data-collection/std",
+  "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
   "pallet-permissions/std",
@@ -310,7 +310,7 @@ runtime-benchmarks = [
   "pallet-multisig/runtime-benchmarks",
   "pallet-nft/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
-  "pallet-oracle-data-collection/runtime-benchmarks",
+  "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
@@ -387,7 +387,7 @@ try-runtime = [
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
   "pallet-nft-sales/try-runtime",
-  "pallet-oracle-data-collection/try-runtime",
+  "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",

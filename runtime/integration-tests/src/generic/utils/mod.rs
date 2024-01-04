@@ -219,17 +219,17 @@ pub mod oracle {
 		price_id: OracleKey,
 		feeders: impl IntoIterator<Item = Feeder<T::RuntimeOriginExt>>,
 	) {
-		pallet_oracle_data_collection::Pallet::<T>::propose_update_feeders(
+		pallet_oracle_collection::Pallet::<T>::propose_update_feeders(
 			RawOrigin::Signed(admin.clone()).into(),
 			pool_id,
 			price_id,
-			pallet_oracle_data_collection::util::feeders_from(feeders).unwrap(),
+			pallet_oracle_collection::util::feeders_from(feeders).unwrap(),
 		)
 		.unwrap();
 
 		let change_id = last_change_id::<T>();
 
-		pallet_oracle_data_collection::Pallet::<T>::apply_update_feeders(
+		pallet_oracle_collection::Pallet::<T>::apply_update_feeders(
 			RawOrigin::Signed(admin).into(), //or any account
 			pool_id,
 			change_id,
@@ -238,7 +238,7 @@ pub mod oracle {
 	}
 
 	pub fn update_collection<T: Runtime>(any: AccountId, pool_id: PoolId) {
-		pallet_oracle_data_collection::Pallet::<T>::update_collection(
+		pallet_oracle_collection::Pallet::<T>::update_collection(
 			RawOrigin::Signed(any).into(),
 			pool_id,
 		)

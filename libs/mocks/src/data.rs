@@ -31,7 +31,9 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_collection(f: impl Fn(&T::CollectionId) -> T::Collection + 'static) {
+		pub fn mock_collection(
+			f: impl Fn(&T::CollectionId) -> Result<T::Collection, DispatchError> + 'static,
+		) {
 			register_call!(f);
 		}
 
@@ -56,7 +58,7 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn collection(a: &T::CollectionId) -> T::Collection {
+		fn collection(a: &T::CollectionId) -> Result<T::Collection, DispatchError> {
 			execute_call!(a)
 		}
 

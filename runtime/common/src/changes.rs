@@ -1,6 +1,6 @@
 use frame_support::RuntimeDebug;
 use pallet_loans::entities::changes::Change as LoansChange;
-use pallet_oracle_data_collection::types::Change as OracleCollectionChange;
+use pallet_oracle_collection::types::Change as OracleCollectionChange;
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -8,8 +8,8 @@ use sp_runtime::DispatchError;
 use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Auxiliar type to carry all pallets bounds used by RuntimeChange
-pub trait Changeable: pallet_loans::Config + pallet_oracle_data_collection::Config {}
-impl<T: pallet_loans::Config + pallet_oracle_data_collection::Config> Changeable for T {}
+pub trait Changeable: pallet_loans::Config + pallet_oracle_collection::Config {}
+impl<T: pallet_loans::Config + pallet_oracle_collection::Config> Changeable for T {}
 
 /// A change done in the runtime, shared between pallets
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

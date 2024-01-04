@@ -70,7 +70,7 @@ fn config_mocks() {
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
-	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
+	MockPrices::mock_collection(|_| Ok(MockDataCollection::new(|_| Ok(Default::default()))));
 	MockChangeGuard::mock_note(|_, change| {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(sp_core::H256::default())
