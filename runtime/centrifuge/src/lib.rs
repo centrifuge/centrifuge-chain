@@ -1846,7 +1846,7 @@ impl pallet_remarks::Config for Runtime {
 	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
