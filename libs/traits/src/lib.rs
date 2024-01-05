@@ -556,7 +556,7 @@ pub trait TokenSwaps<Account> {
 		account: Account,
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
-		buy_amount: Self::Balance,
+		amount_out: Self::Balance,
 		price: OrderPrice<Self::SellRatio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
@@ -597,7 +597,7 @@ pub trait TokenSwaps<Account> {
 	fn update_order(
 		account: Account,
 		order_id: Self::OrderId,
-		buy_amount: Self::Balance,
+		amount_out: Self::Balance,
 		price: OrderPrice<Self::SellRatio>,
 	) -> DispatchResult;
 
