@@ -193,8 +193,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Propose an update of feeders associated to a specific key.
 		/// The collection will only be modified once
-		/// [`Pallet::apply_update_feeders`] is called.
-		#[pallet::weight(T::WeightInfo::propose_update_feeders(T::MaxFeedersPerKey::get()))]
+		/// [`Pallet::apply_update_collection_info`] is called.
+		#[pallet::weight(T::WeightInfo::propose_update_collection_info(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(0)]
 		pub fn propose_update_collection_info(
 			origin: OriginFor<T>,
@@ -214,11 +214,11 @@ pub mod pallet {
 		}
 
 		/// Apply an change previously proposed by
-		/// [`Pallet::propose_update_feeders`] if the conditions to get it ready
-		/// are fullfilled.
+		/// [`Pallet::propose_update_collection_info`] if the conditions to get
+		/// it ready are fullfilled.
 		///
 		/// This call is permissionless.
-		#[pallet::weight(T::WeightInfo::apply_update_feeders(T::MaxFeedersPerKey::get()))]
+		#[pallet::weight(T::WeightInfo::apply_update_collection_info(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(1)]
 		pub fn apply_update_collection_info(
 			origin: OriginFor<T>,
