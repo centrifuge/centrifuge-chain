@@ -295,7 +295,7 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
 			min_fulfillment_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -307,7 +307,7 @@ pub mod pallet {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
 			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
 		},
 		/// Event emitted when an order is fulfilled.
@@ -322,7 +322,7 @@ pub mod pallet {
 			fulfillment_amount: T::Balance,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 		},
 		/// Event emitted when a valid trading pair is added.
 		TradingPairAdded {
@@ -617,11 +617,7 @@ pub mod pallet {
 				Error::<T>::InsufficientAssetFunds,
 			);
 
-			let market_price = T::PriceProvider::get(
-				&T::MarketFeederId::get(),
-				&(order.asset_in_id, order.asset_out_id).into(),
-			)?
-			.ok_or(Error::<T>::MarketPriceNotFound)?;
+			let market_price = Self::market_price(order.asset_in_id, order.asset_out_id)?;
 
 			if market_price > order.max_sell_price {
 				Err(Error::<T>::HighMarketPrice)?
@@ -700,10 +696,33 @@ pub mod pallet {
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
 				fulfillment_amount: buy_amount,
-				sell_rate_limit: order.max_sell_price,
+				max_sell_price: order.max_sell_price,
 			});
 
 			Ok(())
+		}
+
+		pub fn market_price(
+			currency_in: T::AssetCurrencyId,
+			currency_out: T::AssetCurrencyId,
+		) -> Result<T::SellRatio, DispatchError> {
+			let price = T::PriceProvider::get(
+				&T::MarketFeederId::get(),
+				&(currency_in, currency_out).into(),
+			)?;
+
+			Ok(match price {
+				Some(price) => price,
+				None => {
+					let price = T::PriceProvider::get(
+						&T::MarketFeederId::get(),
+						&(currency_out, currency_in).into(),
+					)?
+					.ok_or(Error::<T>::MarketPriceNotFound)?;
+
+					T::SellRatio::one().ensure_div(price)?
+				}
+			})
 		}
 
 		/// Remove an order from storage
@@ -801,7 +820,7 @@ pub mod pallet {
 			account: T::AccountId,
 			order_id: T::OrderIdNonce,
 			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
 			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
 		) -> DispatchResult {
@@ -813,14 +832,14 @@ pub mod pallet {
 					let max_sell_amount = Self::convert_with_ratio(
 						order.asset_in_id,
 						order.asset_out_id,
-						sell_rate_limit,
+						max_sell_price,
 						buy_amount,
 					)?;
 
 					// ensure proper amount can be, and is reserved of outgoing currency for updated
 					// order.
 					// Also minimise reserve/unreserve operations.
-					if buy_amount != order.buy_amount || sell_rate_limit != order.max_sell_price {
+					if buy_amount != order.buy_amount || max_sell_price != order.max_sell_price {
 						if max_sell_amount > order.max_sell_amount {
 							let sell_reserve_diff =
 								max_sell_amount.ensure_sub(order.max_sell_amount)?;
@@ -843,7 +862,7 @@ pub mod pallet {
 						}
 					};
 					order.buy_amount = buy_amount;
-					order.max_sell_price = sell_rate_limit;
+					order.max_sell_price = max_sell_price;
 					order.min_fulfillment_amount = min_fulfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 
@@ -859,7 +878,7 @@ pub mod pallet {
 				|maybe_order| -> DispatchResult {
 					let order = maybe_order.as_mut().ok_or(Error::<T>::OrderNotFound)?;
 					order.buy_amount = buy_amount;
-					order.max_sell_price = sell_rate_limit;
+					order.max_sell_price = max_sell_price;
 					order.min_fulfillment_amount = min_fulfillment_amount;
 					order.max_sell_amount = max_sell_amount;
 					Ok(())
@@ -869,7 +888,7 @@ pub mod pallet {
 				account,
 				order_id,
 				buy_amount,
-				sell_rate_limit,
+				max_sell_price,
 				min_fulfillment_amount,
 			});
 
@@ -881,7 +900,7 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 			min_fulfillment_amount: T::Balance,
 			validate: impl FnOnce(&OrderOf<T>) -> DispatchResult,
 		) -> Result<T::OrderIdNonce, DispatchError> {
@@ -891,7 +910,7 @@ pub mod pallet {
 			})?;
 
 			let max_sell_amount =
-				Self::convert_with_ratio(currency_in, currency_out, sell_rate_limit, buy_amount)?;
+				Self::convert_with_ratio(currency_in, currency_out, max_sell_price, buy_amount)?;
 
 			T::TradeableAsset::hold(currency_out, &(), &account, max_sell_amount)?;
 
@@ -902,7 +921,7 @@ pub mod pallet {
 				asset_in_id: currency_in,
 				asset_out_id: currency_out,
 				buy_amount,
-				max_sell_price: sell_rate_limit,
+				max_sell_price: max_sell_price,
 				initial_buy_amount: buy_amount,
 				min_fulfillment_amount,
 				max_sell_amount,
@@ -920,7 +939,7 @@ pub mod pallet {
 			<UserOrders<T>>::insert(&account, order_id, new_order);
 			Self::deposit_event(Event::OrderCreated {
 				creator_account: account,
-				sell_rate_limit,
+				max_sell_price,
 				order_id,
 				buy_amount,
 				currency_in,
@@ -947,7 +966,7 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 		) -> Result<Self::OrderId, DispatchError> {
 			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
 				T::MinFulfillmentAmountNative::get(),
@@ -959,7 +978,7 @@ pub mod pallet {
 				currency_in,
 				currency_out,
 				buy_amount,
-				sell_rate_limit,
+				max_sell_price,
 				min_fulfillment_amount,
 				|order| {
 					// We only check if the trading pair exists not if the minimum amount is
@@ -995,7 +1014,7 @@ pub mod pallet {
 			account: T::AccountId,
 			order_id: Self::OrderId,
 			buy_amount: T::Balance,
-			sell_rate_limit: T::SellRatio,
+			max_sell_price: T::SellRatio,
 		) -> DispatchResult {
 			let order = Orders::<T>::get(order_id)?;
 			let min_fulfillment_amount = T::DecimalConverter::to_asset_balance(
@@ -1007,7 +1026,7 @@ pub mod pallet {
 				account,
 				order_id,
 				buy_amount,
-				sell_rate_limit,
+				max_sell_price,
 				min_fulfillment_amount,
 				|order| {
 					// We only check if the trading pair exists not if the minimum amount is
