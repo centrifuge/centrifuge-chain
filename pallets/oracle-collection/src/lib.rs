@@ -419,8 +419,7 @@ pub mod pallet {
 			let feeder = T::FeederId::from(id);
 			T::OracleProvider::set(&(feeder.clone(), collection_id), key, value);
 
-			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
-				let info = maybe_info.get_or_insert(Default::default());
+			CollectionInfo::<T>::mutate(collection_id, |info| {
 				if !info.feeders.contains(&feeder) {
 					info.feeders.try_insert(feeder).unwrap();
 				}
