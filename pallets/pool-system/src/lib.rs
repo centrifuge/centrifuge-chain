@@ -638,7 +638,7 @@ pub mod pallet {
 					pool_id,
 					nav_aum,
 					&mut pool.reserve.total,
-					epoch_duration.into(),
+					epoch_duration,
 				)?;
 				let (nav_fees, fees_last_updated) =
 					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
@@ -726,7 +726,7 @@ pub mod pallet {
 				let mut epoch = EpochExecutionInfo {
 					// TODO(william): Maybe switch to total_assets. If, apply to tranche ratio &
 					// rebalance update in epoch execution.
-					nav,
+					nav: total_assets,
 					epoch: submission_period_epoch,
 					reserve: pool.reserve.total,
 					max_reserve: pool.reserve.max,
@@ -1210,7 +1210,12 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = pool.reserve.total.ensure_add(epoch.nav)?;
+			// TODO: Check whether pool.reserve.total == epoch.reserve
+			let total_assets = pool
+				.reserve
+				.total
+				.ensure_add(epoch.nav)?
+				.ensure_sub(epoch.reserve)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				&executed_amounts,
 				|tranche, &(invest, redeem)| {
@@ -1224,7 +1229,7 @@ pub mod pallet {
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
 				pool.reserve.total,
-				epoch.nav,
+				epoch.nav.ensure_sub(epoch.reserve)?,
 				tranche_ratios.as_slice(),
 				&executed_amounts,
 			)?;

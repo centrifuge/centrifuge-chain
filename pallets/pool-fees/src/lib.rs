@@ -752,7 +752,7 @@ pub mod pallet {
 			});
 
 			// Update fees and NAV based on last epoch's AUM
-			let res_pre_fees = reserve.clone();
+			let res_pre_fees = *reserve;
 			*reserve = Self::update_active_fees(
 				pool_id,
 				PoolFeeBucket::Top,
