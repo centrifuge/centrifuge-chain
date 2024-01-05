@@ -503,6 +503,13 @@ pub trait CurrencyInspect {
 	fn is_tranche_token(currency: Self::CurrencyId) -> bool;
 }
 
+/// Determines an order price
+#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+pub enum OrderPrice<Ratio> {
+	Market,
+	Custom(Ratio),
+}
+
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
@@ -553,7 +560,7 @@ pub trait TokenSwaps<Account> {
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		buy_amount: Self::Balance,
-		sell_rate_limit: Self::SellRatio,
+		price: OrderPrice<Self::SellRatio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
@@ -594,7 +601,7 @@ pub trait TokenSwaps<Account> {
 		account: Account,
 		order_id: Self::OrderId,
 		buy_amount: Self::Balance,
-		sell_rate_limit: Self::SellRatio,
+		price: OrderPrice<Self::SellRatio>,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair
