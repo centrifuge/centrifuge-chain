@@ -114,7 +114,7 @@ pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-nft = { workspace = true }
 pallet-nft-sales = { workspace = true }
-pallet-oracle-data-collection = { workspace = true }
+pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
 pallet-permissions = { workspace = true }
@@ -123,6 +123,7 @@ pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
+pallet-remarks = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
 pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
@@ -243,7 +244,7 @@ std = [
   "pallet-multisig/std",
   "pallet-nft/std",
   "pallet-nft-sales/std",
-  "pallet-oracle-data-collection/std",
+  "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
   "pallet-permissions/std",
@@ -252,6 +253,7 @@ std = [
   "pallet-pool-system/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
+  "pallet-remarks/std",
   "pallet-restricted-tokens/std",
   "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
@@ -332,7 +334,7 @@ runtime-benchmarks = [
   "pallet-multisig/runtime-benchmarks",
   "pallet-nft/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
-  "pallet-oracle-data-collection/runtime-benchmarks",
+  "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
@@ -341,6 +343,7 @@ runtime-benchmarks = [
   "pallet-pool-system/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
+  "pallet-remarks/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-restricted-xtokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
@@ -421,7 +424,7 @@ try-runtime = [
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
   "pallet-nft-sales/try-runtime",
-  "pallet-oracle-data-collection/try-runtime",
+  "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
@@ -430,6 +433,7 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
+  "pallet-remarks/try-runtime",
   "pallet-restricted-tokens/try-runtime",
   "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",

@@ -1352,8 +1352,8 @@ impl pallet_oracle_feed::Config for Runtime {
 	type WeightInfo = weights::pallet_oracle_feed::WeightInfo<Self>;
 }
 
-impl pallet_oracle_data_collection::Config for Runtime {
-	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
+impl pallet_oracle_collection::Config for Runtime {
+	type AggregationProvider = pallet_oracle_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
@@ -1366,8 +1366,9 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	type Timestamp = Millis;
-	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_oracle_collection::WeightInfo<Self>;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
@@ -1845,6 +1846,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+		pub const MaxRemarksPerCall: u32 = 10;
+}
+
+impl pallet_remarks::Config for Runtime {
+	type MaxRemarksPerCall = MaxRemarksPerCall;
+	type Remark = Remark;
+	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1915,7 +1929,7 @@ construct_runtime!(
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
-		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 119,
+		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1947,6 +1961,7 @@ construct_runtime!(
 
 		// our pallets part 2
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
+		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
 	}
 );
 
@@ -2105,7 +2120,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::transfer_filter::PreNativeTransfer;
+use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2636,7 +2651,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
-			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
+			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
+			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2695,7 +2711,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
-			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_remarks, Remarks);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

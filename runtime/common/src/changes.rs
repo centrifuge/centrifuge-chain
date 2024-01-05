@@ -1,6 +1,6 @@
 use frame_support::RuntimeDebug;
 use pallet_loans::entities::changes::Change as LoansChange;
-use pallet_oracle_data_collection::types::Change as OracleCollectionChange;
+use pallet_oracle_collection::types::Change as OracleCollectionChange;
 use pallet_pool_fees::types::Change as PoolFeesChange;
 use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -10,12 +10,11 @@ use sp_std::{marker::PhantomData, vec::Vec};
 
 /// Auxiliar type to carry all pallets bounds used by RuntimeChange
 pub trait Changeable:
-	pallet_loans::Config + pallet_oracle_data_collection::Config + pallet_pool_fees::Config
+	pallet_loans::Config + pallet_oracle_collection::Config + pallet_pool_fees::Config
 {
 }
-impl<
-		T: pallet_loans::Config + pallet_oracle_data_collection::Config + pallet_pool_fees::Config,
-	> Changeable for T
+impl<T: pallet_loans::Config + pallet_oracle_collection::Config + pallet_pool_fees::Config>
+	Changeable for T
 {
 }
 
@@ -68,7 +67,6 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 				OracleCollectionChange::Feeders(_, _) => vec![],
 			},
 			RuntimeChange::PoolFee(pool_fees_change) => match pool_fees_change {
-				// TODO(william): Gather requirements similar to above
 				PoolFeesChange::AppendFee(_, _) => vec![week],
 			},
 			RuntimeChange::_Unreachable(_) => vec![],

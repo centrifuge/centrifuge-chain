@@ -262,7 +262,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -1198,7 +1198,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -1207,6 +1207,7 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
+ "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
  "pallet-rewards",
@@ -2807,7 +2808,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -2816,6 +2817,7 @@ dependencies = [
  "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
+ "pallet-remarks",
  "pallet-restricted-tokens",
  "pallet-restricted-xtokens",
  "pallet-rewards",
@@ -8205,7 +8207,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-oracle-data-collection"
+name = "pallet-oracle-collection"
 version = "1.0.0"
 dependencies = [
  "cfg-mocks",
@@ -8456,6 +8458,20 @@ dependencies = [
  "serde",
  "sp-arithmetic",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-remarks"
+version = "0.0.1"
+source = "git+https://github.com/foss3/runtime-pallet-library?branch=polkadot-v0.9.43#4c6aa68ce21729b835e56b8aaf1b76040a4cf189"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.6.5",
+ "scale-info",
  "sp-runtime",
  "sp-std",
 ]
@@ -11462,7 +11478,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
@@ -11580,7 +11596,7 @@ dependencies = [
  "pallet-multisig",
  "pallet-nft",
  "pallet-nft-sales",
- "pallet-oracle-data-collection",
+ "pallet-oracle-collection",
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
