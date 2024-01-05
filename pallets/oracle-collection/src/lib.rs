@@ -191,7 +191,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Propose an update of feeders associated to a specific key.
+		/// Propose an update of feeders associated to a specific collection.
 		/// The collection will only be modified once
 		/// [`Pallet::apply_update_collection_info`] is called.
 		#[pallet::weight(T::WeightInfo::propose_update_collection_info(T::MaxFeedersPerKey::get()))]
