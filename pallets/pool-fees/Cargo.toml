@@ -22,8 +22,8 @@ pallet-timestamp = { workspace = true, default-features = true }
 rand = "0.8.5"
 
 [dependencies]
-parity-scale-codec = { workspace = true }
 log = { workspace = true }
+parity-scale-codec = { workspace = true }
 scale-info = { workspace = true, features = ["derive"] }
 strum = { workspace = true }
 
