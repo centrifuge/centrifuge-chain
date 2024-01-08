@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::TokenSwaps;
+	use cfg_traits::{OrderPrice, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -31,7 +31,7 @@ pub mod pallet {
 					T::CurrencyId,
 					T::CurrencyId,
 					T::Balance,
-					T::SellRatio,
+					OrderPrice<T::SellRatio>,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
 		) {
@@ -39,9 +39,9 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::SellRatio) -> DispatchResult + 'static,
+			f: impl Fn(T::OrderId, T::Balance, OrderPrice<T::SellRatio>) -> DispatchResult + 'static,
 		) {
-			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		pub fn mock_cancel_order(f: impl Fn(T::OrderId) -> DispatchResult + 'static) {
@@ -75,18 +75,17 @@ pub mod pallet {
 			b: Self::CurrencyId,
 			c: Self::CurrencyId,
 			d: Self::Balance,
-			e: Self::SellRatio,
+			e: OrderPrice<Self::SellRatio>,
 		) -> Result<Self::OrderId, DispatchError> {
 			execute_call!((a, b, c, d, e))
 		}
 
 		fn update_order(
-			a: T::AccountId,
-			b: Self::OrderId,
-			c: Self::Balance,
-			d: Self::SellRatio,
+			a: Self::OrderId,
+			b: Self::Balance,
+			c: OrderPrice<Self::SellRatio>,
 		) -> DispatchResult {
-			execute_call!((a, b, c, d))
+			execute_call!((a, b, c))
 		}
 
 		fn cancel_order(a: Self::OrderId) -> DispatchResult {

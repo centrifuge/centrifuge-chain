@@ -598,7 +598,6 @@ pub trait TokenSwaps<Account> {
 	/// }
 	/// ```
 	fn update_order(
-		account: Account,
 		order_id: Self::OrderId,
 		amount_out: Self::Balance,
 		price: OrderPrice<Self::SellRatio>,

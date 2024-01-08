@@ -637,7 +637,7 @@ pub mod pallet {
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
 				Swap {
-					amount_in: todo!(),
+					amount_in,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				},
@@ -884,11 +884,6 @@ pub mod pallet {
 			amount_out: T::Balance,
 			price: OrderPrice<T::SellRatio>,
 		) -> Result<Self::OrderId, DispatchError> {
-			let min_fulfillment_amount_out = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				currency_in,
-			)?;
-
 			// We only check if the trading pair exists not if the minimum amount is
 			// reached.
 			let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
@@ -918,7 +913,6 @@ pub mod pallet {
 		}
 
 		fn update_order(
-			account: T::AccountId,
 			order_id: Self::OrderId,
 			amount_out: T::Balance,
 			price: OrderPrice<T::SellRatio>,
@@ -939,7 +933,7 @@ pub mod pallet {
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::AssetCurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
-					amount_in: todo!(),
+					amount_in: order.amount_in,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				})

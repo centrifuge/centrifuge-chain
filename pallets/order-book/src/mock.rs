@@ -206,17 +206,17 @@ impl StatusNotificationHook for DummyHook {
 }
 
 parameter_type_with_key! {
-		pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
-				match pair {
-						(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-						(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
-						(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-						(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
-						(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
-						(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
-						_ => None
-				}
-		};
+	pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
+		match pair {
+			(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+			(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
+			(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
+			(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
+			(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
+			(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
+			_ => None
+		}
+	};
 }
 
 pub struct DecimalConverter;
@@ -251,10 +251,14 @@ impl order_book::Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type DecimalConverter = DecimalConverter;
+	type FeederId = MockAccountId;
 	type FulfilledOrderHook = DummyHook;
+	type MarketFeederId = todo!();
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
+	type Pair = (CurrencyId, CurrencyId);
+	type PriceProvider = todo!();
 	type RuntimeEvent = RuntimeEvent;
 	type SellRatio = FixedU128;
 	type TradeableAsset = Tokens;
