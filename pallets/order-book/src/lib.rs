@@ -703,19 +703,6 @@ pub mod pallet {
 			)
 		}
 
-		/// Check min order amount
-		pub fn is_valid_min_order(
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-			buy_amount: T::Balance,
-		) -> DispatchResult {
-			let min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
-			match buy_amount.cmp(&min_amount) {
-				Ordering::Less => Err(Error::<T>::InsufficientOrderSize.into()),
-				Ordering::Equal | Ordering::Greater => Ok(()),
-			}
-		}
-
 		pub fn convert_with_ratio(
 			currency_from: T::AssetCurrencyId,
 			currency_to: T::AssetCurrencyId,
