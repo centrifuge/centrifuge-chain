@@ -55,6 +55,10 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 use substrate_prometheus_endpoint::Registry;
 
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
+use crate::{
+	data_extension_worker::{config::DataExtensionWorkerConfiguration, *},
+	service::evm::document::DataExtensionWorkerDocument,
+};
 
 /// The ethereum-compatibility configuration used to run a node.
 #[derive(Clone, Copy, Debug, clap::Parser)]
@@ -320,6 +324,7 @@ pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
+	dew_config: DataExtensionWorkerConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
@@ -467,6 +472,20 @@ where
 			)
 		}
 	};
+
+	if dew_config.enable_data_extension_worker {
+		let data_extension_worker = DataExtensionWorker::<DataExtensionWorkerDocument, _, _>::new(
+			dew_config,
+			network.clone(),
+		)
+		.map_err(|e| sc_service::error::Error::Other(e.to_string()))?;
+
+		task_manager.spawn_essential_handle().spawn(
+			"data-extension-worker-main",
+			Some("data-extension-worker"),
+			data_extension_worker,
+		);
+	}
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),

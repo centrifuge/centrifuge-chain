@@ -18,7 +18,10 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::{chain_spec, service::evm::EthConfiguration};
+use crate::{
+	chain_spec, data_extension_worker::config::DataExtensionWorkerConfiguration,
+	service::evm::EthConfiguration,
+};
 
 #[derive(Debug, Parser)]
 #[allow(clippy::large_enum_variant)]
@@ -114,6 +117,9 @@ pub struct Cli {
 
 	#[clap(flatten)]
 	pub eth: EthConfiguration,
+
+	#[clap(flatten)]
+	pub data_extension_worker: DataExtensionWorkerConfiguration,
 
 	/// Relaychain arguments
 	#[clap(raw = true)]

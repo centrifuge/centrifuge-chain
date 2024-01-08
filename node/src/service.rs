@@ -36,6 +36,8 @@ use crate::rpc::{
 pub(crate) mod evm;
 use evm::EthConfiguration;
 
+use crate::data_extension_worker::config::DataExtensionWorkerConfiguration;
+
 type FullClient<RuntimeApi, Executor> =
 	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
 
@@ -165,6 +167,7 @@ pub async fn start_altair_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
+	dew_config: DataExtensionWorkerConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
@@ -178,6 +181,7 @@ pub async fn start_altair_node(
 		parachain_config,
 		polkadot_config,
 		eth_config,
+		dew_config,
 		collator_options,
 		id,
 		hwbench,
@@ -365,6 +369,7 @@ pub async fn start_centrifuge_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
+	dew_config: DataExtensionWorkerConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
@@ -378,6 +383,7 @@ pub async fn start_centrifuge_node(
 		parachain_config,
 		polkadot_config,
 		eth_config,
+		dew_config,
 		collator_options,
 		id,
 		hwbench,
@@ -565,6 +571,7 @@ pub async fn start_development_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
+	dew_config: DataExtensionWorkerConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	hwbench: Option<sc_sysinfo::HwBench>,
@@ -579,6 +586,7 @@ pub async fn start_development_node(
 		parachain_config,
 		polkadot_config,
 		eth_config,
+		dew_config,
 		collator_options,
 		id,
 		hwbench,

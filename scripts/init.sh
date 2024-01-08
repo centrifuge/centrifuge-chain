@@ -63,8 +63,9 @@ start-parachain)
     --rpc-external \
     --rpc-cors all \
     --rpc-methods=Unsafe \
-    --log="main,info" \
-    --database=rocksdb
+    --log="info" \
+    --database=rocksdb \
+    --enable-data-extension-worker
   ;;
 
 onboard-parachain)

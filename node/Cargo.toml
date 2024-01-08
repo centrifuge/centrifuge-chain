@@ -32,6 +32,8 @@ log = { workspace = true, default-features = true }
 parity-scale-codec = { default-features = true, workspace = true }
 serde = { workspace = true, default-features = true }
 url = { workspace = true, default-features = true }
+thiserror = { workspace = true, default-features = true }
+tokio = { workspace = true, default-features = true }
 
 # client dependencies
 pallet-transaction-payment-rpc = { workspace = true, default-features = true }
