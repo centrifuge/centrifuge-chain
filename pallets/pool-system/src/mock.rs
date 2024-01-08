@@ -111,8 +111,6 @@ pub fn assert_pending_fees(
 		let fee = fees.get(i).unwrap();
 		let (pending, disbursement, payable) = pending_disbursement_payable.get(i).unwrap();
 
-		dbg!(active_fee);
-		dbg!(pending, disbursement, payable);
 		assert_eq!(active_fee.destination, fee.destination);
 		assert_eq!(active_fee.editor, fee.editor);
 		assert_eq!(active_fee.amounts.fee_type, fee.fee_type);

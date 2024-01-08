@@ -40,6 +40,7 @@ pub mod pallet {
 		traits::{
 			fungibles::{Inspect, Mutate},
 			tokens,
+			tokens::Preservation,
 		},
 		weights::Weight,
 		PalletId,
@@ -460,7 +461,8 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			let (_, _count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
+			let (_, _count) =
+				Self::update_portfolio_valuation_for_pool(pool_id, &mut T::Balance::zero())?;
 
 			// Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 			Ok(Some(T::DbWeight::get().reads(1)).into())
@@ -541,8 +543,7 @@ pub mod pallet {
 						&T::PalletId::get().into_account_truncating(),
 						&fee.destination,
 						fee.amounts.disbursement,
-						// TODO: Ensure if account can indeed be killed
-						frame_support::traits::tokens::Preservation::Expendable,
+						Preservation::Expendable,
 					)?;
 
 					Self::deposit_event(Event::<T>::Paid {
@@ -559,7 +560,7 @@ pub mod pallet {
 		}
 
 		/// Update the pending, disbursement and payable fee amounts based on
-		/// the positive NAV and time difference since the last update.
+		/// the AUM and time difference since the last update.
 		///
 		/// For each fee in the order of the waterfall, decrements the provided
 		/// `reserve` by the payable fee amount to determine disbursements.
@@ -567,10 +568,11 @@ pub mod pallet {
 		pub(crate) fn update_active_fees(
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
-			portfolio_valuation: T::Balance,
-			mut reserve: T::Balance,
+			reserve: &mut T::Balance,
 			epoch_duration: Seconds,
 		) -> T::Balance {
+			let portfolio_valuation = AssetsUnderManagement::<T>::get(pool_id);
+
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
 					let limit = fee.amounts.limit();
@@ -592,14 +594,18 @@ pub mod pallet {
 							fee.amounts.pending.min(payable_amount)
 						}
 						// NOTE: Implicitly assuming Fixed fee because of missing payable
-						None => epoch_amount.saturating_add(fee.amounts.pending),
+						None => {
+							fee.amounts.pending = fee.amounts.pending.saturating_add(epoch_amount);
+							fee.amounts.pending
+						}
 					};
 
 					// Disbursement amount is limited by reserve
-					let disbursement = fee_amount.min(reserve);
-					reserve = reserve.saturating_sub(disbursement);
+					let disbursement = fee_amount.min(*reserve);
+					*reserve = reserve.saturating_sub(disbursement);
 
 					// Update fee amounts
+					// fee.amounts.pending = fee.amounts.pending.saturating_add(epoch_amount);
 					fee.amounts.pending = fee.amounts.pending.saturating_sub(disbursement);
 					fee.amounts.payable =
 						fee.amounts.payable.map(|p| p.saturating_sub(disbursement));
@@ -608,7 +614,7 @@ pub mod pallet {
 				}
 			});
 
-			reserve
+			*reserve
 		}
 
 		/// Entirely remove a stored fee from the given pair of pool id and fee
@@ -660,22 +666,15 @@ pub mod pallet {
 
 		fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
+			reserve: &mut T::Balance,
 		) -> Result<(T::Balance, u32), DispatchError> {
-			let nav_aum = AssetsUnderManagement::<T>::get(pool_id);
 			let fee_nav = PortfolioValuation::<T>::get(pool_id);
 			let time_diff = T::Time::now().saturating_sub(fee_nav.last_updated());
 
-			// Force update of pending amounts if last done in past block
-			if !time_diff.is_zero() {
-				for bucket in PoolFeeBucket::iter() {
-					Self::update_active_fees(
-						pool_id,
-						bucket,
-						nav_aum,
-						T::Balance::zero(),
-						time_diff,
-					);
-				}
+			for bucket in PoolFeeBucket::iter() {
+				// NOTE: Re-evaluate access to reserve after adding new bucket variants. Some
+				// should not reduce at this point in time.
+				Self::update_active_fees(pool_id, bucket, reserve, time_diff);
 			}
 
 			// Derive valuation from pending fee amounts
@@ -699,6 +698,17 @@ pub mod pallet {
 
 			Ok((valuation, values.len().saturated_into()))
 		}
+
+		// fn update_portfolio_valuation_for_pool_fee_bucket(
+		// 	pool_id: T::PoolId,
+		// 	bucket: PoolFeeBucket,
+		// ) -> DispatchResult {
+		// 	let portfolio = PortfolioValuation::<T>::get(pool_id);
+		// 	let bucket_value = ActiveFees::<T>::get(pool_id, bucket)
+		// 		.into_iter()
+		// 		.map(|fee| (fee.id, fee.amounts.pending))
+		// 		.sum();
+		// }
 	}
 
 	impl<T: Config> AddPoolFees for Pallet<T> {
@@ -742,25 +752,13 @@ pub mod pallet {
 			pool_id: Self::PoolId,
 			assets_under_management: Self::Balance,
 			reserve: &mut Self::Balance,
-			epoch_duration: Self::Time,
 		) -> Result<(), Self::Error> {
-			// Set current AUM for next epoch's closing
-			let aum_last_epoch = AssetsUnderManagement::<T>::mutate(pool_id, |aum| {
-				let aum_last_epoch = *aum;
-				*aum = assets_under_management;
-				aum_last_epoch
-			});
-
-			// Update fees and NAV based on last epoch's AUM
+			// Determine pending fees and NAV based on last epoch's AUM
 			let res_pre_fees = *reserve;
-			*reserve = Self::update_active_fees(
-				pool_id,
-				PoolFeeBucket::Top,
-				aum_last_epoch,
-				*reserve,
-				epoch_duration,
-			);
-			Self::update_portfolio_valuation_for_pool(pool_id)?;
+			Self::update_portfolio_valuation_for_pool(pool_id, reserve)?;
+
+			// Set current AUM for next epoch's closing
+			AssetsUnderManagement::<T>::insert(pool_id, assets_under_management);
 
 			// Transfer disbursement amount from pool account to pallet sovereign account
 			let total_fee_amount = res_pre_fees.saturating_sub(*reserve);
@@ -774,8 +772,7 @@ pub mod pallet {
 					&pool_account,
 					&T::PalletId::get().into_account_truncating(),
 					total_fee_amount,
-					// TODO: Ensure if account can indeed be killed
-					frame_support::traits::tokens::Preservation::Expendable,
+					Preservation::Expendable,
 				)?;
 			}
 
@@ -799,7 +796,7 @@ pub mod pallet {
 		}
 
 		fn update_nav(pool_id: T::PoolId) -> Result<T::Balance, DispatchError> {
-			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
+			Ok(Self::update_portfolio_valuation_for_pool(pool_id, &mut T::Balance::zero())?.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: Self::ClassId) -> DispatchResult {

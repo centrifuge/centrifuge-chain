@@ -639,7 +639,6 @@ pub trait EpochTransitionHook {
 		pool_id: Self::PoolId,
 		assets_under_management: Self::Balance,
 		reserve: &mut Self::Balance,
-		epoch_duration: Self::Time,
 	) -> Result<(), Self::Error>;
 
 	/// Hook into the execution of an epoch before any investment and

@@ -45,8 +45,8 @@ use sp_runtime::{
 use sp_std::vec::Vec;
 
 use crate::{
-	pallet as pallet_pool_fees, types::Change, ActiveFees, Event, FeeIds, FeeIdsToPoolBucket,
-	LastFeeId, PoolFeeInfoOf, PoolFeeOf,
+	pallet as pallet_pool_fees, pallet::AssetsUnderManagement, types::Change, ActiveFees, Event,
+	FeeIds, FeeIdsToPoolBucket, LastFeeId, PoolFeeInfoOf, PoolFeeOf,
 };
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(12);
@@ -402,24 +402,38 @@ pub fn assert_pending_fee(
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
+#[derive(Default)]
+pub(crate) struct ExtBuilder {
+	aum: Balance,
+}
 
-	let mut ext = sp_io::TestExternalities::new(storage);
+impl ExtBuilder {
+	pub(crate) fn set_aum(mut self, aum: Balance) -> Self {
+		self.aum = aum;
+		self
+	}
 
-	// Bumping to one enables events
-	ext.execute_with(|| {
-		System::set_block_number(1);
+	pub(crate) fn build(self) -> sp_io::TestExternalities {
+		let storage = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
 
-		// Fund pallet account
-		OrmlTokens::mint_into(
-			POOL_CURRENCY,
-			&<Runtime as pallet_pool_fees::Config>::PalletId::get().into_account_truncating(),
-			u128::MAX,
-		)
-		.unwrap();
-	});
-	ext
+		let mut ext = sp_io::TestExternalities::new(storage);
+
+		// Bumping to one enables events
+		ext.execute_with(|| {
+			System::set_block_number(1);
+
+			// Fund pallet account
+			OrmlTokens::mint_into(
+				POOL_CURRENCY,
+				&<Runtime as pallet_pool_fees::Config>::PalletId::get().into_account_truncating(),
+				u128::MAX,
+			)
+			.unwrap();
+
+			AssetsUnderManagement::<Runtime>::insert(POOL, self.aum);
+		});
+		ext
+	}
 }

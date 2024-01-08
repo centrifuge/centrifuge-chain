@@ -633,12 +633,10 @@ pub mod pallet {
 				);
 
 				// Calculate fees to get negative NAV
-				let epoch_duration = now.saturating_sub(pool.epoch.last_closed);
 				T::OnEpochTransition::on_closing_mutate_reserve(
 					pool_id,
 					nav_aum,
 					&mut pool.reserve.total,
-					epoch_duration,
 				)?;
 				let (nav_fees, fees_last_updated) =
 					T::PoolFeesNAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
@@ -724,8 +722,6 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					// TODO(william): Maybe switch to total_assets. If, apply to tranche ratio &
-					// rebalance update in epoch execution.
 					nav: total_assets,
 					epoch: submission_period_epoch,
 					reserve: pool.reserve.total,
@@ -998,7 +994,7 @@ pub mod pallet {
 			>(&epoch.tranches, solution)
 			.map_err(|e| {
 				// In case we have an underflow in the calculation, there
-				// is not enough balance in the tranches to realize the redeemptions.
+				// is not enough balance in the tranches to realize the redemptions.
 				// We convert this at the pool level into an InsufficientCurrency error.
 				if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
 					Error::<T>::InsufficientCurrency
@@ -1211,6 +1207,7 @@ pub mod pallet {
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
 			// TODO: Check whether pool.reserve.total == epoch.reserve
+			// its not the same
 			let total_assets = pool
 				.reserve
 				.total
