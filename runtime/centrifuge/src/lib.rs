@@ -1836,6 +1836,19 @@ impl pallet_transfer_allowlist::Config for Runtime {
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+		pub const MaxRemarksPerCall: u32 = 10;
+}
+
+impl pallet_remarks::Config for Runtime {
+	type MaxRemarksPerCall = MaxRemarksPerCall;
+	type Remark = runtime_common::remarks::Remark;
+	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1899,6 +1912,7 @@ construct_runtime!(
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 110,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 111,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 112,
+		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 113,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2513,6 +2527,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_remarks, Remarks);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2590,6 +2605,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
+			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
