@@ -5,10 +5,10 @@ use sp_arithmetic::FixedPointNumber;
 
 use super::*;
 use crate::mock::{
-	add_fees, assert_pending_fee, config_change_mocks, config_mocks, default_chargeable_fees,
-	default_fees, default_fixed_fee, new_fee, ExtBuilder, OrmlTokens, PoolFees, Runtime,
-	RuntimeOrigin, System, ADMIN, ANY, BUCKET, CHANGE_ID, DESTINATION, EDITOR,
-	ERR_CHANGE_GUARD_RELEASE, NOT_ADMIN, NOT_DESTINATION, NOT_EDITOR, POOL,
+	add_fees, assert_pending_fee, config_change_mocks, default_chargeable_fees, default_fees,
+	default_fixed_fee, new_fee, ExtBuilder, OrmlTokens, PoolFees, Runtime, RuntimeOrigin, System,
+	ADMIN, ANY, BUCKET, CHANGE_ID, DESTINATION, EDITOR, ERR_CHANGE_GUARD_RELEASE, NOT_ADMIN,
+	NOT_DESTINATION, NOT_EDITOR, POOL,
 };
 
 // TODO: CannotCharge
@@ -24,7 +24,6 @@ mod extrinsics {
 		fn propose_new_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
 				let fees = default_fees();
-				config_mocks();
 
 				for (i, fee) in fees.into_iter().enumerate() {
 					assert!(
@@ -55,7 +54,6 @@ mod extrinsics {
 		#[test]
 		fn apply_new_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				config_change_mocks(&default_fixed_fee());
 
 				assert_ok!(PoolFees::apply_new_fee(
@@ -79,7 +77,6 @@ mod extrinsics {
 		#[test]
 		fn remove_only_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_fixed_fee()]);
 
 				assert_ok!(PoolFees::remove_fee(RuntimeOrigin::signed(EDITOR), 1));
@@ -98,8 +95,6 @@ mod extrinsics {
 		#[test]
 		fn remove_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
-
 				let pool_fees = default_fees();
 				assert!(pool_fees.len() > 1);
 				add_fees(pool_fees);
@@ -123,7 +118,6 @@ mod extrinsics {
 		#[test]
 		fn charge_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				let pool_fees = default_chargeable_fees();
 				add_fees(pool_fees.clone());
 
@@ -165,8 +159,6 @@ mod extrinsics {
 		#[test]
 		fn uncharge_fee_works() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
-
 				let pool_fees = default_chargeable_fees();
 				add_fees(pool_fees.clone());
 				let mut rng = rand::thread_rng();
@@ -212,7 +204,6 @@ mod extrinsics {
 		#[test]
 		fn propose_new_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				let fees = default_fees();
 
 				for account in NOT_ADMIN {
@@ -232,7 +223,6 @@ mod extrinsics {
 		#[test]
 		fn propose_new_fee_missing_pool() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				assert_noop!(
 					PoolFees::propose_new_fee(
 						RuntimeOrigin::signed(ADMIN),
@@ -248,8 +238,6 @@ mod extrinsics {
 		#[test]
 		fn apply_new_fee_changeguard_unreleased() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
-
 				// Requires mocking ChangeGuard::release
 				assert_noop!(
 					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
@@ -261,8 +249,6 @@ mod extrinsics {
 		#[test]
 		fn apply_new_fee_missing_pool() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
-
 				// Requires mocking ChangeGuard::release
 				assert_noop!(
 					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL + 1, CHANGE_ID),
@@ -274,7 +260,6 @@ mod extrinsics {
 		#[test]
 		fn remove_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_fixed_fee()]);
 
 				for account in NOT_EDITOR {
@@ -289,7 +274,6 @@ mod extrinsics {
 		#[test]
 		fn remove_fee_missing_fee() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				assert_noop!(
 					PoolFees::remove_fee(RuntimeOrigin::signed(EDITOR), 1),
 					Error::<Runtime>::FeeNotFound
@@ -300,7 +284,6 @@ mod extrinsics {
 		#[test]
 		fn charge_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_fixed_fee()]);
 
 				for account in NOT_DESTINATION {
@@ -315,7 +298,6 @@ mod extrinsics {
 		#[test]
 		fn charge_fee_missing_fee() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				assert_noop!(
 					PoolFees::charge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1000),
 					Error::<Runtime>::FeeNotFound
@@ -326,7 +308,6 @@ mod extrinsics {
 		#[test]
 		fn charge_fee_overflow() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_chargeable_fee()]);
 
 				assert_ok!(PoolFees::charge_fee(
@@ -344,7 +325,6 @@ mod extrinsics {
 		#[test]
 		fn uncharge_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_chargeable_fee()]);
 
 				for account in NOT_DESTINATION {
@@ -359,7 +339,6 @@ mod extrinsics {
 		#[test]
 		fn uncharge_fee_missing_fee() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				assert_noop!(
 					PoolFees::uncharge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1000),
 					Error::<Runtime>::FeeNotFound
@@ -370,7 +349,6 @@ mod extrinsics {
 		#[test]
 		fn uncharge_fee_overflow() {
 			ExtBuilder::default().build().execute_with(|| {
-				config_mocks();
 				add_fees(vec![default_chargeable_fee()]);
 
 				assert_noop!(
@@ -384,6 +362,7 @@ mod extrinsics {
 
 mod disbursements {
 	use cfg_primitives::SECONDS_PER_YEAR;
+	use cfg_traits::EpochTransitionHook;
 	use cfg_types::{
 		fixed_point::Rate,
 		pools::{PoolFeeAmount, PoolFeeType},
@@ -391,7 +370,9 @@ mod disbursements {
 	use frame_support::traits::fungibles::Inspect;
 
 	use super::*;
-	use crate::mock::{get_disbursements, pay_single_fee_and_assert, NAV, POOL_CURRENCY};
+	use crate::mock::{
+		get_disbursements, pay_single_fee_and_assert, MockTime, NAV, POOL_CURRENCY, SECONDS,
+	};
 
 	mod single_fee {
 		use super::*;
@@ -404,7 +385,8 @@ mod disbursements {
 				#[test]
 				fn sufficient_reserve_sfs() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						config_mocks();
+						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 						let fee_id = 1;
 						let res_pre_fees = NAV;
 						let res_post_fees = &mut res_pre_fees.clone();
@@ -417,7 +399,11 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume 10% of reserve
-						PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+						assert_ok!(PoolFees::on_closing_mutate_reserve(
+							POOL,
+							NAV,
+							res_post_fees
+						));
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -429,7 +415,8 @@ mod disbursements {
 				#[test]
 				fn insufficient_reserve_sfs() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						config_mocks();
+						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 						let fee_id = 1;
 						let res_pre_fees = NAV / 100;
 						let res_post_fees = &mut res_pre_fees.clone();
@@ -441,7 +428,11 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume entire reserve
-						PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+						assert_ok!(PoolFees::on_closing_mutate_reserve(
+							POOL,
+							NAV,
+							res_post_fees
+						));
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
@@ -456,7 +447,8 @@ mod disbursements {
 				#[test]
 				fn sufficient_reserve_sfa() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						config_mocks();
+						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 						let fee_id = 1;
 						let res_pre_fees: Balance = (2 * SECONDS_PER_YEAR).into();
 						let res_post_fees = &mut res_pre_fees.clone();
@@ -469,7 +461,11 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume 10% of reserve
-						PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+						assert_ok!(PoolFees::on_closing_mutate_reserve(
+							POOL,
+							NAV,
+							res_post_fees
+						));
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -481,7 +477,8 @@ mod disbursements {
 				#[test]
 				fn insufficient_reserve_sfa() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-						config_mocks();
+						MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 						let fee_id = 1;
 						let res_pre_fees: Balance = (SECONDS_PER_YEAR / 2).into();
 						let res_post_fees = &mut res_pre_fees.clone();
@@ -493,7 +490,11 @@ mod disbursements {
 						add_fees(vec![fee.clone()]);
 
 						// Fees (10% of NAV) consume entire reserve
-						PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+						assert_ok!(PoolFees::on_closing_mutate_reserve(
+							POOL,
+							NAV,
+							res_post_fees
+						));
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
@@ -517,7 +518,8 @@ mod disbursements {
 					#[test]
 					fn empty_charge_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -528,12 +530,11 @@ mod disbursements {
 							});
 							add_fees(vec![fee.clone()]);
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
@@ -544,7 +545,8 @@ mod disbursements {
 					#[test]
 					fn below_max_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -562,12 +564,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
@@ -579,7 +580,8 @@ mod disbursements {
 					#[test]
 					fn max_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -597,12 +599,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
@@ -614,7 +615,8 @@ mod disbursements {
 					#[test]
 					fn excess_charge_sufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -633,12 +635,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
@@ -651,7 +652,8 @@ mod disbursements {
 					#[test]
 					fn insufficient_reserve_scfs() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV / 100;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -670,12 +672,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, 0);
 							assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -693,13 +694,16 @@ mod disbursements {
 				}
 
 				mod amount_per_second {
+					use cfg_traits::EpochTransitionHook;
+
 					use super::*;
 					use crate::mock::assert_pending_fee;
 
 					#[test]
 					fn empty_charge_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -710,12 +714,11 @@ mod disbursements {
 							});
 							add_fees(vec![fee.clone()]);
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
@@ -726,7 +729,8 @@ mod disbursements {
 					#[test]
 					fn below_max_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -744,12 +748,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
@@ -761,7 +764,8 @@ mod disbursements {
 					#[test]
 					fn max_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -779,12 +783,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
@@ -796,7 +799,8 @@ mod disbursements {
 					#[test]
 					fn excess_charge_sufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let res_pre_fees = NAV;
 							let res_post_fees = &mut res_pre_fees.clone();
@@ -815,12 +819,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
@@ -832,7 +835,8 @@ mod disbursements {
 					#[test]
 					fn insufficient_reserve_scfa() {
 						ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-							config_mocks();
+							MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 							let fee_id = 1;
 							let amount_per_second = 1;
 							let res_pre_fees: Balance = (SECONDS_PER_YEAR / 2 + 1).into();
@@ -851,12 +855,11 @@ mod disbursements {
 								charged_amount
 							));
 
-							PoolFees::update_active_fees(
+							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								BUCKET,
-								res_post_fees,
-								SECONDS_PER_YEAR,
-							);
+								NAV,
+								res_post_fees
+							));
 
 							assert_eq!(*res_post_fees, 0);
 							assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -883,7 +886,8 @@ mod disbursements {
 		#[test]
 		fn fixed_charged_charged() {
 			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
-				config_mocks();
+				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
 				let charged_fee_ids = vec![2, 3];
 				let res_pre_fees = NAV;
 				let res_post_fees = &mut res_pre_fees.clone();
@@ -919,7 +923,11 @@ mod disbursements {
 					charged_y1[1]
 				));
 
-				PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+				assert_ok!(PoolFees::on_closing_mutate_reserve(
+					POOL,
+					NAV,
+					res_post_fees
+				));
 				assert_eq!(
 					*res_post_fees,
 					res_pre_fees - fixed_fee_amount - charged_y1[0] - payable[1]
@@ -977,6 +985,7 @@ mod disbursements {
 
 				// Year 2: Make reserve insufficient to handle all fees (last fee
 				// falls short
+				MockTime::mock_now(|| 2 * SECONDS_PER_YEAR * SECONDS);
 				let res_pre_fees = fixed_fee_amount + charged_y2[0] + 1;
 				let res_post_fees = &mut res_pre_fees.clone();
 				assert_ok!(PoolFees::charge_fee(
@@ -989,7 +998,11 @@ mod disbursements {
 					charged_fee_ids[1],
 					charged_y2[1]
 				));
-				PoolFees::update_active_fees(POOL, BUCKET, res_post_fees, SECONDS_PER_YEAR);
+				assert_ok!(PoolFees::on_closing_mutate_reserve(
+					POOL,
+					NAV,
+					res_post_fees
+				));
 				assert_eq!(*res_post_fees, 0);
 				assert_eq!(
 					get_disbursements(),

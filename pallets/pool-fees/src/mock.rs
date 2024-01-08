@@ -11,14 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use core::time::Duration;
-
 use cfg_mocks::{
 	pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools,
 	pre_conditions::pallet as pallet_mock_pre_conditions,
 };
 use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
-use cfg_traits::Millis;
+use cfg_traits::PoolNAV;
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::PermissionScope,
@@ -39,7 +37,7 @@ use sp_arithmetic::{traits::Zero, FixedPointNumber};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 	DispatchError,
 };
 use sp_std::vec::Vec;
@@ -49,13 +47,13 @@ use crate::{
 	FeeIds, FeeIdsToPoolBucket, LastFeeId, PoolFeeInfoOf, PoolFeeOf,
 };
 
-pub const BLOCK_TIME: Duration = Duration::from_secs(12);
-pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
+pub const SECONDS: u64 = 1000;
 
 pub const ADMIN: AccountId = 1;
 pub const EDITOR: AccountId = 2;
 pub const DESTINATION: AccountId = 3;
 pub const ANY: AccountId = 100;
+pub const POOL_ACCOUNT: AccountId = 1000;
 
 pub const NOT_ADMIN: [AccountId; 3] = [EDITOR, DESTINATION, ANY];
 pub const NOT_EDITOR: [AccountId; 3] = [ADMIN, DESTINATION, ANY];
@@ -85,7 +83,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
-		Timestamp: pallet_timestamp,
+		MockTime: cfg_mocks::pallet_mock_time,
 		Balances: pallet_balances,
 		MockPools: pallet_mock_pools,
 		MockIsAdmin: pallet_mock_pre_conditions,
@@ -184,11 +182,8 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<BLOCK_TIME_MS>;
-	type Moment = Millis;
-	type OnTimestampSet = ();
-	type WeightInfo = ();
+impl cfg_mocks::pallet_mock_time::Config for Runtime {
+	type Moment = u64;
 }
 
 impl cfg_test_utils::mocks::nav::Config for Runtime {
@@ -222,43 +217,8 @@ impl pallet_pool_fees::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeChange = Change<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
+	type Time = MockTime;
 	type Tokens = OrmlTokens;
-}
-
-pub(crate) fn config_mocks() {
-	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
-	MockPools::mock_pool_exists(|id| id == POOL);
-	MockPools::mock_account_for(|_| 0);
-	MockPools::mock_currency_for(|_| Some(POOL_CURRENCY));
-	MockPools::mock_withdraw(|_, recipient, amount| {
-		OrmlTokens::mint_into(POOL_CURRENCY, &recipient, amount)
-			.map(|_| ())
-			.map_err(|e: DispatchError| e)
-	});
-	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockChangeGuard::mock_note(|_, _| Ok(H256::default()));
-	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
-}
-
-pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {
-	let pool_fee = fee.clone();
-	MockChangeGuard::mock_note({
-		move |pool_id, change| {
-			assert_eq!(pool_id, POOL);
-			assert_eq!(change, Change::AppendFee(BUCKET, pool_fee.clone()));
-			Ok(CHANGE_ID)
-		}
-	});
-
-	MockChangeGuard::mock_released({
-		let pool_fee = fee.clone();
-		move |pool_id, change_id| {
-			assert_eq!(pool_id, POOL);
-			assert_eq!(change_id, CHANGE_ID);
-			Ok(Change::AppendFee(BUCKET, pool_fee.clone()))
-		}
-	});
 }
 
 pub fn new_fee(amount: PoolFeeType<Balance, Rate>) -> PoolFeeInfoOf<Runtime> {
@@ -402,6 +362,42 @@ pub fn assert_pending_fee(
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
 
+pub(crate) fn config_mocks() {
+	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
+	MockPools::mock_pool_exists(|id| id == POOL);
+	MockPools::mock_account_for(|_| POOL_ACCOUNT);
+	MockPools::mock_currency_for(|_| Some(POOL_CURRENCY));
+	MockPools::mock_withdraw(|_, recipient, amount| {
+		OrmlTokens::mint_into(POOL_CURRENCY, &recipient, amount)
+			.map(|_| ())
+			.map_err(|e: DispatchError| e)
+	});
+	MockPools::mock_deposit(|_, _, _| Ok(()));
+	MockChangeGuard::mock_note(|_, _| Ok(H256::default()));
+	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
+	MockTime::mock_now(|| 0);
+}
+
+pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {
+	let pool_fee = fee.clone();
+	MockChangeGuard::mock_note({
+		move |pool_id, change| {
+			assert_eq!(pool_id, POOL);
+			assert_eq!(change, Change::AppendFee(BUCKET, pool_fee.clone()));
+			Ok(CHANGE_ID)
+		}
+	});
+
+	MockChangeGuard::mock_released({
+		let pool_fee = fee.clone();
+		move |pool_id, change_id| {
+			assert_eq!(pool_id, POOL);
+			assert_eq!(change_id, CHANGE_ID);
+			Ok(Change::AppendFee(BUCKET, pool_fee.clone()))
+		}
+	});
+}
+
 #[derive(Default)]
 pub(crate) struct ExtBuilder {
 	aum: Balance,
@@ -422,17 +418,16 @@ impl ExtBuilder {
 
 		// Bumping to one enables events
 		ext.execute_with(|| {
+			config_mocks();
 			System::set_block_number(1);
 
 			// Fund pallet account
-			OrmlTokens::mint_into(
-				POOL_CURRENCY,
-				&<Runtime as pallet_pool_fees::Config>::PalletId::get().into_account_truncating(),
-				u128::MAX,
-			)
-			.unwrap();
+			OrmlTokens::mint_into(POOL_CURRENCY, &POOL_ACCOUNT, u128::MAX).unwrap();
 
 			AssetsUnderManagement::<Runtime>::insert(POOL, self.aum);
+
+			// Update NAV to set timestamp to now
+			PoolFees::update_nav(POOL).unwrap();
 		});
 		ext
 	}
