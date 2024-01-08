@@ -440,7 +440,7 @@ pub mod pallet {
 			);
 
 			Self::inner_update_order(
-				order,
+				order.clone(),
 				amount_out,
 				price,
 				TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?,
@@ -593,18 +593,18 @@ pub mod pallet {
 			let amount_in =
 				Self::convert_with_ratio(order.asset_out_id, order.asset_in_id, price, amount_out)?;
 
-			let remaining_buy_amount = order
+			let remaining_amount_out = order
 				.amount_out
 				.checked_sub(&amount_out)
 				.ok_or(Error::<T>::BuyAmountTooLarge)?;
 
-			let partial_fulfillment = !remaining_buy_amount.is_zero();
+			let partial_fulfillment = !remaining_amount_out.is_zero();
 			if partial_fulfillment {
 				let mut updated_order = order.clone();
-				updated_order.amount_out = remaining_buy_amount;
+				updated_order.amount_out = remaining_amount_out;
 				updated_order.amount_in = order.amount_in.ensure_add(amount_in)?;
 				updated_order.min_fulfillment_amount_out =
-					remaining_buy_amount.min(order.min_fulfillment_amount_out);
+					remaining_amount_out.min(order.min_fulfillment_amount_out);
 
 				<Orders<T>>::insert(updated_order.order_id, updated_order.clone());
 				<UserOrders<T>>::insert(&account_id, updated_order.order_id, updated_order);
@@ -771,32 +771,30 @@ pub mod pallet {
 			// ensure proper amount can be, and is reserved of outgoing currency for updated
 			// order.
 			// Also minimise reserve/unreserve operations.
-			if amount_out != order.amount_out || price != order.price {
-				if amount_out > order.amount_out {
-					let sell_reserve_diff = amount_out.ensure_sub(order.amount_out)?;
-					T::TradeableAsset::hold(
-						order.asset_out_id,
-						&(),
-						&order.placing_account,
-						sell_reserve_diff,
-					)?;
-				} else {
-					let sell_reserve_diff = order.amount_out.ensure_sub(amount_out)?;
-					T::TradeableAsset::release(
-						order.asset_out_id,
-						&(),
-						&order.placing_account,
-						sell_reserve_diff,
-						Precision::Exact,
-					)?;
-				}
-			};
+			if amount_out > order.amount_out {
+				let amount_out_diff = amount_out.ensure_sub(order.amount_out)?;
+				T::TradeableAsset::hold(
+					order.asset_out_id,
+					&(),
+					&order.placing_account,
+					amount_out_diff,
+				)?;
+			} else if amount_out < order.amount_out {
+				let amount_out_diff = order.amount_out.ensure_sub(amount_out)?;
+				T::TradeableAsset::release(
+					order.asset_out_id,
+					&(),
+					&order.placing_account,
+					amount_out_diff,
+					Precision::Exact,
+				)?;
+			}
 			order.amount_out = amount_out;
 			order.price = price;
 			order.min_fulfillment_amount_out = min_fulfillment_amount_out;
 
 			Orders::<T>::insert(order.order_id, order.clone());
-			UserOrders::<T>::insert(order.placing_account, order.order_id, order.clone());
+			UserOrders::<T>::insert(&order.placing_account, order.order_id, order.clone());
 
 			Self::deposit_event(Event::OrderUpdated {
 				account: order.placing_account,
