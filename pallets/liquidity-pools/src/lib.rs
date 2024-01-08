@@ -730,6 +730,15 @@ pub mod pallet {
 			// See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			let who = ensure_signed(origin)?;
 
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
 			// Ensure currency is allowed as payment and payout currency for pool
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
 			// Required for increasing and collecting investments
