@@ -63,7 +63,7 @@ jobs:
             type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
             type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
           labels: |
-            org.opencontainers.image.vendor="K/F Labs" \
+            org.opencontainers.image.vendor="k-f dev AG" \
             org.opencontainers.image.authors="protocol@k-f.co" \	
             org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
             org.opencontainers.image.base.name="ubuntu/jammy" \
