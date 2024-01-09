@@ -279,14 +279,11 @@ pub mod pallet {
 		MaxPoolFeesPerBucket,
 		/// The change id does not belong to a pool fees change.
 		ChangeIdNotPoolFees,
-		/// The change id belongs to a pool fees change but was called in the
-		/// wrong context.
-		ChangeIdUnrelated,
-		/// The fee can only be charged by the destination
+		/// The fee can only be charged by the destination.
 		UnauthorizedCharge,
-		/// The fee can only be edited or removed by the editor
+		/// The fee can only be edited or removed by the editor.
 		UnauthorizedEdit,
-		/// Attempted to charge a fee of unchargeable type
+		/// Attempted to charge a fee of unchargeable type.
 		CannotBeCharged,
 	}
 
@@ -570,7 +567,7 @@ pub mod pallet {
 			bucket: PoolFeeBucket,
 			reserve: &mut T::Balance,
 			epoch_duration: Seconds,
-		) -> T::Balance {
+		) -> Result<T::Balance, DispatchError> {
 			let portfolio_valuation = AssetsUnderManagement::<T>::get(pool_id);
 
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
@@ -589,32 +586,32 @@ pub mod pallet {
 
 					let fee_amount = match fee.amounts.payable {
 						Some(payable) => {
-							let payable_amount = payable.saturating_add(epoch_amount);
+							let payable_amount = payable.ensure_add(epoch_amount)?;
 							fee.amounts.payable = Some(payable_amount);
-							fee.amounts.pending.min(payable_amount)
+							Ok(fee.amounts.pending.min(payable_amount))
 						}
 						// NOTE: Implicitly assuming Fixed fee because of missing payable
 						None => {
-							fee.amounts.pending = fee.amounts.pending.saturating_add(epoch_amount);
-							fee.amounts.pending
+							fee.amounts.pending.ensure_add_assign(epoch_amount)?;
+							Ok(fee.amounts.pending)
 						}
-					};
+					}
+					.map_err(|e: DispatchError| e)?;
 
 					// Disbursement amount is limited by reserve
 					let disbursement = fee_amount.min(*reserve);
-					*reserve = reserve.saturating_sub(disbursement);
+					reserve.ensure_sub_assign(disbursement)?;
 
 					// Update fee amounts
-					// fee.amounts.pending = fee.amounts.pending.saturating_add(epoch_amount);
-					fee.amounts.pending = fee.amounts.pending.saturating_sub(disbursement);
+					fee.amounts.pending.ensure_sub_assign(disbursement)?;
 					fee.amounts.payable =
 						fee.amounts.payable.map(|p| p.saturating_sub(disbursement));
-					fee.amounts.disbursement =
-						fee.amounts.disbursement.saturating_add(disbursement);
+					fee.amounts.disbursement.ensure_add_assign(disbursement)?;
 				}
-			});
+				Ok::<(), DispatchError>(())
+			})?;
 
-			*reserve
+			Ok(*reserve)
 		}
 
 		/// Entirely remove a stored fee from the given pair of pool id and fee
@@ -674,7 +671,7 @@ pub mod pallet {
 			for bucket in PoolFeeBucket::iter() {
 				// NOTE: Re-evaluate access to reserve after adding new bucket variants. Some
 				// should not reduce at this point in time.
-				Self::update_active_fees(pool_id, bucket, reserve, time_diff);
+				Self::update_active_fees(pool_id, bucket, reserve, time_diff)?;
 			}
 
 			// Derive valuation from pending fee amounts
@@ -698,17 +695,6 @@ pub mod pallet {
 
 			Ok((valuation, values.len().saturated_into()))
 		}
-
-		// fn update_portfolio_valuation_for_pool_fee_bucket(
-		// 	pool_id: T::PoolId,
-		// 	bucket: PoolFeeBucket,
-		// ) -> DispatchResult {
-		// 	let portfolio = PortfolioValuation::<T>::get(pool_id);
-		// 	let bucket_value = ActiveFees::<T>::get(pool_id, bucket)
-		// 		.into_iter()
-		// 		.map(|fee| (fee.id, fee.amounts.pending))
-		// 		.sum();
-		// }
 	}
 
 	impl<T: Config> AddPoolFees for Pallet<T> {
