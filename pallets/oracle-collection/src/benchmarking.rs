@@ -1,16 +1,15 @@
 use cfg_traits::{benchmarking::PoolBenchmarkHelper, changes::ChangeGuard, ValueProvider};
 use frame_benchmarking::{v2::*, whitelisted_caller};
-use frame_support::storage::bounded_vec::BoundedVec;
 use frame_system::RawOrigin;
 
 use crate::{
 	pallet::{Call, Collection, Config, Pallet},
-	types::Change,
+	types::{Change, CollectionInfo},
 };
 
 #[cfg(test)]
 fn init_mocks() {
-	use crate::mock::{MockChangeGuard, MockIsAdmin, MockProvider};
+	use crate::mock::{MockChangeGuard, MockIsAdmin, MockProvider, MockTime};
 
 	MockIsAdmin::mock_check(|_| true);
 	MockProvider::mock_get(|_, _| Ok(Some((Default::default(), Default::default()))));
@@ -18,6 +17,7 @@ fn init_mocks() {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(Default::default())
 	});
+	MockTime::mock_now(|| 0);
 }
 
 mod util {
@@ -25,16 +25,18 @@ mod util {
 
 	pub fn last_change_id_for<T>(
 		key: T::OracleKey,
-		feeders: &BoundedVec<T::FeederId, T::MaxFeedersPerKey>,
+		feeders: impl IntoIterator<Item = T::FeederId>,
 	) -> T::Hash
 	where
 		T: Config,
 		T::CollectionId: Default,
 	{
+		let feeders = crate::util::feeders_from(feeders).unwrap();
+
 		// Emulate to note a change to later apply it
 		T::ChangeGuard::note(
 			T::CollectionId::default(),
-			Change::<T>::Feeders(key, feeders.clone()).into(),
+			Change::<T>::Feeders(key, feeders).into(),
 		)
 		.unwrap()
 	}
@@ -62,11 +64,7 @@ mod benchmarks {
 
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
-		let feeders = (0..n)
-			.map(Into::into)
-			.collect::<Vec<_>>()
-			.try_into()
-			.unwrap();
+		let feeders = crate::util::feeders_from((0..n).map(Into::into)).unwrap();
 
 		#[extrinsic_call]
 		propose_update_feeders(
@@ -88,13 +86,10 @@ mod benchmarks {
 
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
-		let feeders: BoundedVec<_, _> = (0..n)
-			.map(Into::into)
-			.collect::<Vec<_>>()
-			.try_into()
-			.unwrap();
+		let feeder_ids = (0..n).map(Into::into);
+		let feeders = crate::util::feeders_from::<_, T::MaxFeedersPerKey>(feeder_ids).unwrap();
 
-		let change_id = util::last_change_id_for::<T>(T::OracleKey::default(), &feeders);
+		let change_id = util::last_change_id_for::<T>(T::OracleKey::default(), feeders);
 
 		#[extrinsic_call]
 		apply_update_feeders(
@@ -115,11 +110,8 @@ mod benchmarks {
 
 		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
 
-		let feeders: BoundedVec<T::FeederId, _> = (0..n)
-			.map(Into::into)
-			.collect::<Vec<_>>()
-			.try_into()
-			.unwrap();
+		let feeder_ids = (0..n).map(Into::<T::FeederId>::into);
+		let feeders = crate::util::feeders_from::<_, T::MaxFeedersPerKey>(feeder_ids).unwrap();
 
 		// n feeders using m keys
 		for k in 0..m {
@@ -136,16 +128,45 @@ mod benchmarks {
 			Pallet::<T>::apply_update_feeders(
 				RawOrigin::Signed(admin.clone()).into(),
 				T::CollectionId::default(),
-				util::last_change_id_for::<T>(key, &feeders),
+				util::last_change_id_for::<T>(key, feeders.clone()),
 			)?;
 		}
+
+		// Worst case expect to read the max age
+		Pallet::<T>::set_collection_info(
+			RawOrigin::Signed(admin.clone()).into(),
+			T::CollectionId::default(),
+			CollectionInfo::default(),
+		)
+		.unwrap();
 
 		#[extrinsic_call]
 		update_collection(RawOrigin::Signed(admin), T::CollectionId::default());
 
 		assert_eq!(
-			Collection::<T>::get(T::CollectionId::default()).len() as u32,
+			Collection::<T>::get(T::CollectionId::default())
+				.content
+				.len() as u32,
 			m
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn set_collection_info() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let admin: T::AccountId = whitelisted_caller();
+
+		T::ChangeGuard::bench_create_pool(T::CollectionId::default(), &admin);
+
+		#[extrinsic_call]
+		set_collection_info(
+			RawOrigin::Signed(admin),
+			T::CollectionId::default(),
+			CollectionInfo::default(),
 		);
 
 		Ok(())

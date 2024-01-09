@@ -32,7 +32,6 @@ use cfg_types::{
 	consts::pools::*,
 	fee_keys::{Fee, FeeKey},
 	fixed_point::{Quantity, Rate, Ratio},
-	ids::PRICE_ORACLE_PALLET_ID,
 	investments::InvestmentPortfolio,
 	locations::Location,
 	oracles::OracleKey,
@@ -93,7 +92,6 @@ use runtime_common::{
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	oracle::{Feeder, OracleConverterBridge},
 	permissions::PoolAdminCheck,
-	production_or_benchmark,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
 };
@@ -1307,53 +1305,28 @@ impl pallet_xcm_transactor::Config for Runtime {
 
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
-	pub const MaxRateCount: u32 = MaxActiveLoansPerPool::get();
-	pub const MaxCollectionSize: u32 = MaxActiveLoansPerPool::get();
+	pub const MaxRateCount: u32 = 1000; // See #1024
+	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
+										//
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxWriteOffPolicySize: u32 = 10;
-	pub const MaxPriceOracleMembers: u32 = 5;
-	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
-		MaxPriceOracleMembers::get(),
-		// For benchmarking we need a number of members equal to the active loans.
-		// The benchmark distinction can be removed once
-		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-		MaxActiveLoansPerPool::get()
-	);
-	pub const MaxPoolsWithExternalPrices: u32 = 50;
-	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
-}
 
-impl pallet_membership::Config for Runtime {
-	type AddOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxMembers = MaxPriceOracleMembers;
-	type MembershipChanged = PriceOracle;
-	type MembershipInitialized = ();
-	type PrimeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type RemoveOrigin = EnsureRootOr<HalfOfCouncil>;
-	type ResetOrigin = EnsureRootOr<HalfOfCouncil>;
-	type RuntimeEvent = RuntimeEvent;
-	type SwapOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_membership::weights::SubstrateWeight<Self>;
-}
-
-parameter_types! {
 	#[derive(Clone, PartialEq, Eq, Debug, TypeInfo, Encode, Decode, MaxEncodedLen)]
 	pub const MaxFeedersPerKey: u32 = 10;
-	pub const FirstValueFee: Fee = Fee::Balance(deposit(1, pallet_oracle_feed::util::size_of_feed::<Runtime>()));
 }
 
 impl pallet_oracle_feed::Config for Runtime {
 	type FeederOrigin = EitherOfDiverse<EnsureRoot<AccountId>, EnsureSigned<AccountId>>;
 	type FirstValuePayFee = FeeToTreasury<Fees, FirstValueFee>;
 	type OracleKey = OracleKey;
-	type OracleValue = Quantity;
+	type OracleValue = Ratio;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_oracle_feed::WeightInfo<Self>;
 }
 
-impl pallet_oracle_data_collection::Config for Runtime {
-	type AggregationProvider = pallet_oracle_data_collection::util::MedianAggregation;
+impl pallet_oracle_collection::Config for Runtime {
+	type AggregationProvider = pallet_oracle_collection::util::MedianAggregation;
 	type ChangeGuard = PoolSystem;
 	type CollectionId = PoolId;
 	type FeederId = Feeder<RuntimeOrigin>;
@@ -1366,48 +1339,13 @@ impl pallet_oracle_data_collection::Config for Runtime {
 	type OracleValue = Balance;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
 	type RuntimeEvent = RuntimeEvent;
-	type Timestamp = Millis;
-	type WeightInfo = weights::pallet_oracle_data_collection::WeightInfo<Self>;
-}
-
-parameter_types! {
-	pub const MaxFeedValues: u32 = 500;
-}
-
-impl orml_oracle::Config for Runtime {
-	type CombineData = runtime_common::oracle::LastOracleValue;
-	type MaxFeedValues = MaxFeedValues;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Members = PriceOracleMembership;
-	// This can be removed once
-	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-	#[cfg(feature = "runtime-benchmarks")]
-	type Members = runtime_common::oracle::benchmarks_util::Members;
-	type OnNewData = runtime_common::oracle::OnNewPrice<PriceCollector>;
-	type OracleKey = OracleKey;
-	type OracleValue = Quantity;
-	type RootOperatorAccountId = RootOperatorOraclePrice;
-	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = ();
-}
-
-impl pallet_data_collector::Config for Runtime {
-	type CollectionId = PoolId;
-	type Data = Balance;
-	type DataId = OracleKey;
-	type DataProvider =
-		runtime_common::oracle::DataProviderBridge<PriceOracle, OrmlAssetRegistry, PoolSystem>;
-	type MaxCollectionSize = MaxCollectionSize;
-	type MaxCollections = MaxPoolsWithExternalPrices;
-	type Moment = Millis;
+	type Timestamp = Millis;
+	type WeightInfo = weights::pallet_oracle_collection::WeightInfo<Self>;
 }
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	// TODO: This is a stopgap value until we can calculate it correctly with
-	// updated benchmarks. See #1024
 	type MaxRateCount = MaxRateCount;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1432,7 +1370,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = PoolSystem;
 	type PoolId = PoolId;
 	type PriceId = OracleKey;
-	type PriceRegistry = PriceCollector;
+	type PriceRegistry = OraclePriceCollection;
 	type Quantity = Quantity;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
@@ -1881,6 +1819,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+		pub const MaxRemarksPerCall: u32 = 10;
+}
+
+impl pallet_remarks::Config for Runtime {
+	type MaxRemarksPerCall = MaxRemarksPerCall;
+	type Remark = Remark;
+	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1946,13 +1897,12 @@ construct_runtime!(
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
-		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 114,
 		LiquidityPoolsGateway: pallet_liquidity_pools_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 115,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 116,
 		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 117,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 118,
-		OraclePriceCollection: pallet_oracle_data_collection::{Pallet, Call, Storage, Event<T>} = 119,
+		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 119,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1968,8 +1918,6 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
-		PriceOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
-		PriceOracleMembership: pallet_membership::{Pallet, Call, Storage, Event<T>} = 155,
 
 		// EVM pallets
 		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,
@@ -1983,6 +1931,9 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
+
+		// our pallets part 2
+		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
 	}
 );
 
@@ -2141,7 +2092,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::transfer_filter::PreNativeTransfer;
+use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2672,7 +2623,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
-			add_benchmark!(params, batches, pallet_oracle_data_collection, OraclePriceCollection);
+			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
+			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2731,7 +2683,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
-			list_benchmark!(list, extra, pallet_oracle_data_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_remarks, Remarks);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

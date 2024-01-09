@@ -91,7 +91,6 @@ cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
 cumulus-pallet-xcm = { workspace = true, features = ["std"] }
 cumulus-pallet-xcmp-queue = { workspace = true, features = ["std"] }
 orml-asset-registry = { workspace = true, features = ["std"] }
-orml-oracle = { workspace = true, features = ["std"] }
 orml-tokens = { workspace = true, features = ["std"] }
 orml-xcm = { workspace = true, features = ["std"] }
 orml-xtokens = { workspace = true, features = ["std"] }
@@ -108,7 +107,6 @@ pallet-collator-selection = { workspace = true, features = ["std"] }
 pallet-collective = { workspace = true, features = ["std"] }
 pallet-crowdloan-claim = { workspace = true, features = ["std"] }
 pallet-crowdloan-reward = { workspace = true, features = ["std"] }
-pallet-data-collector = { workspace = true, features = ["std"] }
 pallet-democracy = { workspace = true, features = ["std"] }
 pallet-elections-phragmen = { workspace = true, features = ["std"] }
 pallet-ethereum = { workspace = true, features = ["std"] }
@@ -130,7 +128,7 @@ pallet-migration-manager = { workspace = true, features = ["std"] }
 pallet-multisig = { workspace = true, features = ["std"] }
 pallet-nft = { workspace = true, features = ["std"] }
 pallet-nft-sales = { workspace = true, features = ["std"] }
-pallet-oracle-data-collection = { workspace = true, features = ["std"] }
+pallet-oracle-collection = { workspace = true, features = ["std"] }
 pallet-oracle-feed = { workspace = true, features = ["std"] }
 pallet-order-book = { workspace = true, features = ["std"] }
 pallet-permissions = { workspace = true, features = ["std"] }

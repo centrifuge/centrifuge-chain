@@ -69,7 +69,7 @@ jobs:
       #       /srtool/build --save
 
       - name: Upload srtool report
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 #v3.1.3
+        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 #v4.0.0
         with:
           name: srtool-wasm-report.txt
           path: ./${{ matrix.package }}-srtool-wasm-report.json
@@ -83,7 +83,7 @@ jobs:
 
       - name: Setup - gcloud / gsutil
         if: ${{ steps.auth.outcome == 'success' }}
-        uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b # v1.1.1
+        uses: google-github-actions/setup-gcloud@5a5f7b85fca43e76e53463acaa9d408a03c98d3a # v2.0.1
 
       - name: Publish artifacts to GCS
         if: ${{ steps.auth.outcome == 'success' }}

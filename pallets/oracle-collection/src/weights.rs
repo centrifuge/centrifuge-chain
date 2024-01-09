@@ -17,6 +17,7 @@ pub trait WeightInfo {
 	fn propose_update_feeders(feeders: u32) -> Weight;
 	fn apply_update_feeders(feeders: u32) -> Weight;
 	fn update_collection(feeders: u32, keys: u32) -> Weight;
+	fn set_collection_info() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -29,6 +30,10 @@ impl WeightInfo for () {
 	}
 
 	fn update_collection(_: u32, _: u32) -> Weight {
+		Weight::zero()
+	}
+
+	fn set_collection_info() -> Weight {
 		Weight::zero()
 	}
 }

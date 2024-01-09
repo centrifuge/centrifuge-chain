@@ -56,7 +56,6 @@ cumulus-pallet-parachain-system = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
 orml-asset-registry = { workspace = true }
-orml-oracle = { workspace = true }
 orml-tokens = { workspace = true }
 orml-xcm = { workspace = true }
 orml-xtokens = { workspace = true }
@@ -73,7 +72,6 @@ pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-crowdloan-claim = { workspace = true }
 pallet-crowdloan-reward = { workspace = true }
-pallet-data-collector = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-elections-phragmen = { workspace = true }
 pallet-ethereum = { workspace = true }
@@ -95,7 +93,7 @@ pallet-migration-manager = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-nft = { workspace = true }
 pallet-nft-sales = { workspace = true }
-pallet-oracle-data-collection = { workspace = true }
+pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
 pallet-permissions = { workspace = true }
@@ -142,7 +140,6 @@ std = [
   "pallet-authorship/std",
   "pallet-balances/std",
   "pallet-base-fee/std",
-  "pallet-data-collector/std",
   "pallet-ethereum/std",
   "pallet-evm-chain-id/std",
   "pallet-evm-precompile-blake2/std",
@@ -196,7 +193,6 @@ std = [
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
   "orml-asset-registry/std",
-  "orml-oracle/std",
   "orml-tokens/std",
   "orml-xcm/std",
   "orml-xtokens/std",
@@ -213,7 +209,6 @@ std = [
   "pallet-collective/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
-  "pallet-data-collector/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-ethereum/std",
@@ -235,7 +230,7 @@ std = [
   "pallet-multisig/std",
   "pallet-nft/std",
   "pallet-nft-sales/std",
-  "pallet-oracle-data-collection/std",
+  "pallet-oracle-collection/std",
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
   "pallet-permissions/std",
@@ -295,7 +290,6 @@ runtime-benchmarks = [
   "pallet-collective/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
-  "pallet-data-collector/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -316,7 +310,7 @@ runtime-benchmarks = [
   "pallet-multisig/runtime-benchmarks",
   "pallet-nft/runtime-benchmarks",
   "pallet-nft-sales/runtime-benchmarks",
-  "pallet-oracle-data-collection/runtime-benchmarks",
+  "pallet-oracle-collection/runtime-benchmarks",
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
@@ -356,7 +350,6 @@ try-runtime = [
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
   "orml-asset-registry/try-runtime",
-  "orml-oracle/try-runtime",
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
@@ -373,7 +366,6 @@ try-runtime = [
   "pallet-collective/try-runtime",
   "pallet-crowdloan-claim/try-runtime",
   "pallet-crowdloan-reward/try-runtime",
-  "pallet-data-collector/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
@@ -395,7 +387,7 @@ try-runtime = [
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
   "pallet-nft-sales/try-runtime",
-  "pallet-oracle-data-collection/try-runtime",
+  "pallet-oracle-collection/try-runtime",
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",

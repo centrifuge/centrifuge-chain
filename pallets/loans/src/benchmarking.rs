@@ -15,9 +15,8 @@ use cfg_primitives::CFG;
 use cfg_traits::{
 	benchmarking::FundedPoolBenchmarkHelper,
 	changes::ChangeGuard,
-	data::DataRegistry,
 	interest::{CompoundingSchedule, InterestAccrual, InterestRate},
-	Permissions, PoolWriteOffPolicyMutate, Seconds, TimeAsSecs,
+	Permissions, PoolWriteOffPolicyMutate, Seconds, TimeAsSecs, ValueProvider,
 };
 use cfg_types::{
 	adjustments::Adjustment,
@@ -26,7 +25,6 @@ use cfg_types::{
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::tokens::nonfungibles::{Create, Mutate};
 use frame_system::RawOrigin;
-use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Bounded, Get, One, Zero};
 
@@ -59,11 +57,6 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 	Adjustment<<T as Config>::Balance>,
 >>::MaxRateCount;
 
-type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-	<T as Config>::PriceId,
-	<T as Config>::PoolId,
->>::MaxCollectionSize;
-
 #[cfg(test)]
 fn config_mocks() {
 	use cfg_mocks::pallet_mock_data::util::MockDataCollection;
@@ -76,9 +69,8 @@ fn config_mocks() {
 	MockPools::mock_account_for(|_| 0);
 	MockPools::mock_withdraw(|_, _, _| Ok(()));
 	MockPools::mock_deposit(|_, _, _| Ok(()));
-	MockPrices::mock_feed_value(|_, _, _| Ok(()));
 	MockPrices::mock_register_id(|_, _| Ok(()));
-	MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
+	MockPrices::mock_collection(|_| Ok(MockDataCollection::new(|_| Ok(Default::default()))));
 	MockChangeGuard::mock_note(|_, change| {
 		MockChangeGuard::mock_released(move |_, _| Ok(change.clone()));
 		Ok(sp_core::H256::default())
@@ -98,7 +90,8 @@ where
 		AccountId = T::AccountId,
 		Balance = T::Balance,
 	>,
-	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
+	T::Moment: Default,
+	T::PriceRegistry: ValueProvider<(u32, T::PoolId), T::PriceId, Value = PriceOf<T>>,
 {
 	fn prepare_benchmark() -> T::PoolId {
 		#[cfg(test)]
@@ -302,14 +295,9 @@ where
 			.unwrap();
 		}
 
-		for i in 0..MaxCollectionSizeOf::<T>::get() {
-			let price_id = i.into();
-			// This account is different in each iteration because of how oracles works.
-			// This restriction no longer exists once
-			// https://github.com/open-web3-stack/open-runtime-module-library/pull/920 is merged
-			let feeder = account("feeder", i, 0);
-			T::PriceRegistry::feed_value(Some(feeder), price_id, Default::default()).unwrap();
-			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
+		// Populate the price registry with prices
+		for i in 0..n {
+			T::PriceRegistry::set(&(0, pool_id), &T::PriceId::from(i), Default::default());
 		}
 
 		for i in 0..n {
@@ -335,7 +323,8 @@ benchmarks! {
 		T::ItemId: From<u16>,
 		T::PriceId: From<u32>,
 		T::Pool: FundedPoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId, Balance = T::Balance>,
-		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
+		T::Moment: Default,
+		T::PriceRegistry: ValueProvider<(u32, T::PoolId), T::PriceId, Value = PriceOf<T>>,
 	}
 
 	create {

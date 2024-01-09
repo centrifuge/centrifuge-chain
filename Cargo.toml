@@ -32,12 +32,11 @@ members = [
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/oracle-feed",
-  "pallets/oracle-data-collection",
+  "pallets/oracle-collection",
   "pallets/order-book",
   "pallets/permissions",
   "pallets/pool-system",
   "pallets/pool-registry",
-  "pallets/data-collector",
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
   "pallets/transfer-allowlist",
@@ -244,6 +243,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 
 # Foss3
 mock-builder = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.43" }
+pallet-remarks = { git = "https://github.com/foss3/runtime-pallet-library", branch = "polkadot-v0.9.43", default-features = false }
 
 # Centrifuge pallets
 axelar-gateway-precompile = { path = "pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
@@ -255,7 +255,6 @@ pallet-claims = { path = "pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
 pallet-crowdloan-claim = { path = "pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "pallets/crowdloan-reward", default-features = false }
-pallet-data-collector = { path = "pallets/data-collector", default-features = false }
 pallet-ethereum-transaction = { path = "pallets/ethereum-transaction", default-features = false }
 pallet-fees = { path = "pallets/fees", default-features = false }
 pallet-foreign-investments = { path = "pallets/foreign-investments", default-features = false }
@@ -270,7 +269,7 @@ pallet-migration-manager = { path = "pallets/migration", default-features = fals
 pallet-nft = { path = "pallets/nft", default-features = false }
 pallet-nft-sales = { path = "pallets/nft-sales", default-features = false }
 pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
-pallet-oracle-data-collection = { path = "pallets/oracle-data-collection", default-features = false }
+pallet-oracle-collection = { path = "pallets/oracle-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
 pallet-permissions = { path = "pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "pallets/pool-registry", default-features = false }
@@ -287,7 +286,7 @@ cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 cfg-mocks = { path = "libs/mocks", default-features = false }
 
-# Centrifuge uuntimes
+# Centrifuge runtimes
 runtime-common = { path = "runtime/common", default-features = false }
 development-runtime = { path = "runtime/development", default-features = false }
 altair-runtime = { path = "runtime/altair", default-features = false }

@@ -85,7 +85,7 @@ use crate::{
 	utils::{accounts::Keyring, AUSD_CURRENCY_ID, AUSD_ED, USDT_CURRENCY_ID, USDT_ED},
 };
 
-mod utils {
+pub mod utils {
 	use super::*;
 
 	pub fn parachain_account(id: u32) -> AccountId {
@@ -1422,6 +1422,16 @@ mod development {
 						currency_id,
 					)
 				);
+
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+						RawOrigin::Signed(Keyring::Charlie.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
+				);
 			});
 		}
 
@@ -1452,7 +1462,7 @@ mod development {
 						[0u8; 16],
 						currency_id,
 					),
-					pallet_liquidity_pools::Error::<T>::PoolNotFound
+					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
 				);
 
 				// Register currency_id with pool_currency set to true
