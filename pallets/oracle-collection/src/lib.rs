@@ -293,6 +293,7 @@ pub mod pallet {
 				CachedCollection {
 					content: collection,
 					older_value_timestamp,
+					last_updated: T::Time::now(),
 				},
 			);
 
@@ -515,15 +516,23 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct CachedCollection<T: Config> {
+		/// Collection data
 		pub content: BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
+
+		/// Timestamp of the older value of the collection
 		pub older_value_timestamp: T::Timestamp,
+
+		/// Last time the collection was updated
+		pub last_updated: T::Timestamp,
 	}
 
 	impl<T: Config> Default for CachedCollection<T> {
 		fn default() -> Self {
+			let now = T::Time::now();
 			Self {
 				content: Default::default(),
-				older_value_timestamp: T::Time::now(),
+				older_value_timestamp: now,
+				last_updated: now,
 			}
 		}
 	}
