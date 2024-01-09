@@ -144,6 +144,11 @@ pub mod pallet {
 	pub(crate) type CollectionInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::CollectionId, types::CollectionInfo<T>, ValueQuery>;
 
+	/// Store all oracle values indexed by feeder
+	#[pallet::storage]
+	pub(crate) type CollectionKeyCount<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CollectionId, u32, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -352,6 +357,16 @@ pub mod pallet {
 						collection_id: *collection_id,
 						key: *key,
 					});
+
+					CollectionKeyCount::<T>::mutate(collection_id, |counter| -> DispatchResult {
+						if *counter == T::MaxCollectionSize::get() {
+							Err(Error::<T>::MaxCollectionSize)?;
+						}
+
+						counter.ensure_add_assign(1)?;
+
+						Ok(())
+					})?;
 				}
 
 				usage_refs.ensure_add_assign(1)?;
@@ -372,6 +387,21 @@ pub mod pallet {
 						collection_id: *collection_id,
 						key: *key,
 					});
+
+					CollectionKeyCount::<T>::mutate_exists(
+						collection_id,
+						|maybe_counter| -> DispatchResult {
+							let counter = maybe_counter.get_or_insert(Default::default());
+
+							counter.ensure_sub_assign(1)?;
+
+							if counter.is_zero() {
+								*maybe_counter = None;
+							}
+
+							Ok(())
+						},
+					)?;
 
 					*maybe_info = None;
 				}

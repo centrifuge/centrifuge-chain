@@ -498,7 +498,7 @@ fn update_collection_exceed_size() {
 		MockProvider::mock_get(|(_, _), _| Ok(Some((0, 0))));
 
 		let max_size = <<Runtime as Config>::MaxCollectionSize as Get<u32>>::get();
-		for i in 0..(max_size + 1) {
+		for i in 0..max_size {
 			assert_ok!(OracleCollection::register_id(
 				&(KEY_A + i as OracleKey),
 				&COLLECTION_ID
@@ -506,7 +506,7 @@ fn update_collection_exceed_size() {
 		}
 
 		assert_err!(
-			OracleCollection::update_collection(RuntimeOrigin::signed(ANY), COLLECTION_ID),
+			OracleCollection::register_id(&(KEY_A + max_size as OracleKey), &COLLECTION_ID),
 			Error::<Runtime>::MaxCollectionSize
 		);
 	});
