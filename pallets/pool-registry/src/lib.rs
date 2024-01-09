@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
 	investments::TrancheCurrency, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
