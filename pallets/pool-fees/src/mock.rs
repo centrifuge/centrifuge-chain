@@ -198,9 +198,9 @@ impl pallet_mock_pre_conditions::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const MaxPoolFeesPerBucket: u32 = 5;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_FEES_PER_POOL;
+	pub const MaxFeesPerPool: u32 = 5;
 }
 
 impl pallet_pool_fees::Config for Runtime {

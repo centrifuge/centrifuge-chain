@@ -11,7 +11,6 @@ use crate::mock::{
 	NOT_DESTINATION, NOT_EDITOR, POOL,
 };
 
-// TODO: CannotCharge
 // TODO: Pending for fixed
 
 mod extrinsics {
@@ -199,7 +198,10 @@ mod extrinsics {
 		use sp_runtime::DispatchError;
 
 		use super::*;
-		use crate::mock::{default_chargeable_fee, ExtBuilder};
+		use crate::{
+			mock::{default_chargeable_fee, ExtBuilder, MaxPoolFeesPerBucket, MockChangeGuard},
+			types::Change,
+		};
 
 		#[test]
 		fn propose_new_fee_wrong_origin() {
@@ -357,12 +359,55 @@ mod extrinsics {
 				);
 			})
 		}
+
+		#[test]
+		fn cannot_charge_fixed() {
+			ExtBuilder::default().build().execute_with(|| {
+				add_fees(vec![default_fixed_fee()]);
+
+				assert_noop!(
+					PoolFees::charge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1),
+					Error::<Runtime>::CannotBeCharged
+				);
+			});
+		}
+
+		#[test]
+		fn cannot_uncharge_fixed() {
+			ExtBuilder::default().build().execute_with(|| {
+				add_fees(vec![default_fixed_fee()]);
+
+				assert_noop!(
+					PoolFees::uncharge_fee(RuntimeOrigin::signed(DESTINATION), 1, 1),
+					Error::<Runtime>::CannotBeCharged
+				);
+			});
+		}
+
+		#[test]
+		fn max_fees_per_bucket() {
+			ExtBuilder::default().build().execute_with(|| {
+				while (ActiveFees::<Runtime>::get(POOL, BUCKET).len() as u32)
+					< MaxPoolFeesPerBucket::get()
+				{
+					add_fees(vec![default_fixed_fee()]);
+				}
+				MockChangeGuard::mock_released(|_, _| {
+					Ok(Change::AppendFee(BUCKET, default_fixed_fee()))
+				});
+
+				assert_noop!(
+					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
+					Error::<Runtime>::MaxPoolFeesPerBucket
+				);
+			});
+		}
 	}
 }
 
 mod disbursements {
 	use cfg_primitives::SECONDS_PER_YEAR;
-	use cfg_traits::EpochTransitionHook;
+	use cfg_traits::{EpochTransitionHook, PoolNAV, TimeAsSecs};
 	use cfg_types::{
 		fixed_point::Rate,
 		pools::{PoolFeeAmount, PoolFeeType},
@@ -382,6 +427,7 @@ mod disbursements {
 
 			mod share_of_portfolio_valuation {
 				use super::*;
+
 				#[test]
 				fn sufficient_reserve_sfs() {
 					ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
@@ -401,12 +447,14 @@ mod disbursements {
 						// Fees (10% of NAV) consume 10% of reserve
 						assert_ok!(PoolFees::on_closing_mutate_reserve(
 							POOL,
-							NAV,
+							NAV + 100,
 							res_post_fees
 						));
+						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
+						assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 						pay_single_fee_and_assert(fee_id, fee_amount);
 					});
@@ -430,12 +478,17 @@ mod disbursements {
 						// Fees (10% of NAV) consume entire reserve
 						assert_ok!(PoolFees::on_closing_mutate_reserve(
 							POOL,
-							NAV,
+							NAV + 100,
 							res_post_fees
 						));
+						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
+						assert_eq!(
+							PoolFees::nav(POOL),
+							Some((NAV / 10 - res_pre_fees, MockTime::now()))
+						);
 
 						pay_single_fee_and_assert(fee_id, res_pre_fees);
 					});
@@ -463,12 +516,14 @@ mod disbursements {
 						// Fees (10% of NAV) consume 10% of reserve
 						assert_ok!(PoolFees::on_closing_mutate_reserve(
 							POOL,
-							NAV,
+							NAV + 100,
 							res_post_fees
 						));
+						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 						assert_eq!(*res_post_fees, res_pre_fees - fee_amount);
 						assert_eq!(get_disbursements(), vec![fee_amount]);
+						assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 						pay_single_fee_and_assert(fee_id, fee_amount);
 					});
@@ -492,21 +547,35 @@ mod disbursements {
 						// Fees (10% of NAV) consume entire reserve
 						assert_ok!(PoolFees::on_closing_mutate_reserve(
 							POOL,
-							NAV,
+							NAV + 100,
 							res_post_fees
 						));
+						assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 						assert_eq!(*res_post_fees, 0);
 						assert_eq!(get_disbursements(), vec![res_pre_fees]);
+						assert_eq!(PoolFees::nav(POOL), Some((res_pre_fees, MockTime::now())));
 
 						pay_single_fee_and_assert(fee_id, res_pre_fees);
 					});
 				}
 			}
+
+			#[test]
+			fn no_disbursement_without_prep_sfa() {
+				ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+					add_fees(vec![default_fixed_fee()]);
+
+					assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), 0);
+					assert_ok!(PoolFees::on_execution_pre_fulfillments(POOL));
+					assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), 0);
+				});
+			}
 		}
 
 		mod charged_up_to {
 			use super::*;
+			use crate::mock::default_chargeable_fee;
 
 			mod fixed {
 
@@ -532,12 +601,15 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
+
 							pay_single_fee_and_assert(fee_id, 0);
 						});
 					}
@@ -566,12 +638,14 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 							pay_single_fee_and_assert(fee_id, charged_amount);
 						});
@@ -601,12 +675,14 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 							pay_single_fee_and_assert(fee_id, charged_amount);
 						});
@@ -637,13 +713,15 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
 							assert_pending_fee(fee_id, fee.clone(), 1, 0, max_chargeable_amount);
+							assert_eq!(PoolFees::nav(POOL), Some((1, MockTime::now())));
 
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
@@ -674,9 +752,10 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, 0);
 							assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -686,6 +765,10 @@ mod disbursements {
 								charged_amount - fee_amount,
 								charged_amount - fee_amount,
 								fee_amount,
+							);
+							assert_eq!(
+								PoolFees::nav(POOL),
+								Some((charged_amount - fee_amount, MockTime::now()))
 							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
@@ -716,12 +799,15 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees);
 							assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
+
 							pay_single_fee_and_assert(fee_id, 0);
 						});
 					}
@@ -750,12 +836,14 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 							pay_single_fee_and_assert(fee_id, charged_amount);
 						});
@@ -785,12 +873,14 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - charged_amount);
 							assert_eq!(get_disbursements(), vec![charged_amount]);
+							assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
 
 							pay_single_fee_and_assert(fee_id, charged_amount);
 						});
@@ -821,13 +911,16 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, res_pre_fees - max_chargeable_amount);
 							assert_eq!(get_disbursements(), vec![max_chargeable_amount]);
 							assert_pending_fee(fee_id, fee.clone(), 1, 0, max_chargeable_amount);
+							assert_eq!(PoolFees::nav(POOL), Some((1, MockTime::now())));
+
 							pay_single_fee_and_assert(fee_id, max_chargeable_amount);
 						});
 					}
@@ -857,9 +950,10 @@ mod disbursements {
 
 							assert_ok!(PoolFees::on_closing_mutate_reserve(
 								POOL,
-								NAV,
+								NAV + 100,
 								res_post_fees
 							));
+							assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV + 100);
 
 							assert_eq!(*res_post_fees, 0);
 							assert_eq!(get_disbursements(), vec![fee_amount]);
@@ -870,12 +964,117 @@ mod disbursements {
 								charged_amount - fee_amount,
 								fee_amount,
 							);
+							assert_eq!(
+								PoolFees::nav(POOL),
+								Some((charged_amount - fee_amount, MockTime::now()))
+							);
 
 							pay_single_fee_and_assert(fee_id, fee_amount);
 						});
 					}
 				}
 			}
+
+			#[test]
+			fn no_disbursement_without_prep_scfa() {
+				ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+					add_fees(vec![default_chargeable_fee()]);
+					assert_ok!(PoolFees::charge_fee(
+						RuntimeOrigin::signed(DESTINATION),
+						1,
+						1000
+					));
+
+					assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), 0);
+					assert_ok!(PoolFees::on_execution_pre_fulfillments(POOL));
+					assert_eq!(OrmlTokens::balance(POOL_CURRENCY, &DESTINATION), 0);
+				});
+			}
+
+			#[test]
+			fn update_nav_pool_missing() {
+				ExtBuilder::default().build().execute_with(|| {
+					assert_noop!(
+						PoolFees::update_portfolio_valuation(RuntimeOrigin::signed(ANY), POOL + 1),
+						Error::<Runtime>::PoolNotFound
+					);
+				});
+			}
+		}
+	}
+
+	mod nav {
+		use cfg_types::portfolio::PortfolioValuationUpdateType;
+
+		use super::*;
+		use crate::mock::default_chargeable_fee;
+
+		#[test]
+		fn update_empty() {
+			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+				assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
+				assert_ok!(PoolFees::update_portfolio_valuation(
+					RuntimeOrigin::signed(ANY),
+					POOL
+				));
+				assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
+				System::assert_last_event(
+					Event::PortfolioValuationUpdated {
+						pool_id: POOL,
+						valuation: 0,
+						update_type: PortfolioValuationUpdateType::Exact,
+					}
+					.into(),
+				);
+			});
+		}
+
+		#[test]
+		fn update_single_fixed() {
+			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+				add_fees(vec![default_fixed_fee()]);
+
+				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
+				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
+				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
+				assert_ok!(PoolFees::update_portfolio_valuation(
+					RuntimeOrigin::signed(ANY),
+					POOL
+				));
+				assert_eq!(PoolFees::nav(POOL), Some((NAV / 10, MockTime::now())));
+				System::assert_last_event(
+					Event::PortfolioValuationUpdated {
+						pool_id: POOL,
+						valuation: NAV / 10,
+						update_type: PortfolioValuationUpdateType::Exact,
+					}
+					.into(),
+				);
+			});
+		}
+
+		#[test]
+		fn update_single_charged() {
+			ExtBuilder::default().set_aum(NAV).build().execute_with(|| {
+				add_fees(vec![default_chargeable_fee()]);
+				MockTime::mock_now(|| SECONDS_PER_YEAR * SECONDS);
+
+				assert_eq!(PoolFees::nav(POOL), Some((0, 0)));
+				assert_ok!(PoolFees::update_portfolio_valuation(
+					RuntimeOrigin::signed(ANY),
+					POOL
+				));
+				assert_eq!(PoolFees::nav(POOL), Some((0, MockTime::now())));
+				System::assert_last_event(
+					Event::PortfolioValuationUpdated {
+						pool_id: POOL,
+						valuation: 0,
+						update_type: PortfolioValuationUpdateType::Exact,
+					}
+					.into(),
+				);
+			});
 		}
 	}
 
@@ -928,6 +1127,7 @@ mod disbursements {
 					NAV,
 					res_post_fees
 				));
+				assert_eq!(AssetsUnderManagement::<Runtime>::get(POOL), NAV);
 				assert_eq!(
 					*res_post_fees,
 					res_pre_fees - fixed_fee_amount - charged_y1[0] - payable[1]
@@ -950,10 +1150,12 @@ mod disbursements {
 					0,
 					charged_y1[1] - payable[1],
 				);
+				assert_eq!(PoolFees::nav(POOL), Some((payable[1], MockTime::now())));
 
 				// Pay disbursements
-				assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
+				assert_ok!(PoolFees::on_execution_pre_fulfillments(POOL));
 				assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
+				assert_eq!(PoolFees::nav(POOL), Some((payable[1], MockTime::now())));
 				assert_eq!(
 					OrmlTokens::balance(POOL_CURRENCY, &DESTINATION),
 					fixed_fee_amount + charged_y1[0] + payable[1]
@@ -1022,14 +1224,23 @@ mod disbursements {
 					payable[1] - 1,
 					1,
 				);
+				assert_eq!(
+					PoolFees::nav(POOL),
+					Some((2 * payable[1] - 1, MockTime::now()))
+				);
 
 				// Pay disbursements
-				assert_ok!(PoolFees::pay_active_fees(POOL, BUCKET));
+				assert_ok!(PoolFees::on_execution_pre_fulfillments(POOL));
 				assert_eq!(get_disbursements().into_iter().sum::<Balance>(), 0);
+				assert_eq!(
+					PoolFees::nav(POOL),
+					Some((2 * payable[1] - 1, MockTime::now()))
+				);
 				assert_eq!(
 					OrmlTokens::balance(POOL_CURRENCY, &DESTINATION),
 					2 * fixed_fee_amount + charged_y1[0] + payable[1] + charged_y2[0] + 1
 				);
+
 				System::assert_has_event(
 					Event::Paid {
 						fee_id: 1,
@@ -1058,8 +1269,3 @@ mod disbursements {
 		}
 	}
 }
-
-// TODO: Test paying without preparation does nothing despite fixed/charged
-// being existent
-
-// TODO: Test AssetsUnderManagement
