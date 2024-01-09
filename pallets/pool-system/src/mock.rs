@@ -98,9 +98,9 @@ pub fn default_pool_fees() -> Vec<PoolFeeInfoOf<Runtime>> {
 
 pub fn assert_pending_fees(
 	pool_id: PoolId,
+	fees: Vec<PoolFeeInfoOf<Runtime>>,
 	pending_disbursement_payable: Vec<(Balance, Balance, Option<Balance>)>,
 ) {
-	let fees = default_pool_fees();
 	let active_fees = pallet_pool_fees::ActiveFees::<Runtime>::get(pool_id, PoolFeeBucket::Top);
 
 	assert_eq!(fees.len(), pending_disbursement_payable.len());
@@ -547,7 +547,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..20)
 			.into_iter()
-			.map(|idx| (idx, AUSD_CURRENCY_ID, 1000 * CURRENCY))
+			.map(|idx| (idx, AUSD_CURRENCY_ID, 2000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
