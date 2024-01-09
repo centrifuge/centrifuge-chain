@@ -237,6 +237,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoOracleCollectionChangeId)?;
 
 			CollectionInfo::<T>::insert(collection_id, info.clone());
+			Collection::<T>::remove(collection_id);
 
 			Self::deposit_event(Event::<T>::UpdatedCollectionInfo {
 				collection_id,

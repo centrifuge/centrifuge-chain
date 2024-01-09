@@ -391,7 +391,6 @@ fn update_collection_but_getting_elements_out_of_time() {
 		util::update_collection_info(Some(ENOUGH_MAX_AGE), 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
-		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -399,11 +398,8 @@ fn update_collection_but_getting_elements_out_of_time() {
 			COLLECTION_ID
 		));
 
-		util::update_collection_info(
-			Some(NOT_ENOUGH_MAX_AGE),
-			0,
-			vec![FEEDER_1, FEEDER_2, FEEDER_3],
-		);
+		// Invalidate oracle values
+		MockTime::mock_now(|| NOW + ENOUGH_MAX_AGE);
 
 		assert_err!(
 			OracleCollection::collection(&COLLECTION_ID),
