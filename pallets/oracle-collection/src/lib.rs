@@ -44,22 +44,15 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_traits::{changes::ChangeGuard, data::DataRegistry, PreConditions, ValueProvider};
 	use frame_support::{
-		pallet_prelude::*,
-		storage::{
-			bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet, transactional,
-		},
-		traits::Time,
+		pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap, traits::Time,
 	};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::{
-		traits::{EnsureAddAssign, EnsureSub, EnsureSubAssign, Zero},
-		TransactionOutcome,
-	};
+	use sp_runtime::traits::{EnsureAddAssign, EnsureSub, EnsureSubAssign, Zero};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	use crate::{
 		traits::AggregationProvider,
-		types::{self, CachedCollection, Change, KeyInfo, OracleValuePair},
+		types::{self, CachedCollection, Change, OracleValuePair},
 		weights::WeightInfo,
 	};
 
@@ -142,7 +135,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::OracleKey,
-		KeyInfo<T>,
+		u32,
 		ValueQuery,
 	>;
 
@@ -150,6 +143,11 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type CollectionInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::CollectionId, types::CollectionInfo<T>, ValueQuery>;
+
+	/// Store all oracle values indexed by feeder
+	#[pallet::storage]
+	pub(crate) type CollectionKeyCount<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CollectionId, u32, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -162,10 +160,9 @@ pub mod pallet {
 			collection_id: T::CollectionId,
 			key: T::OracleKey,
 		},
-		UpdatedFeeders {
+		UpdatedCollectionInfo {
 			collection_id: T::CollectionId,
-			key: T::OracleKey,
-			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
+			collection_info: types::CollectionInfo<T>,
 		},
 		UpdatedCollection {
 			collection_id: T::CollectionId,
@@ -199,16 +196,15 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Propose an update of feeders associated to a specific key.
+		/// Propose an update of feeders associated to a specific collection.
 		/// The collection will only be modified once
-		/// [`Pallet::apply_update_feeders`] is called.
-		#[pallet::weight(T::WeightInfo::propose_update_feeders(T::MaxFeedersPerKey::get()))]
+		/// [`Pallet::apply_update_collection_info`] is called.
+		#[pallet::weight(T::WeightInfo::propose_update_collection_info(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(0)]
-		pub fn propose_update_feeders(
+		pub fn propose_update_collection_info(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
-			key: T::OracleKey,
-			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
+			info: types::CollectionInfo<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -217,43 +213,35 @@ pub mod pallet {
 				Error::<T>::IsNotAdmin
 			);
 
-			transactional::with_transaction(|| {
-				let result = Self::update_feeders(collection_id, key, feeders.clone());
-
-				// We do not want to apply the mutation,
-				// only check if there is no error in applying it
-				TransactionOutcome::Rollback(result)
-			})?;
-
-			T::ChangeGuard::note(collection_id, Change::Feeders(key, feeders).into())?;
+			T::ChangeGuard::note(collection_id, Change::CollectionInfo(info).into())?;
 
 			Ok(())
 		}
 
 		/// Apply an change previously proposed by
-		/// [`Pallet::propose_update_feeders`] if the conditions to get it ready
-		/// are fullfilled.
+		/// [`Pallet::propose_update_collection_info`] if the conditions to get
+		/// it ready are fullfilled.
 		///
 		/// This call is permissionless.
-		#[pallet::weight(T::WeightInfo::apply_update_feeders(T::MaxFeedersPerKey::get()))]
+		#[pallet::weight(T::WeightInfo::apply_update_collection_info(T::MaxFeedersPerKey::get()))]
 		#[pallet::call_index(1)]
-		pub fn apply_update_feeders(
+		pub fn apply_update_collection_info(
 			origin: OriginFor<T>,
 			collection_id: T::CollectionId,
 			change_id: T::Hash,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Feeders(key, feeders) = T::ChangeGuard::released(collection_id, change_id)?
+			let Change::CollectionInfo(info) = T::ChangeGuard::released(collection_id, change_id)?
 				.try_into()
 				.map_err(|_| Error::<T>::NoOracleCollectionChangeId)?;
 
-			Self::update_feeders(collection_id, key, feeders.clone())?;
+			CollectionInfo::<T>::insert(collection_id, info.clone());
+			Collection::<T>::remove(collection_id);
 
-			Self::deposit_event(Event::<T>::UpdatedFeeders {
+			Self::deposit_event(Event::<T>::UpdatedCollectionInfo {
 				collection_id,
-				key,
-				feeders,
+				collection_info: info,
 			});
 
 			Ok(())
@@ -306,6 +294,7 @@ pub mod pallet {
 				CachedCollection {
 					content: collection,
 					older_value_timestamp,
+					last_updated: T::Time::now(),
 				},
 			);
 
@@ -313,26 +302,6 @@ pub mod pallet {
 				collection_id,
 				keys_updated: len as u32,
 			});
-
-			Ok(())
-		}
-
-		/// Sets a associated information to a collection.
-		#[pallet::weight(T::WeightInfo::set_collection_info())]
-		#[pallet::call_index(3)]
-		pub fn set_collection_info(
-			origin: OriginFor<T>,
-			collection_id: T::CollectionId,
-			info: types::CollectionInfo<T>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			ensure!(
-				T::IsAdmin::check((who, collection_id)),
-				Error::<T>::IsNotAdmin
-			);
-
-			CollectionInfo::<T>::insert(collection_id, info);
 
 			Ok(())
 		}
@@ -346,10 +315,9 @@ pub mod pallet {
 			key: &T::OracleKey,
 			collection_id: &T::CollectionId,
 		) -> Result<Self::Data, DispatchError> {
-			let min_feeders = CollectionInfo::<T>::get(collection_id).min_feeders;
-			let key_info = Keys::<T>::get(collection_id, key);
+			let info = CollectionInfo::<T>::get(collection_id);
 
-			let fed_values = key_info
+			let fed_values = info
 				.feeders
 				.into_iter()
 				.filter_map(|feeder| {
@@ -357,7 +325,7 @@ pub mod pallet {
 				})
 				.collect::<Result<Vec<_>, _>>()?;
 
-			if fed_values.len() < (min_feeders as usize) {
+			if fed_values.len() < (info.min_feeders as usize) {
 				Err(Error::<T>::NotEnoughFeeders)?
 			}
 
@@ -368,7 +336,7 @@ pub mod pallet {
 				})
 				.collect::<Vec<_>>();
 
-			if updated_fed_values.len() < (min_feeders as usize) {
+			if updated_fed_values.len() < (info.min_feeders as usize) {
 				Err(Error::<T>::OracleValueOutdated)?
 			}
 
@@ -385,30 +353,59 @@ pub mod pallet {
 		}
 
 		fn register_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
-			Keys::<T>::mutate(collection_id, key, |info| {
-				if info.usage_refs.is_zero() {
+			Keys::<T>::mutate(collection_id, key, |usage_refs| {
+				if usage_refs.is_zero() {
 					Self::deposit_event(Event::<T>::AddedKey {
 						collection_id: *collection_id,
 						key: *key,
 					});
+
+					CollectionKeyCount::<T>::mutate(collection_id, |counter| -> DispatchResult {
+						if *counter == T::MaxCollectionSize::get() {
+							Err(Error::<T>::MaxCollectionSize)?;
+						}
+
+						counter.ensure_add_assign(1)?;
+
+						Ok(())
+					})?;
 				}
 
-				info.usage_refs.ensure_add_assign(1)?;
+				usage_refs.ensure_add_assign(1)?;
 				Ok(())
 			})
 		}
 
 		fn unregister_id(key: &T::OracleKey, collection_id: &T::CollectionId) -> DispatchResult {
-			Self::mutate_and_remove_keys_if_clean(*collection_id, *key, |info| {
-				info.usage_refs
+			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
+				let usage_refs = maybe_info.get_or_insert(Default::default());
+
+				usage_refs
 					.ensure_sub_assign(1)
 					.map_err(|_| Error::<T>::KeyNotRegistered)?;
 
-				if info.usage_refs.is_zero() {
+				if usage_refs.is_zero() {
 					Self::deposit_event(Event::<T>::RemovedKey {
 						collection_id: *collection_id,
 						key: *key,
 					});
+
+					CollectionKeyCount::<T>::mutate_exists(
+						collection_id,
+						|maybe_counter| -> DispatchResult {
+							let counter = maybe_counter.get_or_insert(Default::default());
+
+							counter.ensure_sub_assign(1)?;
+
+							if counter.is_zero() {
+								*maybe_counter = None;
+							}
+
+							Ok(())
+						},
+					)?;
+
+					*maybe_info = None;
 				}
 
 				Ok(())
@@ -417,35 +414,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn mutate_and_remove_keys_if_clean(
-			collection_id: T::CollectionId,
-			key: T::OracleKey,
-			f: impl FnOnce(&mut KeyInfo<T>) -> DispatchResult,
-		) -> DispatchResult {
-			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
-				let info = maybe_info.get_or_insert(Default::default());
-
-				f(info)?;
-
-				if info.is_clean() {
-					*maybe_info = None;
-				}
-
-				Ok::<_, DispatchError>(())
-			})
-		}
-
-		fn update_feeders(
-			collection_id: T::CollectionId,
-			key: T::OracleKey,
-			feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
-		) -> DispatchResult {
-			Self::mutate_and_remove_keys_if_clean(collection_id, key, |info| {
-				info.feeders = feeders.clone();
-				Ok(())
-			})
-		}
-
 		fn ensure_valid_timestamp(
 			collection_id: &T::CollectionId,
 			timestamp: T::Timestamp,
@@ -483,8 +451,7 @@ pub mod pallet {
 			let feeder = T::FeederId::from(id);
 			T::OracleProvider::set(&(feeder.clone(), collection_id), key, value);
 
-			Keys::<T>::mutate_exists(collection_id, key, |maybe_info| {
-				let info = maybe_info.get_or_insert(Default::default());
+			CollectionInfo::<T>::mutate(collection_id, |info| {
 				if !info.feeders.contains(&feeder) {
 					info.feeders.try_insert(feeder).unwrap();
 				}
@@ -511,35 +478,12 @@ pub mod types {
 		traits::Time,
 		RuntimeDebugNoBound,
 	};
-	use sp_runtime::{traits::Zero, RuntimeDebug};
+	use sp_runtime::RuntimeDebug;
 	use sp_std::vec::Vec;
 
 	use crate::pallet::{Config, Error};
 
 	pub type OracleValuePair<T> = (<T as Config>::OracleValue, <T as Config>::Timestamp);
-
-	/// Type containing the associated info to a key
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-	#[scale_info(skip_type_params(T))]
-	pub struct KeyInfo<T: Config> {
-		pub feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
-		pub usage_refs: u32,
-	}
-
-	impl<T: Config> Default for KeyInfo<T> {
-		fn default() -> Self {
-			Self {
-				feeders: Default::default(),
-				usage_refs: 0,
-			}
-		}
-	}
-
-	impl<T: Config> KeyInfo<T> {
-		pub fn is_clean(&self) -> bool {
-			self.feeders.is_empty() && self.usage_refs.is_zero()
-		}
-	}
 
 	/// Information of a collection
 	#[derive(
@@ -554,6 +498,9 @@ pub mod types {
 
 		/// Minimun number of feeders to succesfully aggregate a value.
 		pub min_feeders: u32,
+
+		/// List of feeders attached to a collection
+		pub feeders: BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
 	}
 
 	impl<T: Config> Default for CollectionInfo<T> {
@@ -561,6 +508,7 @@ pub mod types {
 			Self {
 				value_lifetime: None,
 				min_feeders: 0,
+				feeders: Default::default(),
 			}
 		}
 	}
@@ -569,15 +517,23 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct CachedCollection<T: Config> {
+		/// Collection data
 		pub content: BoundedBTreeMap<T::OracleKey, OracleValuePair<T>, T::MaxCollectionSize>,
+
+		/// Timestamp of the older value of the collection
 		pub older_value_timestamp: T::Timestamp,
+
+		/// Last time the collection was updated
+		pub last_updated: T::Timestamp,
 	}
 
 	impl<T: Config> Default for CachedCollection<T> {
 		fn default() -> Self {
+			let now = T::Time::now();
 			Self {
 				content: Default::default(),
-				older_value_timestamp: T::Time::now(),
+				older_value_timestamp: now,
+				last_updated: now,
 			}
 		}
 	}
@@ -610,10 +566,7 @@ pub mod types {
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub enum Change<T: Config> {
-		Feeders(
-			T::OracleKey,
-			BoundedBTreeSet<T::FeederId, T::MaxFeedersPerKey>,
-		),
+		CollectionInfo(CollectionInfo<T>),
 	}
 }
 
