@@ -62,7 +62,6 @@ pub mod pallet {
 		},
 		FixedPointNumber, FixedPointOperand,
 	};
-	use sp_std::cmp::Ordering;
 
 	use super::*;
 
@@ -178,9 +177,6 @@ pub mod pallet {
 		/// Type for a market price feeder
 		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
 
-		/// Account used to feed with market prices
-		type MarketFeederId: Get<Self::FeederId>;
-
 		/// Identification for a market price
 		type Pair: From<(Self::AssetCurrencyId, Self::AssetCurrencyId)>;
 
@@ -294,6 +290,10 @@ pub mod pallet {
 		ResultQuery<Error<T>::InvalidTradingPair>,
 	>;
 
+	/// Stores the market feeder id used to price with market values
+	#[pallet::storage]
+	pub type MarketFeederId<T: Config> = StorageValue<_, T::FeederId, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -389,6 +389,8 @@ pub mod pallet {
 		BalanceConversionErr,
 		/// Error when the provided partial buy amount is too large.
 		BuyAmountTooLarge,
+		/// There is not feeder set for market prices
+		MarketFeederNotFound,
 		/// Expected a market price for the given pair of asset currencies.
 		MarketPriceNotFound,
 	}
@@ -572,6 +574,18 @@ pub mod pallet {
 
 			Self::fulfill_order_with_amount(order, amount_out, account_id)
 		}
+
+		/// Set the market feeder for set market prices.
+		/// The origin must be the admin origin.
+		#[pallet::call_index(8)]
+		#[pallet::weight(1_000_000)] // TODO
+		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			MarketFeederId::<T>::put(feeder_id);
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -661,19 +675,16 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 		) -> Result<T::SellRatio, DispatchError> {
-			let price = T::PriceProvider::get(
-				&T::MarketFeederId::get(),
-				&(currency_in, currency_out).into(),
-			)?;
+			let feeder = MarketFeederId::<T>::get().ok_or(Error::<T>::MarketFeederNotFound)?;
+
+			let price = T::PriceProvider::get(&feeder, &(currency_in, currency_out).into())?;
 
 			Ok(match price {
 				Some(price) => price,
 				None => {
-					let price = T::PriceProvider::get(
-						&T::MarketFeederId::get(),
-						&(currency_out, currency_in).into(),
-					)?
-					.ok_or(Error::<T>::MarketPriceNotFound)?;
+					let price =
+						T::PriceProvider::get(&feeder, &(currency_out, currency_in).into())?
+							.ok_or(Error::<T>::MarketPriceNotFound)?;
 
 					T::SellRatio::one().ensure_div(price)?
 				}
