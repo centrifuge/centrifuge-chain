@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::LoanId;
+use cfg_primitives::{LoanId, PoolId};
 use frame_support::{dispatch::TypeInfo, parameter_types, BoundedVec};
 use sp_runtime::codec::{Decode, Encode};
 use sp_std::vec;
@@ -29,7 +29,7 @@ pub enum Remark {
 	Named(BoundedVec<u8, MaxNamedRemark>),
 
 	/// Association with a loan
-	Loan(LoanId),
+	Loan(PoolId, LoanId),
 }
 
 impl Default for Remark {
