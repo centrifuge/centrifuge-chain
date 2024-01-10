@@ -739,33 +739,8 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			// Ensure currency is allowed as payment and payout currency for pool
-			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
-			// Required for increasing and collecting investments
-			ensure!(
-				T::ForeignInvestment::accepted_payment_currency(invest_id.clone(), currency_id),
-				Error::<T>::InvalidPaymentCurrency
-			);
-			// Required for decreasing investments as well as increasing, decreasing and
-			// collecting redemptions
-			ensure!(
-				T::ForeignInvestment::accepted_payout_currency(invest_id, currency_id),
-				Error::<T>::InvalidPayoutCurrency
-			);
-
-			// Ensure the currency is enabled as pool_currency
-			let metadata =
-				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
-			ensure!(
-				metadata.additional.pool_currency,
-				Error::<T>::AssetMetadataNotPoolCurrency
-			);
-
-			// Derive GeneralIndex for currency
-			let currency = Self::try_get_general_index(currency_id)?;
-
-			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
-				Self::try_get_wrapped_token(&currency_id)?;
+			let (currency, chain_id) =
+				Self::validate_investment_currency(pool_id, tranche_id, currency_id)?;
 
 			T::OutboundQueue::submit(
 				who,
@@ -846,6 +821,39 @@ pub mod pallet {
 					token_symbol,
 				},
 			)
+		}
+
+		/// Disallow a currency to be used as a pool currency and to invest in a
+		/// pool on the domain derived from the given currency.
+		#[pallet::call_index(13)]
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+		pub fn disallow_investment_currency(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			currency_id: CurrencyIdOf<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				Error::<T>::NotPoolAdmin
+			);
+
+			let (currency, chain_id) =
+				Self::validate_investment_currency(pool_id, tranche_id, currency_id)?;
+
+			T::OutboundQueue::submit(
+				who,
+				Domain::EVM(chain_id),
+				Message::DisallowInvestmentCurrency { pool_id, currency },
+			)?;
+
+			Ok(())
 		}
 	}
 
@@ -971,6 +979,43 @@ pub mod pallet {
 			);
 
 			Ok(currency)
+		}
+
+		/// Performs multiple checks for the provided currency and returns its
+		/// general index and the EVM chain ID associated with it.
+		pub fn validate_investment_currency(
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			currency_id: CurrencyIdOf<T>,
+		) -> Result<(u128, EVMChainId), DispatchError> {
+			// Ensure currency is allowed as payment and payout currency for pool
+			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			// Required for increasing and collecting investments
+			ensure!(
+				T::ForeignInvestment::accepted_payment_currency(invest_id.clone(), currency_id),
+				Error::<T>::InvalidPaymentCurrency
+			);
+			// Required for decreasing investments as well as increasing, decreasing and
+			// collecting redemptions
+			ensure!(
+				T::ForeignInvestment::accepted_payout_currency(invest_id, currency_id),
+				Error::<T>::InvalidPayoutCurrency
+			);
+
+			// Ensure the currency is enabled as pool_currency
+			let metadata =
+				T::AssetRegistry::metadata(&currency_id).ok_or(Error::<T>::AssetNotFound)?;
+			ensure!(
+				metadata.additional.pool_currency,
+				Error::<T>::AssetMetadataNotPoolCurrency
+			);
+
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			let LiquidityPoolsWrappedToken::EVM { chain_id, .. } =
+				Self::try_get_wrapped_token(&currency_id)?;
+
+			Ok((currency, chain_id))
 		}
 	}
 

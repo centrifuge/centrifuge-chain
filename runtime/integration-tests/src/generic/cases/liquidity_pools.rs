@@ -1435,7 +1435,7 @@ mod development {
 			});
 		}
 
-		fn allow_pool_should_fail<T: Runtime + FudgeSupport>() {
+		fn allow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::default()
 					.add(genesis::balances::<T>(cfg(1_000)))
@@ -1600,14 +1600,112 @@ mod development {
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
 				);
+			});
+		}
 
-				// Create new pool for non foreign asset
-				// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
+		fn disallow_investment_currency<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.add(genesis::tokens::<T>(vec![(
+						GLMR_CURRENCY_ID,
+						DEFAULT_BALANCE_GLMR,
+					)]))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let currency_id = AUSD_CURRENCY_ID;
+				let pool_id = DEFAULT_POOL_ID;
+				let evm_chain_id: u64 = MOONBEAM_EVM_CHAIN_ID;
+				let evm_address = [1u8; 20];
+
+				// Create an AUSD pool
+				create_ausd_pool::<T>(pool_id);
+
+				enable_liquidity_pool_transferability::<T>(currency_id);
+
+				// Enable LiquidityPools transferability
+				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					currency_id,
+					None,
+					None,
+					None,
+					None,
+					// Changed: Add location which can be converted to LiquidityPoolsWrappedToken
+					Some(Some(liquidity_pools_transferable_multilocation::<T>(
+						evm_chain_id,
+						evm_address,
+					))),
+					Some(CustomMetadata {
+						// Changed: Allow liquidity_pools transferability
+						transferability: CrossChainTransferability::LiquidityPools,
+						mintable: Default::default(),
+						permissioned: Default::default(),
+						pool_currency: true,
+					})
+				));
+
+				assert_ok!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					)
+				);
+
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Charlie.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
+				);
+			});
+		}
+
+		fn disallow_investment_currency_should_fail<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.add(genesis::tokens::<T>(vec![(
+						GLMR_CURRENCY_ID,
+						DEFAULT_BALANCE_GLMR,
+					)]))
+					.storage(),
+			);
+
+			setup_test(&mut env);
+
+			env.parachain_state_mut(|| {
+				let pool_id = DEFAULT_POOL_ID;
+				let currency_id = CurrencyId::ForeignAsset(42);
+				let ausd_currency_id = AUSD_CURRENCY_ID;
+
+				// Should fail if pool does not exist
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						// Tranche id is arbitrary in this case as pool does not exist
+						[0u8; 16],
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::NotPoolAdmin
+				);
+
+				// Register currency_id with pool_currency set to true
 				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
 					<T as frame_system::Config>::RuntimeOrigin::root(),
 					AssetMetadata {
-						name: "Acala Dollar".into(),
-						symbol: "AUSD".into(),
+						name: "Test".into(),
+						symbol: "TEST".into(),
 						decimals: 12,
 						location: None,
 						existential_deposit: 1_000_000,
@@ -1618,22 +1716,124 @@ mod development {
 							pool_currency: true,
 						},
 					},
-					Some(CurrencyId::AUSD)
+					Some(currency_id)
 				));
 
-				create_currency_pool::<T>(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
+				// Create pool
+				create_currency_pool::<T>(pool_id, currency_id, 10_000 * dollar(12));
 
-				// Should fail if currency is not foreign asset
+				// Should fail if asset is not payment currency
 				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id + 1,
-						// Tranche id is arbitrary in this case, so we don't need to check for the
-						// exact pool_id
-						default_tranche_id::<T>(pool_id + 1),
-						CurrencyId::AUSD,
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						ausd_currency_id,
 					),
-					DispatchError::Token(sp_runtime::TokenError::Unsupported)
+					pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
+				);
+
+				// Allow as payment but not payout currency
+				assert_ok!(pallet_order_book::Pallet::<T>::add_trading_pair(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					currency_id,
+					ausd_currency_id,
+					Default::default()
+				));
+
+				// Should fail if asset is not payout currency
+				enable_liquidity_pool_transferability::<T>(ausd_currency_id);
+
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						ausd_currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::InvalidPayoutCurrency
+				);
+
+				// Should fail if currency is not liquidityPools transferable
+				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					currency_id,
+					None,
+					None,
+					None,
+					None,
+					None,
+					Some(CustomMetadata {
+						// Disallow any cross chain transferability
+						transferability: CrossChainTransferability::None,
+						mintable: Default::default(),
+						permissioned: Default::default(),
+						// Changed: Allow to be usable as pool currency
+						pool_currency: true,
+					}),
+				));
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsTransferable
+				);
+
+				// Should fail if currency does not have any MultiLocation in metadata
+				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					currency_id,
+					None,
+					None,
+					None,
+					None,
+					None,
+					Some(CustomMetadata {
+						// Changed: Allow liquidityPools transferability
+						transferability: CrossChainTransferability::LiquidityPools,
+						mintable: Default::default(),
+						permissioned: Default::default(),
+						// Still allow to be pool currency
+						pool_currency: true,
+					}),
+				));
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
+				);
+
+				// Should fail if currency does not have LiquidityPoolsWrappedToken location in
+				// metadata
+				assert_ok!(orml_asset_registry::Pallet::<T>::update_asset(
+					<T as frame_system::Config>::RuntimeOrigin::root(),
+					currency_id,
+					None,
+					None,
+					None,
+					None,
+					// Changed: Add some location which cannot be converted to
+					// LiquidityPoolsWrappedToken
+					Some(Some(VersionedMultiLocation::V3(Default::default()))),
+					// No change for transferability required as it is already allowed for
+					// LiquidityPools
+					None,
+				));
+				assert_noop!(
+					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
+						RawOrigin::Signed(Keyring::Bob.into()).into(),
+						pool_id,
+						default_tranche_id::<T>(pool_id),
+						currency_id,
+					),
+					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
 				);
 			});
 		}
@@ -1771,7 +1971,9 @@ mod development {
 		crate::test_for_runtimes!([development], add_currency);
 		crate::test_for_runtimes!([development], add_currency_should_fail);
 		crate::test_for_runtimes!([development], allow_investment_currency);
-		crate::test_for_runtimes!([development], allow_pool_should_fail);
+		crate::test_for_runtimes!([development], allow_investment_currency_should_fail);
+		crate::test_for_runtimes!([development], disallow_investment_currency);
+		crate::test_for_runtimes!([development], disallow_investment_currency_should_fail);
 		crate::test_for_runtimes!([development], schedule_upgrade);
 		crate::test_for_runtimes!([development], cancel_upgrade);
 		crate::test_for_runtimes!([development], update_tranche_token_metadata);
