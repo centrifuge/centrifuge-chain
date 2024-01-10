@@ -362,6 +362,14 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
+	/// Disallow a currency to be used as a pool currency and to invest in a
+	/// pool.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	DisallowInvestmentCurrency {
+		pool_id: PoolId,
+		currency: u128,
+	},
 }
 
 impl<
@@ -404,6 +412,7 @@ impl<
 			Self::ScheduleUpgrade { .. } => 21,
 			Self::CancelUpgrade { .. } => 22,
 			Self::UpdateTrancheTokenMetadata { .. } => 23,
+			Self::DisallowInvestmentCurrency { .. } => 24,
 		}
 	}
 }
@@ -729,6 +738,10 @@ impl<
 					token_symbol.encode(),
 				],
 			),
+			Message::DisallowInvestmentCurrency { pool_id, currency } => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), encode_be(currency)],
+			),
 		}
 	}
 
@@ -880,6 +893,10 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+			}),
+			24 => Ok(Self::DisallowInvestmentCurrency {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(parity_scale_codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -1316,6 +1333,28 @@ mod tests {
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 			},
 			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
+		)
+	}
+
+	#[test]
+	fn disallow_investment_currency() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::DisallowInvestmentCurrency {
+				pool_id: POOL_ID,
+				currency: TOKEN_ID,
+			},
+			"180000000000bce1a40000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
+	fn disallow_investment_currency_zero() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::DisallowInvestmentCurrency {
+				pool_id: 0,
+				currency: 0,
+			},
+			"18000000000000000000000000000000000000000000000000",
 		)
 	}
 
