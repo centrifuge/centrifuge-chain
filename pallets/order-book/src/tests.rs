@@ -25,24 +25,59 @@ use sp_runtime::{
 use super::*;
 use crate::mock::*;
 
+mod util {
+	use super::*;
+
+	pub fn create_default_order() -> OrderId {
+		assert_ok!(OrderBook::create_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			CURRENCY_B,
+			CURRENCY_A,
+			10 * CURRENCY_A_DECIMALS,
+			OrderRatio::Custom((3, 2).into())
+		));
+
+		OrderIdNonceStore::<Runtime>::get()
+	}
+
+	pub fn assert_exists_order(order_id: OrderId) {
+		assert_eq!(
+			Orders::<Runtime>::get(order_id),
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+		);
+		assert!(AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
+	}
+
+	pub fn assert_no_exists_order(order_id: OrderId) {
+		assert_err!(
+			Orders::<Runtime>::get(order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert_err!(
+			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
+			Error::<Runtime>::OrderNotFound
+		);
+
+		assert!(!AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
+	}
+}
+
 // Extrinsics tests
 #[test]
 fn adding_trading_pair_works() {
 	new_test_ext_no_pair().execute_with(|| {
 		assert_ok!(OrderBook::add_trading_pair(
 			RawOrigin::Root.into(),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 		));
 		assert_eq!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			100 * CURRENCY_AUSD_DECIMALS
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
+			100 * CURRENCY_B_DECIMALS
 		);
-		assert!(OrderBook::valid_pair(
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID
-		));
+		assert!(OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
 	})
 }
 
@@ -52,20 +87,17 @@ fn adding_trading_pair_fails() {
 		assert_noop!(
 			OrderBook::add_trading_pair(
 				RuntimeOrigin::signed(ACCOUNT_0),
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				100 * CURRENCY_AUSD_DECIMALS,
+				CURRENCY_B,
+				CURRENCY_A,
+				100 * CURRENCY_B_DECIMALS,
 			),
 			DispatchError::BadOrigin
 		);
 		assert_noop!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 			Error::<Runtime>::InvalidTradingPair
 		);
-		assert!(!OrderBook::valid_pair(
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID
-		));
+		assert!(!OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
 	})
 }
 
@@ -74,11 +106,11 @@ fn removing_trading_pair_works() {
 	new_test_ext_no_pair().execute_with(|| {
 		assert_ok!(OrderBook::rm_trading_pair(
 			RawOrigin::Root.into(),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
+			CURRENCY_B,
+			CURRENCY_A,
 		));
 		assert_noop!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 			Error::<Runtime>::InvalidTradingPair
 		);
 	})
@@ -88,16 +120,12 @@ fn removing_trading_pair_works() {
 fn removing_trading_pair_fails() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			OrderBook::rm_trading_pair(
-				RuntimeOrigin::signed(ACCOUNT_0),
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-			),
+			OrderBook::rm_trading_pair(RuntimeOrigin::signed(ACCOUNT_0), CURRENCY_B, CURRENCY_A,),
 			DispatchError::BadOrigin
 		);
 		assert_eq!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			5 * CURRENCY_USDT_DECIMALS
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
+			5 * CURRENCY_A_DECIMALS
 		);
 	})
 }
@@ -107,12 +135,12 @@ fn updating_min_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::update_min_order(
 			RawOrigin::Root.into(),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
+			CURRENCY_B,
+			CURRENCY_A,
 			1
 		));
 		assert_eq!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
 			1
 		);
 	})
@@ -124,20 +152,17 @@ fn updating_min_order_fails() {
 		assert_noop!(
 			OrderBook::update_min_order(
 				RuntimeOrigin::signed(ACCOUNT_0),
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				1 * CURRENCY_AUSD_DECIMALS
+				CURRENCY_B,
+				CURRENCY_A,
+				1 * CURRENCY_B_DECIMALS
 			),
 			DispatchError::BadOrigin
 		);
 		assert_eq!(
-			TradingPair::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID).unwrap(),
-			5 * CURRENCY_USDT_DECIMALS
+			TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A).unwrap(),
+			5 * CURRENCY_A_DECIMALS
 		);
-		assert!(OrderBook::valid_pair(
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID
-		));
+		assert!(OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
 	})
 }
 
@@ -147,9 +172,9 @@ fn updating_min_order_fails_if_not_set() {
 		assert_noop!(
 			OrderBook::update_min_order(
 				RawOrigin::Root.into(),
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				1 * CURRENCY_AUSD_DECIMALS
+				CURRENCY_B,
+				CURRENCY_A,
+				1 * CURRENCY_B_DECIMALS
 			),
 			Error::<Runtime>::InvalidTradingPair
 		);
@@ -159,92 +184,94 @@ fn updating_min_order_fails_if_not_set() {
 #[test]
 fn create_order_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order(
-			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			150 * CURRENCY_USDT_DECIMALS,
-			OrderRatio::Custom((3, 2).into())
-		));
+		let order_id = util::create_default_order();
 
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-		let expected_order = Order {
-			order_id: order_id,
-			placing_account: ACCOUNT_0,
-			asset_in_id: DEV_AUSD_CURRENCY_ID,
-			asset_out_id: DEV_USDT_CURRENCY_ID,
-			amount_out: 150 * CURRENCY_USDT_DECIMALS,
-			amount_out_initial: 150 * CURRENCY_USDT_DECIMALS,
-			ratio: OrderRatio::Custom((3u32, 2u32).into()),
-			min_fulfillment_amount_out: MIN_USDT_FULFILLMENT_AMOUNT,
-			amount_in: 0,
-		};
-
-		assert_eq!(Orders::<Runtime>::get(order_id), Ok(expected_order.clone()));
-		assert_eq!(
-			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
-			Ok(expected_order)
+		assert_ok!(
+			Orders::<Runtime>::get(order_id),
+			Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				amount_out: 10 * CURRENCY_A_DECIMALS,
+				amount_out_initial: 10 * CURRENCY_A_DECIMALS,
+				ratio: OrderRatio::Custom((3, 2).into()),
+				min_fulfillment_amount_out: MIN_FULFILLMENT_AMOUNT_A,
+				amount_in: 0,
+			}
 		);
-		assert_eq!(
-			AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			vec![order_id]
-		)
+
+		util::assert_exists_order(order_id);
 	})
 }
 
-/*
 #[test]
 fn user_update_order_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order(
-			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			10 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_rational(3, 2).unwrap()
-		));
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		let order_id = util::create_default_order();
+
+		// Increasing the amount
 		assert_ok!(OrderBook::user_update_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			order_id,
-			15 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_integer(2u32).unwrap(),
+			15 * CURRENCY_A_DECIMALS,
+			OrderRatio::Custom((1, 2).into())
 		));
 
-		assert_eq!(
+		assert_ok!(
 			Orders::<Runtime>::get(order_id),
-			Ok(Order {
+			Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
-				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
-				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
-			})
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				amount_out: 15 * CURRENCY_A_DECIMALS,
+				amount_out_initial: 15 * CURRENCY_A_DECIMALS,
+				ratio: OrderRatio::Custom((1, 2).into()),
+				min_fulfillment_amount_out: MIN_FULFILLMENT_AMOUNT_A,
+				amount_in: 0
+			}
 		);
+
+		// Decreasing the amount
+		assert_ok!(OrderBook::user_update_order(
+			RuntimeOrigin::signed(ACCOUNT_0),
+			order_id,
+			5 * CURRENCY_A_DECIMALS,
+			OrderRatio::Custom((1, 2).into())
+		));
+
+		assert_ok!(
+			Orders::<Runtime>::get(order_id),
+			Order {
+				order_id: order_id,
+				placing_account: ACCOUNT_0,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				amount_out: 5 * CURRENCY_A_DECIMALS,
+				amount_out_initial: 5 * CURRENCY_A_DECIMALS,
+				ratio: OrderRatio::Custom((1, 2).into()),
+				min_fulfillment_amount_out: MIN_FULFILLMENT_AMOUNT_A,
+				amount_in: 0
+			}
+		);
+
+		// Correct order duplication in both storages
+		util::assert_exists_order(order_id);
 	})
 }
 
 #[test]
 fn user_update_order_only_works_for_valid_account() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order(
-			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			10 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_rational(3, 2).unwrap()
-		));
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		let order_id = util::create_default_order();
+
 		assert_err!(
 			OrderBook::user_update_order(
 				RuntimeOrigin::signed(ACCOUNT_1),
 				order_id,
-				15 * CURRENCY_AUSD_DECIMALS,
-				FixedU128::checked_from_integer(2u32).unwrap(),
+				15 * CURRENCY_A_DECIMALS,
+				OrderRatio::Custom((1, 2).into()),
 			),
 			Error::<Runtime>::Unauthorised
 		);
@@ -254,65 +281,25 @@ fn user_update_order_only_works_for_valid_account() {
 #[test]
 fn user_cancel_order_works() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order(
-			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
-		));
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
+		let order_id = util::create_default_order();
+
 		assert_ok!(OrderBook::user_cancel_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			order_id
 		));
-		assert_err!(
-			Orders::<Runtime>::get(order_id),
-			Error::<Runtime>::OrderNotFound
-		);
 
-		assert_err!(
-			UserOrders::<Runtime>::get(ACCOUNT_0, order_id),
-			Error::<Runtime>::OrderNotFound
-		);
-
-		assert_eq!(
-			AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
-			vec![]
-		)
+		util::assert_no_exists_order(order_id);
 	})
 }
 
 #[test]
 fn user_cancel_order_only_works_for_valid_account() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(OrderBook::create_order(
-			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
-		));
+		let order_id = util::create_default_order();
 
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_err!(
 			OrderBook::user_cancel_order(RuntimeOrigin::signed(ACCOUNT_1), order_id),
 			Error::<Runtime>::Unauthorised
-		);
-
-		assert_eq!(
-			Orders::<Runtime>::get(order_id),
-			Ok(Order {
-				order_id: order_id,
-				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
-				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
-			})
 		);
 	})
 }
@@ -322,18 +309,20 @@ fn fill_order_full_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
-			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
+			CURRENCY_B,
+			CURRENCY_A,
+			10 * CURRENCY_A_DECIMALS,
+			OrderRatio::Custom((3, 2).into())
 		));
-		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
-		// verify fulfill runs
+
+		let order_id = OrderIdNonceStore::<Runtime>::get();
+
 		assert_ok!(OrderBook::fill_order_full(
 			RuntimeOrigin::signed(ACCOUNT_1),
 			order_id
 		));
-		// verify filled order removed
+
+		// Fulfilled orders are automatically removed
 		assert_err!(
 			Orders::<Runtime>::get(order_id),
 			Error::<Runtime>::OrderNotFound
@@ -345,35 +334,37 @@ fn fill_order_full_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 			vec![]
 		);
+
+        //TradeableAsset::
 
 		assert_eq!(
 			System::events()[2].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
-				amount: 150 * CURRENCY_USDT_DECIMALS
+				amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 
 		assert_eq!(
 			System::events()[3].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-				currency_id: DEV_AUSD_CURRENCY_ID,
+				currency_id: CURRENCY_B,
 				to: ACCOUNT_0,
 				from: ACCOUNT_1,
-				amount: 100 * CURRENCY_AUSD_DECIMALS
+				amount: 100 * CURRENCY_B_DECIMALS
 			})
 		);
 		assert_eq!(
 			System::events()[4].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				to: ACCOUNT_1,
 				from: ACCOUNT_0,
-				amount: 150 * CURRENCY_USDT_DECIMALS
+				amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 	});
@@ -386,13 +377,13 @@ mod fill_order_partial {
 	fn fill_order_partial_works() {
 		for fulfillment_ratio in 1..100 {
 			new_test_ext().execute_with(|| {
-				let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
+				let buy_amount = 100 * CURRENCY_B_DECIMALS;
 				let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
 
 				assert_ok!(OrderBook::place_order(
 					ACCOUNT_0,
-					DEV_AUSD_CURRENCY_ID,
-					DEV_USDT_CURRENCY_ID,
+					CURRENCY_B,
+					CURRENCY_A,
 					buy_amount,
 					sell_ratio,
 				));
@@ -409,7 +400,7 @@ mod fill_order_partial {
 				));
 
 				assert_eq!(
-					AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+					AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 					vec![order_id]
 				);
 
@@ -426,7 +417,7 @@ mod fill_order_partial {
 				assert_eq!(
 					System::events()[2].event,
 					RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-						currency_id: DEV_USDT_CURRENCY_ID,
+						currency_id: CURRENCY_A,
 						who: ACCOUNT_0,
 						amount: expected_sell_amount
 					})
@@ -444,7 +435,7 @@ mod fill_order_partial {
 				assert_eq!(
 					System::events()[4].event,
 					RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-						currency_id: DEV_AUSD_CURRENCY_ID,
+						currency_id: CURRENCY_B,
 						to: ACCOUNT_0,
 						from: ACCOUNT_1,
 						amount: partial_buy_amount
@@ -453,7 +444,7 @@ mod fill_order_partial {
 				assert_eq!(
 					System::events()[5].event,
 					RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-						currency_id: DEV_USDT_CURRENCY_ID,
+						currency_id: CURRENCY_A,
 						to: ACCOUNT_1,
 						from: ACCOUNT_0,
 						amount: expected_sell_amount
@@ -479,13 +470,13 @@ mod fill_order_partial {
 	#[test]
 	fn fill_order_partial_with_full_amount_works() {
 		new_test_ext().execute_with(|| {
-			let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
+			let buy_amount = 100 * CURRENCY_B_DECIMALS;
 			let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
 
 			assert_ok!(OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
+				CURRENCY_B,
+				CURRENCY_A,
 				buy_amount,
 				sell_ratio,
 			));
@@ -499,7 +490,7 @@ mod fill_order_partial {
 			));
 
 			assert_eq!(
-				AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+				AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 				vec![]
 			);
 
@@ -523,7 +514,7 @@ mod fill_order_partial {
 			assert_eq!(
 				System::events()[2].event,
 				RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-					currency_id: DEV_USDT_CURRENCY_ID,
+					currency_id: CURRENCY_A,
 					who: ACCOUNT_0,
 					amount: max_sell_amount
 				})
@@ -531,7 +522,7 @@ mod fill_order_partial {
 			assert_eq!(
 				System::events()[3].event,
 				RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-					currency_id: DEV_AUSD_CURRENCY_ID,
+					currency_id: CURRENCY_B,
 					to: ACCOUNT_0,
 					from: ACCOUNT_1,
 					amount: buy_amount
@@ -540,7 +531,7 @@ mod fill_order_partial {
 			assert_eq!(
 				System::events()[4].event,
 				RuntimeEvent::OrmlTokens(orml_tokens::Event::Transfer {
-					currency_id: DEV_USDT_CURRENCY_ID,
+					currency_id: CURRENCY_A,
 					to: ACCOUNT_1,
 					from: ACCOUNT_0,
 					amount: max_sell_amount
@@ -569,7 +560,7 @@ mod fill_order_partial {
 				OrderBook::fill_order_partial(
 					RawOrigin::None.into(),
 					1,
-					10 * CURRENCY_AUSD_DECIMALS,
+					10 * CURRENCY_B_DECIMALS,
 				),
 				BadOrigin
 			);
@@ -583,7 +574,7 @@ mod fill_order_partial {
 				OrderBook::fill_order_partial(
 					RuntimeOrigin::signed(ACCOUNT_1),
 					1234,
-					10 * CURRENCY_AUSD_DECIMALS,
+					10 * CURRENCY_B_DECIMALS,
 				),
 				Error::<Runtime>::OrderNotFound
 			);
@@ -593,13 +584,13 @@ mod fill_order_partial {
 	#[test]
 	fn fill_order_partial_insufficient_order_size() {
 		new_test_ext().execute_with(|| {
-			let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
+			let buy_amount = 100 * CURRENCY_B_DECIMALS;
 			let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
 
 			assert_ok!(OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
+				CURRENCY_B,
+				CURRENCY_A,
 				buy_amount,
 				sell_ratio,
 			));
@@ -620,22 +611,22 @@ mod fill_order_partial {
 	#[test]
 	fn fill_order_partial_insufficient_asset_funds() {
 		new_test_ext().execute_with(|| {
-			let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
+			let buy_amount = 100 * CURRENCY_B_DECIMALS;
 			let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
 
 			assert_ok!(OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
+				CURRENCY_B,
+				CURRENCY_A,
 				buy_amount,
 				sell_ratio,
 			));
 
 			let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 
-			let total_balance = OrmlTokens::balance(DEV_AUSD_CURRENCY_ID, &ACCOUNT_1);
+			let total_balance = OrmlTokens::balance(CURRENCY_B, &ACCOUNT_1);
 			assert_ok!(OrmlTokens::hold(
-				DEV_AUSD_CURRENCY_ID,
+				CURRENCY_B,
 				&(),
 				&ACCOUNT_1,
 				total_balance
@@ -655,13 +646,13 @@ mod fill_order_partial {
 	#[test]
 	fn fill_order_partial_buy_amount_too_big() {
 		new_test_ext().execute_with(|| {
-			let buy_amount = 100 * CURRENCY_AUSD_DECIMALS;
+			let buy_amount = 100 * CURRENCY_B_DECIMALS;
 			let sell_ratio = FixedU128::checked_from_rational(3u32, 2u32).unwrap();
 
 			assert_ok!(OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
+				CURRENCY_B,
+				CURRENCY_A,
 				buy_amount,
 				sell_ratio,
 			));
@@ -672,7 +663,7 @@ mod fill_order_partial {
 				OrderBook::fill_order_partial(
 					RuntimeOrigin::signed(ACCOUNT_1),
 					order_id,
-					buy_amount + 1 * CURRENCY_AUSD_DECIMALS,
+					buy_amount + 1 * CURRENCY_B_DECIMALS,
 				),
 				Error::<Runtime>::BuyAmountTooLarge
 			);
@@ -687,7 +678,7 @@ fn fill_order_full_checks_asset_in_for_fulfiller() {
 		assert_ok!(OrderBook::create_order(
 			RuntimeOrigin::signed(ACCOUNT_0),
 			CurrencyId::Native,
-			DEV_AUSD_CURRENCY_ID,
+			CURRENCY_B,
 			400 * CURRENCY_NATIVE_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 		));
@@ -707,9 +698,9 @@ fn place_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -718,13 +709,13 @@ fn place_order_works() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 100 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 100 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
-				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
+				max_sell_amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -733,27 +724,27 @@ fn place_order_works() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 100 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 100 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
-				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
+				max_sell_amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 			vec![order_id,]
 		);
 
 		assert_eq!(
 			System::events()[0].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
-				amount: 150 * CURRENCY_USDT_DECIMALS
+				amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 		assert_eq!(
@@ -761,9 +752,9 @@ fn place_order_works() {
 			RuntimeEvent::OrderBook(Event::OrderCreated {
 				order_id: order_id,
 				creator_account: ACCOUNT_0,
-				currency_in: DEV_AUSD_CURRENCY_ID,
-				currency_out: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
+				buy_amount: 100 * CURRENCY_B_DECIMALS,
 				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
 				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			})
@@ -776,9 +767,9 @@ fn place_order_bases_max_sell_off_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -787,13 +778,13 @@ fn place_order_bases_max_sell_off_buy() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 100 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 100 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
-				max_sell_amount: 150 * CURRENCY_USDT_DECIMALS
+				max_sell_amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -802,9 +793,9 @@ fn place_order_bases_max_sell_off_buy() {
 			RuntimeEvent::OrderBook(Event::OrderCreated {
 				order_id: order_id,
 				creator_account: ACCOUNT_0,
-				currency_in: DEV_AUSD_CURRENCY_ID,
-				currency_out: DEV_USDT_CURRENCY_ID,
-				buy_amount: 100 * CURRENCY_AUSD_DECIMALS,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
+				buy_amount: 100 * CURRENCY_B_DECIMALS,
 				min_fulfillment_amount: MIN_AUSD_FULFILLMENT_AMOUNT,
 				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			})
@@ -817,16 +808,16 @@ fn ensure_nonce_updates_order_correctly() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let [(order_id_0, _), (order_id_1, _)] = get_account_orders(ACCOUNT_0)
@@ -845,9 +836,9 @@ fn place_order_requires_no_min_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			1 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			1 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		),);
 	})
@@ -859,9 +850,9 @@ fn create_order_requires_min_buy() {
 		assert_err!(
 			OrderBook::create_order(
 				RuntimeOrigin::signed(ACCOUNT_0),
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				1 * CURRENCY_AUSD_DECIMALS,
+				CURRENCY_B,
+				CURRENCY_A,
+				1 * CURRENCY_B_DECIMALS,
 				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			),
 			Error::<Runtime>::InsufficientOrderSize
@@ -875,9 +866,9 @@ fn place_order_requires_pair_with_defined_min() {
 		assert_err!(
 			OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
+				CURRENCY_B,
 				FOREIGN_CURRENCY_NO_MIN_ID,
-				10 * CURRENCY_AUSD_DECIMALS,
+				10 * CURRENCY_B_DECIMALS,
 				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			),
 			Error::<Runtime>::InvalidTradingPair
@@ -891,8 +882,8 @@ fn place_order_min_fulfillment_cannot_be_less_than_buy() {
 		assert_err!(
 			OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
+				CURRENCY_B,
+				CURRENCY_A,
 				MIN_AUSD_FULFILLMENT_AMOUNT - 1,
 				FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 			),
@@ -907,9 +898,9 @@ fn place_order_requires_non_zero_price() {
 		assert_err!(
 			OrderBook::place_order(
 				ACCOUNT_0,
-				DEV_AUSD_CURRENCY_ID,
-				DEV_USDT_CURRENCY_ID,
-				100 * CURRENCY_AUSD_DECIMALS,
+				CURRENCY_B,
+				CURRENCY_A,
+				100 * CURRENCY_B_DECIMALS,
 				FixedU128::zero(),
 			),
 			Error::<Runtime>::InvalidMaxPrice
@@ -922,9 +913,9 @@ fn cancel_order_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			100 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			100 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -940,15 +931,15 @@ fn cancel_order_works() {
 		);
 
 		assert_eq!(
-			AssetPairOrders::<Runtime>::get(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID),
+			AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A),
 			vec![]
 		);
 		assert_eq!(
 			System::events()[2].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
-				amount: 150 * CURRENCY_USDT_DECIMALS
+				amount: 150 * CURRENCY_A_DECIMALS
 			})
 		);
 		assert_eq!(
@@ -966,31 +957,31 @@ fn update_order_works_with_order_increase() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			10 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			10 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::update_order_with_fulfillment(
 			ACCOUNT_0,
 			order_id,
-			15 * CURRENCY_AUSD_DECIMALS,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_integer(2u32).unwrap(),
-			5 * CURRENCY_AUSD_DECIMALS
+			5 * CURRENCY_B_DECIMALS
 		));
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 15 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 10 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 30 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -999,13 +990,13 @@ fn update_order_works_with_order_increase() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 15 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 10 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_integer(2u32).unwrap(),
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 30 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 30 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -1013,20 +1004,20 @@ fn update_order_works_with_order_increase() {
 		assert_eq!(
 			System::events()[0].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
 				// order create reserve
-				amount: 15 * CURRENCY_USDT_DECIMALS
+				amount: 15 * CURRENCY_A_DECIMALS
 			})
 		);
 
 		assert_eq!(
 			System::events()[2].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
 				// update reserve additional 15 needed to cover new price and amount
-				amount: 15 * CURRENCY_USDT_DECIMALS
+				amount: 15 * CURRENCY_A_DECIMALS
 			})
 		);
 		assert_eq!(
@@ -1034,8 +1025,8 @@ fn update_order_works_with_order_increase() {
 			RuntimeEvent::OrderBook(Event::OrderUpdated {
 				order_id,
 				account: ACCOUNT_0,
-				buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				buy_amount: 15 * CURRENCY_B_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
 				sell_rate_limit: FixedU128::checked_from_integer(2u32).unwrap()
 			})
 		);
@@ -1049,32 +1040,32 @@ fn update_order_updates_min_fulfillment() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			10 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			10 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::update_order_with_fulfillment(
 			ACCOUNT_0,
 			order_id,
-			10 * CURRENCY_AUSD_DECIMALS,
+			10 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
-			6 * CURRENCY_AUSD_DECIMALS
+			6 * CURRENCY_B_DECIMALS
 		));
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 10 * CURRENCY_B_DECIMALS,
 
 				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 6 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 15 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -1083,14 +1074,14 @@ fn update_order_updates_min_fulfillment() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 10 * CURRENCY_B_DECIMALS,
 
 				max_sell_rate: FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
-				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 15 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 6 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 15 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -1101,8 +1092,8 @@ fn update_order_updates_min_fulfillment() {
 			RuntimeEvent::OrderBook(Event::OrderUpdated {
 				order_id,
 				account: ACCOUNT_0,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				min_fulfillment_amount: 6 * CURRENCY_AUSD_DECIMALS,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				min_fulfillment_amount: 6 * CURRENCY_B_DECIMALS,
 				sell_rate_limit: FixedU128::checked_from_rational(3u32, 2u32).unwrap()
 			})
 		);
@@ -1114,31 +1105,31 @@ fn update_order_works_with_order_decrease() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::update_order_with_fulfillment(
 			ACCOUNT_0,
 			order_id,
-			10 * CURRENCY_AUSD_DECIMALS,
+			10 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_integer(1u32).unwrap(),
-			5 * CURRENCY_AUSD_DECIMALS
+			5 * CURRENCY_B_DECIMALS
 		));
 		assert_eq!(
 			Orders::<Runtime>::get(order_id),
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 15 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_integer(1u32).unwrap(),
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 10 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -1147,13 +1138,13 @@ fn update_order_works_with_order_decrease() {
 			Ok(Order {
 				order_id: order_id,
 				placing_account: ACCOUNT_0,
-				asset_in_id: DEV_AUSD_CURRENCY_ID,
-				asset_out_id: DEV_USDT_CURRENCY_ID,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				initial_buy_amount: 15 * CURRENCY_AUSD_DECIMALS,
+				asset_in_id: CURRENCY_B,
+				asset_out_id: CURRENCY_A,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				initial_buy_amount: 15 * CURRENCY_B_DECIMALS,
 				max_sell_rate: FixedU128::checked_from_integer(1u32).unwrap(),
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
-				max_sell_amount: 10 * CURRENCY_USDT_DECIMALS
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
+				max_sell_amount: 10 * CURRENCY_A_DECIMALS
 			})
 		);
 
@@ -1161,20 +1152,20 @@ fn update_order_works_with_order_decrease() {
 		assert_eq!(
 			System::events()[0].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Reserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
 				// order create reserve -- 22.5
-				amount: 225 * CURRENCY_USDT_DECIMALS / 10
+				amount: 225 * CURRENCY_A_DECIMALS / 10
 			})
 		);
 
 		assert_eq!(
 			System::events()[2].event,
 			RuntimeEvent::OrmlTokens(orml_tokens::Event::Unreserved {
-				currency_id: DEV_USDT_CURRENCY_ID,
+				currency_id: CURRENCY_A,
 				who: ACCOUNT_0,
 				// update reserve to free 12.5 outgoing tokens no longer needed to cover trade.
-				amount: 125 * CURRENCY_USDT_DECIMALS / 10
+				amount: 125 * CURRENCY_A_DECIMALS / 10
 			})
 		);
 		assert_eq!(
@@ -1182,8 +1173,8 @@ fn update_order_works_with_order_decrease() {
 			RuntimeEvent::OrderBook(Event::OrderUpdated {
 				order_id,
 				account: ACCOUNT_0,
-				buy_amount: 10 * CURRENCY_AUSD_DECIMALS,
-				min_fulfillment_amount: 5 * CURRENCY_AUSD_DECIMALS,
+				buy_amount: 10 * CURRENCY_B_DECIMALS,
+				min_fulfillment_amount: 5 * CURRENCY_B_DECIMALS,
 				sell_rate_limit: FixedU128::checked_from_integer(1u32).unwrap()
 			})
 		);
@@ -1195,18 +1186,18 @@ fn update_order_requires_no_min_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_ok!(OrderBook::update_order_with_fulfillment(
 			ACCOUNT_0,
 			order_id,
-			1 * CURRENCY_AUSD_DECIMALS,
+			1 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_integer(1u32).unwrap(),
-			1 * CURRENCY_AUSD_DECIMALS
+			1 * CURRENCY_B_DECIMALS
 		),);
 	})
 }
@@ -1216,9 +1207,9 @@ fn user_update_order_requires_min_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1226,7 +1217,7 @@ fn user_update_order_requires_min_buy() {
 			OrderBook::user_update_order(
 				RuntimeOrigin::signed(ACCOUNT_0),
 				order_id,
-				1 * CURRENCY_AUSD_DECIMALS,
+				1 * CURRENCY_B_DECIMALS,
 				FixedU128::checked_from_integer(1u32).unwrap(),
 			),
 			Error::<Runtime>::InsufficientOrderSize
@@ -1239,9 +1230,9 @@ fn update_order_requires_non_zero_min_fulfillment() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1249,7 +1240,7 @@ fn update_order_requires_non_zero_min_fulfillment() {
 			OrderBook::update_order_with_fulfillment(
 				ACCOUNT_0,
 				order_id,
-				10 * CURRENCY_AUSD_DECIMALS,
+				10 * CURRENCY_B_DECIMALS,
 				FixedU128::checked_from_integer(1u32).unwrap(),
 				0
 			),
@@ -1263,9 +1254,9 @@ fn update_order_min_fulfillment_cannot_be_less_than_buy() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1273,9 +1264,9 @@ fn update_order_min_fulfillment_cannot_be_less_than_buy() {
 			OrderBook::update_order_with_fulfillment(
 				ACCOUNT_0,
 				order_id,
-				10 * CURRENCY_AUSD_DECIMALS,
+				10 * CURRENCY_B_DECIMALS,
 				FixedU128::checked_from_integer(1u32).unwrap(),
-				15 * CURRENCY_AUSD_DECIMALS,
+				15 * CURRENCY_B_DECIMALS,
 			),
 			Error::<Runtime>::InvalidBuyAmount
 		);
@@ -1287,9 +1278,9 @@ fn update_order_requires_non_zero_price() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
@@ -1297,9 +1288,9 @@ fn update_order_requires_non_zero_price() {
 			OrderBook::update_order_with_fulfillment(
 				ACCOUNT_0,
 				order_id,
-				10 * CURRENCY_AUSD_DECIMALS,
+				10 * CURRENCY_B_DECIMALS,
 				FixedU128::zero(),
-				15 * CURRENCY_AUSD_DECIMALS,
+				15 * CURRENCY_B_DECIMALS,
 			),
 			Error::<Runtime>::InvalidMaxPrice
 		);
@@ -1311,18 +1302,18 @@ fn get_order_details_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OrderBook::place_order(
 			ACCOUNT_0,
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			15 * CURRENCY_AUSD_DECIMALS,
+			CURRENCY_B,
+			CURRENCY_A,
+			15 * CURRENCY_B_DECIMALS,
 			FixedU128::checked_from_rational(3u32, 2u32).unwrap(),
 		));
 		let (order_id, _) = get_account_orders(ACCOUNT_0).unwrap()[0];
 		assert_eq!(
 			OrderBook::get_order_details(order_id),
 			Some(cfg_types::investments::Swap {
-				amount_in: 15 * CURRENCY_AUSD_DECIMALS,
-				currency_in: DEV_AUSD_CURRENCY_ID,
-				currency_out: DEV_USDT_CURRENCY_ID
+				amount_in: 15 * CURRENCY_B_DECIMALS,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A
 			})
 		);
 		assert!(OrderBook::get_order_details(order_id + 1).is_none());
