@@ -14,18 +14,18 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-	fn propose_update_feeders(feeders: u32) -> Weight;
-	fn apply_update_feeders(feeders: u32) -> Weight;
+	fn propose_update_collection_info(feeders: u32) -> Weight;
+	fn apply_update_collection_info(feeders: u32) -> Weight;
 	fn update_collection(feeders: u32, keys: u32) -> Weight;
 	fn set_collection_info() -> Weight;
 }
 
 impl WeightInfo for () {
-	fn propose_update_feeders(_: u32) -> Weight {
+	fn propose_update_collection_info(_: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn apply_update_feeders(_: u32) -> Weight {
+	fn apply_update_collection_info(_: u32) -> Weight {
 		Weight::zero()
 	}
 
