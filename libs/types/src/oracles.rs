@@ -25,13 +25,16 @@ pub type Isin = [u8; 12];
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OracleKey {
+	/// Identify a Isin price
 	Isin(Isin),
-	MarketPair(CurrencyId, CurrencyId),
+
+	/// Identify a conversion from the first currency to the second one
+	ConversionRatio(CurrencyId, CurrencyId),
 }
 
 impl From<(CurrencyId, CurrencyId)> for OracleKey {
-	fn from(pair: (CurrencyId, CurrencyId)) -> Self {
-		Self::MarketPair(pair.0, pair.1)
+	fn from((from, to): (CurrencyId, CurrencyId)) -> Self {
+		Self::ConversionRatio(from, to)
 	}
 }
 

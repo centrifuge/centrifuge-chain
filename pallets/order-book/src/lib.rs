@@ -30,7 +30,7 @@ mod benchmarking;
 
 pub mod weights;
 
-pub use cfg_traits::{OrderPrice, TokenSwaps};
+pub use cfg_traits::{OrderRatio, TokenSwaps};
 pub use pallet::*;
 pub use weights::WeightInfo;
 
@@ -71,7 +71,7 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::AssetCurrencyId,
 		<T as Config>::Balance,
-		<T as Config>::SellRatio,
+		<T as Config>::Ratio,
 	>;
 	pub type BalanceOf<T> = <T as Config>::Balance;
 
@@ -133,9 +133,10 @@ pub mod pallet {
 			+ MutateHold<Self::AccountId>
 			+ Mutate<Self::AccountId>;
 
-		/// Type for price ratio for cost of incoming currency relative to
-		/// outgoing
-		type SellRatio: Parameter
+		/// Type for conversion ratios.
+		/// It will be factor applied to `currency_out` amount to obtain
+		/// `currency_in`
+		type Ratio: Parameter
 			+ Member
 			+ FixedPointNumber
 			+ EnsureMul
@@ -174,14 +175,14 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		/// Type for a market price feeder
+		/// Type for a market conversion ratio feeder
 		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
 
-		/// Identification for a market price
-		type Pair: From<(Self::AssetCurrencyId, Self::AssetCurrencyId)>;
+		/// Identification for a market conversion ratio
+		type ConversionPair: From<(Self::AssetCurrencyId, Self::AssetCurrencyId)>;
 
-		/// A way to obtain prices for market pairs
-		type PriceProvider: ValueProvider<Self::FeederId, Self::Pair, Value = Self::SellRatio>;
+		/// A way to obtain conversion ratios for market pairs
+		type RatioProvider: ValueProvider<Self::FeederId, Self::ConversionPair, Value = Self::Ratio>;
 
 		/// The admin origin of this pallet
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -195,17 +196,17 @@ pub mod pallet {
 	/// Order Storage item.
 	/// Contains fields relevant to order information
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, SellRatio> {
+	pub struct Order<OrderId, AccountId, AssetId, ForeignCurrencyBalance, Ratio> {
 		/// Unique Id for this order
 		pub order_id: OrderId,
 
 		/// Associated account to this order
 		pub placing_account: AccountId,
 
-		/// Asset expected to receive to the account
+		/// Asset expected to receive to the account from `asset_out`
 		pub asset_in_id: AssetId,
 
-		/// Asset expected to give from the account
+		/// Asset expected to give from the account to obtain `asset_in`
 		pub asset_out_id: AssetId,
 
 		/// How many tokens of asset out available to sell
@@ -215,7 +216,7 @@ pub mod pallet {
 		pub amount_out_initial: ForeignCurrencyBalance,
 
 		/// Price given for this order,
-		pub price: OrderPrice<SellRatio>,
+		pub ratio: OrderRatio<Ratio>,
 
 		/// Minimum amount of an order that can be fulfilled
 		/// for partial fulfillment
@@ -290,7 +291,7 @@ pub mod pallet {
 		ResultQuery<Error<T>::InvalidTradingPair>,
 	>;
 
-	/// Stores the market feeder id used to price with market values
+	/// Stores the market feeder id used to set with market conversion ratios
 	#[pallet::storage]
 	pub type MarketFeederId<T: Config> = StorageValue<_, T::FeederId, OptionQuery>;
 
@@ -305,7 +306,7 @@ pub mod pallet {
 			currency_out: T::AssetCurrencyId,
 			amount_out: T::Balance,
 			min_fulfillment_amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 		},
 		/// Event emitted when an order is cancelled.
 		OrderCancelled {
@@ -317,7 +318,7 @@ pub mod pallet {
 			order_id: T::OrderIdNonce,
 			account: T::AccountId,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 			min_fulfillment_amount_out: T::Balance,
 		},
 		/// Event emitted when an order is fulfilled.
@@ -332,7 +333,7 @@ pub mod pallet {
 			fulfillment_amount: T::Balance,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
-			price: T::SellRatio,
+			ratio: T::Ratio,
 		},
 		/// Event emitted when a valid trading pair is added.
 		TradingPairAdded {
@@ -389,10 +390,10 @@ pub mod pallet {
 		BalanceConversionErr,
 		/// Error when the provided partial buy amount is too large.
 		BuyAmountTooLarge,
-		/// There is not feeder set for market prices
+		/// There is not feeder set for market conversion ratios
 		MarketFeederNotFound,
-		/// Expected a market price for the given pair of asset currencies.
-		MarketPriceNotFound,
+		/// Expected a market ratio for the given pair of asset currencies.
+		MarketRatioNotFound,
 	}
 
 	#[pallet::call]
@@ -408,7 +409,7 @@ pub mod pallet {
 			asset_in: T::AssetCurrencyId,
 			asset_out: T::AssetCurrencyId,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -417,7 +418,7 @@ pub mod pallet {
 				asset_in,
 				asset_out,
 				amount_out,
-				price,
+				ratio,
 				TradingPair::<T>::get(&asset_in, &asset_out)?,
 			)?;
 
@@ -431,7 +432,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			order_id: T::OrderIdNonce,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			let order = Orders::<T>::get(order_id)?;
@@ -444,7 +445,7 @@ pub mod pallet {
 			Self::inner_update_order(
 				order.clone(),
 				amount_out,
-				price,
+				ratio,
 				TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?,
 			)
 		}
@@ -575,7 +576,7 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, amount_out, account_id)
 		}
 
-		/// Set the market feeder for set market prices.
+		/// Set the market feeder for set market ratios.
 		/// The origin must be the admin origin.
 		#[pallet::call_index(8)]
 		#[pallet::weight(1_000_000)] // TODO
@@ -599,13 +600,13 @@ pub mod pallet {
 				Error::<T>::InsufficientOrderSize,
 			);
 
-			let price = match order.price {
-				OrderPrice::Market => Self::market_price(order.asset_out_id, order.asset_in_id)?,
-				OrderPrice::Custom(price) => price,
+			let ratio = match order.ratio {
+				OrderRatio::Market => Self::market_ratio(order.asset_out_id, order.asset_in_id)?,
+				OrderRatio::Custom(ratio) => ratio,
 			};
 
 			let amount_in =
-				Self::convert_with_ratio(order.asset_out_id, order.asset_in_id, price, amount_out)?;
+				Self::convert_with_ratio(order.asset_out_id, order.asset_in_id, ratio, amount_out)?;
 
 			let remaining_amount_out = order
 				.amount_out
@@ -665,28 +666,28 @@ pub mod pallet {
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
 				fulfillment_amount: amount_out,
-				price,
+				ratio,
 			});
 
 			Ok(())
 		}
 
-		pub fn market_price(
-			currency_in: T::AssetCurrencyId,
-			currency_out: T::AssetCurrencyId,
-		) -> Result<T::SellRatio, DispatchError> {
+		pub fn market_ratio(
+			currency_from: T::AssetCurrencyId,
+			currency_to: T::AssetCurrencyId,
+		) -> Result<T::Ratio, DispatchError> {
 			let feeder = MarketFeederId::<T>::get().ok_or(Error::<T>::MarketFeederNotFound)?;
 
-			let price = T::PriceProvider::get(&feeder, &(currency_in, currency_out).into())?;
+			let ratio = T::RatioProvider::get(&feeder, &(currency_from, currency_to).into())?;
 
-			Ok(match price {
-				Some(price) => price,
+			Ok(match ratio {
+				Some(ratio) => ratio,
 				None => {
-					let price =
-						T::PriceProvider::get(&feeder, &(currency_out, currency_in).into())?
-							.ok_or(Error::<T>::MarketPriceNotFound)?;
+					let ratio =
+						T::RatioProvider::get(&feeder, &(currency_to, currency_from).into())?
+							.ok_or(Error::<T>::MarketRatioNotFound)?;
 
-					T::SellRatio::one().ensure_div(price)?
+					T::Ratio::one().ensure_div(ratio)?
 				}
 			})
 		}
@@ -714,10 +715,12 @@ pub mod pallet {
 			)
 		}
 
+		/// `ratio` is the value you multiply `amount_from` to obtain
+		/// `amount_to`
 		pub fn convert_with_ratio(
 			currency_from: T::AssetCurrencyId,
 			currency_to: T::AssetCurrencyId,
-			ratio: T::SellRatio,
+			ratio: T::Ratio,
 			amount_from: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
 			let from_decimals = T::AssetRegistry::metadata(&currency_from)
@@ -756,7 +759,7 @@ pub mod pallet {
 		fn inner_update_order(
 			mut order: OrderOf<T>,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
 		) -> DispatchResult {
 			let min_fulfillment_amount_out = T::DecimalConverter::to_asset_balance(
@@ -788,7 +791,7 @@ pub mod pallet {
 				)?;
 			}
 			order.amount_out = amount_out;
-			order.price = price;
+			order.ratio = ratio;
 			order.min_fulfillment_amount_out = min_fulfillment_amount_out;
 
 			Orders::<T>::insert(order.order_id, order.clone());
@@ -798,7 +801,7 @@ pub mod pallet {
 				account: order.placing_account,
 				order_id: order.order_id,
 				amount_out,
-				price,
+				ratio,
 				min_fulfillment_amount_out,
 			});
 
@@ -810,7 +813,7 @@ pub mod pallet {
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
 		) -> Result<T::OrderIdNonce, DispatchError> {
 			<OrderIdNonceStore<T>>::try_mutate(|n| {
@@ -837,7 +840,7 @@ pub mod pallet {
 				asset_in_id: currency_in,
 				asset_out_id: currency_out,
 				amount_out,
-				price,
+				ratio,
 				amount_out_initial: amount_out,
 				min_fulfillment_amount_out,
 				amount_in: Zero::zero(),
@@ -853,7 +856,7 @@ pub mod pallet {
 			<UserOrders<T>>::insert(&account, order_id, new_order);
 			Self::deposit_event(Event::OrderCreated {
 				creator_account: account,
-				price,
+				ratio,
 				order_id,
 				amount_out,
 				currency_in,
@@ -873,14 +876,14 @@ pub mod pallet {
 		type CurrencyId = T::AssetCurrencyId;
 		type OrderDetails = Swap<T::Balance, T::AssetCurrencyId>;
 		type OrderId = T::OrderIdNonce;
-		type SellRatio = T::SellRatio;
+		type Ratio = T::Ratio;
 
 		fn place_order(
 			account: T::AccountId,
 			currency_in: T::AssetCurrencyId,
 			currency_out: T::AssetCurrencyId,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
 			// We only check if the trading pair exists not if the minimum amount is
 			// reached.
@@ -891,7 +894,7 @@ pub mod pallet {
 				currency_in,
 				currency_out,
 				amount_out,
-				price,
+				ratio,
 				T::Balance::zero(),
 			)
 		}
@@ -913,7 +916,7 @@ pub mod pallet {
 		fn update_order(
 			order_id: Self::OrderId,
 			amount_out: T::Balance,
-			price: OrderPrice<T::SellRatio>,
+			ratio: OrderRatio<T::Ratio>,
 		) -> DispatchResult {
 			let order = Orders::<T>::get(order_id)?;
 
@@ -921,7 +924,7 @@ pub mod pallet {
 			// reached.
 			let _min_amount = TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
 
-			Self::inner_update_order(order, amount_out, price, T::Balance::zero())
+			Self::inner_update_order(order, amount_out, ratio, T::Balance::zero())
 		}
 
 		fn is_active(order: Self::OrderId) -> bool {
