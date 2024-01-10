@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderPrice, TokenSwaps};
+	use cfg_traits::{OrderRatio, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -8,7 +8,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
 		type Balance;
-		type SellRatio;
+		type Ratio;
 		type OrderId;
 		type OrderDetails;
 	}
@@ -31,7 +31,7 @@ pub mod pallet {
 					T::CurrencyId,
 					T::CurrencyId,
 					T::Balance,
-					OrderPrice<T::SellRatio>,
+					OrderRatio<T::Ratio>,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
 		) {
@@ -39,7 +39,7 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::OrderId, T::Balance, OrderPrice<T::SellRatio>) -> DispatchResult + 'static,
+			f: impl Fn(T::OrderId, T::Balance, OrderRatio<T::Ratio>) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
@@ -68,14 +68,14 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
-		type SellRatio = T::SellRatio;
+		type Ratio = T::Ratio;
 
 		fn place_order(
 			a: T::AccountId,
 			b: Self::CurrencyId,
 			c: Self::CurrencyId,
 			d: Self::Balance,
-			e: OrderPrice<Self::SellRatio>,
+			e: OrderRatio<Self::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
 			execute_call!((a, b, c, d, e))
 		}
@@ -83,7 +83,7 @@ pub mod pallet {
 		fn update_order(
 			a: Self::OrderId,
 			b: Self::Balance,
-			c: OrderPrice<Self::SellRatio>,
+			c: OrderRatio<Self::Ratio>,
 		) -> DispatchResult {
 			execute_call!((a, b, c))
 		}

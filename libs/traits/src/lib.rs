@@ -505,7 +505,7 @@ pub trait CurrencyInspect {
 
 /// Determines an order price
 #[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-pub enum OrderPrice<Ratio> {
+pub enum OrderRatio<Ratio> {
 	Market,
 	Custom(Ratio),
 }
@@ -513,7 +513,7 @@ pub enum OrderPrice<Ratio> {
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
-	type SellRatio;
+	type Ratio;
 	type OrderId;
 	type OrderDetails;
 
@@ -560,7 +560,7 @@ pub trait TokenSwaps<Account> {
 		currency_in: Self::CurrencyId,
 		currency_out: Self::CurrencyId,
 		amount_out: Self::Balance,
-		price: OrderPrice<Self::SellRatio>,
+		ratio: OrderRatio<Self::Ratio>,
 	) -> Result<Self::OrderId, DispatchError>;
 
 	/// Update an existing active order.
@@ -600,7 +600,7 @@ pub trait TokenSwaps<Account> {
 	fn update_order(
 		order_id: Self::OrderId,
 		amount_out: Self::Balance,
-		price: OrderPrice<Self::SellRatio>,
+		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
 	/// A sanity check that can be used for validating that a trading pair
