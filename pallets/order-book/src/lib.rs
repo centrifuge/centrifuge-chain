@@ -365,13 +365,10 @@ pub mod pallet {
 		/// Error when order is placed attempting to exchange assets of the same
 		/// type.
 		ConflictingAssetIds,
-		/// Error when an account cannot reserve or transfer the amount
-		/// currently `0`.
-		InvalidBuyAmount,
-		/// Error when min order amount is invalid, currently `0`
-		InvalidMinimumFulfillment,
+		/// Error when an account cannot reserve or transfer the amount.
+		BelowMinFulfillmentAmount,
 		/// Error when an order amount is too small
-		InsufficientOrderSize,
+		BelowMinOrderAmount,
 		/// Error when an order is placed with a currency that is not in the
 		/// asset registry.
 		InvalidAssetId,
@@ -388,8 +385,9 @@ pub mod pallet {
 		/// Error when unable to convert fee balance to asset balance when asset
 		/// out matches fee currency
 		BalanceConversionErr,
-		/// Error when the provided partial buy amount is too large.
-		BuyAmountTooLarge,
+		/// Error when the provided amount to fulfill is too large for the
+		/// order.
+		FulfillAmountTooLarge,
 		/// There is not feeder set for market conversion ratios
 		MarketFeederNotFound,
 		/// Expected a market ratio for the given pair of asset currencies.
@@ -597,7 +595,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure!(
 				amount_out >= order.min_fulfillment_amount_out,
-				Error::<T>::InsufficientOrderSize,
+				Error::<T>::BelowMinFulfillmentAmount,
 			);
 
 			let ratio = match order.ratio {
@@ -611,7 +609,7 @@ pub mod pallet {
 			let remaining_amount_out = order
 				.amount_out
 				.checked_sub(&amount_out)
-				.ok_or(Error::<T>::BuyAmountTooLarge)?;
+				.ok_or(Error::<T>::FulfillAmountTooLarge)?;
 
 			let partial_fulfillment = !remaining_amount_out.is_zero();
 			if partial_fulfillment {
@@ -735,12 +733,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure!(
 				amount_out >= min_fulfillment_amount_out,
-				Error::<T>::InvalidBuyAmount
+				Error::<T>::BelowMinFulfillmentAmount
 			);
 
 			ensure!(
 				amount_out >= min_order_amount,
-				Error::<T>::InsufficientOrderSize
+				Error::<T>::BelowMinOrderAmount
 			);
 
 			Ok(())
