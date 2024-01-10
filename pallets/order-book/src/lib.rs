@@ -57,8 +57,8 @@ pub mod pallet {
 	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
-			EnsureSub, MaybeSerializeDeserialize, One, Zero,
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
+			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Zero,
 		},
 		FixedPointNumber, FixedPointOperand,
 	};
@@ -763,26 +763,30 @@ pub mod pallet {
 			// order.
 			// Also minimise reserve/unreserve operations.
 			if amount_out > order.amount_out {
-				let amount_out_diff = amount_out.ensure_sub(order.amount_out)?;
+				let amount_diff = amount_out.ensure_sub(order.amount_out)?;
+				order.amount_out_initial.ensure_add_assign(amount_diff)?;
+
 				T::TradeableAsset::hold(
 					order.asset_out_id,
 					&(),
 					&order.placing_account,
-					amount_out_diff,
+					amount_diff,
 				)?;
 			} else if amount_out < order.amount_out {
-				let amount_out_diff = order.amount_out.ensure_sub(amount_out)?;
+				let amount_diff = order.amount_out.ensure_sub(amount_out)?;
+				order.amount_out_initial.ensure_sub_assign(amount_diff)?;
+
 				T::TradeableAsset::release(
 					order.asset_out_id,
 					&(),
 					&order.placing_account,
-					amount_out_diff,
+					amount_diff,
 					Precision::Exact,
 				)?;
 			}
+
 			order.amount_out = amount_out;
 			order.ratio = ratio;
-			order.min_fulfillment_amount_out = min_fulfillment_amount_out;
 
 			Orders::<T>::insert(order.order_id, order.clone());
 			UserOrders::<T>::insert(&order.placing_account, order.order_id, order.clone());
@@ -806,12 +810,10 @@ pub mod pallet {
 			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
 		) -> Result<T::OrderIdNonce, DispatchError> {
-			<OrderIdNonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::OrderIdNonce::one())?;
-				Ok::<_, DispatchError>(())
+			let order_id = OrderIdNonceStore::<T>::try_mutate(|n| {
+				n.ensure_add_assign(One::one())?;
+				Ok::<_, DispatchError>(*n)
 			})?;
-
-			let order_id = <OrderIdNonceStore<T>>::get();
 
 			let min_fulfillment_amount_out = T::DecimalConverter::to_asset_balance(
 				T::MinFulfillmentAmountNative::get(),

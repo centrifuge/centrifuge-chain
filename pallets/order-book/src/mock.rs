@@ -12,13 +12,12 @@
 
 use cfg_mocks::pallet_mock_fees;
 use cfg_primitives::{conversion::convert_balance_decimals, CFG};
-use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
+use cfg_traits::ConversionToAssetBalance;
 use cfg_types::{
 	investments::Swap,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::{
-	pallet_prelude::DispatchResult,
 	parameter_types,
 	traits::{ConstU32, GenesisBuild},
 };
@@ -44,24 +43,19 @@ pub(crate) const FEEDER: u64 = 0x42;
 // Minimum order amounts for orderbook orders v1 implementation.
 // This will be replaced by runtime specifiable minimum,
 // which will likely be set by governance.
-pub(crate) const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
-pub(crate) const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
+pub(crate) const CURRENCY_A: CurrencyId = CurrencyId::ForeignAsset(1);
+pub(crate) const CURRENCY_B: CurrencyId = CurrencyId::ForeignAsset(2);
 pub(crate) const FOREIGN_CURRENCY_NO_MIN_ID: CurrencyId = CurrencyId::ForeignAsset(3);
-pub(crate) const CURRENCY_USDT_DECIMALS: u128 = 1_000_000;
-pub(crate) const CURRENCY_AUSD_DECIMALS: u128 = 1_000_000_000_000;
-pub(crate) const CURRENCY_NO_MIN_DECIMALS: u128 = 1_000_000_000_000;
+pub(crate) const CURRENCY_A_DECIMALS: u128 = 1_000_000;
+pub(crate) const CURRENCY_B_DECIMALS: u128 = 1_000_000_000_000;
 pub(crate) const CURRENCY_NATIVE_DECIMALS: Balance = CFG;
-pub(crate) const MIN_USDT_FULFILLMENT_AMOUNT: u128 = CURRENCY_USDT_DECIMALS / 100;
-
-const DEFAULT_DEV_MIN_ORDER: u128 = 5;
-const MIN_DEV_USDT_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_USDT_DECIMALS;
-const MIN_DEV_AUSD_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_AUSD_DECIMALS;
-const MIN_DEV_NATIVE_ORDER: Balance = DEFAULT_DEV_MIN_ORDER * CURRENCY_NATIVE_DECIMALS;
+pub(crate) const MIN_FULFILLMENT_AMOUNT_A: u128 = CURRENCY_A_DECIMALS / 100;
 
 type Balance = u128;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type AccountId = u64;
+pub type OrderId = u32;
 
 frame_support::construct_runtime!(
 	  pub enum Runtime where
@@ -75,6 +69,7 @@ frame_support::construct_runtime!(
 		  OrmlTokens: orml_tokens,
 		  OrderBook: order_book,
 		  MockRatioProvider: cfg_mocks::value_provider::pallet,
+		  MockStatusNotificationHook: cfg_mocks::status_notification::pallet,
 		  Tokens: pallet_restricted_tokens,
 	  }
 );
@@ -111,9 +106,27 @@ impl frame_system::Config for Runtime {
 	type Version = ();
 }
 
-impl pallet_mock_fees::Config for Runtime {
+cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
+	RegistryMock,
+	CurrencyId,
+	Balance,
+	CustomMetadata
+}
+
+impl cfg_mocks::value_provider::pallet::Config for Runtime {
+	type Key = (CurrencyId, CurrencyId);
+	type Source = AccountId;
+	type Value = FixedU128;
+}
+
+impl cfg_mocks::fees::pallet::Config for Runtime {
 	type Balance = Balance;
 	type FeeKey = u8;
+}
+
+impl cfg_mocks::status_notification::pallet::Config for Runtime {
+	type Id = OrderId;
+	type Status = Swap<Balance, CurrencyId>;
 }
 
 parameter_types! {
@@ -134,19 +147,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-}
-
-cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
-	RegistryMock,
-	CurrencyId,
-	Balance,
-	CustomMetadata
-}
-
-impl cfg_mocks::value_provider::pallet::Config for Runtime {
-	type Key = (CurrencyId, CurrencyId);
-	type Source = AccountId;
-	type Value = FixedU128;
 }
 
 parameter_type_with_key! {
@@ -203,31 +203,6 @@ parameter_types! {
 	pub MarketFeederId: AccountId = FEEDER;
 }
 
-pub struct DummyHook;
-impl StatusNotificationHook for DummyHook {
-	type Error = sp_runtime::DispatchError;
-	type Id = u64;
-	type Status = Swap<Balance, CurrencyId>;
-
-	fn notify_status_change(_id: u64, _status: Self::Status) -> DispatchResult {
-		Ok(())
-	}
-}
-
-parameter_type_with_key! {
-	pub MinimumOrderAmount: |pair: (CurrencyId, CurrencyId)| -> Option<Balance> {
-		match pair {
-			(CurrencyId::Native, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-			(DEV_AUSD_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_AUSD_ORDER),
-			(CurrencyId::Native, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_NATIVE_ORDER),
-			(DEV_USDT_CURRENCY_ID, CurrencyId::Native) => Some(MIN_DEV_USDT_ORDER),
-			(DEV_AUSD_CURRENCY_ID, DEV_USDT_CURRENCY_ID) => Some(MIN_DEV_AUSD_ORDER),
-			(DEV_USDT_CURRENCY_ID, DEV_AUSD_CURRENCY_ID) => Some(MIN_DEV_USDT_ORDER),
-			_ => None
-		}
-	};
-}
-
 pub struct DecimalConverter;
 impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter {
 	type Error = DispatchError;
@@ -262,9 +237,9 @@ impl order_book::Config for Runtime {
 	type ConversionPair = (CurrencyId, CurrencyId);
 	type DecimalConverter = DecimalConverter;
 	type FeederId = AccountId;
-	type FulfilledOrderHook = DummyHook;
+	type FulfilledOrderHook = MockStatusNotificationHook;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
-	type OrderIdNonce = u64;
+	type OrderIdNonce = OrderId;
 	type OrderPairVecSize = OrderPairVecSize;
 	type Ratio = FixedU128;
 	type RatioProvider = MockRatioProvider;
@@ -277,20 +252,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut e = new_test_ext_no_pair();
 
 	e.execute_with(|| {
-		order_book::TradingPair::<Runtime>::insert(
-			DEV_AUSD_CURRENCY_ID,
-			DEV_USDT_CURRENCY_ID,
-			MIN_DEV_USDT_ORDER,
-		);
-		order_book::TradingPair::<Runtime>::insert(
-			DEV_USDT_CURRENCY_ID,
-			DEV_AUSD_CURRENCY_ID,
-			MIN_DEV_AUSD_ORDER,
-		);
+		order_book::TradingPair::<Runtime>::insert(CURRENCY_B, CURRENCY_A, 5 * CURRENCY_A_DECIMALS);
+		order_book::TradingPair::<Runtime>::insert(CURRENCY_A, CURRENCY_B, 5 * CURRENCY_B_DECIMALS);
 		order_book::TradingPair::<Runtime>::insert(
 			CurrencyId::Native,
-			DEV_AUSD_CURRENCY_ID,
-			MIN_DEV_NATIVE_ORDER,
+			CURRENCY_B,
+			5 * CURRENCY_NATIVE_DECIMALS,
 		);
 	});
 
@@ -308,13 +275,8 @@ pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 			.into_iter()
 			.flat_map(|idx| {
 				[
-					(idx, DEV_AUSD_CURRENCY_ID, 1000 * CURRENCY_AUSD_DECIMALS),
-					(idx, DEV_USDT_CURRENCY_ID, 1000 * CURRENCY_USDT_DECIMALS),
-					(
-						idx,
-						FOREIGN_CURRENCY_NO_MIN_ID,
-						1000 * CURRENCY_NO_MIN_DECIMALS,
-					),
+					(idx, CURRENCY_B, 1000 * CURRENCY_B_DECIMALS),
+					(idx, CURRENCY_A, 1000 * CURRENCY_A_DECIMALS),
 					(idx, CurrencyId::Native, 100 * CURRENCY_NATIVE_DECIMALS),
 				]
 			})
@@ -326,7 +288,7 @@ pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 	orml_asset_registry_mock::GenesisConfig {
 		metadata: vec![
 			(
-				DEV_AUSD_CURRENCY_ID,
+				CURRENCY_B,
 				AssetMetadata {
 					decimals: 12,
 					name: "MOCK TOKEN_A".as_bytes().to_vec(),
@@ -337,18 +299,7 @@ pub fn new_test_ext_no_pair() -> sp_io::TestExternalities {
 				},
 			),
 			(
-				DEV_USDT_CURRENCY_ID,
-				AssetMetadata {
-					decimals: 6,
-					name: "MOCK TOKEN_B".as_bytes().to_vec(),
-					symbol: "MOCK_B".as_bytes().to_vec(),
-					existential_deposit: 0,
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			),
-			(
-				FOREIGN_CURRENCY_NO_MIN_ID,
+				CURRENCY_A,
 				AssetMetadata {
 					decimals: 6,
 					name: "MOCK TOKEN_B".as_bytes().to_vec(),
