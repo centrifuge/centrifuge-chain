@@ -14,12 +14,12 @@
 
 use cfg_traits::{
 	investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
-	IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
+	IdentityCurrencyConversion, OrderRatio, PoolInspect, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
-use frame_support::{ensure, traits::Get, transactional};
+use frame_support::{ensure, transactional};
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureAddAssign, EnsureSub, Zero},
 	DispatchError, DispatchResult,
@@ -792,13 +792,7 @@ impl<T: Config> Pallet<T> {
 			Some(swap_order_id)
 				if T::TokenSwaps::is_active(swap_order_id) && !cancel_swap_order =>
 			{
-				T::TokenSwaps::update_order(
-					who.clone(),
-					swap_order_id,
-					swap.amount,
-					// The max accepted sell rate is independent of the asset type for now
-					T::DefaultTokenSellRatio::get(),
-				)?;
+				T::TokenSwaps::update_order(swap_order_id, swap.amount, OrderRatio::Market)?;
 				ForeignInvestmentInfo::<T>::insert(
 					swap_order_id,
 					ForeignInvestmentInfoOf::<T> {
@@ -823,8 +817,7 @@ impl<T: Config> Pallet<T> {
 					swap.currency_in,
 					swap.currency_out,
 					swap.amount,
-					// The max accepted sell rate is independent of the asset type for now
-					T::DefaultTokenSellRatio::get(),
+					OrderRatio::Market,
 				)?;
 				TokenSwapOrderIds::<T>::insert(who, investment_id, swap_order_id);
 				ForeignInvestmentInfo::<T>::insert(
