@@ -678,18 +678,8 @@ pub mod pallet {
 		) -> Result<T::Ratio, DispatchError> {
 			let feeder = MarketFeederId::<T>::get().ok_or(Error::<T>::MarketFeederNotFound)?;
 
-			let ratio = T::RatioProvider::get(&feeder, &(currency_from, currency_to).into())?;
-
-			Ok(match ratio {
-				Some(ratio) => ratio,
-				None => {
-					let ratio =
-						T::RatioProvider::get(&feeder, &(currency_to, currency_from).into())?
-							.ok_or(Error::<T>::MarketRatioNotFound)?;
-
-					T::Ratio::one().ensure_div(ratio)?
-				}
-			})
+			T::RatioProvider::get(&feeder, &(currency_from, currency_to).into())?
+				.ok_or(Error::<T>::MarketRatioNotFound.into())
 		}
 
 		/// Remove an order from storage
