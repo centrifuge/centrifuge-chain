@@ -1600,41 +1600,6 @@ mod development {
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
 				);
-
-				// Create new pool for non foreign asset
-				// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
-				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					AssetMetadata {
-						name: "Acala Dollar".into(),
-						symbol: "AUSD".into(),
-						decimals: 12,
-						location: None,
-						existential_deposit: 1_000_000,
-						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
-							pool_currency: true,
-						},
-					},
-					Some(CurrencyId::AUSD)
-				));
-
-				create_currency_pool::<T>(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
-
-				// Should fail if currency is not foreign asset
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::allow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id + 1,
-						// Tranche id is arbitrary in this case, so we don't need to check for the
-						// exact pool_id
-						default_tranche_id::<T>(pool_id + 1),
-						CurrencyId::AUSD,
-					),
-					DispatchError::Token(sp_runtime::TokenError::Unsupported)
-				);
 			});
 		}
 
@@ -1869,41 +1834,6 @@ mod development {
 						currency_id,
 					),
 					pallet_liquidity_pools::Error::<T>::AssetNotLiquidityPoolsWrappedToken
-				);
-
-				// Create new pool for non foreign asset
-				// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
-				assert_ok!(orml_asset_registry::Pallet::<T>::register_asset(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					AssetMetadata {
-						name: "Acala Dollar".into(),
-						symbol: "AUSD".into(),
-						decimals: 12,
-						location: None,
-						existential_deposit: 1_000_000,
-						additional: CustomMetadata {
-							transferability: Default::default(),
-							mintable: false,
-							permissioned: false,
-							pool_currency: true,
-						},
-					},
-					Some(CurrencyId::AUSD)
-				));
-
-				create_currency_pool::<T>(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
-
-				// Should fail if currency is not foreign asset
-				assert_noop!(
-					pallet_liquidity_pools::Pallet::<T>::disallow_investment_currency(
-						RawOrigin::Signed(Keyring::Bob.into()).into(),
-						pool_id + 1,
-						// Tranche id is arbitrary in this case, so we don't need to check for the
-						// exact pool_id
-						default_tranche_id::<T>(pool_id + 1),
-						CurrencyId::AUSD,
-					),
-					DispatchError::Token(sp_runtime::TokenError::Unsupported)
 				);
 			});
 		}
