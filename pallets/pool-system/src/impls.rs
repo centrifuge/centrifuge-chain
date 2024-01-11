@@ -579,7 +579,7 @@ mod benchmarks_utils {
 					.of_tranche();
 			frame_support::assert_ok!(T::Investments::update_investment(
 				&investor,
-				T::TrancheCurrency::generate(pool_id.into(), tranche),
+				T::TrancheCurrency::generate(pool_id, tranche),
 				FUNDS.into(),
 			));
 

@@ -102,7 +102,7 @@ benchmarks! {
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
 		let pool_fee_input = <pallet_pool_fees::Pallet::<T> as PoolFeesBenchmarkHelper>::get_pool_fee_infos(m).into_iter().map(|fee| (PoolFeeBucket::Top, fee)).collect();
-		let origin = if let Ok(_) = <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()) {
+		let origin = if <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()).is_ok() {
 			RawOrigin::Signed(caller.clone())
 		} else {
 			RawOrigin::Root
@@ -233,7 +233,7 @@ benchmarks! {
 }
 
 fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::get_pool_metadata(POOL).unwrap()
 }
 
 fn build_update_tranche_token_metadata<T: Config>(

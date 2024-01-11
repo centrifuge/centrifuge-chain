@@ -239,7 +239,7 @@ pub fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 }
 
 pub fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
-	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::pool(POOL).unwrap()
 }
 
 pub fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
@@ -268,12 +268,12 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
-	T::Currency::deposit_creating(&investor.clone().into(), ED);
-	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone().into(), MINT_AMOUNT)?;
+	T::Currency::deposit_creating(&investor.clone(), ED);
+	T::Tokens::mint_into(AUSD_CURRENCY_ID, &investor.clone(), MINT_AMOUNT)?;
 	if let Some(amount) = with_tranche_tokens {
 		T::Tokens::mint_into(
 			CurrencyId::Tranche(POOL, tranche_id),
-			&investor.clone().into(),
+			&investor.clone(),
 			amount,
 		)?;
 	}
@@ -287,7 +287,7 @@ where
 {
 	let admin: T::AccountId = account("admin", id, 0);
 	let mint_amount = T::PoolDeposit::get() * 2 + ED;
-	T::Currency::deposit_creating(&admin.clone().into(), mint_amount);
+	T::Currency::deposit_creating(&admin.clone(), mint_amount);
 	admin
 }
 
@@ -335,7 +335,7 @@ pub fn update_pool<T: Config<PoolId = u64>>(
 pub fn get_scheduled_update<T: Config<PoolId = u64>>(
 ) -> ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>
 {
-	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::scheduled_update(POOL).unwrap()
 }
 
 pub fn assert_input_tranches_match<T: Config>(

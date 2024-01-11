@@ -612,12 +612,9 @@ pub mod pallet {
 					// Update fee amounts
 					fee.amounts.pending.ensure_sub_assign(disbursement)?;
 					fee.amounts.disbursement.ensure_add_assign(disbursement)?;
-					match fee.amounts.payable {
-						PayableFeeAmount::UpTo(payable) => {
-							fee.amounts.payable =
-								PayableFeeAmount::UpTo(payable.ensure_sub(disbursement)?)
-						}
-						_ => (),
+					if let PayableFeeAmount::UpTo(payable) = fee.amounts.payable {
+						fee.amounts.payable =
+							PayableFeeAmount::UpTo(payable.ensure_sub(disbursement)?)
 					};
 				}
 				Ok::<(), DispatchError>(())
