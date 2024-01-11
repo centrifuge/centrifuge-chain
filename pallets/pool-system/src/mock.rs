@@ -117,7 +117,13 @@ pub fn assert_pending_fees(
 		assert_eq!(active_fee.amounts.fee_type, fee.fee_type);
 		assert_eq!(active_fee.amounts.pending, *pending);
 		assert_eq!(active_fee.amounts.disbursement, *disbursement);
-		assert_eq!(active_fee.amounts.payable, *payable);
+		assert!(match fee.fee_type {
+			PoolFeeType::ChargedUpTo { .. } => matches!(
+				active_fee.amounts.payable,
+				cfg_types::pools::PayableFeeAmount::UpTo(p) if p == payable.unwrap()
+			),
+			_ => payable.is_none(),
+		});
 	}
 }
 

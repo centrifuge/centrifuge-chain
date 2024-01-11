@@ -32,7 +32,10 @@ pub mod pallet {
 		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
-		pools::{PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeEditor, PoolFeeInfo, PoolFeeType},
+		pools::{
+			PayableFeeAmount, PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeEditor, PoolFeeInfo,
+			PoolFeeType,
+		},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
@@ -51,7 +54,7 @@ pub mod pallet {
 	#[cfg(feature = "runtime-benchmarks")]
 	use sp_arithmetic::fixed_point::FixedPointNumber;
 	use sp_arithmetic::{
-		traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating, Zero},
+		traits::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, One, Saturating, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
 	use sp_runtime::{traits::AccountIdConversion, SaturatedConversion};
@@ -589,13 +592,13 @@ pub mod pallet {
 					);
 
 					let fee_amount = match fee.amounts.payable {
-						Some(payable) => {
+						PayableFeeAmount::UpTo(payable) => {
 							let payable_amount = payable.ensure_add(epoch_amount)?;
-							fee.amounts.payable = Some(payable_amount);
+							fee.amounts.payable = PayableFeeAmount::UpTo(payable_amount);
 							Ok(fee.amounts.pending.min(payable_amount))
 						}
 						// NOTE: Implicitly assuming Fixed fee because of missing payable
-						None => {
+						PayableFeeAmount::AllPending => {
 							fee.amounts.pending.ensure_add_assign(epoch_amount)?;
 							Ok(fee.amounts.pending)
 						}
@@ -608,9 +611,14 @@ pub mod pallet {
 
 					// Update fee amounts
 					fee.amounts.pending.ensure_sub_assign(disbursement)?;
-					fee.amounts.payable =
-						fee.amounts.payable.map(|p| p.saturating_sub(disbursement));
 					fee.amounts.disbursement.ensure_add_assign(disbursement)?;
+					match fee.amounts.payable {
+						PayableFeeAmount::UpTo(payable) => {
+							fee.amounts.payable =
+								PayableFeeAmount::UpTo(payable.ensure_sub(disbursement)?)
+						}
+						_ => (),
+					};
 				}
 				Ok::<(), DispatchError>(())
 			})?;

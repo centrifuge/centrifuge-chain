@@ -81,8 +81,8 @@ where
 {
 	pub fn from_info(fee: PoolFeeInfo<AccountId, Balance, Rate>, fee_id: FeeId) -> Self {
 		let payable = match fee.fee_type {
-			PoolFeeType::ChargedUpTo { .. } => Some(Balance::default()),
-			PoolFeeType::Fixed { .. } => None,
+			PoolFeeType::ChargedUpTo { .. } => PayableFeeAmount::UpTo(Balance::default()),
+			PoolFeeType::Fixed { .. } => PayableFeeAmount::AllPending,
 		};
 		let amount = PoolFeeAmounts {
 			payable,
@@ -146,7 +146,18 @@ pub struct PoolFeeAmounts<Balance, Rate> {
 	/// The maximum payable fee amount which is only used for charged fees.
 	/// Necessary to determine how much can be paid if the nothing or an excess
 	/// was charged.
-	pub payable: Option<Balance>,
+	pub payable: PayableFeeAmount<Balance>,
+}
+
+/// The payable fee amount representation which is either
+///  * `AllPending` if the fee is not chargeable; or
+///  * `UpTo(amount)` if the fee is chargeable. The `amount` reflects the max
+///    payable amount at the time of the calculation. The disbursement of such
+///    fee is the minimum of pending and payable.
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
+pub enum PayableFeeAmount<Balance> {
+	AllPending,
+	UpTo(Balance),
 }
 
 impl<Balance, Rate> PoolFeeAmounts<Balance, Rate> {

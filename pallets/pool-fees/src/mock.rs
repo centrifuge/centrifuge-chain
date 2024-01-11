@@ -20,7 +20,7 @@ use cfg_traits::{fee::PoolFeeBucket, PoolNAV};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::PermissionScope,
-	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
+	pools::{PayableFeeAmount, PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
@@ -353,11 +353,16 @@ pub fn assert_pending_fee(
 	payable: Balance,
 	disbursement: Balance,
 ) {
-	let mut pending_fee = PoolFeeOf::<Runtime>::from_info(fee, fee_id);
+	let mut pending_fee = PoolFeeOf::<Runtime>::from_info(fee.clone(), fee_id);
 	pending_fee.amounts.disbursement = disbursement;
 	pending_fee.amounts.pending = pending;
-	// TODO: Add support for `None`
-	pending_fee.amounts.payable = Some(payable);
+
+	match fee.fee_type {
+		PoolFeeType::ChargedUpTo { .. } => {
+			pending_fee.amounts.payable = PayableFeeAmount::UpTo(payable);
+		}
+		_ => (),
+	};
 
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
