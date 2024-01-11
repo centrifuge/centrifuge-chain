@@ -544,9 +544,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			// try_mutate is a pain with the direct error return. But we do want to only
-			// update if the pair exists.
-			let _old_min_order = TradingPair::<T>::get(&asset_in, &asset_out)?;
 			TradingPair::<T>::insert(&asset_in, &asset_out, min_order);
 
 			Self::deposit_event(Event::<T>::MinOrderUpdated {
