@@ -13,7 +13,7 @@
 use sp_runtime::DispatchError;
 
 /// Trait to add fees to a pool
-pub trait AddPoolFees {
+pub trait PoolFees {
 	type PoolId;
 	type FeeBucket;
 	type FeeInfo;
@@ -26,6 +26,14 @@ pub trait AddPoolFees {
 		bucket: Self::FeeBucket,
 		fee: Self::FeeInfo,
 	) -> Result<(), DispatchError>;
+
+	/// Returns the maximum number of pool fees per bucket required for accurate
+	/// weights
+	fn get_max_fees_per_bucket() -> u32;
+
+	/// Returns the current amount of active fees for the given pool and bucket
+	/// pair
+	fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: Self::FeeBucket) -> u32;
 }
 
 /// Trait to prorate a fee amount to a rate or amount

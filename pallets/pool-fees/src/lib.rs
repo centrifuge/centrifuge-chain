@@ -14,6 +14,8 @@
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -22,9 +24,11 @@ pub mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
+	#[cfg(feature = "runtime-benchmarks")]
+	use cfg_traits::benchmarking::PoolFeesBenchmarkHelper;
 	use cfg_traits::{
 		changes::ChangeGuard,
-		fee::{AddPoolFees, FeeAmountProration},
+		fee::{FeeAmountProration, PoolFees},
 		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
@@ -47,6 +51,8 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::HasCompact;
+	#[cfg(feature = "runtime-benchmarks")]
+	use sp_arithmetic::fixed_point::FixedPointNumber;
 	use sp_arithmetic::{
 		traits::{EnsureAdd, EnsureAddAssign, EnsureSubAssign, One, Saturating, Zero},
 		ArithmeticError, FixedPointOperand,
@@ -697,7 +703,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> AddPoolFees for Pallet<T> {
+	impl<T: Config> PoolFees for Pallet<T> {
 		type FeeBucket = PoolFeeBucket;
 		type FeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
@@ -725,6 +731,14 @@ pub mod pallet {
 			});
 
 			Ok(())
+		}
+
+		fn get_max_fees_per_bucket() -> u32 {
+			T::MaxPoolFeesPerBucket::get()
+		}
+
+		fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: Self::FeeBucket) -> u32 {
+			ActiveFees::<T>::get(pool, bucket).len().saturated_into()
 		}
 	}
 
@@ -788,6 +802,69 @@ pub mod pallet {
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
 			// This PoolFees implementation does not need to initialize explicitly.
 			Ok(())
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> PoolFeesBenchmarkHelper for Pallet<T> {
+		type PoolFeeBucket = PoolFeeBucket;
+		type PoolFeeInfo = PoolFeeInfoOf<T>;
+		type PoolId = T::PoolId;
+
+		fn get_pool_fee_infos(n: u32) -> Vec<Self::PoolFeeInfo> {
+			(0..n).map(|_| Self::get_default_fixed_fee_info()).collect()
+		}
+
+		fn add_pool_fees(pool_id: Self::PoolId, bucket: Self::PoolFeeBucket, n: u32) {
+			let fee_infos = Self::get_pool_fee_infos(n);
+
+			for fee_info in fee_infos {
+				frame_support::assert_ok!(Self::add_fee(pool_id, bucket, fee_info));
+			}
+		}
+
+		fn get_default_fixed_fee_info() -> Self::PoolFeeInfo {
+			let destination = frame_benchmarking::account::<T::AccountId>(
+				"fee destination",
+				benchmarking::ACCOUNT_INDEX,
+				benchmarking::ACCOUNT_SEED,
+			);
+			let editor = frame_benchmarking::account::<T::AccountId>(
+				"fee editor",
+				benchmarking::ACCOUNT_INDEX + 1,
+				benchmarking::ACCOUNT_SEED + 1,
+			);
+
+			PoolFeeInfoOf::<T> {
+				destination,
+				editor: PoolFeeEditor::Account(editor),
+				fee_type: PoolFeeType::<T::Balance, T::Rate>::Fixed {
+					limit: PoolFeeAmount::<T::Balance, T::Rate>::ShareOfPortfolioValuation(
+						T::Rate::saturating_from_rational(1, 100),
+					),
+				},
+			}
+		}
+
+		fn get_default_charged_fee_info() -> Self::PoolFeeInfo {
+			let destination = frame_benchmarking::account::<T::AccountId>(
+				"fee destination",
+				benchmarking::ACCOUNT_INDEX,
+				benchmarking::ACCOUNT_SEED,
+			);
+			let editor = frame_benchmarking::account::<T::AccountId>(
+				"fee editor",
+				benchmarking::ACCOUNT_INDEX + 1,
+				benchmarking::ACCOUNT_SEED + 1,
+			);
+
+			PoolFeeInfoOf::<T> {
+				destination,
+				editor: PoolFeeEditor::Account(editor),
+				fee_type: PoolFeeType::<T::Balance, T::Rate>::ChargedUpTo {
+					limit: PoolFeeAmount::<T::Balance, T::Rate>::AmountPerSecond(1000u64.into()),
+				},
+			}
 		}
 	}
 }

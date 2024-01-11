@@ -1500,7 +1500,6 @@ impl pallet_pool_registry::Config for Runtime {
 }
 
 impl pallet_pool_system::Config for Runtime {
-	type AddFees = PoolFees;
 	type AssetRegistry = OrmlAssetRegistry;
 	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
@@ -1526,6 +1525,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
@@ -2556,7 +2556,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
-			// TODO(william): Add pallet_pool_fees after writing benches
+			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2635,7 +2635,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
-			// TODO(william): Add pallet_pool_fees after writing benches
+			add_benchmark!(params, batches,	pallet_pool_fees, PoolFees);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

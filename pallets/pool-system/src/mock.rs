@@ -428,7 +428,6 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type AddFees = PoolFees;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
@@ -454,6 +453,7 @@ impl Config for Runtime {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;

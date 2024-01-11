@@ -147,7 +147,6 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 }
 
 impl pallet_pool_system::Config for Test {
-	type AddFees = PoolFees;
 	type AssetRegistry = RegistryMock;
 	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
@@ -173,6 +172,7 @@ impl pallet_pool_system::Config for Test {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
 	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;

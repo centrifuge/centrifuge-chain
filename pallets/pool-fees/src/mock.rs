@@ -362,7 +362,7 @@ pub fn assert_pending_fee(
 	assert_eq!(PoolFees::get_active_fee(fee_id), Ok(pending_fee));
 }
 
-pub(crate) fn config_mocks() {
+pub(crate) fn init_mocks() {
 	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
 	MockPools::mock_pool_exists(|id| id == POOL);
 	MockPools::mock_account_for(|_| POOL_ACCOUNT);
@@ -418,7 +418,7 @@ impl ExtBuilder {
 
 		// Bumping to one enables events
 		ext.execute_with(|| {
-			config_mocks();
+			init_mocks();
 			System::set_block_number(1);
 
 			// Fund pallet account

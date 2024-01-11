@@ -177,7 +177,7 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		fee::AddPoolFees,
+		fee::PoolFees,
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 		EpochTransitionHook, PoolUpdateGuard,
 	};
@@ -324,7 +324,7 @@ pub mod pallet {
 		type Time: TimeAsSecs;
 
 		/// Add pool fees
-		type AddFees: AddPoolFees<
+		type PoolFees: PoolFees<
 			FeeInfo = PoolFeeInfo<
 				<Self as frame_system::Config>::AccountId,
 				Self::Balance,
@@ -560,7 +560,7 @@ pub mod pallet {
 		/// given to the pool creator by default, and must be
 		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
-		#[pallet::weight(T::WeightInfo::set_max_reserve())]
+		#[pallet::weight(T::WeightInfo::set_max_reserve(T::PoolFees::get_max_fees_per_bucket()))]
 		#[pallet::call_index(0)]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
@@ -603,9 +603,9 @@ pub mod pallet {
 		/// submission period, partial executions can be submitted
 		/// to be scored, and the best-scoring solution will
 		/// eventually be executed. See `submit_solution`.
-		#[pallet::weight(T::WeightInfo::close_epoch_no_orders(T::MaxTranches::get())
-                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
-                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
+		#[pallet::weight(T::WeightInfo::close_epoch_no_orders(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket())
+                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket()))
+                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get(), T::PoolFees::get_max_fees_per_bucket())))]
 		#[transactional]
 		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
@@ -696,6 +696,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into());
 				}
@@ -752,6 +753,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into())
 				} else {
@@ -774,6 +776,7 @@ pub mod pallet {
 							.num_tranches()
 							.try_into()
 							.expect("MaxTranches is u32. qed."),
+						T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 					))
 					.into())
 				}
@@ -790,7 +793,10 @@ pub mod pallet {
 		/// Once a valid solution has been submitted, the
 		/// challenge time begins. The pool can be executed once
 		/// the challenge time has expired.
-		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
+		#[pallet::weight(T::WeightInfo::submit_solution(
+			T::MaxTranches::get(),
+			T::PoolFees::get_max_fees_per_bucket()
+		))]
 		#[pallet::call_index(2)]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
@@ -831,6 +837,7 @@ pub mod pallet {
 						.num_tranches()
 						.try_into()
 						.expect("MaxTranches is u32. qed."),
+					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
 				))
 				.into())
 			})
@@ -843,7 +850,10 @@ pub mod pallet {
 		/// * Updates the portion of the reserve and loan balance assigned to
 		///   each tranche, based on the investments and redemptions to those
 		///   tranches.
-		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
+		#[pallet::weight(T::WeightInfo::execute_epoch(
+			T::MaxTranches::get(),
+			T::PoolFees::get_max_fees_per_bucket()
+		))]
 		#[pallet::call_index(3)]
 		pub fn execute_epoch(
 			origin: OriginFor<T>,
@@ -907,7 +917,11 @@ pub mod pallet {
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
 				*epoch_info = None;
-				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
+				Ok(Some(T::WeightInfo::execute_epoch(
+					num_tranches,
+					T::PoolFees::get_pool_fee_bucket_count(pool_id, PoolFeeBucket::Top),
+				))
+				.into())
 			})
 		}
 	}
@@ -1165,7 +1179,8 @@ pub mod pallet {
 			// setup.
 			if let Some(old_tranches) = old_tranches {
 				// For now, adding or removing tranches is not allowed, unless it's on pool
-				// creation. TODO: allow adding tranches as most senior, and removing most
+				// creation.
+				// TODO: allow adding tranches as most senior, and removing most
 				// senior and empty (debt+reserve=0) tranches
 				ensure!(
 					new_tranches.len() == old_tranches.num_tranches(),
@@ -1206,8 +1221,6 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			// TODO: Check whether pool.reserve.total == epoch.reserve
-			// its not the same
 			let total_assets = pool
 				.reserve
 				.total

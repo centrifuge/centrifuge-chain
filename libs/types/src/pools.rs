@@ -49,7 +49,6 @@ pub enum PoolRegistrationStatus {
 /// The pending and disbursement fee amounts are frequently updated based on the
 /// positive NAV.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
 pub struct PoolFee<AccountId, FeeId, FeeAmounts> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
@@ -66,7 +65,6 @@ pub struct PoolFee<AccountId, FeeId, FeeAmounts> {
 
 /// The static representation of a pool fee used for creation.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
 pub struct PoolFeeInfo<AccountId, Balance, Rate> {
 	/// Account that the fees are sent to
 	pub destination: AccountId,
@@ -105,15 +103,22 @@ where
 
 /// The editor enum of pool fees
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
 pub enum PoolFeeEditor<AccountId> {
 	Root,
 	Account(AccountId),
 }
 
+impl<AccountId> From<PoolFeeEditor<AccountId>> for Option<AccountId> {
+	fn from(editor: PoolFeeEditor<AccountId>) -> Option<AccountId> {
+		match editor {
+			PoolFeeEditor::Account(acc) => Some(acc),
+			_ => None,
+		}
+	}
+}
+
 /// The fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
 pub enum PoolFeeType<Balance, Rate> {
 	/// A fixed fee is deducted automatically every epoch
 	Fixed { limit: PoolFeeAmount<Balance, Rate> },
@@ -124,7 +129,6 @@ pub enum PoolFeeType<Balance, Rate> {
 
 /// The pending fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
-
 pub struct PoolFeeAmounts<Balance, Rate> {
 	pub fee_type: PoolFeeType<Balance, Rate>,
 	pub pending: Balance,

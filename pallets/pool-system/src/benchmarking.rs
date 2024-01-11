@@ -13,9 +13,12 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{investments::TrancheCurrency as _, UpdateState};
+use cfg_traits::{
+	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFees, investments::TrancheCurrency as _,
+	UpdateState,
+};
 use cfg_types::{
-	pools::TrancheMetadata,
+	pools::{PoolFeeBucket, PoolFeeInfo, TrancheMetadata},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -57,14 +60,21 @@ benchmarks! {
 		T::AssetsUnderManagementNAV: PoolNAV<T::PoolId, T::Balance, RuntimeOrigin = T::RuntimeOrigin>,
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
 		<T::AssetsUnderManagementNAV as PoolNAV<T::PoolId, T::Balance>>::ClassId: From<u16>,
+		T::PoolFees: PoolFeesBenchmarkHelper<
+			PoolFeeBucket = cfg_types::pools::PoolFeeBucket,
+			PoolId = T::PoolId,
+			PoolFeeInfo = PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+		>,
 	}
 
 	set_max_reserve {
+		let m in 0..T::PoolFees::get_max_fees_per_bucket();
+
 		let admin: T::AccountId = create_admin::<T>(0);
 		let caller: T::AccountId = create_admin::<T>(1);
 		let max_reserve = MAX_RESERVE / 2;
 		prepare_asset_registry::<T>();
-		create_pool::<T>(1, admin.clone())?;
+		create_pool::<T>(1, m, admin.clone())?;
 		set_liquidity_admin::<T>(caller.clone())?;
 	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
 	verify {
@@ -74,8 +84,10 @@ benchmarks! {
 	close_epoch_no_orders {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
+		let m in 1..T::PoolFees::get_max_fees_per_bucket();
+
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
@@ -86,12 +98,14 @@ benchmarks! {
 
 	close_epoch_no_execution {
 		let n in 1..T::MaxTranches::get(); // number of tranches
+		let m in 0..T::PoolFees::get_max_fees_per_bucket();
 
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
+
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
@@ -104,9 +118,12 @@ benchmarks! {
 
 	close_epoch_execute {
 		let n in 1..T::MaxTranches::get(); // number of tranches
+		let m in 0..T::PoolFees::get_max_fees_per_bucket();
+
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
+
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE / 2;
@@ -121,15 +138,19 @@ benchmarks! {
 
 	submit_solution {
 		let n in 1..T::MaxTranches::get(); // number of tranches
+		let m in 0..T::PoolFees::get_max_fees_per_bucket();
+
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
+
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
+
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -148,15 +169,20 @@ benchmarks! {
 
 	execute_epoch {
 		let n in 1..T::MaxTranches::get(); // number of tranches
+		let m in 0..T::PoolFees::get_max_fees_per_bucket();
+
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
+
 		T::AssetsUnderManagementNAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
+
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
+
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -274,10 +300,15 @@ where
 	)
 }
 
-pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>(
-	num_tranches: u32,
-	caller: T::AccountId,
-) -> DispatchResult {
+pub fn create_pool<T>(num_tranches: u32, num_pool_fees: u32, caller: T::AccountId) -> DispatchResult
+where
+	T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
+	T::PoolFees: PoolFeesBenchmarkHelper<
+		PoolFeeBucket = cfg_types::pools::PoolFeeBucket,
+		PoolId = T::PoolId,
+		PoolFeeInfo = PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+	>,
+{
 	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
 		caller.clone(),
@@ -286,8 +317,10 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		tranches,
 		AUSD_CURRENCY_ID,
 		MAX_RESERVE,
-		// TODO(william): Add genesis pool fees
-		vec![],
+		T::PoolFees::get_pool_fee_infos(num_pool_fees)
+			.into_iter()
+			.map(|fee| (PoolFeeBucket::Top, fee))
+			.collect(),
 	)
 }
 

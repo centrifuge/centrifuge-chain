@@ -36,6 +36,7 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 pallet-investments = { path = "../../pallets/investments", default-features = false, optional = true }
+pallet-pool-fees = { workspace = true, default-features = false, optional = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
@@ -44,7 +45,6 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 pallet-investments = { path = "../../pallets/investments", default-features = true }
-pallet-pool-fees = { workspace = true, default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.43" }
 rand = "0.8.5"
@@ -81,6 +81,7 @@ std = [
   "log/std",
   "orml-traits/std",
   "pallet-permissions/std",
+  "pallet-pool-fees/std",
   "pallet-timestamp/std",
   "rev_slice/std",
   "scale-info/std",

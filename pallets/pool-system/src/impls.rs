@@ -12,7 +12,7 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::AddPoolFees,
+	fee::PoolFees,
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
@@ -188,7 +188,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		}
 
 		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
-			T::AddFees::add_fee(pool_id, fee_bucket, pool_fee)?;
+			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
 		}
 
 		let pool_details = PoolDetails {
@@ -543,7 +543,8 @@ mod benchmarks_utils {
 				],
 				POOL_CURRENCY,
 				FUNDS.into(),
-				// TODO(william): Add genesis pool fees
+				// NOTE: Genesis pool fees missing per default, could be added via <T::PoolFees as
+				// PoolFeesBenchmarkHelper>::add_pool_fees(..)
 				vec![],
 			));
 		}

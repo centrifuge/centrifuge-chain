@@ -11,8 +11,6 @@ use crate::mock::{
 	NOT_DESTINATION, NOT_EDITOR, POOL,
 };
 
-// TODO: Pending for fixed
-
 mod extrinsics {
 	use super::*;
 
