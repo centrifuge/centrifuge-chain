@@ -136,8 +136,8 @@ pub struct PoolFeeAmounts<Balance, Rate> {
 	pub fee_type: PoolFeeType<Balance, Rate>,
 	/// The dynamic pending amount which represents outstanding fee amounts
 	/// which could not be paid. This can happen if
-	/// 	* Either the reserve is insufficient; or
-	/// 	* In case of a charged fee: If more was charged than can be paid.
+	///  * Either the reserve is insufficient; or
+	///  * In case of a charged fee: If more was charged than can be paid.
 	pub pending: Balance,
 	/// The amount which will be paid during epoch closing. It is always ensured
 	/// that the reserve is sufficient for the sum of all fees' disbursement
@@ -189,7 +189,7 @@ where
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Seconds) -> Rate {
 		match self {
 			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
-				saturated_rate_proration(*rate, period.into())
+				saturated_rate_proration(*rate, period)
 			}
 			PoolFeeAmount::AmountPerSecond(_) => {
 				let prorated_amount: Balance = <Self as FeeAmountProration<
