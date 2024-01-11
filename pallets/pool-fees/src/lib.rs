@@ -28,14 +28,11 @@ pub mod pallet {
 	use cfg_traits::benchmarking::PoolFeesBenchmarkHelper;
 	use cfg_traits::{
 		changes::ChangeGuard,
-		fee::{FeeAmountProration, PoolFees},
+		fee::{FeeAmountProration, PoolFeeBucket, PoolFees},
 		EpochTransitionHook, PoolInspect, PoolNAV, PoolReserve, PreConditions, Seconds, TimeAsSecs,
 	};
 	use cfg_types::{
-		pools::{
-			PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeBucket, PoolFeeEditor, PoolFeeInfo,
-			PoolFeeType,
-		},
+		pools::{PoolFee, PoolFeeAmount, PoolFeeAmounts, PoolFeeEditor, PoolFeeInfo, PoolFeeType},
 		portfolio,
 		portfolio::{InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
@@ -704,13 +701,12 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolFees for Pallet<T> {
-		type FeeBucket = PoolFeeBucket;
 		type FeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
 
 		fn add_fee(
 			pool_id: Self::PoolId,
-			bucket: Self::FeeBucket,
+			bucket: PoolFeeBucket,
 			fee: Self::FeeInfo,
 		) -> Result<(), DispatchError> {
 			let fee_id = Self::generate_fee_id()?;
@@ -737,7 +733,7 @@ pub mod pallet {
 			T::MaxPoolFeesPerBucket::get()
 		}
 
-		fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: Self::FeeBucket) -> u32 {
+		fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: PoolFeeBucket) -> u32 {
 			ActiveFees::<T>::get(pool, bucket).len().saturated_into()
 		}
 	}
@@ -807,7 +803,6 @@ pub mod pallet {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> PoolFeesBenchmarkHelper for Pallet<T> {
-		type PoolFeeBucket = PoolFeeBucket;
 		type PoolFeeInfo = PoolFeeInfoOf<T>;
 		type PoolId = T::PoolId;
 
@@ -815,7 +810,7 @@ pub mod pallet {
 			(0..n).map(|_| Self::get_default_fixed_fee_info()).collect()
 		}
 
-		fn add_pool_fees(pool_id: Self::PoolId, bucket: Self::PoolFeeBucket, n: u32) {
+		fn add_pool_fees(pool_id: Self::PoolId, bucket: PoolFeeBucket, n: u32) {
 			let fee_infos = Self::get_pool_fee_infos(n);
 
 			for fee_info in fee_infos {

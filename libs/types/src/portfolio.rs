@@ -22,10 +22,11 @@ use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 
 /// Portfolio valuation information.
 ///
-/// The total NAV is the difference of AUM and PoolFees:
+/// The total NAV is based on the reserve, the assets under management (AUM) and
+/// pool fees:
 ///
 /// ```ignore
-/// NAV = AUM - PoolFees
+/// NAV = PoolReserve + AUM - PoolFees
 /// ```
 ///
 /// It will be updated on these scenarios:

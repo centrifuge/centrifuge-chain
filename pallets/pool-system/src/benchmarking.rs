@@ -14,11 +14,13 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{
-	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFees, investments::TrancheCurrency as _,
+	benchmarking::PoolFeesBenchmarkHelper,
+	fee::{PoolFeeBucket, PoolFees},
+	investments::TrancheCurrency as _,
 	UpdateState,
 };
 use cfg_types::{
-	pools::{PoolFeeBucket, PoolFeeInfo, TrancheMetadata},
+	pools::{PoolFeeInfo, TrancheMetadata},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -57,13 +59,13 @@ benchmarks! {
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
-		T::AssetsUnderManagementNAV: PoolNAV<T::PoolId, T::Balance, RuntimeOrigin = T::RuntimeOrigin>,
+		T::AssetsUnderManagementNAV: PoolNAV<<T as Config>::PoolId, <T as Config>::Balance, RuntimeOrigin = T::RuntimeOrigin>,
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
-		<T::AssetsUnderManagementNAV as PoolNAV<T::PoolId, T::Balance>>::ClassId: From<u16>,
+		<T::AssetsUnderManagementNAV as PoolNAV<<T as Config>::PoolId, <T as Config>::Balance>>::ClassId: From<u16>,
+		T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
 		T::PoolFees: PoolFeesBenchmarkHelper<
-			PoolFeeBucket = cfg_types::pools::PoolFeeBucket,
-			PoolId = T::PoolId,
-			PoolFeeInfo = PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+			PoolId = <T as Config>::PoolId,
+			PoolFeeInfo = PoolFeeInfo<T::AccountId, <T as Config>::Balance, <T as Config>::Rate>,
 		>,
 	}
 
@@ -303,10 +305,10 @@ where
 pub fn create_pool<T>(num_tranches: u32, num_pool_fees: u32, caller: T::AccountId) -> DispatchResult
 where
 	T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
+	T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
 	T::PoolFees: PoolFeesBenchmarkHelper<
-		PoolFeeBucket = cfg_types::pools::PoolFeeBucket,
-		PoolId = T::PoolId,
-		PoolFeeInfo = PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+		PoolId = <T as Config>::PoolId,
+		PoolFeeInfo = PoolFeeInfo<T::AccountId, <T as Config>::Balance, <T as Config>::Rate>,
 	>,
 {
 	let tranches = build_bench_input_tranches::<T>(num_tranches);

@@ -12,15 +12,11 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
-	fee::PoolFees,
+	fee::{PoolFeeBucket, PoolFees},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
-use cfg_types::{
-	epoch::EpochState,
-	investments::InvestmentInfo,
-	pools::{PoolFeeBucket, PoolFeeInfo},
-};
+use cfg_types::{epoch::EpochState, investments::InvestmentInfo, pools::PoolFeeInfo};
 use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
 	Contains,

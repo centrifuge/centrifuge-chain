@@ -16,7 +16,6 @@ hex-literal = { version = "0.3.4", default-features = false }
 parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { workspace = true }
-strum = { workspace = true }
 
 # substrate dependencies
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
@@ -61,7 +60,6 @@ std = [
   "sp-runtime/std",
   "sp-runtime/std",
   "sp-std/std",
-  "strum/std",
   "xcm/std",
 ]
 try-runtime = [

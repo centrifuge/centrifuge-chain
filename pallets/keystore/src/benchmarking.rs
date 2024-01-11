@@ -103,7 +103,7 @@ fn build_test_keys<T: Config>(n: u32) -> Vec<AddKey<T::Hash>> {
 		});
 	}
 
-	return keys;
+	keys
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

@@ -14,11 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	investments::TrancheCurrency, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
+	fee::PoolFeeBucket, investments::TrancheCurrency, Permissions, PoolMutate,
+	PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PoolFeeBucket, PoolFeeInfo, PoolMetadata, PoolRegistrationStatus},
+	pools::{PoolFeeInfo, PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};

@@ -15,7 +15,6 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{traits::Get, BoundedVec, RuntimeDebug};
-use strum::{EnumCount, EnumIter};
 
 use crate::fixed_point::FixedPointNumberExtension;
 
@@ -148,24 +147,7 @@ impl<Balance, Rate> PoolFeeAmounts<Balance, Rate> {
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum PoolFeeAmount<Balance, Rate> {
 	ShareOfPortfolioValuation(Rate),
-	// TODO: AmountPerSecond(Balance) might be sufficient
-	AmountPerYear(Balance),
-	AmountPerMonth(Balance),
 	AmountPerSecond(Balance),
-}
-
-/// The priority segregation of pool fees
-///
-/// NOTE: Whenever a new variant is added, must bump
-/// [cfg_primitives::MAX_FEES_PER_POOL].
-#[derive(
-	Debug, Encode, Decode, EnumIter, EnumCount, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone, Copy,
-)]
-pub enum PoolFeeBucket {
-	/// Fees that are charged first, before any redemptions, investments,
-	/// repayments or originations
-	Top,
-	// Future: AfterTranche(TrancheId)
 }
 
 impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for PoolFeeAmount<Balance, Rate>
@@ -185,12 +167,6 @@ where
 					);
 				proration.saturating_mul_int(portfolio_valuation)
 			}
-			PoolFeeAmount::AmountPerYear(amount) => {
-				saturated_balance_proration(*amount, period.into())
-			}
-			PoolFeeAmount::AmountPerMonth(amount) => {
-				saturated_balance_proration(amount.saturating_mul(12u64.into()), period.into())
-			}
 			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into().into()),
 		}
 	}
@@ -200,9 +176,7 @@ where
 			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
 				saturated_rate_proration(*rate, period.into())
 			}
-			PoolFeeAmount::AmountPerYear(_)
-			| PoolFeeAmount::AmountPerMonth(_)
-			| PoolFeeAmount::AmountPerSecond(_) => {
+			PoolFeeAmount::AmountPerSecond(_) => {
 				let prorated_amount: Balance =
 					<Self as FeeAmountProration<Balance, Rate, Time>>::saturated_prorated_amount(
 						self,
@@ -242,18 +216,7 @@ pub fn saturated_rate_proration<Rate: FixedPointNumberExtension>(
 
 #[cfg(test)]
 mod tests {
-	use strum::IntoEnumIterator;
-
 	use super::*;
-
-	#[test]
-	fn max_fees_per_pool() {
-		assert!(
-			cfg_primitives::MAX_POOL_FEES_PER_BUCKET
-				<= (cfg_primitives::MAX_FEES_PER_POOL * PoolFeeBucket::iter().count() as u32),
-			"Need to bump MAX_FEES_PER_POOL after adding variant(s) to PoolFeeBuckets"
-		);
-	}
 
 	mod saturated_proration {
 		use cfg_primitives::SECONDS_PER_YEAR;

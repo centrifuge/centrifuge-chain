@@ -15,13 +15,14 @@ use cfg_primitives::{
 };
 pub use cfg_primitives::{PoolEpochId, TrancheWeight};
 use cfg_traits::{
+	fee::PoolFeeBucket,
 	investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 	Millis, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, Seconds,
 };
 pub use cfg_types::fixed_point::{Quantity, Rate};
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
-	pools::{PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
+	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };

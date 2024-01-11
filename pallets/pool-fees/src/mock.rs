@@ -16,11 +16,11 @@ use cfg_mocks::{
 	pre_conditions::pallet as pallet_mock_pre_conditions,
 };
 use cfg_primitives::{Balance, CollectionId, PoolFeeId, PoolId, TrancheId};
-use cfg_traits::PoolNAV;
+use cfg_traits::{fee::PoolFeeBucket, PoolNAV};
 use cfg_types::{
 	fixed_point::{Rate, Ratio},
 	permissions::PermissionScope,
-	pools::{PoolFeeAmount, PoolFeeBucket, PoolFeeEditor, PoolFeeType},
+	pools::{PoolFeeAmount, PoolFeeEditor, PoolFeeType},
 	tokens::TrancheCurrency,
 };
 use frame_support::{
@@ -198,9 +198,9 @@ impl pallet_mock_pre_conditions::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxPoolFeesPerBucket: u32 = 5;
+	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::MAX_POOL_FEES_PER_BUCKET;
 	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
-	pub const MaxFeesPerPool: u32 = 5;
+	pub const MaxFeesPerPool: u32 = cfg_primitives::MAX_FEES_PER_POOL;
 }
 
 impl pallet_pool_fees::Config for Runtime {
@@ -363,8 +363,26 @@ pub fn assert_pending_fee(
 }
 
 pub(crate) fn init_mocks() {
-	MockIsAdmin::mock_check(|(admin, pool_id)| admin == ADMIN && pool_id == POOL);
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	MockIsAdmin::mock_check(|(pool_id, admin)| pool_id == POOL && admin == ADMIN);
+	#[cfg(feature = "runtime-benchmarks")]
+	MockIsAdmin::mock_check(|_| true);
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	MockPools::mock_pool_exists(|id| id == POOL);
+	#[cfg(feature = "runtime-benchmarks")]
+	MockPools::mock_pool_exists(|_| true);
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
+	#[cfg(feature = "runtime-benchmarks")]
+	MockChangeGuard::mock_released(|_, _| {
+		Ok(Change::AppendFee(
+			PoolFeeBucket::Top,
+			<PoolFees as cfg_traits::benchmarking::PoolFeesBenchmarkHelper>::get_default_fixed_fee_info(),
+		))
+	});
+
 	MockPools::mock_account_for(|_| POOL_ACCOUNT);
 	MockPools::mock_currency_for(|_| Some(POOL_CURRENCY));
 	MockPools::mock_withdraw(|_, recipient, amount| {
@@ -374,7 +392,6 @@ pub(crate) fn init_mocks() {
 	});
 	MockPools::mock_deposit(|_, _, _| Ok(()));
 	MockChangeGuard::mock_note(|_, _| Ok(H256::default()));
-	MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
 	MockTime::mock_now(|| 0);
 }
 

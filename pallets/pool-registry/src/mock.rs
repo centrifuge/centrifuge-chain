@@ -19,13 +19,13 @@ use cfg_primitives::{
 	TrancheWeight,
 };
 use cfg_traits::{
-	investments::OrderManager, Millis, PoolMutate, PoolUpdateGuard, PreConditions, Seconds,
-	UpdateState,
+	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket, investments::OrderManager, Millis,
+	PoolMutate, PoolUpdateGuard, PreConditions, Seconds, UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	pools::{PoolFeeBucket, PoolFeeInfo},
+	pools::PoolFeeInfo,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -235,17 +235,21 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<
-		T: Config
-			+ pallet_pool_registry::Config
-			+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
-	> PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
+impl<T> PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
+where
+	T: Config
+		+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>
+		+ pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
+	<T as pallet_pool_system::Config>::PoolFees: PoolFeesBenchmarkHelper<
+		PoolId = u64,
+		PoolFeeInfo = PoolFeeInfo<T::AccountId, u128, <T as pallet_pool_system::Config>::Rate>,
+	>,
 {
-	type Balance = <T as pallet_pool_registry::Config>::Balance;
-	type CurrencyId = <T as pallet_pool_registry::Config>::CurrencyId;
-	type MaxTokenNameLength = <T as pallet_pool_registry::Config>::MaxTokenNameLength;
-	type MaxTokenSymbolLength = <T as pallet_pool_registry::Config>::MaxTokenSymbolLength;
-	type MaxTranches = <T as pallet_pool_registry::Config>::MaxTranches;
+	type Balance = <T as Config>::Balance;
+	type CurrencyId = <T as Config>::CurrencyId;
+	type MaxTokenNameLength = <T as Config>::MaxTokenNameLength;
+	type MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength;
+	type MaxTranches = <T as Config>::MaxTranches;
 	type PoolChanges = PoolChanges<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
@@ -254,11 +258,7 @@ impl<
 	>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
-		PoolFeeInfo<
-			T::AccountId,
-			<T as pallet_pool_registry::Config>::Balance,
-			<T as pallet_pool_system::Config>::Rate,
-		>,
+		<<T as pallet_pool_system::Config>::PoolFees as PoolFeesBenchmarkHelper>::PoolFeeInfo,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
@@ -273,10 +273,10 @@ impl<
 		tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
-		_pool_fees: Vec<Self::PoolFeeInput>,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
 		#[cfg(feature = "runtime-benchmarks")]
-		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
+		create_pool::<T>(tranche_inputs.len() as u32, pool_fees.len() as u32, admin)?;
 		Ok(())
 	}
 

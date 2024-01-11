@@ -10,22 +10,33 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use sp_runtime::DispatchError;
+use frame_support::dispatch::{Decode, Encode, MaxEncodedLen, TypeInfo};
+use sp_runtime::DispatchResult;
+use strum::{EnumCount, EnumIter};
+
+/// The priority segregation of pool fees
+///
+/// NOTE: Whenever a new variant is added, must bump
+/// [cfg_primitives::MAX_FEES_PER_POOL].
+#[derive(
+	Debug, Encode, Decode, EnumIter, EnumCount, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone, Copy,
+)]
+pub enum PoolFeeBucket {
+	/// Fees that are charged first, before any redemptions, investments,
+	/// repayments or originations
+	Top,
+	// Future: AfterTranche(TrancheId)
+}
 
 /// Trait to add fees to a pool
 pub trait PoolFees {
 	type PoolId;
-	type FeeBucket;
 	type FeeInfo;
 
 	/// Add a new fee to the pool and bucket.
 	///
 	/// NOTE: Assumes call permissions are separately checked beforehand.
-	fn add_fee(
-		pool_id: Self::PoolId,
-		bucket: Self::FeeBucket,
-		fee: Self::FeeInfo,
-	) -> Result<(), DispatchError>;
+	fn add_fee(pool_id: Self::PoolId, bucket: PoolFeeBucket, fee: Self::FeeInfo) -> DispatchResult;
 
 	/// Returns the maximum number of pool fees per bucket required for accurate
 	/// weights
@@ -33,7 +44,7 @@ pub trait PoolFees {
 
 	/// Returns the current amount of active fees for the given pool and bucket
 	/// pair
-	fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: Self::FeeBucket) -> u32;
+	fn get_pool_fee_bucket_count(pool: Self::PoolId, bucket: PoolFeeBucket) -> u32;
 }
 
 /// Trait to prorate a fee amount to a rate or amount
@@ -43,4 +54,20 @@ pub trait FeeAmountProration<Balance, Rate, Time> {
 
 	/// Returns the proratio rate based on the NAV and passed time period.
 	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate;
+}
+
+#[cfg(test)]
+mod tests {
+	use strum::IntoEnumIterator;
+
+	use super::*;
+
+	#[test]
+	fn max_fees_per_pool() {
+		assert!(
+			cfg_primitives::MAX_POOL_FEES_PER_BUCKET
+				<= (cfg_primitives::MAX_FEES_PER_POOL * PoolFeeBucket::iter().count() as u32),
+			"Need to bump MAX_FEES_PER_POOL after adding variant(s) to PoolFeeBuckets"
+		);
+	}
 }

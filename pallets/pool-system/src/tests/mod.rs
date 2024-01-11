@@ -12,12 +12,13 @@
 
 use cfg_primitives::{constants::SECONDS_PER_YEAR, Balance};
 use cfg_traits::{
-	investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, PoolNAV, TrancheTokenPrice,
+	fee::PoolFeeBucket, investments::TrancheCurrency as TrancheCurrencyT, PoolMutate, PoolNAV,
+	TrancheTokenPrice,
 };
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	pools::{PoolFeeBucket, TrancheMetadata},
+	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{assert_err, assert_noop, assert_ok};

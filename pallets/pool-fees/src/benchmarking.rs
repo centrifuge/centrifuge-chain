@@ -14,15 +14,13 @@
 use cfg_traits::{
 	benchmarking::{PoolBenchmarkHelper, PoolFeesBenchmarkHelper},
 	changes::ChangeGuard,
-	fee::PoolFees,
+	fee::{PoolFeeBucket, PoolFees as _},
 };
-use cfg_types::pools::{PoolFeeBucket, PoolFeeEditor};
+use cfg_types::pools::PoolFeeEditor;
 use frame_benchmarking::v2::*;
 use frame_support::{assert_ok, dispatch::RawOrigin};
 
 use super::*;
-#[cfg(test)]
-use crate::mock::MockChangeGuard;
 use crate::{types::Change, Pallet as PoolFees};
 
 pub(crate) const CHARGE_AMOUNT: u128 = 1_000_000_000_000_000_000;
@@ -41,9 +39,6 @@ mod benchmarks {
 
 	#[benchmark]
 	fn propose_new_fee() -> Result<(), BenchmarkError> {
-		#[cfg(test)]
-		init_mocks();
-
 		let pool_admin: T::AccountId = whitelisted_caller();
 		T::ChangeGuard::bench_create_pool(T::PoolId::default(), &pool_admin);
 
@@ -63,14 +58,6 @@ mod benchmarks {
 	#[benchmark]
 	fn apply_new_fee(n: Linear<1, 99>) -> Result<(), BenchmarkError> {
 		benchmark_setup::<T>(n);
-
-		#[cfg(test)]
-		MockChangeGuard::mock_released(|_, _| {
-			Ok(Change::AppendFee(
-				PoolFeeBucket::Top,
-				PoolFees::<T>::get_default_fixed_fee_info(),
-			))
-		});
 
 		let change_id = T::ChangeGuard::note(
 			T::PoolId::default(),
@@ -171,6 +158,9 @@ where
 	T::PoolId: Default,
 	T::ChangeGuard: PoolBenchmarkHelper<PoolId = T::PoolId, AccountId = T::AccountId>,
 {
+	#[cfg(test)]
+	mock::init_mocks();
+
 	let pool_admin: T::AccountId = whitelisted_caller();
 	let pool_id = T::PoolId::default();
 	T::ChangeGuard::bench_create_pool(pool_id, &pool_admin);

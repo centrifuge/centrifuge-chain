@@ -197,13 +197,17 @@ mod extrinsics {
 
 		use super::*;
 		use crate::{
-			mock::{default_chargeable_fee, ExtBuilder, MaxPoolFeesPerBucket, MockChangeGuard},
+			mock::{
+				default_chargeable_fee, ExtBuilder, MaxPoolFeesPerBucket, MockChangeGuard,
+				MockIsAdmin, MockPools,
+			},
 			types::Change,
 		};
 
 		#[test]
 		fn propose_new_fee_wrong_origin() {
 			ExtBuilder::default().build().execute_with(|| {
+				MockIsAdmin::mock_check(|_| false);
 				let fees = default_fees();
 
 				for account in NOT_ADMIN {
@@ -223,10 +227,11 @@ mod extrinsics {
 		#[test]
 		fn propose_new_fee_missing_pool() {
 			ExtBuilder::default().build().execute_with(|| {
+				MockPools::mock_pool_exists(|_| false);
 				assert_noop!(
 					PoolFees::propose_new_fee(
 						RuntimeOrigin::signed(ADMIN),
-						POOL + 1,
+						POOL,
 						BUCKET,
 						default_fixed_fee()
 					),
@@ -238,6 +243,8 @@ mod extrinsics {
 		#[test]
 		fn apply_new_fee_changeguard_unreleased() {
 			ExtBuilder::default().build().execute_with(|| {
+				MockChangeGuard::mock_released(move |_, _| Err(ERR_CHANGE_GUARD_RELEASE));
+
 				// Requires mocking ChangeGuard::release
 				assert_noop!(
 					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
@@ -249,9 +256,10 @@ mod extrinsics {
 		#[test]
 		fn apply_new_fee_missing_pool() {
 			ExtBuilder::default().build().execute_with(|| {
+				MockPools::mock_pool_exists(|_| false);
 				// Requires mocking ChangeGuard::release
 				assert_noop!(
-					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL + 1, CHANGE_ID),
+					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
 					Error::<Runtime>::PoolNotFound
 				);
 			})
@@ -573,7 +581,7 @@ mod disbursements {
 
 		mod charged_up_to {
 			use super::*;
-			use crate::mock::default_chargeable_fee;
+			use crate::mock::{default_chargeable_fee, MockPools};
 
 			mod fixed {
 
@@ -992,8 +1000,9 @@ mod disbursements {
 			#[test]
 			fn update_nav_pool_missing() {
 				ExtBuilder::default().build().execute_with(|| {
+					MockPools::mock_pool_exists(|_| false);
 					assert_noop!(
-						PoolFees::update_portfolio_valuation(RuntimeOrigin::signed(ANY), POOL + 1),
+						PoolFees::update_portfolio_valuation(RuntimeOrigin::signed(ANY), POOL),
 						Error::<Runtime>::PoolNotFound
 					);
 				});

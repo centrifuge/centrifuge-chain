@@ -177,13 +177,13 @@ impl Default for Release {
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		fee::PoolFees,
+		fee::{PoolFeeBucket, PoolFees},
 		investments::{OrderManager, TrancheCurrency as TrancheCurrencyT},
 		EpochTransitionHook, PoolUpdateGuard,
 	};
 	use cfg_types::{
 		orders::{FulfillmentWithPrice, TotalOrder},
-		pools::{PoolFeeBucket, PoolFeeInfo},
+		pools::PoolFeeInfo,
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -330,7 +330,6 @@ pub mod pallet {
 				Self::Balance,
 				Self::Rate,
 			>,
-			FeeBucket = PoolFeeBucket,
 			PoolId = Self::PoolId,
 		>;
 
