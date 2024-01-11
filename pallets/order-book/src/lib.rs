@@ -591,7 +591,7 @@ pub mod pallet {
 		pub fn fulfill_order_with_amount(
 			order: OrderOf<T>,
 			amount_out: T::Balance,
-			account_id: T::AccountId,
+			fulfilling_account: T::AccountId,
 		) -> DispatchResult {
 			ensure!(
 				amount_out >= order.min_fulfillment_amount_out,
@@ -620,7 +620,11 @@ pub mod pallet {
 					remaining_amount_out.min(order.min_fulfillment_amount_out);
 
 				<Orders<T>>::insert(updated_order.order_id, updated_order.clone());
-				<UserOrders<T>>::insert(&account_id, updated_order.order_id, updated_order);
+				<UserOrders<T>>::insert(
+					&order.placing_account,
+					updated_order.order_id,
+					updated_order,
+				);
 			} else {
 				Self::remove_order(order.order_id)?;
 			}
@@ -635,13 +639,13 @@ pub mod pallet {
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
 				&order.placing_account,
-				&account_id,
+				&fulfilling_account,
 				amount_out,
 				Preservation::Expendable,
 			)?;
 			T::TradeableAsset::transfer(
 				order.asset_in_id,
-				&account_id,
+				&fulfilling_account,
 				&order.placing_account,
 				amount_in,
 				Preservation::Expendable,
@@ -659,7 +663,7 @@ pub mod pallet {
 			Self::deposit_event(Event::OrderFulfillment {
 				order_id: order.order_id,
 				placing_account: order.placing_account,
-				fulfilling_account: account_id,
+				fulfilling_account,
 				partial_fulfillment,
 				currency_in: order.asset_in_id,
 				currency_out: order.asset_out_id,
@@ -785,6 +789,7 @@ pub mod pallet {
 
 			order.amount_out = amount_out;
 			order.ratio = ratio;
+			order.min_fulfillment_amount_out = min_fulfillment_amount_out;
 
 			Orders::<T>::insert(order.order_id, order.clone());
 			UserOrders::<T>::insert(&order.placing_account, order.order_id, order.clone());
