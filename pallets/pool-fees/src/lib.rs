@@ -444,10 +444,10 @@ pub mod pallet {
 		/// pool's active fees. Also updates the latter if the last update
 		/// happened in the past.
 		///
-		/// NOTE: There can be fee amounts which are dependent on the positive
-		/// NAV. Therefore, we enforce this to have been updated in the current
-		/// timestamp. In the future, this coupling will be handled by an
-		/// accounting pallet.
+		/// NOTE: There can be fee amounts which are dependent on
+		/// AssetsUnderManagement. Therefore, we enforce this to have been
+		/// updated in the current timestamp. In the future, this coupling will
+		/// be handled by an accounting pallet.
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::from_parts(10_000, 0))]
 		pub fn update_portfolio_valuation(
@@ -478,6 +478,7 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
+		/// Retrieve the specified fee from the list of active fees
 		pub fn get_active_fee(fee_id: T::FeeId) -> Result<PoolFeeOf<T>, DispatchError> {
 			Ok(FeeIdsToPoolBucket::<T>::get(fee_id)
 				.and_then(|(pool_id, bucket)| {
@@ -510,6 +511,7 @@ pub mod pallet {
 			})
 		}
 
+		/// Return the the last fee id and bump it for the next query
 		fn generate_fee_id() -> Result<T::FeeId, ArithmeticError> {
 			LastFeeId::<T>::try_mutate(|last_fee_id| {
 				last_fee_id.ensure_add_assign(One::one())?;
@@ -664,6 +666,20 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update the NAV of the specified pool by incrementing each fee by the
+		/// payable epoch amount based on the fee configuration. As long as the
+		/// reserve is not empty, increments the disbursement amount of fees
+		/// following the waterfall. The reserve is sufficient, if all fees can
+		/// pe paid out by their outstanding payable amount.
+		///
+		/// The NAV value is the sum all pending amounts which do not include
+		/// disbursements. Thus, if NAV update is called for an empty reserve,
+		/// the valuation is maximized at this point in time because each unit
+		/// of reserve reduces the NAV by reducing pending to disbursment
+		/// amounts.
+		/// ```ignore
+		/// NAV(PoolFees) = sum(pending_fee_amount) = sum(epoch_amount - disbursement)
+		/// ```
 		fn update_portfolio_valuation_for_pool(
 			pool_id: T::PoolId,
 			reserve: &mut T::Balance,

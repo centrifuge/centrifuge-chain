@@ -103,7 +103,9 @@ where
 /// The editor enum of pool fees
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum PoolFeeEditor<AccountId> {
+	/// Can only be changed by Root (e.g. Treasury fee)
 	Root,
+	/// Can only be changed by the encapsulated account
 	Account(AccountId),
 }
 
@@ -116,7 +118,7 @@ impl<AccountId> From<PoolFeeEditor<AccountId>> for Option<AccountId> {
 	}
 }
 
-/// The fee amount wrapper type
+/// The static fee amount wrapper type
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum PoolFeeType<Balance, Rate> {
 	/// A fixed fee is deducted automatically every epoch
@@ -126,12 +128,24 @@ pub enum PoolFeeType<Balance, Rate> {
 	ChargedUpTo { limit: PoolFeeAmount<Balance, Rate> },
 }
 
-/// The pending fee amount wrapper type
+/// The pending fee amount wrapper type. The `pending`, `disbursement` and
+/// `payable` fields are updated on each NAV update, the `fee_type` is static.
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub struct PoolFeeAmounts<Balance, Rate> {
+	/// The static fee type
 	pub fee_type: PoolFeeType<Balance, Rate>,
+	/// The dynamic pending amount which represents outstanding fee amounts
+	/// which could not be paid. This can happen if
+	/// 	* Either the reserve is insufficient; or
+	/// 	* In case of a charged fee: If more was charged than can be paid.
 	pub pending: Balance,
+	/// The amount which will be paid during epoch closing. It is always ensured
+	/// that the reserve is sufficient for the sum of all fees' disbursement
+	/// amounts.
 	pub disbursement: Balance,
+	/// The maximum payable fee amount which is only used for charged fees.
+	/// Necessary to determine how much can be paid if the nothing or an excess
+	/// was charged.
 	pub payable: Option<Balance>,
 }
 
@@ -143,10 +157,12 @@ impl<Balance, Rate> PoolFeeAmounts<Balance, Rate> {
 	}
 }
 
-/// The fee amount
+/// The static fee amount
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 pub enum PoolFeeAmount<Balance, Rate> {
+	/// The relative amount dependent on the AssetsUnderManagement valuation
 	ShareOfPortfolioValuation(Rate),
+	/// The absolute amount per second
 	AmountPerSecond(Balance),
 }
 
