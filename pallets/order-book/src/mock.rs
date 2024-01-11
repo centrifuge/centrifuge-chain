@@ -33,6 +33,7 @@ use crate as order_book;
 
 pub const FROM: u64 = 0x1;
 pub const TO: u64 = 0x2;
+pub const OTHER: u64 = 0x3;
 pub const FEEDER: u64 = 0x42;
 pub const INITIAL_A: Balance = token_a(1000);
 pub const INITIAL_B: Balance = token_b(1000);
@@ -202,7 +203,6 @@ impl pallet_restricted_tokens::Config for Runtime {
 parameter_types! {
 	pub const OrderPairVecSize: u32 = 1_000_000u32;
 	pub MinFulfillmentAmountNative: Balance = 2;
-	pub MarketFeederId: AccountId = FEEDER;
 }
 
 pub struct DecimalConverter;

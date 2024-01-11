@@ -293,7 +293,8 @@ pub mod pallet {
 
 	/// Stores the market feeder id used to set with market conversion ratios
 	#[pallet::storage]
-	pub type MarketFeederId<T: Config> = StorageValue<_, T::FeederId, OptionQuery>;
+	pub type MarketFeederId<T: Config> =
+		StorageValue<_, T::FeederId, ResultQuery<Error<T>::MarketFeederNotFound>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -675,7 +676,7 @@ pub mod pallet {
 			currency_from: T::AssetCurrencyId,
 			currency_to: T::AssetCurrencyId,
 		) -> Result<T::Ratio, DispatchError> {
-			let feeder = MarketFeederId::<T>::get().ok_or(Error::<T>::MarketFeederNotFound)?;
+			let feeder = MarketFeederId::<T>::get()?;
 
 			T::RatioProvider::get(&feeder, &(currency_from, currency_to).into())?
 				.ok_or(Error::<T>::MarketRatioNotFound.into())
