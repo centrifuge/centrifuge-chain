@@ -548,6 +548,9 @@ pub mod pallet {
 		ChangeNotFound,
 		/// The external change was found for is not ready yet to be released.
 		ChangeNotReady,
+		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
+		/// the pool
+		NegativeBalanceSheet,
 	}
 
 	#[pallet::call]
@@ -644,15 +647,17 @@ pub mod pallet {
 					Error::<T>::NAVTooOld
 				);
 
-				let nav = nav_aum.saturating_sub(nav_fees);
+				let positive_nav = nav_aum.ensure_add(pool.reserve.total)?;
+				let nav = positive_nav
+					.ensure_sub(nav_fees)
+					.map_err(|_| Error::<T>::NegativeBalanceSheet)?;
 				let submission_period_epoch = pool.epoch.current;
-				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
 				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
 					.tranches
-					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
+					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -722,7 +727,7 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					nav: total_assets,
+					nav,
 					epoch: submission_period_epoch,
 					reserve: pool.reserve.total,
 					max_reserve: pool.reserve.max,
@@ -1220,10 +1225,9 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = pool
-				.reserve
-				.total
-				.ensure_add(epoch.nav)?
+			let total_assets = epoch
+				.nav
+				.ensure_add(pool.reserve.total)?
 				.ensure_sub(epoch.reserve)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				&executed_amounts,

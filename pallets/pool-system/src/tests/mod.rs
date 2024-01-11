@@ -3086,6 +3086,15 @@ mod pool_fees {
 				charged_amount,
 			));
 
+			// NAV = 0 + AUM - PoolFeesNAV = -AUM
+			assert_noop!(
+				PoolSystem::close_epoch(RuntimeOrigin::signed(POOL_OWNER), 0),
+				Error::<Runtime>::NegativeBalanceSheet
+			);
+
+			// Increase NAV by NAV_AMOUNT to reach equilibrium (AUM == PoolFeesNAV)
+			test_nav_up(DEFAULT_POOL_ID, NAV_AMOUNT);
+
 			// Invest and collect to be able to redeem
 			invest_close_and_collect(
 				DEFAULT_POOL_ID,
@@ -3119,7 +3128,7 @@ mod pool_fees {
 				DEFAULT_POOL_ID,
 				default_pool_fees(),
 				vec![
-					(0, FEE_AMOUNT_FIXED, None),
+					(0, 2 * FEE_AMOUNT_FIXED, None),
 					(
 						charged_amount - fee_amount_from_charge,
 						fee_amount_from_charge,
@@ -3130,7 +3139,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(2 * NAV_AMOUNT, 0)
 			);
 
 			// Executin should reduce fee_nav by disbursement and transfer
@@ -3162,7 +3171,7 @@ mod pool_fees {
 			assert_eq!(
 				<Runtime as Config>::AssetsUnderManagementNAV::nav(DEFAULT_POOL_ID)
 					.expect("Pool exists"),
-				(NAV_AMOUNT, 0)
+				(2 * NAV_AMOUNT, 0)
 			);
 			assert_pending_fees(
 				DEFAULT_POOL_ID,
@@ -3174,7 +3183,7 @@ mod pool_fees {
 			);
 			assert_eq!(
 				OrmlTokens::balance(AUSD_CURRENCY_ID, &DEFAULT_FEE_DESTINATION),
-				FEE_AMOUNT_FIXED + fee_amount_from_charge,
+				2 * FEE_AMOUNT_FIXED + fee_amount_from_charge,
 			);
 		});
 	}

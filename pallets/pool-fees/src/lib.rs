@@ -571,10 +571,9 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			bucket: PoolFeeBucket,
 			reserve: &mut T::Balance,
+			assets_under_management: T::Balance,
 			epoch_duration: Seconds,
 		) -> Result<T::Balance, DispatchError> {
-			let portfolio_valuation = AssetsUnderManagement::<T>::get(pool_id);
-
 			ActiveFees::<T>::mutate(pool_id, bucket, |fees| {
 				for fee in fees.iter_mut() {
 					let limit = fee.amounts.limit();
@@ -585,7 +584,7 @@ pub mod pallet {
 						<T as Config>::Rate,
 					> as FeeAmountProration<T::Balance, T::Rate, Seconds>>::saturated_prorated_amount(
 						limit,
-						portfolio_valuation,
+						assets_under_management,
 						epoch_duration,
 					);
 
@@ -685,12 +684,13 @@ pub mod pallet {
 			reserve: &mut T::Balance,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let fee_nav = PortfolioValuation::<T>::get(pool_id);
+			let aum = AssetsUnderManagement::<T>::get(pool_id);
 			let time_diff = T::Time::now().saturating_sub(fee_nav.last_updated());
 
 			for bucket in PoolFeeBucket::iter() {
 				// NOTE: Re-evaluate access to reserve after adding new bucket variants. Some
 				// should not reduce at this point in time.
-				Self::update_active_fees(pool_id, bucket, reserve, time_diff)?;
+				Self::update_active_fees(pool_id, bucket, reserve, aum, time_diff)?;
 			}
 
 			// Derive valuation from pending fee amounts
