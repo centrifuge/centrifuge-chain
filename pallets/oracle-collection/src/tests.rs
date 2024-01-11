@@ -1,5 +1,5 @@
 use cfg_traits::data::DataRegistry;
-use frame_support::{assert_err, assert_ok, storage::bounded_btree_set::BoundedBTreeSet};
+use frame_support::{assert_err, assert_ok};
 use sp_runtime::{testing::H256, traits::Get, DispatchError};
 
 use crate::{
@@ -28,24 +28,21 @@ const NOT_ENOUGH_MAX_AGE: Timestamp = 20;
 mod mock {
 	use super::*;
 
-	pub fn prepare_update_feeders(
-		key: OracleKey,
-		feeders: &BoundedBTreeSet<AccountId, MaxFeedersPerKey>,
-	) {
+	pub fn prepare_update_collection_info(info: &CollectionInfo<Runtime>) {
 		MockChangeGuard::mock_note({
-			let feeders = feeders.clone();
+			let info = info.clone();
 			move |pool_id, change| {
 				assert_eq!(pool_id, COLLECTION_ID);
-				assert_eq!(change, Change::Feeders(key, feeders.clone()));
+				assert_eq!(change, Change::CollectionInfo(info.clone()));
 				Ok(CHANGE_ID)
 			}
 		});
 		MockChangeGuard::mock_released({
-			let feeders = feeders.clone();
+			let info = info.clone();
 			move |pool_id, change_id| {
 				assert_eq!(pool_id, COLLECTION_ID);
 				assert_eq!(change_id, CHANGE_ID);
-				Ok(Change::Feeders(key, feeders.clone()))
+				Ok(Change::CollectionInfo(info.clone()))
 			}
 		});
 		MockIsAdmin::mock_check(|(admin, collection_id)| {
@@ -80,25 +77,32 @@ mod mock {
 mod util {
 	use super::*;
 
-	pub fn update_feeders(key: OracleKey, feeders: impl IntoIterator<Item = AccountId>) {
-		let feeders = crate::util::feeders_from(feeders).unwrap();
+	pub fn update_collection_info(
+		value_lifetime: Option<Timestamp>,
+		min_feeders: u32,
+		feeders: impl IntoIterator<Item = AccountId>,
+	) {
+		let info = CollectionInfo {
+			value_lifetime,
+			min_feeders,
+			feeders: crate::util::feeders_from(feeders).unwrap(),
+		};
 
 		MockChangeGuard::mock_note(|_, _| Ok(CHANGE_ID));
 		MockChangeGuard::mock_released({
-			let feeders = feeders.clone();
-			move |_, _| Ok(Change::Feeders(key, feeders.clone()))
+			let info = info.clone();
+			move |_, _| Ok(Change::CollectionInfo(info.clone()))
 		});
 		MockIsAdmin::mock_check(|_| true);
 
-		OracleCollection::propose_update_feeders(
+		OracleCollection::propose_update_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
-			key,
-			feeders,
+			info,
 		)
 		.unwrap();
 
-		OracleCollection::apply_update_feeders(
+		OracleCollection::apply_update_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CHANGE_ID,
@@ -109,48 +113,35 @@ mod util {
 		MockChangeGuard::mock_released(|_, _| panic!("no released() mock"));
 		MockIsAdmin::mock_check(|_| panic!("no check() mock"));
 	}
-
-	pub fn set_collection_info(duration: Timestamp, limit: u32) {
-		MockIsAdmin::mock_check(|_| true);
-
-		assert_ok!(OracleCollection::set_collection_info(
-			RuntimeOrigin::signed(ADMIN),
-			COLLECTION_ID,
-			CollectionInfo {
-				value_lifetime: Some(duration),
-				min_feeders: limit,
-			}
-		));
-
-		MockIsAdmin::mock_check(|_| panic!("no check() mock"));
-	}
 }
 
 #[test]
-fn updating_feeders() {
+fn updating_collection_info() {
 	new_test_ext().execute_with(|| {
-		let feeders = crate::util::feeders_from([FEEDER_1, FEEDER_2]).unwrap();
+		let info = CollectionInfo {
+			value_lifetime: Some(50),
+			min_feeders: 2,
+			feeders: crate::util::feeders_from([FEEDER_1, FEEDER_2]).unwrap(),
+		};
 
-		mock::prepare_update_feeders(KEY_A, &feeders);
+		mock::prepare_update_collection_info(&info);
 
-		assert_ok!(OracleCollection::propose_update_feeders(
+		assert_ok!(OracleCollection::propose_update_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
-			KEY_A,
-			feeders.clone(),
+			info.clone()
 		));
 
-		assert_ok!(OracleCollection::apply_update_feeders(
+		assert_ok!(OracleCollection::apply_update_collection_info(
 			RuntimeOrigin::signed(ADMIN),
 			COLLECTION_ID,
 			CHANGE_ID,
 		));
 
 		System::assert_last_event(
-			Event::<Runtime>::UpdatedFeeders {
+			Event::<Runtime>::UpdatedCollectionInfo {
 				collection_id: COLLECTION_ID,
-				key: KEY_A,
-				feeders,
+				collection_info: info,
 			}
 			.into(),
 		);
@@ -160,46 +151,16 @@ fn updating_feeders() {
 #[test]
 fn updating_feeders_wrong_admin() {
 	new_test_ext().execute_with(|| {
-		let feeders = crate::util::feeders_from([FEEDER_1, FEEDER_2]).unwrap();
+		let info = CollectionInfo::default();
 
-		mock::prepare_update_feeders(KEY_A, &feeders);
+		mock::prepare_update_collection_info(&info);
 		MockIsAdmin::mock_check(|_| false);
 
 		assert_err!(
-			OracleCollection::propose_update_feeders(
+			OracleCollection::propose_update_collection_info(
 				RuntimeOrigin::signed(ADMIN),
 				COLLECTION_ID,
-				KEY_A,
-				feeders
-			),
-			Error::<Runtime>::IsNotAdmin
-		);
-	});
-}
-
-#[test]
-fn update_collection_max_age() {
-	new_test_ext().execute_with(|| {
-		MockIsAdmin::mock_check(|_| true);
-
-		assert_ok!(OracleCollection::set_collection_info(
-			RuntimeOrigin::signed(ADMIN),
-			COLLECTION_ID,
-			CollectionInfo::default(),
-		));
-	});
-}
-
-#[test]
-fn update_collection_max_age_wrong_admin() {
-	new_test_ext().execute_with(|| {
-		MockIsAdmin::mock_check(|_| false);
-
-		assert_err!(
-			OracleCollection::set_collection_info(
-				RuntimeOrigin::signed(ADMIN),
-				COLLECTION_ID,
-				CollectionInfo::default(),
+				info
 			),
 			Error::<Runtime>::IsNotAdmin
 		);
@@ -210,7 +171,7 @@ fn update_collection_max_age_wrong_admin() {
 fn register() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
-		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 1);
+		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A), 1);
 
 		System::assert_last_event(
 			Event::<Runtime>::AddedKey {
@@ -223,7 +184,7 @@ fn register() {
 		System::reset_events();
 
 		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
-		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 2);
+		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A), 2);
 
 		// Only first register call dispatch the event
 		assert_eq!(System::event_count(), 0);
@@ -239,13 +200,13 @@ fn unregister() {
 		System::reset_events();
 
 		assert_ok!(OracleCollection::unregister_id(&KEY_A, &COLLECTION_ID));
-		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 1);
+		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A), 1);
 
 		// Only last unregister call dispatch the event
 		assert_eq!(System::event_count(), 0);
 
 		assert_ok!(OracleCollection::unregister_id(&KEY_A, &COLLECTION_ID));
-		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A).usage_refs, 0);
+		assert_eq!(Keys::<Runtime>::get(COLLECTION_ID, KEY_A), 0);
 
 		System::assert_last_event(
 			Event::<Runtime>::RemovedKey {
@@ -265,7 +226,7 @@ fn unregister() {
 #[test]
 fn getting_value() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
 		mock::prepare_provider();
 		assert_ok!(
@@ -278,7 +239,7 @@ fn getting_value() {
 #[test]
 fn getting_value_with_max_age() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
 		mock::prepare_provider();
 		assert_ok!(
@@ -301,8 +262,11 @@ fn getting_value_not_found() {
 #[test]
 fn getting_value_but_outdated() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 1);
+		util::update_collection_info(
+			Some(NOT_ENOUGH_MAX_AGE),
+			1,
+			vec![FEEDER_1, FEEDER_2, FEEDER_3],
+		);
 
 		mock::prepare_provider();
 		assert_err!(
@@ -315,9 +279,10 @@ fn getting_value_but_outdated() {
 #[test]
 fn update_collection() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_NONE, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -344,9 +309,10 @@ fn update_collection() {
 #[test]
 fn update_collection_with_max_age() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(ENOUGH_MAX_AGE, 0);
+		util::update_collection_info(Some(ENOUGH_MAX_AGE), 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -365,9 +331,14 @@ fn update_collection_with_max_age() {
 #[test]
 fn update_collection_outdated() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 1);
+		util::update_collection_info(
+			Some(NOT_ENOUGH_MAX_AGE),
+			1,
+			vec![FEEDER_1, FEEDER_2, FEEDER_3],
+		);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_err!(
@@ -380,9 +351,10 @@ fn update_collection_outdated() {
 #[test]
 fn update_collection_outdated_with_min_feeder() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(45, 1);
+		util::update_collection_info(Some(45), 1, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -401,8 +373,9 @@ fn update_collection_outdated_with_min_feeder() {
 #[test]
 fn update_collection_without_min_feeder() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(ENOUGH_MAX_AGE, 2);
+		util::update_collection_info(Some(ENOUGH_MAX_AGE), 2, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_err!(
@@ -415,9 +388,9 @@ fn update_collection_without_min_feeder() {
 #[test]
 fn update_collection_but_getting_elements_out_of_time() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::set_collection_info(ENOUGH_MAX_AGE, 0);
+		util::update_collection_info(Some(ENOUGH_MAX_AGE), 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_ok!(OracleCollection::update_collection(
@@ -425,7 +398,8 @@ fn update_collection_but_getting_elements_out_of_time() {
 			COLLECTION_ID
 		));
 
-		util::set_collection_info(NOT_ENOUGH_MAX_AGE, 0);
+		// Invalidate oracle values
+		MockTime::mock_now(|| NOW + ENOUGH_MAX_AGE);
 
 		assert_err!(
 			OracleCollection::collection(&COLLECTION_ID),
@@ -437,9 +411,11 @@ fn update_collection_but_getting_elements_out_of_time() {
 #[test]
 fn update_collection_with_errs() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_B, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
-		util::update_feeders(KEY_ERR, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_B, &COLLECTION_ID));
+		assert_ok!(OracleCollection::register_id(&KEY_ERR, &COLLECTION_ID));
 
 		mock::prepare_provider();
 		assert_err!(
@@ -452,6 +428,8 @@ fn update_collection_with_errs() {
 #[test]
 fn update_collection_empty() {
 	new_test_ext().execute_with(|| {
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
 		assert_ok!(OracleCollection::update_collection(
 			RuntimeOrigin::signed(ANY),
 			COLLECTION_ID
@@ -490,7 +468,9 @@ fn update_collection_with_registrations_but_no_feeders() {
 #[test]
 fn update_collection_with_feeders_but_no_values() {
 	new_test_ext().execute_with(|| {
-		util::update_feeders(KEY_A, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+
+		assert_ok!(OracleCollection::register_id(&KEY_A, &COLLECTION_ID));
 
 		MockProvider::mock_get(|(_, _), _| Ok(None));
 
@@ -509,16 +489,20 @@ fn update_collection_with_feeders_but_no_values() {
 #[test]
 fn update_collection_exceed_size() {
 	new_test_ext().execute_with(|| {
-		let max_size = <<Runtime as Config>::MaxCollectionSize as Get<u32>>::get();
+		util::update_collection_info(None, 0, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
 
 		MockProvider::mock_get(|(_, _), _| Ok(Some((0, 0))));
 
-		for i in 0..(max_size + 1) {
-			util::update_feeders(KEY_A + i as OracleKey, vec![FEEDER_1, FEEDER_2, FEEDER_3]);
+		let max_size = <<Runtime as Config>::MaxCollectionSize as Get<u32>>::get();
+		for i in 0..max_size {
+			assert_ok!(OracleCollection::register_id(
+				&(KEY_A + i as OracleKey),
+				&COLLECTION_ID
+			));
 		}
 
 		assert_err!(
-			OracleCollection::update_collection(RuntimeOrigin::signed(ANY), COLLECTION_ID),
+			OracleCollection::register_id(&(KEY_A + max_size as OracleKey), &COLLECTION_ID),
 			Error::<Runtime>::MaxCollectionSize
 		);
 	});

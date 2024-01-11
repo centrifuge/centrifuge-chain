@@ -64,7 +64,7 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![],
 			},
 			RuntimeChange::OracleCollection(change) => match change {
-				OracleCollectionChange::Feeders(_, _) => vec![],
+				OracleCollectionChange::CollectionInfo(_) => vec![],
 			},
 			RuntimeChange::PoolFee(pool_fees_change) => match pool_fees_change {
 				PoolFeesChange::AppendFee(_, _) => vec![week],

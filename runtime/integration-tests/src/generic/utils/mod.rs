@@ -23,6 +23,7 @@ use cfg_types::{
 };
 use frame_support::BoundedVec;
 use frame_system::RawOrigin;
+use pallet_oracle_collection::types::CollectionInfo;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
 use runtime_common::oracle::Feeder;
 use sp_runtime::{
@@ -217,20 +218,21 @@ pub mod oracle {
 	pub fn update_feeders<T: Runtime>(
 		admin: AccountId,
 		pool_id: PoolId,
-		price_id: OracleKey,
 		feeders: impl IntoIterator<Item = Feeder<T::RuntimeOriginExt>>,
 	) {
-		pallet_oracle_collection::Pallet::<T>::propose_update_feeders(
+		pallet_oracle_collection::Pallet::<T>::propose_update_collection_info(
 			RawOrigin::Signed(admin.clone()).into(),
 			pool_id,
-			price_id,
-			pallet_oracle_collection::util::feeders_from(feeders).unwrap(),
+			CollectionInfo {
+				feeders: pallet_oracle_collection::util::feeders_from(feeders).unwrap(),
+				..Default::default()
+			},
 		)
 		.unwrap();
 
 		let change_id = last_change_id::<T>();
 
-		pallet_oracle_collection::Pallet::<T>::apply_update_feeders(
+		pallet_oracle_collection::Pallet::<T>::apply_update_collection_info(
 			RawOrigin::Signed(admin).into(), //or any account
 			pool_id,
 			change_id,
