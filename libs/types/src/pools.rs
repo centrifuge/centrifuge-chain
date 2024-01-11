@@ -150,39 +150,39 @@ pub enum PoolFeeAmount<Balance, Rate> {
 	AmountPerSecond(Balance),
 }
 
-impl<Balance, Rate, Time> FeeAmountProration<Balance, Rate, Time> for PoolFeeAmount<Balance, Rate>
+impl<Balance, Rate> FeeAmountProration<Balance, Rate, Seconds> for PoolFeeAmount<Balance, Rate>
 where
 	Rate: FixedPointNumberExtension,
 	Balance: From<Seconds> + FixedPointOperand + sp_std::ops::Div<Output = Balance>,
-	Time: Into<Seconds>,
 {
-	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Time) -> Balance {
+	fn saturated_prorated_amount(&self, portfolio_valuation: Balance, period: Seconds) -> Balance {
 		match self {
 			PoolFeeAmount::ShareOfPortfolioValuation(_) => {
 				let proration: Rate =
-					<Self as FeeAmountProration<Balance, Rate, Time>>::saturated_prorated_rate(
+					<Self as FeeAmountProration<Balance, Rate, Seconds>>::saturated_prorated_rate(
 						self,
 						portfolio_valuation,
 						period,
 					);
 				proration.saturating_mul_int(portfolio_valuation)
 			}
-			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into().into()),
+			PoolFeeAmount::AmountPerSecond(amount) => amount.saturating_mul(period.into()),
 		}
 	}
 
-	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Time) -> Rate {
+	fn saturated_prorated_rate(&self, portfolio_valuation: Balance, period: Seconds) -> Rate {
 		match self {
 			PoolFeeAmount::ShareOfPortfolioValuation(rate) => {
 				saturated_rate_proration(*rate, period.into())
 			}
 			PoolFeeAmount::AmountPerSecond(_) => {
-				let prorated_amount: Balance =
-					<Self as FeeAmountProration<Balance, Rate, Time>>::saturated_prorated_amount(
-						self,
-						portfolio_valuation,
-						period,
-					);
+				let prorated_amount: Balance = <Self as FeeAmountProration<
+					Balance,
+					Rate,
+					Seconds,
+				>>::saturated_prorated_amount(
+					self, portfolio_valuation, period
+				);
 				Rate::saturating_from_rational(prorated_amount, portfolio_valuation)
 			}
 		}
