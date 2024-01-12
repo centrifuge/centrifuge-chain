@@ -230,7 +230,6 @@ impl order_book::Config for Runtime {
 	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type ConversionPair = (CurrencyId, CurrencyId);
 	type DecimalConverter = DecimalConverter;
 	type FeederId = AccountId;
 	type FulfilledOrderHook = MockFulfilledOrderHook;

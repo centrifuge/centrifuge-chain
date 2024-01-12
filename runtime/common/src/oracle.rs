@@ -4,7 +4,7 @@ use cfg_primitives::{
 };
 use cfg_traits::{Millis, PoolInspect, ValueProvider};
 use cfg_types::{
-	fixed_point::Quantity,
+	fixed_point::{Quantity, Ratio},
 	oracles::OracleKey,
 	tokens::{CurrencyId, CustomMetadata},
 };
@@ -127,5 +127,37 @@ where
 		let fixed_point = balance_to_fixed_point(balance, decimals).unwrap();
 
 		Provider::set(&feeder.0.clone().into(), key, (fixed_point, timestamp));
+	}
+}
+
+/// A provider to get ratio values from currency pairs
+pub struct OracleRatioProvider<Origin, Provider>(PhantomData<(Origin, Provider)>);
+
+impl<Origin, Provider> ValueProvider<Feeder<Origin>, (CurrencyId, CurrencyId)>
+	for OracleRatioProvider<Origin, Provider>
+where
+	Origin: OriginTrait,
+	Provider: ValueProvider<Origin, OracleKey, Value = (Ratio, Millis)>,
+{
+	type Value = Ratio;
+
+	fn get(
+		feeder: &Feeder<Origin>,
+		(from, to): &(CurrencyId, CurrencyId),
+	) -> Result<Option<Self::Value>, DispatchError> {
+		Ok(Provider::get(
+			&feeder.0.clone().into(),
+			&OracleKey::ConversionRatio(*from, *to),
+		)?
+		.map(|(ratio, _)| ratio))
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(feeder: &Feeder<Origin>, (from, to): &(CurrencyId, CurrencyId), ratio: Ratio) {
+		Provider::set(
+			&feeder.0.clone().into(),
+			&OracleKey::ConversionRatio(*from, *to),
+			(ratio, 0),
+		);
 	}
 }

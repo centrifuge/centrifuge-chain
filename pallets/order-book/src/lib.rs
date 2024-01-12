@@ -171,11 +171,12 @@ pub mod pallet {
 		/// Type for a market conversion ratio feeder
 		type FeederId: Parameter + Member + Ord + MaxEncodedLen;
 
-		/// Identification for a market conversion ratio
-		type ConversionPair: From<(Self::AssetCurrencyId, Self::AssetCurrencyId)>;
-
 		/// A way to obtain conversion ratios for market pairs
-		type RatioProvider: ValueProvider<Self::FeederId, Self::ConversionPair, Value = Self::Ratio>;
+		type RatioProvider: ValueProvider<
+			Self::FeederId,
+			(Self::AssetCurrencyId, Self::AssetCurrencyId),
+			Value = Self::Ratio,
+		>;
 
 		/// The admin origin of this pallet
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -671,7 +672,7 @@ pub mod pallet {
 		) -> Result<T::Ratio, DispatchError> {
 			let feeder = MarketFeederId::<T>::get()?;
 
-			T::RatioProvider::get(&feeder, &(currency_from, currency_to).into())?
+			T::RatioProvider::get(&feeder, &(currency_from, currency_to))?
 				.ok_or(Error::<T>::MarketRatioNotFound.into())
 		}
 
