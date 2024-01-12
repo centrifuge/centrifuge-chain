@@ -13,7 +13,6 @@
 use cfg_types::investments::Swap;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
-	dispatch::RawOrigin,
 	traits::fungibles::{Inspect, InspectHold},
 };
 use sp_runtime::{DispatchError, FixedPointNumber};
@@ -94,7 +93,7 @@ mod min_amount {
 	fn adding_trading_pair_works() {
 		new_test_ext_no_pair().execute_with(|| {
 			assert_ok!(OrderBook::add_trading_pair(
-				RawOrigin::Root.into(),
+				RuntimeOrigin::root(),
 				CURRENCY_B,
 				CURRENCY_A,
 				token_a(100),
@@ -131,7 +130,7 @@ mod min_amount {
 	fn removing_trading_pair_works() {
 		new_test_ext_no_pair().execute_with(|| {
 			assert_ok!(OrderBook::rm_trading_pair(
-				RawOrigin::Root.into(),
+				RuntimeOrigin::root(),
 				CURRENCY_B,
 				CURRENCY_A,
 			));
@@ -160,7 +159,7 @@ mod min_amount {
 	fn updating_min_order_works() {
 		new_test_ext().execute_with(|| {
 			assert_ok!(OrderBook::update_min_order(
-				RawOrigin::Root.into(),
+				RuntimeOrigin::root(),
 				CURRENCY_B,
 				CURRENCY_A,
 				token_a(1)
@@ -670,7 +669,7 @@ mod market {
 		new_test_ext().execute_with(|| {
 			let order_id = util::create_default_order_market(token_a(10));
 
-			assert_ok!(OrderBook::set_market_feeder(RawOrigin::Root.into(), FEEDER));
+			assert_ok!(OrderBook::set_market_feeder(RuntimeOrigin::root(), FEEDER));
 			MockRatioProvider::mock_get(move |feeder, pair| {
 				assert_eq!(*feeder, FEEDER);
 				assert_eq!(*pair, (CURRENCY_A, CURRENCY_B));
@@ -735,7 +734,7 @@ mod market {
 		new_test_ext().execute_with(|| {
 			let order_id = util::create_default_order_market(token_a(10));
 
-			assert_ok!(OrderBook::set_market_feeder(RawOrigin::Root.into(), FEEDER));
+			assert_ok!(OrderBook::set_market_feeder(RuntimeOrigin::root(), FEEDER));
 			MockRatioProvider::mock_get(move |_, _| Ok(None));
 
 			let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));

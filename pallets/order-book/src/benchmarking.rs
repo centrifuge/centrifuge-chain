@@ -24,7 +24,7 @@ use super::*;
 const CURRENCY_IN: u32 = 1;
 const CURRENCY_OUT: u32 = 2;
 const RATIO: u32 = 2; // x2
-const FEEDER_ID: u32 = 23;
+const FEEDER: u32 = 23;
 
 #[cfg(test)]
 fn init_mocks() {
@@ -80,7 +80,7 @@ where
 			CURRENCY_IN.into(),
 			CURRENCY_OUT.into(),
 			Self::amount_out(),
-			OrderRatio::Custom(T::Ratio::saturating_from_integer(RATIO)),
+			OrderRatio::Market,
 		)
 		.unwrap()
 	}
@@ -108,7 +108,7 @@ mod benchmarks {
 			CURRENCY_IN.into(),
 			CURRENCY_OUT.into(),
 			Helper::<T>::amount_out(),
-			OrderRatio::Custom(T::Ratio::saturating_from_integer(2)),
+			OrderRatio::Market, // Market is the expensive one
 		);
 
 		Ok(())
@@ -127,7 +127,7 @@ mod benchmarks {
 			RawOrigin::Signed(account_out),
 			order_id,
 			Helper::<T>::amount_out() - 1u32.into(),
-			OrderRatio::Custom(T::Ratio::saturating_from_integer(1)),
+			OrderRatio::Market,
 		);
 
 		Ok(())
@@ -152,6 +152,8 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
+		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
+
 		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
 
@@ -165,6 +167,8 @@ mod benchmarks {
 	fn fill_order_partial() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
+
+		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
 
 		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
@@ -228,7 +232,7 @@ mod benchmarks {
 		init_mocks();
 
 		#[extrinsic_call]
-		set_market_feeder(RawOrigin::Root, FEEDER_ID.into());
+		set_market_feeder(RawOrigin::Root, FEEDER.into());
 
 		Ok(())
 	}
