@@ -16,17 +16,15 @@ use cfg_traits::{benchmarking::OrderBookBenchmarkHelper, ConversionToAssetBalanc
 use frame_benchmarking::v2::*;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::FixedPointNumber;
+use orml_traits::asset_registry::Inspect;
+use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
 const ASSET_IN: u32 = 1;
 const ASSET_OUT: u32 = 2;
-const AMOUNT: u32 = 100;
 const RATIO: u32 = 2;
 const FEEDER_ID: u32 = 23;
-const DECIMALS_IN: u32 = 6;
-const DECIMALS_OUT: u32 = 3;
 
 #[cfg(test)]
 fn init_mocks() {
@@ -50,12 +48,23 @@ where
 		)
 		.unwrap();
 
-		min_fulfillment + (AMOUNT * 10u32.pow(DECIMALS_OUT)).into()
+		let decimals_out = T::AssetRegistry::metadata(&ASSET_OUT.into())
+			.unwrap()
+			.decimals as usize;
+
+		let zeros = checked_pow(T::Balance::from(10u32), decimals_out).unwrap();
+
+		min_fulfillment + T::Balance::from(5u32) * zeros
 	}
 
 	pub fn setup_trading_pair() -> (T::AccountId, T::AccountId) {
-		let expected_amount_in =
-			Self::amount_out() * (RATIO * 10u32.pow(DECIMALS_IN - DECIMALS_OUT)).into();
+		let expected_amount_in = Pallet::<T>::convert_with_ratio(
+			ASSET_OUT.into(),
+			ASSET_IN.into(),
+			T::Ratio::saturating_from_integer(RATIO),
+			Self::amount_out(),
+		)
+		.unwrap();
 
 		Pallet::<T>::bench_setup_trading_pair(
 			ASSET_IN.into(),

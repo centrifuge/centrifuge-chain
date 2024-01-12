@@ -54,7 +54,7 @@ pub mod pallet {
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
-	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
+	use sp_arithmetic::traits::CheckedSub;
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
