@@ -1,9 +1,17 @@
+use std::path::PathBuf;
+
+use clap::Parser;
+
 /// The DataExtensionWorker configuration used when running a node.
-#[derive(Clone, Copy, Debug, clap::Parser)]
+#[derive(Debug, Parser)]
 pub struct DataExtensionWorkerConfiguration {
 	/// Flag for enabling the Data Extension Worker.
 	#[clap(long)]
 	pub enable_data_extension_worker: bool,
+
+	/// Path used for RocksDB.
+	#[clap(value_parser, default_value = "/tmp/centrifuge/data-extension-worker")]
+	pub rocks_db_path: Option<PathBuf>,
 
 	/// RPC address for the Data Extension Worker.
 	#[clap(long, default_value = "127.0.0.1")]

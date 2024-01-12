@@ -12,9 +12,8 @@ use tokio::task::JoinHandle;
 
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	document::{Batch as BatchT, Document as DocumentT},
 	service::build_default_services,
-	BaseError,
+	types::{BaseError, Batch as BatchT, Document as DocumentT},
 };
 #[derive(Debug, thiserror::Error)]
 pub enum WorkerError {

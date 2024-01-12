@@ -57,7 +57,7 @@ use substrate_prometheus_endpoint::Registry;
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	document::{DataExtensionWorkerBatch, DataExtensionWorkerDocument},
+	types::{DataExtensionWorkerBatch, DataExtensionWorkerDocument},
 	worker::DataExtensionWorker,
 };
 

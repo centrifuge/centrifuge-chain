@@ -5,18 +5,21 @@ use sp_runtime::traits::Block as BlockT;
 
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	document::{Batch as BatchT, Document as DocumentT},
 	service::{
 		p2p::P2PService,
-		rpc::{api::build_rpc_api, RPCService},
-		storage::LocalStorage,
+		rpc::{build_rpc_api, RPCService},
+		storage::DBStorage,
 	},
-	BaseError,
+	types::{BaseError, Batch as BatchT, Document as DocumentT},
 };
 
-pub(crate) mod p2p;
-pub(crate) mod rpc;
-pub(crate) mod storage;
+mod p2p;
+mod rpc;
+mod storage;
+
+pub use p2p::*;
+pub use rpc::*;
+pub use storage::*;
 
 pub trait Service: Send + Sync + 'static {
 	fn get_runner(&self) -> Result<Pin<Box<dyn Future<Output = ()> + Send>>, BaseError>;
@@ -32,7 +35,12 @@ where
 	B: BlockT + 'static,
 	H: ExHashT,
 {
-	let storage = Arc::new(LocalStorage::<Document>::new(String::new()));
+	let storage = Arc::new(DBStorage::<Document>::new(
+		config
+			.rocks_db_path
+			.clone()
+			.expect("RocksDB path should have default"),
+	));
 
 	let p2p_service = Arc::new(P2PService::<B, H>::new(network_service));
 

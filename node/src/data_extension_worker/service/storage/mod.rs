@@ -1,52 +1,23 @@
-use std::marker::PhantomData;
+use crate::data_extension_worker::types::{BaseError, Document as DocumentT};
 
-use crate::data_extension_worker::{document::Document as DocumentT, BaseError};
+mod db;
 
-#[derive(Debug, thiserror::Error)]
-pub enum StorageError {
-	#[error("Document create error: {0}")]
-	DocumentCreateError(BaseError),
-}
+pub use db::*;
 
 pub trait Storage<Document>: Send + Sync + 'static
 where
 	Document: for<'d> DocumentT<'d>,
 {
-	fn create_document(&self, document: Document) -> Result<Document, StorageError>;
+	fn create_document(&self, document: Document) -> Result<Document, BaseError>;
 
-	fn get_document(
+	fn get_document_latest(
 		&self,
 		document_id: <Document as DocumentT<'_>>::Id,
-	) -> Result<Document, StorageError>;
-}
+	) -> Result<Document, BaseError>;
 
-pub struct LocalStorage<Document> {
-	_marker: PhantomData<Document>,
-}
-
-impl<Document> LocalStorage<Document>
-where
-	Document: for<'d> DocumentT<'d>,
-{
-	pub fn new(_storage_path: String) -> Self {
-		Self {
-			_marker: Default::default(),
-		}
-	}
-}
-
-impl<Document> Storage<Document> for LocalStorage<Document>
-where
-	Document: for<'d> DocumentT<'d>,
-{
-	fn create_document(&self, _document: Document) -> Result<Document, StorageError> {
-		todo!()
-	}
-
-	fn get_document(
+	fn get_document_version(
 		&self,
-		_document_id: <Document as DocumentT<'_>>::Id,
-	) -> Result<Document, StorageError> {
-		todo!()
-	}
+		document_id: <Document as DocumentT<'_>>::Id,
+		version: <Document as DocumentT<'_>>::Version,
+	) -> Result<Document, BaseError>;
 }
