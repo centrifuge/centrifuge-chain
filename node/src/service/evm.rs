@@ -57,7 +57,7 @@ use substrate_prometheus_endpoint::Registry;
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	types::{DataExtensionWorkerBatch, DataExtensionWorkerDocument},
+	types::{CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument},
 	worker::DataExtensionWorker,
 };
 
@@ -478,6 +478,7 @@ where
 		let data_extension_worker = DataExtensionWorker::<
 			DataExtensionWorkerDocument,
 			DataExtensionWorkerBatch,
+			CentrifugePoolInfo,
 			_,
 			_,
 		>::new(dew_config, network.clone())

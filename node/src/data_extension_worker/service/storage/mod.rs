@@ -4,7 +4,7 @@ mod db;
 
 pub use db::*;
 
-pub trait Storage<Document>: Send + Sync + 'static
+pub trait DocumentStorage<Document>: Send + Sync + 'static
 where
 	Document: for<'d> DocumentT<'d>,
 {

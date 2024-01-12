@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, path::PathBuf};
 
 use crate::data_extension_worker::{
-	service::Storage,
+	service::DocumentStorage,
 	types::{BaseError, Document as DocumentT},
 };
 
@@ -11,11 +11,11 @@ pub enum StorageError {
 	DocumentCreateError(BaseError),
 }
 
-pub struct DBStorage<Document> {
+pub struct DBDocumentStorage<Document> {
 	_marker: PhantomData<Document>,
 }
 
-impl<Document> DBStorage<Document>
+impl<Document> DBDocumentStorage<Document>
 where
 	Document: for<'d> DocumentT<'d>,
 {
@@ -26,7 +26,7 @@ where
 	}
 }
 
-impl<Document> Storage<Document> for DBStorage<Document>
+impl<Document> DocumentStorage<Document> for DBDocumentStorage<Document>
 where
 	Document: for<'d> DocumentT<'d>,
 {

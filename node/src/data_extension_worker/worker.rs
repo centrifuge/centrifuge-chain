@@ -13,7 +13,7 @@ use tokio::task::JoinHandle;
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
 	service::build_default_services,
-	types::{BaseError, Batch as BatchT, Document as DocumentT},
+	types::{BaseError, Batch as BatchT, Document as DocumentT, PoolInfo as PoolInfoT},
 };
 #[derive(Debug, thiserror::Error)]
 pub enum WorkerError {
@@ -24,15 +24,16 @@ pub enum WorkerError {
 	ServicesStartError(BaseError),
 }
 
-pub struct DataExtensionWorker<Document, Batch, B, H> {
+pub struct DataExtensionWorker<Document, Batch, PoolInfo, B, H> {
 	handles: Vec<JoinHandle<()>>,
-	_marker: PhantomData<(Document, Batch, B, H)>,
+	_marker: PhantomData<(Document, Batch, PoolInfo, B, H)>,
 }
 
-impl<Document, Batch, B, H> DataExtensionWorker<Document, Batch, B, H>
+impl<Document, Batch, PoolInfo, B, H> DataExtensionWorker<Document, Batch, PoolInfo, B, H>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
 	B: BlockT + 'static,
 	H: ExHashT,
 {
@@ -40,8 +41,9 @@ where
 		config: DataExtensionWorkerConfiguration,
 		network_service: Arc<NetworkService<B, H>>,
 	) -> Result<Self, WorkerError> {
-		let mut services = build_default_services::<Document, Batch, B, H>(config, network_service)
-			.map_err(WorkerError::ServicesBuildError)?;
+		let mut services =
+			build_default_services::<Document, Batch, PoolInfo, B, H>(config, network_service)
+				.map_err(WorkerError::ServicesBuildError)?;
 
 		let mut handles = Vec::new();
 
@@ -60,10 +62,12 @@ where
 	}
 }
 
-impl<Document, Batch, B, H> Future for DataExtensionWorker<Document, Batch, B, H>
+impl<Document, Batch, PoolInfo, B, H> Future
+	for DataExtensionWorker<Document, Batch, PoolInfo, B, H>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
 	B: BlockT + 'static,
 	H: ExHashT,
 {

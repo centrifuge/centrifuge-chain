@@ -8,16 +8,20 @@ use jsonrpsee::{
 };
 
 use crate::data_extension_worker::{
-	service::{p2p::DocumentNotifier, rpc::RpcServiceError, storage::Storage as StorageT},
-	types::{BaseError, Batch as BatchT, Document as DocumentT},
+	service::{
+		p2p::DocumentNotifier as DocumentNotifierT, rpc::RpcServiceError,
+		storage::DocumentStorage as DocumentStorageT,
+	},
+	types::{BaseError, Batch as BatchT, Document as DocumentT, PoolInfo as PoolInfoT},
 };
 
 /// The RPC API exposed by the DataExtensionWorker.
 #[rpc(client, server)]
-pub trait DataExtensionWorkerApi<Document, Batch>
+pub trait DataExtensionWorkerApi<Document, Batch, PoolInfo>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
 {
 	/// Creates a document.
 	#[method(name = "dataExtensionWorker_createDocument")]
@@ -44,23 +48,26 @@ where
 
 	/// Updates the information that is stored for a pool.
 	#[method(name = "dataExtensionWorker_updatePoolInfo")]
-	fn update_pool_info(&self, pool_id: <Document as DocumentT<'_>>::PoolId) -> RpcResult<()>;
+	fn update_pool_info(&self, pool_id: <Document as DocumentT<'_>>::PoolId)
+		-> RpcResult<PoolInfo>;
 }
 
-pub struct Api<Document, Batch, Notifier, Storage> {
-	storage: Arc<Storage>,
-	document_notifier: Arc<Notifier>,
-	_marker: PhantomData<(Document, Batch)>,
+pub struct Api<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier> {
+	storage: Arc<DocumentStorage>,
+	document_notifier: Arc<DocumentNotifier>,
+	_marker: PhantomData<(Document, Batch, PoolInfo)>,
 }
 
-impl<Document, Batch, Notifier, Storage> Api<Document, Batch, Notifier, Storage>
+impl<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>
+	Api<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
-	Notifier: DocumentNotifier<Document>,
-	Storage: StorageT<Document>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
+	DocumentStorage: DocumentStorageT<Document>,
+	DocumentNotifier: DocumentNotifierT<Document>,
 {
-	pub fn new(storage: Arc<Storage>, document_notifier: Arc<Notifier>) -> Self {
+	pub fn new(storage: Arc<DocumentStorage>, document_notifier: Arc<DocumentNotifier>) -> Self {
 		Self {
 			storage,
 			document_notifier,
@@ -74,13 +81,15 @@ const BASE_ERROR: i32 = 100;
 const DOCUMENT_CREATION_ERROR: i32 = BASE_ERROR + 1;
 const DOCUMENT_RETRIEVAL_ERROR: i32 = BASE_ERROR + 2;
 
-impl<Document, Batch, Notifier, Storage> DataExtensionWorkerApiServer<Document, Batch>
-	for Api<Document, Batch, Notifier, Storage>
+impl<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>
+	DataExtensionWorkerApiServer<Document, Batch, PoolInfo>
+	for Api<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
-	Notifier: DocumentNotifier<Document>,
-	Storage: StorageT<Document>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
+	DocumentStorage: DocumentStorageT<Document>,
+	DocumentNotifier: DocumentNotifierT<Document>,
 {
 	fn create_document(&self, document: Document) -> RpcResult<Document> {
 		self.storage.create_document(document).map_err(|e| {
@@ -128,25 +137,29 @@ where
 		todo!()
 	}
 
-	fn update_pool_info(&self, _pool_id: <Document as DocumentT<'_>>::PoolId) -> RpcResult<()> {
+	fn update_pool_info(
+		&self,
+		_pool_id: <Document as DocumentT<'_>>::PoolId,
+	) -> RpcResult<PoolInfo> {
 		todo!()
 	}
 }
 
-pub fn build_rpc_api<Document, Batch, Storage, Notifier>(
-	storage: Arc<Storage>,
-	document_notifier: Arc<Notifier>,
+pub fn build_rpc_api<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>(
+	storage: Arc<DocumentStorage>,
+	document_notifier: Arc<DocumentNotifier>,
 ) -> Result<RpcModule<()>, BaseError>
 where
 	Document: for<'d> DocumentT<'d>,
 	Batch: for<'b> BatchT<'b>,
-	Storage: StorageT<Document>,
-	Notifier: DocumentNotifier<Document>,
+	PoolInfo: for<'p> PoolInfoT<'p>,
+	DocumentStorage: DocumentStorageT<Document>,
+	DocumentNotifier: DocumentNotifierT<Document>,
 {
 	let mut rpc_api = RpcModule::new(());
 
 	let data_extension_worker_api =
-		Api::<_, Batch, _, _>::new(storage, document_notifier).into_rpc();
+		Api::<_, Batch, PoolInfo, _, _>::new(storage, document_notifier).into_rpc();
 
 	rpc_api.merge(data_extension_worker_api)?;
 
