@@ -10,9 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#![cfg(feature = "runtime-benchmarks")]
-
-use cfg_traits::{benchmarking::OrderBookBenchmarkHelper, ConversionToAssetBalance};
+use cfg_traits::{benchmarking::OrderBookBenchmarkHelper, ConversionToAssetBalance, ValueProvider};
 use frame_benchmarking::v2::*;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
@@ -40,6 +38,7 @@ impl<T: Config> Helper<T>
 where
 	T::AssetCurrencyId: From<u32>,
 	T::AssetRegistry: orml_traits::asset_registry::Mutate,
+	T::FeederId: From<u32>,
 {
 	pub fn amount_out() -> T::Balance {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
@@ -84,13 +83,22 @@ where
 		)
 		.unwrap()
 	}
+
+	pub fn feed_market() {
+		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
+		T::RatioProvider::set(
+			&FEEDER.into(),
+			&(CURRENCY_OUT.into(), CURRENCY_IN.into()),
+			T::Ratio::saturating_from_integer(RATIO),
+		);
+	}
 }
 
 #[benchmarks(
     where
+        T::AssetCurrencyId: From<u32>,
         T::AssetRegistry: orml_traits::asset_registry::Mutate,
         T::FeederId: From<u32>,
-        T::AssetCurrencyId: From<u32>,
 )]
 mod benchmarks {
 	use super::*;
@@ -152,10 +160,10 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
-
 		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+
+		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
 		fill_order_full(RawOrigin::Signed(account_in), order_id);
@@ -168,10 +176,10 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
-
 		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
+
+		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
 		fill_order_partial(
