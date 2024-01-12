@@ -1,22 +1,16 @@
-use std::{
-	future::Future, marker::PhantomData, net::SocketAddr, pin::Pin, str::FromStr, sync::Arc,
-};
+use std::{future::Future, net::SocketAddr, pin::Pin, str::FromStr};
 
 use jsonrpsee::{
-	core::__reexports::serde_json,
 	server::{RandomIntegerIdProvider, ServerBuilder},
 	RpcModule,
 };
-use sc_service::SpawnTaskHandle;
 
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	document::{DataExtensionWorkerBatch, Document as DocumentT},
+	document::Document as DocumentT,
 	service::{
-		p2p::DocumentNotifier,
-		rpc::api::{Api, DataExtensionWorkerApiServer},
-		storage::Storage as StorageT,
-		Service,
+		p2p::DocumentNotifier, rpc::api::DataExtensionWorkerApiServer,
+		storage::Storage as StorageT, Service,
 	},
 	BaseError,
 };

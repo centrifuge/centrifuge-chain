@@ -1,6 +1,5 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use cfg_primitives::PoolId;
 use jsonrpsee::{
 	core::{RpcResult, __reexports::serde_json},
 	proc_macros::rpc,

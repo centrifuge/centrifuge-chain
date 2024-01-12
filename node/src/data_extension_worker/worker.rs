@@ -1,0 +1,82 @@
+use std::{
+	future::Future,
+	marker::PhantomData,
+	pin::Pin,
+	sync::Arc,
+	task::{Context, Poll},
+};
+
+use cumulus_primitives_core::BlockT;
+use sc_network::{config::ExHashT, NetworkService};
+use tokio::task::JoinHandle;
+
+use crate::data_extension_worker::{
+	config::DataExtensionWorkerConfiguration,
+	document::{Batch as BatchT, Document as DocumentT},
+	service::build_default_services,
+	BaseError,
+};
+#[derive(Debug, thiserror::Error)]
+pub enum WorkerError {
+	#[error("Services build error: {0}")]
+	ServicesBuildError(BaseError),
+
+	#[error("Service start error: {0}")]
+	ServicesStartError(BaseError),
+}
+
+pub struct DataExtensionWorker<Document, Batch, B, H> {
+	handles: Vec<JoinHandle<()>>,
+	_marker: PhantomData<(Document, Batch, B, H)>,
+}
+
+impl<Document, Batch, B, H> DataExtensionWorker<Document, Batch, B, H>
+where
+	Document: for<'d> DocumentT<'d>,
+	Batch: for<'b> BatchT<'b>,
+	B: BlockT + 'static,
+	H: ExHashT,
+{
+	pub fn new(
+		config: DataExtensionWorkerConfiguration,
+		network_service: Arc<NetworkService<B, H>>,
+	) -> Result<Self, WorkerError> {
+		let mut services = build_default_services::<Document, Batch, B, H>(config, network_service)
+			.map_err(WorkerError::ServicesBuildError)?;
+
+		let mut handles = Vec::new();
+
+		for service in services.iter_mut() {
+			let fut = service
+				.get_runner()
+				.map_err(WorkerError::ServicesStartError)?;
+
+			handles.push(tokio::spawn(fut));
+		}
+
+		Ok(Self {
+			handles,
+			_marker: Default::default(),
+		})
+	}
+}
+
+impl<Document, Batch, B, H> Future for DataExtensionWorker<Document, Batch, B, H>
+where
+	Document: for<'d> DocumentT<'d>,
+	Batch: for<'b> BatchT<'b>,
+	B: BlockT + 'static,
+	H: ExHashT,
+{
+	type Output = ();
+
+	fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+		for handle in &self.handles {
+			if handle.is_finished() {
+				return Poll::Ready(());
+			}
+		}
+
+		Poll::Pending
+	}
+}

@@ -2,7 +2,6 @@ use std::{future, future::Future, pin::Pin, sync::Arc};
 
 use futures::StreamExt;
 use sc_network::{config::ExHashT, Event, NetworkEventStream, NetworkService};
-use sc_service::SpawnTaskHandle;
 use sp_runtime::traits::Block as BlockT;
 
 use crate::data_extension_worker::{document::Document as DocumentT, service::Service, BaseError};
@@ -47,8 +46,6 @@ impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
 				}
 				_ => {}
 			}
-
-			log::info!("Stopping Data Extension Worker P2P service");
 
 			future::ready(())
 		})))
