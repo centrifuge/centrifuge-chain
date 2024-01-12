@@ -60,7 +60,7 @@ pub mod pallet {
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
 			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Zero,
 		},
-		FixedPointNumber, FixedPointOperand,
+		FixedPointNumber, FixedPointOperand, TokenError,
 	};
 
 	use super::*;
@@ -628,6 +628,15 @@ pub mod pallet {
 				amount_out,
 				Precision::Exact,
 			)?;
+
+			if T::TradeableAsset::balance(order.asset_out_id, &order.placing_account) < amount_out {
+				Err(DispatchError::Token(TokenError::FundsUnavailable))?
+			}
+
+			if T::TradeableAsset::balance(order.asset_in_id, &fulfilling_account) < amount_in {
+				Err(DispatchError::Token(TokenError::FundsUnavailable))?
+			}
+
 			T::TradeableAsset::transfer(
 				order.asset_out_id,
 				&order.placing_account,

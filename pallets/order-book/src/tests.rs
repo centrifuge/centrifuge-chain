@@ -373,7 +373,8 @@ fn update_order_without_required_min_amount() {
 			Error::<Runtime>::BelowMinOrderAmount,
 		);
 
-		// The trait method version does not have min order amount check
+		// The trait method version for updating order does not have min order amount
+		// check
 		assert_ok!(OrderBook::update_order(
 			order_id,
 			token_a(3),
@@ -578,17 +579,14 @@ fn fill_order_partial_with_insufficient_funds() {
 
 		assert_err!(
 			OrderBook::fill_order_partial(RuntimeOrigin::signed(OTHER), order_id, token_a(3)),
-			orml_tokens::Error::<Runtime>::BalanceTooLow,
+			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
 
 		// Check for the case of the same account without be funded
-		// TODO: fix this case
-		/*
 		assert_err!(
 			OrderBook::fill_order_partial(RuntimeOrigin::signed(FROM), order_id, token_a(3)),
-			orml_tokens::Error::<Runtime>::BalanceTooLow,
+			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
-		*/
 	});
 }
 
