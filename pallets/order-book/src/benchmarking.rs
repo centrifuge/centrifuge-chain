@@ -21,17 +21,17 @@ use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
-const ASSET_IN: u32 = 1;
-const ASSET_OUT: u32 = 2;
-const RATIO: u32 = 2;
+const CURRENCY_IN: u32 = 1;
+const CURRENCY_OUT: u32 = 2;
+const RATIO: u32 = 2; // x2
 const FEEDER_ID: u32 = 23;
 
 #[cfg(test)]
 fn init_mocks() {
-	use crate::mock::{MockFulfilledOrderHook, MockRatioProvider};
+	use crate::mock::{MockFulfilledOrderHook, MockRatioProvider, Ratio};
 
 	MockFulfilledOrderHook::mock_notify_status_change(|_, _| Ok(()));
-	MockRatioProvider::mock_get(|_, _| Ok(Some(2.into())));
+	MockRatioProvider::mock_get(|_, _| Ok(Some(Ratio::saturating_from_integer(RATIO))));
 }
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);
@@ -44,11 +44,11 @@ where
 	pub fn amount_out() -> T::Balance {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
 			T::MinFulfillmentAmountNative::get(),
-			ASSET_OUT.into(),
+			CURRENCY_OUT.into(),
 		)
 		.unwrap();
 
-		let decimals_out = T::AssetRegistry::metadata(&ASSET_OUT.into())
+		let decimals_out = T::AssetRegistry::metadata(&CURRENCY_OUT.into())
 			.unwrap()
 			.decimals as usize;
 
@@ -59,16 +59,16 @@ where
 
 	pub fn setup_trading_pair() -> (T::AccountId, T::AccountId) {
 		let expected_amount_in = Pallet::<T>::convert_with_ratio(
-			ASSET_OUT.into(),
-			ASSET_IN.into(),
+			CURRENCY_OUT.into(),
+			CURRENCY_IN.into(),
 			T::Ratio::saturating_from_integer(RATIO),
 			Self::amount_out(),
 		)
 		.unwrap();
 
 		Pallet::<T>::bench_setup_trading_pair(
-			ASSET_IN.into(),
-			ASSET_OUT.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			expected_amount_in,
 			Self::amount_out(),
 		)
@@ -77,8 +77,8 @@ where
 	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
 		Pallet::<T>::place_order(
 			account_out.clone(),
-			ASSET_IN.into(),
-			ASSET_OUT.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			Self::amount_out(),
 			OrderRatio::Custom(T::Ratio::saturating_from_integer(RATIO)),
 		)
@@ -105,8 +105,8 @@ mod benchmarks {
 		#[extrinsic_call]
 		create_order(
 			RawOrigin::Signed(account_out.clone()),
-			ASSET_IN.into(),
-			ASSET_OUT.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			Helper::<T>::amount_out(),
 			OrderRatio::Custom(T::Ratio::saturating_from_integer(2)),
 		);
@@ -187,8 +187,8 @@ mod benchmarks {
 		#[extrinsic_call]
 		add_trading_pair(
 			RawOrigin::Root,
-			ASSET_IN.into(),
-			ASSET_OUT.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			1u32.into(),
 		);
 
@@ -201,7 +201,7 @@ mod benchmarks {
 		init_mocks();
 
 		#[extrinsic_call]
-		rm_trading_pair(RawOrigin::Root, ASSET_IN.into(), ASSET_OUT.into());
+		rm_trading_pair(RawOrigin::Root, CURRENCY_IN.into(), CURRENCY_OUT.into());
 
 		Ok(())
 	}
@@ -214,8 +214,8 @@ mod benchmarks {
 		#[extrinsic_call]
 		update_min_order(
 			RawOrigin::Root,
-			ASSET_IN.into(),
-			ASSET_OUT.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
 			1u32.into(),
 		);
 
