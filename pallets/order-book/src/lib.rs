@@ -568,7 +568,7 @@ pub mod pallet {
 		/// Set the market feeder for set market ratios.
 		/// The origin must be the admin origin.
 		#[pallet::call_index(8)]
-		#[pallet::weight(1_000_000)] // TODO
+		#[pallet::weight(T::Weights::set_market_feeder())]
 		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 

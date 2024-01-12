@@ -21,6 +21,7 @@ pub trait WeightInfo {
 	fn add_trading_pair() -> Weight;
 	fn rm_trading_pair() -> Weight;
 	fn update_min_order() -> Weight;
+	fn set_market_feeder() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -53,6 +54,10 @@ impl WeightInfo for () {
 	}
 
 	fn update_min_order() -> Weight {
+		Weight::zero()
+	}
+
+	fn set_market_feeder() -> Weight {
 		Weight::zero()
 	}
 }
