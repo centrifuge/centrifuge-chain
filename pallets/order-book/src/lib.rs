@@ -73,7 +73,6 @@ pub mod pallet {
 		<T as Config>::Balance,
 		<T as Config>::Ratio,
 	>;
-	pub type BalanceOf<T> = <T as Config>::Balance;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -96,14 +95,11 @@ pub mod pallet {
 		/// CurrencyId of Assets that an order can be made for
 		type AssetCurrencyId: AssetId
 			+ Parameter
-			+ Debug
 			+ Default
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+			+ Ord;
 
 		/// Type used for OrderId. OrderIdNonce ensures each
 		/// OrderId is unique. OrderIdNonce incremented with each new order.
@@ -114,17 +110,15 @@ pub mod pallet {
 			+ Copy
 			+ EnsureAdd
 			+ MaybeSerializeDeserialize
-			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// Balance type
 		type Balance: Member
 			+ Parameter
 			+ FixedPointOperand
-			+ BaseArithmetic
+			+ AtLeast32BitUnsigned
 			+ EnsureMul
 			+ EnsureDiv
-			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// Type for currency orders can be made for
@@ -142,7 +136,6 @@ pub mod pallet {
 			+ EnsureMul
 			+ EnsureDiv
 			+ MaybeSerializeDeserialize
-			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// Size of order id bounded vec in storage
@@ -695,7 +688,7 @@ pub mod pallet {
 
 		/// Unreserve funds for an order that is finished either
 		/// through fulfillment or cancellation.
-		pub fn unreserve_order(order: &OrderOf<T>) -> Result<BalanceOf<T>, DispatchError> {
+		pub fn unreserve_order(order: &OrderOf<T>) -> Result<T::Balance, DispatchError> {
 			T::TradeableAsset::release(
 				order.asset_out_id,
 				&(),
@@ -942,35 +935,61 @@ pub mod pallet {
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> cfg_traits::benchmarking::OrderBookBenchmarkHelper for Pallet<T>
 	where
-		T::AssetRegistry: orml_traits::asset_registry::Mutate<
-			AssetId = T::AssetCurrencyId,
-			Balance = T::Balance,
-			CustomMetadata = CustomMetadata,
-		>,
+		T::AssetRegistry: orml_traits::asset_registry::Mutate,
 	{
 		type AccountId = T::AccountId;
 		type Balance = T::Balance;
 		type CurrencyId = T::AssetCurrencyId;
-		type OrderIdNonce = T::OrderIdNonce;
 
 		fn bench_setup_trading_pair(
 			asset_in: Self::CurrencyId,
 			asset_out: Self::CurrencyId,
 			amount_in: Self::Balance,
 			amount_out: Self::Balance,
-			decimals_in: u32,
-			decimals_out: u32,
 		) -> (Self::AccountId, Self::AccountId) {
-			let account_out: Self::AccountId =
-				frame_benchmarking::account::<Self::AccountId>("account_out", 1, 0);
+			use orml_traits::asset_registry::Mutate;
+
 			let account_in: Self::AccountId =
 				frame_benchmarking::account::<Self::AccountId>("account_in", 2, 0);
-			crate::benchmarking::Helper::<T>::register_trading_assets(
-				asset_in.into(),
-				asset_out.into(),
-				decimals_in,
-				decimals_out,
-			);
+
+			match T::AssetRegistry::metadata(&asset_in) {
+				Some(_) => (),
+				None => {
+					T::AssetRegistry::register_asset(
+						Some(asset_in),
+						orml_asset_registry::AssetMetadata {
+							decimals: 6,
+							name: "ASSET IN".as_bytes().to_vec(),
+							symbol: "INC".as_bytes().to_vec(),
+							existential_deposit: T::Balance::zero(),
+							location: None,
+							additional: CustomMetadata::default(),
+						},
+					)
+					.expect("Registering Pool asset must work");
+				}
+			}
+
+			let account_out: Self::AccountId =
+				frame_benchmarking::account::<Self::AccountId>("account_out", 1, 0);
+
+			match T::AssetRegistry::metadata(&asset_out) {
+				Some(_) => (),
+				None => {
+					T::AssetRegistry::register_asset(
+						Some(asset_out),
+						orml_asset_registry::AssetMetadata {
+							decimals: 3,
+							name: "ASSET OUT".as_bytes().to_vec(),
+							symbol: "OUT".as_bytes().to_vec(),
+							existential_deposit: T::Balance::zero(),
+							location: None,
+							additional: CustomMetadata::default(),
+						},
+					)
+					.expect("Registering Pool asset must work");
+				}
+			}
 
 			frame_support::assert_ok!(T::TradeableAsset::mint_into(
 				asset_out,
@@ -986,13 +1005,6 @@ pub mod pallet {
 			TradingPair::<T>::insert(asset_in, asset_out, Self::Balance::one());
 
 			(account_out, account_in)
-		}
-
-		fn bench_fill_order_full(trader: Self::AccountId, order_id: Self::OrderIdNonce) {
-			frame_support::assert_ok!(Self::fill_order_full(
-				frame_system::RawOrigin::Signed(trader.clone()).into(),
-				order_id
-			));
 		}
 	}
 }
