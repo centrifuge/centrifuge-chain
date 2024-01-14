@@ -57,6 +57,8 @@ pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
 
+	use sp_core::LogLevel;
+
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
 		MalformedMessage, MalformedSourceAddress, MalformedSourceAddressLength,
@@ -330,6 +332,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let (domain_address, incoming_msg) = match T::LocalEVMOrigin::ensure_origin(origin)? {
 				GatewayOrigin::Domain(domain_address) => {
+					sp_io::logging::log(
+						LogLevel::Debug,
+						"LP-Gatway",
+						b"Ethereum Origin: validating message",
+					);
+
 					Pallet::<T>::validate(domain_address, msg)?
 				}
 				GatewayOrigin::AxelarRelay(domain_address) => {
@@ -421,7 +429,15 @@ pub mod pallet {
 				}
 			};
 
-			T::InboundQueue::submit(domain_address, incoming_msg)
+			let res = T::InboundQueue::submit(domain_address, incoming_msg);
+
+			sp_io::logging::log(
+				LogLevel::Debug,
+				"LP-Gatway",
+				scale_info::prelude::format!("Result InboundQueue: {:?}", res).as_bytes(),
+			);
+
+			res
 		}
 	}
 
@@ -457,8 +473,16 @@ pub mod pallet {
 				Error::<T>::UnknownInstance,
 			);
 
+			sp_io::logging::log(LogLevel::Debug, "LP-Gatway", b"Valid origin");
+
 			let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 				.map_err(|_| Error::<T>::MessageDecodingFailed)?;
+
+			sp_io::logging::log(
+				LogLevel::Debug,
+				"LP-Gatway",
+				scale_info::prelude::format!("Message is: {:?}", incoming_msg).as_bytes(),
+			);
 
 			Ok((address, incoming_msg))
 		}

@@ -27,6 +27,7 @@ cfg-traits = { path = "../../../libs/traits", default-features = false }
 cfg-types = { path = "../../../libs/types", default-features = false }
 cfg-utils = { path = "../../../libs/utils", default-features = false }
 pallet-liquidity-pools-gateway = { path = "../../liquidity-pools-gateway", default-features = false }
+log = "0.4.20"
 
 [features]
 default = ["std"]

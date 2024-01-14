@@ -638,6 +638,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
+ "log",
  "pallet-evm",
  "pallet-liquidity-pools-gateway",
  "parity-scale-codec 3.6.5",

@@ -55,6 +55,7 @@ pub mod pallet {
 	use orml_traits::asset_registry::{self, Inspect as _};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
+	use sp_core::LogLevel;
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
@@ -954,6 +955,17 @@ pub mod pallet {
 				T::MinFulfillmentAmountNative::get(),
 				currency_in,
 			)?;
+
+			sp_io::logging::log(
+				LogLevel::Debug,
+				"OrderBook",
+				scale_info::prelude::format!(
+					"Order creation: buy_amount: {:?}, min_fullfillment: {:?}",
+					buy_amount,
+					min_fulfillment_amount
+				)
+				.as_bytes(),
+			);
 
 			Self::inner_place_order(
 				account,

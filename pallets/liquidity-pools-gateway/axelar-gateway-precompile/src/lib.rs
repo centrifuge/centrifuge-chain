@@ -15,7 +15,7 @@ use cfg_types::domain_address::{Domain, DomainAddress};
 use fp_evm::{ExitError, PrecompileFailure, PrecompileHandle};
 use frame_support::ensure;
 use precompile_utils::prelude::*;
-use sp_core::{bounded::BoundedVec, ConstU32, H256, U256};
+use sp_core::{bounded::BoundedVec, ConstU32, LogLevel, H256, U256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	DispatchError,
@@ -251,12 +251,16 @@ where
 		source_address: String<MAX_SOURCE_ADDRESS_BYTES>,
 		payload: Bytes<MAX_PAYLOAD_BYTES>,
 	) -> EvmResult {
+		sp_io::logging::log(LogLevel::Debug, "Precompile", b"Reaching execution");
+
 		ensure!(
 			handle.context().caller == GatewayContract::<T>::get(),
 			PrecompileFailure::Error {
 				exit_status: ExitError::Other("gateway contract address mismatch".into()),
 			}
 		);
+
+		sp_io::logging::log(LogLevel::Debug, "Precompile", b"Valid submitter");
 
 		let msg = BoundedVec::<
 			u8,
@@ -284,6 +288,12 @@ where
 			.ok_or(PrecompileFailure::Error {
 				exit_status: ExitError::Other("account bytes mismatch for domain".into()),
 			})?;
+
+		sp_io::logging::log(
+			LogLevel::Debug,
+			"Precompile",
+			b"Valid eth execution. Processing message...",
+		);
 
 		match pallet_liquidity_pools_gateway::Pallet::<T>::process_msg(
 			pallet_liquidity_pools_gateway::GatewayOrigin::Domain(domain_address).into(),

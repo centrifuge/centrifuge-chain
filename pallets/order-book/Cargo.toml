@@ -21,6 +21,8 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-featu
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-io= { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+
 
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -42,7 +44,6 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
 # Parity crates
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
 
 [features]
@@ -62,6 +63,7 @@ std = [
   "sp-core/std",
   "sp-runtime/std",
   "sp-std/std",
+  "sp-io/std"
 ]
 runtime-benchmarks = [
   "cfg-mocks/runtime-benchmarks",
