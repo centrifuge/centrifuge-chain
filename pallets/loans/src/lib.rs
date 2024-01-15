@@ -860,7 +860,7 @@ pub mod pallet {
 		/// The increase debt action should fulfill the borrow restrictions
 		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
 		/// of the pool is updated to reflect the new present value of the loan.
-		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(T::WeightInfo::increase_debt(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(13)]
 		pub fn increase_debt(
 			origin: OriginFor<T>,
