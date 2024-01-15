@@ -346,6 +346,12 @@ pub mod pallet {
 			repaid_amount: RepaidInput<T>,
 			borrow_amount: PrincipalInput<T>,
 		},
+		/// Debt of a loan has been increased
+		DebtIncreased {
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -866,7 +872,7 @@ pub mod pallet {
 
 			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
 
-			Self::deposit_event(Event::<T>::Borrowed {
+			Self::deposit_event(Event::<T>::DebtIncreased {
 				pool_id,
 				loan_id,
 				amount,
