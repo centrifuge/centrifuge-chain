@@ -853,8 +853,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Increase debt for a loan. Similar to [`borrow()`] but without
-		/// transferring from the pool.
+		/// Increase debt for a loan. Similar to [`Pallet::borrow()`] but
+		/// without transferring from the pool.
 		///
 		/// The origin must be the borrower of the loan.
 		/// The increase debt action should fulfill the borrow restrictions
