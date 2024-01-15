@@ -33,7 +33,7 @@ impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
 
 		let event_stream = network_service.event_stream(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME);
 
-		log::info!("Running Data Extension Worker P2P service");
+		log::info!(target: "data-extension-worker-p2p", "Running Data Extension Worker P2P service");
 
 		Ok(Box::pin(event_stream.for_each(|event| {
 			match event {
@@ -54,7 +54,7 @@ where
 	B: BlockT + 'static,
 	H: ExHashT,
 {
-	fn send_document_notification(&self, _document: Document) -> Result<(), BaseError> {
+	fn send_new_document_notification(&self, _document: Document) -> Result<(), BaseError> {
 		todo!()
 	}
 }

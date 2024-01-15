@@ -30,7 +30,7 @@ impl<Document> DocumentStorage<Document> for DBDocumentStorage<Document>
 where
 	Document: for<'d> DocumentT<'d>,
 {
-	fn create_document(&self, _document: Document) -> Result<Document, BaseError> {
+	fn store_document(&self, _document: Document) -> Result<(), BaseError> {
 		todo!()
 	}
 

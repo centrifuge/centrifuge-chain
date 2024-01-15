@@ -11,7 +11,7 @@ pub struct DataExtensionWorkerConfiguration {
 
 	/// Path used for RocksDB.
 	#[clap(value_parser, default_value = "/tmp/centrifuge/data-extension-worker")]
-	pub rocks_db_path: Option<PathBuf>,
+	pub data_extension_worker_db_path: Option<PathBuf>,
 
 	/// RPC address for the Data Extension Worker.
 	#[clap(long, default_value = "127.0.0.1")]

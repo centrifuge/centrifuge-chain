@@ -56,6 +56,7 @@ impl Service for RPCService {
 		);
 
 		log::info!(
+			target: "data-extension-worker-rpc",
 			"Running Data Extension Worker JSON-RPC server: addr={}",
 			socket_addr_str.as_str()
 		);
@@ -73,7 +74,10 @@ impl Service for RPCService {
 		Ok(Box::pin(async move {
 			loop {
 				if handle.is_stopped() {
-					log::info!("Stopping Data Extension Worker JSON-RPC server");
+					log::info!(
+						target: "data-extension-worker-rpc",
+						"Stopping Data Extension Worker JSON-RPC server",
+					);
 
 					return;
 				}

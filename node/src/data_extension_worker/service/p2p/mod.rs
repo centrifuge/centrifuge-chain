@@ -8,5 +8,7 @@ pub trait DocumentNotifier<Document>: Send + Sync + 'static
 where
 	Document: for<'d> DocumentT<'d>,
 {
-	fn send_document_notification(&self, document: Document) -> Result<(), BaseError>;
+	/// Send a notification to all the users of a document to inform them of the
+	/// document creation.
+	fn send_new_document_notification(&self, document: Document) -> Result<(), BaseError>;
 }

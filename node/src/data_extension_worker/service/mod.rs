@@ -38,7 +38,7 @@ where
 {
 	let storage = Arc::new(DBDocumentStorage::<Document>::new(
 		config
-			.rocks_db_path
+			.data_extension_worker_db_path
 			.clone()
 			.expect("RocksDB path should have default"),
 	));

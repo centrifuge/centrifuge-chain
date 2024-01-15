@@ -1,11 +1,13 @@
 use std::{marker::PhantomData, sync::Arc};
 
+use cfg_primitives::PoolId;
 use jsonrpsee::{
 	core::{RpcResult, __reexports::serde_json},
 	proc_macros::rpc,
 	types::{error::CallError, ErrorObject},
 	RpcModule,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::data_extension_worker::{
 	service::{
@@ -48,8 +50,7 @@ where
 
 	/// Updates the information that is stored for a pool.
 	#[method(name = "dataExtensionWorker_updatePoolInfo")]
-	fn update_pool_info(&self, pool_id: <Document as DocumentT<'_>>::PoolId)
-		-> RpcResult<PoolInfo>;
+	fn update_pool_info(&self, pool_id: PoolId) -> RpcResult<PoolInfo>;
 }
 
 pub struct Api<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier> {
@@ -80,6 +81,7 @@ const BASE_ERROR: i32 = 100;
 
 const DOCUMENT_CREATION_ERROR: i32 = BASE_ERROR + 1;
 const DOCUMENT_RETRIEVAL_ERROR: i32 = BASE_ERROR + 2;
+const DOCUMENT_NOTIFICATION_ERROR: i32 = BASE_ERROR + 3;
 
 impl<Document, Batch, PoolInfo, DocumentStorage, DocumentNotifier>
 	DataExtensionWorkerApiServer<Document, Batch, PoolInfo>
@@ -92,14 +94,25 @@ where
 	DocumentNotifier: DocumentNotifierT<Document>,
 {
 	fn create_document(&self, document: Document) -> RpcResult<Document> {
-		self.storage.create_document(document).map_err(|e| {
+		self.storage.store_document(document.clone()).map_err(|e| {
 			CallError::Custom(ErrorObject::owned(
 				DOCUMENT_CREATION_ERROR,
 				format!("Document creation error: {}", e),
 				Some(format!("{:?}", e)),
 			))
-			.into()
-		})
+		})?;
+
+		self.document_notifier
+			.send_new_document_notification(document.clone())
+			.map_err(|e| {
+				CallError::Custom(ErrorObject::owned(
+					DOCUMENT_NOTIFICATION_ERROR,
+					format!("Document notification error: {}", e),
+					Some(format!("{:?}", e)),
+				))
+			})?;
+
+		Ok(document)
 	}
 
 	fn get_document_latest(
@@ -137,10 +150,7 @@ where
 		todo!()
 	}
 
-	fn update_pool_info(
-		&self,
-		_pool_id: <Document as DocumentT<'_>>::PoolId,
-	) -> RpcResult<PoolInfo> {
+	fn update_pool_info(&self, _pool_id: PoolId) -> RpcResult<PoolInfo> {
 		todo!()
 	}
 }
