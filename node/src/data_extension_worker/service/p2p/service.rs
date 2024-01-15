@@ -50,7 +50,7 @@ impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
 
 impl<Document, B, H> DocumentNotifier<Document> for P2PService<B, H>
 where
-	Document: for<'d> DocumentT<'d>,
+	Document: DocumentT,
 	B: BlockT + 'static,
 	H: ExHashT,
 {

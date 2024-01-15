@@ -6,7 +6,7 @@ pub use service::*;
 
 pub trait DocumentNotifier<Document>: Send + Sync + 'static
 where
-	Document: for<'d> DocumentT<'d>,
+	Document: DocumentT,
 {
 	/// Send a notification to all the users of a document to inform them of the
 	/// document creation.

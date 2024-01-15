@@ -17,7 +17,7 @@ pub struct DBDocumentStorage<Document> {
 
 impl<Document> DBDocumentStorage<Document>
 where
-	Document: for<'d> DocumentT<'d>,
+	Document: DocumentT,
 {
 	pub fn new(_storage_path: PathBuf) -> Self {
 		Self {
@@ -28,23 +28,20 @@ where
 
 impl<Document> DocumentStorage<Document> for DBDocumentStorage<Document>
 where
-	Document: for<'d> DocumentT<'d>,
+	Document: DocumentT,
 {
 	fn store_document(&self, _document: Document) -> Result<(), BaseError> {
 		todo!()
 	}
 
-	fn get_document_latest(
-		&self,
-		_document_id: <Document as DocumentT<'_>>::Id,
-	) -> Result<Document, BaseError> {
+	fn get_document_latest(&self, _document_id: Document::Id) -> Result<Document, BaseError> {
 		todo!()
 	}
 
 	fn get_document_version(
 		&self,
-		_document_id: <Document as DocumentT<'_>>::Id,
-		_version: <Document as DocumentT<'_>>::Version,
+		_document_id: Document::Id,
+		_version: Document::Version,
 	) -> Result<Document, BaseError> {
 		todo!()
 	}

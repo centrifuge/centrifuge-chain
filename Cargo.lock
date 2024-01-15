@@ -909,6 +909,7 @@ name = "centrifuge-chain"
 version = "0.10.35"
 dependencies = [
  "altair-runtime",
+ "async-channel",
  "async-trait",
  "centrifuge-runtime",
  "cfg-primitives",
@@ -939,6 +940,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "frame-system-benchmarking",
  "futures",
+ "futures-channel",
  "hex-literal 0.3.4",
  "jsonrpsee",
  "log",

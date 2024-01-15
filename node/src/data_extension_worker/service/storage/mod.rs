@@ -6,21 +6,18 @@ pub use db::*;
 
 pub trait DocumentStorage<Document>: Send + Sync + 'static
 where
-	Document: for<'d> DocumentT<'d>,
+	Document: DocumentT,
 {
 	/// Stores the document.
 	fn store_document(&self, document: Document) -> Result<(), BaseError>;
 
 	/// Retrieves the latest version of the document.
-	fn get_document_latest(
-		&self,
-		document_id: <Document as DocumentT<'_>>::Id,
-	) -> Result<Document, BaseError>;
+	fn get_document_latest(&self, document_id: Document::Id) -> Result<Document, BaseError>;
 
 	/// Retrieves a specific version of the document.
 	fn get_document_version(
 		&self,
-		document_id: <Document as DocumentT<'_>>::Id,
-		version: <Document as DocumentT<'_>>::Version,
+		document_id: Document::Id,
+		version: Document::Version,
 	) -> Result<Document, BaseError>;
 }

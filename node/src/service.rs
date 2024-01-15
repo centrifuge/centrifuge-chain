@@ -26,17 +26,23 @@ use sc_executor::NativeElseWasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
 
-use crate::rpc::{
-	self,
-	anchors::{AnchorApiServer, Anchors},
-	pools::{Pools, PoolsApiServer},
-	rewards::{Rewards, RewardsApiServer},
+use crate::{
+	data_extension_worker::types::{CentrifugePoolInfo, DataExtensionWorkerBatch},
+	rpc::{
+		self,
+		anchors::{AnchorApiServer, Anchors},
+		pools::{Pools, PoolsApiServer},
+		rewards::{Rewards, RewardsApiServer},
+	},
 };
 
 pub(crate) mod evm;
 use evm::EthConfiguration;
 
-use crate::data_extension_worker::config::DataExtensionWorkerConfiguration;
+use crate::data_extension_worker::{
+	config::DataExtensionWorkerConfiguration, rpc::DataExtensionWorkerApiServer,
+	types::DataExtensionWorkerDocument,
+};
 
 type FullClient<RuntimeApi, Executor> =
 	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
@@ -177,7 +183,14 @@ pub async fn start_altair_node(
 	Arc<FullClient<altair_runtime::RuntimeApi, AltairRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
-	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
+	evm::start_node_impl::<
+		altair_runtime::RuntimeApi,
+		AltairRuntimeExecutor,
+		_,
+		_,
+		_,
+		DataExtensionWorkerDocument,
+	>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -196,13 +209,24 @@ pub async fn start_altair_node(
 		      filter_pool,
 		      fee_history_cache,
 		      overrides,
-		      block_data_cache| {
+		      block_data_cache,
+		      message_sender| {
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(
+					crate::data_extension_worker::rpc::Api::<
+						_,
+						DataExtensionWorkerBatch,
+						CentrifugePoolInfo,
+					>::new(message_sender)
+					.into_rpc(),
+				)
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			let eth_deps = rpc::evm::Deps {
 				client,
@@ -379,7 +403,14 @@ pub async fn start_centrifuge_node(
 	Arc<FullClient<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
-	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
+	evm::start_node_impl::<
+		centrifuge_runtime::RuntimeApi,
+		CentrifugeRuntimeExecutor,
+		_,
+		_,
+		_,
+		DataExtensionWorkerDocument,
+	>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -398,13 +429,24 @@ pub async fn start_centrifuge_node(
 		      filter_pool,
 		      fee_history_cache,
 		      overrides,
-		      block_data_cache| {
+		      block_data_cache,
+		      message_sender| {
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(
+					crate::data_extension_worker::rpc::Api::<
+						_,
+						DataExtensionWorkerBatch,
+						CentrifugePoolInfo,
+					>::new(message_sender)
+					.into_rpc(),
+				)
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			let eth_deps = rpc::evm::Deps {
 				client,
@@ -582,7 +624,14 @@ pub async fn start_development_node(
 )> {
 	let is_authority = parachain_config.role.is_authority();
 
-	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
+	evm::start_node_impl::<
+		development_runtime::RuntimeApi,
+		DevelopmentRuntimeExecutor,
+		_,
+		_,
+		_,
+		DataExtensionWorkerDocument,
+	>(
 		parachain_config,
 		polkadot_config,
 		eth_config,
@@ -601,7 +650,8 @@ pub async fn start_development_node(
 		      filter_pool,
 		      fee_history_cache,
 		      overrides,
-		      block_data_cache| {
+		      block_data_cache,
+		      message_sender| {
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -611,6 +661,16 @@ pub async fn start_development_node(
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
 				.merge(Rewards::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(
+					crate::data_extension_worker::rpc::Api::<
+						_,
+						DataExtensionWorkerBatch,
+						CentrifugePoolInfo,
+					>::new(message_sender)
+					.into_rpc(),
+				)
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			let eth_deps = rpc::evm::Deps {
 				client,

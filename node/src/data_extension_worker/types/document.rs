@@ -1,10 +1,9 @@
 use cfg_primitives::AccountId;
-use sc_network::PeerId;
 use serde::{Deserialize, Serialize};
 
-pub trait Document<'d>: Clone + Send + Sync + Serialize + Deserialize<'d> + 'static {
-	type Id: Serialize + Deserialize<'d> + Send;
-	type Version: Serialize + Deserialize<'d> + Send;
+pub trait Document: Clone + Send + Sync + Serialize + for<'d> Deserialize<'d> + 'static {
+	type Id: Serialize + for<'d> Deserialize<'d> + Send;
+	type Version: Serialize + for<'d> Deserialize<'d> + Send;
 	type Users;
 
 	fn get_id(&self) -> Self::Id;
@@ -14,6 +13,8 @@ pub trait Document<'d>: Clone + Send + Sync + Serialize + Deserialize<'d> + 'sta
 	fn get_users(&self) -> Self::Users;
 
 	fn set_users(&mut self, users: Self::Users);
+
+	fn get_data() -> Vec<u8>;
 }
 
 #[derive(Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
@@ -42,7 +43,7 @@ pub struct DataExtensionWorkerDocument {
 	data: Vec<u8>,
 }
 
-impl<'d> Document<'d> for DataExtensionWorkerDocument {
+impl Document for DataExtensionWorkerDocument {
 	type Id = ();
 	type Users = ();
 	type Version = ();
@@ -60,6 +61,10 @@ impl<'d> Document<'d> for DataExtensionWorkerDocument {
 	}
 
 	fn set_users(&mut self, _users: Self::Users) {
+		todo!()
+	}
+
+	fn get_data() -> Vec<u8> {
 		todo!()
 	}
 }

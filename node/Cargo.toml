@@ -34,6 +34,8 @@ serde = { workspace = true, default-features = true }
 url = { workspace = true, default-features = true }
 thiserror = { workspace = true, default-features = true }
 tokio = { workspace = true, default-features = true }
+async-channel = { workspace = true, default-features = true }
+futures-channel = { workspace = true, default-features = true }
 
 # client dependencies
 pallet-transaction-payment-rpc = { workspace = true, default-features = true }

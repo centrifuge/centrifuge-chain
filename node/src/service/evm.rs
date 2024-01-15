@@ -36,6 +36,7 @@ use fp_consensus::ensure_log;
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::{future, StreamExt};
+use futures_channel::oneshot;
 use sc_client_api::{backend::AuxStore, BlockOf, BlockchainEvents};
 use sc_consensus::{
 	BlockCheckParams, BlockImport as BlockImportT, BlockImportParams, ImportQueue, ImportResult,
@@ -57,7 +58,10 @@ use substrate_prometheus_endpoint::Registry;
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	types::{CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument},
+	types::{
+		CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument,
+		DataExtensionWorkerMessageSender, Document as DocumentT,
+	},
 	worker::DataExtensionWorker,
 };
 
@@ -321,7 +325,7 @@ where
 /// runtime api.
 #[allow(clippy::too_many_arguments)]
 #[sc_tracing::logging::prefix_logs_with("🌀Parachain")]
-pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
+pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC, Document>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	eth_config: EthConfiguration,
@@ -348,6 +352,7 @@ where
 		+ ConvertTransactionRuntimeApi<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	Document: DocumentT,
 	RB: Fn(
 			Arc<FullClient<RuntimeApi, Executor>>,
 			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
@@ -360,6 +365,7 @@ where
 			FeeHistoryCache,
 			Arc<OverrideHandle<Block>>,
 			Arc<EthBlockDataCacheTask<Block>>,
+			DataExtensionWorkerMessageSender<Document>,
 		) -> Result<rpc::RpcExtension, sc_service::Error>
 		+ 'static,
 	BIQ: FnOnce(
@@ -450,6 +456,8 @@ where
 		prometheus_registry.clone(),
 	));
 
+	let (tx, rx) = async_channel::unbounded();
+
 	let rpc_builder = {
 		let network = network.clone();
 		let frontier_backend = frontier_backend.clone();
@@ -470,26 +478,24 @@ where
 				fee_history_cache.clone(),
 				overrides.clone(),
 				block_data_cache.clone(),
+				tx.clone(),
 			)
 		}
 	};
 
-	if dew_config.enable_data_extension_worker {
-		let data_extension_worker = DataExtensionWorker::<
-			DataExtensionWorkerDocument,
-			DataExtensionWorkerBatch,
-			CentrifugePoolInfo,
-			_,
-			_,
-		>::new(dew_config, network.clone())
+	let data_extension_worker =
+		DataExtensionWorker::<Document, DataExtensionWorkerBatch, CentrifugePoolInfo, _, _>::new(
+			dew_config,
+			network.clone(),
+			rx,
+		)
 		.map_err(|e| sc_service::error::Error::Other(e.to_string()))?;
 
-		task_manager.spawn_essential_handle().spawn(
-			"data-extension-worker-main",
-			Some("data-extension-worker"),
-			data_extension_worker,
-		);
-	}
+	task_manager.spawn_essential_handle().spawn(
+		"data-extension-worker-main",
+		Some("data-extension-worker"),
+		data_extension_worker,
+	);
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),
