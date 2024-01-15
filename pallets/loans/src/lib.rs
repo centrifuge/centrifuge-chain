@@ -469,7 +469,6 @@ pub mod pallet {
 		/// at [`types::LoanRestrictions`]. The `amount` will be transferred
 		/// from pool reserve to borrower. The portfolio valuation of the pool
 		/// is updated to reflect the new present value of the loan.
-		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(1)]
 		pub fn borrow(
@@ -843,6 +842,34 @@ pub mod pallet {
 				to_loan_id,
 				repaid_amount,
 				borrow_amount,
+			});
+
+			Ok(())
+		}
+
+		/// Increase debt for a loan. Similar to [`borrow()`] but without
+		/// transferring from the pool.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The increase debt action should fulfill the borrow restrictions
+		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
+		/// of the pool is updated to reflect the new present value of the loan.
+		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(13)]
+		pub fn increase_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
+
+			Self::deposit_event(Event::<T>::Borrowed {
+				pool_id,
+				loan_id,
+				amount,
 			});
 
 			Ok(())
