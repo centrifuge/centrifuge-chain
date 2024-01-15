@@ -108,7 +108,7 @@ impl pallet_mock_token_swaps::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type OrderDetails = Swap<Balance, CurrencyId>;
 	type OrderId = SwapId;
-	type SellRatio = FixedU128;
+	type Ratio = FixedU128;
 }
 
 type Hook1 = pallet_mock_status_notification::Instance1;
