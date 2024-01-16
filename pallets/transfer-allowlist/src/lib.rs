@@ -84,13 +84,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type CurrencyId: AssetId + Parameter + Member + Copy + Default;
-
-		// We need this to block restrictions on the native chain currency as
-		// currently it is impossible to place transfer restrictions
-		// on native currencies as we simply have no way of
-		// restricting pallet-balances...
-		type NativeCurrency: Get<Self::CurrencyId>;
+		type CurrencyId: AssetId + Parameter + Member + Copy;
 
 		/// Currency for holding/unholding with allowlist adding/removal,
 		/// given that the allowlist will be in storage
@@ -256,8 +250,6 @@ pub mod pallet {
 		/// Transfer from sending account and currency not allowed to
 		/// destination
 		NoAllowanceForDestination,
-		/// Native currency can not be restricted with allowances
-		NativeCurrencyNotRestrictable,
 	}
 
 	#[pallet::event]
@@ -331,11 +323,6 @@ pub mod pallet {
 			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-
-			ensure!(
-				currency_id != T::NativeCurrency::get(),
-				Error::<T>::NativeCurrencyNotRestrictable
-			);
 
 			let allowance_details = match Self::get_account_currency_restriction_count_delay(
 				&account_id,

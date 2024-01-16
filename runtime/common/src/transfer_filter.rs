@@ -13,7 +13,7 @@
 use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
 use cfg_types::{domain_address::DomainAddress, locations::Location, tokens::CurrencyId};
-use frame_support::{dispatch::TypeInfo, traits::IsSubType, Deserialize, Serialize};
+use frame_support::{dispatch::TypeInfo, traits::IsSubType};
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -28,7 +28,6 @@ use xcm::v3::{MultiAsset, MultiLocation};
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum FilterCurrency {
 	All,
 	Specific(CurrencyId),

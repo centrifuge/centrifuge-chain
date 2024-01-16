@@ -7,36 +7,6 @@ use crate::mock::*;
 const TEST_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 
 #[test]
-fn add_transfer_fails_for_native() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			TransferAllowList::add_transfer_allowance(
-				RuntimeOrigin::signed(SENDER),
-				<Runtime as Config>::NativeCurrency::get(),
-				ACCOUNT_RECEIVER.into(),
-			),
-			Error::<Runtime>::NativeCurrencyNotRestrictable
-		);
-		assert_eq!(
-			TransferAllowList::get_account_currency_transfer_allowance((
-				SENDER,
-				TEST_CURRENCY_ID,
-				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
-			)),
-			None,
-		);
-		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(
-				SENDER,
-				TEST_CURRENCY_ID
-			),
-			None,
-		);
-
-		assert_eq!(Balances::reserved_balance(&SENDER), 0);
-	})
-}
-#[test]
 fn add_transfer_allowance_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(TransferAllowList::add_transfer_allowance(

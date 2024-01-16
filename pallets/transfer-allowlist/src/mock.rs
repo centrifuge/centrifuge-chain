@@ -131,7 +131,6 @@ impl transfer_allowlist::Config for Runtime {
 	type Deposit = ConstU64<10>;
 	type HoldId = HoldId;
 	type Location = Location;
-	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
