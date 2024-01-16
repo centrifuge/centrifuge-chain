@@ -48,9 +48,6 @@ pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 
-//pub mod hooks;
-//pub mod impls;
-
 #[cfg(test)]
 mod mock;
 
@@ -69,10 +66,10 @@ pub enum TokenSwapReason {
 }
 
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
-pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
+pub type ForeignInvestmentInfoOf<T, Reason> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::InvestmentId,
-	TokenSwapReason,
+	Reason,
 >;
 
 #[frame_support::pallet]
@@ -258,7 +255,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn foreign_investment_info)]
 	pub(super) type ForeignInvestmentInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::SwapId, ForeignInvestmentInfoOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::SwapId, ForeignInvestmentInfoOf<T, TokenSwapReason>>;
 
 	/// Maps an investor and their `InvestmentId` to the corresponding
 	/// `SwapId`.
@@ -482,6 +479,16 @@ pub mod pallet {
 							swap.amount,
 						)?;
 
+						let decrease_investment_pool_amount =
+							pool_amount.ensure_sub(swap.amount)?;
+
+						T::Investment::update_investment(
+							who,
+							investment_id,
+							T::Investment::investment(who, investment_id)?
+								.ensure_sub(decrease_investment_pool_amount)?,
+						)?;
+
 						let id = T::TokenSwaps::place_order(
 							who.clone(),
 							foreign_currency,
@@ -493,6 +500,12 @@ pub mod pallet {
 					}
 				}
 			} else {
+				T::Investment::update_investment(
+					who,
+					investment_id,
+					T::Investment::investment(who, investment_id)?.ensure_sub(pool_amount)?,
+				)?;
+
 				T::TokenSwaps::update_order(
 					who.clone(),
 					id,
@@ -508,35 +521,51 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 			amount: T::Balance,
-			payout_currency: T::CurrencyId,
+			_payout_currency: T::CurrencyId,
 		) -> DispatchResult {
-			todo!()
+			T::Investment::update_redemption(
+				who,
+				investment_id,
+				T::Investment::redemption(who, investment_id)?.ensure_add(amount)?,
+			)
 		}
 
 		fn decrease_foreign_redemption(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 			amount: T::Balance,
-			payout_currency: T::CurrencyId,
+			_payout_currency: T::CurrencyId,
 		) -> Result<(T::Balance, T::Balance), DispatchError> {
-			todo!()
+			T::Investment::update_redemption(
+				who,
+				investment_id,
+				T::Investment::redemption(who, investment_id)?.ensure_sub(amount)?,
+			)?;
+
+			// For William: Why I should return here the amounts? Should not be done after
+			// collecting the redemption?
+
+			Ok(todo!())
 		}
 
 		fn collect_foreign_investment(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			foreign_payment_currency: T::CurrencyId,
+			_foreign_payment_currency: T::CurrencyId,
 		) -> DispatchResult {
-			todo!()
+			T::Investment::collect_investment(who.clone(), investment_id)
 		}
 
 		fn collect_foreign_redemption(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			foreign_payout_currency: T::CurrencyId,
-			pool_currency: T::CurrencyId,
+			_foreign_payout_currency: T::CurrencyId,
+			_pool_currency: T::CurrencyId,
 		) -> DispatchResult {
-			todo!()
+			T::Investment::collect_redemption(who.clone(), investment_id)
+
+			// TODO: initialize a swap to transform the pool redemption into
+			// foreign redemption amount
 		}
 
 		fn investment(
@@ -577,6 +606,69 @@ pub mod pallet {
 					.map(|pool_currency| T::TokenSwaps::valid_pair(currency, pool_currency))
 					.unwrap_or(false)
 			}
+		}
+	}
+
+	pub struct FulfilledSwapOrderHook<T>(PhantomData<T>);
+	impl<T: Config> StatusNotificationHook for Pallet<T> {
+		type Error = DispatchError;
+		type Id = T::SwapId;
+		type Status = SwapOf<T>;
+
+		fn notify_status_change(id: T::SwapId, status: SwapOf<T>) -> Result<(), DispatchError> {
+			let info =
+				ForeignInvestmentInfo::<T>::get(id).ok_or(Error::<T>::InvestmentInfoNotFound)?;
+
+			let foreign_currency = todo!("get from somewhere");
+
+			if status.currency_out == foreign_currency {
+				T::Investment::update_investment(
+					&info.owner,
+					info.id,
+					T::Investment::investment(&info.owner, info.id)?.ensure_add(status.amount)?,
+				)
+			} else {
+				T::DecreasedForeignInvestOrderHook::notify_status_change(
+					ForeignInvestmentInfoOf::<T, ()> {
+						owner: info.owner.clone(),
+						id: info.id,
+						last_swap_reason: None,
+					},
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: status.amount,
+						foreign_currency,
+						amount_remaining: todo!("get from order-book somehow"),
+					},
+				)
+			}
+		}
+	}
+
+	pub struct CollectedInvestmentHook<T>(PhantomData<T>);
+	impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
+		type Error = DispatchError;
+		type Id = ForeignInvestmentInfoOf<T, ()>;
+		type Status = CollectedAmount<T::Balance>;
+
+		fn notify_status_change(
+			id: ForeignInvestmentInfoOf<T, ()>,
+			status: CollectedAmount<T::Balance>,
+		) -> DispatchResult {
+			T::CollectedForeignInvestmentHook::notify_status_change(todo!(), todo!())
+		}
+	}
+
+	pub struct CollectedRedemptionHook<T>(PhantomData<T>);
+	impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
+		type Error = DispatchError;
+		type Id = ForeignInvestmentInfoOf<T, ()>;
+		type Status = CollectedAmount<T::Balance>;
+
+		fn notify_status_change(
+			id: ForeignInvestmentInfoOf<T, ()>,
+			status: CollectedAmount<T::Balance>,
+		) -> DispatchResult {
+			T::CollectedForeignRedemptionHook::notify_status_change(todo!(), todo!())
 		}
 	}
 }
