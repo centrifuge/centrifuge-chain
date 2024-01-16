@@ -1787,7 +1787,7 @@ impl pallet_block_rewards::Config for Runtime {
 }
 
 impl pallet_transfer_allowlist::Config for Runtime {
-	type CurrencyId = CurrencyId;
+	type CurrencyId = FilterCurrency;
 	type Deposit = AllowanceDeposit<Fees>;
 	type HoldId = HoldId;
 	type Location = Location;
@@ -2092,7 +2092,10 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
+use runtime_common::{
+	remarks::Remark,
+	transfer_filter::{FilterCurrency, PreNativeTransfer},
+};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
