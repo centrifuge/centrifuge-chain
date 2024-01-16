@@ -18,17 +18,6 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 
-/// Reflects the reason for the last token swap update such that it can be
-/// updated accordingly if the last and current reason mismatch.
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub enum TokenSwapReason {
-	Investment,
-	Redemption,
-	InvestmentAndRedemption,
-}
-
 /// Restriction of `pallet_foreign_investments::Config` trait to support
 /// currency conversion in the `InvestState`.
 pub trait InvestStateConfig {

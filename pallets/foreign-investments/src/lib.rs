@@ -44,15 +44,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::investments::Swap;
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 
-pub mod errors;
-pub mod hooks;
-pub mod impls;
-pub mod types;
+//pub mod hooks;
+//pub mod impls;
 
 #[cfg(test)]
 mod mock;
@@ -60,26 +57,36 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// Reflects the reason for the last token swap update such that it can be
+/// updated accordingly if the last and current reason mismatch.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub enum TokenSwapReason {
+	Investment,
+	Redemption,
+	InvestmentAndRedemption,
+}
+
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 pub type ForeignInvestmentInfoOf<T> = cfg_types::investments::ForeignInvestmentInfo<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::InvestmentId,
-	crate::types::TokenSwapReason,
+	TokenSwapReason,
 >;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
-		investments::{Investment as InvestmentT, InvestmentCollector, TrancheCurrency},
-		PoolInspect, StatusNotificationHook, TokenSwaps,
+		investments::{ForeignInvestment, Investment, InvestmentCollector, TrancheCurrency},
+		IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{
 		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 	};
-	use errors::{InvestError, RedeemError};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
-	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use types::{InvestState, InvestStateConfig, RedeemState};
+	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, One};
+	use sp_std::cmp::Ordering;
 
 	use super::*;
 
@@ -130,7 +137,7 @@ pub mod pallet {
 
 		/// The internal investment type which handles the actual investment on
 		/// top of the wrapper implementation of this Pallet
-		type Investment: InvestmentT<
+		type Investment: Investment<
 				Self::AccountId,
 				Amount = Self::Balance,
 				CurrencyId = Self::CurrencyId,
@@ -167,7 +174,7 @@ pub mod pallet {
 		type DefaultTokenSellRatio: Get<Self::BalanceRatio>;
 
 		/// The token swap order identifying type
-		type TokenSwapOrderId: Parameter
+		type SwapId: Parameter
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize
@@ -181,7 +188,7 @@ pub mod pallet {
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
-			OrderId = Self::TokenSwapOrderId,
+			OrderId = Self::SwapId,
 			OrderDetails = Swap<Self::Balance, Self::CurrencyId>,
 			SellRatio = Self::BalanceRatio,
 		>;
@@ -227,7 +234,7 @@ pub mod pallet {
 		/// restricted to a more sophisticated trait which provides
 		/// unidirectional conversions based on an oracle, dynamic prices or at
 		/// least conversion ratios based on specific currency pairs.
-		type CurrencyConverter: cfg_traits::IdentityCurrencyConversion<
+		type CurrencyConverter: IdentityCurrencyConversion<
 			Balance = Self::Balance,
 			Currency = Self::CurrencyId,
 			Error = DispatchError,
@@ -242,60 +249,6 @@ pub mod pallet {
 		>;
 	}
 
-	/// Aux type for configurations that inherents from `Config`
-	#[derive(PartialEq)]
-	pub struct Of<T: Config>(PhantomData<T>);
-
-	impl<T: Config> InvestStateConfig for Of<T> {
-		type Balance = T::Balance;
-		type CurrencyConverter = T::CurrencyConverter;
-		type CurrencyId = T::CurrencyId;
-	}
-
-	/// Maps an investor and their `InvestmentId` to the corresponding
-	/// `InvestState`.
-	///
-	/// NOTE: The lifetime of this storage starts with initializing a currency
-	/// swap into the required pool currency and ends upon fully processing the
-	/// investment after the potential swap. In case a swap is not required, the
-	/// investment starts with `InvestState::InvestmentOngoing`.
-	#[pallet::storage]
-	pub type InvestmentState<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		T::InvestmentId,
-		InvestState<Of<T>>,
-		ValueQuery,
-	>;
-
-	/// Maps an investor and their `InvestmentId` to the corresponding
-	/// `RedeemState`.
-	///
-	/// NOTE: The lifetime of this storage starts with increasing a redemption
-	/// which requires owning at least the amount of tranche tokens by which the
-	/// redemption shall be increased by. It ends with transferring back
-	/// the swapped return currency to the corresponding source domain from
-	/// which the investment originated. The lifecycle must go through the
-	/// following stages:
-	/// 	1. Increase redemption --> Initialize storage
-	/// 	2. Fully process pending redemption
-	/// 	3. Collect redemption
-	/// 	4. Trigger swap from pool to return currency
-	/// 	5. Completely fulfill swap order
-	/// 	6. Transfer back to source domain --> Kill storage entry
-	#[pallet::storage]
-	pub type RedemptionState<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		T::InvestmentId,
-		RedeemState<T::Balance, T::CurrencyId>,
-		ValueQuery,
-	>;
-
 	/// Maps a token swap order id to the corresponding `ForeignInvestmentInfo`
 	/// to implicitly enable mapping to `InvestmentState` and `RedemptionState`.
 	///
@@ -305,23 +258,23 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn foreign_investment_info)]
 	pub(super) type ForeignInvestmentInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::TokenSwapOrderId, ForeignInvestmentInfoOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::SwapId, ForeignInvestmentInfoOf<T>>;
 
 	/// Maps an investor and their `InvestmentId` to the corresponding
-	/// `TokenSwapOrderId`.
+	/// `SwapId`.
 	///
 	/// NOTE: The storage is immediately killed when the swap order is
 	/// completely fulfilled even if the investment might not be fully
 	/// processed.
 	#[pallet::storage]
 	#[pallet::getter(fn token_swap_order_ids)]
-	pub(super) type TokenSwapOrderIds<T: Config> = StorageDoubleMap<
+	pub(super) type SwapIds<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		T::TokenSwapOrderId,
+		T::SwapId,
 	>;
 
 	/// Maps an investor and their `InvestmentId` to the collected investment
@@ -365,45 +318,13 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	/// Maps an investor and their investment id to the foreign payment currency
-	/// provided on the initial investment increment.
-	///
-	/// The lifetime is synchronized with the one of
-	/// `InvestmentState`.
-	#[pallet::storage]
-	pub type InvestmentPaymentCurrency<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		T::InvestmentId,
-		T::CurrencyId,
-		ResultQuery<Error<T>::InvestmentPaymentCurrencyNotFound>,
-	>;
-
-	/// Maps an investor and their investment id to the foreign payout currency
-	/// requested on the initial redemption increment.
-	///
-	/// The lifetime is synchronized with the one of
-	/// `RedemptionState`.
-	#[pallet::storage]
-	pub type RedemptionPayoutCurrency<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		T::InvestmentId,
-		T::CurrencyId,
-		ResultQuery<Error<T>::RedemptionPayoutCurrencyNotFound>,
-	>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		ForeignInvestmentUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: InvestState<Of<T>>,
+			order_id: T::SwapId,
 		},
 		ForeignInvestmentCleared {
 			investor: T::AccountId,
@@ -412,7 +333,7 @@ pub mod pallet {
 		ForeignRedemptionUpdated {
 			investor: T::AccountId,
 			investment_id: T::InvestmentId,
-			state: RedeemState<T::Balance, T::CurrencyId>,
+			state: T::SwapId,
 		},
 		ForeignRedemptionCleared {
 			investor: T::AccountId,
@@ -437,20 +358,225 @@ pub mod pallet {
 		/// currency.
 		RedemptionPayoutCurrencyNotFound,
 		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `TokenSwapOrderId`.
+		/// `SwapId`.
 		InvestmentInfoNotFound,
 		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `TokenSwapOrderId`.
+		/// `SwapId`.
 		TokenSwapReasonNotFound,
 		/// The fulfilled token swap amount exceeds the sum of active swap
 		/// amounts of the corresponding `InvestmentState` and
 		/// `RedemptionState`.
 		FulfilledTokenSwapAmountOverflow,
-		/// Failed to transition the `InvestState`.
-		InvestError(InvestError),
-		/// Failed to transition the `RedeemState.`
-		RedeemError(RedeemError),
 		/// Failed to retrieve the pool for the given pool id.
 		PoolNotFound,
+		SwapOrderNotFound,
+	}
+
+	impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
+		type Amount = T::Balance;
+		type CurrencyId = T::CurrencyId;
+		type Error = DispatchError;
+		type InvestmentId = T::InvestmentId;
+
+		fn increase_foreign_investment(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			foreign_amount: T::Balance,
+			foreign_currency: T::CurrencyId,
+			pool_currency: T::CurrencyId,
+		) -> DispatchResult {
+			let pool_amount = T::CurrencyConverter::stable_to_stable(
+				pool_currency,
+				foreign_currency,
+				foreign_amount,
+			)?;
+
+			match SwapIds::<T>::get(who, investment_id) {
+				None => {
+					let id = T::TokenSwaps::place_order(
+						who.clone(),
+						pool_currency,
+						foreign_currency,
+						pool_amount,
+						T::BalanceRatio::one(),
+					)?;
+					SwapIds::<T>::insert(who, investment_id, id);
+				}
+				Some(id) => {
+					let swap = T::TokenSwaps::get_order_details(id)
+						.ok_or(Error::<T>::SwapOrderNotFound)?;
+
+					if swap.currency_out == foreign_currency {
+						T::TokenSwaps::update_order(
+							who.clone(),
+							id,
+							swap.amount.ensure_add(pool_amount)?,
+							T::BalanceRatio::one(),
+						)?;
+					} else {
+						match swap.amount.cmp(&foreign_amount) {
+							Ordering::Less => T::TokenSwaps::update_order(
+								who.clone(),
+								id,
+								swap.amount.ensure_sub(foreign_amount)?,
+								T::BalanceRatio::one(),
+							)?,
+							Ordering::Equal => T::TokenSwaps::cancel_order(id.clone())?,
+							Ordering::Greater => {
+								T::TokenSwaps::cancel_order(id.clone())?;
+
+								let pool_swap_amount = T::CurrencyConverter::stable_to_stable(
+									pool_currency,
+									foreign_currency,
+									swap.amount,
+								)?;
+
+								let id = T::TokenSwaps::place_order(
+									who.clone(),
+									pool_currency,
+									foreign_currency,
+									pool_amount.ensure_sub(pool_swap_amount)?,
+									T::BalanceRatio::one(),
+								)?;
+								SwapIds::<T>::insert(who, investment_id, id);
+							}
+						}
+					}
+				}
+			}
+
+			Ok(())
+		}
+
+		fn decrease_foreign_investment(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			foreign_amount: T::Balance,
+			foreign_currency: T::CurrencyId,
+			pool_currency: T::CurrencyId,
+		) -> DispatchResult {
+			let pool_amount = T::CurrencyConverter::stable_to_stable(
+				pool_currency,
+				foreign_currency,
+				foreign_amount,
+			)?;
+
+			let id = SwapIds::<T>::get(who, investment_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+			let swap = T::TokenSwaps::get_order_details(id).ok_or(Error::<T>::SwapOrderNotFound)?;
+
+			if swap.currency_out == foreign_currency {
+				match swap.amount.cmp(&pool_amount) {
+					Ordering::Less => T::TokenSwaps::update_order(
+						who.clone(),
+						id,
+						swap.amount.ensure_sub(pool_amount)?,
+						T::BalanceRatio::one(),
+					)?,
+					Ordering::Equal => T::TokenSwaps::cancel_order(id.clone())?,
+					Ordering::Greater => {
+						T::TokenSwaps::cancel_order(id.clone())?;
+
+						let foreign_swap_amount = T::CurrencyConverter::stable_to_stable(
+							foreign_currency,
+							pool_currency,
+							swap.amount,
+						)?;
+
+						let id = T::TokenSwaps::place_order(
+							who.clone(),
+							foreign_currency,
+							pool_currency,
+							foreign_amount.ensure_sub(foreign_swap_amount)?,
+							T::BalanceRatio::one(),
+						)?;
+						SwapIds::<T>::insert(who, investment_id, id);
+					}
+				}
+			} else {
+				T::TokenSwaps::update_order(
+					who.clone(),
+					id,
+					swap.amount.ensure_add(foreign_amount)?,
+					T::BalanceRatio::one(),
+				)?;
+			}
+
+			Ok(())
+		}
+
+		fn increase_foreign_redemption(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			amount: T::Balance,
+			payout_currency: T::CurrencyId,
+		) -> DispatchResult {
+			todo!()
+		}
+
+		fn decrease_foreign_redemption(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			amount: T::Balance,
+			payout_currency: T::CurrencyId,
+		) -> Result<(T::Balance, T::Balance), DispatchError> {
+			todo!()
+		}
+
+		fn collect_foreign_investment(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			foreign_payment_currency: T::CurrencyId,
+		) -> DispatchResult {
+			todo!()
+		}
+
+		fn collect_foreign_redemption(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			foreign_payout_currency: T::CurrencyId,
+			pool_currency: T::CurrencyId,
+		) -> DispatchResult {
+			todo!()
+		}
+
+		fn investment(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> Result<T::Balance, DispatchError> {
+			T::Investment::investment(who, investment_id)
+		}
+
+		fn redemption(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> Result<T::Balance, DispatchError> {
+			T::Investment::redemption(who, investment_id)
+		}
+
+		fn accepted_payment_currency(
+			investment_id: T::InvestmentId,
+			currency: T::CurrencyId,
+		) -> bool {
+			if T::Investment::accepted_payment_currency(investment_id, currency) {
+				true
+			} else {
+				T::PoolInspect::currency_for(investment_id.of_pool())
+					.map(|pool_currency| T::TokenSwaps::valid_pair(pool_currency, currency))
+					.unwrap_or(false)
+			}
+		}
+
+		fn accepted_payout_currency(
+			investment_id: T::InvestmentId,
+			currency: T::CurrencyId,
+		) -> bool {
+			if T::Investment::accepted_payout_currency(investment_id, currency) {
+				true
+			} else {
+				T::PoolInspect::currency_for(investment_id.of_pool())
+					.map(|pool_currency| T::TokenSwaps::valid_pair(currency, pool_currency))
+					.unwrap_or(false)
+			}
+		}
 	}
 }
