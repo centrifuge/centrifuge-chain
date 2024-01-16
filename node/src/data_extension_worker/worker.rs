@@ -209,6 +209,11 @@ where
 
 		for handle in &self.handles {
 			if handle.is_finished() {
+				log::error!(
+					target: "data-extension-worker",
+					"DEW handle finished",
+				);
+
 				return Poll::Ready(());
 			}
 		}

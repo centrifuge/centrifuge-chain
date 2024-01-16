@@ -67,6 +67,46 @@ start-parachain)
     --database=rocksdb
   ;;
 
+start-collator-1)
+  parachain_dir=$base_dir/parachain/${para_id}
+  mkdir -p $parachain_dir;
+
+  ./scripts/run_collator.sh \
+    --chain="${parachain}" \
+    --alice \
+    --parachain-id="${para_id}" \
+    --base-path=$parachain_dir/data \
+    --wasm-execution=compiled \
+    --execution=wasm \
+    --port $((30355 + $para_id)) \
+    --rpc-port $((9936 + $para_id)) \
+    --rpc-external \
+    --rpc-cors all \
+    --rpc-methods=Unsafe \
+    --log="info" \
+    --database=rocksdb
+  ;;
+
+start-collator-2)
+  parachain_dir=$base_dir/parachain/2/${para_id}
+  mkdir -p $parachain_dir;
+
+  ./scripts/run_collator_2.sh \
+    --chain="${parachain}" \
+    --bob \
+    --parachain-id="${para_id}" \
+    --base-path=$parachain_dir/data \
+    --wasm-execution=compiled \
+    --execution=wasm \
+    --port $((30355 + 1 + $para_id)) \
+    --rpc-port $((9936 + 1 + $para_id)) \
+    --rpc-external \
+    --rpc-cors all \
+    --rpc-methods=Unsafe \
+    --log="info" \
+    --database=rocksdb
+  ;;
+
 onboard-parachain)
   echo "NOTE: This command onboards the parachain; Block production will start in a few minutes"
 
