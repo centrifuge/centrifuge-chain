@@ -82,7 +82,7 @@ pub mod pallet {
 		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 	};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
-	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, One};
+	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, One, Zero};
 	use sp_std::cmp::Ordering;
 
 	use super::*;
@@ -369,6 +369,128 @@ pub mod pallet {
 		SwapOrderNotFound,
 	}
 
+	/// Internal type used as result of `Pallet::apply_swap()`
+	struct ApplySwapStatus<Balance> {
+		/// The amount already swapped and available to use
+		pending: Balance,
+
+		/// The amount pending to be swapped
+		swapped: Balance,
+	}
+
+	impl<T: Config> Pallet<T> {
+		/// Returns the `amount_out` of the swap, seeing as the amount used to
+		/// swap.
+		fn used_swap_amount(swap: SwapOf<T>) -> Result<T::Balance, DispatchError> {
+			T::CurrencyConverter::stable_to_stable(
+				swap.currency_out,
+				swap.currency_in,
+				swap.amount, /* in */
+			)
+		}
+
+		/// Apply a swap over a current possible swap state.
+		/// - If there was no previous swap, it adds it.
+		/// - If there was a swap in the same direction, it increments it.
+		/// - If there was a swap in the opposite direction:
+		///   - If the amount is smaller, it decrements it.
+		///   - If the amount is the same, it removes the inverse swap.
+		///   - If the amount is greater, it removes the inverse swap and create
+		///     another with the reminder
+		///
+		/// The returned amounts contains:
+		fn apply_swap(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			new_swap: SwapOf<T>,
+		) -> Result<ApplySwapStatus<T::Balance>, DispatchError> {
+			match SwapIds::<T>::get(who, investment_id) {
+				None => {
+					let id = T::TokenSwaps::place_order(
+						who.clone(),
+						new_swap.currency_in,
+						new_swap.currency_out,
+						new_swap.amount, /* in */
+						T::BalanceRatio::one(),
+					)?;
+					SwapIds::<T>::insert(who, investment_id, id);
+
+					Ok(ApplySwapStatus {
+						swapped: T::Balance::zero(),
+						pending: new_swap.amount,
+					})
+				}
+				Some(id) => {
+					let swap = T::TokenSwaps::get_order_details(id)
+						.ok_or(Error::<T>::SwapOrderNotFound)?;
+
+					if swap.currency_out == new_swap.currency_out {
+						T::TokenSwaps::update_order(
+							who.clone(),
+							id,
+							swap.amount.ensure_add(new_swap.amount)?,
+							T::BalanceRatio::one(),
+						)?;
+
+						Ok(ApplySwapStatus {
+							swapped: T::Balance::zero(),
+							pending: new_swap.amount,
+						})
+					} else {
+						let inverse_swap = swap;
+
+						let inverse_swap_amount_in = Self::used_swap_amount(inverse_swap)?;
+						let new_swap_amount_out = Self::used_swap_amount(new_swap)?;
+
+						match inverse_swap.amount.cmp(&new_swap_amount_out) {
+							Ordering::Less => {
+								T::TokenSwaps::update_order(
+									who.clone(),
+									id,
+									swap.amount.ensure_sub(new_swap_amount_out)?,
+									T::BalanceRatio::one(),
+								)?;
+
+								Ok(ApplySwapStatus {
+									swapped: new_swap.amount, /* in */
+									pending: T::Balance::zero(),
+								})
+							}
+							Ordering::Equal => {
+								T::TokenSwaps::cancel_order(id.clone())?;
+
+								Ok(ApplySwapStatus {
+									swapped: new_swap.amount, /* in */
+									pending: T::Balance::zero(),
+								})
+							}
+							Ordering::Greater => {
+								T::TokenSwaps::cancel_order(id.clone())?;
+
+								let amount_to_swap =
+									new_swap.amount.ensure_sub(inverse_swap_amount_in)?;
+
+								let id = T::TokenSwaps::place_order(
+									who.clone(),
+									new_swap.currency_in,
+									new_swap.currency_out,
+									amount_to_swap,
+									T::BalanceRatio::one(),
+								)?;
+								SwapIds::<T>::insert(who, investment_id, id);
+
+								Ok(ApplySwapStatus {
+									swapped: inverse_swap_amount_in,
+									pending: amount_to_swap,
+								})
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		type Amount = T::Balance;
 		type CurrencyId = T::CurrencyId;
@@ -388,61 +510,22 @@ pub mod pallet {
 				foreign_amount,
 			)?;
 
-			match SwapIds::<T>::get(who, investment_id) {
-				None => {
-					let id = T::TokenSwaps::place_order(
-						who.clone(),
-						pool_currency,
-						foreign_currency,
-						pool_amount,
-						T::BalanceRatio::one(),
-					)?;
-					SwapIds::<T>::insert(who, investment_id, id);
-				}
-				Some(id) => {
-					let swap = T::TokenSwaps::get_order_details(id)
-						.ok_or(Error::<T>::SwapOrderNotFound)?;
+			let invest_amount = Self::apply_swap(
+				who,
+				investment_id,
+				Swap {
+                    currency_in: pool_currency,
+                    currency_out: foreign_currency,
+                    amount /*in*/: pool_amount,
+                },
+			)?
+			.swapped;
 
-					if swap.currency_out == foreign_currency {
-						T::TokenSwaps::update_order(
-							who.clone(),
-							id,
-							swap.amount.ensure_add(pool_amount)?,
-							T::BalanceRatio::one(),
-						)?;
-					} else {
-						match swap.amount.cmp(&foreign_amount) {
-							Ordering::Less => T::TokenSwaps::update_order(
-								who.clone(),
-								id,
-								swap.amount.ensure_sub(foreign_amount)?,
-								T::BalanceRatio::one(),
-							)?,
-							Ordering::Equal => T::TokenSwaps::cancel_order(id.clone())?,
-							Ordering::Greater => {
-								T::TokenSwaps::cancel_order(id.clone())?;
-
-								let pool_swap_amount = T::CurrencyConverter::stable_to_stable(
-									pool_currency,
-									foreign_currency,
-									swap.amount,
-								)?;
-
-								let id = T::TokenSwaps::place_order(
-									who.clone(),
-									pool_currency,
-									foreign_currency,
-									pool_amount.ensure_sub(pool_swap_amount)?,
-									T::BalanceRatio::one(),
-								)?;
-								SwapIds::<T>::insert(who, investment_id, id);
-							}
-						}
-					}
-				}
-			}
-
-			Ok(())
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_add(invest_amount)?,
+			)
 		}
 
 		fn decrease_foreign_investment(
@@ -452,67 +535,22 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
-			let pool_amount = T::CurrencyConverter::stable_to_stable(
-				pool_currency,
-				foreign_currency,
-				foreign_amount,
+			let invest_amount = Self::apply_swap(
+				who,
+				investment_id,
+				Swap {
+					currency_in: foreign_currency,
+					currency_out: pool_currency,
+					amount /*in*/: foreign_amount,
+				},
+			)?
+			.pending;
+
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_sub(invest_amount)?,
 			)?;
-
-			let id = SwapIds::<T>::get(who, investment_id).ok_or(Error::<T>::SwapOrderNotFound)?;
-			let swap = T::TokenSwaps::get_order_details(id).ok_or(Error::<T>::SwapOrderNotFound)?;
-
-			if swap.currency_out == foreign_currency {
-				match swap.amount.cmp(&pool_amount) {
-					Ordering::Less => T::TokenSwaps::update_order(
-						who.clone(),
-						id,
-						swap.amount.ensure_sub(pool_amount)?,
-						T::BalanceRatio::one(),
-					)?,
-					Ordering::Equal => T::TokenSwaps::cancel_order(id.clone())?,
-					Ordering::Greater => {
-						T::TokenSwaps::cancel_order(id.clone())?;
-
-						let foreign_swap_amount = T::CurrencyConverter::stable_to_stable(
-							foreign_currency,
-							pool_currency,
-							swap.amount,
-						)?;
-
-						let decrease_investment_pool_amount =
-							pool_amount.ensure_sub(swap.amount)?;
-
-						T::Investment::update_investment(
-							who,
-							investment_id,
-							T::Investment::investment(who, investment_id)?
-								.ensure_sub(decrease_investment_pool_amount)?,
-						)?;
-
-						let id = T::TokenSwaps::place_order(
-							who.clone(),
-							foreign_currency,
-							pool_currency,
-							foreign_amount.ensure_sub(foreign_swap_amount)?,
-							T::BalanceRatio::one(),
-						)?;
-						SwapIds::<T>::insert(who, investment_id, id);
-					}
-				}
-			} else {
-				T::Investment::update_investment(
-					who,
-					investment_id,
-					T::Investment::investment(who, investment_id)?.ensure_sub(pool_amount)?,
-				)?;
-
-				T::TokenSwaps::update_order(
-					who.clone(),
-					id,
-					swap.amount.ensure_add(foreign_amount)?,
-					T::BalanceRatio::one(),
-				)?;
-			}
 
 			Ok(())
 		}
