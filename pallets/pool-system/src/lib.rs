@@ -727,10 +727,8 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					nav,
+					nav: Nav::new(nav_aum, nav_fees),
 					epoch: submission_period_epoch,
-					reserve: pool.reserve.total,
-					max_reserve: pool.reserve.max,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
@@ -984,8 +982,8 @@ pub mod pallet {
 				PoolState::Unhealthy(states) => EpochSolution::score_solution_unhealthy(
 					solution,
 					&epoch.tranches,
-					epoch.reserve,
-					epoch.max_reserve,
+					pool_id.reserve.total,
+					pool_id.reserve.max,
 					&states,
 				),
 			}
@@ -1022,7 +1020,7 @@ pub mod pallet {
 			})?;
 
 			let currency_available: T::Balance = acc_invest
-				.checked_add(&epoch.reserve)
+				.checked_add(&pool.reserve.total)
 				.ok_or(Error::<T>::InvalidSolution)?;
 
 			let new_reserve = currency_available
@@ -1225,10 +1223,7 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = epoch
-				.nav
-				.ensure_add(pool.reserve.total)?
-				.ensure_sub(epoch.reserve)?;
+			let total_assets = epoch.nav.total(pool.reserve.total)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				&executed_amounts,
 				|tranche, &(invest, redeem)| {
@@ -1242,7 +1237,7 @@ pub mod pallet {
 			pool.tranches.rebalance_tranches(
 				T::Time::now(),
 				pool.reserve.total,
-				epoch.nav.ensure_sub(epoch.reserve)?,
+				epoch.nav.nav_aum,
 				tranche_ratios.as_slice(),
 				&executed_amounts,
 			)?;
