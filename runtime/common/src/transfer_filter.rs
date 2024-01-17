@@ -49,11 +49,13 @@ impl<
 				Location::XCM(BlakeTwo256::hash(&destination.encode())),
 				FilterCurrency::Specific(currency),
 			)
-			.or(T::allowance(
-				sender,
-				Location::XCM(BlakeTwo256::hash(&destination.encode())),
-				FilterCurrency::All,
-			))
+			.or_else(|_| {
+				T::allowance(
+					sender,
+					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					FilterCurrency::All,
+				)
+			})
 		};
 
 		let asset_based_check = |sender, destination, asset| {
@@ -169,11 +171,7 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 			Location::Address(receiver.clone()),
 			FilterCurrency::Specific(currency),
 		)
-		.or(T::allowance(
-			sender,
-			Location::Address(receiver),
-			FilterCurrency::All,
-		))
+		.or_else(|_| T::allowance(sender, Location::Address(receiver), FilterCurrency::All))
 	}
 }
 
@@ -236,11 +234,13 @@ where
 			Location::Local(recv.clone()),
 			FilterCurrency::All,
 		)
-		.or(pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-			who.clone(),
-			Location::Local(recv.clone()),
-			FilterCurrency::Specific(CurrencyId::Native),
-		))
+		.or_else(|_| {
+			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+				who.clone(),
+				Location::Local(recv.clone()),
+				FilterCurrency::Specific(CurrencyId::Native),
+			)
+		})
 		.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
 	}
 }
