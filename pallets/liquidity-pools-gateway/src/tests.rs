@@ -10,7 +10,6 @@ use super::{
 	origin::*,
 	pallet::*,
 };
-use crate::pallet;
 
 mod utils {
 	use super::*;
@@ -793,68 +792,28 @@ mod outbound_queue_impl {
 	fn success() {
 		new_test_ext().execute_with(|| {
 			let domain = Domain::EVM(0);
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
-				domain.clone(),
-				router.clone(),
-			));
-
 			let sender = get_test_account_id();
 			let msg = MessageMock::First;
 
-			router.mock_send({
-				let msg = msg.clone();
-
-				move |mock_sender, mock_msg| {
-					assert_eq!(<Runtime as pallet::Config>::Sender::get(), mock_sender);
-					assert_eq!(msg, mock_msg);
-
-					Ok(())
-				}
-			});
-
-			assert_ok!(LiquidityPoolsGateway::submit(sender, domain, msg));
-		});
-	}
-
-	#[test]
-	fn router_error() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-			let router = RouterMock::<Runtime>::default();
-			router.mock_init(move || Ok(()));
-
-			assert_ok!(LiquidityPoolsGateway::set_domain_router(
-				RuntimeOrigin::root(),
+			assert_ok!(LiquidityPoolsGateway::submit(
+				sender.clone(),
 				domain.clone(),
-				router.clone(),
+				msg.clone()
 			));
 
-			let sender = get_test_account_id();
-			let msg = MessageMock::First;
-			let expected_error = DispatchError::Other("router error");
+			assert!(OutboundMessageQueue::<Runtime>::contains_key((
+				domain.clone(),
+				<Runtime as Config>::Sender::get(),
+				msg.clone()
+			)));
 
-			router.mock_send({
-				let msg = msg.clone();
-
-				move |mock_sender, mock_msg| {
-					assert_eq!(<Runtime as pallet::Config>::Sender::get(), mock_sender);
-					assert_eq!(msg, mock_msg);
-
-					Err(expected_error)
-				}
+			event_exists(Event::<Runtime>::OutboundMessageSubmitted {
+				sender: <Runtime as Config>::Sender::get(),
+				domain,
+				message: msg,
 			});
-
-			assert_noop!(
-				LiquidityPoolsGateway::submit(sender, domain, msg),
-				expected_error,
-			);
 		});
 	}
-
 	#[test]
 	fn local_domain() {
 		new_test_ext().execute_with(|| {
@@ -865,20 +824,6 @@ mod outbound_queue_impl {
 			assert_noop!(
 				LiquidityPoolsGateway::submit(sender, domain, msg),
 				Error::<Runtime>::DomainNotSupported
-			);
-		});
-	}
-
-	#[test]
-	fn router_not_found() {
-		new_test_ext().execute_with(|| {
-			let domain = Domain::EVM(0);
-			let sender = get_test_account_id();
-			let msg = MessageMock::First;
-
-			assert_noop!(
-				LiquidityPoolsGateway::submit(sender, domain, msg),
-				Error::<Runtime>::RouterNotFound
 			);
 		});
 	}

@@ -19,9 +19,13 @@ use cfg_traits::{
 };
 use cfg_types::domain_address::{Domain, DomainAddress};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, PalletError};
-use frame_system::pallet_prelude::OriginFor;
+use frame_system::{
+	ensure_signed,
+	pallet_prelude::{BlockNumberFor, OriginFor},
+};
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
+use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, One};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
@@ -56,6 +60,10 @@ impl<T: Config> From<RelayerMessageDecodingError> for Error<T> {
 pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
+	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
+
+	use frame_support::dispatch::PostDispatchInfo;
+	use sp_runtime::DispatchErrorWithPostInfo;
 
 	use super::*;
 	use crate::RelayerMessageDecodingError::{
@@ -94,7 +102,7 @@ pub mod pallet {
 		///
 		/// NOTE - this `Codec` trait is the Centrifuge trait for liquidity
 		/// pools' messages.
-		type Message: Codec + Clone + Debug + PartialEq;
+		type Message: Codec + Clone + Debug + PartialEq + MaxEncodedLen + TypeInfo + FullCodec;
 
 		/// The message router type that is stored for each domain.
 		type Router: DomainRouter<Sender = Self::AccountId, Message = Self::Message>
@@ -122,6 +130,17 @@ pub mod pallet {
 		/// implementation.
 		#[pallet::constant]
 		type Sender: Get<Self::AccountId>;
+
+		/// Type used for outbound message identification.
+		type OutboundMessageNonce: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ EnsureAdd
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
 	}
 
 	#[pallet::event]
@@ -148,13 +167,31 @@ pub mod pallet {
 			domain: Domain,
 			message: T::Message,
 		},
+
+		/// Outbound message execution failure.
+		OutboundMessageExecutionFailure {
+			nonce: T::OutboundMessageNonce,
+			sender: T::AccountId,
+			domain: Domain,
+			message: T::Message,
+			error: DispatchError,
+		},
+
+		/// Outbound message execution success.
+		OutboundMessageExecutionSuccess {
+			nonce: T::OutboundMessageNonce,
+			sender: T::AccountId,
+			domain: Domain,
+			message: T::Message,
+		},
 	}
 
 	/// Storage for domain routers.
 	///
 	/// This can only be set by an admin.
 	#[pallet::storage]
-	pub(crate) type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
+	#[pallet::getter(fn domain_routers)]
+	pub type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
 
 	/// Storage that contains a limited number of whitelisted instances of
 	/// deployed liquidity pools for a particular domain.
@@ -162,7 +199,7 @@ pub mod pallet {
 	/// This can only be modified by an admin.
 	#[pallet::storage]
 	#[pallet::getter(fn allowlist)]
-	pub(crate) type Allowlist<T: Config> =
+	pub type Allowlist<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
 
 	/// Storage that contains a limited number of whitelisted instances of
@@ -171,8 +208,34 @@ pub mod pallet {
 	/// This can only be modified by an admin.
 	#[pallet::storage]
 	#[pallet::getter(fn relayer)]
-	pub(crate) type RelayerList<T: Config> =
+	pub type RelayerList<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, ()>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn outbound_message_nonce_store)]
+	pub type OutboundMessageNonceStore<T: Config> =
+		StorageValue<_, T::OutboundMessageNonce, ValueQuery>;
+
+	/// Storage for outbound messages that will be processed during the
+	/// `on_idle` hook.
+	#[pallet::storage]
+	#[pallet::getter(fn outbound_message_queue)]
+	pub type OutboundMessageQueue<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::OutboundMessageNonce,
+		(Domain, T::AccountId, T::Message),
+	>;
+
+	/// Storage for failed outbound messages that can be manually re-triggered.
+	#[pallet::storage]
+	#[pallet::getter(fn failed_outbound_messages)]
+	pub type FailedOutboundMessages<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::OutboundMessageNonce,
+		(Domain, T::AccountId, T::Message, DispatchError),
+	>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -212,6 +275,19 @@ pub mod pallet {
 		/// Decoding that is essential and this error
 		/// signals malforming of the wrapping information.
 		RelayerMessageDecodingFailed { reason: RelayerMessageDecodingError },
+
+		/// Outbound message not found in storage.
+		OutboundMessageNotFound,
+
+		/// Failed outbound message not found in storage.
+		FailedOutboundMessageNotFound,
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_idle(_now: T::BlockNumber, max_weight: Weight) -> Weight {
+			Self::service_outbound_message_queue(max_weight)
+		}
 	}
 
 	#[pallet::call]
@@ -423,6 +499,89 @@ pub mod pallet {
 
 			T::InboundQueue::submit(domain_address, incoming_msg)
 		}
+
+		/// Convenience method for manually processing an outbound message.
+		///
+		/// If the execution fails, the message gets moved to the
+		/// `FailedOutboundMessages` storage.
+		#[pallet::weight(T::WeightInfo::process_outbound_message())]
+		#[pallet::call_index(6)]
+		pub fn process_outbound_message(
+			origin: OriginFor<T>,
+			nonce: T::OutboundMessageNonce,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let (domain, sender, message) =
+				OutboundMessageQueue::<T>::get(nonce).ok_or(Error::<T>::OutboundMessageNotFound)?;
+
+			OutboundMessageQueue::<T>::remove(nonce);
+
+			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+				Ok(_) => {
+					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
+						nonce,
+						domain,
+						sender,
+						message,
+					});
+
+					Ok(())
+				}
+				Err(e) => {
+					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
+						nonce,
+						domain: domain.clone(),
+						sender: sender.clone(),
+						message: message.clone(),
+						error: e.error,
+					});
+
+					FailedOutboundMessages::<T>::insert(nonce, (domain, sender, message, e.error));
+
+					Err(e.error)
+				}
+			}
+		}
+
+		/// Manually process a failed outbound message.
+		#[pallet::weight(T::WeightInfo::process_failed_outbound_message())]
+		#[pallet::call_index(7)]
+		pub fn process_failed_outbound_message(
+			origin: OriginFor<T>,
+			nonce: T::OutboundMessageNonce,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let (domain, sender, message, _) = FailedOutboundMessages::<T>::get(nonce)
+				.ok_or(Error::<T>::OutboundMessageNotFound)?;
+
+			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+				Ok(_) => {
+					Self::deposit_event(Event::<T>::OutboundMessageExecutionSuccess {
+						nonce,
+						domain,
+						sender,
+						message,
+					});
+
+					FailedOutboundMessages::<T>::remove(nonce);
+
+					Ok(())
+				}
+				Err(e) => {
+					Self::deposit_event(Event::<T>::OutboundMessageExecutionFailure {
+						nonce,
+						domain: domain.clone(),
+						sender: sender.clone(),
+						message: message.clone(),
+						error: e.error,
+					});
+
+					Err(e.error)
+				}
+			}
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -462,6 +621,139 @@ pub mod pallet {
 
 			Ok((address, incoming_msg))
 		}
+
+		/// Iterates over the outbound messages stored in the queue and attempts
+		/// to process them.
+		///
+		/// If a message fails to process it is moved to the
+		/// `FailedOutboundMessages` storage so that it can be executed again
+		/// via the `process_failed_outbound_message` extrinsic.
+		fn service_outbound_message_queue(max_weight: Weight) -> Weight {
+			let mut weight_used = Weight::zero();
+
+			let mut processed_entries = Vec::new();
+
+			for (nonce, (domain, sender, message)) in OutboundMessageQueue::<T>::iter() {
+				processed_entries.push(nonce);
+
+				let mut weight = Weight::zero();
+
+				match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+					Ok(post_info) => {
+						Self::deposit_event(Event::OutboundMessageExecutionSuccess {
+							nonce,
+							sender,
+							domain,
+							message,
+						});
+
+						weight = weight
+							.saturating_add(T::DbWeight::get().writes(1))
+							.saturating_add(
+								post_info
+									.actual_weight
+									.expect("expected message processing weight"),
+							);
+					}
+					Err(e) => {
+						Self::deposit_event(Event::OutboundMessageExecutionFailure {
+							nonce,
+							sender: sender.clone(),
+							domain: domain.clone(),
+							message: message.clone(),
+							error: e.error,
+						});
+
+						FailedOutboundMessages::<T>::insert(
+							nonce,
+							(domain, sender, message, e.error),
+						);
+
+						weight = weight
+							.saturating_add(T::DbWeight::get().writes(2))
+							.saturating_add(
+								e.post_info
+									.actual_weight
+									.expect("expected message processing weight"),
+							);
+					}
+				}
+
+				weight_used = weight_used.saturating_add(weight);
+
+				if weight_used.all_gte(max_weight) {
+					break;
+				}
+			}
+
+			for entry in processed_entries {
+				OutboundMessageQueue::<T>::remove(entry);
+
+				weight_used = weight_used.saturating_add(T::DbWeight::get().writes(1));
+			}
+
+			weight_used
+		}
+
+		/// Retrieves the router stored for the provided domain and sends the
+		/// message, calculating and returning the required weight for these
+		/// operations in the `DispatchResultWithPostInfo`.
+		fn process_message(
+			domain: Domain,
+			sender: T::AccountId,
+			message: T::Message,
+		) -> DispatchResultWithPostInfo {
+			let read_weight = T::DbWeight::get().reads(1);
+
+			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: Some(read_weight.clone()),
+					pays_fee: Pays::Yes,
+				},
+				error: Error::<T>::RouterNotFound.into(),
+			})?;
+
+			let post_dispatch_info_fn =
+				|actual_weight: Option<Weight>, extra_weight: Weight| -> PostDispatchInfo {
+					PostDispatchInfo {
+						actual_weight: Some(Self::get_outbound_message_processing_weight(
+							actual_weight,
+							extra_weight,
+						)),
+						pays_fee: Pays::Yes,
+					}
+				};
+
+			match router.send(sender, message) {
+				Ok(dispatch_info) => Ok(post_dispatch_info_fn(
+					dispatch_info.actual_weight,
+					read_weight,
+				)),
+				Err(e) => Err(DispatchErrorWithPostInfo {
+					post_info: post_dispatch_info_fn(e.post_info.actual_weight, read_weight),
+					error: e.error,
+				}),
+			}
+		}
+
+		/// Calculates the weight used by a router when processing an outbound
+		/// message.
+		fn get_outbound_message_processing_weight(
+			router_call_weight: Option<Weight>,
+			extra_weight: Weight,
+		) -> Weight {
+			let pov_weight: u64 = (Domain::max_encoded_len()
+				+ T::AccountId::max_encoded_len()
+				+ T::Message::max_encoded_len())
+			.try_into()
+			.expect("can calculate outbound message POV weight");
+
+			router_call_weight
+				.or(Some(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0)))
+				.unwrap()
+				.saturating_add(Weight::from_parts(0, pov_weight))
+				.saturating_add(extra_weight)
+		}
 	}
 
 	/// This pallet will be the `OutboundQueue` used by other pallets to send
@@ -476,7 +768,7 @@ pub mod pallet {
 		type Sender = T::AccountId;
 
 		fn submit(
-			sender: Self::Sender,
+			_sender: Self::Sender,
 			destination: Self::Destination,
 			message: Self::Message,
 		) -> DispatchResult {
@@ -485,13 +777,23 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			let router =
-				DomainRouters::<T>::get(destination.clone()).ok_or(Error::<T>::RouterNotFound)?;
+			ensure!(
+				DomainRouters::<T>::contains_key(destination.clone()),
+				Error::<T>::RouterNotFound
+			);
 
-			router.send(T::Sender::get(), message.clone())?;
+			<OutboundMessageNonceStore<T>>::try_mutate(|n| {
+				*n = n.ensure_add(T::OutboundMessageNonce::one())?;
+				Ok::<_, DispatchError>(())
+			})?;
+
+			OutboundMessageQueue::<T>::insert(
+				OutboundMessageNonceStore::<T>::get(),
+				(destination.clone(), T::Sender::get(), message.clone()),
+			);
 
 			Self::deposit_event(Event::OutboundMessageSubmitted {
-				sender,
+				sender: T::Sender::get(),
 				domain: destination,
 				message,
 			});

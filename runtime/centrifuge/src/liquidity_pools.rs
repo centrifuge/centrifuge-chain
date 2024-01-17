@@ -108,6 +108,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = u64;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

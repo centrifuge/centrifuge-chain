@@ -29,7 +29,9 @@ pub const GAS_TO_WEIGHT_MULTIPLIER: u64 = 25_000;
 
 use cfg_traits::{ethereum::EthereumTransactor, liquidity_pools::Router};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult, Weight},
+	dispatch::{
+		DispatchError, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo, Weight,
+	},
 	ensure,
 	traits::OriginTrait,
 };
@@ -113,7 +115,7 @@ where
 		}
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
 			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
@@ -159,12 +161,9 @@ where
 	/// pallet, this EVM address will be converted back into a substrate account
 	/// which will be charged for the transaction. This converted substrate
 	/// account is not the same as the original account.
-	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResult {
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
 
-		// TODO(cdamian): This returns a `DispatchResultWithPostInfo`. Should we
-		// propagate that to another layer that will eventually charge for the
-		// weight in the PostDispatchInfo?
 		<pallet_ethereum_transaction::Pallet<T> as EthereumTransactor>::call(
 			sender_evm_address,
 			self.evm_domain.target_contract_address,
@@ -173,9 +172,6 @@ where
 			self.evm_domain.fee_values.gas_price,
 			self.evm_domain.fee_values.gas_limit,
 		)
-		.map_err(|e| e.error)?;
-
-		Ok(())
 	}
 }
 
@@ -231,7 +227,7 @@ where
 
 	/// Encodes the message to the required format and executes the
 	/// call via the XCM transactor pallet.
-	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResult {
+	pub fn do_send(&self, sender: T::AccountId, msg: Vec<u8>) -> DispatchResultWithPostInfo {
 		let ethereum_xcm_call = get_encoded_ethereum_xcm_call::<T>(self.xcm_domain.clone(), msg)
 			.map_err(|_| DispatchError::Other("encoded ethereum xcm call retrieval"))?;
 
@@ -257,7 +253,10 @@ where
 			true,
 		)?;
 
-		Ok(())
+		Ok(PostDispatchInfo {
+			actual_weight: Some(self.xcm_domain.overall_weight),
+			pays_fee: Default::default(),
+		})
 	}
 }
 

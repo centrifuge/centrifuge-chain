@@ -4817,21 +4817,15 @@ mod development {
 
 				let test_router = DomainRouter::<T>::AxelarEVM(axelar_evm_router);
 
-				let set_domain_router_call =
-					set_domain_router_call(test_domain.clone(), test_router.clone());
-
-				let council_threshold = 2;
-				let voting_period = 3;
-
-				execute_via_democracy::<T>(
-					&mut env,
-					get_council_members(),
-					set_domain_router_call,
-					council_threshold,
-					voting_period,
-					0,
-					0,
-				);
+				env.parachain_state_mut(|| {
+					assert_ok!(
+						pallet_liquidity_pools_gateway::Pallet::<T>::set_domain_router(
+							<T as frame_system::Config>::RuntimeOrigin::root(),
+							test_domain.clone(),
+							test_router,
+						)
+					);
+				});
 
 				let sender = Keyring::Alice.to_account_id();
 				let gateway_sender = env.parachain_state(|| {
@@ -4842,6 +4836,40 @@ mod development {
 					&<sp_core::crypto::AccountId32 as AsRef<[u8; 32]>>::as_ref(&gateway_sender)
 						[0..20],
 				);
+
+				let msg = LiquidityPoolMessage::Transfer {
+					currency: 0,
+					sender: Keyring::Alice.to_account_id().into(),
+					receiver: Keyring::Bob.to_account_id().into(),
+					amount: 1_000u128,
+				};
+
+				// Failure - gateway sender account is not funded.
+				assert_ok!(env.parachain_state_mut(|| {
+					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
+						sender.clone(),
+						test_domain.clone(),
+						msg.clone(),
+					)
+				}));
+
+				let expected_event =
+					pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionFailure {
+						sender: gateway_sender.clone(),
+						domain: test_domain.clone(),
+						message: msg.clone(),
+						error: pallet_evm::Error::<T>::BalanceLow.into(),
+					};
+
+				env.pass(Blocks::UntilEvent {
+					event: expected_event.clone().into(),
+					limit: 3,
+				});
+
+				env.check_event(expected_event)
+					.expect("expected RouterExecutionFailure event");
+
+				// Success
 
 				// Note how both the target address and the gateway sender need to have some
 				// balance.
@@ -4856,20 +4884,51 @@ mod development {
 					cfg(1_000_000),
 				);
 
-				let msg = LiquidityPoolMessage::Transfer {
-					currency: 0,
-					sender: Keyring::Alice.to_account_id().into(),
-					receiver: Keyring::Bob.to_account_id().into(),
-					amount: 1_000u128,
-				};
+				assert_ok!(env.parachain_state_mut(|| {
+					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
+						sender.clone(),
+						test_domain.clone(),
+						msg.clone(),
+					)
+				}));
 
-				assert_ok!(env.parachain_state(|| {
+				let expected_event =
+					pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
+						sender: gateway_sender.clone(),
+						domain: test_domain.clone(),
+						message: msg.clone(),
+					};
+
+				env.pass(Blocks::UntilEvent {
+					event: expected_event.clone().into(),
+					limit: 3,
+				});
+
+				env.check_event(expected_event)
+					.expect("expected RouterExecutionSuccess event");
+
+				// Router not found
+				let unused_domain = Domain::EVM(1234);
+
+				assert_ok!(env.parachain_state_mut(|| {
 					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
 						sender,
-						test_domain,
+						unused_domain.clone(),
 						msg,
 					)
 				}));
+
+				let expected_event = pallet_liquidity_pools_gateway::Event::<T>::RouterNotFound {
+					domain: unused_domain.clone(),
+				};
+
+				env.pass(Blocks::UntilEvent {
+					event: expected_event.clone().into(),
+					limit: 3,
+				});
+
+				env.check_event(expected_event)
+					.expect("expected RouterNotFound event");
 			}
 
 			crate::test_for_runtimes!([development], test_via_outbound_queue);
@@ -4892,6 +4951,13 @@ mod development {
 
 					setup_test(&mut env);
 
+					let msg = Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
+						currency: 0,
+						sender: Keyring::Alice.into(),
+						receiver: Keyring::Bob.into(),
+						amount: 1_000u128,
+					};
+
 					env.parachain_state_mut(|| {
 						let domain_router = router_creation_fn(
 							MultiLocation {
@@ -4910,14 +4976,6 @@ mod development {
 							)
 						);
 
-						let msg =
-							Message::<Domain, PoolId, TrancheId, Balance, Quantity>::Transfer {
-								currency: 0,
-								sender: Keyring::Alice.into(),
-								receiver: Keyring::Bob.into(),
-								amount: 1_000u128,
-							};
-
 						assert_ok!(
 							<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
 								Keyring::Alice.into(),
@@ -4925,16 +4983,26 @@ mod development {
 								msg.clone(),
 							)
 						);
-
-						assert_noop!(
-							<pallet_liquidity_pools_gateway::Pallet::<T> as OutboundQueue>::submit(
-								Keyring::Alice.into(),
-								Domain::EVM(1285),
-								msg.clone(),
-							),
-							pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound,
-						);
 					});
+
+					let gateway_sender = env.parachain_state(|| {
+						<T as pallet_liquidity_pools_gateway::Config>::Sender::get()
+					});
+
+					let expected_event =
+						pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionSuccess {
+							sender: gateway_sender,
+							domain: TEST_DOMAIN,
+							message: msg,
+						};
+
+					env.pass(Blocks::UntilEvent {
+						event: expected_event.clone().into(),
+						limit: 3,
+					});
+
+					env.check_event(expected_event)
+						.expect("expected RouterExecutionSuccess event");
 				}
 
 				type RouterCreationFn<T> =
@@ -5031,6 +5099,77 @@ mod development {
 	mod gateway {
 		use super::*;
 
+		fn set_domain_router<T: Runtime + FudgeSupport>() {
+			let mut env = FudgeEnv::<T>::from_parachain_storage(
+				Genesis::<T>::default()
+					.add(genesis::balances::<T>(cfg(1_000)))
+					.add::<CouncilCollective>(genesis::council_members::<T, CouncilCollective>(
+						get_council_members(),
+					))
+					.storage(),
+			);
+
+			let test_domain = Domain::EVM(1);
+
+			let axelar_contract_address = H160::from_low_u64_be(1);
+			let axelar_contract_code: Vec<u8> = vec![0, 0, 0];
+			let axelar_contract_hash = BlakeTwo256::hash_of(&axelar_contract_code);
+			let liquidity_pools_contract_address = H160::from_low_u64_be(2);
+
+			env.parachain_state_mut(|| {
+				pallet_evm::AccountCodes::<T>::insert(axelar_contract_address, axelar_contract_code)
+			});
+
+			let evm_domain = EVMDomain {
+				target_contract_address: axelar_contract_address,
+				target_contract_hash: axelar_contract_hash,
+				fee_values: FeeValues {
+					value: U256::from(10),
+					gas_limit: U256::from(1_000_000),
+					gas_price: U256::from(10),
+				},
+			};
+
+			let axelar_evm_router = AxelarEVMRouter::<T> {
+				router: EVMRouter {
+					evm_domain,
+					_marker: Default::default(),
+				},
+				evm_chain: BoundedVec::<u8, ConstU32<MAX_AXELAR_EVM_CHAIN_SIZE>>::try_from(
+					"ethereum".as_bytes().to_vec(),
+				)
+				.unwrap(),
+				_marker: Default::default(),
+				liquidity_pools_contract_address,
+			};
+
+			let test_router = DomainRouter::<T>::AxelarEVM(axelar_evm_router);
+
+			let set_domain_router_call =
+				set_domain_router_call(test_domain.clone(), test_router.clone());
+
+			let council_threshold = 2;
+			let voting_period = 3;
+
+			execute_via_democracy::<T>(
+				&mut env,
+				get_council_members(),
+				set_domain_router_call,
+				council_threshold,
+				voting_period,
+				0,
+				0,
+			);
+
+			env.parachain_state(|| {
+				let router =
+					pallet_liquidity_pools_gateway::Pallet::<T>::domain_routers(test_domain)
+						.expect("domain router is set");
+
+				assert!(router.eq(&test_router));
+			});
+		}
+
 		fn add_remove_instances<T: Runtime + FudgeSupport>() {
 			let mut env = FudgeEnv::<T>::from_parachain_storage(
 				Genesis::<T>::default()
@@ -5067,7 +5206,8 @@ mod development {
 				limit: 3,
 			});
 
-			env.check_event(expected_event);
+			env.check_event(expected_event)
+				.expect("expected InstanceAdded event");
 
 			let remove_instance_call = remove_instance_call::<T>(test_instance.clone());
 
@@ -5090,7 +5230,8 @@ mod development {
 				limit: 3,
 			});
 
-			env.check_event(expected_event);
+			env.check_event(expected_event)
+				.expect("expected InstanceRemoved event");
 		}
 
 		fn process_msg<T: Runtime + FudgeSupport>() {
@@ -5129,7 +5270,8 @@ mod development {
 				limit: 3,
 			});
 
-			env.check_event(expected_event);
+			env.check_event(expected_event)
+				.expect("expected InstanceAdded event");
 
 			let msg = LiquidityPoolMessage::AddPool { pool_id: 123 };
 
@@ -5152,6 +5294,7 @@ mod development {
 			});
 		}
 
+		crate::test_for_runtimes!([development], set_domain_router);
 		crate::test_for_runtimes!([development], add_remove_instances);
 		crate::test_for_runtimes!([development], process_msg);
 	}
