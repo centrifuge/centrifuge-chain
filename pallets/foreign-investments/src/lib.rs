@@ -425,7 +425,7 @@ pub mod pallet {
 					let swap = T::TokenSwaps::get_order_details(id)
 						.ok_or(Error::<T>::SwapOrderNotFound)?;
 
-					if swap.currency_out == new_swap.currency_out {
+					if swap.is_same_direction(&new_swap)? {
 						T::TokenSwaps::update_order(
 							who.clone(),
 							id,
@@ -568,32 +568,31 @@ pub mod pallet {
 		fn increase_foreign_redemption(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			amount: T::Balance,
+			tranche_tokens_amount: T::Balance,
 			_payout_currency: T::CurrencyId,
 		) -> DispatchResult {
 			T::Investment::update_redemption(
 				who,
 				investment_id,
-				T::Investment::redemption(who, investment_id)?.ensure_add(amount)?,
+				T::Investment::redemption(who, investment_id)?.ensure_add(tranche_tokens_amount)?,
 			)
 		}
 
 		fn decrease_foreign_redemption(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			amount: T::Balance,
+			tranche_tokens_amount: T::Balance,
 			_payout_currency: T::CurrencyId,
 		) -> Result<(T::Balance, T::Balance), DispatchError> {
 			T::Investment::update_redemption(
 				who,
 				investment_id,
-				T::Investment::redemption(who, investment_id)?.ensure_sub(amount)?,
+				T::Investment::redemption(who, investment_id)?.ensure_sub(tranche_tokens_amount)?,
 			)?;
 
-			// For William: Why I should return here the amounts? Should not be done after
-			// collecting the redemption?
+			let remaining_amount = T::Investment::redemption(who, investment_id)?;
 
-			Ok(todo!())
+			Ok((tranche_tokens_amount, remaining_amount))
 		}
 
 		fn collect_foreign_investment(
@@ -611,9 +610,6 @@ pub mod pallet {
 			_pool_currency: T::CurrencyId,
 		) -> DispatchResult {
 			T::Investment::collect_redemption(who.clone(), investment_id)
-
-			// TODO: initialize a swap to transform the pool redemption into
-			// foreign redemption amount
 		}
 
 		fn investment(

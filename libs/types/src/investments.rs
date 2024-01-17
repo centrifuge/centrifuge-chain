@@ -196,6 +196,16 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 			Ok(())
 		}
 	}
+
+	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
+		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
+			Ok(true)
+		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
+			Ok(false)
+		} else {
+			Err(DispatchError::Other("Swap contains different currencies"))
+		}
+	}
 }
 
 /// A representation of an executed investment decrement.
