@@ -51,6 +51,8 @@ pub type UpgradeAltair1034 = (
 	xcm_v2_to_v3::SetSafeXcmVersion,
 	// Sets account codes for all precompiles
 	runtime_common::migrations::precompile_account_codes::Migration<crate::Runtime>,
+	// Probably not needed, as storage is likely not populated. Mirates currency used in allowlist
+	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
 );
 
 mod asset_registry {

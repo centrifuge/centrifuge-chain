@@ -16,3 +16,5 @@ pub mod asset_registry_xcmv3;
 pub mod nuke;
 pub mod orml_tokens;
 pub mod precompile_account_codes;
+
+pub mod transfer_allowlist_currency;
