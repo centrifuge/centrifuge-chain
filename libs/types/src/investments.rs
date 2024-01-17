@@ -140,18 +140,7 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 
 /// A simple representation of a currency swap.
 #[derive(
-	Clone,
-	Default,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub struct Swap<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
@@ -162,7 +151,7 @@ pub struct Swap<
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
 	/// The amount of incoming currency which shall be bought.
-	pub amount: Balance,
+	pub amount_in: Balance,
 }
 
 impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clone + PartialEq>
