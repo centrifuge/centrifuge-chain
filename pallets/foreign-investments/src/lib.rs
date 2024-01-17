@@ -371,10 +371,10 @@ pub mod pallet {
 
 	/// Internal type used as result of `Pallet::apply_swap()`
 	struct ApplySwapStatus<Balance> {
-		/// The amount already swapped and available to use
+		/// The amount pending to be swapped
 		pending: Balance,
 
-		/// The amount pending to be swapped
+		/// The amount already swapped and available to use
 		swapped: Balance,
 	}
 
@@ -398,7 +398,8 @@ pub mod pallet {
 		///   - If the amount is greater, it removes the inverse swap and create
 		///     another with the reminder
 		///
-		/// The returned amounts contains:
+		/// The returned status contains the swapped amount after this call and
+		/// the pending amount to be swapped.
 		fn apply_swap(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
@@ -510,7 +511,7 @@ pub mod pallet {
 				foreign_amount,
 			)?;
 
-			let invest_amount = Self::apply_swap(
+			let amount = Self::apply_swap(
 				who,
 				investment_id,
 				Swap {
@@ -518,13 +519,12 @@ pub mod pallet {
                     currency_out: foreign_currency,
                     amount /*in*/: pool_amount,
                 },
-			)?
-			.swapped;
+			)?;
 
 			T::Investment::update_investment(
 				who,
 				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_add(invest_amount)?,
+				T::Investment::investment(who, investment_id)?.ensure_add(amount.swapped)?,
 			)
 		}
 
@@ -535,7 +535,7 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
-			let invest_amount = Self::apply_swap(
+			let amount = Self::apply_swap(
 				who,
 				investment_id,
 				Swap {
@@ -543,16 +543,26 @@ pub mod pallet {
 					currency_out: pool_currency,
 					amount /*in*/: foreign_amount,
 				},
-			)?
-			.pending;
+			)?;
 
 			T::Investment::update_investment(
 				who,
 				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_sub(invest_amount)?,
+				T::Investment::investment(who, investment_id)?.ensure_sub(amount.pending)?,
 			)?;
 
-			Ok(())
+			T::DecreasedForeignInvestOrderHook::notify_status_change(
+				ForeignInvestmentInfoOf::<T, ()> {
+					owner: who.clone(),
+					id: investment_id,
+					last_swap_reason: None,
+				},
+				ExecutedForeignDecreaseInvest {
+					amount_decreased: amount.swapped,
+					foreign_currency,
+					amount_remaining: amount.pending,
+				},
+			)
 		}
 
 		fn increase_foreign_redemption(
