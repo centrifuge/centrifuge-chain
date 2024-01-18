@@ -342,7 +342,7 @@ pub mod pallet {
 
 		/// Returns the `amount_out` of the swap, seeing as the amount used to
 		/// swap.
-		fn used_swap_amount(swap: &SwapOf<T>) -> Result<T::Balance, DispatchError> {
+		fn amount_used_to_swap(swap: &SwapOf<T>) -> Result<T::Balance, DispatchError> {
 			T::CurrencyConverter::stable_to_stable(
 				swap.currency_out,
 				swap.currency_in,
@@ -401,7 +401,7 @@ pub mod pallet {
 						})
 					} else {
 						let inverse_swap = swap;
-						let new_swap_amount_out = Self::used_swap_amount(&new_swap)?;
+						let new_swap_amount_out = Self::amount_used_to_swap(&new_swap)?;
 
 						match inverse_swap.amount_in.cmp(&new_swap_amount_out) {
 							Ordering::Less => {
@@ -431,7 +431,7 @@ pub mod pallet {
 								Self::unregister_swap(&who, investment_id, kind, swap_id);
 
 								let inverse_swap_amount_out =
-									Self::used_swap_amount(&inverse_swap)?;
+									Self::amount_used_to_swap(&inverse_swap)?;
 
 								let amount_to_swap =
 									new_swap.amount_in.ensure_sub(inverse_swap_amount_out)?;
