@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::ConversionToAssetBalance;
 use cfg_types::investments::Swap;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
@@ -212,7 +213,6 @@ fn create_order_works() {
 				amount_out: token_a(10),
 				amount_out_initial: token_a(10),
 				ratio: OrderRatio::Custom(DEFAULT_RATIO),
-				min_fulfillment_amount_out: min_fulfillment_amount_a(),
 				amount_in: token_b(0),
 			}
 		);
@@ -222,7 +222,7 @@ fn create_order_works() {
 }
 
 #[test]
-fn create_order_without_required_min_fullfilled_amount() {
+fn create_order_without_required_min_fullfillment_amount() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
 			OrderBook::create_order(
@@ -234,6 +234,15 @@ fn create_order_without_required_min_fullfilled_amount() {
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount,
 		);
+
+		// The trait method version does not have min fulfillment amount check
+		assert_ok!(OrderBook::place_order(
+			FROM,
+			CURRENCY_B,
+			CURRENCY_A,
+			token_a(1),
+			OrderRatio::Custom(DEFAULT_RATIO)
+		));
 	})
 }
 
@@ -301,7 +310,6 @@ fn update_order_works() {
 				amount_out: token_a(15),
 				amount_out_initial: token_a(15),
 				ratio: OrderRatio::Custom((1, 2).into()),
-				min_fulfillment_amount_out: min_fulfillment_amount_a(),
 				amount_in: token_b(0)
 			}
 		);
@@ -329,7 +337,6 @@ fn update_order_works() {
 				amount_out: token_a(5),
 				amount_out_initial: token_a(5),
 				ratio: OrderRatio::Custom((1, 2).into()),
-				min_fulfillment_amount_out: min_fulfillment_amount_a(),
 				amount_in: token_b(0),
 			}
 		);
@@ -342,7 +349,7 @@ fn update_order_works() {
 }
 
 #[test]
-fn update_order_without_required_min_fullfilled_amount() {
+fn update_order_without_required_min_fullfillment_amount() {
 	new_test_ext().execute_with(|| {
 		let order_id = util::create_default_order(token_a(10));
 
@@ -355,6 +362,14 @@ fn update_order_without_required_min_fullfilled_amount() {
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount,
 		);
+
+		// The trait method version for updating order does not have min fulfillment
+		// amount check
+		assert_ok!(OrderBook::update_order(
+			order_id,
+			token_a(1),
+			OrderRatio::Custom((1, 2).into()),
+		));
 	})
 }
 
@@ -379,7 +394,7 @@ fn update_order_without_required_min_amount() {
 			order_id,
 			token_a(3),
 			OrderRatio::Custom((1, 2).into())
-		),);
+		));
 	})
 }
 
@@ -500,7 +515,6 @@ fn fill_order_partial_in_two_times() {
 				amount_out: token_a(1),
 				amount_out_initial: token_a(10),
 				ratio: OrderRatio::Custom(DEFAULT_RATIO),
-				min_fulfillment_amount_out: token_a(1),
 				amount_in: first_amount_in,
 			}
 		);
@@ -562,7 +576,8 @@ fn fill_order_partial_with_insufficient_amount() {
 			OrderBook::fill_order_partial(
 				RuntimeOrigin::signed(TO),
 				order_id,
-				min_fulfillment_amount_a() - 1
+				DecimalConverter::to_asset_balance(MinFulfillmentAmountNative::get(), CURRENCY_A)
+					.unwrap() - 1
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount
 		);
@@ -692,7 +707,6 @@ mod market {
 					amount_out: token_a(1),
 					amount_out_initial: token_a(10),
 					ratio: OrderRatio::Market,
-					min_fulfillment_amount_out: token_a(1),
 					amount_in: first_amount_in,
 				}
 			);

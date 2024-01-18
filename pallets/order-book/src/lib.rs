@@ -62,6 +62,7 @@ pub mod pallet {
 		},
 		FixedPointNumber, FixedPointOperand, TokenError,
 	};
+	use sp_std::cmp::min;
 
 	use super::*;
 
@@ -211,10 +212,6 @@ pub mod pallet {
 
 		/// Price given for this order,
 		pub ratio: OrderRatio<Ratio>,
-
-		/// Minimum amount of an order that can be fulfilled
-		/// for partial fulfillment
-		pub min_fulfillment_amount_out: ForeignCurrencyBalance,
 
 		/// Amount obtained by swaping amount_out
 		pub amount_in: ForeignCurrencyBalance,
@@ -413,6 +410,7 @@ pub mod pallet {
 				amount_out,
 				ratio,
 				TradingPair::<T>::get(&asset_in, &asset_out)?,
+				Self::default_min_fulfillment_amount(asset_out)?,
 			)?;
 
 			Ok(())
@@ -440,6 +438,7 @@ pub mod pallet {
 				amount_out,
 				ratio,
 				TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?,
+				Self::default_min_fulfillment_amount(order.asset_out_id)?,
 			)
 		}
 
@@ -585,8 +584,13 @@ pub mod pallet {
 			amount_out: T::Balance,
 			fulfilling_account: T::AccountId,
 		) -> DispatchResult {
+			let min_fulfillment_amount_out = min(
+				order.amount_out,
+				Self::default_min_fulfillment_amount(order.asset_out_id)?,
+			);
+
 			ensure!(
-				amount_out >= order.min_fulfillment_amount_out,
+				amount_out >= min_fulfillment_amount_out,
 				Error::<T>::BelowMinFulfillmentAmount,
 			);
 
@@ -608,8 +612,6 @@ pub mod pallet {
 				let mut updated_order = order.clone();
 				updated_order.amount_out = remaining_amount_out;
 				updated_order.amount_in = order.amount_in.ensure_add(amount_in)?;
-				updated_order.min_fulfillment_amount_out =
-					remaining_amount_out.min(order.min_fulfillment_amount_out);
 
 				<Orders<T>>::insert(updated_order.order_id, updated_order.clone());
 				<UserOrders<T>>::insert(
@@ -749,17 +751,19 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn default_min_fulfillment_amount(
+			currency: T::AssetCurrencyId,
+		) -> Result<T::Balance, DispatchError> {
+			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
+		}
+
 		fn inner_update_order(
 			mut order: OrderOf<T>,
 			amount_out: T::Balance,
 			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
+			min_fulfillment_amount_out: T::Balance,
 		) -> DispatchResult {
-			let min_fulfillment_amount_out = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				order.asset_out_id,
-			)?;
-
 			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
 
 			// ensure proper amount can be, and is reserved of outgoing currency for updated
@@ -790,7 +794,6 @@ pub mod pallet {
 
 			order.amount_out = amount_out;
 			order.ratio = ratio;
-			order.min_fulfillment_amount_out = min_fulfillment_amount_out;
 
 			Orders::<T>::insert(order.order_id, order.clone());
 			UserOrders::<T>::insert(&order.placing_account, order.order_id, order.clone());
@@ -813,16 +816,12 @@ pub mod pallet {
 			amount_out: T::Balance,
 			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
+			min_fulfillment_amount_out: T::Balance,
 		) -> Result<T::OrderIdNonce, DispatchError> {
 			let order_id = OrderIdNonceStore::<T>::try_mutate(|n| {
 				n.ensure_add_assign(One::one())?;
 				Ok::<_, DispatchError>(*n)
 			})?;
-
-			let min_fulfillment_amount_out = T::DecimalConverter::to_asset_balance(
-				T::MinFulfillmentAmountNative::get(),
-				currency_out,
-			)?;
 
 			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
 
@@ -838,7 +837,6 @@ pub mod pallet {
 				amount_out,
 				ratio,
 				amount_out_initial: amount_out,
-				min_fulfillment_amount_out,
 				amount_in: Zero::zero(),
 			};
 
@@ -881,16 +879,13 @@ pub mod pallet {
 			amount_out: T::Balance,
 			ratio: OrderRatio<T::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
-			// We only check if the trading pair exists not if the minimum amount is
-			// reached.
-			let _min_amount = TradingPair::<T>::get(&currency_in, &currency_out)?;
-
 			Self::inner_place_order(
 				account,
 				currency_in,
 				currency_out,
 				amount_out,
 				ratio,
+				T::Balance::zero(),
 				T::Balance::zero(),
 			)
 		}
@@ -916,11 +911,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			let order = Orders::<T>::get(order_id)?;
 
-			// We only check if the trading pair exists not if the minimum amount is
-			// reached.
-			let _min_amount = TradingPair::<T>::get(&order.asset_in_id, &order.asset_out_id)?;
-
-			Self::inner_update_order(order, amount_out, ratio, T::Balance::zero())
+			Self::inner_update_order(
+				order,
+				amount_out,
+				ratio,
+				T::Balance::zero(),
+				T::Balance::zero(),
+			)
 		}
 
 		fn is_active(order: Self::OrderId) -> bool {

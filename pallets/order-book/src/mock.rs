@@ -221,10 +221,6 @@ impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter
 	}
 }
 
-pub fn min_fulfillment_amount_a() -> Balance {
-	DecimalConverter::to_asset_balance(MinFulfillmentAmountNative::get(), CURRENCY_A).unwrap()
-}
-
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetCurrencyId = CurrencyId;
