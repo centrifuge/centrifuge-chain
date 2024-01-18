@@ -74,7 +74,7 @@ where
 	}
 
 	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
-		Pallet::<T>::place_order(
+		<Pallet<T> as TokenSwaps<T::AccountId>>::place_order(
 			account_out.clone(),
 			CURRENCY_IN.into(),
 			CURRENCY_OUT.into(),
@@ -104,14 +104,14 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn create_order() -> Result<(), BenchmarkError> {
+	fn place_order() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
 		let (account_out, _) = Helper::<T>::setup_trading_pair();
 
 		#[extrinsic_call]
-		create_order(
+		place_order(
 			RawOrigin::Signed(account_out.clone()),
 			CURRENCY_IN.into(),
 			CURRENCY_OUT.into(),
@@ -123,7 +123,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn user_update_order() -> Result<(), BenchmarkError> {
+	fn update_order() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -131,7 +131,7 @@ mod benchmarks {
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
-		user_update_order(
+		update_order(
 			RawOrigin::Signed(account_out),
 			order_id,
 			Helper::<T>::amount_out() - 1u32.into(),
@@ -142,7 +142,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn user_cancel_order() -> Result<(), BenchmarkError> {
+	fn cancel_order() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -150,13 +150,13 @@ mod benchmarks {
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
-		user_cancel_order(RawOrigin::Signed(account_out), order_id);
+		cancel_order(RawOrigin::Signed(account_out), order_id);
 
 		Ok(())
 	}
 
 	#[benchmark]
-	fn fill_order_full() -> Result<(), BenchmarkError> {
+	fn fill_order() -> Result<(), BenchmarkError> {
 		#[cfg(test)]
 		init_mocks();
 
@@ -166,26 +166,10 @@ mod benchmarks {
 		Helper::<T>::feed_market();
 
 		#[extrinsic_call]
-		fill_order_full(RawOrigin::Signed(account_in), order_id);
-
-		Ok(())
-	}
-
-	#[benchmark]
-	fn fill_order_partial() -> Result<(), BenchmarkError> {
-		#[cfg(test)]
-		init_mocks();
-
-		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
-		let order_id = Helper::<T>::place_order(&account_out);
-
-		Helper::<T>::feed_market();
-
-		#[extrinsic_call]
-		fill_order_partial(
+		fill_order(
 			RawOrigin::Signed(account_in),
 			order_id,
-			Helper::<T>::amount_out() - 1u32.into(),
+			Helper::<T>::amount_out(),
 		);
 
 		Ok(())
@@ -214,22 +198,6 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		rm_trading_pair(RawOrigin::Root, CURRENCY_IN.into(), CURRENCY_OUT.into());
-
-		Ok(())
-	}
-
-	#[benchmark]
-	fn update_min_order() -> Result<(), BenchmarkError> {
-		#[cfg(test)]
-		init_mocks();
-
-		#[extrinsic_call]
-		update_min_order(
-			RawOrigin::Root,
-			CURRENCY_IN.into(),
-			CURRENCY_OUT.into(),
-			1u32.into(),
-		);
 
 		Ok(())
 	}

@@ -27,7 +27,7 @@ mod util {
 	use super::*;
 
 	pub fn create_default_order(amount_out: Balance) -> OrderId {
-		assert_ok!(OrderBook::create_order(
+		assert_ok!(OrderBook::place_order(
 			RuntimeOrigin::signed(FROM),
 			CURRENCY_B,
 			CURRENCY_A,
@@ -39,7 +39,7 @@ mod util {
 	}
 
 	pub fn create_default_order_market(amount_out: Balance) -> OrderId {
-		assert_ok!(OrderBook::create_order(
+		assert_ok!(OrderBook::place_order(
 			RuntimeOrigin::signed(FROM),
 			CURRENCY_B,
 			CURRENCY_A,
@@ -155,42 +155,6 @@ mod min_amount {
 			);
 		})
 	}
-
-	#[test]
-	fn updating_min_order_works() {
-		new_test_ext().execute_with(|| {
-			assert_ok!(OrderBook::update_min_order(
-				RuntimeOrigin::root(),
-				CURRENCY_B,
-				CURRENCY_A,
-				token_a(1)
-			));
-			assert_ok!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
-				token_a(1)
-			);
-		})
-	}
-
-	#[test]
-	fn updating_min_order_fails() {
-		new_test_ext().execute_with(|| {
-			assert_noop!(
-				OrderBook::update_min_order(
-					RuntimeOrigin::signed(FROM),
-					CURRENCY_B,
-					CURRENCY_A,
-					token_a(1),
-				),
-				DispatchError::BadOrigin
-			);
-			assert_ok!(
-				TradingPair::<Runtime>::get(CURRENCY_B, CURRENCY_A),
-				token_a(5),
-			);
-			assert!(OrderBook::valid_pair(CURRENCY_B, CURRENCY_A));
-		})
-	}
 }
 
 #[test]
@@ -222,10 +186,10 @@ fn create_order_works() {
 }
 
 #[test]
-fn create_order_without_required_min_fullfillment_amount() {
+fn create_order_without_required_min_fulfillment_amount() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::create_order(
+			OrderBook::place_order(
 				RuntimeOrigin::signed(FROM),
 				CURRENCY_B,
 				CURRENCY_A,
@@ -236,7 +200,7 @@ fn create_order_without_required_min_fullfillment_amount() {
 		);
 
 		// The trait method version does not have min fulfillment amount check
-		assert_ok!(OrderBook::place_order(
+		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::place_order(
 			FROM,
 			CURRENCY_B,
 			CURRENCY_A,
@@ -250,7 +214,7 @@ fn create_order_without_required_min_fullfillment_amount() {
 fn create_order_without_required_min_amount() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::create_order(
+			OrderBook::place_order(
 				RuntimeOrigin::signed(FROM),
 				CURRENCY_B,
 				CURRENCY_A,
@@ -261,7 +225,7 @@ fn create_order_without_required_min_amount() {
 		);
 
 		// The trait method version does not have min order amount check
-		assert_ok!(OrderBook::place_order(
+		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::place_order(
 			FROM,
 			CURRENCY_B,
 			CURRENCY_A,
@@ -275,7 +239,7 @@ fn create_order_without_required_min_amount() {
 fn create_order_requires_pair_with_defined_min() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::create_order(
+			OrderBook::place_order(
 				RuntimeOrigin::signed(FROM),
 				CURRENCY_B,
 				CURRENCY_X,
@@ -293,7 +257,7 @@ fn update_order_works() {
 		let order_id = util::create_default_order(token_a(10));
 
 		// Increasing the amount
-		assert_ok!(OrderBook::user_update_order(
+		assert_ok!(OrderBook::update_order(
 			RuntimeOrigin::signed(FROM),
 			order_id,
 			token_a(15),
@@ -320,7 +284,7 @@ fn update_order_works() {
 		);
 
 		// Decreasing the amount
-		assert_ok!(OrderBook::user_update_order(
+		assert_ok!(OrderBook::update_order(
 			RuntimeOrigin::signed(FROM),
 			order_id,
 			token_a(5),
@@ -349,12 +313,12 @@ fn update_order_works() {
 }
 
 #[test]
-fn update_order_without_required_min_fullfillment_amount() {
+fn update_order_without_required_min_fulfillment_amount() {
 	new_test_ext().execute_with(|| {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::user_update_order(
+			OrderBook::update_order(
 				RuntimeOrigin::signed(FROM),
 				order_id,
 				token_a(1),
@@ -365,7 +329,7 @@ fn update_order_without_required_min_fullfillment_amount() {
 
 		// The trait method version for updating order does not have min fulfillment
 		// amount check
-		assert_ok!(OrderBook::update_order(
+		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::update_order(
 			order_id,
 			token_a(1),
 			OrderRatio::Custom((1, 2).into()),
@@ -379,7 +343,7 @@ fn update_order_without_required_min_amount() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::user_update_order(
+			OrderBook::update_order(
 				RuntimeOrigin::signed(FROM),
 				order_id,
 				token_a(3),
@@ -390,7 +354,7 @@ fn update_order_without_required_min_amount() {
 
 		// The trait method version for updating order does not have min order amount
 		// check
-		assert_ok!(OrderBook::update_order(
+		assert_ok!(<OrderBook as TokenSwaps<AccountId>>::update_order(
 			order_id,
 			token_a(3),
 			OrderRatio::Custom((1, 2).into())
@@ -404,7 +368,7 @@ fn update_order_without_placing_account() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::user_update_order(
+			OrderBook::update_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
 				token_a(15),
@@ -420,7 +384,7 @@ fn cancel_order_works() {
 	new_test_ext().execute_with(|| {
 		let order_id = util::create_default_order(token_a(10));
 
-		assert_ok!(OrderBook::user_cancel_order(
+		assert_ok!(OrderBook::cancel_order(
 			RuntimeOrigin::signed(FROM),
 			order_id
 		));
@@ -435,7 +399,7 @@ fn cancel_order_only_works_for_valid_account() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::user_cancel_order(RuntimeOrigin::signed(TO), order_id),
+			OrderBook::cancel_order(RuntimeOrigin::signed(TO), order_id),
 			Error::<Runtime>::Unauthorised
 		);
 	})
@@ -444,48 +408,25 @@ fn cancel_order_only_works_for_valid_account() {
 #[test]
 fn fill_order_full() {
 	new_test_ext().execute_with(|| {
-		let order_id = util::create_default_order(token_a(10));
+		let amount_out = token_a(10);
+		let order_id = util::create_default_order(amount_out);
 
 		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(10));
 		util::expect_notification(order_id, amount_in);
 
-		assert_ok!(OrderBook::fill_order_full(
-			RuntimeOrigin::signed(TO),
-			order_id
-		));
-
-		util::assert_no_exists_order(order_id);
-
-		assert_eq!(Tokens::balance_on_hold(CURRENCY_A, &(), &FROM), 0);
-		assert_eq!(Tokens::balance(CURRENCY_A, &FROM), INITIAL_A - token_a(10));
-		assert_eq!(Tokens::balance(CURRENCY_B, &FROM), amount_in);
-
-		assert_eq!(Tokens::balance(CURRENCY_A, &TO), token_a(10));
-		assert_eq!(Tokens::balance(CURRENCY_B, &TO), INITIAL_B - amount_in);
-	});
-}
-
-#[test]
-fn fill_order_partial_with_full_amount() {
-	new_test_ext().execute_with(|| {
-		let order_id = util::create_default_order(token_a(10));
-
-		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(10));
-		util::expect_notification(order_id, amount_in);
-
-		assert_ok!(OrderBook::fill_order_partial(
+		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
-			token_a(10)
+			amount_out,
 		));
 
 		util::assert_no_exists_order(order_id);
 
 		assert_eq!(Tokens::balance_on_hold(CURRENCY_A, &(), &FROM), 0);
-		assert_eq!(Tokens::balance(CURRENCY_A, &FROM), INITIAL_A - token_a(10));
+		assert_eq!(Tokens::balance(CURRENCY_A, &FROM), INITIAL_A - amount_out);
 		assert_eq!(Tokens::balance(CURRENCY_B, &FROM), amount_in);
 
-		assert_eq!(Tokens::balance(CURRENCY_A, &TO), token_a(10));
+		assert_eq!(Tokens::balance(CURRENCY_A, &TO), amount_out);
 		assert_eq!(Tokens::balance(CURRENCY_B, &TO), INITIAL_B - amount_in);
 	});
 }
@@ -499,7 +440,7 @@ fn fill_order_partial_in_two_times() {
 
 		let first_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
 		util::expect_notification(order_id, first_amount_in);
-		assert_ok!(OrderBook::fill_order_partial(
+		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(9),
@@ -535,7 +476,7 @@ fn fill_order_partial_in_two_times() {
 
 		let second_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(1));
 		util::expect_notification(order_id, second_amount_in);
-		assert_ok!(OrderBook::fill_order_partial(
+		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(1),
@@ -561,7 +502,7 @@ fn fill_order_partial_in_two_times() {
 fn fill_unknown_order() {
 	new_test_ext().execute_with(|| {
 		assert_err!(
-			OrderBook::fill_order_partial(RuntimeOrigin::signed(TO), 1, token_a(1)),
+			OrderBook::fill_order(RuntimeOrigin::signed(TO), 1, token_a(1)),
 			Error::<Runtime>::OrderNotFound
 		);
 	});
@@ -573,7 +514,7 @@ fn fill_order_partial_with_insufficient_amount() {
 		let order_id = util::create_default_order(token_a(10));
 
 		assert_err!(
-			OrderBook::fill_order_partial(
+			OrderBook::fill_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
 				DecimalConverter::to_asset_balance(MinFulfillmentAmountNative::get(), CURRENCY_A)
@@ -593,13 +534,13 @@ fn fill_order_partial_with_insufficient_funds() {
 		util::expect_notification(order_id, amount_in);
 
 		assert_err!(
-			OrderBook::fill_order_partial(RuntimeOrigin::signed(OTHER), order_id, token_a(3)),
+			OrderBook::fill_order(RuntimeOrigin::signed(OTHER), order_id, token_a(3)),
 			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
 
 		// Check for the case of the same account without be funded
 		assert_err!(
-			OrderBook::fill_order_partial(RuntimeOrigin::signed(FROM), order_id, token_a(3)),
+			OrderBook::fill_order(RuntimeOrigin::signed(FROM), order_id, token_a(3)),
 			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
 		);
 	});
@@ -613,7 +554,7 @@ fn fill_order_partial_with_bigger_fulfilling_amount() {
 		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(11));
 		util::expect_notification(order_id, amount_in);
 		assert_err!(
-			OrderBook::fill_order_partial(RuntimeOrigin::signed(TO), order_id, token_a(11)),
+			OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(11)),
 			Error::<Runtime>::FulfillAmountTooLarge,
 		);
 	});
@@ -639,7 +580,7 @@ fn correct_order_details() {
 
 		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
 		util::expect_notification(order_id, amount_in);
-		assert_ok!(OrderBook::fill_order_partial(
+		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
 			token_a(9),
@@ -691,7 +632,7 @@ mod market {
 
 			let first_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
 			util::expect_notification(order_id, first_amount_in);
-			assert_ok!(OrderBook::fill_order_partial(
+			assert_ok!(OrderBook::fill_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
 				token_a(9),
@@ -735,7 +676,7 @@ mod market {
 			let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));
 			util::expect_notification(order_id, amount_in);
 			assert_err!(
-				OrderBook::fill_order_partial(RuntimeOrigin::signed(TO), order_id, token_a(3)),
+				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
 				Error::<Runtime>::MarketFeederNotFound,
 			);
 		});
@@ -752,7 +693,7 @@ mod market {
 			let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));
 			util::expect_notification(order_id, amount_in);
 			assert_err!(
-				OrderBook::fill_order_partial(RuntimeOrigin::signed(TO), order_id, token_a(3)),
+				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
 				Error::<Runtime>::MarketRatioNotFound,
 			);
 		});
