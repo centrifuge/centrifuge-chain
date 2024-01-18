@@ -36,9 +36,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-
-	use core::fmt::Debug;
-
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook, ValueProvider};
 	use cfg_types::{investments::Swap, tokens::CustomMetadata};
@@ -66,22 +63,13 @@ pub mod pallet {
 
 	use super::*;
 
-	/// Order of pallet config type
-	pub type OrderOf<T> = Order<
-		<T as Config>::OrderIdNonce,
-		<T as frame_system::Config>::AccountId,
-		<T as Config>::CurrencyId,
-		<T as Config>::Balance,
-		<T as Config>::Ratio,
-	>;
-
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
-
 	pub struct Pallet<T>(_);
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -188,31 +176,34 @@ pub mod pallet {
 
 	/// Order Storage item.
 	/// Contains fields relevant to order information
-	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct Order<OrderId, AccountId, CurrencyId, ForeignCurrencyBalance, Ratio> {
+	#[derive(
+		Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo,
+	)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Order<T: Config> {
 		/// Unique Id for this order
-		pub order_id: OrderId,
+		pub order_id: T::OrderIdNonce,
 
 		/// Associated account to this order
-		pub placing_account: AccountId,
+		pub placing_account: T::AccountId,
 
 		/// Currency id expected to receive
-		pub currency_in: CurrencyId,
+		pub currency_in: T::CurrencyId,
 
 		/// Currency id expected to give
-		pub currency_out: CurrencyId,
+		pub currency_out: T::CurrencyId,
 
 		/// Amount in `currency_in` obtained by swaping `amount_out`
-		pub amount_in: ForeignCurrencyBalance,
+		pub amount_in: T::Balance,
 
 		/// How many tokens of `currency_out` available to sell
-		pub amount_out: ForeignCurrencyBalance,
+		pub amount_out: T::Balance,
 
 		/// Initial value of amount out, used for tracking amount fulfilled
-		pub amount_out_initial: ForeignCurrencyBalance,
+		pub amount_out_initial: T::Balance,
 
 		/// Price given for this order,
-		pub ratio: OrderRatio<Ratio>,
+		pub ratio: OrderRatio<T::Ratio>,
 	}
 
 	/// Map of Orders to look up orders by their order id.
@@ -221,7 +212,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		T::OrderIdNonce,
-		OrderOf<T>,
+		Order<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -235,7 +226,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::OrderIdNonce,
-		OrderOf<T>,
+		Order<T>,
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -577,7 +568,7 @@ pub mod pallet {
 		}
 
 		fn inner_update_order(
-			mut order: OrderOf<T>,
+			mut order: Order<T>,
 			amount_out: T::Balance,
 			ratio: OrderRatio<T::Ratio>,
 			min_amount_out: T::Balance,
@@ -638,7 +629,7 @@ pub mod pallet {
 		}
 
 		fn fulfill_order_with_amount(
-			order: OrderOf<T>,
+			order: Order<T>,
 			amount_out: T::Balance,
 			fulfilling_account: T::AccountId,
 		) -> DispatchResult {
