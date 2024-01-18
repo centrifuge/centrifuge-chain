@@ -55,7 +55,7 @@ mod util {
 			Orders::<Runtime>::get(order_id),
 			UserOrders::<Runtime>::get(FROM, order_id),
 		);
-		assert!(AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
+		assert!(CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
 	pub fn assert_no_exists_order(order_id: OrderId) {
@@ -69,7 +69,7 @@ mod util {
 			Error::<Runtime>::OrderNotFound
 		);
 
-		assert!(!AssetPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
+		assert!(!CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
 	pub fn expect_notification(order_id: OrderId, amount_in: Balance) {
@@ -172,8 +172,8 @@ fn create_order_works() {
 			Order {
 				order_id: order_id,
 				placing_account: FROM,
-				asset_in_id: CURRENCY_B,
-				asset_out_id: CURRENCY_A,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
 				amount_out: token_a(10),
 				amount_out_initial: token_a(10),
 				ratio: OrderRatio::Custom(DEFAULT_RATIO),
@@ -269,8 +269,8 @@ fn update_order_works() {
 			Order {
 				order_id: order_id,
 				placing_account: FROM,
-				asset_in_id: CURRENCY_B,
-				asset_out_id: CURRENCY_A,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
 				amount_out: token_a(15),
 				amount_out_initial: token_a(15),
 				ratio: OrderRatio::Custom((1, 2).into()),
@@ -296,8 +296,8 @@ fn update_order_works() {
 			Order {
 				order_id: order_id,
 				placing_account: FROM,
-				asset_in_id: CURRENCY_B,
-				asset_out_id: CURRENCY_A,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
 				amount_out: token_a(5),
 				amount_out_initial: token_a(5),
 				ratio: OrderRatio::Custom((1, 2).into()),
@@ -451,8 +451,8 @@ fn fill_order_partial_in_two_times() {
 			Order {
 				order_id: order_id,
 				placing_account: FROM,
-				asset_in_id: CURRENCY_B,
-				asset_out_id: CURRENCY_A,
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A,
 				amount_out: token_a(1),
 				amount_out_initial: token_a(10),
 				ratio: OrderRatio::Custom(DEFAULT_RATIO),
@@ -643,8 +643,8 @@ mod market {
 				Order {
 					order_id: order_id,
 					placing_account: FROM,
-					asset_in_id: CURRENCY_B,
-					asset_out_id: CURRENCY_A,
+					currency_in: CURRENCY_B,
+					currency_out: CURRENCY_A,
 					amount_out: token_a(1),
 					amount_out_initial: token_a(10),
 					ratio: OrderRatio::Market,

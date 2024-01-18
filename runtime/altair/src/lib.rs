@@ -1725,9 +1725,10 @@ parameter_types! {
 
 impl pallet_order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
 	type FeederId = Feeder<RuntimeOrigin>;
@@ -1738,7 +1739,6 @@ impl pallet_order_book::Config for Runtime {
 	type Ratio = Ratio;
 	type RatioProvider = OracleRatioProvider<RuntimeOrigin, OraclePriceFeed>;
 	type RuntimeEvent = RuntimeEvent;
-	type TradeableAsset = Tokens;
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 

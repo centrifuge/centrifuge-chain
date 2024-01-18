@@ -36,7 +36,7 @@ struct Helper<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> Helper<T>
 where
-	T::AssetCurrencyId: From<u32>,
+	T::CurrencyId: From<u32>,
 	T::AssetRegistry: orml_traits::asset_registry::Mutate,
 	T::FeederId: From<u32>,
 {
@@ -96,7 +96,7 @@ where
 
 #[benchmarks(
     where
-        T::AssetCurrencyId: From<u32>,
+        T::CurrencyId: From<u32>,
         T::AssetRegistry: orml_traits::asset_registry::Mutate,
         T::FeederId: From<u32>,
 )]

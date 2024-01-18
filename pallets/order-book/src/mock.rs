@@ -223,9 +223,10 @@ impl ConversionToAssetBalance<Balance, CurrencyId, Balance> for DecimalConverter
 
 impl order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type AssetCurrencyId = CurrencyId;
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type DecimalConverter = DecimalConverter;
 	type FeederId = AccountId;
 	type FulfilledOrderHook = MockFulfilledOrderHook;
@@ -235,7 +236,6 @@ impl order_book::Config for Runtime {
 	type Ratio = Ratio;
 	type RatioProvider = MockRatioProvider;
 	type RuntimeEvent = RuntimeEvent;
-	type TradeableAsset = Tokens;
 	type Weights = ();
 }
 
