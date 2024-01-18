@@ -335,13 +335,6 @@ pub mod pallet {
 			currency_in: T::CurrencyId,
 			currency_out: T::CurrencyId,
 		},
-		/// Event emitted when a minimum order amount for a trading pair is
-		/// updated.
-		MinOrderUpdated {
-			currency_in: T::CurrencyId,
-			currency_out: T::CurrencyId,
-			min_order: T::Balance,
-		},
 	}
 
 	#[pallet::error]
