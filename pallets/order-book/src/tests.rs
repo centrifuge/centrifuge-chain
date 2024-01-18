@@ -10,7 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::ConversionToAssetBalance;
 use cfg_types::investments::Swap;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
@@ -517,8 +516,7 @@ fn fill_order_partial_with_insufficient_amount() {
 			OrderBook::fill_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
-				DecimalConverter::to_asset_balance(MinFulfillmentAmountNative::get(), CURRENCY_A)
-					.unwrap() - 1
+				OrderBook::default_min_fulfillment_amount(CURRENCY_A).unwrap() - 1,
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount
 		);

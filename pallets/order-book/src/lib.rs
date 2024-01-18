@@ -365,10 +365,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Create an order with the default min fulfillment amount.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::Weights::create_order())]
@@ -777,17 +774,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn default_min_fulfillment_amount(
+		pub fn default_min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::Balance, DispatchError> {
 			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
 		}
 	}
 
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
 		type OrderDetails = Swap<T::Balance, T::CurrencyId>;
