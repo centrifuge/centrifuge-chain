@@ -942,6 +942,23 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> ValueProvider<(), (T::AssetCurrencyId, T::AssetCurrencyId)> for Pallet<T> {
+		type Value = T::Ratio;
+
+		fn get(
+			_: &(),
+			(currency_out, currency_in): &(T::AssetCurrencyId, T::AssetCurrencyId),
+		) -> Result<Option<Self::Value>, DispatchError> {
+			Self::market_ratio(*currency_out, *currency_in).map(Some)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn set(_: &(), pair: &(T::AssetCurrencyId, T::AssetCurrencyId), value: Self::Value) {
+			let feeder = MarketFeederId::<T>::get().unwrap();
+			T::RatioProvider::set(&feeder, &pair, value);
+		}
+	}
+
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> cfg_traits::benchmarking::OrderBookBenchmarkHelper for Pallet<T>
 	where
