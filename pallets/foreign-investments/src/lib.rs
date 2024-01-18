@@ -54,6 +54,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// Hold the information of an foreign investment
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct Info<T: Config> {
@@ -61,6 +62,7 @@ pub struct Info<T: Config> {
 	pool_currency: T::CurrencyId,
 }
 
+/// Specify the type of foreign investment
 #[derive(
 	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
@@ -223,23 +225,36 @@ pub mod pallet {
 
 	/// Contains the information about the foreign investment process
 	///
-	/// NOTE: The storage is killed once the investment or redemption process is
-	/// collected
+	/// NOTE: The storage is killed once the investment is collected or
+	/// redemption process is collected and fully swapped
 	#[pallet::storage]
 	pub(super) type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
-		(T::InvestmentId, ForeignSwapKind),
+		T::InvestmentId,
+		Info<T>,
+	>;
+
+	/// Contains the information about the foreign investment process
+	///
+	/// NOTE: The storage is killed once the investment is collected or
+	/// redemption process is collected and fully swapped
+	#[pallet::storage]
+	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
 		Info<T>,
 	>;
 
 	/// Maps an account and their `InvestmentId` with the associated foreign
 	/// swap kind to the corresponding `SwapId`.
 	///
-	/// NOTE: The storage is immediately killed when the swap order is
-	/// completely fulfilled
+	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
 	pub(super) type ForeignSwapIdToSwapId<T: Config> = StorageDoubleMap<
 		_,
@@ -253,8 +268,7 @@ pub mod pallet {
 	/// Maps a `SwapId` to their corresponding foreing swap identification by
 	/// `AccountId`, `InvestmentId` and `ForeignSwapKind`
 	///
-	/// NOTE: The storage is immediately killed when the swap order is
-	/// completely fulfilled
+	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
 	pub(super) type SwapidToForeignSwapId<T: Config> = StorageMap<
 		_,
@@ -288,33 +302,12 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Failed to retrieve the foreign payment currency for a collected
-		/// investment.
-		///
-		/// NOTE: This error can only occur, if a user tries to collect before
-		/// having increased their investment as this would store the payment
-		/// currency.
-		InvestmentPaymentCurrencyNotFound,
-		/// Failed to retrieve the foreign payout currency for a collected
-		/// redemption.
-		///
-		/// NOTE: This error can only occur, if a user tries to collect before
-		/// having increased their redemption as this would store the payout
-		/// currency.
-		RedemptionPayoutCurrencyNotFound,
-		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `SwapId`.
-		InvestmentInfoNotFound,
-		/// Failed to retrieve the `TokenSwapReason` from the given
-		/// `SwapId`.
-		TokenSwapReasonNotFound,
-		/// The fulfilled token swap amount exceeds the sum of active swap
-		/// amounts of the corresponding `InvestmentState` and
-		/// `RedemptionState`.
-		FulfilledTokenSwapAmountOverflow,
+		/// Failed to retrieve the `ForeignInvestInfo`.
+		InfoNotFound,
+		/// Failed to retrieve the swap order.
+		SwapOrderNotFound,
 		/// Failed to retrieve the pool for the given pool id.
 		PoolNotFound,
-		SwapOrderNotFound,
 	}
 
 	/// Internal type used as result of `Pallet::apply_swap()`
@@ -479,7 +472,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ForeignInvestmentInfo::<T>::insert(
 				who,
-				(investment_id, ForeignSwapKind::Investment),
+				investment_id,
 				Info {
 					foreign_currency,
 					pool_currency,
@@ -550,9 +543,9 @@ pub mod pallet {
 			tranche_tokens_amount: T::Balance,
 			payout_foreign_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ForeignInvestmentInfo::<T>::insert(
+			ForeignRedemptionInfo::<T>::insert(
 				who,
-				(investment_id, ForeignSwapKind::Redemption),
+				investment_id,
 				Info {
 					foreign_currency: payout_foreign_currency,
 					pool_currency: T::PoolInspect::currency_for(investment_id.of_pool())
@@ -663,11 +656,11 @@ pub mod pallet {
 				}
 			};
 
-			let info = ForeignInvestmentInfo::<T>::get(&who, (investment_id, kind))
-				.ok_or(Error::<T>::InvestmentInfoNotFound)?;
-
 			match kind {
 				ForeignSwapKind::Investment => {
+					let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
+						.ok_or(Error::<T>::InfoNotFound)?;
+
 					if last_swap.currency_out == info.foreign_currency {
 						T::Investment::update_investment(
 							&who,
@@ -687,7 +680,12 @@ pub mod pallet {
 					}
 				}
 				ForeignSwapKind::Redemption => {
-					ForeignInvestmentInfo::<T>::remove(&who, (investment_id, kind));
+					let info = ForeignRedemptionInfo::<T>::get(&who, investment_id)
+						.ok_or(Error::<T>::InfoNotFound)?;
+
+					if amount_remaining.is_zero() {
+						ForeignRedemptionInfo::<T>::remove(&who, investment_id);
+					}
 
 					T::CollectedForeignRedemptionHook::notify_status_change(
 						(who.clone(), investment_id),
@@ -713,11 +711,10 @@ pub mod pallet {
 			(who, investment_id): (T::AccountId, T::InvestmentId),
 			status: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
-			let info =
-				ForeignInvestmentInfo::<T>::get(&who, (investment_id, ForeignSwapKind::Investment))
-					.ok_or(Error::<T>::InvestmentInfoNotFound)?;
+			let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
+				.ok_or(Error::<T>::InfoNotFound)?;
 
-			ForeignInvestmentInfo::<T>::remove(&who, (investment_id, ForeignSwapKind::Investment));
+			ForeignInvestmentInfo::<T>::remove(&who, investment_id);
 
 			T::CollectedForeignInvestmentHook::notify_status_change(
 				(who.clone(), investment_id),
@@ -741,9 +738,8 @@ pub mod pallet {
 			(who, investment_id): (T::AccountId, T::InvestmentId),
 			status: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
-			let info =
-				ForeignInvestmentInfo::<T>::get(&who, (investment_id, ForeignSwapKind::Redemption))
-					.ok_or(Error::<T>::InvestmentInfoNotFound)?;
+			let info = ForeignRedemptionInfo::<T>::get(&who, investment_id)
+				.ok_or(Error::<T>::InfoNotFound)?;
 
 			let status = Pallet::<T>::apply_swap(
 				&who,
@@ -757,6 +753,10 @@ pub mod pallet {
 			)?;
 
 			if status.swapped > T::Balance::zero() {
+				if status.pending.is_zero() {
+					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
+				}
+
 				T::CollectedForeignRedemptionHook::notify_status_change(
 					(who.clone(), investment_id),
 					ExecutedForeignCollect {
@@ -766,13 +766,6 @@ pub mod pallet {
 						amount_remaining: status.pending,
 					},
 				)?;
-
-				if status.pending.is_zero() {
-					ForeignInvestmentInfo::<T>::remove(
-						&who,
-						(investment_id, ForeignSwapKind::Redemption),
-					);
-				}
 			}
 
 			Ok(())
