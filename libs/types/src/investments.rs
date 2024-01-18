@@ -15,7 +15,10 @@ use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{EnsureAddAssign, Zero},
+	ArithmeticError, DispatchError, DispatchResult,
+};
 use sp_std::cmp::PartialEq;
 
 use crate::orders::Order;
@@ -125,6 +128,14 @@ pub struct CollectedAmount<Balance> {
 	/// * If investment: Payment currency
 	/// * If redemption: Tranche tokens
 	pub amount_payment: Balance,
+}
+
+impl<Balance: EnsureAddAssign + Copy> CollectedAmount<Balance> {
+	pub fn increase(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+		self.amount_collected
+			.ensure_add_assign(other.amount_collected)?;
+		self.amount_payment.ensure_add_assign(other.amount_payment)
+	}
 }
 
 /// A representation of an investment identifier and the corresponding owner.

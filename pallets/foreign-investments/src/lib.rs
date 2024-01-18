@@ -43,10 +43,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_types::investments::Swap;
+use cfg_types::investments::{CollectedAmount, Swap};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_runtime::{traits::EnsureSub, ArithmeticError};
 
 #[cfg(test)]
 mod mock;
@@ -57,18 +58,35 @@ mod tests;
 /// Hold the information of an foreign investment
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
-pub struct Info<T: Config> {
+pub struct InvestmentInfo<T: Config> {
 	foreign_currency: T::CurrencyId,
 	pool_currency: T::CurrencyId,
+	total_foreign_amount: T::Balance,
+	collected_amount: CollectedAmount<T::Balance>,
 }
 
-/// Specify the type of foreign investment
-#[derive(
-	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-enum ForeignSwapKind {
-	Investment,
-	Redemption,
+impl<T: Config> InvestmentInfo<T> {
+	fn remaining_foreign_amount(&self) -> Result<T::Balance, ArithmeticError> {
+		self.total_foreign_amount
+			.ensure_sub(self.collected_amount.amount_collected)
+	}
+}
+
+/// Hold the information of an foreign investment
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct RedemptionInfo<T: Config> {
+	foreign_currency: T::CurrencyId,
+	pool_currency: T::CurrencyId,
+	total_tranche_tokens: T::Balance,
+	collected_amount: CollectedAmount<T::Balance>,
+}
+
+impl<T: Config> RedemptionInfo<T> {
+	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
+		self.total_tranche_tokens
+			.ensure_sub(self.collected_amount.amount_payment)
+	}
 }
 
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
@@ -83,7 +101,13 @@ pub mod pallet {
 		CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 	};
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
-	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, One, Zero};
+	use sp_runtime::{
+		traits::{
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, One,
+			Saturating, Zero,
+		},
+		FixedPointOperand,
+	};
 	use sp_std::cmp::Ordering;
 
 	use super::*;
@@ -105,6 +129,7 @@ pub mod pallet {
 		type Balance: Parameter
 			+ Member
 			+ AtLeast32BitUnsigned
+			+ FixedPointOperand
 			+ Default
 			+ Copy
 			+ MaybeSerializeDeserialize
@@ -234,7 +259,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Info<T>,
+		InvestmentInfo<T>,
 	>;
 
 	/// Contains the information about the foreign investment process
@@ -248,11 +273,10 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Info<T>,
+		RedemptionInfo<T>,
 	>;
 
-	/// Maps an account and their `InvestmentId` with the associated foreign
-	/// swap kind to the corresponding `SwapId`.
+	/// Maps an account and their `InvestmentId` to the corresponding `SwapId`.
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
@@ -261,21 +285,16 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
-		(T::InvestmentId, ForeignSwapKind),
+		T::InvestmentId,
 		T::SwapId,
 	>;
 
-	/// Maps a `SwapId` to their corresponding foreing swap identification by
-	/// `AccountId`, `InvestmentId` and `ForeignSwapKind`
+	/// Maps a `SwapId` to their corresponding `AccountId` and `InvestmentId`
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type SwapidToForeignSwapId<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::SwapId,
-		(T::AccountId, T::InvestmentId, ForeignSwapKind),
-	>;
+	pub(super) type SwapidToForeignSwapId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::SwapId, (T::AccountId, T::InvestmentId)>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -320,23 +339,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn register_swap(
-			who: &T::AccountId,
-			investment_id: T::InvestmentId,
-			kind: ForeignSwapKind,
-			swap_id: T::SwapId,
-		) {
-			ForeignSwapIdToSwapId::<T>::insert(&who, (investment_id, kind), swap_id);
-			SwapidToForeignSwapId::<T>::insert(swap_id, (who.clone(), investment_id, kind));
+		fn register_swap(who: &T::AccountId, investment_id: T::InvestmentId, swap_id: T::SwapId) {
+			ForeignSwapIdToSwapId::<T>::insert(&who, investment_id, swap_id);
+			SwapidToForeignSwapId::<T>::insert(swap_id, (who.clone(), investment_id));
 		}
 
-		fn unregister_swap(
-			who: &T::AccountId,
-			investment_id: T::InvestmentId,
-			kind: ForeignSwapKind,
-			swap_id: T::SwapId,
-		) {
-			ForeignSwapIdToSwapId::<T>::remove(&who, (investment_id, kind));
+		fn unregister_swap(who: &T::AccountId, investment_id: T::InvestmentId, swap_id: T::SwapId) {
+			ForeignSwapIdToSwapId::<T>::remove(&who, investment_id);
 			SwapidToForeignSwapId::<T>::remove(swap_id);
 		}
 
@@ -364,10 +373,9 @@ pub mod pallet {
 		fn apply_swap(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			kind: ForeignSwapKind,
 			new_swap: SwapOf<T>,
 		) -> Result<SwapStatus<T>, DispatchError> {
-			match ForeignSwapIdToSwapId::<T>::get(&who, (investment_id, kind)) {
+			match ForeignSwapIdToSwapId::<T>::get(&who, investment_id) {
 				None => {
 					let swap_id = T::TokenSwaps::place_order(
 						who.clone(),
@@ -376,7 +384,7 @@ pub mod pallet {
 						new_swap.amount_in,
 						T::BalanceRatio::one(),
 					)?;
-					Self::register_swap(&who, investment_id, kind, swap_id);
+					Self::register_swap(&who, investment_id, swap_id);
 
 					Ok(SwapStatus {
 						swapped: T::Balance::zero(),
@@ -419,7 +427,7 @@ pub mod pallet {
 							}
 							Ordering::Equal => {
 								T::TokenSwaps::cancel_order(swap_id.clone())?;
-								Self::unregister_swap(&who, investment_id, kind, swap_id);
+								Self::unregister_swap(&who, investment_id, swap_id);
 
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
@@ -428,7 +436,7 @@ pub mod pallet {
 							}
 							Ordering::Greater => {
 								T::TokenSwaps::cancel_order(swap_id.clone())?;
-								Self::unregister_swap(&who, investment_id, kind, swap_id);
+								Self::unregister_swap(&who, investment_id, swap_id);
 
 								let inverse_swap_amount_out =
 									Self::amount_used_to_swap(&inverse_swap)?;
@@ -443,7 +451,7 @@ pub mod pallet {
 									amount_to_swap,
 									T::BalanceRatio::one(),
 								)?;
-								Self::register_swap(&who, investment_id, kind, swap_id);
+								Self::register_swap(&who, investment_id, swap_id);
 
 								Ok(SwapStatus {
 									swapped: inverse_swap_amount_out,
@@ -470,14 +478,19 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ForeignInvestmentInfo::<T>::insert(
-				who,
-				investment_id,
-				Info {
+			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| -> DispatchResult {
+				let info = info.get_or_insert(InvestmentInfo {
 					foreign_currency,
 					pool_currency,
-				},
-			);
+					total_foreign_amount: T::Balance::default(),
+					collected_amount: CollectedAmount::default(),
+				});
+
+				info.total_foreign_amount
+					.ensure_add_assign(foreign_amount)?;
+
+				Ok(())
+			})?;
 
 			let pool_amount = T::CurrencyConverter::stable_to_stable(
 				pool_currency,
@@ -488,7 +501,6 @@ pub mod pallet {
 			let status = Self::apply_swap(
 				who,
 				investment_id,
-				ForeignSwapKind::Investment,
 				Swap {
 					currency_in: pool_currency,
 					currency_out: foreign_currency,
@@ -510,10 +522,17 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
+			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| -> DispatchResult {
+				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+				info.total_foreign_amount
+					.ensure_sub_assign(foreign_amount)?;
+
+				Ok(())
+			})?;
+
 			let status = Self::apply_swap(
 				who,
 				investment_id,
-				ForeignSwapKind::Investment,
 				Swap {
 					currency_in: foreign_currency,
 					currency_out: pool_currency,
@@ -543,15 +562,20 @@ pub mod pallet {
 			tranche_tokens_amount: T::Balance,
 			payout_foreign_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ForeignRedemptionInfo::<T>::insert(
-				who,
-				investment_id,
-				Info {
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| -> DispatchResult {
+				let info = info.get_or_insert(RedemptionInfo {
 					foreign_currency: payout_foreign_currency,
 					pool_currency: T::PoolInspect::currency_for(investment_id.of_pool())
 						.ok_or(Error::<T>::PoolNotFound)?,
-				},
-			);
+					total_tranche_tokens: T::Balance::default(),
+					collected_amount: CollectedAmount::default(),
+				});
+
+				info.total_tranche_tokens
+					.ensure_add_assign(tranche_tokens_amount)?;
+
+				Ok(())
+			})?;
 
 			T::Investment::update_redemption(
 				who,
@@ -566,6 +590,14 @@ pub mod pallet {
 			tranche_tokens_amount: T::Balance,
 			_payout_foreign_currency: T::CurrencyId,
 		) -> Result<(T::Balance, T::Balance), DispatchError> {
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| -> DispatchResult {
+				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+				info.total_tranche_tokens
+					.ensure_sub_assign(tranche_tokens_amount)?;
+
+				Ok(())
+			})?;
+
 			T::Investment::update_redemption(
 				who,
 				investment_id,
@@ -645,59 +677,65 @@ pub mod pallet {
 			swap_id: T::SwapId,
 			last_swap: SwapOf<T>,
 		) -> Result<(), DispatchError> {
-			let (who, investment_id, kind) =
+			let (who, investment_id) =
 				SwapidToForeignSwapId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
 
-			let amount_remaining = match T::TokenSwaps::get_order_details(swap_id) {
+			let remaining_swap_amount_in = match T::TokenSwaps::get_order_details(swap_id) {
 				Some(swap) => swap.amount_in,
 				None => {
-					Self::unregister_swap(&who, investment_id, kind, swap_id);
+					Self::unregister_swap(&who, investment_id, swap_id);
 					T::Balance::zero()
 				}
 			};
 
-			match kind {
-				ForeignSwapKind::Investment => {
-					let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
-						.ok_or(Error::<T>::InfoNotFound)?;
+			let mut swapped_amount = last_swap.amount_in;
 
-					if last_swap.currency_out == info.foreign_currency {
-						T::Investment::update_investment(
-							&who,
-							investment_id,
-							T::Investment::investment(&who, investment_id)?
-								.ensure_add(last_swap.amount_in)?,
-						)
-					} else {
-						T::DecreasedForeignInvestOrderHook::notify_status_change(
-							(who.clone(), investment_id),
-							ExecutedForeignDecreaseInvest {
-								amount_decreased: last_swap.amount_in,
-								foreign_currency: info.foreign_currency,
-								amount_remaining,
-							},
-						)
-					}
+			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
+				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
+
+				//TODO: fix the swapped_amount calculation which is currently wrong.
+				swapped_amount =
+					swapped_amount.saturating_sub(info.collected_amount.amount_collected);
+
+				if info.remaining_tranche_tokens()?.is_zero() {
+					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
 				}
-				ForeignSwapKind::Redemption => {
-					let info = ForeignRedemptionInfo::<T>::get(&who, investment_id)
-						.ok_or(Error::<T>::InfoNotFound)?;
 
-					if amount_remaining.is_zero() {
-						ForeignRedemptionInfo::<T>::remove(&who, investment_id);
-					}
+				T::CollectedForeignRedemptionHook::notify_status_change(
+					(who.clone(), investment_id),
+					ExecutedForeignCollect {
+						currency: info.foreign_currency,
+						amount_currency_payout: foreign_amount,
+						amount_tranche_tokens_payout: T::Balance::zero(),
+						amount_remaining: info.remaining_tranche_tokens()?,
+					},
+				)?;
+			}
 
-					T::CollectedForeignRedemptionHook::notify_status_change(
+			if !swapped_amount.is_zero() {
+				let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
+					.ok_or(Error::<T>::InfoNotFound)?;
+
+				if last_swap.currency_out == info.foreign_currency {
+					T::Investment::update_investment(
+						&who,
+						investment_id,
+						T::Investment::investment(&who, investment_id)?
+							.ensure_add(swapped_amount)?,
+					)?;
+				} else {
+					T::DecreasedForeignInvestOrderHook::notify_status_change(
 						(who.clone(), investment_id),
-						ExecutedForeignCollect {
-							currency: info.foreign_currency,
-							amount_currency_payout: last_swap.amount_in,
-							amount_tranche_tokens_payout: todo!(),
-							amount_remaining,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: swapped_amount,
+							foreign_currency: info.foreign_currency,
+							amount_remaining: remaining_swap_amount_in,
 						},
-					)
+					)?;
 				}
 			}
+
+			Ok(())
 		}
 	}
 
@@ -709,20 +747,22 @@ pub mod pallet {
 
 		fn notify_status_change(
 			(who, investment_id): (T::AccountId, T::InvestmentId),
-			status: CollectedAmount<T::Balance>,
+			collected: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
 			let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
 				.ok_or(Error::<T>::InfoNotFound)?;
 
-			ForeignInvestmentInfo::<T>::remove(&who, investment_id);
+			if info.remaining_foreign_amount()?.is_zero() {
+				ForeignInvestmentInfo::<T>::remove(&who, investment_id);
+			}
 
 			T::CollectedForeignInvestmentHook::notify_status_change(
 				(who.clone(), investment_id),
 				ExecutedForeignCollect {
 					currency: info.foreign_currency,
-					amount_currency_payout: status.amount_payment,
-					amount_tranche_tokens_payout: todo!(),
-					amount_remaining: T::Balance::zero(),
+					amount_currency_payout: collected.amount_payment,
+					amount_tranche_tokens_payout: collected.amount_collected,
+					amount_remaining: info.remaining_foreign_amount()?,
 				},
 			)
 		}
@@ -736,24 +776,30 @@ pub mod pallet {
 
 		fn notify_status_change(
 			(who, investment_id): (T::AccountId, T::InvestmentId),
-			status: CollectedAmount<T::Balance>,
+			collected: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
-			let info = ForeignRedemptionInfo::<T>::get(&who, investment_id)
-				.ok_or(Error::<T>::InfoNotFound)?;
+			let info = ForeignRedemptionInfo::<T>::mutate(
+				&who,
+				investment_id,
+				|maybe_info| -> Result<RedemptionInfo<T>, DispatchError> {
+					let info = maybe_info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+					info.collected_amount.increase(&collected)?;
+					Ok(info.clone())
+				},
+			)?;
 
 			let status = Pallet::<T>::apply_swap(
 				&who,
 				investment_id,
-				ForeignSwapKind::Redemption,
 				Swap {
 					currency_in: info.foreign_currency,
 					currency_out: info.pool_currency,
-					amount_in: status.amount_collected,
+					amount_in: collected.amount_collected,
 				},
 			)?;
 
 			if status.swapped > T::Balance::zero() {
-				if status.pending.is_zero() {
+				if info.remaining_tranche_tokens()?.is_zero() {
 					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
 				}
 
@@ -762,8 +808,8 @@ pub mod pallet {
 					ExecutedForeignCollect {
 						currency: info.foreign_currency,
 						amount_currency_payout: status.swapped,
-						amount_tranche_tokens_payout: todo!(),
-						amount_remaining: status.pending,
+						amount_tranche_tokens_payout: collected.amount_payment,
+						amount_remaining: info.remaining_tranche_tokens()?,
 					},
 				)?;
 			}
