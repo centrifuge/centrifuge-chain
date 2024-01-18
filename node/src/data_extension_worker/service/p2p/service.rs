@@ -98,38 +98,6 @@ impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
 						}
 						Ok(_) => {}
 					}
-					// let notification_sender = match
-					// ping_ns.notification_sender( 	peer,
-					// 	ProtocolName::Static(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME),
-					// ) {
-					// 	Err(e) => {
-					// 		log::error!(target: "data-extension-worker-p2p",
-					// "Notification sender error - {}", e);
-					//
-					// 		return;
-					// 	}
-					// 	Ok(r) => r,
-					// };
-					//
-					// let mut ready = match notification_sender.ready().await {
-					// 	Err(e) => {
-					// 		log::error!(target: "data-extension-worker-p2p",
-					// "Notification sender ready error - {}", e);
-					//
-					// 		return;
-					// 	}
-					// 	Ok(r) => r,
-					// };
-					//
-					// match ready.send("ping".into()) {
-					// 	Err(e) => {
-					// 		log::error!(target: "data-extension-worker-p2p",
-					// "Notification send error - {}", e);
-					//
-					// 		return;
-					// 	}
-					// 	Ok(_) => {}
-					// }
 				}
 			}
 		};
@@ -143,15 +111,6 @@ impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
 				Event::NotificationsReceived { remote, messages } => {
 					let peers = messages
 						.iter()
-						// .filter_map(|(protocol_name, _)| {
-						// 	if *protocol_name
-						// 		== ProtocolName::Static(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME)
-						// 	{
-						// 		return Some(remote);
-						// 	}
-						//
-						// 	None
-						// })
 						.filter_map(|res| {
 							let ping = Bytes::from("ping");
 							let pong = Bytes::from("pong");
