@@ -331,11 +331,17 @@ pub mod pallet {
 
 	/// Internal type used as result of `Pallet::apply_swap()`
 	struct SwapStatus<T: Config> {
+		/// The amount already swapped and available to use
+		swapped: T::Balance,
+
 		/// The amount pending to be swapped
 		pending: T::Balance,
 
-		/// The amount already swapped and available to use
-		swapped: T::Balance,
+		/// The amount swapped by the inverse order
+		swapped_inverse: T::Balance,
+
+		/// The amount pending to be swapped by the inverse order
+		pending_inverse: T::Balance,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -389,6 +395,8 @@ pub mod pallet {
 					Ok(SwapStatus {
 						swapped: T::Balance::zero(),
 						pending: new_swap.amount_in,
+						swapped_inverse: T::Balance::zero(),
+						pending_inverse: T::Balance::zero(),
 					})
 				}
 				Some(swap_id) => {
@@ -396,16 +404,19 @@ pub mod pallet {
 						.ok_or(Error::<T>::SwapOrderNotFound)?;
 
 					if swap.is_same_direction(&new_swap)? {
+						let amount_to_swap = swap.amount_in.ensure_add(new_swap.amount_in)?;
 						T::TokenSwaps::update_order(
 							who.clone(),
 							swap_id,
-							swap.amount_in.ensure_add(new_swap.amount_in)?,
+							amount_to_swap,
 							T::BalanceRatio::one(),
 						)?;
 
 						Ok(SwapStatus {
 							swapped: T::Balance::zero(),
-							pending: new_swap.amount_in,
+							pending: amount_to_swap,
+							swapped_inverse: T::Balance::zero(),
+							pending_inverse: T::Balance::zero(),
 						})
 					} else {
 						let inverse_swap = swap;
@@ -413,30 +424,37 @@ pub mod pallet {
 
 						match inverse_swap.amount_in.cmp(&new_swap_amount_out) {
 							Ordering::Less => {
+								let amount_to_swap =
+									inverse_swap.amount_in.ensure_sub(new_swap_amount_out)?;
+
 								T::TokenSwaps::update_order(
 									who.clone(),
 									swap_id,
-									inverse_swap.amount_in.ensure_sub(new_swap_amount_out)?,
+									amount_to_swap,
 									T::BalanceRatio::one(),
 								)?;
 
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
 									pending: T::Balance::zero(),
+									swapped_inverse: new_swap.amount_in,
+									pending_inverse: amount_to_swap,
 								})
 							}
 							Ordering::Equal => {
-								T::TokenSwaps::cancel_order(swap_id.clone())?;
-								Self::unregister_swap(&who, investment_id, swap_id);
+								T::TokenSwaps::cancel_order(swap_id)?;
+								Pallet::<T>::unregister_swap(&who, investment_id, swap_id);
 
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
 									pending: T::Balance::zero(),
+									swapped_inverse: inverse_swap.amount_in,
+									pending_inverse: T::Balance::zero(),
 								})
 							}
 							Ordering::Greater => {
-								T::TokenSwaps::cancel_order(swap_id.clone())?;
-								Self::unregister_swap(&who, investment_id, swap_id);
+								T::TokenSwaps::cancel_order(swap_id)?;
+								Pallet::<T>::unregister_swap(&who, investment_id, swap_id);
 
 								let inverse_swap_amount_out =
 									Self::amount_used_to_swap(&inverse_swap)?;
@@ -456,12 +474,99 @@ pub mod pallet {
 								Ok(SwapStatus {
 									swapped: inverse_swap_amount_out,
 									pending: amount_to_swap,
+									swapped_inverse: inverse_swap.amount_in,
+									pending_inverse: T::Balance::zero(),
 								})
 							}
 						}
 					}
 				}
 			}
+		}
+
+		fn apply_swap_with_notifications(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			new_swap: SwapOf<T>,
+		) -> DispatchResult {
+			let status = Self::apply_swap(who, investment_id, new_swap.clone())?;
+
+			if !status.swapped.is_zero() {
+				Self::notify_swap(
+					who,
+					investment_id,
+					new_swap.currency_out,
+					status.swapped,
+					status.pending,
+				)?;
+			}
+
+			if !status.swapped_inverse.is_zero() {
+				Self::notify_swap(
+					who,
+					investment_id,
+					new_swap.currency_in,
+					status.swapped_inverse,
+					status.pending_inverse,
+				)?;
+			}
+
+			Ok(())
+		}
+
+		fn notify_swap(
+			who: &T::AccountId,
+			investment_id: T::InvestmentId,
+			currency_out: T::CurrencyId,
+			mut swapped_amount: T::Balance,
+			pending_amount_in: T::Balance,
+		) -> DispatchResult {
+			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
+				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
+
+				//TODO: fix the swapped_amount calculation which is currently wrong.
+				swapped_amount =
+					swapped_amount.saturating_sub(info.collected_amount.amount_collected);
+
+				if info.remaining_tranche_tokens()?.is_zero() {
+					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
+				}
+
+				T::CollectedForeignRedemptionHook::notify_status_change(
+					(who.clone(), investment_id),
+					ExecutedForeignCollect {
+						currency: info.foreign_currency,
+						amount_currency_payout: foreign_amount,
+						amount_tranche_tokens_payout: T::Balance::zero(),
+						amount_remaining: info.remaining_tranche_tokens()?,
+					},
+				)?;
+			}
+
+			if !swapped_amount.is_zero() {
+				let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
+					.ok_or(Error::<T>::InfoNotFound)?;
+
+				if currency_out == info.foreign_currency {
+					T::Investment::update_investment(
+						&who,
+						investment_id,
+						T::Investment::investment(&who, investment_id)?
+							.ensure_add(swapped_amount)?,
+					)?;
+				} else {
+					T::DecreasedForeignInvestOrderHook::notify_status_change(
+						(who.clone(), investment_id),
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: swapped_amount,
+							foreign_currency: info.foreign_currency,
+							amount_remaining: pending_amount_in,
+						},
+					)?;
+				}
+			}
+
+			Ok(())
 		}
 	}
 
@@ -498,7 +603,7 @@ pub mod pallet {
 				foreign_amount,
 			)?;
 
-			let status = Self::apply_swap(
+			Self::apply_swap_with_notifications(
 				who,
 				investment_id,
 				Swap {
@@ -506,17 +611,7 @@ pub mod pallet {
 					currency_out: foreign_currency,
 					amount_in: pool_amount,
 				},
-			)?;
-
-			if !status.swapped.is_zero() {
-				T::Investment::update_investment(
-					who,
-					investment_id,
-					T::Investment::investment(who, investment_id)?.ensure_add(status.swapped)?,
-				)?;
-			}
-
-			Ok(())
+			)
 		}
 
 		fn decrease_foreign_investment(
@@ -534,7 +629,19 @@ pub mod pallet {
 				Ok(())
 			})?;
 
-			let status = Self::apply_swap(
+			let pool_amount = T::CurrencyConverter::stable_to_stable(
+				pool_currency,
+				foreign_currency,
+				foreign_amount,
+			)?;
+
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_sub(pool_amount)?,
+			)?;
+
+			Self::apply_swap_with_notifications(
 				who,
 				investment_id,
 				Swap {
@@ -542,28 +649,7 @@ pub mod pallet {
 					currency_out: pool_currency,
 					amount_in: foreign_amount,
 				},
-			)?;
-
-			if !status.pending.is_zero() {
-				T::Investment::update_investment(
-					who,
-					investment_id,
-					T::Investment::investment(who, investment_id)?.ensure_sub(status.pending)?,
-				)?;
-			}
-
-			if !status.swapped.is_zero() {
-				T::DecreasedForeignInvestOrderHook::notify_status_change(
-					(who.clone(), investment_id),
-					ExecutedForeignDecreaseInvest {
-						amount_decreased: status.swapped,
-						foreign_currency,
-						amount_remaining: status.pending,
-					},
-				)?;
-			}
-
-			Ok(())
+			)
 		}
 
 		fn increase_foreign_redemption(
@@ -678,7 +764,7 @@ pub mod pallet {
 	}
 
 	pub struct FulfilledSwapOrderHook<T>(PhantomData<T>);
-	impl<T: Config> StatusNotificationHook for Pallet<T> {
+	impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 		type Error = DispatchError;
 		type Id = T::SwapId;
 		type Status = SwapOf<T>;
@@ -693,59 +779,18 @@ pub mod pallet {
 			let remaining_swap_amount_in = match T::TokenSwaps::get_order_details(swap_id) {
 				Some(swap) => swap.amount_in,
 				None => {
-					Self::unregister_swap(&who, investment_id, swap_id);
+					Pallet::<T>::unregister_swap(&who, investment_id, swap_id);
 					T::Balance::zero()
 				}
 			};
 
-			let mut swapped_amount = last_swap.amount_in;
-
-			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
-				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
-
-				//TODO: fix the swapped_amount calculation which is currently wrong.
-				swapped_amount =
-					swapped_amount.saturating_sub(info.collected_amount.amount_collected);
-
-				if info.remaining_tranche_tokens()?.is_zero() {
-					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
-				}
-
-				T::CollectedForeignRedemptionHook::notify_status_change(
-					(who.clone(), investment_id),
-					ExecutedForeignCollect {
-						currency: info.foreign_currency,
-						amount_currency_payout: foreign_amount,
-						amount_tranche_tokens_payout: T::Balance::zero(),
-						amount_remaining: info.remaining_tranche_tokens()?,
-					},
-				)?;
-			}
-
-			if !swapped_amount.is_zero() {
-				let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
-					.ok_or(Error::<T>::InfoNotFound)?;
-
-				if last_swap.currency_out == info.foreign_currency {
-					T::Investment::update_investment(
-						&who,
-						investment_id,
-						T::Investment::investment(&who, investment_id)?
-							.ensure_add(swapped_amount)?,
-					)?;
-				} else {
-					T::DecreasedForeignInvestOrderHook::notify_status_change(
-						(who.clone(), investment_id),
-						ExecutedForeignDecreaseInvest {
-							amount_decreased: swapped_amount,
-							foreign_currency: info.foreign_currency,
-							amount_remaining: remaining_swap_amount_in,
-						},
-					)?;
-				}
-			}
-
-			Ok(())
+			Pallet::<T>::notify_swap(
+				&who,
+				investment_id,
+				last_swap.currency_out,
+				last_swap.amount_in,
+				remaining_swap_amount_in,
+			)
 		}
 	}
 
@@ -798,7 +843,7 @@ pub mod pallet {
 				},
 			)?;
 
-			let status = Pallet::<T>::apply_swap(
+			Pallet::<T>::apply_swap_with_notifications(
 				&who,
 				investment_id,
 				Swap {
@@ -806,25 +851,7 @@ pub mod pallet {
 					currency_out: info.pool_currency,
 					amount_in: collected.amount_collected,
 				},
-			)?;
-
-			if status.swapped > T::Balance::zero() {
-				if info.remaining_tranche_tokens()?.is_zero() {
-					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
-				}
-
-				T::CollectedForeignRedemptionHook::notify_status_change(
-					(who.clone(), investment_id),
-					ExecutedForeignCollect {
-						currency: info.foreign_currency,
-						amount_currency_payout: status.swapped,
-						amount_tranche_tokens_payout: collected.amount_payment,
-						amount_remaining: info.remaining_tranche_tokens()?,
-					},
-				)?;
-			}
-
-			Ok(())
+			)
 		}
 	}
 }
