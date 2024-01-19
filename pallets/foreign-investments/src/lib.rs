@@ -508,11 +508,15 @@ pub mod pallet {
 				},
 			)?;
 
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_add(status.swapped)?,
-			)
+			if !status.swapped.is_zero() {
+				T::Investment::update_investment(
+					who,
+					investment_id,
+					T::Investment::investment(who, investment_id)?.ensure_add(status.swapped)?,
+				)?;
+			}
+
+			Ok(())
 		}
 
 		fn decrease_foreign_investment(
@@ -540,20 +544,26 @@ pub mod pallet {
 				},
 			)?;
 
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_sub(status.pending)?,
-			)?;
+			if !status.pending.is_zero() {
+				T::Investment::update_investment(
+					who,
+					investment_id,
+					T::Investment::investment(who, investment_id)?.ensure_sub(status.pending)?,
+				)?;
+			}
 
-			T::DecreasedForeignInvestOrderHook::notify_status_change(
-				(who.clone(), investment_id),
-				ExecutedForeignDecreaseInvest {
-					amount_decreased: status.swapped,
-					foreign_currency,
-					amount_remaining: status.pending,
-				},
-			)
+			if !status.swapped.is_zero() {
+				T::DecreasedForeignInvestOrderHook::notify_status_change(
+					(who.clone(), investment_id),
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: status.swapped,
+						foreign_currency,
+						amount_remaining: status.pending,
+					},
+				)?;
+			}
+
+			Ok(())
 		}
 
 		fn increase_foreign_redemption(

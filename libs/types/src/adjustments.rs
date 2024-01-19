@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureSub},
+	traits::{EnsureAdd, EnsureSub, Zero},
 	ArithmeticError,
 };
 
