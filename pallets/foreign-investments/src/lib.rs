@@ -497,7 +497,7 @@ pub mod pallet {
 			let status = Self::apply_swap(who, investment_id, new_swap.clone())?;
 
 			if !status.swapped.is_zero() {
-				Self::notify_swap(
+				Self::notify_swap_done(
 					who,
 					investment_id,
 					new_swap.currency_out,
@@ -507,7 +507,7 @@ pub mod pallet {
 			}
 
 			if !status.swapped_inverse.is_zero() {
-				Self::notify_swap(
+				Self::notify_swap_done(
 					who,
 					investment_id,
 					new_swap.currency_in,
@@ -519,7 +519,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn notify_swap(
+		fn notify_swap_done(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 			currency_out: T::CurrencyId,
@@ -529,7 +529,7 @@ pub mod pallet {
 			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
 				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
 
-				//TODO: fix the swapped_amount calculation which is currently wrong.
+				// TODO: fix the swapped_amount calculation which is currently wrong.
 				swapped_amount =
 					swapped_amount.saturating_sub(info.collected_amount.amount_collected);
 
@@ -537,6 +537,7 @@ pub mod pallet {
 					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
 				}
 
+				// TODO: make `amount_tranche_tokens_payout`, proportional to foreign_amount.
 				T::CollectedForeignRedemptionHook::notify_status_change(
 					(who.clone(), investment_id),
 					ExecutedForeignCollect {
@@ -809,7 +810,7 @@ pub mod pallet {
 				}
 			};
 
-			Pallet::<T>::notify_swap(
+			Pallet::<T>::notify_swap_done(
 				&who,
 				investment_id,
 				last_swap.currency_out,
