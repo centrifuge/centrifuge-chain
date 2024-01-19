@@ -3096,14 +3096,15 @@ mod pool_fees {
 				],
 			);
 
-			let balance = OrmlTokens::balance(
-				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()).into(),
-				&0,
-			);
-
+			// Redeem all junior and senior tranche tokens to require manual epoch execution
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
 				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				INVESTMENT_AMOUNT
+			));
+			assert_ok!(Investments::update_redeem_order(
+				RuntimeOrigin::signed(1),
+				TrancheCurrency::generate(DEFAULT_POOL_ID, SeniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 
