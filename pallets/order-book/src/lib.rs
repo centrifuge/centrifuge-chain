@@ -226,7 +226,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::OrderIdNonce,
-		Order<T>,
+		(),
 		ResultQuery<Error<T>::OrderNotFound>,
 	>;
 
@@ -549,7 +549,7 @@ pub mod pallet {
 			})?;
 
 			Orders::<T>::insert(order_id, new_order.clone());
-			UserOrders::<T>::insert(&account, order_id, new_order);
+			UserOrders::<T>::insert(&account, order_id, ());
 
 			Self::deposit_event(Event::OrderCreated {
 				creator_account: account,
@@ -598,7 +598,6 @@ pub mod pallet {
 			order.ratio = ratio;
 
 			Orders::<T>::insert(order.order_id, order.clone());
-			UserOrders::<T>::insert(&order.placing_account, order.order_id, order.clone());
 
 			Self::deposit_event(Event::OrderUpdated {
 				account: order.placing_account,
@@ -615,8 +614,8 @@ pub mod pallet {
 		pub fn remove_order(order_id: T::OrderIdNonce) -> DispatchResult {
 			let order = <Orders<T>>::get(order_id)?;
 
-			UserOrders::<T>::remove(&order.placing_account, order.order_id);
 			Orders::<T>::remove(order.order_id);
+			UserOrders::<T>::remove(&order.placing_account, order.order_id);
 
 			CurrencyPairOrders::<T>::mutate(order.currency_in, order.currency_out, |orders| {
 				orders.retain(|o| *o != order.order_id);
@@ -659,12 +658,7 @@ pub mod pallet {
 				updated_order.amount_out = remaining_amount_out;
 				updated_order.amount_in = order.amount_in.ensure_add(amount_in)?;
 
-				<Orders<T>>::insert(updated_order.order_id, updated_order.clone());
-				<UserOrders<T>>::insert(
-					&order.placing_account,
-					updated_order.order_id,
-					updated_order,
-				);
+				Orders::<T>::insert(updated_order.order_id, updated_order.clone());
 			} else {
 				Self::remove_order(order.order_id)?;
 			}

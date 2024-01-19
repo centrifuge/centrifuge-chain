@@ -50,10 +50,8 @@ mod util {
 	}
 
 	pub fn assert_exists_order(order_id: OrderId) {
-		assert_eq!(
-			Orders::<Runtime>::get(order_id),
-			UserOrders::<Runtime>::get(FROM, order_id),
-		);
+		assert_ok!(Orders::<Runtime>::get(order_id));
+		assert_ok!(UserOrders::<Runtime>::get(FROM, order_id));
 		assert!(CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
