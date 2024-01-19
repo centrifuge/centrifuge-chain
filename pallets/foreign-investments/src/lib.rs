@@ -327,6 +327,11 @@ pub mod pallet {
 		SwapOrderNotFound,
 		/// Failed to retrieve the pool for the given pool id.
 		PoolNotFound,
+		/// An action for a different foreign currency is currently in process
+		/// for the same pool currency, account, and investment.
+		/// The currenct foreign actions must be finished before starting with a
+		/// different foreign currency investment / redemption.
+		MismatchedForeignCurrency,
 	}
 
 	/// Internal type used as result of `Pallet::apply_swap()`
@@ -374,8 +379,8 @@ pub mod pallet {
 		///   - If the amount is greater, it removes the inverse swap and create
 		///     another with the excess
 		///
-		/// The returned status contains the swapped amount after this call and
-		/// the pending amount to be swapped.
+		/// The returned status contains the swapped amounts after this call and
+		/// the pending amounts to be swapped of both swap directions.
 		fn apply_swap(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
@@ -591,6 +596,11 @@ pub mod pallet {
 					collected_amount: CollectedAmount::default(),
 				});
 
+				ensure!(
+					info.foreign_currency == foreign_currency,
+					Error::<T>::MismatchedForeignCurrency
+				);
+
 				info.total_foreign_amount
 					.ensure_add_assign(foreign_amount)?;
 
@@ -625,6 +635,11 @@ pub mod pallet {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.total_foreign_amount
 					.ensure_sub_assign(foreign_amount)?;
+
+				ensure!(
+					info.foreign_currency == foreign_currency,
+					Error::<T>::MismatchedForeignCurrency
+				);
 
 				Ok(())
 			})?;
@@ -667,6 +682,11 @@ pub mod pallet {
 					collected_amount: CollectedAmount::default(),
 				});
 
+				ensure!(
+					info.foreign_currency == payout_foreign_currency,
+					Error::<T>::MismatchedForeignCurrency
+				);
+
 				info.total_tranche_tokens
 					.ensure_add_assign(tranche_tokens_amount)?;
 
@@ -684,12 +704,17 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 			tranche_tokens_amount: T::Balance,
-			_payout_foreign_currency: T::CurrencyId,
+			payout_foreign_currency: T::CurrencyId,
 		) -> Result<(T::Balance, T::Balance), DispatchError> {
 			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| -> DispatchResult {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.total_tranche_tokens
 					.ensure_sub_assign(tranche_tokens_amount)?;
+
+				ensure!(
+					info.foreign_currency == payout_foreign_currency,
+					Error::<T>::MismatchedForeignCurrency
+				);
 
 				Ok(())
 			})?;
