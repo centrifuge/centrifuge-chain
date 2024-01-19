@@ -646,10 +646,9 @@ pub mod pallet {
 					now.saturating_sub(fees_last_updated) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
-
-				let positive_nav = nav_aum.ensure_add(pool.reserve.total)?;
-				let nav = positive_nav
-					.ensure_sub(nav_fees)
+				let nav = Nav::new(nav_aum, nav_fees);
+				let nav_total = nav
+					.total(pool.reserve.total)
 					.map_err(|_| Error::<T>::NegativeBalanceSheet)?;
 				let submission_period_epoch = pool.epoch.current;
 
@@ -657,7 +656,7 @@ pub mod pallet {
 
 				let epoch_tranche_prices = pool
 					.tranches
-					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav, now)?;
+					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(nav_total, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -727,7 +726,7 @@ pub mod pallet {
 					)?;
 
 				let mut epoch = EpochExecutionInfo {
-					nav: Nav::new(nav_aum, nav_fees),
+					nav,
 					epoch: submission_period_epoch,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
