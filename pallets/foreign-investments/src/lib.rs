@@ -526,6 +526,7 @@ pub mod pallet {
 			mut swapped_amount: T::Balance,
 			pending_amount_in: T::Balance,
 		) -> DispatchResult {
+			// First we try to resolve any possible redemption for who/investment_id
 			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
 				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
 
@@ -549,6 +550,8 @@ pub mod pallet {
 				)?;
 			}
 
+			// If after solving the redemption there is still more swapped_amount available,
+			// we proceed solving the investment.
 			if !swapped_amount.is_zero() {
 				let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
 					.ok_or(Error::<T>::InfoNotFound)?;
