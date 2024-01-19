@@ -514,7 +514,7 @@ fn fill_order_partial_with_insufficient_amount() {
 			OrderBook::fill_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
-				OrderBook::default_min_fulfillment_amount(CURRENCY_A).unwrap() - 1,
+				OrderBook::min_fulfillment_amount(CURRENCY_A).unwrap() - 1,
 			),
 			Error::<Runtime>::BelowMinFulfillmentAmount
 		);

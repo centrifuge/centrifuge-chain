@@ -2267,6 +2267,12 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::OrderBookApi<Block, CurrencyId, Balance> for Runtime {
+		fn min_fulfillment_amount(currency_id: CurrencyId) -> Option<Balance> {
+			OrderBook::min_fulfillment_amount(currency_id).ok()
+		}
+	}
+
 	// Frontier APIs
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {

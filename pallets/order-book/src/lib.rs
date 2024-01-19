@@ -385,7 +385,7 @@ pub mod pallet {
 				amount_out,
 				ratio,
 				TradingPair::<T>::get(&currency_in, &currency_out)?,
-				Self::default_min_fulfillment_amount(currency_out)?,
+				Self::min_fulfillment_amount(currency_out)?,
 			)?;
 
 			Ok(())
@@ -413,7 +413,7 @@ pub mod pallet {
 				amount_out,
 				ratio,
 				TradingPair::<T>::get(&order.currency_in, &order.currency_out)?,
-				Self::default_min_fulfillment_amount(order.currency_out)?,
+				Self::min_fulfillment_amount(order.currency_out)?,
 			)
 		}
 
@@ -631,7 +631,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let min_fulfillment_amount_out = min(
 				order.amount_out,
-				Self::default_min_fulfillment_amount(order.currency_out)?,
+				Self::min_fulfillment_amount(order.currency_out)?,
 			);
 
 			ensure!(
@@ -768,7 +768,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn default_min_fulfillment_amount(
+		pub fn min_fulfillment_amount(
 			currency: T::CurrencyId,
 		) -> Result<T::Balance, DispatchError> {
 			T::DecimalConverter::to_asset_balance(T::MinFulfillmentAmountNative::get(), currency)
