@@ -143,10 +143,6 @@ impl<T: Config> RedemptionInfo<T> {
 		})
 	}
 
-	fn is_fully_swapped(&self) -> bool {
-		self.base.collected.amount_collected == self.swapped_amount
-	}
-
 	fn collected_tranche_tokens(&self) -> T::Balance {
 		self.base.collected.amount_payment
 	}
@@ -711,21 +707,16 @@ pub mod pallet {
 				if let Some(info) = maybe_info {
 					if info.swap_id == Some(swap_id) {
 						info.swapped_amount.ensure_add_assign(last_swap.amount_in)?;
-						if info.is_fully_swapped() {
-							// NOTE: How make this works with market ratios?
-							let collected_foreign_amount = T::CurrencyConverter::stable_to_stable(
-								info.base.foreign_currency,
-								info.base.pool_currency,
-								info.collected_pool_amount(),
-							)?;
+						if pending_amount.is_zero() {
+							let redemption = T::Investment::redemption(&who, investment_id)?;
 
 							T::CollectedForeignRedemptionHook::notify_status_change(
 								(who.clone(), investment_id),
 								ExecutedForeignCollect {
 									currency: info.base.foreign_currency,
-									amount_currency_payout: collected_foreign_amount,
+									amount_currency_payout: info.swapped_amount,
 									amount_tranche_tokens_payout: info.collected_tranche_tokens(),
-									amount_remaining: info.remaining_tranche_tokens()?,
+									amount_remaining: redemption,
 								},
 							)?;
 
