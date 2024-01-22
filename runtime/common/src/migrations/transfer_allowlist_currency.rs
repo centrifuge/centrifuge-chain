@@ -12,7 +12,10 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, BlockNumber};
-use cfg_types::{locations::Location, tokens::CurrencyId};
+use cfg_types::{
+	locations::Location,
+	tokens::{CurrencyId, FilterCurrency},
+};
 use frame_support::{
 	pallet_prelude::{NMapKey, OptionQuery},
 	storage::types::{StorageDoubleMap, StorageNMap},
@@ -25,8 +28,6 @@ use pallet_transfer_allowlist::{AllowanceDetails, AllowanceMetadata};
 use parity_scale_codec::{Decode, Encode};
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
-
-use crate::transfer_filter::FilterCurrency;
 
 const LOG_PREFIX: &str = "TransferAllowlist-CurrencyMigration: ";
 

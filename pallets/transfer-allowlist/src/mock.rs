@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::FilterCurrency;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64},
@@ -122,12 +122,11 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
 	pub const HoldId: () = ();
 }
 
 impl transfer_allowlist::Config for Runtime {
-	type CurrencyId = CurrencyId;
+	type CurrencyId = FilterCurrency;
 	type Deposit = ConstU64<10>;
 	type HoldId = HoldId;
 	type Location = Location;

@@ -2017,8 +2017,8 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::locations::Location;
-use runtime_common::transfer_filter::{FilterCurrency, PreNativeTransfer};
+use cfg_types::{locations::Location, tokens::FilterCurrency};
+use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

@@ -1,10 +1,10 @@
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, FilterCurrency};
 use frame_support::{assert_err, assert_noop, assert_ok};
 
 use super::*;
 use crate::mock::*;
 
-const TEST_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const TEST_CURRENCY_ID: FilterCurrency = FilterCurrency::Specific(CurrencyId::ForeignAsset(1));
 
 #[test]
 fn add_transfer_allowance_works() {

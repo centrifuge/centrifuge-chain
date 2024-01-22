@@ -14,7 +14,7 @@ use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
@@ -31,6 +31,12 @@ pub enum Location {
 	XCM(H256),
 	/// DomainAddress sending location from a liquidity pools' instance
 	Address(DomainAddress),
+}
+
+impl From<AccountId32> for Location {
+	fn from(value: AccountId32) -> Self {
+		Self::Local(value.into())
+	}
 }
 
 impl From<MultiLocation> for Location {

@@ -12,11 +12,15 @@
 
 use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
-use cfg_types::{domain_address::DomainAddress, locations::Location, tokens::CurrencyId};
+use cfg_types::{
+	domain_address::DomainAddress,
+	locations::Location,
+	tokens::{CurrencyId, FilterCurrency},
+};
 use frame_support::{dispatch::TypeInfo, traits::IsSubType};
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode};
 use sp_core::Hasher;
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
@@ -24,14 +28,6 @@ use sp_runtime::{
 	DispatchError, DispatchResult, TokenError,
 };
 use xcm::v3::{MultiAsset, MultiLocation};
-
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub enum FilterCurrency {
-	All,
-	Specific(CurrencyId),
-}
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 

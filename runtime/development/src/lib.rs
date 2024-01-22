@@ -2092,10 +2092,8 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use runtime_common::{
-	remarks::Remark,
-	transfer_filter::{FilterCurrency, PreNativeTransfer},
-};
+use cfg_types::tokens::FilterCurrency;
+use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
