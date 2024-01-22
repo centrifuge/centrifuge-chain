@@ -94,9 +94,10 @@ impl<T: Config> BaseInfo<T> {
 #[scale_info(skip_type_params(T))]
 pub struct InvestmentInfo<T: Config> {
 	base: BaseInfo<T>,
+	total_pool_amount: T::Balance,
 	increase_swap_id: Option<T::SwapId>,
 	decrease_swap_id: Option<T::SwapId>,
-	total_pool_amount: T::Balance,
+	decrease_swapped_amount: T::Balance,
 }
 
 impl<T: Config> InvestmentInfo<T> {
@@ -109,6 +110,7 @@ impl<T: Config> InvestmentInfo<T> {
 			total_pool_amount: T::Balance::default(),
 			increase_swap_id: None,
 			decrease_swap_id: None,
+			decrease_swapped_amount: T::Balance::default(),
 		})
 	}
 
@@ -676,16 +678,27 @@ pub mod pallet {
 							info.increase_swap_id = None;
 						}
 					} else if info.decrease_swap_id == Some(swap_id) {
-						T::DecreasedForeignInvestOrderHook::notify_status_change(
-							(who.clone(), investment_id),
-							ExecutedForeignDecreaseInvest {
-								amount_decreased: last_swap.amount_in,
-								foreign_currency: info.base.foreign_currency,
-								amount_remaining: pending_amount,
-							},
-						)?;
+						info.decrease_swapped_amount
+							.ensure_add_assign(last_swap.amount_in)?;
 
 						if pending_amount.is_zero() {
+							// NOTE: How make this works with market ratios?
+							let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
+								info.base.foreign_currency,
+								info.base.pool_currency,
+								T::Investment::investment(&who, investment_id)?,
+							)?;
+
+							T::DecreasedForeignInvestOrderHook::notify_status_change(
+								(who.clone(), investment_id),
+								ExecutedForeignDecreaseInvest {
+									amount_decreased: info.decrease_swapped_amount,
+									foreign_currency: info.base.foreign_currency,
+									amount_remaining: remaining_foreign_amount,
+								},
+							)?;
+
+							info.decrease_swapped_amount = T::Balance::default();
 							info.decrease_swap_id = None;
 						}
 					}
@@ -699,11 +712,18 @@ pub mod pallet {
 					if info.swap_id == Some(swap_id) {
 						info.swapped_amount.ensure_add_assign(last_swap.amount_in)?;
 						if info.is_fully_swapped() {
+							// NOTE: How make this works with market ratios?
+							let collected_foreign_amount = T::CurrencyConverter::stable_to_stable(
+								info.base.foreign_currency,
+								info.base.pool_currency,
+								info.collected_pool_amount(),
+							)?;
+
 							T::CollectedForeignRedemptionHook::notify_status_change(
 								(who.clone(), investment_id),
 								ExecutedForeignCollect {
 									currency: info.base.foreign_currency,
-									amount_currency_payout: info.collected_pool_amount(),
+									amount_currency_payout: collected_foreign_amount,
 									amount_tranche_tokens_payout: info.collected_tranche_tokens(),
 									amount_remaining: info.remaining_tranche_tokens()?,
 								},
@@ -711,6 +731,7 @@ pub mod pallet {
 
 							info.base.collected = CollectedAmount::default();
 							info.swapped_amount = T::Balance::default();
+							info.swap_id = None;
 
 							if info.remaining_tranche_tokens()?.is_zero() {
 								*maybe_info = None;
@@ -738,18 +759,25 @@ pub mod pallet {
 				let info = maybe_info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.base.collected.increase(&collected)?;
 
-				// NOTE: Would require thinking to know how make this works with market ratios.
+				// NOTE: How make this works with market ratios?
 				let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 					info.base.foreign_currency,
 					info.base.pool_currency,
 					info.remaining_pool_amount()?,
 				)?;
 
+				// NOTE: How make this works with market ratios?
+				let foreign_amount = T::CurrencyConverter::stable_to_stable(
+					info.base.foreign_currency,
+					info.base.pool_currency,
+					collected.amount_payment,
+				)?;
+
 				T::CollectedForeignInvestmentHook::notify_status_change(
 					(who.clone(), investment_id),
 					ExecutedForeignCollect {
 						currency: info.base.foreign_currency,
-						amount_currency_payout: collected.amount_payment,
+						amount_currency_payout: foreign_amount,
 						amount_tranche_tokens_payout: collected.amount_collected,
 						amount_remaining: remaining_foreign_amount,
 					},
