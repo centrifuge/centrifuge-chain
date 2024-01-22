@@ -114,11 +114,11 @@ impl<T: Config> InvestmentInfo<T> {
 
 	fn remaining_foreign_amount(&self) -> Result<T::Balance, ArithmeticError> {
 		self.total_foreign_amount
-			.ensure_sub(self.base.collected.amount_collected)
+			.ensure_sub(self.base.collected.amount_payment)
 	}
 }
 
-/// Hold the information of an foreign investment
+/// Hold the information of an foreign redemption
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct RedemptionInfo<T: Config> {
@@ -306,8 +306,7 @@ pub mod pallet {
 
 	/// Contains the information about the foreign investment process
 	///
-	/// NOTE: The storage is killed once the investment is collected or
-	/// redemption process is collected and fully swapped
+	/// NOTE: The storage is killed once the investment is collected.
 	#[pallet::storage]
 	pub(super) type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
 		_,
@@ -318,9 +317,9 @@ pub mod pallet {
 		InvestmentInfo<T>,
 	>;
 
-	/// Contains the information about the foreign investment process
+	/// Contains the information about the foreign redemption process
 	///
-	/// NOTE: The storage is killed once the investment is collected or
+	/// NOTE: The storage is killed once the redemption is collected and
 	/// redemption process is collected and fully swapped
 	#[pallet::storage]
 	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
@@ -336,7 +335,7 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type SwapidToForeignId<T: Config> =
+	pub(super) type SwapIdToForeignId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::SwapId, (T::AccountId, T::InvestmentId)>;
 
 	#[pallet::event]
@@ -411,7 +410,7 @@ pub mod pallet {
 						T::BalanceRatio::one(),
 					)?;
 
-					SwapidToForeignId::<T>::insert(swap_id, (who.clone(), investment_id));
+					SwapIdToForeignId::<T>::insert(swap_id, (who.clone(), investment_id));
 
 					Ok(swap_id)
 				}
@@ -557,6 +556,11 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			_foreign_payment_currency: T::CurrencyId,
 		) -> DispatchResult {
+			ensure!(
+				ForeignInvestmentInfo::<T>::contains_key(&who, investment_id),
+				Error::<T>::InfoNotFound
+			);
+
 			T::Investment::collect_investment(who.clone(), investment_id)
 		}
 
@@ -566,6 +570,11 @@ pub mod pallet {
 			_foreign_payout_currency: T::CurrencyId,
 			_pool_currency: T::CurrencyId,
 		) -> DispatchResult {
+			ensure!(
+				ForeignRedemptionInfo::<T>::contains_key(&who, investment_id),
+				Error::<T>::InfoNotFound
+			);
+
 			T::Investment::collect_redemption(who.clone(), investment_id)
 		}
 
@@ -573,6 +582,11 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> Result<T::Balance, DispatchError> {
+			ensure!(
+				ForeignInvestmentInfo::<T>::contains_key(&who, investment_id),
+				Error::<T>::InfoNotFound
+			);
+
 			T::Investment::investment(who, investment_id)
 		}
 
@@ -580,6 +594,11 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> Result<T::Balance, DispatchError> {
+			ensure!(
+				ForeignRedemptionInfo::<T>::contains_key(&who, investment_id),
+				Error::<T>::InfoNotFound
+			);
+
 			T::Investment::redemption(who, investment_id)
 		}
 
@@ -621,17 +640,17 @@ pub mod pallet {
 			last_swap: SwapOf<T>,
 		) -> Result<(), DispatchError> {
 			let (who, investment_id) =
-				SwapidToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+				SwapIdToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
 
 			let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
 				Some(swap) => swap.amount_in,
 				None => {
-					SwapidToForeignId::<T>::remove(swap_id);
+					SwapIdToForeignId::<T>::remove(swap_id);
 					T::Balance::zero()
 				}
 			};
 
-			ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |maybe_info| {
+			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |maybe_info| {
 				if let Some(info) = maybe_info {
 					if info.increase_swap_id == Some(swap_id) {
 						T::Investment::update_investment(
@@ -642,7 +661,7 @@ pub mod pallet {
 						)?;
 
 						if pending_amount.is_zero() {
-							*maybe_info = None;
+							info.increase_swap_id = None;
 						}
 					} else if info.decrease_swap_id == Some(swap_id) {
 						T::DecreasedForeignInvestOrderHook::notify_status_change(
@@ -655,7 +674,7 @@ pub mod pallet {
 						)?;
 
 						if pending_amount.is_zero() {
-							*maybe_info = None;
+							info.decrease_swap_id = None;
 						}
 					}
 				}
