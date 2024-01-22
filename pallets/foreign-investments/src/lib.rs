@@ -440,6 +440,7 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
+			// NOTE: This line will be removed with market ratios
 			let pool_amount = T::CurrencyConverter::stable_to_stable(
 				pool_currency,
 				foreign_currency,
@@ -474,6 +475,7 @@ pub mod pallet {
 			foreign_currency: T::CurrencyId,
 			pool_currency: T::CurrencyId,
 		) -> DispatchResult {
+			// NOTE: This line will be removed with market ratios
 			let pool_amount = T::CurrencyConverter::stable_to_stable(
 				pool_currency,
 				foreign_currency,
@@ -657,7 +659,7 @@ pub mod pallet {
 				}
 			};
 
-			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |maybe_info| {
+			ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |maybe_info| {
 				if let Some(info) = maybe_info {
 					if info.increase_swap_id == Some(swap_id) {
 						T::Investment::update_investment(
@@ -730,10 +732,11 @@ pub mod pallet {
 			(who, investment_id): (T::AccountId, T::InvestmentId),
 			collected: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
-			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |maybe_info| {
+			ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |maybe_info| {
 				let info = maybe_info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.base.collected.increase(&collected)?;
 
+				// NOTE: Would require thinking to know how make this works with market ratios.
 				let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 					info.base.foreign_currency,
 					info.base.pool_currency,
