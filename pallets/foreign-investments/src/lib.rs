@@ -126,7 +126,6 @@ pub struct RedemptionInfo<T: Config> {
 	swap_id: Option<T::SwapId>,
 	total_tranche_tokens: T::Balance,
 	swapped_amount: T::Balance,
-	tranche_tokens_sent: T::Balance,
 }
 
 impl<T: Config> RedemptionInfo<T> {
@@ -139,15 +138,19 @@ impl<T: Config> RedemptionInfo<T> {
 			swap_id: None,
 			total_tranche_tokens: T::Balance::default(),
 			swapped_amount: T::Balance::default(),
-			tranche_tokens_sent: T::Balance::default(),
 		})
 	}
 
-	fn pending_tranche_tokens_to_send(&self) -> Result<T::Balance, ArithmeticError> {
-		self.base
-			.collected
-			.amount_payment
-			.ensure_sub(self.tranche_tokens_sent)
+	fn is_fully_swapped(&self) -> bool {
+		self.base.collected.amount_collected == self.swapped_amount
+	}
+
+	fn collected_tranche_tokens(&self) -> T::Balance {
+		self.base.collected.amount_payment
+	}
+
+	fn collected_pool_amount(&self) -> T::Balance {
+		self.base.collected.amount_collected
 	}
 
 	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
@@ -695,20 +698,19 @@ pub mod pallet {
 				if let Some(info) = maybe_info {
 					if info.swap_id == Some(swap_id) {
 						info.swapped_amount.ensure_add_assign(last_swap.amount_in)?;
-
-						if info.base.collected.amount_collected == info.swapped_amount {
-							let tranche_tokens = info.pending_tranche_tokens_to_send()?;
-							info.tranche_tokens_sent.ensure_add_assign(tranche_tokens)?;
-
+						if info.is_fully_swapped() {
 							T::CollectedForeignRedemptionHook::notify_status_change(
 								(who.clone(), investment_id),
 								ExecutedForeignCollect {
 									currency: info.base.foreign_currency,
-									amount_currency_payout: last_swap.amount_in,
-									amount_tranche_tokens_payout: tranche_tokens,
+									amount_currency_payout: info.collected_pool_amount(),
+									amount_tranche_tokens_payout: info.collected_tranche_tokens(),
 									amount_remaining: info.remaining_tranche_tokens()?,
 								},
 							)?;
+
+							info.base.collected = CollectedAmount::default();
+							info.swapped_amount = T::Balance::default();
 
 							if info.remaining_tranche_tokens()?.is_zero() {
 								*maybe_info = None;
