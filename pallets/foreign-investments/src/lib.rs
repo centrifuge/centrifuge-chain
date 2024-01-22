@@ -96,7 +96,7 @@ pub struct InvestmentInfo<T: Config> {
 	base: BaseInfo<T>,
 	increase_swap_id: Option<T::SwapId>,
 	decrease_swap_id: Option<T::SwapId>,
-	total_foreign_amount: T::Balance,
+	total_pool_amount: T::Balance,
 }
 
 impl<T: Config> InvestmentInfo<T> {
@@ -106,14 +106,14 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<Self, DispatchError> {
 		Ok(Self {
 			base: BaseInfo::new(investment_id, foreign_currency)?,
-			total_foreign_amount: T::Balance::default(),
+			total_pool_amount: T::Balance::default(),
 			increase_swap_id: None,
 			decrease_swap_id: None,
 		})
 	}
 
-	fn remaining_foreign_amount(&self) -> Result<T::Balance, ArithmeticError> {
-		self.total_foreign_amount
+	fn remaining_pool_amount(&self) -> Result<T::Balance, ArithmeticError> {
+		self.total_pool_amount
 			.ensure_sub(self.base.collected.amount_payment)
 	}
 }
@@ -126,6 +126,7 @@ pub struct RedemptionInfo<T: Config> {
 	swap_id: Option<T::SwapId>,
 	total_tranche_tokens: T::Balance,
 	swapped_amount: T::Balance,
+	tranche_tokens_sent: T::Balance,
 }
 
 impl<T: Config> RedemptionInfo<T> {
@@ -138,7 +139,15 @@ impl<T: Config> RedemptionInfo<T> {
 			swap_id: None,
 			total_tranche_tokens: T::Balance::default(),
 			swapped_amount: T::Balance::default(),
+			tranche_tokens_sent: T::Balance::default(),
 		})
+	}
+
+	fn pending_tranche_tokens_to_send(&self) -> Result<T::Balance, ArithmeticError> {
+		self.base
+			.collected
+			.amount_payment
+			.ensure_sub(self.tranche_tokens_sent)
 	}
 
 	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
@@ -442,8 +451,7 @@ pub mod pallet {
 					info.get_or_insert(InvestmentInfo::new(investment_id, foreign_currency)?);
 
 				info.base.ensure_same_foreign(foreign_currency)?;
-				info.total_foreign_amount
-					.ensure_add_assign(foreign_amount)?;
+				info.total_pool_amount.ensure_add_assign(pool_amount)?;
 
 				let swap_id = Self::apply_order(
 					who,
@@ -476,8 +484,7 @@ pub mod pallet {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 
 				info.base.ensure_same_foreign(foreign_currency)?;
-				info.total_foreign_amount
-					.ensure_sub_assign(foreign_amount)?;
+				info.total_pool_amount.ensure_sub_assign(pool_amount)?;
 
 				let swap_id = Self::apply_order(
 					who,
@@ -688,8 +695,8 @@ pub mod pallet {
 						info.swapped_amount.ensure_add_assign(last_swap.amount_in)?;
 
 						if info.base.collected.amount_collected == info.swapped_amount {
-							let tranche_tokens = info.base.collected.amount_payment;
-							//TODO reset `amount_payment`
+							let tranche_tokens = info.pending_tranche_tokens_to_send()?;
+							info.tranche_tokens_sent.ensure_add_assign(tranche_tokens)?;
 
 							T::CollectedForeignRedemptionHook::notify_status_change(
 								(who.clone(), investment_id),
@@ -723,25 +730,32 @@ pub mod pallet {
 			(who, investment_id): (T::AccountId, T::InvestmentId),
 			collected: CollectedAmount<T::Balance>,
 		) -> DispatchResult {
-			let info = ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |maybe_info| {
+			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |maybe_info| {
 				let info = maybe_info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.base.collected.increase(&collected)?;
-				Ok::<_, DispatchError>(info.clone())
-			})?;
 
-			if info.remaining_foreign_amount()?.is_zero() {
-				ForeignInvestmentInfo::<T>::remove(&who, investment_id);
-			}
+				let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
+					info.base.foreign_currency,
+					info.base.pool_currency,
+					info.remaining_pool_amount()?,
+				)?;
 
-			T::CollectedForeignInvestmentHook::notify_status_change(
-				(who.clone(), investment_id),
-				ExecutedForeignCollect {
-					currency: info.base.foreign_currency,
-					amount_currency_payout: collected.amount_payment,
-					amount_tranche_tokens_payout: collected.amount_collected,
-					amount_remaining: info.remaining_foreign_amount()?,
-				},
-			)
+				T::CollectedForeignInvestmentHook::notify_status_change(
+					(who.clone(), investment_id),
+					ExecutedForeignCollect {
+						currency: info.base.foreign_currency,
+						amount_currency_payout: collected.amount_payment,
+						amount_tranche_tokens_payout: collected.amount_collected,
+						amount_remaining: remaining_foreign_amount,
+					},
+				)?;
+
+				if info.remaining_pool_amount()?.is_zero() {
+					*maybe_info = None;
+				}
+
+				Ok(())
+			})
 		}
 	}
 
