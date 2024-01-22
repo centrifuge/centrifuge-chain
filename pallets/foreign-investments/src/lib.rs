@@ -47,7 +47,10 @@ use cfg_types::investments::{CollectedAmount, Swap};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::EnsureSub, ArithmeticError};
+use sp_runtime::{
+	traits::{EnsureAddAssign, EnsureSub},
+	ArithmeticError,
+};
 
 #[cfg(test)]
 mod mock;
@@ -80,9 +83,20 @@ pub struct RedemptionInfo<T: Config> {
 	pool_currency: T::CurrencyId,
 	total_tranche_tokens: T::Balance,
 	collected_amount: CollectedAmount<T::Balance>,
+	pool_amount_swapped: T::Balance,
 }
 
 impl<T: Config> RedemptionInfo<T> {
+	fn increase_pool_amount_swapped(&mut self, amount: T::Balance) -> Result<(), ArithmeticError> {
+		self.pool_amount_swapped.ensure_add_assign(amount)
+	}
+
+	fn remaining_pool_amount(&self) -> Result<T::Balance, ArithmeticError> {
+		self.collected_amount
+			.amount_collected
+			.ensure_sub(self.pool_amount_swapped)
+	}
+
 	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
 		self.total_tranche_tokens
 			.ensure_sub(self.collected_amount.amount_payment)
@@ -524,37 +538,59 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			currency_out: T::CurrencyId,
 			mut swapped_amount: T::Balance,
-			pending_amount_in: T::Balance,
+			pending_amount: T::Balance,
 		) -> DispatchResult {
-			// First we try to resolve any possible redemption for who/investment_id
-			if let Some(info) = ForeignRedemptionInfo::<T>::get(&who, investment_id) {
-				let foreign_amount = swapped_amount.min(info.collected_amount.amount_collected);
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |maybe_info| {
+				if let Some(info) = maybe_info {
+					if currency_out == info.pool_currency {
+						let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
+							info.foreign_currency,
+							info.pool_currency,
+							info.remaining_pool_amount()?,
+						)?;
 
-				// TODO: fix the swapped_amount calculation which is currently wrong.
-				swapped_amount =
-					swapped_amount.saturating_sub(info.collected_amount.amount_collected);
+						let foreign_amount = swapped_amount.min(remaining_foreign_amount);
 
-				if info.remaining_tranche_tokens()?.is_zero() {
-					ForeignRedemptionInfo::<T>::remove(&who, investment_id);
+						let pool_amount = T::CurrencyConverter::stable_to_stable(
+							info.pool_currency,
+							info.foreign_currency,
+							foreign_amount,
+						)?;
+
+						info.increase_pool_amount_swapped(pool_amount)?;
+
+						if info.remaining_tranche_tokens()?.is_zero() {
+							ForeignRedemptionInfo::<T>::remove(&who, investment_id);
+						}
+
+						// TODO: make `amount_tranche_tokens_payout`, proportional to
+						// foreign_amount.
+						T::CollectedForeignRedemptionHook::notify_status_change(
+							(who.clone(), investment_id),
+							ExecutedForeignCollect {
+								currency: info.foreign_currency,
+								amount_currency_payout: foreign_amount,
+								amount_tranche_tokens_payout: T::Balance::zero(),
+								amount_remaining: info.remaining_tranche_tokens()?,
+							},
+						)?;
+
+						swapped_amount = swapped_amount.saturating_sub(foreign_amount);
+					}
 				}
 
-				// TODO: make `amount_tranche_tokens_payout`, proportional to foreign_amount.
-				T::CollectedForeignRedemptionHook::notify_status_change(
-					(who.clone(), investment_id),
-					ExecutedForeignCollect {
-						currency: info.foreign_currency,
-						amount_currency_payout: foreign_amount,
-						amount_tranche_tokens_payout: T::Balance::zero(),
-						amount_remaining: info.remaining_tranche_tokens()?,
-					},
-				)?;
-			}
+				Ok::<_, DispatchError>(())
+			})?;
 
 			// If after solving the redemption there is still more swapped_amount available,
 			// we proceed solving the investment.
 			if !swapped_amount.is_zero() {
 				let info = ForeignInvestmentInfo::<T>::get(&who, investment_id)
 					.ok_or(Error::<T>::InfoNotFound)?;
+
+				if pending_amount.is_zero() {
+					ForeignInvestmentInfo::<T>::remove(&who, investment_id);
+				}
 
 				if currency_out == info.foreign_currency {
 					T::Investment::update_investment(
@@ -569,7 +605,7 @@ pub mod pallet {
 						ExecutedForeignDecreaseInvest {
 							amount_decreased: swapped_amount,
 							foreign_currency: info.foreign_currency,
-							amount_remaining: pending_amount_in,
+							amount_remaining: pending_amount,
 						},
 					)?;
 				}
@@ -684,6 +720,7 @@ pub mod pallet {
 						.ok_or(Error::<T>::PoolNotFound)?,
 					total_tranche_tokens: T::Balance::default(),
 					collected_amount: CollectedAmount::default(),
+					pool_amount_swapped: T::Balance::default(),
 				});
 
 				ensure!(
