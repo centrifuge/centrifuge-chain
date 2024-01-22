@@ -339,7 +339,7 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type ForeignSwapIdToSwapId<T: Config> = StorageDoubleMap<
+	pub(super) type ForeignIdToSwapId<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -352,7 +352,7 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type SwapidToForeignSwapId<T: Config> =
+	pub(super) type SwapidToForeignId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::SwapId, (T::AccountId, T::InvestmentId)>;
 
 	#[pallet::event]
@@ -410,13 +410,13 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn register_swap(who: &T::AccountId, investment_id: T::InvestmentId, swap_id: T::SwapId) {
-			ForeignSwapIdToSwapId::<T>::insert(&who, investment_id, swap_id);
-			SwapidToForeignSwapId::<T>::insert(swap_id, (who.clone(), investment_id));
+			ForeignIdToSwapId::<T>::insert(&who, investment_id, swap_id);
+			SwapidToForeignId::<T>::insert(swap_id, (who.clone(), investment_id));
 		}
 
 		fn unregister_swap(who: &T::AccountId, investment_id: T::InvestmentId, swap_id: T::SwapId) {
-			ForeignSwapIdToSwapId::<T>::remove(&who, investment_id);
-			SwapidToForeignSwapId::<T>::remove(swap_id);
+			ForeignIdToSwapId::<T>::remove(&who, investment_id);
+			SwapidToForeignId::<T>::remove(swap_id);
 		}
 
 		/// Returns the `amount_out` of the swap, seeing as the amount used to
@@ -445,7 +445,7 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			new_swap: SwapOf<T>,
 		) -> Result<SwapStatus<T>, DispatchError> {
-			match ForeignSwapIdToSwapId::<T>::get(&who, investment_id) {
+			match ForeignIdToSwapId::<T>::get(&who, investment_id) {
 				None => {
 					let swap_id = T::TokenSwaps::place_order(
 						who.clone(),
@@ -862,7 +862,7 @@ pub mod pallet {
 			last_swap: SwapOf<T>,
 		) -> Result<(), DispatchError> {
 			let (who, investment_id) =
-				SwapidToForeignSwapId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+				SwapidToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
 
 			let remaining_swap_amount_in = match T::TokenSwaps::get_order_details(swap_id) {
 				Some(swap) => swap.amount_in,
