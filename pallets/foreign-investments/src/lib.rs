@@ -688,12 +688,15 @@ pub mod pallet {
 						info.swapped_amount.ensure_add_assign(last_swap.amount_in)?;
 
 						if info.base.collected.amount_collected == info.swapped_amount {
+							let tranche_tokens = info.base.collected.amount_payment;
+							//TODO reset `amount_payment`
+
 							T::CollectedForeignRedemptionHook::notify_status_change(
 								(who.clone(), investment_id),
 								ExecutedForeignCollect {
 									currency: info.base.foreign_currency,
 									amount_currency_payout: last_swap.amount_in,
-									amount_tranche_tokens_payout: T::Balance::zero(),
+									amount_tranche_tokens_payout: tranche_tokens,
 									amount_remaining: info.remaining_tranche_tokens()?,
 								},
 							)?;
