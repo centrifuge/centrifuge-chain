@@ -284,7 +284,7 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(Self::Amount, Self::Amount), Self::Error>;
+	) -> Result<(), Self::Error>;
 
 	/// Collect the results of a user's foreign invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly

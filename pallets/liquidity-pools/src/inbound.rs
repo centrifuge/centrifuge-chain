@@ -222,7 +222,7 @@ where
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		amount: <T as Config>::Balance,
+		tranche_tokens_payout: <T as Config>::Balance,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
@@ -230,16 +230,15 @@ where
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
-		let (tranche_tokens_payout, remaining_redeem_amount) =
-			T::ForeignInvestment::decrease_foreign_redemption(
-				&investor,
-				invest_id.clone(),
-				amount,
-				payout_currency,
-			)?;
+		T::ForeignInvestment::decrease_foreign_redemption(
+			&investor,
+			invest_id.clone(),
+			tranche_tokens_payout,
+			payout_currency,
+		)?;
 
 		T::Tokens::transfer(
-			invest_id.into(),
+			invest_id.clone().into(),
 			&investor,
 			&Domain::convert(destination.domain()),
 			tranche_tokens_payout,
@@ -249,10 +248,13 @@ where
 		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
 			pool_id,
 			tranche_id,
-			investor: investor.into(),
+			investor: investor.clone().into(),
 			currency: currency_u128,
 			tranche_tokens_payout,
-			remaining_redeem_amount,
+			remaining_redeem_amount: T::ForeignInvestment::redemption(
+				&investor,
+				invest_id.clone(),
+			)?,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;

@@ -852,7 +852,7 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			tranche_tokens_amount: T::Balance,
 			payout_foreign_currency: T::CurrencyId,
-		) -> Result<(T::Balance, T::Balance), DispatchError> {
+		) -> DispatchResult {
 			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 
@@ -867,11 +867,7 @@ pub mod pallet {
 				who,
 				investment_id,
 				T::Investment::redemption(who, investment_id)?.ensure_sub(tranche_tokens_amount)?,
-			)?;
-
-			let remaining_amount = T::Investment::redemption(who, investment_id)?;
-
-			Ok((tranche_tokens_amount, remaining_amount))
+			)
 		}
 
 		fn collect_foreign_investment(
