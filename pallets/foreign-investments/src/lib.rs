@@ -126,7 +126,7 @@ impl<T: Config> InvestmentInfo<T> {
 pub struct RedemptionInfo<T: Config> {
 	base: BaseInfo<T>,
 	swap_id: Option<T::SwapId>,
-	total_tranche_tokens: T::Balance,
+	pending_tranche_tokens: T::Balance,
 	swapped_amount: T::Balance,
 }
 
@@ -138,18 +138,13 @@ impl<T: Config> RedemptionInfo<T> {
 		Ok(Self {
 			base: BaseInfo::new(investment_id, foreign_currency)?,
 			swap_id: None,
-			total_tranche_tokens: T::Balance::default(),
+			pending_tranche_tokens: T::Balance::default(),
 			swapped_amount: T::Balance::default(),
 		})
 	}
 
 	fn collected_tranche_tokens(&self) -> T::Balance {
 		self.base.collected.amount_payment
-	}
-
-	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
-		self.total_tranche_tokens
-			.ensure_sub(self.base.collected.amount_payment)
 	}
 }
 
@@ -516,7 +511,7 @@ pub mod pallet {
 					.get_or_insert(RedemptionInfo::new(investment_id, payout_foreign_currency)?);
 
 				info.base.ensure_same_foreign(payout_foreign_currency)?;
-				info.total_tranche_tokens
+				info.pending_tranche_tokens
 					.ensure_add_assign(tranche_tokens_amount)?;
 
 				Ok(())
@@ -539,7 +534,7 @@ pub mod pallet {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 
 				info.base.ensure_same_foreign(payout_foreign_currency)?;
-				info.total_tranche_tokens
+				info.pending_tranche_tokens
 					.ensure_sub_assign(tranche_tokens_amount)?;
 
 				Ok::<_, DispatchError>(())
@@ -717,11 +712,14 @@ pub mod pallet {
 								},
 							)?;
 
+							info.pending_tranche_tokens
+								.ensure_sub_assign(info.collected_tranche_tokens())?;
+
 							info.base.collected = CollectedAmount::default();
 							info.swapped_amount = T::Balance::default();
 							info.swap_id = None;
 
-							if info.remaining_tranche_tokens()?.is_zero() {
+							if info.pending_tranche_tokens.is_zero() {
 								*maybe_info = None;
 							}
 						}
