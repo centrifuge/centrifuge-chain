@@ -104,8 +104,6 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		// Mint additional amount of payment currency
 		T::Tokens::mint_into(payment_currency, &investor, amount)?;
@@ -115,7 +113,6 @@ where
 			invest_id,
 			amount,
 			payment_currency,
-			pool_currency,
 		)?;
 
 		Ok(())
@@ -142,15 +139,12 @@ where
 		// the trading pair needs to be registered for the opposite direction in case a
 		// swap from pool to foreign results from updating the `InvestState`
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
 			&investor,
 			invest_id,
 			amount,
 			payout_currency,
-			pool_currency,
 		)?;
 
 		Ok(())

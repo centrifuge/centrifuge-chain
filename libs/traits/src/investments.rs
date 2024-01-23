@@ -242,7 +242,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign investment amount in
@@ -258,7 +257,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the increment of a foreign redemption amount for the given
