@@ -142,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1037,
+	spec_version: 1038,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1060,6 +1060,7 @@ parameter_types! {
 
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
+	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -1076,13 +1077,15 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = Loans;
+	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
@@ -1114,6 +1117,30 @@ impl pallet_pool_registry::Config for Runtime {
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	pub const MaxFeesPerPool: u32 = MAX_FEES_PER_POOL;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = PoolSystem;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type IsPoolAdmin = PoolAdminCheck<Permissions>;
+	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = PoolFeesPalletId;
+	type PoolId = PoolId;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime, FastDelay>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
 }
 
 pub struct PoolCurrency;
@@ -1872,7 +1899,7 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 72,
 
-		// our pallets
+		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
@@ -1932,6 +1959,7 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 
 		// our pallets part 2
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 250,
 		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 251,
 	}
 );
@@ -2000,7 +2028,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeDevelopment1037,
+	crate::migrations::UpgradeDevelopment1038,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
@@ -2626,6 +2654,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches,	pallet_remarks, Remarks);
+			add_benchmark!(params, batches,	pallet_pool_fees, PoolFees);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2686,6 +2715,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_remarks, Remarks);
+			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

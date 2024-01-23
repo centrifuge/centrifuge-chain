@@ -10,6 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use parity_scale_codec::{Decode, Encode};
+use scale_info::TypeInfo;
+use sp_std::{fmt::Debug, vec::Vec};
+
+use crate::fee::PoolFeeBucket;
+
 /// Benchmark utility to create pools
 pub trait PoolBenchmarkHelper {
 	type PoolId;
@@ -119,4 +125,23 @@ pub trait ForeignInvestmentBenchmarkHelper {
 		foreign_currency: Self::CurrencyId,
 		pool_currency: Self::CurrencyId,
 	);
+}
+
+/// Benchmark utility for adding pool fees
+pub trait PoolFeesBenchmarkHelper {
+	type PoolFeeInfo: Encode + Decode + Clone + TypeInfo + Debug;
+	type PoolId: Encode + Decode + Clone + TypeInfo + Debug;
+
+	/// Generate n default fixed pool fees and return their info
+	fn get_pool_fee_infos(n: u32) -> Vec<Self::PoolFeeInfo>;
+
+	/// Add the default fixed fee `n` times to the given pool and bucket pair
+	fn add_pool_fees(pool_id: Self::PoolId, bucket: PoolFeeBucket, n: u32);
+
+	/// Get the fee info for a fixed pool fee which takes 1% of the NAV
+	fn get_default_fixed_fee_info() -> Self::PoolFeeInfo;
+
+	/// Get the fee info for a chargeable pool fee which can be charged up to
+	/// 1000u128 per second
+	fn get_default_charged_fee_info() -> Self::PoolFeeInfo;
 }

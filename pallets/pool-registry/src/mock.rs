@@ -11,15 +11,21 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
-use cfg_mocks::pallet_mock_write_off_policy;
-use cfg_primitives::{BlockNumber, CollectionId, PoolEpochId, TrancheWeight};
+use cfg_mocks::{
+	pallet_mock_change_guard, pallet_mock_pre_conditions, pallet_mock_write_off_policy,
+};
+use cfg_primitives::{
+	Balance as BalanceType, BlockNumber, CollectionId, PoolEpochId, PoolFeeId, PoolId, TrancheId,
+	TrancheWeight,
+};
 use cfg_traits::{
-	investments::OrderManager, Millis, PoolMutate, PoolUpdateGuard, PreConditions, Seconds,
-	UpdateState,
+	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket, investments::OrderManager, Millis,
+	PoolMutate, PoolUpdateGuard, PreConditions, Seconds, UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
+	pools::PoolFeeInfo,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -46,10 +52,12 @@ use crate::{self as pallet_pool_registry, Config};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type TrancheId = [u8; 16];
 
 pub const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 const CURRENCY: Balance = 1_000_000_000_000_000_000;
+
+pub type Balance = BalanceType;
+type AccountId = u64;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -140,6 +148,7 @@ impl cfg_test_utils::mocks::nav::Config for Test {
 
 impl pallet_pool_system::Config for Test {
 	type AssetRegistry = RegistryMock;
+	type AssetsUnderManagementNAV = FakeNav;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -156,13 +165,15 @@ impl pallet_pool_system::Config for Test {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = FakeNav;
+	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = pallet_pool_system::pool_types::changes::PoolChangeProposal;
@@ -176,7 +187,35 @@ impl pallet_pool_system::Config for Test {
 	type WeightInfo = ();
 }
 
-pub type Balance = u128;
+impl pallet_mock_change_guard::Config for Test {
+	type Change = pallet_pool_fees::types::Change<Test>;
+	type ChangeId = H256;
+	type PoolId = PoolId;
+}
+
+parameter_types! {
+	pub const MaxPoolFeesPerBucket: u32 = cfg_primitives::constants::MAX_POOL_FEES_PER_BUCKET;
+	pub const MaxFeesPerPool: u32 = cfg_primitives::constants::MAX_FEES_PER_POOL;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+}
+
+impl pallet_pool_fees::Config for Test {
+	type Balance = Balance;
+	type ChangeGuard = MockChangeGuard;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type IsPoolAdmin = MockIsAdmin;
+	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = PoolFeesPalletId;
+	type PoolId = PoolId;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = pallet_pool_fees::types::Change<Test>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = OrmlTokens;
+}
 
 parameter_types! {
 	pub const One: u64 = 1;
@@ -196,23 +235,31 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<
-		T: Config
-			+ pallet_pool_registry::Config
-			+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
-	> PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
+impl<T> PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
+where
+	T: Config
+		+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>
+		+ pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
+	<T as pallet_pool_system::Config>::PoolFees: PoolFeesBenchmarkHelper<
+		PoolId = u64,
+		PoolFeeInfo = PoolFeeInfo<T::AccountId, u128, <T as pallet_pool_system::Config>::Rate>,
+	>,
 {
-	type Balance = <T as pallet_pool_registry::Config>::Balance;
-	type CurrencyId = <T as pallet_pool_registry::Config>::CurrencyId;
-	type MaxTokenNameLength = <T as pallet_pool_registry::Config>::MaxTokenNameLength;
-	type MaxTokenSymbolLength = <T as pallet_pool_registry::Config>::MaxTokenSymbolLength;
-	type MaxTranches = <T as pallet_pool_registry::Config>::MaxTranches;
+	type Balance = <T as Config>::Balance;
+	type CurrencyId = <T as Config>::CurrencyId;
+	type MaxTokenNameLength = <T as Config>::MaxTokenNameLength;
+	type MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength;
+	type MaxTranches = <T as Config>::MaxTranches;
 	type PoolChanges = PoolChanges<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
 		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
+	type PoolFeeInput = (
+		PoolFeeBucket,
+		<<T as pallet_pool_system::Config>::PoolFees as PoolFeesBenchmarkHelper>::PoolFeeInfo,
+	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
 		<T as pallet_pool_system::Config>::MaxTokenNameLength,
@@ -226,9 +273,10 @@ impl<
 		tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
 		#[cfg(feature = "runtime-benchmarks")]
-		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
+		create_pool::<T>(tranche_inputs.len() as u32, pool_fees.len() as u32, admin)?;
 		Ok(())
 	}
 
@@ -330,6 +378,11 @@ impl pallet_investments::Config for Test {
 	type WeightInfo = ();
 }
 
+impl pallet_mock_pre_conditions::Config for Test {
+	type Conditions = (AccountId, PoolId);
+	type Result = bool;
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test
@@ -348,6 +401,9 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 		MockWriteOffPolicy: pallet_mock_write_off_policy,
+		MockChangeGuard: pallet_mock_change_guard,
+		MockIsAdmin: cfg_mocks::pre_conditions::pallet,
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -429,9 +485,6 @@ impl pallet_balances::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
-
-type AccountId = u64;
-type PoolId = u64;
 
 pub struct PermissionsMock {}
 

@@ -1472,6 +1472,7 @@ parameter_types! {
 
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
+	type AssetsUnderManagementNAV = Loans;
 	type Balance = Balance;
 	type BalanceRatio = Quantity;
 	type ChallengeTime = ChallengeTime;
@@ -1488,13 +1489,15 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = Loans;
+	type OnEpochTransition = PoolFees;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
+	type PoolFees = PoolFees;
+	type PoolFeesNAV = PoolFees;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
@@ -1526,6 +1529,30 @@ impl pallet_pool_registry::Config for Runtime {
 	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
 	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub const MaxPoolFeesPerBucket: u32 = MAX_POOL_FEES_PER_BUCKET;
+	pub const PoolFeesPalletId: PalletId = cfg_types::ids::POOL_FEES_PALLET_ID;
+	pub const MaxFeesPerPool: u32 = MAX_FEES_PER_POOL;
+}
+
+impl pallet_pool_fees::Config for Runtime {
+	type Balance = Balance;
+	type ChangeGuard = PoolSystem;
+	type CurrencyId = CurrencyId;
+	type FeeId = PoolFeeId;
+	type IsPoolAdmin = PoolAdminCheck<Permissions>;
+	type MaxFeesPerPool = MaxFeesPerPool;
+	type MaxPoolFeesPerBucket = MaxPoolFeesPerBucket;
+	type PalletId = PoolFeesPalletId;
+	type PoolId = PoolId;
+	type PoolReserve = PoolSystem;
+	type Rate = Rate;
+	type RuntimeChange = runtime_common::changes::RuntimeChange<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Tokens = Tokens;
 }
 
 pub struct PoolCurrency;
@@ -1792,6 +1819,7 @@ construct_runtime!(
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 115,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 116,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 117,
+		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 118,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2467,6 +2495,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
+			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2546,6 +2575,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
+			add_benchmark!(params, batches, pallet_pool_fees, PoolFees);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

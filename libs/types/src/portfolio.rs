@@ -1,3 +1,15 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use cfg_traits::{Seconds, TimeAsSecs};
 use frame_support::{traits::Get, BoundedVec, RuntimeDebug};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -8,13 +20,24 @@ use sp_runtime::{
 };
 use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 
-// Portfolio valuation information.
-// It will be updated on these scenarios:
-//   1. When we are calculating portfolio valuation for a pool.
-//   2. When there is borrow or repay or write off on a loan under this pool
-// So the portfolio valuation could be:
-// 	 - Approximate when current time != last_updated
-// 	 - Exact when current time == last_updated
+/// Portfolio valuation information.
+///
+/// The total NAV is based on the reserve, the assets under management (AUM) and
+/// pool fees:
+///
+/// ```ignore
+/// NAV = PoolReserve + AUM - PoolFees
+/// ```
+///
+/// It will be updated on these scenarios:
+///   1. When we are calculating portfolio valuation for a pool.
+///   2. When there is borrow or repay or write off on a loan under this pool.
+///      This updates the positive part (assets under management, AUM).
+///   3. When pool fee disbursement is prepared. This updates the negative part
+///      which is passed on the AUM of the previous epoch.
+/// So the portfolio valuation could be:
+///    - Approximate when current time != last_updated
+///    - Exact when current time == last_updated
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(MaxElems))]
 pub struct PortfolioValuation<Balance, ElemId, MaxElems: Get<u32>> {
@@ -143,7 +166,7 @@ where
 pub enum PortfolioValuationUpdateType {
 	/// Portfolio Valuation was fully recomputed to an exact value
 	Exact,
-	/// Portfolio Valuation was updated inexactly based on loan status changes
+	/// Portfolio Valuation was updated inexactly based on status changes
 	Inexact,
 }
 

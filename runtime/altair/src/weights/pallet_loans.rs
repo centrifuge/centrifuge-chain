@@ -372,4 +372,9 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(5))
 	}
+
+	fn increase_debt(_: u32) -> Weight {
+        // Pending to generate
+		Weight::zero()
+	}
 }

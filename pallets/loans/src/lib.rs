@@ -78,6 +78,7 @@ pub mod pallet {
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
+		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 	};
 	use entities::{
 		changes::{Change, LoanMutation},
@@ -104,7 +105,6 @@ pub mod pallet {
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
-		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, CloseLoanError, CreateLoanError, MutationError, RepayLoanError,
 		WrittenOffError,
 	};
@@ -128,7 +128,7 @@ pub mod pallet {
 		/// Represent a runtime change
 		type RuntimeChange: From<Change<Self>> + TryInto<Change<Self>>;
 
-		/// Identify a curreny.
+		/// Identify a currency.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify a non fungible collection
@@ -346,6 +346,12 @@ pub mod pallet {
 			repaid_amount: RepaidInput<T>,
 			borrow_amount: PrincipalInput<T>,
 		},
+		/// Debt of a loan has been increased
+		DebtIncreased {
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -469,7 +475,6 @@ pub mod pallet {
 		/// at [`types::LoanRestrictions`]. The `amount` will be transferred
 		/// from pool reserve to borrower. The portfolio valuation of the pool
 		/// is updated to reflect the new present value of the loan.
-		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(1)]
 		pub fn borrow(
@@ -847,6 +852,34 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Increase debt for a loan. Similar to [`Pallet::borrow()`] but
+		/// without transferring from the pool.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The increase debt action should fulfill the borrow restrictions
+		/// configured at [`types::LoanRestrictions`]. The portfolio valuation
+		/// of the pool is updated to reflect the new present value of the loan.
+		#[pallet::weight(T::WeightInfo::increase_debt(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(13)]
+		pub fn increase_debt(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: PrincipalInput<T>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let _count = Self::borrow_action(&who, pool_id, loan_id, &amount, false)?;
+
+			Self::deposit_event(Event::<T>::DebtIncreased {
+				pool_id,
+				loan_id,
+				amount,
+			});
+
+			Ok(())
+		}
 	}
 
 	// Loan actions
@@ -1155,6 +1188,7 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
+	// TODO: Check with team about state of comment
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
@@ -1169,7 +1203,7 @@ pub mod pallet {
 		}
 
 		fn initialise(_: OriginFor<T>, _: T::PoolId, _: T::ItemId) -> DispatchResult {
-			// This Loans implementation does not need to initialize explicitally.
+			// This Loans implementation does not need to initialize explicitly.
 			Ok(())
 		}
 	}

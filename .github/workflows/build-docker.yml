@@ -11,7 +11,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
-      - "docker/centrifuge-chain/Dockerfile"
+      - "docker/centrifuge-chain"
+      - "docker/scripts"
+      - ".dockerignore"
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
   cancel-in-progress: true
@@ -22,32 +24,50 @@ jobs:
         target: [ release, test ]
     runs-on: ubuntu-latest-8-cores
     permissions:
-      contents: write    
+      contents: write # to update the GH release w/ Docker tags
+      packages: write # to upload images to ghcr
+      id-token: write
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
         with:
           fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
-      - name: DockerHub Login
-        uses: docker/login-action@v3
+
+      - name: DockerHub Registry Login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - run: echo "NOW=$(date -u +%y-%m-%d)" >> $GITHUB_ENV
+      - name: Github Registry login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: echo "NOW=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
 
       - name: Setup docker metadata
         id: meta
         uses: docker/metadata-action@9dc751fe249ad99385a2583ee0d084c400eee04e #v5
         with:
-          images: centrifugeio/centrifuge-chain
+          images: |
+            ghcr.io/centrifuge/centrifuge-chain
+            ${{ github.event_name != 'pull_request' && 'centrifugeio/centrifuge-chain' || ''}}
           tags: |
             type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
             type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
             type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
+          labels: |
+            org.opencontainers.image.vendor="k-f dev AG" \
+            org.opencontainers.image.authors="protocol@k-f.co" \	
+            org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
+            org.opencontainers.image.base.name="ubuntu/jammy" \
+            org.opencontainers.image.base.digest="ubuntu@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b" 
 
       - name: Configure GHA cache
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v6
@@ -63,7 +83,8 @@ jobs:
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          push: ${{ github.event_name != 'pull_request' }}
+          # Always push, either to ghcr or Dockerhub
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
@@ -82,14 +103,14 @@ jobs:
           repository: centrifuge/centrifuge-chain
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
-          
+
       - name: Update GitHub release
         if: github.event_name == 'release' && matrix.target == 'release'
         uses: softprops/action-gh-release@v1
         with:
           append_body: true
           body: |
-            **Docker tags:** 
+            **Docker tags:**
                ${{ steps.meta.outputs.tags }}
 
       - if: failure()
