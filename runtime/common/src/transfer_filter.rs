@@ -27,6 +27,7 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
+use sp_std::fmt::Formatter;
 use xcm::v3::{MultiAsset, MultiLocation};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
@@ -171,10 +172,21 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 	}
 }
 
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Debug, Eq, Encode, Decode, TypeInfo)]
-pub struct PreBalanceTransferExtension<T: Sync + Send + sp_std::fmt::Debug + TypeInfo>(
-	sp_std::marker::PhantomData<T>,
-);
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Encode, Decode, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
+
+impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
+	pub fn new() -> Self {
+		PreBalanceTransferExtension(sp_std::marker::PhantomData::default())
+	}
+}
+
+impl<T: frame_system::Config> sp_std::fmt::Debug for PreBalanceTransferExtension<T> {
+	fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+		f.debug_struct("PreBalanceTransferExtension").finish()
+	}
+}
 
 impl<T> SignedExtension for PreBalanceTransferExtension<T>
 where
@@ -182,12 +194,10 @@ where
 		+ pallet_balances::Config
 		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
 		+ Sync
-		+ Send
-		+ sp_std::fmt::Debug
-		+ TypeInfo,
+		+ Send,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>,
 {
-	type AccountId = AccountId;
+	type AccountId = T::AccountId;
 	type AdditionalSigned = ();
 	type Call = T::RuntimeCall;
 	type Pre = ();
@@ -205,7 +215,7 @@ where
 		_: &DispatchInfoOf<Self::Call>,
 		_: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let recv: AccountId = if let Some(call) =
+		let recv: T::AccountId = if let Some(call) =
 			IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
 		{
 			match call {
