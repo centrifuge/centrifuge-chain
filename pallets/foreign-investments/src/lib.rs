@@ -184,9 +184,6 @@ pub mod pallet {
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's
-		/// definition of an event.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Type representing the weight of this pallet
 		type WeightInfo: frame_system::WeightInfo;
 
@@ -201,24 +198,16 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency type of transferrable tokens
-		type CurrencyId: Parameter + Member + Copy + TypeInfo + MaxEncodedLen;
+		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
 
 		/// The pool id type required for the investment identifier
-		type PoolId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ core::fmt::Debug;
+		type PoolId: Member + Parameter + Copy + HasCompact + MaxEncodedLen + core::fmt::Debug;
 
 		/// The tranche id type required for the investment identifier
-		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen + TypeInfo;
+		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen;
 
 		/// The investment identifying type required for the investment type
 		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
-			+ Clone
-			+ Member
 			+ Parameter
 			+ Copy
 			+ MaxEncodedLen;
@@ -246,17 +235,10 @@ pub mod pallet {
 			+ sp_runtime::traits::EnsureMul
 			+ sp_runtime::traits::EnsureDiv
 			+ MaybeSerializeDeserialize
-			+ TypeInfo
 			+ MaxEncodedLen;
 
 		/// The token swap order identifying type
-		type SwapId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type SwapId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
 
 		/// The type which exposes token swap order functionality such as
 		/// placing and cancelling orders
@@ -315,7 +297,7 @@ pub mod pallet {
 
 	/// Contains the information about the foreign investment process
 	///
-	/// NOTE: The storage is killed once the investment is collected.
+	/// NOTE: The storage is killed once the investment is fully collected.
 	#[pallet::storage]
 	pub(super) type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
 		_,
@@ -328,8 +310,8 @@ pub mod pallet {
 
 	/// Contains the information about the foreign redemption process
 	///
-	/// NOTE: The storage is killed once the redemption is collected and
-	/// redemption process is collected and fully swapped
+	/// NOTE: The storage is killed once the redemption is fully collected and
+	/// fully swapped
 	#[pallet::storage]
 	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
 		_,
@@ -340,44 +322,19 @@ pub mod pallet {
 		RedemptionInfo<T>,
 	>;
 
-	/// Maps a `SwapId` to their corresponding `AccountId` and `InvestmentId`
-	/// and `Action`
+	/// Maps a `SwapId` to its corresponding `ForeignId`
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
 	pub(super) type SwapIdToForeignId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::SwapId, ForeignId<T>>;
 
-	/// Maps `AccountId` and `InvestmentId` and `Action` to their corresponding
-	/// `SwapId`
+	/// Maps a `ForeignId` to its corresponding `SwapId`
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
 	pub(super) type ForeignIdToSwapId<T: Config> =
 		StorageMap<_, Blake2_128Concat, ForeignId<T>, T::SwapId>;
-
-	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		ForeignInvestmentUpdated {
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-			order_id: T::SwapId,
-		},
-		ForeignInvestmentCleared {
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-		},
-		ForeignRedemptionUpdated {
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-			state: T::SwapId,
-		},
-		ForeignRedemptionCleared {
-			investor: T::AccountId,
-			investment_id: T::InvestmentId,
-		},
-	}
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -395,21 +352,22 @@ pub mod pallet {
 	}
 
 	/// Internal type used as result of `Pallet::apply_swap()`
-	struct SwapStatus<T: Config> {
+	#[derive(Debug, PartialEq)]
+	pub(crate) struct SwapStatus<T: Config> {
 		/// The amount already swapped and available to use
-		swapped: T::Balance,
+		pub swapped: T::Balance,
 
 		/// The amount pending to be swapped
-		pending: T::Balance,
+		pub pending: T::Balance,
 
 		/// The amount swapped by the inverse order
-		swapped_inverse: T::Balance,
+		pub swapped_inverse: T::Balance,
 
 		/// The amount pending to be swapped by the inverse order
-		pending_inverse: T::Balance,
+		pub pending_inverse: T::Balance,
 
 		/// The swap id for a possible reminder swap order after `apply_swap()`
-		swap_id: Option<T::SwapId>,
+		pub swap_id: Option<T::SwapId>,
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -456,7 +414,7 @@ pub mod pallet {
 		///
 		/// The returned status contains the swapped amounts after this call and
 		/// the pending amounts to be swapped of both swap directions.
-		fn apply_swap(
+		pub(crate) fn apply_swap(
 			who: &T::AccountId,
 			new_swap: SwapOf<T>,
 			over_swap_id: Option<T::SwapId>,

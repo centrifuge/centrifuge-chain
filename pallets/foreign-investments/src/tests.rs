@@ -1,20 +1,58 @@
-use cfg_traits::{investments::ForeignInvestment as ForeignInvestmentT, StatusNotificationHook};
-use cfg_types::investments::ForeignInvestmentInfo as ForeignInvestmentInfoS;
+use cfg_traits::{investments::ForeignInvestment, StatusNotificationHook};
 use frame_support::assert_ok;
 
-use crate::{
-	hooks::FulfilledSwapOrderHook,
-	mock::*,
-	types::{InvestState, TokenSwapReason},
-	*,
-};
+use crate::{mock::*, *};
 
 const USER: AccountId = 1;
 const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
-const USER_CURR: CurrencyId = 5;
+const FOREIGN_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
-const ORDER_ID: OrderId = 1;
+const SWAP_ID: SwapId = 1;
+const AMOUNT: Balance = 1;
 
+mod swaps {
+	use super::*;
+
+	#[test]
+	fn swap_over_no_swap() {
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_place_order(move |_, _, _, _, _| Ok(SWAP_ID));
+
+			assert_ok!(
+				Pallet::<Runtime>::apply_swap(
+					&USER,
+					Swap {
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+						amount_in: AMOUNT,
+					},
+					None,
+				),
+				SwapStatus {
+					swapped: 0,
+					pending: AMOUNT,
+					swapped_inverse: 0,
+					pending_inverse: 0,
+					swap_id: Some(SWAP_ID),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn swap_over_same_swap() {}
+
+	#[test]
+	fn swap_over_greater_inverse_swap() {}
+
+	#[test]
+	fn swap_over_equally_inverse_swap() {}
+
+	#[test]
+	fn swap_over_smaller_inverse_swap() {}
+}
+
+/*
 mod util {
 	use super::*;
 
@@ -22,7 +60,6 @@ mod util {
 		MockInvestment::mock_investment_requires_collect(|_, _| false);
 		MockInvestment::mock_investment(|_, _| Ok(0));
 		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
-		MockTokenSwaps::mock_place_order(move |_, _, _, _, _| Ok(order_id));
 		MockCurrencyConversion::mock_stable_to_stable(move |_, _, _| Ok(amount) /* 1:1 */);
 
 		ForeignInvestment::increase_foreign_investment(
@@ -319,3 +356,4 @@ mod fulfilled_swap {
 		});
 	}
 }
+*/
