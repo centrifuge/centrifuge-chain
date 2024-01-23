@@ -675,6 +675,10 @@ pub mod pallet {
 
 							info.decrease_swapped_amount = T::Balance::default();
 							info.decrease_swap_id = None;
+
+							if info.remaining_pool_amount()?.is_zero() {
+								*maybe_info = None;
+							}
 						}
 					}
 				}
@@ -740,7 +744,7 @@ pub mod pallet {
 				)?;
 
 				// NOTE: How make this works with market ratios?
-				let foreign_amount = T::CurrencyConverter::stable_to_stable(
+				let collected_foreign_amount = T::CurrencyConverter::stable_to_stable(
 					info.base.foreign_currency,
 					Pallet::<T>::pool_currency_of(investment_id)?,
 					collected.amount_payment,
@@ -750,7 +754,7 @@ pub mod pallet {
 					(who.clone(), investment_id),
 					ExecutedForeignCollect {
 						currency: info.base.foreign_currency,
-						amount_currency_payout: foreign_amount,
+						amount_currency_payout: collected_foreign_amount,
 						amount_tranche_tokens_payout: collected.amount_collected,
 						amount_remaining: remaining_foreign_amount,
 					},
