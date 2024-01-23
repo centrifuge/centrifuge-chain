@@ -39,7 +39,7 @@ use crate::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
 		TrancheInput, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Nav, Pool, PoolState,
 	UnhealthyState,
 };
 
@@ -187,9 +187,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
-			nav: 0,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
+			nav: Nav::new(0, 0),
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -271,9 +269,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
-			nav: 90,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
+			nav: Nav::new(90, 0),
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -371,9 +367,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
-			nav: 0,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
+			nav: Nav::new(0, 0),
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -486,9 +480,7 @@ fn pool_constraints_pass() {
 
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
-			nav: 145,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
+			nav: Nav::new(145, 0),
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -3103,9 +3095,16 @@ mod pool_fees {
 					(1, SeniorTrancheId::get(), INVESTMENT_AMOUNT),
 				],
 			);
+
+			// Redeem all junior and senior tranche tokens to require manual epoch execution
 			assert_ok!(Investments::update_redeem_order(
 				RuntimeOrigin::signed(0),
 				TrancheCurrency::generate(DEFAULT_POOL_ID, JuniorTrancheId::get()),
+				INVESTMENT_AMOUNT
+			));
+			assert_ok!(Investments::update_redeem_order(
+				RuntimeOrigin::signed(1),
+				TrancheCurrency::generate(DEFAULT_POOL_ID, SeniorTrancheId::get()),
 				INVESTMENT_AMOUNT
 			));
 
