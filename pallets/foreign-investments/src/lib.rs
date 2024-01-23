@@ -523,7 +523,7 @@ pub mod pallet {
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
 									pending: T::Balance::zero(),
-									swapped_inverse: new_swap.amount_in,
+									swapped_inverse: new_swap_amount_out,
 									pending_inverse: amount_to_swap,
 									swap_id: Some(swap_id),
 								})
