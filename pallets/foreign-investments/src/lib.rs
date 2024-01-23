@@ -147,10 +147,6 @@ impl<T: Config> RedemptionInfo<T> {
 		self.base.collected.amount_payment
 	}
 
-	fn collected_pool_amount(&self) -> T::Balance {
-		self.base.collected.amount_collected
-	}
-
 	fn remaining_tranche_tokens(&self) -> Result<T::Balance, ArithmeticError> {
 		self.total_tranche_tokens
 			.ensure_sub(self.base.collected.amount_payment)
@@ -539,16 +535,15 @@ pub mod pallet {
 			tranche_tokens_amount: T::Balance,
 			payout_foreign_currency: T::CurrencyId,
 		) -> Result<(T::Balance, T::Balance), DispatchError> {
-			let remaining_tranche_tokens =
-				ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
-					let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
+				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 
-					info.base.ensure_same_foreign(payout_foreign_currency)?;
-					info.total_tranche_tokens
-						.ensure_sub_assign(tranche_tokens_amount)?;
+				info.base.ensure_same_foreign(payout_foreign_currency)?;
+				info.total_tranche_tokens
+					.ensure_sub_assign(tranche_tokens_amount)?;
 
-					Ok::<_, DispatchError>(info.remaining_tranche_tokens()?)
-				})?;
+				Ok::<_, DispatchError>(())
+			})?;
 
 			T::Investment::update_redemption(
 				who,
@@ -558,18 +553,19 @@ pub mod pallet {
 
 			let remaining_amount = T::Investment::redemption(who, investment_id)?;
 
-			Ok((remaining_tranche_tokens, remaining_amount))
+			Ok((tranche_tokens_amount, remaining_amount))
 		}
 
 		fn collect_foreign_investment(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			_foreign_payment_currency: T::CurrencyId,
+			payment_foreign_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ensure!(
-				ForeignInvestmentInfo::<T>::contains_key(&who, investment_id),
-				Error::<T>::InfoNotFound
-			);
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
+				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+				info.base.ensure_same_foreign(payment_foreign_currency)?;
+				Ok::<_, DispatchError>(())
+			})?;
 
 			T::Investment::collect_investment(who.clone(), investment_id)
 		}
@@ -577,13 +573,14 @@ pub mod pallet {
 		fn collect_foreign_redemption(
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
-			_foreign_payout_currency: T::CurrencyId,
+			payout_foreign_currency: T::CurrencyId,
 			_pool_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ensure!(
-				ForeignRedemptionInfo::<T>::contains_key(&who, investment_id),
-				Error::<T>::InfoNotFound
-			);
+			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
+				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+				info.base.ensure_same_foreign(payout_foreign_currency)?;
+				Ok::<_, DispatchError>(())
+			})?;
 
 			T::Investment::collect_redemption(who.clone(), investment_id)
 		}
@@ -754,7 +751,7 @@ pub mod pallet {
 				let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 					info.base.foreign_currency,
 					info.base.pool_currency,
-					info.remaining_pool_amount()?,
+					T::Investment::investment(&who, investment_id)?,
 				)?;
 
 				// NOTE: How make this works with market ratios?
