@@ -803,7 +803,7 @@ pub mod pallet {
 					.map(|swap| swap.amount_in)
 					.unwrap_or(T::Balance::default());
 
-			let decrement = pool_amount.saturating_sub(&pending_pool_amount_increment);
+			let decrement = pool_amount.saturating_sub(pending_pool_amount_increment);
 			if !decrement.is_zero() {
 				T::Investment::update_investment(
 					who,
