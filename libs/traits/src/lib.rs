@@ -53,6 +53,7 @@ pub mod rewards;
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
+pub mod fee;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -176,6 +177,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
 
 	fn create(
 		admin: AccountId,
@@ -184,6 +186,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
@@ -622,6 +625,25 @@ pub trait StatusNotificationHook {
 
 	/// Notify that the status has changed for the given id
 	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
+}
+
+/// Trait to signal an epoch transition.
+pub trait EpochTransitionHook {
+	type Balance;
+	type PoolId;
+	type Time;
+	type Error;
+
+	/// Hook into the closing of an epoch
+	fn on_closing_mutate_reserve(
+		pool_id: Self::PoolId,
+		assets_under_management: Self::Balance,
+		reserve: &mut Self::Balance,
+	) -> Result<(), Self::Error>;
+
+	/// Hook into the execution of an epoch before any investment and
+	/// redemption fulfillments
+	fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error>;
 }
 
 /// Trait to synchronously provide a currency conversion estimation for foreign

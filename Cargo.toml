@@ -35,6 +35,7 @@ members = [
   "pallets/oracle-collection",
   "pallets/order-book",
   "pallets/permissions",
+  "pallets/pool-fees",
   "pallets/pool-system",
   "pallets/pool-registry",
   "pallets/restricted-tokens",
@@ -63,7 +64,7 @@ smallvec = "1.6.1"
 serde = { version = "1.0.119", features = ["derive"] }
 parity-scale-codec = { version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-log = "0.4"
+log = { version = "0.4", default-features = false }
 getrandom = { version = "0.2", features = ["js"] }
 static_assertions = "1.1.0"
 lazy_static = "1.4.0"
@@ -78,6 +79,7 @@ futures = "0.3.25"
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 url = "2.2.2"
 tempfile = "3.1.0"
+strum = { version = "0.24", default-features = false, features = ["derive"] }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.43" }
@@ -272,6 +274,7 @@ pallet-oracle-feed = { path = "pallets/oracle-feed", default-features = false }
 pallet-oracle-collection = { path = "pallets/oracle-collection", default-features = false }
 pallet-order-book = { path = "pallets/order-book", default-features = false }
 pallet-permissions = { path = "pallets/permissions", default-features = false }
+pallet-pool-fees = { path = "pallets/pool-fees", default-features = false }
 pallet-pool-registry = { path = "pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "pallets/restricted-tokens", default-features = false }

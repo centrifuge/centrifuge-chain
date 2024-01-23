@@ -17,7 +17,7 @@ parity-scale-codec = { version = "3.0.0", features = ["derive"], default-feature
 rev_slice = { version = "0.1.5", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
-strum = { version = "0.24", default-features = false, features = ["derive"] }
+strum = { workspace = true }
 
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -36,8 +36,10 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 pallet-investments = { path = "../../pallets/investments", default-features = false, optional = true }
+pallet-pool-fees = { workspace = true, default-features = false, optional = true }
 
 [dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
@@ -53,6 +55,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 [features]
 default = ["std"]
 runtime-benchmarks = [
+  "cfg-mocks/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
@@ -63,6 +66,7 @@ runtime-benchmarks = [
   "orml-asset-registry/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
@@ -77,6 +81,7 @@ std = [
   "log/std",
   "orml-traits/std",
   "pallet-permissions/std",
+  "pallet-pool-fees/std",
   "pallet-timestamp/std",
   "rev_slice/std",
   "scale-info/std",
@@ -87,6 +92,7 @@ std = [
   "strum/std",
 ]
 try-runtime = [
+  "cfg-mocks/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
@@ -94,6 +100,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "lazy_static/spin_no_std",
   "pallet-permissions/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-timestamp/try-runtime",
   "sp-runtime/try-runtime",
 ]

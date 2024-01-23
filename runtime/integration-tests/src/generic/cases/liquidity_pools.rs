@@ -350,6 +350,8 @@ mod development {
 				],
 				currency_id,
 				currency_decimals,
+				// No pool fees per default
+				vec![]
 			));
 		}
 

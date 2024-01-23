@@ -12,10 +12,11 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
+	fee::{PoolFeeBucket, PoolFees},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
-use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
+use cfg_types::{epoch::EpochState, investments::InvestmentInfo, pools::PoolFeeInfo};
 use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
 	Contains,
@@ -70,7 +71,7 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 		// Get cached nav as calculating current nav would be too computationally
 		// expensive
-		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
+		let (nav, nav_last_updated) = T::AssetsUnderManagementNAV::nav(pool_id)?;
 		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
 		let tranche_index: usize = pool
@@ -108,6 +109,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
 	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
+	type PoolFeeInput = (
+		PoolFeeBucket,
+		PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+	);
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(
@@ -117,6 +122,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -175,6 +181,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
+		}
+
+		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
+			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
 		}
 
 		let pool_details = PoolDetails {
@@ -529,6 +539,9 @@ mod benchmarks_utils {
 				],
 				POOL_CURRENCY,
 				FUNDS.into(),
+				// NOTE: Genesis pool fees missing per default, could be added via <T::PoolFees as
+				// PoolFeesBenchmarkHelper>::add_pool_fees(..)
+				vec![],
 			));
 		}
 	}
@@ -566,7 +579,7 @@ mod benchmarks_utils {
 					.of_tranche();
 			frame_support::assert_ok!(T::Investments::update_investment(
 				&investor,
-				T::TrancheCurrency::generate(pool_id.into(), tranche),
+				T::TrancheCurrency::generate(pool_id, tranche),
 				FUNDS.into(),
 			));
 

@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.37"
+version = "0.10.38"
 build = "build.rs"
 authors.workspace = true
 edition.workspace = true
@@ -118,6 +118,7 @@ pallet-oracle-collection = { workspace = true }
 pallet-oracle-feed = { workspace = true }
 pallet-order-book = { workspace = true }
 pallet-permissions = { workspace = true }
+pallet-pool-fees = { workspace = true }
 pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
@@ -247,6 +248,7 @@ std = [
   "pallet-oracle-feed/std",
   "pallet-order-book/std",
   "pallet-permissions/std",
+  "pallet-pool-fees/std",
   "pallet-pool-registry/std",
   "pallet-pool-system/std",
   "pallet-preimage/std",
@@ -336,6 +338,7 @@ runtime-benchmarks = [
   "pallet-oracle-feed/runtime-benchmarks",
   "pallet-order-book/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
@@ -425,6 +428,7 @@ try-runtime = [
   "pallet-oracle-feed/try-runtime",
   "pallet-order-book/try-runtime",
   "pallet-permissions/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-pool-registry/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-preimage/try-runtime",
