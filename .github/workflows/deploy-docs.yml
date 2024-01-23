@@ -2,6 +2,9 @@ name: Rustdoc
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-docs.yml"
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}
   cancel-in-progress: true
@@ -55,11 +58,11 @@ jobs:
           done
 
       - name: upload Docs files
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@0252fc4ba7626f0298f0cf00902a25c6afc77fa8 # v3.0
         with:
           path: ./target/doc
 
       - name: Deploy Docs
         # if: github.ref == 'refs/heads/main'
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@7a9bd943aa5e5175aeb8502edcc6c1c02d398e10 # v4.0.2

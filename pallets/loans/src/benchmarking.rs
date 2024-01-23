@@ -472,6 +472,14 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(any), pool_id, change_id)
 
+	increase_debt {
+		let n in 1..Helper::<T>::max_active_loans() - 1;
+
+		let borrower = account("borrower", 0, 0);
+		let pool_id = Helper::<T>::initialize_active_state(n);
+		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
+
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, PrincipalInput::Internal(10.into()))
 }
 
 impl_benchmark_test_suite!(
