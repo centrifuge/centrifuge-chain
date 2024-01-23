@@ -168,7 +168,8 @@ pub mod pallet {
 	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, One, Zero,
+			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, One,
+			Saturating, Zero,
 		},
 		FixedPointOperand,
 	};
@@ -794,11 +795,22 @@ pub mod pallet {
 				Ok::<_, DispatchError>(())
 			})?;
 
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				T::Investment::investment(who, investment_id)?.ensure_sub(pool_amount)?,
-			)?;
+			let pending_pool_amount_increment =
+				ForeignIdToSwapId::<T>::get((who, investment_id, Action::Investment))
+					.map(|swap_id| T::TokenSwaps::get_order_details(swap_id))
+					.flatten()
+					.filter(|swap| swap.currency_out == foreign_currency)
+					.map(|swap| swap.amount_in)
+					.unwrap_or(T::Balance::default());
+
+			let decrement = pool_amount.saturating_sub(&pending_pool_amount_increment);
+			if !decrement.is_zero() {
+				T::Investment::update_investment(
+					who,
+					investment_id,
+					T::Investment::investment(who, investment_id)?.ensure_sub(decrement)?,
+				)?;
+			}
 
 			Self::apply_swap_and_notify(
 				who,
