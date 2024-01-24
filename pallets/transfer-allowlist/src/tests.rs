@@ -132,7 +132,7 @@ fn transfer_allowance_allows_correctly_with_allowance_set() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), TEST_CURRENCY_ID),
-			Ok(())
+			Ok(Some(ACCOUNT_RECEIVER.into()))
 		)
 	})
 }
@@ -183,7 +183,7 @@ fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), TEST_CURRENCY_ID),
-			Ok(())
+			Ok(Some(ACCOUNT_RECEIVER.into()))
 		)
 	})
 }
