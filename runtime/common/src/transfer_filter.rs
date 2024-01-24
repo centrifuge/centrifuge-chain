@@ -17,7 +17,7 @@ use cfg_types::{
 	locations::Location,
 	tokens::{CurrencyId, FilterCurrency},
 };
-use frame_support::{dispatch::TypeInfo, traits::IsSubType};
+use frame_support::{dispatch::TypeInfo, traits::IsSubType, RuntimeDebugNoBound};
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
 use parity_scale_codec::{Decode, Encode};
@@ -27,7 +27,6 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
-use sp_std::fmt::Formatter;
 use xcm::v3::{MultiAsset, MultiLocation};
 
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
@@ -172,19 +171,15 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 	}
 }
 
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Encode, Decode, TypeInfo)]
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
 
 impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
 	pub fn new() -> Self {
 		PreBalanceTransferExtension(sp_std::marker::PhantomData::default())
-	}
-}
-
-impl<T: frame_system::Config> sp_std::fmt::Debug for PreBalanceTransferExtension<T> {
-	fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
-		f.debug_struct("PreBalanceTransferExtension").finish()
 	}
 }
 

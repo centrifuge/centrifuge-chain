@@ -17,9 +17,10 @@ use cfg_types::{
 	tokens::{CurrencyId, FilterCurrency},
 };
 use frame_support::{
+	dispatch::GetStorageVersion,
 	pallet_prelude::{NMapKey, OptionQuery},
 	storage::types::{StorageDoubleMap, StorageNMap},
-	traits::{Get, OnRuntimeUpgrade, StorageInstance},
+	traits::{Get, OnRuntimeUpgrade, StorageInstance, StorageVersion},
 	weights::Weight,
 	Blake2_128Concat, Twox64Concat,
 };
@@ -79,7 +80,16 @@ impl<
 	> OnRuntimeUpgrade for Migration<T>
 {
 	fn on_runtime_upgrade() -> Weight {
-		log::info!("{LOG_PREFIX} Migrating currency used started...");
+		let weight = T::DbWeight::get().reads(1);
+		if pallet_transfer_allowlist::Pallet::<T>::on_chain_storage_version() != 0 {
+			log::info!(
+					"{LOG_PREFIX} Skipping on_runtime_upgrade: executed on wrong storage version. Expected version 0"
+				);
+			return weight;
+		}
+
+		log::info!("{LOG_PREFIX} Migrating allowlist storage keys started...");
+
 		let mut counter = 0;
 		OldAccountCurrencyTransferAllowance::translate::<AllowanceDetails<BlockNumber>, _>(
 			|(account, currency_id, location), allowance| {
@@ -108,7 +118,11 @@ impl<
 			},
 		);
 
-		T::DbWeight::get().reads_writes(counter, counter.saturating_mul(2))
+		pallet_transfer_allowlist::STORAGE_VERSION.put::<pallet_transfer_allowlist::Pallet<T>>();
+
+		log::info!("{LOG_PREFIX} Migrating allowlist storage keys finished.");
+
+		weight + T::DbWeight::get().reads_writes(counter, counter.saturating_mul(2))
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -121,6 +135,7 @@ impl<
 		let count_delay = OldAccountCurrencyTransferCountDelay::iter().count() as u64;
 		log::info!("{LOG_PREFIX} Counted {count_delay} keys in old delay storage.");
 
+		log::info!("{LOG_PREFIX} PRE UPGRADE: Finished.");
 		Ok((count_allowance, count_delay).encode())
 	}
 
