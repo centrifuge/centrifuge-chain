@@ -115,6 +115,7 @@ pub struct InvestmentInfo<T: Config> {
 	total_pool_amount: T::Balance,
 
 	/// Total swapped amount pending to execute for decreasing the investment.
+	/// Measured in foreign currency
 	decrease_swapped_amount: T::Balance,
 
 	/// Amount that has not been decremented from an investment as part of a
@@ -147,7 +148,6 @@ impl<T: Config> InvestmentInfo<T> {
 			.ensure_sub_assign(pool_amount.ensure_sub(amount_to_invest)?)?;
 
 		if !amount_to_invest.is_zero() {
-			dbg!(amount_to_invest, self.pending_decrement_not_invested);
 			T::Investment::update_investment(
 				&who,
 				investment_id,
