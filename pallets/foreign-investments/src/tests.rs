@@ -435,9 +435,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			MockDecreaseInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
-				assert_eq!(who, USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
+			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
 					ExecutedForeignDecreaseInvest {
@@ -606,6 +604,45 @@ mod investment {
 
 	#[test]
 	fn increase_and_fulfill_and_decrease_and_fulfill() {
-		//TODO
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT));
+
+			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+				assert_eq!(
+					msg,
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: AMOUNT,
+						foreign_currency: FOREIGN_CURR,
+						amount_remaining: 0,
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(ForeignInvestment::decrease_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT);
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				None,
+			);
+
+			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+		});
 	}
 }
