@@ -137,7 +137,7 @@ pub trait Runtime:
 		Balance = Balance,
 		InvestmentId = TrancheCurrency,
 		CurrencyId = CurrencyId,
-		TokenSwapOrderId = u64,
+		SwapId = u64,
 	> + pallet_preimage::Config
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>

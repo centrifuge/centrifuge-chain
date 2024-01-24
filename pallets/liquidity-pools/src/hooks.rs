@@ -16,7 +16,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
-	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, ForeignInvestmentInfo},
+	investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest},
 };
 use frame_support::{
 	traits::{
@@ -39,19 +39,14 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
+	type Id = (T::AccountId, T::TrancheCurrency);
 	type Status = ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
+		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
 		status: ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		let ForeignInvestmentInfo {
-			id: investment_id,
-			owner: investor,
-			..
-		} = id;
 		let currency = Pallet::<T>::try_get_general_index(status.foreign_currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.foreign_currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
@@ -87,19 +82,14 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
+	type Id = (T::AccountId, T::TrancheCurrency);
 	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
+		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
 		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		let ForeignInvestmentInfo {
-			id: investment_id,
-			owner: investor,
-			..
-		} = id;
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();
@@ -136,19 +126,14 @@ where
 	<T as frame_system::Config>::AccountId: Into<[u8; 32]>,
 {
 	type Error = DispatchError;
-	type Id = ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>;
+	type Id = (T::AccountId, T::TrancheCurrency);
 	type Status = ExecutedForeignCollect<T::Balance, T::CurrencyId>;
 
 	#[transactional]
 	fn notify_status_change(
-		id: ForeignInvestmentInfo<T::AccountId, T::TrancheCurrency, ()>,
+		(investor, investment_id): (T::AccountId, T::TrancheCurrency),
 		status: ExecutedForeignCollect<T::Balance, T::CurrencyId>,
 	) -> DispatchResult {
-		let ForeignInvestmentInfo {
-			id: investment_id,
-			owner: investor,
-			..
-		} = id;
 		let currency = Pallet::<T>::try_get_general_index(status.currency)?;
 		let wrapped_token = Pallet::<T>::try_get_wrapped_token(&status.currency)?;
 		let domain_address: DomainAddress = wrapped_token.into();

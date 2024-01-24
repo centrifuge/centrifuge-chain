@@ -135,8 +135,8 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		// NOTE: Even though we can assume this currency to have been used as payment,
-		// the trading pair needs to be registered for the opposite direction in case a
-		// swap from pool to foreign results from updating the `InvestState`
+		// the trading pair needs to be registered for the opposite direction as hin
+		// case a swap from pool to foreign results from updating the `InvestState`
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
