@@ -122,7 +122,7 @@ impl<
 
 		log::info!("{LOG_PREFIX} Migrating allowlist storage keys finished.");
 
-		weight + T::DbWeight::get().reads_writes(counter, counter.saturating_mul(2))
+		weight.saturating_add(T::DbWeight::get().reads_writes(counter, counter.saturating_mul(2)))
 	}
 
 	#[cfg(feature = "try-runtime")]
