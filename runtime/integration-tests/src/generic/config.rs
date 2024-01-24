@@ -12,12 +12,12 @@ use cfg_types::{
 	locations::Location,
 	oracles::OracleKey,
 	permissions::{PermissionScope, Role},
-	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata, FilterCurrency, TrancheCurrency},
 };
 use fp_self_contained::{SelfContainedCall, UncheckedExtrinsic};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo, RawOrigin},
-	traits::{IsType, OriginTrait},
+	traits::{IsSubType, IsType, OriginTrait},
 	Parameter,
 };
 use liquidity_pools_gateway_routers::DomainRouter;
@@ -114,7 +114,7 @@ pub trait Runtime:
 	+ pallet_proxy::Config<RuntimeCall = Self::RuntimeCallExt>
 	+ pallet_restricted_tokens::Config<Balance = Balance, CurrencyId = CurrencyId>
 	+ pallet_restricted_xtokens::Config
-	+ pallet_transfer_allowlist::Config<CurrencyId = CurrencyId, Location = Location>
+	+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
 	+ pallet_liquidity_pools::Config<
 		CurrencyId = CurrencyId,
 		Balance = Balance,
@@ -166,7 +166,8 @@ pub trait Runtime:
 		+ From<pallet_proxy::Call<Self>>
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
-		+ From<pallet_liquidity_pools_gateway::Call<Self>>;
+		+ From<pallet_liquidity_pools_gateway::Call<Self>>
+		+ IsSubType<pallet_balances::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
@@ -225,6 +226,7 @@ pub trait Runtime:
 				frame_system::CheckNonce<Self>,
 				frame_system::CheckWeight<Self>,
 				pallet_transaction_payment::ChargeTransactionPayment<Self>,
+				runtime_common::transfer_filter::PreBalanceTransferExtension<Self>,
 			),
 		>,
 	>;

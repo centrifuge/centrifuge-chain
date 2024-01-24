@@ -492,7 +492,7 @@ pub trait TransferAllowance<AccountId> {
 		send: AccountId,
 		receive: Self::Location,
 		currency: Self::CurrencyId,
-	) -> DispatchResult;
+	) -> Result<Option<Self::Location>, DispatchError>;
 }
 
 /// Trait to retrieve information about currencies.

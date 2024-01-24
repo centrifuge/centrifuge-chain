@@ -12,7 +12,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, FilterCurrency};
 use frame_benchmarking::*;
 use frame_support::{
 	pallet_prelude::Get,
@@ -28,7 +28,7 @@ use sp_runtime::{
 
 use super::*;
 
-const BENCHMARK_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const BENCHMARK_CURRENCY_ID: FilterCurrency = FilterCurrency::Specific(CurrencyId::ForeignAsset(1));
 
 benchmarks! {
 	where_clause {
@@ -36,7 +36,7 @@ benchmarks! {
 		<T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location>,
 		<T as pallet::Config>::Location: From<<T as frame_system::Config>::AccountId> + EncodeLike<<T as pallet::Config>::Location>,
 			<T as pallet::Config>::ReserveCurrency: Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
-		T: pallet::Config<CurrencyId = CurrencyId>,
+		T: pallet::Config<CurrencyId = FilterCurrency>,
 		<T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned + Bounded + TypeInfo,
 		<<T as pallet::Config>::ReserveCurrency as frame_support::traits::fungible::Inspect<<T as frame_system::Config>::AccountId,>>::Balance: From<u64>
 	}

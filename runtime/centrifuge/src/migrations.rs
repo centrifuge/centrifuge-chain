@@ -11,8 +11,13 @@
 // GNU General Public License for more details.
 
 pub type UpgradeCentrifuge1025 = (
+	// Burns tokens from other domains that are falsly not burned when they were transferred back
+	// to their domain
 	burn_unburned::Migration<super::Runtime>,
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
+	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
+	// special filter currency enum
+	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).

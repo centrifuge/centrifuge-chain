@@ -14,7 +14,11 @@ use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_core::{sr25519::Public, H256};
-use sp_runtime::{traits::Extrinsic, Digest, DigestItem, DispatchError, Storage};
+use sp_runtime::{
+	traits::Extrinsic,
+	transaction_validity::{InvalidTransaction, TransactionValidityError},
+	Digest, DigestItem, DispatchError, Storage,
+};
 use sp_timestamp::Timestamp;
 
 use crate::{
@@ -92,7 +96,18 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
 
-		self.parachain_state_mut(|| T::Api::apply_extrinsic(extrinsic).unwrap())?;
+		self.parachain_state_mut(|| {
+			let res = T::Api::apply_extrinsic(extrinsic);
+			// NOTE: This is our custom error that we are having in the
+			//       `PreBalanceTransferExtension` SignedExtension, so we need to
+			//        catch that here.
+			if let Err(TransactionValidityError::Invalid(InvalidTransaction::Custom(255))) = res {
+				Ok(Ok(()))
+			} else {
+				res
+			}
+			.unwrap()
+		})?;
 
 		let fee = self
 			.find_event(|e| match e {
@@ -101,7 +116,9 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 				}
 				_ => None,
 			})
-			.unwrap();
+			// NOTE: This is actually not always correct. Even if there is not fee event, there is a
+			//       fee substracted if the `pre_dispatch()` errors out.
+			.unwrap_or_default();
 
 		Ok(fee)
 	}

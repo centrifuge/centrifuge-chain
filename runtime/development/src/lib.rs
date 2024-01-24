@@ -93,7 +93,7 @@ use runtime_common::{
 	oracle::{Feeder, OracleConverterBridge},
 	permissions::PoolAdminCheck,
 	xcm::AccountIdToMultiLocation,
-	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId, NativeCurrency,
+	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1814,11 +1814,10 @@ impl pallet_block_rewards::Config for Runtime {
 }
 
 impl pallet_transfer_allowlist::Config for Runtime {
-	type CurrencyId = CurrencyId;
+	type CurrencyId = FilterCurrency;
 	type Deposit = AllowanceDeposit<Fees>;
 	type HoldId = HoldId;
 	type Location = Location;
-	type NativeCurrency = NativeCurrency;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_transfer_allowlist::WeightInfo<Runtime>;
@@ -2013,6 +2012,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	runtime_common::transfer_filter::PreBalanceTransferExtension<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
@@ -2120,6 +2120,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
+use cfg_types::tokens::FilterCurrency;
 use runtime_common::{remarks::Remark, transfer_filter::PreNativeTransfer};
 
 #[cfg(not(feature = "disable-runtime-api"))]

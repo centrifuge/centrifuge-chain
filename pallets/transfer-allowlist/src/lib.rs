@@ -73,7 +73,7 @@ pub mod pallet {
 	>>::Reason;
 
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -84,13 +84,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type CurrencyId: AssetId + Parameter + Member + Copy + Default;
-
-		// We need this to block restrictions on the native chain currency as
-		// currently it is impossible to place transfer restrictions
-		// on native currencies as we simply have no way of
-		// restricting pallet-balances...
-		type NativeCurrency: Get<Self::CurrencyId>;
+		type CurrencyId: AssetId + Parameter + Member + Copy;
 
 		/// Currency for holding/unholding with allowlist adding/removal,
 		/// given that the allowlist will be in storage
@@ -256,8 +250,6 @@ pub mod pallet {
 		/// Transfer from sending account and currency not allowed to
 		/// destination
 		NoAllowanceForDestination,
-		/// Native currency can not be restricted with allowances
-		NativeCurrencyNotRestrictable,
 	}
 
 	#[pallet::event]
@@ -331,11 +323,6 @@ pub mod pallet {
 			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-
-			ensure!(
-				currency_id != T::NativeCurrency::get(),
-				Error::<T>::NativeCurrencyNotRestrictable
-			);
 
 			let allowance_details = match Self::get_account_currency_restriction_count_delay(
 				&account_id,
@@ -766,24 +753,28 @@ pub mod pallet {
 			send: T::AccountId,
 			receive: Self::Location,
 			currency: T::CurrencyId,
-		) -> DispatchResult {
+		) -> Result<Option<Self::Location>, DispatchError> {
 			match Self::get_account_currency_restriction_count_delay(&send, currency) {
 				Some(AllowanceMetadata {
 					allowance_count: count,
 					..
 				}) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						receive.clone(),
+					)) {
 						Some(AllowanceDetails {
 							allowed_at,
 							blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(()),
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(Some(receive)),
 						_ => Err(DispatchError::from(Error::<T>::NoAllowanceForDestination)),
 					}
 				}
 				// In this case no allowances are set for the sending account & currency,
 				// therefore no restrictions should be in place.
-				_ => Ok(()),
+				_ => Ok(None),
 			}
 		}
 	}
