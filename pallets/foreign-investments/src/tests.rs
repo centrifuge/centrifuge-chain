@@ -442,7 +442,7 @@ fn decrease_partial_investment_over_increased() {
 				ExecutedForeignDecreaseInvest {
 					amount_decreased: AMOUNT / 4,
 					foreign_currency: FOREIGN_CURR,
-					amount_remaining: 0,
+					amount_remaining: 3 * AMOUNT / 4,
 				}
 			);
 			Ok(())

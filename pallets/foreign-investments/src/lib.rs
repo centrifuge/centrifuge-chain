@@ -691,7 +691,7 @@ pub mod pallet {
 						let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 							info.base.foreign_currency,
 							pool_currency_of::<T>(investment_id)?,
-							T::Investment::investment(&who, investment_id)?,
+							info.total_pool_amount,
 						)?;
 
 						T::DecreasedForeignInvestOrderHook::notify_status_change(
