@@ -40,18 +40,18 @@ impl<
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
 		let currency_based_check = |sender: AccountId, destination: MultiLocation, currency| {
-			T::allowance(
-				sender.clone(),
-				Location::XCM(BlakeTwo256::hash(&destination.encode())),
-				FilterCurrency::Specific(currency),
-			)
-			.or_else(|_| {
+			amalgamate_allowance(
+				T::allowance(
+					sender.clone(),
+					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					FilterCurrency::Specific(currency),
+				),
 				T::allowance(
 					sender,
 					Location::XCM(BlakeTwo256::hash(&destination.encode())),
 					FilterCurrency::All,
-				)
-			})
+				),
+			)
 		};
 
 		let asset_based_check = |sender, destination, asset| {
@@ -140,15 +140,17 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 	type Result = bool;
 
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> Self::Result {
-		T::allowance(
-			t.send.clone(),
-			Location::Local(t.recv.clone()),
-			FilterCurrency::Specific(t.id),
-		)
-		.is_ok() || T::allowance(
-			t.send.clone(),
-			Location::Local(t.recv.clone()),
-			FilterCurrency::All,
+		amalgamate_allowance(
+			T::allowance(
+				t.send.clone(),
+				Location::Local(t.recv.clone()),
+				FilterCurrency::Specific(t.id),
+			),
+			T::allowance(
+				t.send.clone(),
+				Location::Local(t.recv.clone()),
+				FilterCurrency::All,
+			),
 		)
 		.is_ok()
 	}
@@ -162,12 +164,15 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 
 	fn check(t: (AccountId, DomainAddress, CurrencyId)) -> Self::Result {
 		let (sender, receiver, currency) = t;
-		T::allowance(
-			sender.clone(),
-			Location::Address(receiver.clone()),
-			FilterCurrency::Specific(currency),
+		// NOTE: The order of the allowance check here is
+		amalgamate_allowance(
+			T::allowance(
+				sender.clone(),
+				Location::Address(receiver.clone()),
+				FilterCurrency::Specific(currency),
+			),
+			T::allowance(sender, Location::Address(receiver), FilterCurrency::All),
 		)
-		.or_else(|_| T::allowance(sender, Location::Address(receiver), FilterCurrency::All))
 	}
 }
 
@@ -231,18 +236,53 @@ where
 			return Ok(());
 		};
 
-		pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-			who.clone(),
-			Location::Local(recv.clone()),
-			FilterCurrency::All,
-		)
-		.or_else(|_| {
+		amalgamate_allowance(
+			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+				who.clone(),
+				Location::Local(recv.clone()),
+				FilterCurrency::All,
+			),
 			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
 				who.clone(),
 				Location::Local(recv.clone()),
 				FilterCurrency::Specific(CurrencyId::Native),
-			)
-		})
+			),
+		)
 		.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+	}
+}
+
+fn amalgamate_allowance(
+	first: Result<Option<Location>, DispatchError>,
+	second: Result<Option<Location>, DispatchError>,
+) -> DispatchResult {
+	match (first, second) {
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Err(e), Err(_)) => Err(e),
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is an allowance set for `All`, for the given recv
+		(Err(_), Ok(Some(_))) => Ok(()),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Ok(Some(_)), Err(_)) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Ok(None), Err(e)) => Err(e),
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is NO allowance set for `All`
+		(Err(e), Ok(None)) => Err(e),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is an allowance set for `All`, for the given recv
+		(Ok(Some(_)), Ok(Some(_))) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is NO allowance set for `All`
+		(Ok(None), Ok(None)) => Ok(()),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is NO allowance set for `All`
+		(Ok(Some(_)), Ok(None)) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is an allowance set for `All`, for the given recv
+		(Ok(None), Ok(Some(_))) => Ok(()),
 	}
 }

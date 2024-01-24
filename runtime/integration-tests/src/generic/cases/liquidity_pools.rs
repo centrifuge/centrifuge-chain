@@ -8909,6 +8909,77 @@ mod centrifuge {
 			);
 		}
 
+		#[test]
+		fn _test() {
+			restrict_cfg_extrinsic::<crate::chain::centrifuge::Runtime>()
+		}
+
+		fn restrict_cfg_extrinsic<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
+					.add(orml_tokens::GenesisConfig::<T> {
+						balances: vec![(
+							Keyring::Alice.to_account_id(),
+							USDC,
+							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
+						)],
+					})
+					.storage(),
+			);
+
+			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) = env
+				.parachain_state_mut(|| {
+					// NOTE: The para-id is not relevant here
+					register_cfg::<T>(2031);
+
+					assert_ok!(
+						pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+							RawOrigin::Signed(Keyring::Alice.into()).into(),
+							FilterCurrency::All,
+							Location::Local(Keyring::Bob.to_account_id())
+						)
+					);
+
+					(
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
+						pallet_balances::Pallet::<T>::free_balance(
+							&Keyring::Charlie.to_account_id(),
+						),
+					)
+				});
+
+			let call = pallet_balances::Call::<T>::transfer {
+				dest: Keyring::Charlie.into(),
+				value: cfg(TRANSFER_AMOUNT),
+			};
+			env.submit_now(Keyring::Alice, call).unwrap();
+
+			let call = pallet_balances::Call::<T>::transfer {
+				dest: Keyring::Bob.into(),
+				value: cfg(TRANSFER_AMOUNT),
+			};
+			let fee = env.submit_now(Keyring::Alice, call).unwrap();
+
+			// Restrict also CFG local
+			env.parachain_state(|| {
+				let after_transfer_alice =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+				let after_transfer_bob =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+				let after_transfer_charlie =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - cfg(TRANSFER_AMOUNT) - 2 * fee
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
+		}
+
 		fn restrict_all<T: Runtime>() {
 			let mut env = RuntimeEnv::<T>::from_parachain_storage(
 				Genesis::default()
@@ -9592,6 +9663,7 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
+		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 
 	mod transfers {

@@ -753,24 +753,28 @@ pub mod pallet {
 			send: T::AccountId,
 			receive: Self::Location,
 			currency: T::CurrencyId,
-		) -> DispatchResult {
+		) -> Result<Option<Self::Location>, DispatchError> {
 			match Self::get_account_currency_restriction_count_delay(&send, currency) {
 				Some(AllowanceMetadata {
 					allowance_count: count,
 					..
 				}) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						receive.clone(),
+					)) {
 						Some(AllowanceDetails {
 							allowed_at,
 							blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(()),
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(Some(receive)),
 						_ => Err(DispatchError::from(Error::<T>::NoAllowanceForDestination)),
 					}
 				}
 				// In this case no allowances are set for the sending account & currency,
 				// therefore no restrictions should be in place.
-				_ => Ok(()),
+				_ => Ok(None),
 			}
 		}
 	}
