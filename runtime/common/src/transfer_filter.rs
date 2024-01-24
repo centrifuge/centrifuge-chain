@@ -172,20 +172,17 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 }
 
 #[derive(
-	Clone,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Default,
-	RuntimeDebugNoBound,
-	Encode,
-	Decode,
-	TypeInfo,
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]
 pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
+
+#[allow(clippy::new_without_default)]
+impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
 
 impl<T> SignedExtension for PreBalanceTransferExtension<T>
 where
