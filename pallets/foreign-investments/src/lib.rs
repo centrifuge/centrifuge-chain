@@ -372,7 +372,8 @@ pub mod pallet {
 
 	/// Contains the information about the foreign investment process
 	///
-	/// NOTE: The storage is killed once the investment is fully collected.
+	/// NOTE: The storage is killed once the investment is fully collected, or
+	/// decreased.
 	#[pallet::storage]
 	pub(super) type ForeignInvestmentInfo<T: Config> = StorageDoubleMap<
 		_,
@@ -386,7 +387,7 @@ pub mod pallet {
 	/// Contains the information about the foreign redemption process
 	///
 	/// NOTE: The storage is killed once the redemption is fully collected and
-	/// fully swapped
+	/// fully swapped or decreased
 	#[pallet::storage]
 	pub(super) type ForeignRedemptionInfo<T: Config> = StorageDoubleMap<
 		_,
@@ -415,15 +416,21 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Failed to retrieve the `ForeignInvestInfo`.
 		InfoNotFound,
+
 		/// Failed to retrieve the swap order.
 		SwapOrderNotFound,
+
 		/// Failed to retrieve the pool for the given pool id.
 		PoolNotFound,
+
 		/// An action for a different foreign currency is currently in process
 		/// for the same pool currency, account, and investment.
 		/// The currenct foreign actions must be finished before starting with a
 		/// different foreign currency investment / redemption.
 		MismatchedForeignCurrency,
+
+		/// The decrease is greater than the current investment/redemption
+		TooMuchDecrease,
 	}
 
 	/// Internal type used as result of `Pallet::apply_swap()`
@@ -813,7 +820,9 @@ pub mod pallet {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 
 				info.base.ensure_same_foreign(foreign_currency)?;
-				info.total_pool_amount.ensure_sub_assign(pool_amount)?;
+				info.total_pool_amount
+					.ensure_sub_assign(pool_amount)
+					.map_err(|_| Error::<T>::TooMuchDecrease)?;
 				info.decrease_investment(who, investment_id, pool_amount)?;
 
 				Ok::<_, DispatchError>(())
