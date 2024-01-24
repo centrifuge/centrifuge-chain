@@ -14,7 +14,7 @@ const FOREIGN_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 const SWAP_ID: SwapId = 1;
 const RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
-const AMOUNT: Balance = util::to_foreign(100);
+const AMOUNT: Balance = util::to_foreign(200);
 
 mod util {
 	use super::*;
@@ -133,7 +133,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_same_direction_swap() {
-		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT + util::to_foreign(100);
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_get_order_details(move |swap_id| {
@@ -177,7 +177,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_greater_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT + util::to_foreign(100);
 
 		new_test_ext().execute_with(|| {
 			util::configure_currency_converter();
@@ -266,7 +266,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_smaller_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = util::to_foreign(50);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT - util::to_foreign(100);
 		const NEW_SWAP_ID: SwapId = SWAP_ID + 1;
 
 		new_test_ext().execute_with(|| {
@@ -417,14 +417,44 @@ fn decrease_full_investment_over_increased() {
 			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 			None,
 		);
+
+		assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 	});
 }
 
 #[test]
-fn decrease_paritial_investment_over_increased() {
+fn decrease_partial_investment_over_increased() {
 	new_test_ext().execute_with(|| {
-		// TODO
-		/*
+		util::base_configuration();
+
+		assert_ok!(ForeignInvestment::increase_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT,
+			FOREIGN_CURR
+		));
+
+		MockDecreaseInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
+			assert_eq!(who, USER);
+			assert_eq!(investment_id, INVESTMENT_ID);
+			assert_eq!(
+				msg,
+				ExecutedForeignDecreaseInvest {
+					amount_decreased: AMOUNT / 4,
+					foreign_currency: FOREIGN_CURR,
+					amount_remaining: 0,
+				}
+			);
+			Ok(())
+		});
+
+		assert_ok!(ForeignInvestment::decrease_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT / 4,
+			FOREIGN_CURR
+		));
+
 		assert_eq!(
 			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 			Some(InvestmentInfo {
@@ -432,11 +462,12 @@ fn decrease_paritial_investment_over_increased() {
 					foreign_currency: FOREIGN_CURR,
 					collected: CollectedAmount::default(),
 				},
-				total_pool_amount: 0,
+				total_pool_amount: util::to_pool(3 * AMOUNT / 4),
 				decrease_swapped_amount: 0,
 				pending_decrement_not_invested: 0,
 			})
 		);
-		*/
+
+		assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 	});
 }

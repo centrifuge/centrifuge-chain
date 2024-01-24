@@ -910,11 +910,6 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> Result<T::Balance, DispatchError> {
-			ensure!(
-				ForeignInvestmentInfo::<T>::contains_key(&who, investment_id),
-				Error::<T>::InfoNotFound
-			);
-
 			T::Investment::investment(who, investment_id)
 		}
 
@@ -922,11 +917,6 @@ pub mod pallet {
 			who: &T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> Result<T::Balance, DispatchError> {
-			ensure!(
-				ForeignRedemptionInfo::<T>::contains_key(&who, investment_id),
-				Error::<T>::InfoNotFound
-			);
-
 			T::Investment::redemption(who, investment_id)
 		}
 
