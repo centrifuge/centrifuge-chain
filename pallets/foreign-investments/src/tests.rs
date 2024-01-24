@@ -1,5 +1,6 @@
 use cfg_traits::{investments::ForeignInvestment, StatusNotificationHook};
 use frame_support::assert_ok;
+use sp_runtime::traits::One;
 
 use crate::{mock::*, *};
 
@@ -8,29 +9,59 @@ const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
 const FOREIGN_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 const SWAP_ID: SwapId = 1;
-const AMOUNT: Balance = 1;
+const RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
+
+mod util {
+	use super::*;
+
+	pub const fn to_pool(foreign_amount: Balance) -> Balance {
+		foreign_amount * RATIO
+	}
+
+	pub const fn to_foreign(pool_amount: Balance) -> Balance {
+		pool_amount / RATIO
+	}
+
+	pub fn setup_currency_converter() {
+		MockCurrencyConversion::mock_stable_to_stable(|to, from, amount_from| match (from, to) {
+			(POOL_CURR, FOREIGN_CURR) => Ok(to_foreign(amount_from)),
+			(FOREIGN_CURR, POOL_CURR) => Ok(to_pool(amount_from)),
+			_ => unreachable!("Unexpected currency"),
+		});
+	}
+}
 
 mod swaps {
 	use super::*;
 
 	#[test]
 	fn swap_over_no_swap() {
+		const AMOUNT: Balance = util::to_foreign(100);
+
 		new_test_ext().execute_with(|| {
-			MockTokenSwaps::mock_place_order(move |_, _, _, _, _| Ok(SWAP_ID));
+			MockTokenSwaps::mock_place_order(move |who, curr_in, curr_out, amount, ratio| {
+				assert_eq!(who, USER);
+				assert_eq!(curr_in, POOL_CURR);
+				assert_eq!(curr_out, FOREIGN_CURR);
+				assert_eq!(amount, util::to_pool(AMOUNT));
+				assert_eq!(ratio, Ratio::one());
+
+				Ok(SWAP_ID)
+			});
 
 			assert_ok!(
 				Pallet::<Runtime>::apply_swap(
 					&USER,
 					Swap {
-						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: AMOUNT,
+						currency_out: FOREIGN_CURR,
+						amount_in: util::to_pool(AMOUNT),
 					},
 					None,
 				),
 				SwapStatus {
 					swapped: 0,
-					pending: AMOUNT,
+					pending: util::to_pool(AMOUNT),
 					swapped_inverse: 0,
 					pending_inverse: 0,
 					swap_id: Some(SWAP_ID),
@@ -40,16 +71,193 @@ mod swaps {
 	}
 
 	#[test]
-	fn swap_over_same_swap() {}
+	fn swap_over_same_direction_swap() {
+		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+		const AMOUNT: Balance = util::to_foreign(100);
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				Some(Swap {
+					currency_in: POOL_CURR,
+					currency_out: FOREIGN_CURR,
+					amount_in: util::to_pool(PREVIOUS_AMOUNT),
+				})
+			});
+			MockTokenSwaps::mock_update_order(move |who, swap_id, amount, ratio| {
+				assert_eq!(who, USER);
+				assert_eq!(swap_id, SWAP_ID);
+				assert_eq!(amount, util::to_pool(PREVIOUS_AMOUNT + AMOUNT));
+				assert_eq!(ratio, Ratio::one());
+
+				Ok(())
+			});
+
+			assert_ok!(
+				Pallet::<Runtime>::apply_swap(
+					&USER,
+					Swap {
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+						amount_in: util::to_pool(AMOUNT),
+					},
+					Some(SWAP_ID),
+				),
+				SwapStatus {
+					swapped: 0,
+					pending: util::to_pool(PREVIOUS_AMOUNT + AMOUNT),
+					swapped_inverse: 0,
+					pending_inverse: 0,
+					swap_id: Some(SWAP_ID),
+				}
+			);
+		});
+	}
 
 	#[test]
-	fn swap_over_greater_inverse_swap() {}
+	fn swap_over_greater_inverse_swap() {
+		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+		const AMOUNT: Balance = util::to_foreign(100);
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				// Inverse swap
+				Some(Swap {
+					currency_in: FOREIGN_CURR,
+					currency_out: POOL_CURR,
+					amount_in: PREVIOUS_AMOUNT,
+				})
+			});
+			MockTokenSwaps::mock_update_order(move |who, swap_id, amount, ratio| {
+				assert_eq!(who, USER);
+				assert_eq!(swap_id, SWAP_ID);
+				assert_eq!(amount, PREVIOUS_AMOUNT - AMOUNT);
+				assert_eq!(ratio, Ratio::one());
+
+				Ok(())
+			});
+			util::setup_currency_converter();
+
+			assert_ok!(
+				Pallet::<Runtime>::apply_swap(
+					&USER,
+					Swap {
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+						amount_in: util::to_pool(AMOUNT),
+					},
+					Some(SWAP_ID),
+				),
+				SwapStatus {
+					swapped: util::to_pool(AMOUNT),
+					pending: 0,
+					swapped_inverse: AMOUNT,
+					pending_inverse: PREVIOUS_AMOUNT - AMOUNT,
+					swap_id: Some(SWAP_ID),
+				}
+			);
+		});
+	}
 
 	#[test]
-	fn swap_over_equally_inverse_swap() {}
+	fn swap_over_equally_inverse_swap() {
+		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				// Inverse swap
+				Some(Swap {
+					currency_in: FOREIGN_CURR,
+					currency_out: POOL_CURR,
+					amount_in: PREVIOUS_AMOUNT,
+				})
+			});
+			MockTokenSwaps::mock_cancel_order(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				Ok(())
+			});
+			util::setup_currency_converter();
+
+			assert_ok!(
+				Pallet::<Runtime>::apply_swap(
+					&USER,
+					Swap {
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+						amount_in: util::to_pool(PREVIOUS_AMOUNT),
+					},
+					Some(SWAP_ID),
+				),
+				SwapStatus {
+					swapped: util::to_pool(PREVIOUS_AMOUNT),
+					pending: 0,
+					swapped_inverse: PREVIOUS_AMOUNT,
+					pending_inverse: 0,
+					swap_id: None,
+				}
+			);
+		});
+	}
 
 	#[test]
-	fn swap_over_smaller_inverse_swap() {}
+	fn swap_over_smaller_inverse_swap() {
+		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
+		const AMOUNT: Balance = util::to_foreign(300);
+		const NEW_SWAP_ID: SwapId = SWAP_ID + 1;
+
+		new_test_ext().execute_with(|| {
+			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				// Inverse swap
+				Some(Swap {
+					currency_in: FOREIGN_CURR,
+					currency_out: POOL_CURR,
+					amount_in: PREVIOUS_AMOUNT,
+				})
+			});
+			MockTokenSwaps::mock_cancel_order(move |swap_id| {
+				assert_eq!(swap_id, SWAP_ID);
+
+				Ok(())
+			});
+			MockTokenSwaps::mock_place_order(move |who, curr_in, curr_out, amount, ratio| {
+				assert_eq!(who, USER);
+				assert_eq!(curr_in, POOL_CURR);
+				assert_eq!(curr_out, FOREIGN_CURR);
+				assert_eq!(amount, util::to_pool(AMOUNT - PREVIOUS_AMOUNT));
+				assert_eq!(ratio, Ratio::one());
+
+				Ok(NEW_SWAP_ID)
+			});
+			util::setup_currency_converter();
+
+			assert_ok!(
+				Pallet::<Runtime>::apply_swap(
+					&USER,
+					Swap {
+						currency_out: FOREIGN_CURR,
+						currency_in: POOL_CURR,
+						amount_in: util::to_pool(AMOUNT),
+					},
+					Some(SWAP_ID),
+				),
+				SwapStatus {
+					swapped: util::to_pool(PREVIOUS_AMOUNT),
+					pending: util::to_pool(AMOUNT - PREVIOUS_AMOUNT),
+					swapped_inverse: PREVIOUS_AMOUNT,
+					pending_inverse: 0,
+					swap_id: Some(NEW_SWAP_ID),
+				}
+			);
+		});
+	}
 }
 
 /*

@@ -352,18 +352,20 @@ pub mod pallet {
 	}
 
 	/// Internal type used as result of `Pallet::apply_swap()`
+	/// Amounts are donominated referenced by the `new_swap` paramenter given to
+	/// `apply_swap()`
 	#[derive(Debug, PartialEq)]
 	pub(crate) struct SwapStatus<T: Config> {
-		/// The amount already swapped and available to use
+		/// The amount (in) already swapped and available to use.
 		pub swapped: T::Balance,
 
-		/// The amount pending to be swapped
+		/// The amount (in) pending to be swapped
 		pub pending: T::Balance,
 
-		/// The amount swapped by the inverse order
+		/// The amount (out) swapped by the inverse order
 		pub swapped_inverse: T::Balance,
 
-		/// The amount pending to be swapped by the inverse order
+		/// The amount (out) pending to be swapped by the inverse order
 		pub pending_inverse: T::Balance,
 
 		/// The swap id for a possible reminder swap order after `apply_swap()`
@@ -466,8 +468,8 @@ pub mod pallet {
 							new_swap.amount_in,
 						)?;
 
-						match new_swap_amount_out.cmp(&inverse_swap.amount_in) {
-							Ordering::Less => {
+						match inverse_swap.amount_in.cmp(&new_swap_amount_out) {
+							Ordering::Greater => {
 								let amount_to_swap =
 									inverse_swap.amount_in.ensure_sub(new_swap_amount_out)?;
 
@@ -497,7 +499,7 @@ pub mod pallet {
 									swap_id: None,
 								})
 							}
-							Ordering::Greater => {
+							Ordering::Less => {
 								T::TokenSwaps::cancel_order(swap_id)?;
 
 								let inverse_swap_amount_out =
