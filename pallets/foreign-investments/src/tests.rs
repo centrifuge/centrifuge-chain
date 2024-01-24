@@ -1,6 +1,6 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, TrancheCurrency},
-	TokenSwaps,
+	StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{ExecutedForeignDecreaseInvest, Swap};
 use frame_support::{assert_err, assert_ok};
@@ -91,6 +91,23 @@ mod util {
 		util::configure_currency_converter();
 		util::config_swaps();
 		util::config_investments();
+	}
+
+	pub fn fulfill_last_swap(action: Action, amount_in: Balance) {
+		let swap_id = ForeignIdToSwapId::<Runtime>::get((USER, INVESTMENT_ID, action)).unwrap();
+		let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+		MockTokenSwaps::mock_get_order_details(move |_| {
+			Some(Swap {
+				amount_in: swap.amount_in - amount_in,
+				..swap
+			})
+		});
+
+		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
+			swap_id,
+			Swap { amount_in, ..swap },
+		)
+		.unwrap();
 	}
 }
 
@@ -337,10 +354,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount::default(),
-					},
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
 					pending_decrement_not_invested: 0,
@@ -350,7 +364,7 @@ mod investment {
 	}
 
 	#[test]
-	fn increase_over_increased() {
+	fn increase_and_increase() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -371,10 +385,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount::default(),
-					},
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT + AMOUNT),
 					decrease_swapped_amount: 0,
 					pending_decrement_not_invested: 0,
@@ -384,7 +395,7 @@ mod investment {
 	}
 
 	#[test]
-	fn decrease_full_over_increased() {
+	fn increase_and_full_decrease() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -426,7 +437,7 @@ mod investment {
 	}
 
 	#[test]
-	fn decrease_partial_over_increased() {
+	fn increase_and_partial_decrease() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -461,10 +472,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount::default(),
-					},
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(3 * AMOUNT / 4),
 					decrease_swapped_amount: 0,
 					pending_decrement_not_invested: 0,
@@ -476,7 +484,7 @@ mod investment {
 	}
 
 	#[test]
-	fn decrease_more_over_increased() {
+	fn increase_and_big_decrease() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -495,6 +503,37 @@ mod investment {
 					FOREIGN_CURR
 				),
 				Error::<Runtime>::TooMuchDecrease,
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_partial_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT / 4);
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					total_pool_amount: util::to_pool(AMOUNT),
+					decrease_swapped_amount: 0,
+					pending_decrement_not_invested: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(AMOUNT / 4)
 			);
 		});
 	}
