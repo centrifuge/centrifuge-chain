@@ -172,16 +172,20 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 }
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Default,
+	RuntimeDebugNoBound,
+	Encode,
+	Decode,
+	TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]
 pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
-
-impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
-	pub fn new() -> Self {
-		PreBalanceTransferExtension(sp_std::marker::PhantomData::default())
-	}
-}
 
 impl<T> SignedExtension for PreBalanceTransferExtension<T>
 where

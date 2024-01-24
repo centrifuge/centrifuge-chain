@@ -35,7 +35,7 @@ pub enum Location {
 
 impl From<AccountId32> for Location {
 	fn from(value: AccountId32) -> Self {
-		Self::Local(value.into())
+		Self::Local(value)
 	}
 }
 

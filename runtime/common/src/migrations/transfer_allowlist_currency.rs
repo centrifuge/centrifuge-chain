@@ -20,7 +20,7 @@ use frame_support::{
 	dispatch::GetStorageVersion,
 	pallet_prelude::{NMapKey, OptionQuery},
 	storage::types::{StorageDoubleMap, StorageNMap},
-	traits::{Get, OnRuntimeUpgrade, StorageInstance, StorageVersion},
+	traits::{Get, OnRuntimeUpgrade, StorageInstance},
 	weights::Weight,
 	Blake2_128Concat, Twox64Concat,
 };
