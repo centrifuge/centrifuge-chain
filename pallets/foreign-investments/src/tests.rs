@@ -1,8 +1,12 @@
-use cfg_traits::{investments::ForeignInvestment, StatusNotificationHook};
+use cfg_traits::{
+	investments::{ForeignInvestment as _, TrancheCurrency},
+	TokenSwaps,
+};
+use cfg_types::investments::{ExecutedForeignDecreaseInvest, Swap};
 use frame_support::assert_ok;
 use sp_runtime::traits::One;
 
-use crate::{mock::*, *};
+use crate::{mock::*, pallet::ForeignInvestmentInfo, BaseInfo, InvestmentInfo, *};
 
 const USER: AccountId = 1;
 const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
@@ -10,6 +14,7 @@ const FOREIGN_CURR: CurrencyId = 5;
 const POOL_CURR: CurrencyId = 10;
 const SWAP_ID: SwapId = 1;
 const RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
+const AMOUNT: Balance = util::to_foreign(100);
 
 mod util {
 	use super::*;
@@ -22,12 +27,70 @@ mod util {
 		pool_amount / RATIO
 	}
 
-	pub fn setup_currency_converter() {
+	pub fn configure_currency_converter() {
 		MockCurrencyConversion::mock_stable_to_stable(|to, from, amount_from| match (from, to) {
 			(POOL_CURR, FOREIGN_CURR) => Ok(to_foreign(amount_from)),
 			(FOREIGN_CURR, POOL_CURR) => Ok(to_pool(amount_from)),
 			_ => unreachable!("Unexpected currency"),
 		});
+	}
+
+	pub fn configure_pool() {
+		MockPools::mock_currency_for(|pool_id| {
+			assert_eq!(pool_id, INVESTMENT_ID.of_pool());
+			Some(POOL_CURR)
+		});
+	}
+
+	// Setup a basic orderbook system
+	pub fn config_swaps() {
+		MockTokenSwaps::mock_get_order_details(|_| None);
+
+		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_in, _| {
+			MockTokenSwaps::mock_get_order_details(move |_| {
+				Some(Swap {
+					currency_in: curr_in,
+					currency_out: curr_out,
+					amount_in: amount_in,
+				})
+			});
+			Ok(SWAP_ID)
+		});
+
+		MockTokenSwaps::mock_update_order(|_, swap_id, amount_in, _| {
+			let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
+			MockTokenSwaps::mock_get_order_details(move |_| {
+				Some(Swap {
+					currency_in: swap.currency_in,
+					currency_out: swap.currency_out,
+					amount_in: swap.amount_in + amount_in,
+				})
+			});
+			Ok(())
+		});
+
+		MockTokenSwaps::mock_cancel_order(|_| {
+			MockTokenSwaps::mock_get_order_details(|_| None);
+			Ok(())
+		});
+	}
+
+	// Setup basic investment system
+	pub fn config_investments() {
+		MockInvestment::mock_investment(|_, _| Ok(0));
+
+		MockInvestment::mock_update_investment(|who, id, new_value| {
+			let previous_value = MockInvestment::investment(who, id).unwrap();
+			MockInvestment::mock_investment(move |_, _| Ok(previous_value + new_value));
+			Ok(())
+		});
+	}
+
+	pub fn base_configuration() {
+		util::configure_pool();
+		util::configure_currency_converter();
+		util::config_swaps();
+		util::config_investments();
 	}
 }
 
@@ -36,10 +99,8 @@ mod swaps {
 
 	#[test]
 	fn swap_over_no_swap() {
-		const AMOUNT: Balance = util::to_foreign(100);
-
 		new_test_ext().execute_with(|| {
-			MockTokenSwaps::mock_place_order(move |who, curr_in, curr_out, amount, ratio| {
+			MockTokenSwaps::mock_place_order(|who, curr_in, curr_out, amount, ratio| {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
@@ -73,7 +134,6 @@ mod swaps {
 	#[test]
 	fn swap_over_same_direction_swap() {
 		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
-		const AMOUNT: Balance = util::to_foreign(100);
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_get_order_details(move |swap_id| {
@@ -85,7 +145,7 @@ mod swaps {
 					amount_in: util::to_pool(PREVIOUS_AMOUNT),
 				})
 			});
-			MockTokenSwaps::mock_update_order(move |who, swap_id, amount, ratio| {
+			MockTokenSwaps::mock_update_order(|who, swap_id, amount, ratio| {
 				assert_eq!(who, USER);
 				assert_eq!(swap_id, SWAP_ID);
 				assert_eq!(amount, util::to_pool(PREVIOUS_AMOUNT + AMOUNT));
@@ -118,10 +178,11 @@ mod swaps {
 	#[test]
 	fn swap_over_greater_inverse_swap() {
 		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
-		const AMOUNT: Balance = util::to_foreign(100);
 
 		new_test_ext().execute_with(|| {
-			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+			util::configure_currency_converter();
+
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
@@ -131,7 +192,7 @@ mod swaps {
 					amount_in: PREVIOUS_AMOUNT,
 				})
 			});
-			MockTokenSwaps::mock_update_order(move |who, swap_id, amount, ratio| {
+			MockTokenSwaps::mock_update_order(|who, swap_id, amount, ratio| {
 				assert_eq!(who, USER);
 				assert_eq!(swap_id, SWAP_ID);
 				assert_eq!(amount, PREVIOUS_AMOUNT - AMOUNT);
@@ -139,7 +200,6 @@ mod swaps {
 
 				Ok(())
 			});
-			util::setup_currency_converter();
 
 			assert_ok!(
 				Pallet::<Runtime>::apply_swap(
@@ -163,26 +223,25 @@ mod swaps {
 	}
 
 	#[test]
-	fn swap_over_equally_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
-
+	fn swap_over_same_inverse_swap() {
 		new_test_ext().execute_with(|| {
-			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+			util::configure_currency_converter();
+
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
 				Some(Swap {
 					currency_in: FOREIGN_CURR,
 					currency_out: POOL_CURR,
-					amount_in: PREVIOUS_AMOUNT,
+					amount_in: AMOUNT,
 				})
 			});
-			MockTokenSwaps::mock_cancel_order(move |swap_id| {
+			MockTokenSwaps::mock_cancel_order(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
 				Ok(())
 			});
-			util::setup_currency_converter();
 
 			assert_ok!(
 				Pallet::<Runtime>::apply_swap(
@@ -190,14 +249,14 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: util::to_pool(PREVIOUS_AMOUNT),
+						amount_in: util::to_pool(AMOUNT),
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
-					swapped: util::to_pool(PREVIOUS_AMOUNT),
+					swapped: util::to_pool(AMOUNT),
 					pending: 0,
-					swapped_inverse: PREVIOUS_AMOUNT,
+					swapped_inverse: AMOUNT,
 					pending_inverse: 0,
 					swap_id: None,
 				}
@@ -207,12 +266,13 @@ mod swaps {
 
 	#[test]
 	fn swap_over_smaller_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = util::to_foreign(200);
-		const AMOUNT: Balance = util::to_foreign(300);
+		const PREVIOUS_AMOUNT: Balance = util::to_foreign(50);
 		const NEW_SWAP_ID: SwapId = SWAP_ID + 1;
 
 		new_test_ext().execute_with(|| {
-			MockTokenSwaps::mock_get_order_details(move |swap_id| {
+			util::configure_currency_converter();
+
+			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
 				// Inverse swap
@@ -222,12 +282,12 @@ mod swaps {
 					amount_in: PREVIOUS_AMOUNT,
 				})
 			});
-			MockTokenSwaps::mock_cancel_order(move |swap_id| {
+			MockTokenSwaps::mock_cancel_order(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
 				Ok(())
 			});
-			MockTokenSwaps::mock_place_order(move |who, curr_in, curr_out, amount, ratio| {
+			MockTokenSwaps::mock_place_order(|who, curr_in, curr_out, amount, ratio| {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
@@ -236,7 +296,6 @@ mod swaps {
 
 				Ok(NEW_SWAP_ID)
 			});
-			util::setup_currency_converter();
 
 			assert_ok!(
 				Pallet::<Runtime>::apply_swap(
@@ -260,308 +319,124 @@ mod swaps {
 	}
 }
 
-/*
-mod util {
-	use super::*;
+#[test]
+fn increase_investment() {
+	new_test_ext().execute_with(|| {
+		util::base_configuration();
 
-	pub fn new_invest(order_id: OrderId, amount: Balance) {
-		MockInvestment::mock_investment_requires_collect(|_, _| false);
-		MockInvestment::mock_investment(|_, _| Ok(0));
-		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
-		MockCurrencyConversion::mock_stable_to_stable(move |_, _, _| Ok(amount) /* 1:1 */);
-
-		ForeignInvestment::increase_foreign_investment(
+		assert_ok!(ForeignInvestment::increase_foreign_investment(
 			&USER,
 			INVESTMENT_ID,
-			amount,
-			USER_CURR,
-			POOL_CURR,
-		)
-		.unwrap();
+			AMOUNT,
+			FOREIGN_CURR
+		));
 
-		MockInvestment::mock_investment_requires_collect(|_, _| unimplemented!("no mock"));
-		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
-		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
-		MockTokenSwaps::mock_place_order(|_, _, _, _, _| unimplemented!("no mock"));
-		MockCurrencyConversion::mock_stable_to_stable(|_, _, _| unimplemented!("no mock"));
-	}
-
-	pub fn notify_swaped(order_id: OrderId, amount: Balance) {
-		MockInvestment::mock_investment_requires_collect(|_, _| false);
-		MockInvestment::mock_investment(|_, _| Ok(0));
-		MockInvestment::mock_update_investment(|_, _, _| Ok(()));
-		MockTokenSwaps::mock_cancel_order(|_| Ok(()));
-		MockTokenSwaps::mock_is_active(|_| true);
-		MockCurrencyConversion::mock_stable_to_stable(move |_, _, _| Ok(amount) /* 1:1 */);
-
-		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
-			order_id,
-			Swap {
-				currency_out: USER_CURR,
-				currency_in: POOL_CURR,
-				amount,
-			},
-		)
-		.unwrap();
-
-		MockInvestment::mock_investment_requires_collect(|_, _| unimplemented!("no mock"));
-		MockInvestment::mock_investment(|_, _| unimplemented!("no mock"));
-		MockInvestment::mock_update_investment(|_, _, _| unimplemented!("no mock"));
-		MockTokenSwaps::mock_cancel_order(|_| unimplemented!("no mock"));
-		MockTokenSwaps::mock_is_active(|_| unimplemented!("no mock"));
-		MockCurrencyConversion::mock_stable_to_stable(|_, _, _| unimplemented!("no mock"));
-	}
-}
-
-mod increase_investment {
-	use super::*;
-
-	#[test]
-	fn create_new() {
-		const AMOUNT: Balance = 100;
-
-		new_test_ext().execute_with(|| {
-			MockInvestment::mock_investment_requires_collect(|account_id, investment_id| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				false
-			});
-			MockInvestment::mock_investment(|account_id, investment_id| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				Ok(0) // Nothing initially invested
-			});
-			MockInvestment::mock_update_investment(|account_id, investment_id, amount| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(amount, 0); // We still do not have the swap done.
-				Ok(())
-			});
-			MockTokenSwaps::mock_place_order(|account_id, curr_in, curr_out, amount, limit| {
-				assert_eq!(account_id, USER);
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount, AMOUNT);
-				assert_eq!(limit, DefaultTokenSellRatio::get());
-				Ok(ORDER_ID)
-			});
-			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount_out, AMOUNT);
-				Ok(amount_out) // 1:1
-			});
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				AMOUNT,
-				USER_CURR,
-				POOL_CURR,
-			));
-
-			assert_eq!(
-				InvestmentState::<Runtime>::get(USER, INVESTMENT_ID),
-				InvestState::ActiveSwapIntoPoolCurrency {
-					swap: Swap {
-						currency_out: USER_CURR,
-						currency_in: POOL_CURR,
-						amount: AMOUNT,
-					}
-				}
-			);
-			assert_eq!(
-				TokenSwapOrderIds::<Runtime>::get(USER, INVESTMENT_ID),
-				Some(ORDER_ID)
-			);
-			assert_eq!(
-				ForeignInvestmentInfo::<Runtime>::get(ORDER_ID),
-				Some(ForeignInvestmentInfoS {
-					owner: USER,
-					id: INVESTMENT_ID,
-					last_swap_reason: Some(TokenSwapReason::Investment),
-				})
-			);
-		});
-	}
-
-	#[test]
-	fn over_pending() {
-		const INITIAL_AMOUNT: Balance = 100;
-		const INCREASE_AMOUNT: Balance = 500;
-
-		new_test_ext().execute_with(|| {
-			util::new_invest(ORDER_ID, INITIAL_AMOUNT);
-
-			MockInvestment::mock_investment_requires_collect(|account_id, investment_id| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				false
-			});
-			MockInvestment::mock_investment(|_, _| Ok(0));
-			MockInvestment::mock_update_investment(|_, _, amount| {
-				assert_eq!(amount, 0);
-				Ok(())
-			});
-			MockTokenSwaps::mock_is_active(|order_id| {
-				assert_eq!(order_id, ORDER_ID);
-				true
-			});
-			MockTokenSwaps::mock_get_order_details(|order_id| {
-				assert_eq!(order_id, ORDER_ID);
-				Some(Swap {
-					currency_out: USER_CURR,
-					currency_in: POOL_CURR,
-					amount: INITIAL_AMOUNT,
-				})
-			});
-			MockTokenSwaps::mock_update_order(|account_id, order_id, amount, limit| {
-				assert_eq!(account_id, USER);
-				assert_eq!(order_id, ORDER_ID);
-				assert_eq!(amount, INITIAL_AMOUNT + INCREASE_AMOUNT);
-				assert_eq!(limit, DefaultTokenSellRatio::get());
-				Ok(())
-			});
-			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount_out, INCREASE_AMOUNT);
-				Ok(amount_out) // 1:1
-			});
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				INCREASE_AMOUNT,
-				USER_CURR,
-				POOL_CURR,
-			));
-
-			assert_eq!(
-				InvestmentState::<Runtime>::get(USER, INVESTMENT_ID),
-				InvestState::ActiveSwapIntoPoolCurrency {
-					swap: Swap {
-						currency_out: USER_CURR,
-						currency_in: POOL_CURR,
-						amount: INITIAL_AMOUNT + INCREASE_AMOUNT,
-					}
-				}
-			);
-		});
-	}
-
-	#[test]
-	fn over_ongoing() {
-		const INITIAL_AMOUNT: Balance = 100;
-		const INCREASE_AMOUNT: Balance = 500;
-
-		new_test_ext().execute_with(|| {
-			util::new_invest(ORDER_ID, INITIAL_AMOUNT);
-			util::notify_swaped(ORDER_ID, INITIAL_AMOUNT);
-
-			MockInvestment::mock_investment_requires_collect(|_, _| false);
-			MockInvestment::mock_investment(|_, _| Ok(INITIAL_AMOUNT));
-			MockTokenSwaps::mock_is_active(|order_id| {
-				assert_eq!(order_id, ORDER_ID);
-				false
-			});
-			MockTokenSwaps::mock_place_order(|account_id, curr_in, curr_out, amount, limit| {
-				assert_eq!(account_id, USER);
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount, INCREASE_AMOUNT);
-				assert_eq!(limit, DefaultTokenSellRatio::get());
-				Ok(ORDER_ID)
-			});
-			MockInvestment::mock_update_investment(|_, _, amount| {
-				assert_eq!(amount, 0);
-				Ok(())
-			});
-			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount_out, INCREASE_AMOUNT);
-				Ok(amount_out) // 1:1
-			});
-
-			assert_ok!(ForeignInvestment::increase_foreign_investment(
-				&USER,
-				INVESTMENT_ID,
-				INCREASE_AMOUNT,
-				USER_CURR,
-				POOL_CURR,
-			));
-
-			assert_eq!(
-				InvestmentState::<Runtime>::get(USER, INVESTMENT_ID),
-				InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-					swap: Swap {
-						currency_out: USER_CURR,
-						currency_in: POOL_CURR,
-						amount: INCREASE_AMOUNT,
-					},
-					invest_amount: INITIAL_AMOUNT
-				}
-			);
-		});
-	}
-}
-
-mod fulfilled_swap {
-	use super::*;
-
-	#[test]
-	fn pending_investment_to_ongoing() {
-		const AMOUNT: Balance = 100;
-
-		new_test_ext().execute_with(|| {
-			util::new_invest(ORDER_ID, AMOUNT);
-
-			MockInvestment::mock_investment_requires_collect(|_, _| false);
-			MockInvestment::mock_investment(|account_id, investment_id| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				Ok(0) // Nothing initially invested
-			});
-			MockInvestment::mock_update_investment(|account_id, investment_id, amount| {
-				assert_eq!(account_id, &USER);
-				assert_eq!(investment_id, INVESTMENT_ID);
-				assert_eq!(amount, AMOUNT);
-				Ok(())
-			});
-			MockTokenSwaps::mock_is_active(|order_id| {
-				assert_eq!(order_id, ORDER_ID);
-				true
-			});
-			MockTokenSwaps::mock_cancel_order(|order_id| {
-				assert_eq!(order_id, ORDER_ID);
-				Ok(())
-			});
-			MockCurrencyConversion::mock_stable_to_stable(|curr_in, curr_out, amount_out| {
-				assert_eq!(curr_in, POOL_CURR);
-				assert_eq!(curr_out, USER_CURR);
-				assert_eq!(amount_out, AMOUNT);
-				Ok(amount_out) // 1:1
-			});
-
-			assert_ok!(FulfilledSwapOrderHook::<Runtime>::notify_status_change(
-				ORDER_ID,
-				Swap {
-					currency_out: USER_CURR,
-					currency_in: POOL_CURR,
-					amount: AMOUNT,
+		assert_eq!(
+			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+			Some(InvestmentInfo {
+				base: BaseInfo {
+					foreign_currency: FOREIGN_CURR,
+					collected: CollectedAmount::default(),
 				},
-			));
-
-			assert_eq!(
-				InvestmentState::<Runtime>::get(USER, INVESTMENT_ID),
-				InvestState::InvestmentOngoing {
-					invest_amount: AMOUNT
-				},
-			);
-			assert_eq!(TokenSwapOrderIds::<Runtime>::get(USER, INVESTMENT_ID), None);
-			assert_eq!(ForeignInvestmentInfo::<Runtime>::get(ORDER_ID), None);
-		});
-	}
+				total_pool_amount: util::to_pool(AMOUNT),
+				decrease_swapped_amount: 0,
+				pending_decrement_not_invested: 0,
+			})
+		);
+	});
 }
-*/
+
+#[test]
+fn increase_investment_over_increased() {
+	new_test_ext().execute_with(|| {
+		util::base_configuration();
+
+		assert_ok!(ForeignInvestment::increase_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT,
+			FOREIGN_CURR
+		));
+
+		assert_ok!(ForeignInvestment::increase_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT,
+			FOREIGN_CURR
+		));
+
+		assert_eq!(
+			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+			Some(InvestmentInfo {
+				base: BaseInfo {
+					foreign_currency: FOREIGN_CURR,
+					collected: CollectedAmount::default(),
+				},
+				total_pool_amount: util::to_pool(AMOUNT + AMOUNT),
+				decrease_swapped_amount: 0,
+				pending_decrement_not_invested: 0,
+			})
+		);
+	});
+}
+
+#[test]
+fn decrease_full_investment_over_increased() {
+	new_test_ext().execute_with(|| {
+		util::base_configuration();
+
+		assert_ok!(ForeignInvestment::increase_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT,
+			FOREIGN_CURR
+		));
+
+		MockDecreaseInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
+			assert_eq!(who, USER);
+			assert_eq!(investment_id, INVESTMENT_ID);
+			assert_eq!(
+				msg,
+				ExecutedForeignDecreaseInvest {
+					amount_decreased: AMOUNT,
+					foreign_currency: FOREIGN_CURR,
+					amount_remaining: 0,
+				}
+			);
+			Ok(())
+		});
+
+		assert_ok!(ForeignInvestment::decrease_foreign_investment(
+			&USER,
+			INVESTMENT_ID,
+			AMOUNT,
+			FOREIGN_CURR
+		));
+
+		assert_eq!(
+			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+			None,
+		);
+	});
+}
+
+#[test]
+fn decrease_paritial_investment_over_increased() {
+	new_test_ext().execute_with(|| {
+		// TODO
+		/*
+		assert_eq!(
+			ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+			Some(InvestmentInfo {
+				base: BaseInfo {
+					foreign_currency: FOREIGN_CURR,
+					collected: CollectedAmount::default(),
+				},
+				total_pool_amount: 0,
+				decrease_swapped_amount: 0,
+				pending_decrement_not_invested: 0,
+			})
+		);
+		*/
+	});
+}
