@@ -53,7 +53,7 @@ pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign, Saturating, Zero},
+	traits::{EnsureAdd, EnsureSub, Saturating, Zero},
 	ArithmeticError, DispatchError,
 };
 
@@ -117,11 +117,6 @@ pub struct InvestmentInfo<T: Config> {
 	/// Total swapped amount pending to execute for decreasing the investment.
 	/// Measured in foreign currency
 	decrease_swapped_amount: T::Balance,
-
-	/// Amount that has not been decremented from an investment as part of a
-	/// decrease investment because such amount was already pending to be
-	/// swapped in the opposite direction.
-	pending_decrement_not_invested: T::Balance,
 }
 
 impl<T: Config> InvestmentInfo<T> {
@@ -130,7 +125,6 @@ impl<T: Config> InvestmentInfo<T> {
 			base: BaseInfo::new(foreign_currency)?,
 			total_pool_amount: T::Balance::default(),
 			decrease_swapped_amount: T::Balance::default(),
-			pending_decrement_not_invested: T::Balance::default(),
 		})
 	}
 
@@ -142,16 +136,11 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		pool_amount: T::Balance,
 	) -> DispatchResult {
-		let amount_to_invest = pool_amount.saturating_sub(self.pending_decrement_not_invested);
-
-		self.pending_decrement_not_invested
-			.ensure_sub_assign(pool_amount.ensure_sub(amount_to_invest)?)?;
-
-		if !amount_to_invest.is_zero() {
+		if !pool_amount.is_zero() {
 			T::Investment::update_investment(
 				&who,
 				investment_id,
-				T::Investment::investment(&who, investment_id)?.ensure_add(amount_to_invest)?,
+				T::Investment::investment(&who, investment_id)?.ensure_add(pool_amount)?,
 			)?;
 		}
 
@@ -183,9 +172,6 @@ impl<T: Config> InvestmentInfo<T> {
 				T::Investment::investment(who, investment_id)?.ensure_sub(decrement)?,
 			)?;
 		}
-
-		self.pending_decrement_not_invested
-			.ensure_add_assign(pool_amount.ensure_sub(decrement)?)?;
 
 		Ok(())
 	}
@@ -444,12 +430,6 @@ pub mod pallet {
 		/// The amount (in) pending to be swapped
 		pub pending: T::Balance,
 
-		/// The amount (out) swapped by the inverse order
-		pub swapped_inverse: T::Balance,
-
-		/// The amount (out) pending to be swapped by the inverse order
-		pub pending_inverse: T::Balance,
-
 		/// The swap id for a possible reminder swap order after `apply_swap()`
 		pub swap_id: Option<T::SwapId>,
 	}
@@ -509,8 +489,6 @@ pub mod pallet {
 					Ok(SwapStatus {
 						swapped: T::Balance::zero(),
 						pending: new_swap.amount_in,
-						swapped_inverse: T::Balance::zero(),
-						pending_inverse: T::Balance::zero(),
 						swap_id: Some(swap_id),
 					})
 				}
@@ -530,8 +508,6 @@ pub mod pallet {
 						Ok(SwapStatus {
 							swapped: T::Balance::zero(),
 							pending: amount_to_swap,
-							swapped_inverse: T::Balance::zero(),
-							pending_inverse: T::Balance::zero(),
 							swap_id: Some(swap_id),
 						})
 					} else {
@@ -558,8 +534,6 @@ pub mod pallet {
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
 									pending: T::Balance::zero(),
-									swapped_inverse: new_swap_amount_out,
-									pending_inverse: amount_to_swap,
 									swap_id: Some(swap_id),
 								})
 							}
@@ -569,8 +543,6 @@ pub mod pallet {
 								Ok(SwapStatus {
 									swapped: new_swap.amount_in,
 									pending: T::Balance::zero(),
-									swapped_inverse: inverse_swap.amount_in,
-									pending_inverse: T::Balance::zero(),
 									swap_id: None,
 								})
 							}
@@ -598,8 +570,6 @@ pub mod pallet {
 								Ok(SwapStatus {
 									swapped: inverse_swap_amount_out,
 									pending: amount_to_swap,
-									swapped_inverse: inverse_swap.amount_in,
-									pending_inverse: T::Balance::zero(),
 									swap_id: Some(swap_id),
 								})
 							}
@@ -622,17 +592,6 @@ pub mod pallet {
 			let status = Self::apply_swap(who, new_swap.clone(), swap_id)?;
 
 			Self::update_swap_id(who, investment_id, action, status.swap_id)?;
-
-			if !status.swapped_inverse.is_zero() {
-				Self::notify_swap_done(
-					who,
-					investment_id,
-					action,
-					new_swap.currency_in,
-					status.swapped_inverse,
-					status.pending_inverse,
-				)?;
-			}
 
 			if !status.swapped.is_zero() {
 				Self::notify_swap_done(
@@ -689,6 +648,7 @@ pub mod pallet {
 
 				if currency_out == info.base.foreign_currency {
 					info.increase_investment(who, investment_id, swapped_amount)?;
+					info.decrease_swapped_amount = T::Balance::default();
 				} else {
 					info.decrease_swapped_amount
 						.ensure_add_assign(swapped_amount)?;

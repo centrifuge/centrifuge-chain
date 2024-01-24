@@ -139,8 +139,6 @@ mod swaps {
 				SwapStatus {
 					swapped: 0,
 					pending: util::to_pool(AMOUNT),
-					swapped_inverse: 0,
-					pending_inverse: 0,
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -183,8 +181,6 @@ mod swaps {
 				SwapStatus {
 					swapped: 0,
 					pending: util::to_pool(PREVIOUS_AMOUNT + AMOUNT),
-					swapped_inverse: 0,
-					pending_inverse: 0,
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -230,8 +226,6 @@ mod swaps {
 				SwapStatus {
 					swapped: util::to_pool(AMOUNT),
 					pending: 0,
-					swapped_inverse: AMOUNT,
-					pending_inverse: PREVIOUS_AMOUNT - AMOUNT,
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -272,8 +266,6 @@ mod swaps {
 				SwapStatus {
 					swapped: util::to_pool(AMOUNT),
 					pending: 0,
-					swapped_inverse: AMOUNT,
-					pending_inverse: 0,
 					swap_id: None,
 				}
 			);
@@ -326,8 +318,6 @@ mod swaps {
 				SwapStatus {
 					swapped: util::to_pool(PREVIOUS_AMOUNT),
 					pending: util::to_pool(AMOUNT - PREVIOUS_AMOUNT),
-					swapped_inverse: PREVIOUS_AMOUNT,
-					pending_inverse: 0,
 					swap_id: Some(NEW_SWAP_ID),
 				}
 			);
@@ -356,7 +346,6 @@ mod investment {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
-					pending_decrement_not_invested: 0,
 				})
 			);
 		});
@@ -387,7 +376,6 @@ mod investment {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT + AMOUNT),
 					decrease_swapped_amount: 0,
-					pending_decrement_not_invested: 0,
 				})
 			);
 		});
@@ -474,7 +462,6 @@ mod investment {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(3 * AMOUNT / 4),
 					decrease_swapped_amount: 0,
-					pending_decrement_not_invested: 0,
 				})
 			);
 
@@ -526,7 +513,6 @@ mod investment {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
-					pending_decrement_not_invested: 0,
 				})
 			);
 
@@ -564,7 +550,6 @@ mod investment {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					total_pool_amount: util::to_pool(AMOUNT / 2),
 					decrease_swapped_amount: AMOUNT / 4,
-					pending_decrement_not_invested: 0,
 				})
 			);
 
@@ -573,5 +558,54 @@ mod investment {
 				Ok(util::to_pool(AMOUNT / 2))
 			);
 		});
+	}
+
+	#[test]
+	fn increase_and_partial_fulfill_and_partial_decrease_and_increase() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, util::to_pool(3 * AMOUNT / 4));
+
+			assert_ok!(ForeignInvestment::decrease_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT / 2,
+				FOREIGN_CURR
+			));
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					total_pool_amount: util::to_pool(AMOUNT + AMOUNT / 2),
+					decrease_swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(util::to_pool(3 * AMOUNT / 4))
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_fulfill_and_decrease_and_fulfill() {
+		//TODO
 	}
 }
