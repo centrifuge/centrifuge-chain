@@ -211,9 +211,9 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_collect(investment_id, collected)?;
+			let msg = info.post_collect(&who, investment_id, collected)?;
 
-			if info.is_completed()? {
+			if info.is_completed(&who, investment_id)? {
 				*entry = None;
 			}
 
@@ -276,9 +276,9 @@ impl<T: Config> SwapDone<T> {
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_decrease_swap(investment_id, swapped, pending)?;
+			let msg = info.post_decrease_swap(who, investment_id, swapped, pending)?;
 
-			if info.is_completed()? {
+			if info.is_completed(who, investment_id)? {
 				*entry = None;
 			}
 

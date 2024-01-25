@@ -86,7 +86,7 @@ mod util {
 				Some(Swap {
 					currency_in: swap.currency_in,
 					currency_out: swap.currency_out,
-					amount_in: swap.amount_in + amount_in,
+					amount_in: amount_in,
 				})
 			});
 			Ok(())
@@ -407,7 +407,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -439,7 +438,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT + AMOUNT),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -525,7 +523,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(3 * AMOUNT / 4),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -576,7 +573,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -613,7 +609,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT / 2),
 					decrease_swapped_amount: AMOUNT / 4,
 				})
 			);
@@ -657,7 +652,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT + AMOUNT / 2),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -740,7 +734,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT / 4),
 					decrease_swapped_amount: AMOUNT / 4,
 				})
 			);
@@ -763,7 +756,6 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					increased_pool_amount: util::to_pool(AMOUNT / 4),
 					decrease_swapped_amount: 0,
 				})
 			);
@@ -821,7 +813,6 @@ mod investment {
 							amount_payment: util::to_pool(AMOUNT / 4)
 						}
 					},
-					increased_pool_amount: util::to_pool(AMOUNT),
 					decrease_swapped_amount: 0,
 				})
 			);
