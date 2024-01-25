@@ -188,7 +188,13 @@ pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::
 #[allow(clippy::new_without_default)]
 impl<T> PreBalanceTransferExtension<T>
 where
-	T: frame_system::Config<AccountId = AccountId> + pallet_balances::Config + Sync + Send,
+	T: frame_system::Config<AccountId = AccountId>
+		+ pallet_balances::Config
+		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ Sync
+		+ Send,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
 		+ IsSubType<pallet_utility::Call<T>>
 		+ IsSubType<pallet_proxy::Call<T>>
@@ -200,7 +206,7 @@ where
 
 	fn retrieve(
 		caller: &T::AccountId,
-		call: &T::RuntimeCall,
+		call: &<T as frame_system::Config>::RuntimeCall,
 	) -> Result<sp_std::vec::Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
 		let mut checks = sp_std::vec::Vec::new();
 
@@ -232,7 +238,7 @@ where
 	}
 
 	fn recursive_search(
-		_call: &mut &T::RuntimeCall,
+		_call: &mut &<T as frame_system::Config>::RuntimeCall,
 	) -> Result<Option<pallet_balances::Call<T>>, ()> {
 		Err(())
 
@@ -244,14 +250,20 @@ impl<T> SignedExtension for PreBalanceTransferExtension<T>
 where
 	T: frame_system::Config<AccountId = AccountId>
 		+ pallet_balances::Config
+		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
 		+ Sync
 		+ Send,
-	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
+		+ IsSubType<pallet_utility::Call<T>>
+		+ IsSubType<pallet_proxy::Call<T>>
+		+ IsSubType<pallet_remarks::Call<T>>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = ();
-	type Call = T::RuntimeCall;
+	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = ();
 
 	const IDENTIFIER: &'static str = "PreBalanceTransferExtension";

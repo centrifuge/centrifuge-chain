@@ -19,6 +19,7 @@ mod cases {
 	mod liquidity_pools;
 	mod loans;
 	mod proxy;
+	mod restricted_transfers;
 }
 
 /// Generate tests for the specified runtimes or all runtimes.

@@ -1741,6 +1741,19 @@ impl pallet_order_book::Config for Runtime {
 	type Weights = weights::pallet_order_book::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+		pub const MaxRemarksPerCall: u32 = 10;
+}
+
+impl pallet_remarks::Config for Runtime {
+	type MaxRemarksPerCall = MaxRemarksPerCall;
+	type Remark = Remark;
+	type RemarkDispatchHandler = pallet_remarks::NoopRemarkDispatchHandler<Runtime>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_remarks::WeightInfo<Runtime>;
+}
+
 impl pallet_transfer_allowlist::Config for Runtime {
 	type CurrencyId = FilterCurrency;
 	type Deposit = AllowanceDeposit<Fees>;
@@ -1820,6 +1833,7 @@ construct_runtime!(
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 116,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 117,
 		PoolFees: pallet_pool_fees::{Pallet, Call, Storage, Event<T>} = 118,
+		Remarks: pallet_remarks::{Pallet, Call, Event<T>} = 119,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2496,6 +2510,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_oracle_feed, OraclePriceFeed);
 			list_benchmark!(list, extra, pallet_oracle_collection, OraclePriceCollection);
 			list_benchmark!(list, extra, pallet_pool_fees, PoolFees);
+			list_benchmark!(list, extra, pallet_remarks, Remarks);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2576,6 +2591,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_oracle_feed, OraclePriceFeed);
 			add_benchmark!(params, batches, pallet_oracle_collection, OraclePriceCollection);
 			add_benchmark!(params, batches, pallet_pool_fees, PoolFees);
+			add_benchmark!(params, batches,	pallet_remarks, Remarks);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
