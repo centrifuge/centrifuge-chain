@@ -6,7 +6,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
+use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -21,7 +21,6 @@ use crate::{
 
 /// Internal methods used by trait implementations
 struct Util<T>(PhantomData<T>);
-
 impl<T: Config> Util<T> {
 	/// A wrap over `apply_swap()` that takes care of updating the swap id
 	/// and notify
@@ -128,7 +127,7 @@ impl<T: Config> Util<T> {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			let msg = info.post_swap(who, investment_id, swapped_amount, pending_amount)?;
 
-			if info.is_completed() {
+			if info.is_completed(who, investment_id)? {
 				*entry = None;
 			}
 
@@ -192,14 +191,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| -> DispatchResult {
 			let info = info.get_or_insert(RedemptionInfo::new(payout_foreign_currency)?);
 			info.base.ensure_same_foreign(payout_foreign_currency)?;
-			info.increase(tranche_tokens_amount)
-		})?;
-
-		T::Investment::update_redemption(
-			who,
-			investment_id,
-			T::Investment::redemption(who, investment_id)?.ensure_add(tranche_tokens_amount)?,
-		)
+			info.increase(who, investment_id, tranche_tokens_amount)
+		})
 	}
 
 	fn decrease_foreign_redemption(
@@ -208,17 +201,17 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		tranche_tokens_amount: T::Balance,
 		payout_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
-			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+		ForeignRedemptionInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(payout_foreign_currency)?;
-			info.decrease(tranche_tokens_amount)
-		})?;
+			info.decrease(who, investment_id, tranche_tokens_amount)?;
 
-		T::Investment::update_redemption(
-			who,
-			investment_id,
-			T::Investment::redemption(who, investment_id)?.ensure_sub(tranche_tokens_amount)?,
-		)
+			if info.is_completed(who, investment_id)? {
+				*entry = None;
+			}
+
+			Ok(())
+		})
 	}
 
 	fn collect_foreign_investment(
@@ -238,7 +231,6 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		payout_foreign_currency: T::CurrencyId,
-		_pool_currency: T::CurrencyId,
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
@@ -324,13 +316,13 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_collect(investment_id, collected);
+			let msg = info.post_collect(investment_id, collected)?;
 
 			if info.is_completed()? {
 				*entry = None;
 			}
 
-			msg
+			Ok::<_, DispatchError>(msg)
 		})?;
 
 		// We send the event out of the Info mutation closure
@@ -350,7 +342,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 	) -> DispatchResult {
 		let swap = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.pre_swap(investment_id, collected)
+			info.post_collect_and_pre_swap(investment_id, collected)
 		})?;
 
 		Util::<T>::apply_swap_and_notify(&who, investment_id, Action::Redemption, swap)

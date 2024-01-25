@@ -306,7 +306,6 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Returns, if possible, the currently unprocessed investment amount (in

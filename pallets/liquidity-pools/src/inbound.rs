@@ -12,8 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, PoolInspect,
-	TimeAsSecs,
+	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, TimeAsSecs,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -333,15 +332,8 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
-		T::ForeignInvestment::collect_foreign_redemption(
-			&investor,
-			invest_id,
-			payout_currency,
-			pool_currency,
-		)?;
+		T::ForeignInvestment::collect_foreign_redemption(&investor, invest_id, payout_currency)?;
 
 		Ok(())
 	}

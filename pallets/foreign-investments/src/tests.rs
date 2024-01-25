@@ -9,7 +9,7 @@ use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::One;
 
 use crate::{
-	entities::{BaseInfo, InvestmentInfo},
+	entities::{BaseInfo, InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook},
 	mock::*,
 	pallet::ForeignInvestmentInfo,
@@ -25,6 +25,7 @@ const SWAP_ID: SwapId = 1;
 const STABLE_RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
 const TRANCHE_RATIO: Balance = 5; // Means: 1 pool curr is 5 tranche curr
 const AMOUNT: Balance = util::to_foreign(200);
+const TRANCHE_AMOUNT: Balance = 1000;
 
 mod util {
 	use super::*;
@@ -105,6 +106,13 @@ mod util {
 			MockInvestment::mock_investment(move |_, _| Ok(new_value));
 			Ok(())
 		});
+
+		MockInvestment::mock_redemption(|_, _| Ok(0));
+
+		MockInvestment::mock_update_redemption(|_, _, new_value| {
+			MockInvestment::mock_redemption(move |_, _| Ok(new_value));
+			Ok(())
+		});
 	}
 
 	pub fn base_configuration() {
@@ -143,6 +151,22 @@ mod util {
 				CollectedAmount {
 					amount_collected: to_tranche(pool_amount),
 					amount_payment: pool_amount,
+				},
+			)
+		});
+	}
+
+	/// Emulates partial collected redemption
+	pub fn collect_last_redemption(tranche_amount: Balance) {
+		let value = MockInvestment::redemption(&USER, INVESTMENT_ID).unwrap();
+		MockInvestment::mock_collect_redemption(move |_, _| {
+			MockInvestment::mock_redemption(move |_, _| Ok(value - tranche_amount));
+
+			CollectedRedemptionHook::<Runtime>::notify_status_change(
+				(USER, INVESTMENT_ID),
+				CollectedAmount {
+					amount_collected: from_tranche(tranche_amount),
+					amount_payment: tranche_amount,
 				},
 			)
 		});
@@ -387,6 +411,8 @@ mod investment {
 					decrease_swapped_amount: 0,
 				})
 			);
+
+			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -417,6 +443,8 @@ mod investment {
 					decrease_swapped_amount: 0,
 				})
 			);
+
+			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -708,6 +736,15 @@ mod investment {
 
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 4);
 
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					increased_pool_amount: util::to_pool(AMOUNT / 4),
+					decrease_swapped_amount: AMOUNT / 4,
+				})
+			);
+
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
 					msg,
@@ -881,6 +918,140 @@ mod investment {
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(util::to_pool(0))
+			);
+		});
+	}
+}
+
+mod redemption {
+	use super::*;
+
+	#[test]
+	fn increase() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(RedemptionInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				Ok(TRANCHE_AMOUNT)
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_increase() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(RedemptionInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				Ok(TRANCHE_AMOUNT + TRANCHE_AMOUNT)
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_decrease() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_ok!(ForeignInvestment::decrease_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				None,
+			);
+
+			assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
+		});
+	}
+
+	#[test]
+	fn increase_and_partial_collect() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::collect_last_redemption(TRANCHE_AMOUNT / 4);
+
+			assert_ok!(ForeignInvestment::collect_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(RedemptionInfo {
+					base: BaseInfo {
+						foreign_currency: FOREIGN_CURR,
+						collected: CollectedAmount {
+							amount_collected: util::from_tranche(TRANCHE_AMOUNT / 4),
+							amount_payment: TRANCHE_AMOUNT / 4
+						}
+					},
+					swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				Ok(3 * TRANCHE_AMOUNT / 4)
 			);
 		});
 	}

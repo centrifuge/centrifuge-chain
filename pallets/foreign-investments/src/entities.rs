@@ -238,9 +238,6 @@ pub struct RedemptionInfo<T: Config> {
 	/// General info
 	pub base: BaseInfo<T>,
 
-	/// Amount of tranche tokens pending to redeem
-	pub pending_tranche_tokens: T::Balance,
-
 	/// Total swapped amount pending to execute.
 	pub swapped_amount: T::Balance,
 }
@@ -249,30 +246,43 @@ impl<T: Config> RedemptionInfo<T> {
 	pub fn new(foreign_currency: T::CurrencyId) -> Result<Self, DispatchError> {
 		Ok(Self {
 			base: BaseInfo::new(foreign_currency)?,
-			pending_tranche_tokens: T::Balance::default(),
 			swapped_amount: T::Balance::default(),
 		})
 	}
 
-	pub fn increase(&mut self, tranche_tokens_amount: T::Balance) -> DispatchResult {
-		Ok(self
-			.pending_tranche_tokens
-			.ensure_add_assign(tranche_tokens_amount)?)
+	pub fn increase(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		tranche_tokens_amount: T::Balance,
+	) -> DispatchResult {
+		T::Investment::update_redemption(
+			who,
+			investment_id,
+			T::Investment::redemption(who, investment_id)?.ensure_add(tranche_tokens_amount)?,
+		)
 	}
 
-	pub fn decrease(&mut self, tranche_tokens_amount: T::Balance) -> DispatchResult {
-		Ok(self
-			.pending_tranche_tokens
-			.ensure_sub_assign(tranche_tokens_amount)
-			.map_err(|_| Error::<T>::TooMuchDecrease)?)
+	pub fn decrease(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		tranche_tokens_amount: T::Balance,
+	) -> DispatchResult {
+		T::Investment::update_redemption(
+			who,
+			investment_id,
+			T::Investment::redemption(who, investment_id)?.ensure_sub(tranche_tokens_amount)?,
+		)
 	}
 
-	pub fn pre_swap(
+	pub fn post_collect_and_pre_swap(
 		&mut self,
 		investment_id: T::InvestmentId,
 		collected: CollectedAmount<T::Balance>,
 	) -> Result<SwapOf<T>, DispatchError> {
 		self.base.collected.increase(&collected)?;
+
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
 			currency_out: pool_currency_of::<T>(investment_id)?,
@@ -298,9 +308,6 @@ impl<T: Config> RedemptionInfo<T> {
 				amount_remaining: redemption,
 			};
 
-			self.pending_tranche_tokens
-				.ensure_sub_assign(self.collected_tranche_tokens())?;
-
 			self.base.collected = CollectedAmount::default();
 			self.swapped_amount = T::Balance::default();
 
@@ -310,8 +317,13 @@ impl<T: Config> RedemptionInfo<T> {
 		Ok(None)
 	}
 
-	pub fn is_completed(&self) -> bool {
-		self.pending_tranche_tokens.is_zero()
+	pub fn is_completed(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> Result<bool, DispatchError> {
+		Ok(T::Investment::redemption(&who, investment_id)?.is_zero()
+			&& self.collected_tranche_tokens().is_zero())
 	}
 
 	pub fn collected_tranche_tokens(&self) -> T::Balance {
