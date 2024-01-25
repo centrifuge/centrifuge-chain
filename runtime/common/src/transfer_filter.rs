@@ -176,6 +176,9 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 	}
 }
 
+// NOTE: This code here is really critical. The test are resided in the
+// integrationb tests section for this reason.       The importance is, that
+// nobody is able to create a call that can possibly bypass this filtering.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
 )]
@@ -183,9 +186,57 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
 
 #[allow(clippy::new_without_default)]
-impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
+impl<T> PreBalanceTransferExtension<T>
+where
+	T: frame_system::Config<AccountId = AccountId> + pallet_balances::Config + Sync + Send,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
+		+ IsSubType<pallet_utility::Call<T>>
+		+ IsSubType<pallet_proxy::Call<T>>
+		+ IsSubType<pallet_remarks::Call<T>>,
+{
 	pub fn new() -> Self {
 		Self(sp_std::marker::PhantomData)
+	}
+
+	fn retrieve(
+		caller: &T::AccountId,
+		call: &T::RuntimeCall,
+	) -> Result<sp_std::vec::Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
+		let mut checks = sp_std::vec::Vec::new();
+
+		let mut current_call = call;
+
+		while let Ok(inner) = Self::recursive_search(&mut current_call) {
+			if let Some(balance_call) = inner {
+				match balance_call {
+					pallet_balances::Call::transfer { dest, .. }
+					| pallet_balances::Call::transfer_all { dest, .. }
+					| pallet_balances::Call::transfer_allow_death { dest, .. }
+					| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
+						let recv: T::AccountId = <T as frame_system::Config>::Lookup::lookup(
+							dest.clone(),
+						)
+						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?;
+
+						checks.push((caller.clone(), recv));
+					}
+
+					// If the call is not a transfer we are fine with it to go through without
+					// futher checks
+					_ => (),
+				}
+			}
+		}
+
+		Ok(checks)
+	}
+
+	fn recursive_search(
+		_call: &mut &T::RuntimeCall,
+	) -> Result<Option<pallet_balances::Call<T>>, ()> {
+		Err(())
+
+		//IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
 	}
 }
 
@@ -216,39 +267,23 @@ where
 		_: &DispatchInfoOf<Self::Call>,
 		_: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let recv: T::AccountId = if let Some(call) =
-			IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
-		{
-			match call {
-				pallet_balances::Call::transfer { dest, .. }
-				| pallet_balances::Call::transfer_all { dest, .. }
-				| pallet_balances::Call::transfer_allow_death { dest, .. }
-				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
-					<T as frame_system::Config>::Lookup::lookup(dest.clone())
-						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?
-				}
-
-				// If the call is not a transfer we are fine with it to go through without futher
-				// checks
-				_ => return Ok(()),
-			}
-		} else {
-			return Ok(());
-		};
-
-		amalgamate_allowance(
-			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-				who.clone(),
-				Location::Local(recv.clone()),
-				FilterCurrency::All,
-			),
-			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-				who.clone(),
-				Location::Local(recv.clone()),
-				FilterCurrency::Specific(CurrencyId::Native),
-			),
-		)
-		.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+		Self::retrieve(who, call)?
+			.iter()
+			.try_for_each(|(who, recv)| {
+				amalgamate_allowance(
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::All,
+					),
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::Specific(CurrencyId::Native),
+					),
+				)
+				.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+			})
 	}
 }
 
