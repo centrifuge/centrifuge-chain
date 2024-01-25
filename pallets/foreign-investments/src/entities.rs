@@ -69,6 +69,7 @@ impl<T: Config> InvestmentInfo<T> {
 		})
 	}
 
+	/// This method is performed before applying the swap.
 	pub fn pre_increase_swap(
 		&mut self,
 		investment_id: T::InvestmentId,
@@ -91,7 +92,8 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// Decrease an investment taking into account that a previous increment
-	/// could be pending
+	/// could be pending.
+	/// This method is performed before applying the swap.
 	pub fn pre_decrease_swap(
 		&mut self,
 		who: &T::AccountId,
@@ -130,7 +132,8 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// Increase an investment taking into account that a previous decrement
-	/// could be pending
+	/// could be pending.
+	/// This method is performed after resolve the swap.
 	pub fn post_increase_swap(
 		&mut self,
 		who: &T::AccountId,
@@ -150,6 +153,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(())
 	}
 
+	/// This method is performed after resolve the swap.
 	pub fn post_decrease_swap(
 		&mut self,
 		investment_id: T::InvestmentId,
