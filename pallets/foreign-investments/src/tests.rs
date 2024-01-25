@@ -54,7 +54,7 @@ mod util {
 		MockCurrencyConversion::mock_stable_to_stable(|to, from, amount_from| match (from, to) {
 			(POOL_CURR, FOREIGN_CURR) => Ok(to_foreign(amount_from)),
 			(FOREIGN_CURR, POOL_CURR) => Ok(to_pool(amount_from)),
-			_ => unreachable!("Unexpected currency"),
+			_ => Ok(amount_from),
 		});
 	}
 
@@ -912,6 +912,74 @@ mod investment {
 			);
 		});
 	}
+
+	mod same_currencies {
+		use super::*;
+
+		#[test]
+		fn increase() {
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				// Automatically "fulfills" because there no need of swapping
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					util::to_pool(AMOUNT),
+					POOL_CURR
+				));
+
+				assert_eq!(
+					ForeignInvestment::investment(&USER, INVESTMENT_ID),
+					Ok(util::to_pool(AMOUNT))
+				);
+			});
+		}
+
+		#[test]
+		fn increase_decrease() {
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				assert_ok!(ForeignInvestment::increase_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					util::to_pool(AMOUNT),
+					POOL_CURR
+				));
+
+				MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignDecreaseInvest {
+							amount_decreased: util::to_pool(AMOUNT),
+							foreign_currency: POOL_CURR,
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				// Automatically "fulfills" because there no need of swapping
+				assert_ok!(ForeignInvestment::decrease_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					util::to_pool(AMOUNT),
+					POOL_CURR
+				));
+
+				assert_eq!(
+					ForeignInvestment::investment(&USER, INVESTMENT_ID),
+					Ok(util::to_pool(0))
+				);
+
+				assert_eq!(
+					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+			});
+		}
+	}
 }
 
 mod redemption {
@@ -1045,5 +1113,52 @@ mod redemption {
 				Ok(3 * TRANCHE_AMOUNT / 4)
 			);
 		});
+	}
+
+	mod same_currencies {
+		use super::*;
+
+		#[test]
+		fn increase_and_collect() {
+			new_test_ext().execute_with(|| {
+				util::base_configuration();
+
+				assert_ok!(ForeignInvestment::increase_foreign_redemption(
+					&USER,
+					INVESTMENT_ID,
+					TRANCHE_AMOUNT,
+					POOL_CURR,
+				));
+
+				util::collect_last_redemption(TRANCHE_AMOUNT);
+
+				MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
+					assert_eq!(
+						msg,
+						ExecutedForeignCollect {
+							currency: POOL_CURR,
+							amount_currency_payout: util::to_pool(AMOUNT),
+							amount_tranche_tokens_payout: util::to_tranche(util::to_pool(AMOUNT)),
+							amount_remaining: 0,
+						}
+					);
+					Ok(())
+				});
+
+				// Automatically "fulfills" because there no need of swapping
+				assert_ok!(ForeignInvestment::collect_foreign_redemption(
+					&USER,
+					INVESTMENT_ID,
+					POOL_CURR
+				));
+
+				assert_eq!(
+					ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+					None,
+				);
+
+				assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
+			});
+		}
 	}
 }

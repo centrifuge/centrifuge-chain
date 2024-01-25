@@ -107,10 +107,17 @@ impl<T: Config> Swaps<T> {
 		action: Action,
 		new_swap: SwapOf<T>,
 	) -> Result<SwapStatus<T>, DispatchError> {
+		// Bypassing the swap if both currencies are the same
+		if new_swap.currency_in == new_swap.currency_out {
+			return Ok(SwapStatus {
+				swapped: new_swap.amount_in,
+				pending: T::Balance::zero(),
+				swap_id: None,
+			});
+		}
+
 		let swap_id = ForeignIdToSwapId::<T>::get((who, investment_id, action));
-
 		let status = Swaps::<T>::apply_over_swap(who, new_swap.clone(), swap_id)?;
-
 		Swaps::<T>::update_id(who, investment_id, action, status.swap_id)?;
 
 		Ok(status)
