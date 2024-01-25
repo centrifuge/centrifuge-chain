@@ -421,7 +421,7 @@ mod investment {
 	}
 
 	#[test]
-	fn increase_and_full_decrease() {
+	fn increase_and_decrease() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -642,7 +642,7 @@ mod investment {
 	}
 
 	#[test]
-	fn increase_and_full_fulfill_and_decrease_and_full_fulfill() {
+	fn increase_and_fulfill_and_decrease_and_fulfill() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -682,6 +682,59 @@ mod investment {
 			);
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+		});
+	}
+
+	#[test]
+	fn increase_and_fulfill_and_partial_decrease_and_partial_fulfill_and_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT));
+
+			assert_ok!(ForeignInvestment::decrease_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				3 * AMOUNT / 4,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT / 4);
+
+			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+				assert_eq!(
+					msg,
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: 3 * AMOUNT / 4,
+						foreign_currency: FOREIGN_CURR,
+						amount_remaining: AMOUNT / 4,
+					}
+				);
+				Ok(())
+			});
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					increased_pool_amount: util::to_pool(AMOUNT / 4),
+					decrease_swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(util::to_pool(AMOUNT / 4))
+			);
 		});
 	}
 
@@ -744,7 +797,7 @@ mod investment {
 	}
 
 	#[test]
-	fn increase_and_partial_fulfill_and_partial_collect_and_full_decrease_and_full_fulfill() {
+	fn increase_and_partial_fulfill_and_partial_collect_and_decrease_and_fulfill() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
@@ -787,7 +840,7 @@ mod investment {
 	}
 
 	#[test]
-	fn increase_and_full_fulfill_and_full_collect() {
+	fn increase_and_fulfill_and_collect() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();
 
