@@ -11,9 +11,7 @@ use sp_std::marker::PhantomData;
 
 use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
-	pallet::{
-		Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet, SwapIdToForeignId,
-	},
+	pallet::{Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
 	pool_currency_of,
 	swaps::Swaps,
 	Action, SwapOf,
@@ -148,7 +146,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_increase_swap(investment_id, foreign_amount)
 		})?;
 
-		let status = Swaps::<T>::apply_swap(who, investment_id, Action::Investment, swap)?;
+		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
 
 		if !status.swapped.is_zero() {
 			Notification::<T>::increase_investment_swap_done(who, investment_id, status.swapped)?;
@@ -169,7 +167,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_decrease_swap(who, investment_id, foreign_amount)
 		})?;
 
-		let status = Swaps::<T>::apply_swap(who, investment_id, Action::Investment, swap)?;
+		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
 
 		if !status.swapped.is_zero() {
 			Notification::<T>::decrease_investment_swap_done(
@@ -283,13 +281,12 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 	type Status = SwapOf<T>;
 
 	fn notify_status_change(swap_id: T::SwapId, last_swap: SwapOf<T>) -> Result<(), DispatchError> {
-		let (who, investment_id, action) =
-			SwapIdToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+		let (who, investment_id, action) = Swaps::<T>::foreign_id_from(swap_id)?;
 
 		let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
 			Some(swap) => swap.amount_in,
 			None => {
-				Swaps::<T>::update_swap_id(&who, investment_id, action, None)?;
+				Swaps::<T>::update_id(&who, investment_id, action, None)?;
 				T::Balance::default()
 			}
 		};
@@ -346,7 +343,7 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 			info.post_collect_and_pre_swap(investment_id, collected)
 		})?;
 
-		let status = Swaps::<T>::apply_swap(&who, investment_id, Action::Redemption, swap)?;
+		let status = Swaps::<T>::apply(&who, investment_id, Action::Redemption, swap)?;
 
 		if !status.swapped.is_zero() {
 			Notification::<T>::redemption_swap_done(

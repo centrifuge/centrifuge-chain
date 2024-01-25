@@ -30,7 +30,7 @@ pub struct Swaps<T>(PhantomData<T>);
 impl<T: Config> Swaps<T> {
 	/// Inserts, updates or removes a swap id associated to a foreign
 	/// action.
-	pub fn update_swap_id(
+	pub fn update_id(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		action: Action,
@@ -53,11 +53,17 @@ impl<T: Config> Swaps<T> {
 		Ok(())
 	}
 
-	pub fn pending_swap_amount(
+	pub fn foreign_id_from(
+		swap_id: T::SwapId,
+	) -> Result<(T::AccountId, T::InvestmentId, Action), DispatchError> {
+		SwapIdToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound.into())
+	}
+
+	pub fn pending_amount_for(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		currency_in: T::CurrencyId,
 		action: Action,
+		currency_in: T::CurrencyId,
 	) -> T::Balance {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
 			.map(|swap_id| T::TokenSwaps::get_order_details(swap_id))
@@ -67,9 +73,9 @@ impl<T: Config> Swaps<T> {
 			.unwrap_or(T::Balance::default())
 	}
 
-	/// A wrap over `apply_swap_over_swap()` that makes the swap from an
+	/// A wrap over `apply_over_swap()` that makes the swap from an
 	/// investment PoV
-	pub fn apply_swap(
+	pub fn apply(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		action: Action,
@@ -77,9 +83,9 @@ impl<T: Config> Swaps<T> {
 	) -> Result<SwapStatus<T>, DispatchError> {
 		let swap_id = ForeignIdToSwapId::<T>::get((who, investment_id, action));
 
-		let status = Swaps::<T>::apply_swap_over_swap(who, new_swap.clone(), swap_id)?;
+		let status = Swaps::<T>::apply_over_swap(who, new_swap.clone(), swap_id)?;
 
-		Swaps::<T>::update_swap_id(who, investment_id, action, status.swap_id)?;
+		Swaps::<T>::update_id(who, investment_id, action, status.swap_id)?;
 
 		Ok(status)
 	}
@@ -95,7 +101,7 @@ impl<T: Config> Swaps<T> {
 	///
 	/// The returned status contains the swapped amounts after this call and
 	/// the pending amounts to be swapped of both swap directions.
-	pub fn apply_swap_over_swap(
+	pub fn apply_over_swap(
 		who: &T::AccountId,
 		new_swap: SwapOf<T>,
 		over_swap_id: Option<T::SwapId>,

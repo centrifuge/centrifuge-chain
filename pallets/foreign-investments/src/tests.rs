@@ -190,7 +190,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_swap_over_swap(
+				Swaps::<Runtime>::apply_over_swap(
 					&USER,
 					Swap {
 						currency_in: POOL_CURR,
@@ -232,7 +232,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_swap_over_swap(
+				Swaps::<Runtime>::apply_over_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -277,7 +277,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_swap_over_swap(
+				Swaps::<Runtime>::apply_over_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -317,7 +317,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_swap_over_swap(
+				Swaps::<Runtime>::apply_over_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -369,7 +369,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_swap_over_swap(
+				Swaps::<Runtime>::apply_over_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,

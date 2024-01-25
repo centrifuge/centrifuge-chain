@@ -111,7 +111,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 		let pending_pool_amount_increment =
-			Swaps::<T>::pending_swap_amount(who, investment_id, pool_currency, Action::Investment);
+			Swaps::<T>::pending_amount_for(who, investment_id, Action::Investment, pool_currency);
 
 		let decrement = pool_amount.saturating_sub(pending_pool_amount_increment);
 		if !decrement.is_zero() {
