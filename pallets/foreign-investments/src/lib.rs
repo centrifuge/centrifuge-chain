@@ -111,7 +111,7 @@ pub struct InvestmentInfo<T: Config> {
 	/// General info
 	base: BaseInfo<T>,
 
-	/// Amount of pool currency for increased for this investment
+	/// Amount of pool currency increased for this investment
 	total_pool_amount: T::Balance,
 
 	/// Total swapped amount pending to execute for decreasing the investment.
@@ -676,7 +676,7 @@ pub mod pallet {
 				let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 					info.base.foreign_currency,
 					pool_currency_of::<T>(investment_id)?,
-					info.total_pool_amount,
+					info.remaining_pool_amount()?,
 				)?;
 
 				T::DecreasedForeignInvestOrderHook::notify_status_change(
@@ -871,7 +871,7 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			payment_foreign_currency: T::CurrencyId,
 		) -> DispatchResult {
-			ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
+			ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| {
 				let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 				info.base.ensure_same_foreign(payment_foreign_currency)?;
 				Ok::<_, DispatchError>(())
@@ -994,7 +994,7 @@ pub mod pallet {
 			let remaining_foreign_amount = T::CurrencyConverter::stable_to_stable(
 				info.base.foreign_currency,
 				pool_currency_of::<T>(investment_id)?,
-				T::Investment::investment(&who, investment_id)?,
+				info.remaining_pool_amount()?,
 			)?;
 
 			// NOTE: How make this works with market ratios?
