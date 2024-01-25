@@ -1,12 +1,21 @@
 use cfg_traits::{
-	investments::{ForeignInvestment as _, TrancheCurrency},
+	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
 	StatusNotificationHook, TokenSwaps,
 };
-use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap};
+use cfg_types::investments::{
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
+};
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::One;
 
-use crate::{mock::*, pallet::ForeignInvestmentInfo, BaseInfo, InvestmentInfo, *};
+use crate::{
+	entities::{BaseInfo, InvestmentInfo},
+	impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook},
+	mock::*,
+	pallet::ForeignInvestmentInfo,
+	swaps::{SwapStatus, Swaps},
+	*,
+};
 
 const USER: AccountId = 1;
 const INVESTMENT_ID: InvestmentId = InvestmentId(42, 23);
@@ -157,7 +166,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Pallet::<Runtime>::apply_swap(
+				Swaps::<Runtime>::apply_swap(
 					&USER,
 					Swap {
 						currency_in: POOL_CURR,
@@ -199,7 +208,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Pallet::<Runtime>::apply_swap(
+				Swaps::<Runtime>::apply_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -244,7 +253,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Pallet::<Runtime>::apply_swap(
+				Swaps::<Runtime>::apply_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -284,7 +293,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Pallet::<Runtime>::apply_swap(
+				Swaps::<Runtime>::apply_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
@@ -336,7 +345,7 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Pallet::<Runtime>::apply_swap(
+				Swaps::<Runtime>::apply_swap(
 					&USER,
 					Swap {
 						currency_out: FOREIGN_CURR,
