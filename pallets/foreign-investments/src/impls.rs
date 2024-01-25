@@ -15,6 +15,7 @@ use crate::{
 		Config, Error, ForeignIdToSwapId, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet,
 		SwapIdToForeignId,
 	},
+	pool_currency_of,
 	swaps::Swaps,
 	Action, SwapOf,
 };
@@ -60,14 +61,21 @@ impl<T: Config> Util<T> {
 		swapped_amount: T::Balance,
 		pending_amount: T::Balance,
 	) -> DispatchResult {
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
 		match action {
-			Action::Investment => Util::<T>::notify_investment_swap_done(
-				&who,
-				investment_id,
-				currency_out,
-				swapped_amount,
-				pending_amount,
-			),
+			Action::Investment => match pool_currency != currency_out {
+				true => Util::<T>::notify_increase_investment_swap_done(
+					&who,
+					investment_id,
+					swapped_amount,
+				),
+				false => Util::<T>::notify_decrease_investment_swap_done(
+					&who,
+					investment_id,
+					swapped_amount,
+					pending_amount,
+				),
+			},
 			Action::Redemption => Util::<T>::notify_redemption_swap_done(
 				&who,
 				investment_id,
@@ -77,31 +85,36 @@ impl<T: Config> Util<T> {
 		}
 	}
 
-	/// Notifies that a partial swap has been done and applies the result to
-	/// an `InvestmentInfo`
-	fn notify_investment_swap_done(
+	/// Notifies that a partial increse swap has been done and applies the
+	/// result to an `InvestmentInfo`
+	fn notify_increase_investment_swap_done(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		currency_out: T::CurrencyId,
+		swapped: T::Balance,
+	) -> DispatchResult {
+		ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+			info.post_increase_swap(who, investment_id, swapped)
+		})
+	}
+
+	/// Notifies that a partial decrease swap has been done and applies the
+	/// result to an `InvestmentInfo`
+	fn notify_decrease_investment_swap_done(
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
 		swapped: T::Balance,
 		pending: T::Balance,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+			let msg = info.post_decrease_swap(investment_id, swapped, pending)?;
 
-			if currency_out == info.base.foreign_currency {
-				info.post_increase_swap(who, investment_id, swapped)?;
-
-				Ok(None)
-			} else {
-				let msg = info.post_decrease_swap(investment_id, swapped, pending)?;
-
-				if info.is_completed()? {
-					*entry = None;
-				}
-
-				Ok::<_, DispatchError>(msg)
+			if info.is_completed()? {
+				*entry = None;
 			}
+
+			Ok::<_, DispatchError>(msg)
 		})?;
 
 		// We send the event out of the Info mutation closure

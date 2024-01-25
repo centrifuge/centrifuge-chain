@@ -1,9 +1,6 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::{
-	investments::{Investment, TrancheCurrency},
-	IdentityCurrencyConversion, PoolInspect,
-};
+use cfg_traits::{investments::Investment, IdentityCurrencyConversion};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
@@ -17,16 +14,10 @@ use sp_runtime::{
 
 use crate::{
 	pallet::{Config, Error},
+	pool_currency_of,
 	swaps::Swaps,
 	Action, SwapOf,
 };
-
-/// Get the pool currency associated to a investment_id
-fn pool_currency_of<T: Config>(
-	investment_id: T::InvestmentId,
-) -> Result<T::CurrencyId, DispatchError> {
-	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
-}
 
 /// Hold the base information of a foreign investment/redemption
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]

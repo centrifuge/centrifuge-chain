@@ -75,6 +75,15 @@ pub type ForeignId<T> = (
 
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
 
+/// Get the pool currency associated to a investment_id
+pub fn pool_currency_of<T: pallet::Config>(
+	investment_id: T::InvestmentId,
+) -> Result<T::CurrencyId, sp_runtime::DispatchError> {
+	use cfg_traits::{investments::TrancheCurrency, PoolInspect};
+
+	T::PoolInspect::currency_for(investment_id.of_pool()).ok_or(Error::<T>::PoolNotFound.into())
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{
