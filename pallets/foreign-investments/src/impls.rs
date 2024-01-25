@@ -12,48 +12,19 @@ use sp_std::marker::PhantomData;
 use crate::{
 	entities::{InvestmentInfo, RedemptionInfo},
 	pallet::{
-		Config, Error, ForeignIdToSwapId, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet,
-		SwapIdToForeignId,
+		Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet, SwapIdToForeignId,
 	},
 	pool_currency_of,
 	swaps::Swaps,
 	Action, SwapOf,
 };
 
-/// Internal methods used by trait implementations
-struct Util<T>(PhantomData<T>);
-impl<T: Config> Util<T> {
-	/// A wrap over `apply_swap()` that takes care of updating the swap id
-	/// and notify
-	fn apply_swap_and_notify(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		action: Action,
-		new_swap: SwapOf<T>,
-	) -> DispatchResult {
-		let swap_id = ForeignIdToSwapId::<T>::get((who, investment_id, action));
-
-		let status = Swaps::<T>::apply_swap(who, new_swap.clone(), swap_id)?;
-
-		Swaps::<T>::update_swap_id(who, investment_id, action, status.swap_id)?;
-
-		if !status.swapped.is_zero() {
-			Self::notify_swap_done(
-				who,
-				investment_id,
-				action,
-				new_swap.currency_out,
-				status.swapped,
-				status.pending,
-			)?;
-		}
-
-		Ok(())
-	}
-
+/// Internal methods used by the trait implementations to notify
+struct Notification<T>(PhantomData<T>);
+impl<T: Config> Notification<T> {
 	/// Notifies that a partial swap has been done and applies the result to
 	/// an `InvestmentInfo` or `RedemptionInfo`
-	fn notify_swap_done(
+	fn swap_done(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		action: Action,
@@ -64,19 +35,19 @@ impl<T: Config> Util<T> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 		match action {
 			Action::Investment => match pool_currency != currency_out {
-				true => Util::<T>::notify_increase_investment_swap_done(
+				true => Notification::<T>::increase_investment_swap_done(
 					&who,
 					investment_id,
 					swapped_amount,
 				),
-				false => Util::<T>::notify_decrease_investment_swap_done(
+				false => Notification::<T>::decrease_investment_swap_done(
 					&who,
 					investment_id,
 					swapped_amount,
 					pending_amount,
 				),
 			},
-			Action::Redemption => Util::<T>::notify_redemption_swap_done(
+			Action::Redemption => Notification::<T>::redemption_swap_done(
 				&who,
 				investment_id,
 				swapped_amount,
@@ -87,7 +58,7 @@ impl<T: Config> Util<T> {
 
 	/// Notifies that a partial increse swap has been done and applies the
 	/// result to an `InvestmentInfo`
-	fn notify_increase_investment_swap_done(
+	fn increase_investment_swap_done(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		swapped: T::Balance,
@@ -100,7 +71,7 @@ impl<T: Config> Util<T> {
 
 	/// Notifies that a partial decrease swap has been done and applies the
 	/// result to an `InvestmentInfo`
-	fn notify_decrease_investment_swap_done(
+	fn decrease_investment_swap_done(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		swapped: T::Balance,
@@ -130,7 +101,7 @@ impl<T: Config> Util<T> {
 
 	/// Notifies that a partial swap has been done and applies the result to
 	/// an `RedemptionInfo`
-	fn notify_redemption_swap_done(
+	fn redemption_swap_done(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		swapped_amount: T::Balance,
@@ -177,7 +148,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_increase_swap(investment_id, foreign_amount)
 		})?;
 
-		Util::<T>::apply_swap_and_notify(who, investment_id, Action::Investment, swap)
+		let status = Swaps::<T>::apply_swap(who, investment_id, Action::Investment, swap)?;
+
+		if !status.swapped.is_zero() {
+			Notification::<T>::increase_investment_swap_done(who, investment_id, status.swapped)?;
+		}
+
+		Ok(())
 	}
 
 	fn decrease_foreign_investment(
@@ -192,7 +169,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_decrease_swap(who, investment_id, foreign_amount)
 		})?;
 
-		Util::<T>::apply_swap_and_notify(who, investment_id, Action::Investment, swap)
+		let status = Swaps::<T>::apply_swap(who, investment_id, Action::Investment, swap)?;
+
+		if !status.swapped.is_zero() {
+			Notification::<T>::decrease_investment_swap_done(
+				who,
+				investment_id,
+				status.swapped,
+				status.pending,
+			)?;
+		}
+
+		Ok(())
 	}
 
 	fn increase_foreign_redemption(
@@ -306,7 +294,7 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 			}
 		};
 
-		Util::<T>::notify_swap_done(
+		Notification::<T>::swap_done(
 			&who,
 			investment_id,
 			action,
@@ -358,6 +346,17 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 			info.post_collect_and_pre_swap(investment_id, collected)
 		})?;
 
-		Util::<T>::apply_swap_and_notify(&who, investment_id, Action::Redemption, swap)
+		let status = Swaps::<T>::apply_swap(&who, investment_id, Action::Redemption, swap)?;
+
+		if !status.swapped.is_zero() {
+			Notification::<T>::redemption_swap_done(
+				&who,
+				investment_id,
+				status.swapped,
+				status.pending,
+			)?;
+		}
+
+		Ok(())
 	}
 }
