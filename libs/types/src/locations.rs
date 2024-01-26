@@ -10,14 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::AccountId;
 use frame_support::RuntimeDebugNoBound;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
-	AccountId32,
-};
+use sp_core::{crypto::AccountId32, H256};
+use sp_runtime::traits::{BlakeTwo256, Hash};
 use xcm::{v3::MultiLocation, VersionedMultiLocation};
 
 use crate::domain_address::DomainAddress;
@@ -25,7 +23,7 @@ use crate::domain_address::DomainAddress;
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum Location {
 	/// Local chain account sending destination.
-	Local(AccountId32),
+	Local(AccountId),
 	/// XCM MultiLocation sending destinations.
 	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but
 	/// next largest is only 40 bytes other values aren't hashed as we have
@@ -36,8 +34,8 @@ pub enum Location {
 }
 
 impl From<AccountId32> for Location {
-	fn from(a: AccountId32) -> Self {
-		Self::Local(a)
+	fn from(value: AccountId32) -> Self {
+		Self::Local(value)
 	}
 }
 

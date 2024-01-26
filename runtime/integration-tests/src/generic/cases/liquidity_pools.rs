@@ -219,7 +219,7 @@ pub mod utils {
 	}
 
 	pub fn ausd(amount: Balance) -> Balance {
-		amount * dollar(currency_decimals::AUSD)
+		amount * decimals(currency_decimals::AUSD)
 	}
 
 	pub fn ausd_fee() -> Balance {
@@ -227,14 +227,14 @@ pub mod utils {
 	}
 
 	pub fn cfg(amount: Balance) -> Balance {
-		amount * dollar(currency_decimals::NATIVE)
+		amount * decimals(currency_decimals::NATIVE)
 	}
 
 	pub fn cfg_fee() -> Balance {
 		fee(currency_decimals::NATIVE)
 	}
 
-	pub fn dollar(decimals: u32) -> Balance {
+	pub fn decimals(decimals: u32) -> Balance {
 		10u128.saturating_pow(decimals)
 	}
 
@@ -299,7 +299,7 @@ mod development {
 		///  * Two tranches
 		///  * AUSD as pool currency with max reserve 10k.
 		pub fn create_ausd_pool<T: Runtime + FudgeSupport>(pool_id: u64) {
-			create_currency_pool::<T>(pool_id, AUSD_CURRENCY_ID, dollar(currency_decimals::AUSD))
+			create_currency_pool::<T>(pool_id, AUSD_CURRENCY_ID, decimals(currency_decimals::AUSD))
 		}
 
 		/// Creates a new pool for for the given id with the provided currency.
@@ -350,6 +350,8 @@ mod development {
 				],
 				currency_id,
 				currency_decimals,
+				// No pool fees per default
+				vec![]
 			));
 		}
 
@@ -1231,7 +1233,7 @@ mod development {
 				assert_eq!(
 					orml_tokens::Pallet::<T>::free_balance(GLMR_CURRENCY_ID, &gateway_sender),
 					// Ensure it only charged the 0.2 GLMR of fee
-					DEFAULT_BALANCE_GLMR - dollar(18).saturating_div(5)
+					DEFAULT_BALANCE_GLMR - decimals(18).saturating_div(5)
 				);
 			});
 		}
@@ -1485,7 +1487,7 @@ mod development {
 				));
 
 				// Create pool
-				create_currency_pool::<T>(pool_id, currency_id, 10_000 * dollar(12));
+				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
 				// Should fail if asset is not payment currency
 				assert_noop!(
@@ -1720,7 +1722,7 @@ mod development {
 				));
 
 				// Create pool
-				create_currency_pool::<T>(pool_id, currency_id, 10_000 * dollar(12));
+				create_currency_pool::<T>(pool_id, currency_id, 10_000 * decimals(12));
 
 				// Should fail if asset is not payment currency
 				assert_noop!(
@@ -2000,7 +2002,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let amount = 10 * dollar(12);
+					let amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -2064,7 +2066,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let invest_amount: u128 = 10 * dollar(12);
+					let invest_amount: u128 = 10 * decimals(12);
 					let decrease_amount = invest_amount / 3;
 					let final_amount = invest_amount - decrease_amount;
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
@@ -2158,7 +2160,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let invest_amount = 10 * dollar(12);
+					let invest_amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -2273,7 +2275,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let amount = 10 * dollar(12);
+					let amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -2447,7 +2449,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let invest_amount = 10 * dollar(12);
+					let invest_amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -2732,7 +2734,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let amount = 10 * dollar(12);
+					let amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -2796,7 +2798,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let redeem_amount = 10 * dollar(12);
+					let redeem_amount = 10 * decimals(12);
 					let decrease_amount = redeem_amount / 3;
 					let final_amount = redeem_amount - decrease_amount;
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
@@ -2927,7 +2929,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let redeem_amount = 10 * dollar(12);
+					let redeem_amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -3039,7 +3041,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let amount = 10 * dollar(12);
+					let amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -3214,7 +3216,7 @@ mod development {
 
 				env.parachain_state_mut(|| {
 					let pool_id = DEFAULT_POOL_ID;
-					let redeem_amount = 10 * dollar(12);
+					let redeem_amount = 10 * decimals(12);
 					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
 						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
 					);
@@ -3477,7 +3479,7 @@ mod development {
 
 						env.parachain_state_mut(|| {
 							let pool_id = DEFAULT_POOL_ID;
-							let invest_amount: u128 = 10 * dollar(12);
+							let invest_amount: u128 = 10 * decimals(12);
 							let decrease_amount = invest_amount + 1;
 							let investor: AccountId =
 								AccountConverter::<T, LocationToAccountId>::convert((
@@ -3532,7 +3534,7 @@ mod development {
 
 						env.parachain_state_mut(|| {
 							let pool_id = DEFAULT_POOL_ID;
-							let redeem_amount: u128 = 10 * dollar(12);
+							let redeem_amount: u128 = 10 * decimals(12);
 							let decrease_amount = redeem_amount + 1;
 							let investor: AccountId =
 								AccountConverter::<T, LocationToAccountId>::convert((
@@ -3592,7 +3594,7 @@ mod development {
 
 						env.parachain_state_mut(|| {
 							let pool_id = DEFAULT_POOL_ID;
-							let amount: u128 = 10 * dollar(12);
+							let amount: u128 = 10 * decimals(12);
 							let investor: AccountId =
 								AccountConverter::<T, LocationToAccountId>::convert((
 									DOMAIN_MOONBEAM,
@@ -3683,7 +3685,7 @@ mod development {
 
 						env.parachain_state_mut(|| {
 							let pool_id = DEFAULT_POOL_ID;
-							let amount: u128 = 10 * dollar(12);
+							let amount: u128 = 10 * decimals(12);
 							let investor: AccountId =
 								AccountConverter::<T, LocationToAccountId>::convert((
 									DOMAIN_MOONBEAM,
@@ -3795,7 +3797,7 @@ mod development {
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-							let amount = 6 * dollar(18);
+							let amount = 6 * decimals(18);
 
 							create_currency_pool::<T>(
 								pool_id,
@@ -3890,7 +3892,7 @@ mod development {
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-							let amount = 6 * dollar(18);
+							let amount = 6 * decimals(18);
 
 							create_currency_pool::<T>(
 								pool_id,
@@ -3988,7 +3990,7 @@ mod development {
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-							let amount = 6 * dollar(18);
+							let amount = 6 * decimals(18);
 
 							create_currency_pool::<T>(
 								pool_id,
@@ -4057,7 +4059,7 @@ mod development {
 							let pool_currency = AUSD_CURRENCY_ID;
 							let currency_decimals = currency_decimals::AUSD;
 							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-							let amount = 6 * dollar(18);
+							let amount = 6 * decimals(18);
 
 							create_currency_pool::<T>(
 								pool_id,
@@ -4143,7 +4145,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 6 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 6 * decimals(18);
 					let sending_domain_locator =
 						Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain());
 					create_currency_pool::<T>(
@@ -4270,7 +4272,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 6 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 6 * decimals(18);
 					create_currency_pool::<T>(
 						pool_id,
 						pool_currency,
@@ -4464,7 +4466,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					create_currency_pool::<T>(
 						pool_id,
 						pool_currency,
@@ -4668,7 +4670,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					let swap_order_id = 1;
 					create_currency_pool::<T>(
 						pool_id,
@@ -4956,7 +4958,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					let swap_order_id = 1;
 					create_currency_pool::<T>(
 						pool_id,
@@ -5354,7 +5356,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					let swap_order_id = 1;
 					create_currency_pool::<T>(
 						pool_id,
@@ -5470,7 +5472,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					let swap_order_id = 1;
 					create_currency_pool::<T>(
 						pool_id,
@@ -5890,7 +5892,7 @@ mod development {
 					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
 					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
 					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * dollar(18);
+					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
 					let swap_order_id = 1;
 					create_currency_pool::<T>(
 						pool_id,
@@ -7170,7 +7172,7 @@ mod development {
 										transact_required_weight_at_most: Default::default(),
 										overall_weight: Default::default(),
 										fee_currency: currency_id,
-										fee_amount: dollar(18).saturating_div(5),
+										fee_amount: decimals(18).saturating_div(5),
 									},
 									_marker: Default::default(),
 								},
@@ -7208,7 +7210,7 @@ mod development {
 										transact_required_weight_at_most: Default::default(),
 										overall_weight: Default::default(),
 										fee_currency: currency_id,
-										fee_amount: dollar(18).saturating_div(5),
+										fee_amount: decimals(18).saturating_div(5),
 									},
 									_marker: Default::default(),
 								},
@@ -7424,15 +7426,15 @@ mod altair {
 		}
 
 		pub fn air(amount: Balance) -> Balance {
-			amount * dollar(currency_decimals::NATIVE)
+			amount * decimals(currency_decimals::NATIVE)
 		}
 
 		pub fn ksm(amount: Balance) -> Balance {
-			amount * dollar(currency_decimals::KSM)
+			amount * decimals(currency_decimals::KSM)
 		}
 
-		pub fn foreign(amount: Balance, decimals: u32) -> Balance {
-			amount * dollar(decimals)
+		pub fn foreign(amount: Balance, num_decimals: u32) -> Balance {
+			amount * decimals(num_decimals)
 		}
 
 		pub fn air_fee() -> Balance {
@@ -8446,7 +8448,7 @@ mod centrifuge {
 
 		/// Register CFG in the asset registry.
 		/// It should be executed within an externalities environment.
-		pub fn register_cfg<T: Runtime + FudgeSupport>() {
+		pub fn register_cfg<T: Runtime>(para_id: u32) {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 18,
 				name: "Centrifuge".into(),
@@ -8455,7 +8457,7 @@ mod centrifuge {
 				location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 					1,
 					X2(
-						Parachain(T::FudgeHandle::PARA_ID),
+						Parachain(para_id),
 						general_key(parachains::polkadot::centrifuge::CFG_KEY),
 					),
 				))),
@@ -8542,19 +8544,19 @@ mod centrifuge {
 		}
 
 		pub fn dot(amount: Balance) -> Balance {
-			amount * dollar(10)
+			amount * decimals(10)
 		}
 
 		pub fn lp_eth_usdc(amount: Balance) -> Balance {
-			amount * dollar(6)
+			amount * decimals(6)
 		}
 
 		pub fn usdc(amount: Balance) -> Balance {
-			amount * dollar(6)
+			amount * decimals(6)
 		}
 
-		pub fn foreign(amount: Balance, decimals: u32) -> Balance {
-			amount * dollar(decimals)
+		pub fn foreign(amount: Balance, num_decimals: u32) -> Balance {
+			amount * decimals(num_decimals)
 		}
 
 		pub fn transfer_dot_from_relay_chain<T: Runtime + FudgeSupport>(env: &mut FudgeEnv<T>) {
@@ -8740,7 +8742,7 @@ mod centrifuge {
 					X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 				);
 
-				register_cfg::<T>();
+				register_cfg::<T>(T::FudgeHandle::PARA_ID);
 
 				assert_eq!(
 					<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
@@ -8876,6 +8878,8 @@ mod centrifuge {
 	}
 
 	mod restricted_transfers {
+		use cfg_types::tokens::{CurrencyId::Native, FilterCurrency};
+
 		use super::*;
 		use crate::generic::envs::runtime_env::RuntimeEnv;
 
@@ -8899,10 +8903,210 @@ mod centrifuge {
 			assert_ok!(
 				pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 					RawOrigin::Signed(account.into()).into(),
-					asset,
+					FilterCurrency::Specific(asset),
 					location
 				)
 			);
+		}
+
+		#[test]
+		fn _test() {
+			restrict_cfg_extrinsic::<crate::chain::centrifuge::Runtime>()
+		}
+
+		fn restrict_cfg_extrinsic<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
+					.add(orml_tokens::GenesisConfig::<T> {
+						balances: vec![(
+							Keyring::Alice.to_account_id(),
+							USDC,
+							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
+						)],
+					})
+					.storage(),
+			);
+
+			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) = env
+				.parachain_state_mut(|| {
+					// NOTE: The para-id is not relevant here
+					register_cfg::<T>(2031);
+
+					assert_ok!(
+						pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+							RawOrigin::Signed(Keyring::Alice.into()).into(),
+							FilterCurrency::All,
+							Location::Local(Keyring::Bob.to_account_id())
+						)
+					);
+
+					(
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
+						pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
+						pallet_balances::Pallet::<T>::free_balance(
+							&Keyring::Charlie.to_account_id(),
+						),
+					)
+				});
+
+			let call = pallet_balances::Call::<T>::transfer {
+				dest: Keyring::Charlie.into(),
+				value: cfg(TRANSFER_AMOUNT),
+			};
+			env.submit_now(Keyring::Alice, call).unwrap();
+
+			let call = pallet_balances::Call::<T>::transfer {
+				dest: Keyring::Bob.into(),
+				value: cfg(TRANSFER_AMOUNT),
+			};
+			let fee = env.submit_now(Keyring::Alice, call).unwrap();
+
+			// Restrict also CFG local
+			env.parachain_state(|| {
+				let after_transfer_alice =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+				let after_transfer_bob =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+				let after_transfer_charlie =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - cfg(TRANSFER_AMOUNT) - 2 * fee
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
+		}
+
+		fn restrict_all<T: Runtime>() {
+			let mut env = RuntimeEnv::<T>::from_parachain_storage(
+				Genesis::default()
+					.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
+					.add(orml_tokens::GenesisConfig::<T> {
+						balances: vec![(
+							Keyring::Alice.to_account_id(),
+							USDC,
+							T::ExistentialDeposit::get() + usdc(TRANSFER_AMOUNT),
+						)],
+					})
+					.storage(),
+			);
+
+			// Set allowance
+			env.parachain_state_mut(|| {
+				assert_ok!(
+					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						FilterCurrency::All,
+						Location::Local(Keyring::Bob.to_account_id())
+					)
+				);
+			});
+
+			// Restrict USDC local
+			env.parachain_state_mut(|| {
+				register_usdc::<T>();
+
+				let pre_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+				let pre_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+				let pre_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+
+				assert_noop!(
+					pallet_restricted_tokens::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Keyring::Charlie.into(),
+						USDC,
+						lp_eth_usdc(TRANSFER_AMOUNT)
+					),
+					pallet_restricted_tokens::Error::<T>::PreConditionsNotMet
+				);
+
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+
+				assert_eq!(after_transfer_alice, pre_transfer_alice);
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+
+				assert_ok!(pallet_restricted_tokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					Keyring::Bob.into(),
+					USDC,
+					usdc(TRANSFER_AMOUNT)
+				),);
+
+				let after_transfer_alice =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Alice.to_account_id());
+				let after_transfer_bob =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Bob.to_account_id());
+				let after_transfer_charlie =
+					orml_tokens::Pallet::<T>::free_balance(USDC, &Keyring::Charlie.to_account_id());
+
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - usdc(TRANSFER_AMOUNT)
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + usdc(TRANSFER_AMOUNT));
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
+
+			// Restrict also CFG local
+			env.parachain_state_mut(|| {
+				// NOTE: The para-id is not relevant here
+				register_cfg::<T>(2031);
+
+				let pre_transfer_alice =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+				let pre_transfer_bob =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+				let pre_transfer_charlie =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+				assert_noop!(
+					pallet_restricted_tokens::Pallet::<T>::transfer(
+						RawOrigin::Signed(Keyring::Alice.into()).into(),
+						Keyring::Charlie.into(),
+						Native,
+						cfg(TRANSFER_AMOUNT)
+					),
+					pallet_restricted_tokens::Error::<T>::PreConditionsNotMet
+				);
+
+				let after_transfer_alice =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+				let after_transfer_charlie =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+				assert_eq!(after_transfer_alice, pre_transfer_alice);
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+
+				assert_ok!(pallet_restricted_tokens::Pallet::<T>::transfer(
+					RawOrigin::Signed(Keyring::Alice.into()).into(),
+					Keyring::Bob.into(),
+					Native,
+					cfg(TRANSFER_AMOUNT)
+				),);
+
+				let after_transfer_alice =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+				let after_transfer_bob =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+				let after_transfer_charlie =
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - cfg(TRANSFER_AMOUNT)
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
+				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+			});
 		}
 
 		fn restrict_lp_eth_usdc_transfer<T: Runtime>() {
@@ -9207,7 +9411,7 @@ mod centrifuge {
 				assert_ok!(
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						USDC,
+						FilterCurrency::Specific(USDC),
 						Location::XCM(BlakeTwo256::hash(
 							&MultiLocation::new(
 								1,
@@ -9393,7 +9597,7 @@ mod centrifuge {
 				assert_ok!(
 					pallet_transfer_allowlist::Pallet::<T>::add_transfer_allowance(
 						RawOrigin::Signed(Keyring::Alice.into()).into(),
-						DOT_ASSET_ID,
+						FilterCurrency::Specific(DOT_ASSET_ID),
 						allowed_xcm_location()
 					)
 				);
@@ -9459,6 +9663,7 @@ mod centrifuge {
 		crate::test_for_runtimes!([centrifuge], restrict_usdc_xcm_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_transfer);
 		crate::test_for_runtimes!([centrifuge], restrict_dot_xcm_transfer);
+		crate::test_for_runtimes!([centrifuge], restrict_all);
 	}
 
 	mod transfers {

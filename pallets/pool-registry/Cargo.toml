@@ -26,6 +26,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 # Benchmarking dependencies - optional
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 pallet-investments = { path = "../investments", default-features = false, optional = true }
+pallet-pool-fees = { workspace = true, default-features = false, optional = true }
 pallet-pool-system = { path = "../pool-system", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 
@@ -59,6 +60,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
@@ -78,6 +80,7 @@ std = [
   "pallet-investments/std",
   "scale-info/std",
   "xcm/std",
+  "pallet-pool-fees/std",
   "pallet-pool-system/std",
 ]
 try-runtime = [
@@ -88,6 +91,7 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-investments/try-runtime",
   "sp-runtime/try-runtime",
 ]

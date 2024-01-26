@@ -1,41 +1,11 @@
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, FilterCurrency};
 use frame_support::{assert_err, assert_noop, assert_ok};
 
 use super::*;
 use crate::mock::*;
 
-const TEST_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const TEST_CURRENCY_ID: FilterCurrency = FilterCurrency::Specific(CurrencyId::ForeignAsset(1));
 
-#[test]
-fn add_transfer_fails_for_native() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			TransferAllowList::add_transfer_allowance(
-				RuntimeOrigin::signed(SENDER),
-				<Runtime as Config>::NativeCurrency::get(),
-				ACCOUNT_RECEIVER.into(),
-			),
-			Error::<Runtime>::NativeCurrencyNotRestrictable
-		);
-		assert_eq!(
-			TransferAllowList::get_account_currency_transfer_allowance((
-				SENDER,
-				TEST_CURRENCY_ID,
-				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
-			)),
-			None,
-		);
-		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(
-				SENDER,
-				TEST_CURRENCY_ID
-			),
-			None,
-		);
-
-		assert_eq!(Balances::reserved_balance(&SENDER), 0);
-	})
-}
 #[test]
 fn add_transfer_allowance_works() {
 	new_test_ext().execute_with(|| {
@@ -162,7 +132,7 @@ fn transfer_allowance_allows_correctly_with_allowance_set() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), TEST_CURRENCY_ID),
-			Ok(())
+			Ok(Some(ACCOUNT_RECEIVER.into()))
 		)
 	})
 }
@@ -213,7 +183,7 @@ fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), TEST_CURRENCY_ID),
-			Ok(())
+			Ok(Some(ACCOUNT_RECEIVER.into()))
 		)
 	})
 }

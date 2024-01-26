@@ -266,6 +266,7 @@ dependencies = [
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -1201,6 +1202,7 @@ dependencies = [
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -1345,6 +1347,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-runtime",
  "sp-std",
+ "strum",
 ]
 
 [[package]]
@@ -2735,7 +2738,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.37"
+version = "0.10.38"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -2809,6 +2812,7 @@ dependencies = [
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",
@@ -8277,6 +8281,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-pool-fees"
+version = "0.0.1"
+dependencies = [
+ "cfg-mocks",
+ "cfg-primitives",
+ "cfg-test-utils",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec 3.6.5",
+ "rand 0.8.5",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "strum",
+]
+
+[[package]]
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
@@ -8294,6 +8326,7 @@ dependencies = [
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-system",
  "pallet-timestamp",
  "parachain-info",
@@ -8311,6 +8344,7 @@ dependencies = [
 name = "pallet-pool-system"
 version = "3.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-test-utils",
  "cfg-traits",
@@ -8326,6 +8360,7 @@ dependencies = [
  "pallet-balances",
  "pallet-investments",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parachain-info",
@@ -11447,6 +11482,7 @@ dependencies = [
  "pallet-oracle-feed",
  "pallet-order-book",
  "pallet-permissions",
+ "pallet-pool-fees",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-preimage",

@@ -12,13 +12,19 @@
 
 use cfg_primitives::{AccountId, Balance};
 use cfg_traits::{PreConditions, TransferAllowance};
-use cfg_types::{domain_address::DomainAddress, locations::Location, tokens::CurrencyId};
+use cfg_types::{
+	domain_address::DomainAddress,
+	locations::Location,
+	tokens::{CurrencyId, FilterCurrency},
+};
+use frame_support::{dispatch::TypeInfo, traits::IsSubType, RuntimeDebugNoBound};
 use pallet_restricted_tokens::TransferDetails;
 use pallet_restricted_xtokens::TransferEffects;
-use parity_scale_codec::Encode;
+use parity_scale_codec::{Decode, Encode};
 use sp_core::Hasher;
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert},
+	traits::{BlakeTwo256, Convert, DispatchInfoOf, SignedExtension, StaticLookup},
+	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
 use xcm::v3::{MultiAsset, MultiLocation};
@@ -26,18 +32,25 @@ use xcm::v3::{MultiAsset, MultiLocation};
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
-		T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>,
+		T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>,
 		C: Convert<MultiAsset, Option<CurrencyId>>,
 	> PreConditions<TransferEffects<AccountId, CurrencyId, Balance>> for PreXcmTransfer<T, C>
 {
 	type Result = DispatchResult;
 
 	fn check(t: TransferEffects<AccountId, CurrencyId, Balance>) -> Self::Result {
-		let currency_based_check = |sender, destination: MultiLocation, currency| {
-			T::allowance(
-				sender,
-				Location::XCM(BlakeTwo256::hash(&destination.encode())),
-				currency,
+		let currency_based_check = |sender: AccountId, destination: MultiLocation, currency| {
+			amalgamate_allowance(
+				T::allowance(
+					sender.clone(),
+					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					FilterCurrency::Specific(currency),
+				),
+				T::allowance(
+					sender,
+					Location::XCM(BlakeTwo256::hash(&destination.encode())),
+					FilterCurrency::All,
+				),
 			)
 		};
 
@@ -121,24 +134,155 @@ impl<
 
 pub struct PreNativeTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>>
+impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>>
 	PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for PreNativeTransfer<T>
 {
 	type Result = bool;
 
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> Self::Result {
-		T::allowance(t.send, Location::Local(t.recv), t.id).is_ok()
+		amalgamate_allowance(
+			T::allowance(
+				t.send.clone(),
+				Location::Local(t.recv.clone()),
+				FilterCurrency::Specific(t.id),
+			),
+			T::allowance(
+				t.send.clone(),
+				Location::Local(t.recv.clone()),
+				FilterCurrency::All,
+			),
+		)
+		.is_ok()
 	}
 }
 pub struct PreLpTransfer<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: TransferAllowance<AccountId, CurrencyId = CurrencyId, Location = Location>>
+impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Location>>
 	PreConditions<(AccountId, DomainAddress, CurrencyId)> for PreLpTransfer<T>
 {
 	type Result = DispatchResult;
 
 	fn check(t: (AccountId, DomainAddress, CurrencyId)) -> Self::Result {
 		let (sender, receiver, currency) = t;
-		T::allowance(sender, Location::Address(receiver), currency)
+		// NOTE: The order of the allowance check here is
+		amalgamate_allowance(
+			T::allowance(
+				sender.clone(),
+				Location::Address(receiver.clone()),
+				FilterCurrency::Specific(currency),
+			),
+			T::allowance(sender, Location::Address(receiver), FilterCurrency::All),
+		)
+	}
+}
+
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
+)]
+#[scale_info(skip_type_params(T))]
+pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
+
+#[allow(clippy::new_without_default)]
+impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
+	pub fn new() -> Self {
+		Self(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T> SignedExtension for PreBalanceTransferExtension<T>
+where
+	T: frame_system::Config<AccountId = AccountId>
+		+ pallet_balances::Config
+		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
+		+ Sync
+		+ Send,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>,
+{
+	type AccountId = T::AccountId;
+	type AdditionalSigned = ();
+	type Call = T::RuntimeCall;
+	type Pre = ();
+
+	const IDENTIFIER: &'static str = "PreBalanceTransferExtension";
+
+	fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+		Ok(())
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		call: &Self::Call,
+		_: &DispatchInfoOf<Self::Call>,
+		_: usize,
+	) -> Result<Self::Pre, TransactionValidityError> {
+		let recv: T::AccountId = if let Some(call) =
+			IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
+		{
+			match call {
+				pallet_balances::Call::transfer { dest, .. }
+				| pallet_balances::Call::transfer_all { dest, .. }
+				| pallet_balances::Call::transfer_allow_death { dest, .. }
+				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
+					<T as frame_system::Config>::Lookup::lookup(dest.clone())
+						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?
+				}
+
+				// If the call is not a transfer we are fine with it to go through without futher
+				// checks
+				_ => return Ok(()),
+			}
+		} else {
+			return Ok(());
+		};
+
+		amalgamate_allowance(
+			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+				who.clone(),
+				Location::Local(recv.clone()),
+				FilterCurrency::All,
+			),
+			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+				who.clone(),
+				Location::Local(recv.clone()),
+				FilterCurrency::Specific(CurrencyId::Native),
+			),
+		)
+		.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+	}
+}
+
+fn amalgamate_allowance(
+	first: Result<Option<Location>, DispatchError>,
+	second: Result<Option<Location>, DispatchError>,
+) -> DispatchResult {
+	match (first, second) {
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Err(e), Err(_)) => Err(e),
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is an allowance set for `All`, for the given recv
+		(Err(_), Ok(Some(_))) => Ok(()),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Ok(Some(_)), Err(_)) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is an allowance set for `All`, but NOT for the given recv
+		(Ok(None), Err(e)) => Err(e),
+		// There is an allowance set for `Specific(id)`, but NOT for the given recv
+		// There is NO allowance set for `All`
+		(Err(e), Ok(None)) => Err(e),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is an allowance set for `All`, for the given recv
+		(Ok(Some(_)), Ok(Some(_))) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is NO allowance set for `All`
+		(Ok(None), Ok(None)) => Ok(()),
+		// There is an allowance set for `Specific(id)`, for the given recv
+		// There is NO allowance set for `All`
+		(Ok(Some(_)), Ok(None)) => Ok(()),
+		// There is NO allowance set for `Specific(id)`
+		// There is an allowance set for `All`, for the given recv
+		(Ok(None), Ok(Some(_))) => Ok(()),
 	}
 }

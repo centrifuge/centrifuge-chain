@@ -321,6 +321,20 @@ impl From<LiquidityPoolsWrappedToken> for DomainAddress {
 	}
 }
 
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub enum FilterCurrency {
+	All,
+	Specific(CurrencyId),
+}
+
+impl From<CurrencyId> for FilterCurrency {
+	fn from(value: CurrencyId) -> Self {
+		Self::Specific(value)
+	}
+}
+
 pub mod before {
 	use cfg_primitives::{PoolId, TrancheId};
 	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};

@@ -108,6 +108,7 @@ fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtr
 		frame_system::CheckNonce::<CentrifugeRuntime>::from(nonce),
 		frame_system::CheckWeight::<CentrifugeRuntime>::new(),
 		pallet_transaction_payment::ChargeTransactionPayment::<CentrifugeRuntime>::from(0),
+		runtime_common::transfer_filter::PreBalanceTransferExtension::<CentrifugeRuntime>::new(),
 	)
 }
 
@@ -126,6 +127,7 @@ fn sign_centrifuge(
 		tx_version,
 		genesis_hash,
 		genesis_hash.clone(),
+		(),
 		(),
 		(),
 		(),

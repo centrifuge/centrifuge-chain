@@ -140,6 +140,7 @@ impl<
 #[cfg(test)]
 mod test {
 	use cfg_primitives::{AccountId, TREASURY_FEE_RATIO};
+	use cfg_types::ids::TREASURY_PALLET_ID;
 	use frame_support::{
 		parameter_types,
 		traits::{Currency, FindAuthor},
@@ -222,7 +223,7 @@ mod test {
 	}
 
 	parameter_types! {
-		pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+		pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
 		pub const MaxApprovals: u32 = 100;
 	}
 

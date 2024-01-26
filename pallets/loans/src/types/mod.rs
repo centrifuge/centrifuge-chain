@@ -23,7 +23,6 @@ use sp_runtime::{
 };
 
 pub mod policy;
-pub mod portfolio;
 pub mod valuation;
 
 /// Error related to loan creation

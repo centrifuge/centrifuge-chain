@@ -36,7 +36,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Proof: Permissions Permission (max_values: None, max_size: Some(228), added: 2703, mode: MaxEncodedLen)
 	/// Storage: PoolSystem Pool (r:1 w:1)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
-	fn set_max_reserve() -> Weight {
+	fn set_max_reserve(_m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `625`
 		//  Estimated: `4278`
@@ -75,7 +75,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Storage: Investments ClearedRedeemOrders (r:0 w:5)
 	/// Proof: Investments ClearedRedeemOrders (max_values: None, max_size: Some(80), added: 2555, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 5]`.
-	fn close_epoch_no_orders(n: u32, ) -> Weight {
+	fn close_epoch_no_orders(n: u32, _m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `875 + n * (133 ±0)`
 		//  Estimated: `27515 + n * (2604 ±0)`
@@ -113,7 +113,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Storage: Investments RedeemOrderId (r:5 w:5)
 	/// Proof: Investments RedeemOrderId (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 5]`.
-	fn close_epoch_no_execution(n: u32, ) -> Weight {
+	fn close_epoch_no_execution(n: u32, _m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1041 + n * (133 ±0)`
 		//  Estimated: `27515 + n * (2531 ±0)`
@@ -161,7 +161,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Storage: Investments ClearedRedeemOrders (r:0 w:5)
 	/// Proof: Investments ClearedRedeemOrders (max_values: None, max_size: Some(80), added: 2555, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 5]`.
-	fn close_epoch_execute(n: u32, ) -> Weight {
+	fn close_epoch_execute(n: u32, _m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1848 + n * (167 ±0)`
 		//  Estimated: `27515 + n * (2604 ±0)`
@@ -181,7 +181,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Storage: PoolSystem Pool (r:1 w:0)
 	/// Proof: PoolSystem Pool (max_values: None, max_size: Some(813), added: 3288, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 5]`.
-	fn submit_solution(n: u32, ) -> Weight {
+	fn submit_solution(n: u32, _m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `429 + n * (249 ±0)`
 		//  Estimated: `4278`
@@ -224,7 +224,7 @@ impl<T: frame_system::Config> pallet_pool_system::WeightInfo for WeightInfo<T> {
 	/// Storage: Investments ClearedRedeemOrders (r:0 w:5)
 	/// Proof: Investments ClearedRedeemOrders (max_values: None, max_size: Some(80), added: 2555, mode: MaxEncodedLen)
 	/// The range of component `n` is `[1, 5]`.
-	fn execute_epoch(n: u32, ) -> Weight {
+	fn execute_epoch(n: u32, _m: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1728 + n * (639 ±0)`
 		//  Estimated: `7667 + n * (2604 ±0)`

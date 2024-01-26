@@ -13,7 +13,9 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::investments::TrancheCurrency as _;
+use cfg_traits::{
+	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket, investments::TrancheCurrency as _,
+};
 use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CurrencyId, TrancheCurrency},
@@ -55,7 +57,8 @@ const AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
 benchmarks! {
 	where_clause {
 	where
-		T: Config<PoolId = u64,
+		T: Config
+		<PoolId = u64,
 			  TrancheId = [u8; 16],
 			  Balance = u128,
 			  CurrencyId = CurrencyId> + pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = u128>,
@@ -68,6 +71,11 @@ benchmarks! {
 			  MaxTokenNameLength = <T as Config>::MaxTokenNameLength,
 			  MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength,
 			  MaxTranches = <T as Config>::MaxTranches>,
+		T: pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
+		<T as pallet_pool_system::Config>::PoolFees: PoolFeesBenchmarkHelper<
+			PoolId = <T as Config>::PoolId,
+			PoolFeeInfo = PoolFeeInfo<T::AccountId, <T as pallet_pool_system::Config>::Balance, <T as pallet_pool_system::Config>::Rate>,
+		>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
@@ -84,13 +92,17 @@ benchmarks! {
 				<T as pallet_pool_system::Config>::MaxTokenNameLength,
 				<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
 				<T as pallet_pool_system::Config>::MaxTranches>,
+			PoolFeeInput = (PoolFeeBucket, <<T as pallet_pool_system::Config>::PoolFees as PoolFeesBenchmarkHelper>::PoolFeeInfo),
 		>,
+		Vec<(PoolFeeBucket, PoolFeeInfo<<T as frame_system::Config>::AccountId, u128, <T as pallet::Config>::InterestRate>)>: FromIterator<(PoolFeeBucket, PoolFeeInfo<<T as frame_system::Config>::AccountId, u128, <T as pallet_pool_fees::Config>::Rate>)>
 	}
 	register {
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let m in 0..<T as pallet_pool_fees::Config>::MaxPoolFeesPerBucket::get();
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
-		let origin = if let Ok(_) = <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()) {
+		let pool_fee_input = <pallet_pool_fees::Pallet::<T> as PoolFeesBenchmarkHelper>::get_pool_fee_infos(m).into_iter().map(|fee| (PoolFeeBucket::Top, fee)).collect();
+		let origin = if <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()).is_ok() {
 			RawOrigin::Signed(caller.clone())
 		} else {
 			RawOrigin::Root
@@ -101,7 +113,7 @@ benchmarks! {
 		mock::MockWriteOffPolicy::mock_worst_case_policy(|| ());
 
 		let policy = T::ModifyWriteOffPolicy::worst_case_policy();
-	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy)
+	}: register(origin, caller, POOL, tranches.clone(), AUSD_CURRENCY_ID, MAX_RESERVE, None, policy, pool_fee_input)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -116,9 +128,10 @@ benchmarks! {
 		// since we submitted the update
 		let admin: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let m in 0..<T as pallet_pool_fees::Config>::MaxPoolFeesPerBucket::get();
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 
 
 		// Submit redemption order so the update isn't executed
@@ -148,9 +161,10 @@ benchmarks! {
 	update_and_execute {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let m in 0..<T as pallet_pool_fees::Config>::MaxPoolFeesPerBucket::get();
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 
 		let changes = PoolChanges {
 			tranches: Change::NewValue(tranches.clone()),
@@ -170,9 +184,10 @@ benchmarks! {
 	execute_update {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let m in 0..<T as pallet_pool_fees::Config>::MaxPoolFeesPerBucket::get();
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
+		create_pool::<T>(n, m, admin.clone())?;
 
 		let pool = get_pool::<T>();
 		let default_min_epoch_time = pool.parameters.min_epoch_time;
@@ -205,9 +220,10 @@ benchmarks! {
 
 	set_metadata {
 		let n in 0..<T as Config>::MaxSizeMetadata::get();
+		let m in 0..<T as pallet_pool_fees::Config>::MaxPoolFeesPerBucket::get();
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
-		create_pool::<T>(2, caller.clone())?;
+		create_pool::<T>(2, m, caller.clone())?;
 		let metadata = vec![0u8; n as usize];
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
 	verify {
@@ -217,7 +233,7 @@ benchmarks! {
 }
 
 fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::get_pool_metadata(POOL).unwrap()
 }
 
 fn build_update_tranche_token_metadata<T: Config>(
