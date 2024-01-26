@@ -19,13 +19,12 @@ use cfg_primitives::{
 	TrancheWeight,
 };
 use cfg_traits::{
-	benchmarking::PoolFeesBenchmarkHelper, fee::PoolFeeBucket, investments::OrderManager, Millis,
-	PoolMutate, PoolUpdateGuard, PreConditions, Seconds, UpdateState,
+	fee::PoolFeeBucket, investments::OrderManager, Millis, PoolMutate, PoolUpdateGuard,
+	PreConditions, Seconds, UpdateState,
 };
 use cfg_types::{
 	fixed_point::{Quantity, Rate},
 	permissions::{PermissionScope, Role},
-	pools::PoolFeeInfo,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -36,8 +35,6 @@ use frame_support::{
 };
 use frame_system::EnsureSigned;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-#[cfg(feature = "runtime-benchmarks")]
-use pallet_pool_system::benchmarking::create_pool;
 use pallet_pool_system::{
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
 	tranches::TrancheInput,
@@ -240,10 +237,6 @@ where
 	T: Config
 		+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>
 		+ pallet_pool_fees::Config<PoolId = u64, Balance = u128>,
-	<T as pallet_pool_system::Config>::PoolFees: PoolFeesBenchmarkHelper<
-		PoolId = u64,
-		PoolFeeInfo = PoolFeeInfo<T::AccountId, u128, <T as pallet_pool_system::Config>::Rate>,
-	>,
 {
 	type Balance = <T as Config>::Balance;
 	type CurrencyId = <T as Config>::CurrencyId;
@@ -258,7 +251,7 @@ where
 	>;
 	type PoolFeeInput = (
 		PoolFeeBucket,
-		<<T as pallet_pool_system::Config>::PoolFees as PoolFeesBenchmarkHelper>::PoolFeeInfo,
+		<<T as pallet_pool_system::Config>::PoolFees as cfg_traits::fee::PoolFees>::FeeInfo,
 	);
 	type TrancheInput = TrancheInput<
 		<T as pallet_pool_system::Config>::Rate,
@@ -267,16 +260,14 @@ where
 	>;
 
 	fn create(
-		admin: T::AccountId,
+		_admin: T::AccountId,
 		_depositor: T::AccountId,
 		_pool_id: <T as pallet_pool_system::Config>::PoolId,
-		tranche_inputs: Vec<Self::TrancheInput>,
+		_tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
-		pool_fees: Vec<Self::PoolFeeInput>,
+		_pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
-		#[cfg(feature = "runtime-benchmarks")]
-		create_pool::<T>(tranche_inputs.len() as u32, pool_fees.len() as u32, admin)?;
 		Ok(())
 	}
 
