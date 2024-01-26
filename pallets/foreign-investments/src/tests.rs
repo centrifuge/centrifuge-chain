@@ -1305,3 +1305,47 @@ mod redemption {
 		}
 	}
 }
+
+mod notifications {
+	use super::*;
+
+	#[test]
+	fn fulfill_not_fail_if_not_found() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(FulfilledSwapOrderHook::<Runtime>::notify_status_change(
+				SWAP_ID,
+				Swap {
+					amount_in: 0,
+					currency_in: 0,
+					currency_out: 0
+				},
+			));
+		});
+	}
+
+	#[test]
+	fn collect_investment_not_fail_if_not_found() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CollectedInvestmentHook::<Runtime>::notify_status_change(
+				(USER, INVESTMENT_ID),
+				CollectedAmount {
+					amount_collected: 0,
+					amount_payment: 0,
+				},
+			));
+		});
+	}
+
+	#[test]
+	fn collect_redemption_not_fail_if_not_found() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(CollectedRedemptionHook::<Runtime>::notify_status_change(
+				(USER, INVESTMENT_ID),
+				CollectedAmount {
+					amount_collected: 0,
+					amount_payment: 0,
+				},
+			));
+		});
+	}
+}

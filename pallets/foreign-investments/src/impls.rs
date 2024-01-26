@@ -169,32 +169,42 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 	type Id = T::SwapId;
 	type Status = SwapOf<T>;
 
-	fn notify_status_change(swap_id: T::SwapId, last_swap: SwapOf<T>) -> Result<(), DispatchError> {
-		let (who, investment_id, action) = Swaps::<T>::foreign_id_from(swap_id)?;
+	fn notify_status_change(swap_id: T::SwapId, last_swap: SwapOf<T>) -> DispatchResult {
+		match Swaps::<T>::foreign_id_from(swap_id) {
+			Ok((who, investment_id, action)) => {
+				let pool_currency = pool_currency_of::<T>(investment_id)?;
+				let swapped_amount = last_swap.amount_in;
+				let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
+					Some(swap) => swap.amount_in,
+					None => {
+						Swaps::<T>::update_id(&who, investment_id, action, None)?;
+						T::Balance::default()
+					}
+				};
 
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
-		let swapped_amount = last_swap.amount_in;
-		let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
-			Some(swap) => swap.amount_in,
-			None => {
-				Swaps::<T>::update_id(&who, investment_id, action, None)?;
-				T::Balance::default()
+				match action {
+					Action::Investment => match pool_currency == last_swap.currency_in {
+						true => SwapDone::<T>::for_increase_investment(
+							&who,
+							investment_id,
+							swapped_amount,
+						),
+						false => SwapDone::<T>::for_decrease_investment(
+							&who,
+							investment_id,
+							swapped_amount,
+							pending_amount,
+						),
+					},
+					Action::Redemption => SwapDone::<T>::for_redemption(
+						&who,
+						investment_id,
+						swapped_amount,
+						pending_amount,
+					),
+				}
 			}
-		};
-
-		match action {
-			Action::Investment => match pool_currency == last_swap.currency_in {
-				true => SwapDone::<T>::for_increase_investment(&who, investment_id, swapped_amount),
-				false => SwapDone::<T>::for_decrease_investment(
-					&who,
-					investment_id,
-					swapped_amount,
-					pending_amount,
-				),
-			},
-			Action::Redemption => {
-				SwapDone::<T>::for_redemption(&who, investment_id, swapped_amount, pending_amount)
-			}
+			Err(_) => Ok(()), // The event is not for foreign investments
 		}
 	}
 }
@@ -210,18 +220,29 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
-			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_collect(&who, investment_id, collected)?;
+			match entry.as_mut() {
+				Some(info) => {
+					let msg = info.post_collect(&who, investment_id, collected)?;
 
-			if info.is_completed(&who, investment_id)? {
-				*entry = None;
+					if info.is_completed(&who, investment_id)? {
+						*entry = None;
+					}
+
+					return Ok::<_, DispatchError>(Some(msg));
+				}
+				None => Ok(None), // Then notification is not for foreign investments
 			}
-
-			Ok::<_, DispatchError>(msg)
 		})?;
 
 		// We send the event out of the Info mutation closure
-		T::CollectedForeignInvestmentHook::notify_status_change((who.clone(), investment_id), msg)
+		if let Some(msg) = msg {
+			T::CollectedForeignInvestmentHook::notify_status_change(
+				(who.clone(), investment_id),
+				msg,
+			)?;
+		}
+
+		Ok(())
 	}
 }
 
@@ -235,15 +256,21 @@ impl<T: Config> StatusNotificationHook for CollectedRedemptionHook<T> {
 		(who, investment_id): (T::AccountId, T::InvestmentId),
 		collected: CollectedAmount<T::Balance>,
 	) -> DispatchResult {
-		let swap = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
-			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.post_collect_and_pre_swap(investment_id, collected)
+		let swap = ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |entry| {
+			match entry.as_mut() {
+				Some(info) => info
+					.post_collect_and_pre_swap(investment_id, collected)
+					.map(Some),
+				None => Ok(None), // Then notification is not for foreign investments
+			}
 		})?;
 
-		let status = Swaps::<T>::apply(&who, investment_id, Action::Redemption, swap)?;
+		if let Some(swap) = swap {
+			let status = Swaps::<T>::apply(&who, investment_id, Action::Redemption, swap)?;
 
-		if !status.swapped.is_zero() {
-			SwapDone::<T>::for_redemption(&who, investment_id, status.swapped, status.pending)?;
+			if !status.swapped.is_zero() {
+				SwapDone::<T>::for_redemption(&who, investment_id, status.swapped, status.pending)?;
+			}
 		}
 
 		Ok(())
