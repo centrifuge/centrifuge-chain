@@ -12,7 +12,7 @@
 
 use pallet_pool_system::{
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
-	EpochSolution,
+	EpochSolution, Nav,
 };
 use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
@@ -46,5 +46,7 @@ decl_runtime_apis! {
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>;
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<Currency>;
+
+		fn nav(pool_id: PoolId) -> Option<(Balance, Nav<Balance>)>;
 	}
 }

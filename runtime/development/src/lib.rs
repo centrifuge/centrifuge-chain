@@ -142,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1038,
+	spec_version: 1039,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -2295,6 +2295,16 @@ impl_runtime_apis! {
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
+		}
+
+		fn nav(pool_id: PoolId) -> Option<(Balance, pallet_pool_system::Nav<Balance>)> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let nav_loans = Loans::update_nav(pool_id).ok()?;
+			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
+			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
+			let total = nav.total(pool.reserve.total).ok()?;
+
+			Some((total, nav))
 		}
 	}
 

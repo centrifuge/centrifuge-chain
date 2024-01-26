@@ -2174,6 +2174,16 @@ impl_runtime_apis! {
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
 		}
+
+		fn nav(pool_id: PoolId) -> Option<(Balance, pallet_pool_system::Nav<Balance>)> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let nav_loans = Loans::update_nav(pool_id).ok()?;
+			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
+			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
+			let total = nav.total(pool.reserve.total).ok()?;
+
+			Some((total, nav))
+		}
 	}
 
 	// RewardsApi
