@@ -209,8 +209,7 @@ where
 		call: &<T as frame_system::Config>::RuntimeCall,
 	) -> Result<sp_std::vec::Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
 		let mut checks = sp_std::vec::Vec::new();
-
-		let mut current_call = call;
+		let mut current_call = Some(call);
 
 		while let Ok(inner) = Self::recursive_search(&mut current_call) {
 			if let Some(balance_call) = inner {
@@ -238,11 +237,18 @@ where
 	}
 
 	fn recursive_search(
-		_call: &mut &<T as frame_system::Config>::RuntimeCall,
+		maybe_call: &mut Option<&<T as frame_system::Config>::RuntimeCall>,
 	) -> Result<Option<pallet_balances::Call<T>>, ()> {
-		Err(())
-
-		//IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
+		if let Some(call) = maybe_call {
+			if let Some(balance_call) = IsSubType::<pallet_balances::Call<T>>::is_sub_type(*call) {
+				*maybe_call = None;
+				Ok(Some(balance_call.clone()))
+			} else {
+				Err(())
+			}
+		} else {
+			Err(())
+		}
 	}
 }
 
@@ -279,23 +285,24 @@ where
 		_: &DispatchInfoOf<Self::Call>,
 		_: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		Self::retrieve(who, call)?
-			.iter()
-			.try_for_each(|(who, recv)| {
-				amalgamate_allowance(
-					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-						who.clone(),
-						Location::Local(recv.clone()),
-						FilterCurrency::All,
-					),
-					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-						who.clone(),
-						Location::Local(recv.clone()),
-						FilterCurrency::Specific(CurrencyId::Native),
-					),
-				)
-				.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
-			})
+		let checks = Self::retrieve(who, call)?;
+		let res = checks.iter().try_for_each(|(who, recv)| {
+			amalgamate_allowance(
+				pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+					who.clone(),
+					Location::Local(recv.clone()),
+					FilterCurrency::All,
+				),
+				pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+					who.clone(),
+					Location::Local(recv.clone()),
+					FilterCurrency::Specific(CurrencyId::Native),
+				),
+			)
+			.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+		});
+
+		res
 	}
 }
 

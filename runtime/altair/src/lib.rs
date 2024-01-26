@@ -80,6 +80,7 @@ use runtime_common::{
 	fees::{DealWithFees, FeeToTreasury, WeightToFee},
 	oracle::{Feeder, OracleConverterBridge},
 	permissions::PoolAdminCheck,
+	remarks::Remark,
 	xcm::AccountIdToMultiLocation,
 	xcm_transactor, AllowanceDeposit, CurrencyED, HoldId,
 };

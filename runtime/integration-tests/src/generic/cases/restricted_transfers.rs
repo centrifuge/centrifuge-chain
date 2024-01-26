@@ -12,8 +12,11 @@
 
 mod cfg {
 	use cfg_primitives::{currency_decimals, Balance};
-	use cfg_types::tokens::{CurrencyId, FilterCurrency};
-	use frame_support::assert_ok;
+	use cfg_types::{
+		locations::Location,
+		tokens::{CurrencyId, FilterCurrency},
+	};
+	use frame_support::{assert_ok, dispatch::RawOrigin};
 
 	use crate::{
 		generic::{
@@ -54,10 +57,10 @@ mod cfg {
 		env
 	}
 
-	fn validate_fail<T: Runtime>(fee: Balance, call: T::RuntimeCall) {
+	fn validate_fail<T: Runtime>(call: impl Into<T::RuntimeCallExt> + Clone) {
 		// With FilterCurrencyAll
 		{
-			let mut env = setup(FilterCurrency::All);
+			let mut env = setup::<T>(FilterCurrency::All);
 
 			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
 				env.parachain_state(|| {
@@ -71,7 +74,7 @@ mod cfg {
 					)
 				});
 
-			env.submit_now(Keyring::Alice, call).unwrap();
+			let fee = env.submit_now(Keyring::Alice, call.clone()).unwrap();
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -89,7 +92,7 @@ mod cfg {
 
 		// With FilterCurrency::Specific(CurrencyId::Native)
 		{
-			let mut env = setup(FilterCurrency::Specific(CurrencyId::Native));
+			let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
 
 			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
 				env.parachain_state(|| {
@@ -120,10 +123,10 @@ mod cfg {
 		}
 	}
 
-	fn validate_ok<T: Runtime>(call: T::RuntimeCall) -> Balance {
+	fn validate_ok<T: Runtime>(call: impl Into<T::RuntimeCallExt> + Clone) {
 		// With FilterCurrency::Specific(CurrencyId::Native)
 		{
-			let mut env = setup(FilterCurrency::All);
+			let mut env = setup::<T>(FilterCurrency::All);
 
 			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
 				env.parachain_state(|| {
@@ -137,7 +140,7 @@ mod cfg {
 					)
 				});
 
-			let fee = env.submit_now(Keyring::Alice, call).unwrap();
+			let fee = env.submit_now(Keyring::Alice, call.clone()).unwrap();
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -147,15 +150,18 @@ mod cfg {
 				let after_transfer_charlie =
 					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
 
-				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
-				assert_eq!(after_transfer_bob, pre_transfer_bob);
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
 			});
 		}
 
 		// With FilterCurrency::Specific(CurrencyId::Native)
 		{
-			let mut env = setup(FilterCurrency::Specific(CurrencyId::Native));
+			let mut env = setup::<T>(FilterCurrency::Specific(CurrencyId::Native));
 
 			let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
 				env.parachain_state(|| {
@@ -179,29 +185,34 @@ mod cfg {
 				let after_transfer_charlie =
 					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
 
-				assert_eq!(after_transfer_alice, pre_transfer_alice - fee);
-				assert_eq!(after_transfer_bob, pre_transfer_bob);
+				assert_eq!(
+					after_transfer_alice,
+					pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
+				);
+				assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
 				assert_eq!(after_transfer_charlie, pre_transfer_charlie);
 			});
+		}
+	}
 
-			fee
+	fn transfer_ok<T: Runtime>() -> pallet_balances::Call<T> {
+		pallet_balances::Call::<T>::transfer {
+			dest: Keyring::Bob.into(),
+			value: cfg(TRANSFER_AMOUNT),
+		}
+	}
+
+	fn transfer_fail<T: Runtime>() -> pallet_balances::Call<T> {
+		pallet_balances::Call::<T>::transfer {
+			dest: Keyring::Charlie.into(),
+			value: cfg(TRANSFER_AMOUNT),
 		}
 	}
 
 	fn basic_transfer<T: Runtime>() {
-		let fee = validate_ok(pallet_balances::Call::<T>::transfer {
-			dest: Keyring::Bob.into(),
-			value: TRANSFER_AMOUNT,
-		});
-
-		validate_fail(
-			fee,
-			pallet_balances::Call::<T>::transfer {
-				dest: Keyring::Charlie.into(),
-				value: TRANSFER_AMOUNT,
-			},
-		);
+		validate_ok::<T>(transfer_ok::<T>());
+		validate_fail::<T>(transfer_fail::<T>());
 	}
 
-	crate::test_for_runtimes!([development, centrifuge], basic_transfer);
+	crate::test_for_runtimes!(all, basic_transfer);
 }
