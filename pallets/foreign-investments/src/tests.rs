@@ -24,36 +24,36 @@ const POOL_CURR: CurrencyId = 10;
 const SWAP_ID: SwapId = 1;
 const STABLE_RATIO: Balance = 10; // Means: 1 foreign curr is 10 pool curr
 const TRANCHE_RATIO: Balance = 5; // Means: 1 pool curr is 5 tranche curr
-const AMOUNT: Balance = util::to_foreign(200);
+const AMOUNT: Balance = pool_to_foreign(200);
 const TRANCHE_AMOUNT: Balance = 1000;
+
+/// foreign amount to pool amount
+pub const fn foreign_to_pool(foreign_amount: Balance) -> Balance {
+	foreign_amount * STABLE_RATIO
+}
+
+/// pool amount to foreign amount
+pub const fn pool_to_foreign(pool_amount: Balance) -> Balance {
+	pool_amount / STABLE_RATIO
+}
+
+/// pool amount to tranche amount
+pub const fn pool_to_tranche(pool_amount: Balance) -> Balance {
+	pool_amount * TRANCHE_RATIO
+}
+
+/// tranche amount to pool amount
+pub const fn tranche_to_pool(tranche_amount: Balance) -> Balance {
+	tranche_amount / TRANCHE_RATIO
+}
 
 mod util {
 	use super::*;
 
-	/// foreign amount to pool amount
-	pub const fn to_pool(foreign_amount: Balance) -> Balance {
-		foreign_amount * STABLE_RATIO
-	}
-
-	/// pool amount to foreign amount
-	pub const fn to_foreign(pool_amount: Balance) -> Balance {
-		pool_amount / STABLE_RATIO
-	}
-
-	/// pool amount to tranche amount
-	pub const fn to_tranche(pool_amount: Balance) -> Balance {
-		pool_amount * TRANCHE_RATIO
-	}
-
-	/// tranche amount to pool amount
-	pub const fn from_tranche(tranche_amount: Balance) -> Balance {
-		tranche_amount / TRANCHE_RATIO
-	}
-
 	pub fn configure_currency_converter() {
 		MockCurrencyConversion::mock_stable_to_stable(|to, from, amount_from| match (from, to) {
-			(POOL_CURR, FOREIGN_CURR) => Ok(to_foreign(amount_from)),
-			(FOREIGN_CURR, POOL_CURR) => Ok(to_pool(amount_from)),
+			(POOL_CURR, FOREIGN_CURR) => Ok(pool_to_foreign(amount_from)),
+			(FOREIGN_CURR, POOL_CURR) => Ok(foreign_to_pool(amount_from)),
 			_ => Ok(amount_from),
 		});
 	}
@@ -141,7 +141,7 @@ mod util {
 	}
 
 	/// Emulates partial collected investment
-	pub fn collect_last_investment(pool_amount: Balance) {
+	pub fn allow_collect_investment(pool_amount: Balance) {
 		let value = MockInvestment::investment(&USER, INVESTMENT_ID).unwrap();
 		MockInvestment::mock_collect_investment(move |_, _| {
 			MockInvestment::mock_investment(move |_, _| Ok(value - pool_amount));
@@ -149,7 +149,7 @@ mod util {
 			CollectedInvestmentHook::<Runtime>::notify_status_change(
 				(USER, INVESTMENT_ID),
 				CollectedAmount {
-					amount_collected: to_tranche(pool_amount),
+					amount_collected: pool_to_tranche(pool_amount),
 					amount_payment: pool_amount,
 				},
 			)
@@ -157,7 +157,7 @@ mod util {
 	}
 
 	/// Emulates partial collected redemption
-	pub fn collect_last_redemption(tranche_amount: Balance) {
+	pub fn allow_collect_redemption(tranche_amount: Balance) {
 		let value = MockInvestment::redemption(&USER, INVESTMENT_ID).unwrap();
 		MockInvestment::mock_collect_redemption(move |_, _| {
 			MockInvestment::mock_redemption(move |_, _| Ok(value - tranche_amount));
@@ -165,7 +165,7 @@ mod util {
 			CollectedRedemptionHook::<Runtime>::notify_status_change(
 				(USER, INVESTMENT_ID),
 				CollectedAmount {
-					amount_collected: from_tranche(tranche_amount),
+					amount_collected: tranche_to_pool(tranche_amount),
 					amount_payment: tranche_amount,
 				},
 			)
@@ -183,7 +183,7 @@ mod swaps {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
-				assert_eq!(amount, util::to_pool(AMOUNT));
+				assert_eq!(amount, foreign_to_pool(AMOUNT));
 				assert_eq!(ratio, Ratio::one());
 
 				Ok(SWAP_ID)
@@ -195,13 +195,13 @@ mod swaps {
 					Swap {
 						currency_in: POOL_CURR,
 						currency_out: FOREIGN_CURR,
-						amount_in: util::to_pool(AMOUNT),
+						amount_in: foreign_to_pool(AMOUNT),
 					},
 					None,
 				),
 				SwapStatus {
 					swapped: 0,
-					pending: util::to_pool(AMOUNT),
+					pending: foreign_to_pool(AMOUNT),
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -210,7 +210,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_same_direction_swap() {
-		const PREVIOUS_AMOUNT: Balance = AMOUNT + util::to_foreign(100);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT + pool_to_foreign(100);
 
 		new_test_ext().execute_with(|| {
 			MockTokenSwaps::mock_get_order_details(move |swap_id| {
@@ -219,13 +219,13 @@ mod swaps {
 				Some(Swap {
 					currency_in: POOL_CURR,
 					currency_out: FOREIGN_CURR,
-					amount_in: util::to_pool(PREVIOUS_AMOUNT),
+					amount_in: foreign_to_pool(PREVIOUS_AMOUNT),
 				})
 			});
 			MockTokenSwaps::mock_update_order(|who, swap_id, amount, ratio| {
 				assert_eq!(who, USER);
 				assert_eq!(swap_id, SWAP_ID);
-				assert_eq!(amount, util::to_pool(PREVIOUS_AMOUNT + AMOUNT));
+				assert_eq!(amount, foreign_to_pool(PREVIOUS_AMOUNT + AMOUNT));
 				assert_eq!(ratio, Ratio::one());
 
 				Ok(())
@@ -237,13 +237,13 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: util::to_pool(AMOUNT),
+						amount_in: foreign_to_pool(AMOUNT),
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: 0,
-					pending: util::to_pool(PREVIOUS_AMOUNT + AMOUNT),
+					pending: foreign_to_pool(PREVIOUS_AMOUNT + AMOUNT),
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -252,7 +252,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_greater_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = AMOUNT + util::to_foreign(100);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT + pool_to_foreign(100);
 
 		new_test_ext().execute_with(|| {
 			util::configure_currency_converter();
@@ -282,12 +282,12 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: util::to_pool(AMOUNT),
+						amount_in: foreign_to_pool(AMOUNT),
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
-					swapped: util::to_pool(AMOUNT),
+					swapped: foreign_to_pool(AMOUNT),
 					pending: 0,
 					swap_id: Some(SWAP_ID),
 				}
@@ -322,12 +322,12 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: util::to_pool(AMOUNT),
+						amount_in: foreign_to_pool(AMOUNT),
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
-					swapped: util::to_pool(AMOUNT),
+					swapped: foreign_to_pool(AMOUNT),
 					pending: 0,
 					swap_id: None,
 				}
@@ -337,7 +337,7 @@ mod swaps {
 
 	#[test]
 	fn swap_over_smaller_inverse_swap() {
-		const PREVIOUS_AMOUNT: Balance = AMOUNT - util::to_foreign(100);
+		const PREVIOUS_AMOUNT: Balance = AMOUNT - pool_to_foreign(100);
 		const NEW_SWAP_ID: SwapId = SWAP_ID + 1;
 
 		new_test_ext().execute_with(|| {
@@ -362,7 +362,7 @@ mod swaps {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
-				assert_eq!(amount, util::to_pool(AMOUNT - PREVIOUS_AMOUNT));
+				assert_eq!(amount, foreign_to_pool(AMOUNT - PREVIOUS_AMOUNT));
 				assert_eq!(ratio, Ratio::one());
 
 				Ok(NEW_SWAP_ID)
@@ -374,13 +374,13 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: util::to_pool(AMOUNT),
+						amount_in: foreign_to_pool(AMOUNT),
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
-					swapped: util::to_pool(PREVIOUS_AMOUNT),
-					pending: util::to_pool(AMOUNT - PREVIOUS_AMOUNT),
+					swapped: foreign_to_pool(PREVIOUS_AMOUNT),
+					pending: foreign_to_pool(AMOUNT - PREVIOUS_AMOUNT),
 					swap_id: Some(NEW_SWAP_ID),
 				}
 			);
@@ -567,7 +567,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 4));
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -579,7 +579,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(AMOUNT / 4))
+				Ok(foreign_to_pool(AMOUNT / 4))
 			);
 		});
 	}
@@ -596,7 +596,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(3 * AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
 
 			assert_ok!(ForeignInvestment::decrease_foreign_investment(
 				&USER,
@@ -615,7 +615,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(AMOUNT / 2))
+				Ok(foreign_to_pool(AMOUNT / 2))
 			);
 		});
 	}
@@ -632,7 +632,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(3 * AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
 
 			assert_ok!(ForeignInvestment::decrease_foreign_investment(
 				&USER,
@@ -658,7 +658,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(3 * AMOUNT / 4))
+				Ok(foreign_to_pool(3 * AMOUNT / 4))
 			);
 		});
 	}
@@ -675,7 +675,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
 
 			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
@@ -719,7 +719,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
 
 			assert_ok!(ForeignInvestment::decrease_foreign_investment(
 				&USER,
@@ -762,7 +762,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(AMOUNT / 4))
+				Ok(foreign_to_pool(AMOUNT / 4))
 			);
 		});
 	}
@@ -779,8 +779,8 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT / 2));
-			util::collect_last_investment(util::to_pool(AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 2));
+			util::allow_collect_investment(foreign_to_pool(AMOUNT / 4));
 
 			MockCollectInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
 				assert_eq!(who, USER);
@@ -790,7 +790,7 @@ mod investment {
 					ExecutedForeignCollect {
 						currency: FOREIGN_CURR,
 						amount_currency_payout: AMOUNT / 4,
-						amount_tranche_tokens_payout: util::to_tranche(util::to_pool(AMOUNT / 4)),
+						amount_tranche_tokens_payout: pool_to_tranche(foreign_to_pool(AMOUNT / 4)),
 						amount_remaining: 3 * AMOUNT / 4,
 					}
 				);
@@ -809,8 +809,8 @@ mod investment {
 					base: BaseInfo {
 						foreign_currency: FOREIGN_CURR,
 						collected: CollectedAmount {
-							amount_collected: util::to_tranche(util::to_pool(AMOUNT / 4)),
-							amount_payment: util::to_pool(AMOUNT / 4)
+							amount_collected: pool_to_tranche(foreign_to_pool(AMOUNT / 4)),
+							amount_payment: foreign_to_pool(AMOUNT / 4)
 						}
 					},
 					decrease_swapped_amount: 0,
@@ -819,7 +819,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(AMOUNT / 4))
+				Ok(foreign_to_pool(AMOUNT / 4))
 			);
 		});
 	}
@@ -836,8 +836,8 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT / 2));
-			util::collect_last_investment(util::to_pool(AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 2));
+			util::allow_collect_investment(foreign_to_pool(AMOUNT / 4));
 
 			MockCollectInvestHook::mock_notify_status_change(|_, _| Ok(()));
 
@@ -879,8 +879,8 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, util::to_pool(AMOUNT));
-			util::collect_last_investment(util::to_pool(AMOUNT));
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT));
+			util::allow_collect_investment(foreign_to_pool(AMOUNT));
 
 			MockCollectInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
@@ -888,7 +888,7 @@ mod investment {
 					ExecutedForeignCollect {
 						currency: FOREIGN_CURR,
 						amount_currency_payout: AMOUNT,
-						amount_tranche_tokens_payout: util::to_tranche(util::to_pool(AMOUNT)),
+						amount_tranche_tokens_payout: pool_to_tranche(foreign_to_pool(AMOUNT)),
 						amount_remaining: 0,
 					}
 				);
@@ -908,7 +908,7 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(util::to_pool(0))
+				Ok(foreign_to_pool(0))
 			);
 		});
 	}
@@ -925,13 +925,13 @@ mod investment {
 				assert_ok!(ForeignInvestment::increase_foreign_investment(
 					&USER,
 					INVESTMENT_ID,
-					util::to_pool(AMOUNT),
+					foreign_to_pool(AMOUNT),
 					POOL_CURR
 				));
 
 				assert_eq!(
 					ForeignInvestment::investment(&USER, INVESTMENT_ID),
-					Ok(util::to_pool(AMOUNT))
+					Ok(foreign_to_pool(AMOUNT))
 				);
 			});
 		}
@@ -944,7 +944,7 @@ mod investment {
 				assert_ok!(ForeignInvestment::increase_foreign_investment(
 					&USER,
 					INVESTMENT_ID,
-					util::to_pool(AMOUNT),
+					foreign_to_pool(AMOUNT),
 					POOL_CURR
 				));
 
@@ -952,7 +952,7 @@ mod investment {
 					assert_eq!(
 						msg,
 						ExecutedForeignDecreaseInvest {
-							amount_decreased: util::to_pool(AMOUNT),
+							amount_decreased: foreign_to_pool(AMOUNT),
 							foreign_currency: POOL_CURR,
 							amount_remaining: 0,
 						}
@@ -964,13 +964,13 @@ mod investment {
 				assert_ok!(ForeignInvestment::decrease_foreign_investment(
 					&USER,
 					INVESTMENT_ID,
-					util::to_pool(AMOUNT),
+					foreign_to_pool(AMOUNT),
 					POOL_CURR
 				));
 
 				assert_eq!(
 					ForeignInvestment::investment(&USER, INVESTMENT_ID),
-					Ok(util::to_pool(0))
+					Ok(foreign_to_pool(0))
 				);
 
 				assert_eq!(
@@ -1086,7 +1086,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::collect_last_redemption(TRANCHE_AMOUNT / 4);
+			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
 
 			assert_ok!(ForeignInvestment::collect_foreign_redemption(
 				&USER,
@@ -1100,8 +1100,8 @@ mod redemption {
 					base: BaseInfo {
 						foreign_currency: FOREIGN_CURR,
 						collected: CollectedAmount {
-							amount_collected: util::from_tranche(TRANCHE_AMOUNT / 4),
-							amount_payment: TRANCHE_AMOUNT / 4
+							amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+							amount_payment: 3 * TRANCHE_AMOUNT / 4
 						}
 					},
 					swapped_amount: 0,
@@ -1110,8 +1110,151 @@ mod redemption {
 
 			assert_eq!(
 				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
-				Ok(3 * TRANCHE_AMOUNT / 4)
+				Ok(TRANCHE_AMOUNT / 4)
 			);
+		});
+	}
+
+	#[test]
+	fn increase_and_partial_collect_and_partial_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
+
+			assert_ok!(ForeignInvestment::collect_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(RedemptionInfo {
+					base: BaseInfo {
+						foreign_currency: FOREIGN_CURR,
+						collected: CollectedAmount {
+							amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+							amount_payment: 3 * TRANCHE_AMOUNT / 4
+						}
+					},
+					swapped_amount: tranche_to_pool(TRANCHE_AMOUNT / 2),
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				Ok(TRANCHE_AMOUNT / 4)
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_partial_collect_and_partial_fulfill_and_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
+
+			assert_ok!(ForeignInvestment::collect_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
+
+			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
+				assert_eq!(who, USER);
+				assert_eq!(investment_id, INVESTMENT_ID);
+				assert_eq!(
+					msg,
+					ExecutedForeignCollect {
+						currency: FOREIGN_CURR,
+						amount_currency_payout: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+						amount_tranche_tokens_payout: 3 * TRANCHE_AMOUNT / 4,
+						amount_remaining: TRANCHE_AMOUNT / 4,
+					}
+				);
+				Ok(())
+			});
+
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 4));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(RedemptionInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					swapped_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::redemption(&USER, INVESTMENT_ID),
+				Ok(TRANCHE_AMOUNT / 4)
+			);
+		});
+	}
+
+	#[test]
+	fn increase_and_collect_and_fulfill() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				TRANCHE_AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::allow_collect_redemption(TRANCHE_AMOUNT);
+
+			assert_ok!(ForeignInvestment::collect_foreign_redemption(
+				&USER,
+				INVESTMENT_ID,
+				FOREIGN_CURR
+			));
+
+			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
+				assert_eq!(who, USER);
+				assert_eq!(investment_id, INVESTMENT_ID);
+				assert_eq!(
+					msg,
+					ExecutedForeignCollect {
+						currency: FOREIGN_CURR,
+						amount_currency_payout: tranche_to_pool(TRANCHE_AMOUNT),
+						amount_tranche_tokens_payout: TRANCHE_AMOUNT,
+						amount_remaining: 0,
+					}
+				);
+				Ok(())
+			});
+
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT));
+
+			assert_eq!(
+				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				None,
+			);
+
+			assert_eq!(ForeignInvestment::redemption(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -1130,15 +1273,15 @@ mod redemption {
 					POOL_CURR,
 				));
 
-				util::collect_last_redemption(TRANCHE_AMOUNT);
+				util::allow_collect_redemption(TRANCHE_AMOUNT);
 
 				MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
 						msg,
 						ExecutedForeignCollect {
 							currency: POOL_CURR,
-							amount_currency_payout: util::to_pool(AMOUNT),
-							amount_tranche_tokens_payout: util::to_tranche(util::to_pool(AMOUNT)),
+							amount_currency_payout: tranche_to_pool(TRANCHE_AMOUNT),
+							amount_tranche_tokens_payout: TRANCHE_AMOUNT,
 							amount_remaining: 0,
 						}
 					);

@@ -13,7 +13,7 @@ use crate::{
 /// Internal type used as result of `Pallet::apply_swap()`
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
-#[derive(Debug, PartialEq)]
+#[derive(RuntimeDebugNoBound, PartialEq)]
 pub struct SwapStatus<T: Config> {
 	/// The amount (in) already swapped and available to use.
 	pub swapped: T::Balance,
