@@ -44,6 +44,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_types::investments::Swap;
+pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
