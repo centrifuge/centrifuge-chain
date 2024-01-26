@@ -2645,7 +2645,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 			add_benchmark!(params, batches, pallet_order_book, OrderBook);
-			add_benchmark!(params, batches, pallet_liquidity_pools, LiquidityPools);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_investments, Investments);
 			add_benchmark!(params, batches,	pallet_xcm, PolkadotXcm);
@@ -2706,7 +2705,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 			list_benchmark!(list, extra, pallet_order_book, OrderBook);
-			list_benchmark!(list, extra, pallet_liquidity_pools, LiquidityPools);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_investments, Investments);
 			list_benchmark!(list, extra, pallet_xcm, PolkadotXcm);

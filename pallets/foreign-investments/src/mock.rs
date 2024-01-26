@@ -158,7 +158,6 @@ impl pallet_foreign_investments::Config for Runtime {
 	type SwapId = SwapId;
 	type TokenSwaps = MockTokenSwaps;
 	type TrancheId = TrancheId;
-	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

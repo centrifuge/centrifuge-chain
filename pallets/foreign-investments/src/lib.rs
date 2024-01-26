@@ -104,9 +104,6 @@ pub mod pallet {
 	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Type representing the weight of this pallet
-		type WeightInfo: frame_system::WeightInfo;
-
 		/// The source of truth for the balance of accounts
 		type Balance: Parameter
 			+ Member

@@ -28,7 +28,6 @@ use runtime_common::{
 	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
 	transfer_filter::PreLpTransfer,
 };
-use sp_runtime::traits::One;
 
 use crate::{
 	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
@@ -36,10 +35,6 @@ use crate::{
 	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TransferAllowList,
 	TreasuryAccount,
 };
-
-parameter_types! {
-	pub DefaultTokenSellRatio: Ratio = Ratio::one();
-}
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
@@ -56,7 +51,6 @@ impl pallet_foreign_investments::Config for Runtime {
 	type SwapId = u64;
 	type TokenSwaps = OrderBook;
 	type TrancheId = TrancheId;
-	type WeightInfo = ();
 }
 
 parameter_types! {
