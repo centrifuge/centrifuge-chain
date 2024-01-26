@@ -17,6 +17,7 @@ mod cfg {
 		tokens::{CurrencyId, FilterCurrency},
 	};
 	use frame_support::{assert_ok, dispatch::RawOrigin};
+	use sp_runtime::traits::Zero;
 
 	use crate::{
 		generic::{
@@ -52,12 +53,19 @@ mod cfg {
 					Location::Local(Keyring::Bob.to_account_id())
 				)
 			);
+
+			assert_ok!(pallet_proxy::Pallet::<T>::add_proxy(
+				RawOrigin::Signed(Keyring::Alice.into()).into(),
+				Keyring::Dave.into(),
+				Default::default(),
+				Zero::zero(),
+			));
 		});
 
 		env
 	}
 
-	fn validate_fail<T: Runtime>(call: impl Into<T::RuntimeCallExt> + Clone) {
+	fn validate_fail<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
 		// With FilterCurrencyAll
 		{
 			let mut env = setup::<T>(FilterCurrency::All);
@@ -74,7 +82,9 @@ mod cfg {
 					)
 				});
 
-			let fee = env.submit_now(Keyring::Alice, call.clone()).unwrap();
+			let fee = env.submit_now(who, call.clone()).unwrap();
+			// NOTE: Only use fee, if submitter is Alice
+			let fee = if who != Keyring::Alice { 0 } else { fee };
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -106,7 +116,9 @@ mod cfg {
 					)
 				});
 
-			let fee = env.submit_now(Keyring::Alice, call).unwrap();
+			let fee = env.submit_now(who, call).unwrap();
+			// NOTE: Only use fee, if submitter is Alice
+			let fee = if who != Keyring::Alice { 0 } else { fee };
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -123,7 +135,7 @@ mod cfg {
 		}
 	}
 
-	fn validate_ok<T: Runtime>(call: impl Into<T::RuntimeCallExt> + Clone) {
+	fn validate_ok<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
 		// With FilterCurrency::Specific(CurrencyId::Native)
 		{
 			let mut env = setup::<T>(FilterCurrency::All);
@@ -140,7 +152,10 @@ mod cfg {
 					)
 				});
 
-			let fee = env.submit_now(Keyring::Alice, call.clone()).unwrap();
+			let fee = env.submit_now(who, call.clone()).unwrap();
+
+			// NOTE: Only use fee, if submitter is Alice
+			let fee = if who != Keyring::Alice { 0 } else { fee };
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -175,7 +190,9 @@ mod cfg {
 					)
 				});
 
-			let fee = env.submit_now(Keyring::Alice, call).unwrap();
+			let fee = env.submit_now(who, call).unwrap();
+			// NOTE: Only use fee, if submitter is Alice
+			let fee = if who != Keyring::Alice { 0 } else { fee };
 
 			env.parachain_state(|| {
 				let after_transfer_alice =
@@ -210,9 +227,29 @@ mod cfg {
 	}
 
 	fn basic_transfer<T: Runtime>() {
-		validate_ok::<T>(transfer_ok::<T>());
-		validate_fail::<T>(transfer_fail::<T>());
+		validate_ok::<T>(Keyring::Alice, transfer_ok::<T>());
+		validate_fail::<T>(Keyring::Alice, transfer_fail::<T>());
+	}
+
+	fn proxy_transfer<T: Runtime>() {
+		validate_ok::<T>(
+			Keyring::Dave,
+			pallet_proxy::Call::<T>::proxy {
+				real: Keyring::Alice.into(),
+				force_proxy_type: None,
+				call: Box::new(transfer_ok::<T>().into()),
+			},
+		);
+		validate_fail::<T>(
+			Keyring::Dave,
+			pallet_proxy::Call::<T>::proxy {
+				real: Keyring::Alice.into(),
+				force_proxy_type: None,
+				call: Box::new(transfer_fail::<T>().into()),
+			},
+		);
 	}
 
 	crate::test_for_runtimes!(all, basic_transfer);
+	crate::test_for_runtimes!(all, proxy_transfer);
 }

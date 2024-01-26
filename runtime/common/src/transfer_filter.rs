@@ -27,8 +27,8 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
+use sp_std::vec::Vec;
 use xcm::v3::{MultiAsset, MultiLocation};
-
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
@@ -207,48 +207,77 @@ where
 	fn retrieve(
 		caller: &T::AccountId,
 		call: &<T as frame_system::Config>::RuntimeCall,
-	) -> Result<sp_std::vec::Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
-		let mut checks = sp_std::vec::Vec::new();
-		let mut current_call = Some(call);
+	) -> Result<Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
+		Self::recursive_search(caller.clone(), call, |who, balance_call, checks| {
+			match balance_call {
+				pallet_balances::Call::transfer { dest, .. }
+				| pallet_balances::Call::transfer_all { dest, .. }
+				| pallet_balances::Call::transfer_allow_death { dest, .. }
+				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
+					let recv: T::AccountId = <T as frame_system::Config>::Lookup::lookup(
+						dest.clone(),
+					)
+					.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?;
 
-		while let Ok(inner) = Self::recursive_search(&mut current_call) {
-			if let Some(balance_call) = inner {
-				match balance_call {
-					pallet_balances::Call::transfer { dest, .. }
-					| pallet_balances::Call::transfer_all { dest, .. }
-					| pallet_balances::Call::transfer_allow_death { dest, .. }
-					| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
-						let recv: T::AccountId = <T as frame_system::Config>::Lookup::lookup(
-							dest.clone(),
-						)
+					checks.push((who, recv));
+					Ok(())
+				}
+
+				// If the call is not a transfer we are fine with it to go through without
+				// futher checks
+				_ => Ok(()),
+			}
+		})
+	}
+
+	fn recursive_search<F>(
+		caller: T::AccountId,
+		call: &<T as frame_system::Config>::RuntimeCall,
+		check: F,
+	) -> Result<Vec<(T::AccountId, T::AccountId)>, TransactionValidityError>
+	where
+		F: Fn(
+				T::AccountId,
+				pallet_balances::Call<T>,
+				&mut Vec<(T::AccountId, T::AccountId)>,
+			) -> Result<(), TransactionValidityError>
+			+ Clone,
+	{
+		let mut checks = Vec::new();
+
+		if let Some(balance_call) = IsSubType::<pallet_balances::Call<T>>::is_sub_type(call) {
+			check(caller, balance_call.clone(), &mut checks)?;
+		} else if let Some(call) = IsSubType::<pallet_proxy::Call<T>>::is_sub_type(call) {
+			match call {
+				pallet_proxy::Call::<T>::proxy { real, call, .. }
+				| pallet_proxy::Call::<T>::proxy_announced { real, call, .. } => {
+					let caller = T::Lookup::lookup(real.clone())
 						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?;
 
-						checks.push((caller.clone(), recv));
-					}
-
-					// If the call is not a transfer we are fine with it to go through without
-					// futher checks
-					_ => (),
+					checks.extend(Self::recursive_search(caller, call, check)?);
 				}
+				_ => {}
+			}
+		} else if let Some(call) = IsSubType::<pallet_utility::Call<T>>::is_sub_type(call) {
+			match call {
+				pallet_utility::Call::<T>::batch { calls }
+				| pallet_utility::Call::<T>::batch_all { calls } => {
+					for call in calls {
+						checks.extend(Self::recursive_search(caller.clone(), call, check.clone())?);
+					}
+				}
+				_ => {}
+			}
+		} else if let Some(call) = IsSubType::<pallet_remarks::Call<T>>::is_sub_type(call) {
+			match call {
+				pallet_remarks::Call::<T>::remark { call, .. } => {
+					checks.extend(Self::recursive_search(caller, call, check)?)
+				}
+				_ => {}
 			}
 		}
 
 		Ok(checks)
-	}
-
-	fn recursive_search(
-		maybe_call: &mut Option<&<T as frame_system::Config>::RuntimeCall>,
-	) -> Result<Option<pallet_balances::Call<T>>, ()> {
-		if let Some(call) = maybe_call {
-			if let Some(balance_call) = IsSubType::<pallet_balances::Call<T>>::is_sub_type(*call) {
-				*maybe_call = None;
-				Ok(Some(balance_call.clone()))
-			} else {
-				Err(())
-			}
-		} else {
-			Err(())
-		}
 	}
 }
 
