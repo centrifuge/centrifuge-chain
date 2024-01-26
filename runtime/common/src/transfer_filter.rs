@@ -314,24 +314,23 @@ where
 		_: &DispatchInfoOf<Self::Call>,
 		_: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let checks = Self::retrieve(who, call)?;
-		let res = checks.iter().try_for_each(|(who, recv)| {
-			amalgamate_allowance(
-				pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-					who.clone(),
-					Location::Local(recv.clone()),
-					FilterCurrency::All,
-				),
-				pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-					who.clone(),
-					Location::Local(recv.clone()),
-					FilterCurrency::Specific(CurrencyId::Native),
-				),
-			)
-			.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
-		});
-
-		res
+		Self::retrieve(who, call)?
+			.iter()
+			.try_for_each(|(who, recv)| {
+				amalgamate_allowance(
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::All,
+					),
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::Specific(CurrencyId::Native),
+					),
+				)
+				.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+			})
 	}
 }
 
