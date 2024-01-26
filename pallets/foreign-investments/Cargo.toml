@@ -11,11 +11,9 @@ version = "1.0.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-log = { version = "0.4.17", default-features = false }
 parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
@@ -28,7 +26,6 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
 
 [dev-dependencies]
-rand = "0.8"
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 
@@ -37,14 +34,12 @@ cfg-mocks = { path = "../../libs/mocks" }
 [features]
 default = ["std"]
 std = [
-  "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
   "parity-scale-codec/std",
   "frame-benchmarking?/std",
   "frame-support/std",
   "frame-system/std",
-  "log/std",
   "scale-info/std",
   "sp-runtime/std",
   "sp-std/std",
@@ -52,7 +47,6 @@ std = [
 runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
@@ -60,7 +54,6 @@ runtime-benchmarks = [
   "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
-  "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "frame-support/try-runtime",
