@@ -139,9 +139,9 @@ impl<T: Config> InvestmentInfo<T> {
 
 		if !pool_amount.is_zero() {
 			T::Investment::update_investment(
-				&who,
+				who,
 				investment_id,
-				T::Investment::investment(&who, investment_id)?.ensure_add(pool_amount)?,
+				T::Investment::investment(who, investment_id)?.ensure_add(pool_amount)?,
 			)?;
 		}
 
@@ -304,7 +304,7 @@ impl<T: Config> RedemptionInfo<T> {
 				currency: self.base.foreign_currency,
 				amount_currency_payout: self.swapped_amount,
 				amount_tranche_tokens_payout: self.collected_tranche_tokens(),
-				amount_remaining: T::Investment::redemption(&who, investment_id)?,
+				amount_remaining: T::Investment::redemption(who, investment_id)?,
 			};
 
 			self.base.collected = CollectedAmount::default();
@@ -325,7 +325,7 @@ impl<T: Config> RedemptionInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<bool, DispatchError> {
-		Ok(T::Investment::redemption(&who, investment_id)?.is_zero()
+		Ok(T::Investment::redemption(who, investment_id)?.is_zero()
 			&& self.collected_tranche_tokens().is_zero())
 	}
 }

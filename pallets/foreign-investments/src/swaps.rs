@@ -67,8 +67,7 @@ impl<T: Config> Swaps<T> {
 		currency: T::CurrencyId,
 	) -> Result<T::Balance, DispatchError> {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
-			.map(|swap_id| T::TokenSwaps::get_order_details(swap_id))
-			.flatten()
+			.and_then(T::TokenSwaps::get_order_details)
 			.map(|swap| {
 				if swap.currency_in == currency {
 					Ok(swap.amount_in)
@@ -92,11 +91,10 @@ impl<T: Config> Swaps<T> {
 		currency_in: T::CurrencyId,
 	) -> T::Balance {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
-			.map(|swap_id| T::TokenSwaps::get_order_details(swap_id))
-			.flatten()
+			.and_then(T::TokenSwaps::get_order_details)
 			.filter(|swap| swap.currency_in == currency_in)
 			.map(|swap| swap.amount_in)
-			.unwrap_or(T::Balance::default())
+			.unwrap_or_default()
 	}
 
 	/// A wrap over `apply_over_swap()` that makes the swap from an

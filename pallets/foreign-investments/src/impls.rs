@@ -29,7 +29,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_amount: T::Balance,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let swap = ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| {
+		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.get_or_insert(InvestmentInfo::new(foreign_currency)?);
 			info.base.ensure_same_foreign(foreign_currency)?;
 			info.pre_increase_swap(investment_id, foreign_amount)
@@ -50,7 +50,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_amount: T::Balance,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let swap = ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| {
+		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(foreign_currency)?;
 			info.pre_decrease_swap(who, investment_id, foreign_amount)
@@ -89,7 +89,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		tranche_tokens_amount: T::Balance,
 		payout_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		ForeignRedemptionInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+		ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(payout_foreign_currency)?;
 			info.decrease(who, investment_id, tranche_tokens_amount)?;
@@ -107,7 +107,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		payment_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		ForeignInvestmentInfo::<T>::mutate(&who, investment_id, |info| {
+		ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(payment_foreign_currency)
 		})?;
@@ -120,7 +120,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		investment_id: T::InvestmentId,
 		payout_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		ForeignRedemptionInfo::<T>::mutate(&who, investment_id, |info| {
+		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(payout_foreign_currency)
 		})?;
@@ -260,7 +260,7 @@ impl<T: Config> SwapDone<T> {
 		investment_id: T::InvestmentId,
 		swapped: T::Balance,
 	) -> DispatchResult {
-		ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.post_increase_swap(who, investment_id, swapped)
 		})
@@ -274,7 +274,7 @@ impl<T: Config> SwapDone<T> {
 		swapped: T::Balance,
 		pending: T::Balance,
 	) -> DispatchResult {
-		let msg = ForeignInvestmentInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+		let msg = ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			let msg = info.post_decrease_swap(who, investment_id, swapped, pending)?;
 
@@ -304,7 +304,7 @@ impl<T: Config> SwapDone<T> {
 		swapped_amount: T::Balance,
 		pending_amount: T::Balance,
 	) -> DispatchResult {
-		let msg = ForeignRedemptionInfo::<T>::mutate_exists(&who, investment_id, |entry| {
+		let msg = ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			let msg = info.post_swap(who, investment_id, swapped_amount, pending_amount)?;
 
