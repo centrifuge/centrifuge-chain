@@ -300,13 +300,11 @@ impl<T: Config> RedemptionInfo<T> {
 	) -> Result<Option<ExecutedForeignCollect<T::Balance, T::CurrencyId>>, DispatchError> {
 		self.swapped_amount.ensure_add_assign(swapped_amount)?;
 		if pending_amount.is_zero() {
-			let redemption = T::Investment::redemption(&who, investment_id)?;
-
 			let msg = ExecutedForeignCollect {
 				currency: self.base.foreign_currency,
 				amount_currency_payout: self.swapped_amount,
 				amount_tranche_tokens_payout: self.collected_tranche_tokens(),
-				amount_remaining: redemption,
+				amount_remaining: T::Investment::redemption(&who, investment_id)?,
 			};
 
 			self.base.collected = CollectedAmount::default();
