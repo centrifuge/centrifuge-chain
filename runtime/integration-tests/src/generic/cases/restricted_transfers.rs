@@ -17,6 +17,7 @@ mod cfg {
 		tokens::{CurrencyId, FilterCurrency},
 	};
 	use frame_support::{assert_ok, dispatch::RawOrigin};
+	use runtime_common::remarks::Remark;
 	use sp_runtime::traits::Zero;
 
 	use crate::{
@@ -317,9 +318,45 @@ mod cfg {
 		);
 	}
 
+	fn remark_transfer<T: Runtime>() {
+		validate_ok::<T>(
+			Keyring::Alice,
+			pallet_remarks::Call::<T>::remark {
+				remarks: vec![Remark::Named(
+					"TEST"
+						.to_string()
+						.as_bytes()
+						.to_vec()
+						.try_into()
+						.expect("Small enough. qed"),
+				)]
+				.try_into()
+				.expect("Small enough. qed."),
+				call: Box::new(transfer_ok::<T>().into()),
+			},
+		);
+		validate_fail::<T>(
+			Keyring::Alice,
+			pallet_remarks::Call::<T>::remark {
+				remarks: vec![Remark::Named(
+					"TEST"
+						.to_string()
+						.as_bytes()
+						.to_vec()
+						.try_into()
+						.expect("Small enough. qed"),
+				)]
+				.try_into()
+				.expect("Small enough. qed."),
+				call: Box::new(transfer_fail::<T>().into()),
+			},
+		);
+	}
+
 	crate::test_for_runtimes!(all, basic_transfer);
 	crate::test_for_runtimes!(all, proxy_transfer);
 	crate::test_for_runtimes!(all, batch_proxy_transfer);
 	crate::test_for_runtimes!(all, batch_transfer);
 	crate::test_for_runtimes!(all, batch_all_transfer);
+	crate::test_for_runtimes!(all, remark_transfer);
 }
