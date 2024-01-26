@@ -75,6 +75,14 @@ pub type ForeignId<T> = (
 );
 
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
+pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::TrancheId;
+pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::PoolId;
 
 /// Get the pool currency associated to a investment_id
 pub fn pool_currency_of<T: pallet::Config>(
@@ -92,7 +100,7 @@ pub mod pallet {
 		IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
-	use frame_support::{dispatch::HasCompact, pallet_prelude::*};
+	use frame_support::pallet_prelude::*;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
 
 	use super::*;
@@ -114,17 +122,24 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		/// Type for price ratio for cost of incoming currency relative to
+		/// outgoing
+		type BalanceRatio: Parameter
+			+ Member
+			+ sp_runtime::FixedPointNumber
+			+ sp_runtime::traits::EnsureMul
+			+ sp_runtime::traits::EnsureDiv
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+
+		/// The token swap order identifying type
+		type SwapId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+
 		/// The currency type of transferrable tokens
 		type CurrencyId: Parameter + Member + Copy + MaxEncodedLen;
 
-		/// The pool id type required for the investment identifier
-		type PoolId: Member + Parameter + Copy + HasCompact + MaxEncodedLen + core::fmt::Debug;
-
-		/// The tranche id type required for the investment identifier
-		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen;
-
 		/// The investment identifying type required for the investment type
-		type InvestmentId: TrancheCurrency<Self::PoolId, Self::TrancheId>
+		type InvestmentId: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
 			+ Parameter
 			+ Copy
 			+ MaxEncodedLen;
@@ -143,19 +158,6 @@ pub mod pallet {
 				InvestmentId = Self::InvestmentId,
 				Result = (),
 			>;
-
-		/// Type for price ratio for cost of incoming currency relative to
-		/// outgoing
-		type BalanceRatio: Parameter
-			+ Member
-			+ sp_runtime::FixedPointNumber
-			+ sp_runtime::traits::EnsureMul
-			+ sp_runtime::traits::EnsureDiv
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
-
-		/// The token swap order identifying type
-		type SwapId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
 
 		/// The type which exposes token swap order functionality such as
 		/// placing and cancelling orders
@@ -204,12 +206,7 @@ pub mod pallet {
 		>;
 
 		/// The source of truth for pool currencies.
-		type PoolInspect: PoolInspect<
-			Self::AccountId,
-			Self::CurrencyId,
-			PoolId = Self::PoolId,
-			TrancheId = Self::TrancheId,
-		>;
+		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
 	}
 
 	/// Contains the information about the foreign investment process

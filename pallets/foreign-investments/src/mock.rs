@@ -153,11 +153,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
 	type Investment = MockInvestment;
 	type InvestmentId = InvestmentId;
-	type PoolId = PoolId;
 	type PoolInspect = MockPools;
 	type SwapId = SwapId;
 	type TokenSwaps = MockTokenSwaps;
-	type TrancheId = TrancheId;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

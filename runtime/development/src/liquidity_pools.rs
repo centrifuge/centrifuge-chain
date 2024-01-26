@@ -46,11 +46,9 @@ impl pallet_foreign_investments::Config for Runtime {
 	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
 	type SwapId = u64;
 	type TokenSwaps = OrderBook;
-	type TrancheId = TrancheId;
 }
 
 parameter_types! {
