@@ -149,6 +149,7 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// This method is performed after resolve the swap.
+	#[allow(clippy::type_complexity)]
 	pub fn post_decrease_swap(
 		&mut self,
 		who: &T::AccountId,
@@ -174,6 +175,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(None)
 	}
 
+	/// This method is performed after a collect
 	pub fn post_collect(
 		&mut self,
 		who: &T::AccountId,
@@ -277,6 +279,7 @@ impl<T: Config> RedemptionInfo<T> {
 		)
 	}
 
+	/// This method is performed after a collect and before applying the swap
 	pub fn post_collect_and_pre_swap(
 		&mut self,
 		investment_id: T::InvestmentId,
@@ -291,6 +294,8 @@ impl<T: Config> RedemptionInfo<T> {
 		})
 	}
 
+	/// This method is performed after resolve the swap.
+	#[allow(clippy::type_complexity)]
 	pub fn post_swap(
 		&mut self,
 		who: &T::AccountId,
