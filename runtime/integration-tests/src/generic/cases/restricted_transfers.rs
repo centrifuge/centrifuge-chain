@@ -250,6 +250,76 @@ mod cfg {
 		);
 	}
 
+	fn batch_proxy_transfer<T: Runtime>() {
+		validate_ok::<T>(
+			Keyring::Dave,
+			pallet_proxy::Call::<T>::proxy {
+				real: Keyring::Alice.into(),
+				force_proxy_type: None,
+				call: Box::new(
+					pallet_utility::Call::<T>::batch {
+						calls: vec![transfer_ok::<T>().into()],
+					}
+					.into(),
+				),
+			},
+		);
+		validate_fail::<T>(
+			Keyring::Dave,
+			pallet_proxy::Call::<T>::proxy {
+				real: Keyring::Alice.into(),
+				force_proxy_type: None,
+				call: Box::new(
+					pallet_utility::Call::<T>::batch {
+						calls: vec![transfer_fail::<T>().into()],
+					}
+					.into(),
+				),
+			},
+		);
+	}
+
+	fn batch_transfer<T: Runtime>() {
+		validate_ok::<T>(
+			Keyring::Alice,
+			pallet_utility::Call::<T>::batch {
+				calls: vec![transfer_ok::<T>().into()],
+			},
+		);
+		validate_fail::<T>(
+			Keyring::Alice,
+			pallet_utility::Call::<T>::batch {
+				calls: vec![
+					transfer_fail::<T>().into(),
+					transfer_fail::<T>().into(),
+					transfer_fail::<T>().into(),
+				],
+			},
+		);
+	}
+
+	fn batch_all_transfer<T: Runtime>() {
+		validate_ok::<T>(
+			Keyring::Alice,
+			pallet_utility::Call::<T>::batch_all {
+				calls: vec![transfer_ok::<T>().into()],
+			},
+		);
+		validate_fail::<T>(
+			Keyring::Alice,
+			pallet_utility::Call::<T>::batch_all {
+				calls: vec![
+					transfer_fail::<T>().into(),
+					transfer_fail::<T>().into(),
+					transfer_fail::<T>().into(),
+				],
+			},
+		);
+	}
+
 	crate::test_for_runtimes!(all, basic_transfer);
 	crate::test_for_runtimes!(all, proxy_transfer);
+	crate::test_for_runtimes!(all, batch_proxy_transfer);
+	crate::test_for_runtimes!(all, batch_transfer);
+	crate::test_for_runtimes!(all, batch_all_transfer);
 }
