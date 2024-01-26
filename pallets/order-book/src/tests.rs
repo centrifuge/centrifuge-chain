@@ -1329,7 +1329,7 @@ fn get_order_details_works() {
 		assert_eq!(
 			OrderBook::get_order_details(order_id),
 			Some(cfg_types::investments::Swap {
-				amount: 15 * CURRENCY_AUSD_DECIMALS,
+				amount_in: 15 * CURRENCY_AUSD_DECIMALS,
 				currency_in: DEV_AUSD_CURRENCY_ID,
 				currency_out: DEV_USDT_CURRENCY_ID
 			})
