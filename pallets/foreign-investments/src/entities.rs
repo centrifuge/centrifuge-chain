@@ -287,10 +287,19 @@ impl<T: Config> RedemptionInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+
+		// NOTE: This line will be removed with market ratios
+		let foreign_amount_collected = T::CurrencyConverter::stable_to_stable(
+			self.base.foreign_currency,
+			pool_currency,
+			collected.amount_collected,
+		)?;
+
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
-			currency_out: pool_currency_of::<T>(investment_id)?,
-			amount_in: collected.amount_collected,
+			currency_out: pool_currency,
+			amount_in: foreign_amount_collected,
 		})
 	}
 

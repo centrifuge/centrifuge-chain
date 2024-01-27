@@ -1135,7 +1135,10 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
+			util::fulfill_last_swap(
+				Action::Redemption,
+				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
+			);
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1147,7 +1150,7 @@ mod redemption {
 							amount_payment: 3 * TRANCHE_AMOUNT / 4
 						}
 					},
-					swapped_amount: tranche_to_pool(TRANCHE_AMOUNT / 2),
+					swapped_amount: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
 				})
 			);
 
@@ -1178,7 +1181,10 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
+			util::fulfill_last_swap(
+				Action::Redemption,
+				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
+			);
 
 			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
 				assert_eq!(who, USER);
@@ -1187,7 +1193,9 @@ mod redemption {
 					msg,
 					ExecutedForeignCollect {
 						currency: FOREIGN_CURR,
-						amount_currency_payout: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+						amount_currency_payout: pool_to_foreign(tranche_to_pool(
+							3 * TRANCHE_AMOUNT / 4
+						)),
 						amount_tranche_tokens_payout: 3 * TRANCHE_AMOUNT / 4,
 						amount_remaining: TRANCHE_AMOUNT / 4,
 					}
@@ -1195,7 +1203,10 @@ mod redemption {
 				Ok(())
 			});
 
-			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 4));
+			util::fulfill_last_swap(
+				Action::Redemption,
+				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 4)),
+			);
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1239,7 +1250,7 @@ mod redemption {
 					msg,
 					ExecutedForeignCollect {
 						currency: FOREIGN_CURR,
-						amount_currency_payout: tranche_to_pool(TRANCHE_AMOUNT),
+						amount_currency_payout: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT)),
 						amount_tranche_tokens_payout: TRANCHE_AMOUNT,
 						amount_remaining: 0,
 					}
@@ -1247,7 +1258,10 @@ mod redemption {
 				Ok(())
 			});
 
-			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT));
+			util::fulfill_last_swap(
+				Action::Redemption,
+				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT)),
+			);
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
