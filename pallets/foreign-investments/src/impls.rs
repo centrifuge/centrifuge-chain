@@ -228,7 +228,7 @@ impl<T: Config> StatusNotificationHook for CollectedInvestmentHook<T> {
 						*entry = None;
 					}
 
-					return Ok::<_, DispatchError>(Some(msg));
+					Ok::<_, DispatchError>(Some(msg))
 				}
 				None => Ok(None), // Then notification is not for foreign investments
 			}
