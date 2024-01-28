@@ -844,7 +844,7 @@ pub mod pallet {
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
-					amount_id: order.amount_in,
+					amount_in: order.amount_in,
 					currency_in: order.currency_in,
 					currency_out: order.currency_out,
 				})

@@ -75,7 +75,7 @@ mod util {
 			assert_eq!(
 				swap,
 				Swap {
-					amount: amount_in,
+					amount_in,
 					currency_in: CURRENCY_B,
 					currency_out: CURRENCY_A,
 				}
