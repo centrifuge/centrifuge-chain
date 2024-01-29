@@ -191,7 +191,6 @@ pub trait Runtime:
 		+ From<pallet_pool_system::Event<Self>>
 		+ From<pallet_oracle_feed::Event<Self>>
 		+ From<pallet_oracle_collection::Event<Self>>
-		+ From<pallet_foreign_investments::Event<Self>>
 		+ From<pallet_investments::Event<Self>>
 		+ From<orml_tokens::Event<Self>>
 		+ From<pallet_liquidity_pools_gateway::Event<Self>>

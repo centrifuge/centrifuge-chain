@@ -10,9 +10,7 @@ use cfg_traits::{
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
 	fixed_point::{Quantity, Ratio},
-	investments::{
-		ForeignInvestmentInfo, InvestCollection, InvestmentAccount, RedeemCollection, Swap,
-	},
+	investments::{InvestCollection, InvestmentAccount, RedeemCollection},
 	locations::Location,
 	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -36,12 +34,6 @@ use liquidity_pools_gateway_routers::{
 	FeeValues, XCMRouter, XcmDomain, DEFAULT_PROOF_SIZE, MAX_AXELAR_EVM_CHAIN_SIZE,
 };
 use orml_traits::{asset_registry::AssetMetadata, MultiCurrency};
-use pallet_foreign_investments::{
-	errors::{InvestError, RedeemError},
-	types::{InvestState, RedeemState, TokenSwapReason},
-	CollectedInvestment, CollectedRedemption, InvestmentPaymentCurrency, InvestmentState,
-	RedemptionPayoutCurrency, RedemptionState,
-};
 use pallet_investments::CollectOutcome;
 use pallet_liquidity_pools::Message;
 use pallet_liquidity_pools_gateway::{Call as LiquidityPoolsGatewayCall, GatewayOrigin};
@@ -545,6 +537,36 @@ mod development {
 			.into_account_truncating()
 		}
 
+		/// Invests the provided amount via `pallet_investments` to not block
+		/// foreign investments for a different foreign currency.
+		pub fn do_initial_invest_short_cut<T: Runtime + FudgeSupport>(
+			pool_id: u64,
+			amount: Balance,
+			investor: AccountId,
+		) {
+			let pool_currency: CurrencyId = pallet_pool_system::Pallet::<T>::currency_for(pool_id)
+				.expect("Pool existence checked already");
+
+			// Make investor the MembersListAdmin of this Pool
+			crate::generic::utils::give_pool_role::<T>(
+				investor.clone(),
+				pool_id,
+				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+			);
+
+			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
+				pool_currency,
+				&investor,
+				amount
+			));
+
+			assert_ok!(pallet_investments::Pallet::<T>::update_invest_order(
+				<T as frame_system::Config>::RuntimeOrigin::signed(investor.clone()),
+				default_investment_id::<T>(),
+				amount
+			));
+		}
+
 		/// Sets up required permissions for the investor and executes an
 		/// initial investment via LiquidityPools by executing
 		/// `IncreaseInvestOrder`.
@@ -557,9 +579,7 @@ mod development {
 			amount: Balance,
 			investor: AccountId,
 			currency_id: CurrencyId,
-			clear_investment_payment_currency: bool,
 		) {
-			let valid_until = DEFAULT_VALIDITY;
 			let pool_currency: CurrencyId = pallet_pool_system::Pallet::<T>::currency_for(pool_id)
 				.expect("Pool existence checked already");
 
@@ -586,16 +606,20 @@ mod development {
 			}
 
 			// Make investor the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
-				investor.clone(),
+			if !pallet_permissions::Pallet::<T>::has(
 				PermissionScope::Pool(pool_id),
+				investor.clone(),
 				Role::PoolRole(PoolRole::TrancheInvestor(
 					default_tranche_id::<T>(pool_id),
-					valid_until
+					DEFAULT_VALIDITY,
 				)),
-			));
+			) {
+				crate::generic::utils::give_pool_role::<T>(
+					investor.clone(),
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+				);
+			}
 
 			let amount_before =
 				orml_tokens::Pallet::<T>::balance(currency_id, &default_investment_account::<T>());
@@ -608,19 +632,8 @@ mod development {
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				msg
 			));
-			assert_eq!(
-				InvestmentPaymentCurrency::<T>::get(&investor, default_investment_id::<T>())
-					.unwrap(),
-				currency_id,
-			);
 
 			if currency_id == pool_currency {
-				assert_eq!(
-					InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-					InvestState::InvestmentOngoing {
-						invest_amount: amount
-					}
-				);
 				// Verify investment was transferred into investment account
 				assert_eq!(
 					orml_tokens::Pallet::<T>::balance(
@@ -631,17 +644,6 @@ mod development {
 				);
 				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 					e.event
-						== pallet_foreign_investments::Event::<T>::ForeignInvestmentUpdated {
-							investor: investor.clone(),
-							investment_id: default_investment_id::<T>(),
-							state: InvestState::InvestmentOngoing {
-								invest_amount: final_amount,
-							},
-						}
-						.into()
-				}));
-				assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-					e.event
 						== pallet_investments::Event::<T>::InvestOrderUpdated {
 							investment_id: default_investment_id::<T>(),
 							submitted_at: 0,
@@ -650,31 +652,6 @@ mod development {
 						}
 						.into()
 				}));
-			} else {
-				let amount_pool_denominated: u128 = IdentityPoolCurrencyConverter::<
-					orml_asset_registry::Pallet<T>,
-				>::stable_to_stable(
-					pool_currency, currency_id, amount
-				)
-				.unwrap();
-				assert_eq!(
-					InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-					InvestState::ActiveSwapIntoPoolCurrency {
-						swap: Swap {
-							currency_in: pool_currency,
-							currency_out: currency_id,
-							amount: amount_pool_denominated
-						}
-					}
-				);
-			}
-
-			// NOTE: In some tests, we run this setup with a pool currency to immediately
-			// set the investment state to `InvestmentOngoing`. However, afterwards we want
-			// to invest with another currency and treat that investment as the initial one.
-			// In order to do that, we need to clear the payment currency.
-			if clear_investment_payment_currency {
-				InvestmentPaymentCurrency::<T>::remove(&investor, default_investment_id::<T>());
 			}
 		}
 
@@ -693,8 +670,6 @@ mod development {
 			investor: AccountId,
 			currency_id: CurrencyId,
 		) {
-			let valid_until = DEFAULT_VALIDITY;
-
 			// Fund `DomainLocator` account of origination domain as redeemed tranche tokens
 			// are transferred from this account instead of minting
 			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
@@ -735,33 +710,17 @@ mod development {
 			);
 
 			// Make investor the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
+			crate::generic::utils::give_pool_role::<T>(
 				investor.clone(),
-				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::TrancheInvestor(
-					default_tranche_id::<T>(pool_id),
-					valid_until
-				)),
-			));
+				pool_id,
+				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+			);
 
 			assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 				msg
 			));
 
-			assert_eq!(
-				RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-				RedeemState::Redeeming {
-					redeem_amount: amount
-				}
-			);
-			assert_eq!(
-				RedemptionPayoutCurrency::<T>::get(&investor, default_investment_id::<T>())
-					.unwrap(),
-				currency_id
-			);
 			// Verify redemption was transferred into investment account
 			assert_eq!(
 				orml_tokens::Pallet::<T>::balance(
@@ -782,21 +741,6 @@ mod development {
 					)
 				),
 				0
-			);
-			assert_eq!(
-				frame_system::Pallet::<T>::events()
-					.iter()
-					.nth_back(4)
-					.unwrap()
-					.event,
-				pallet_foreign_investments::Event::<T>::ForeignRedemptionUpdated {
-					investor: investor.clone(),
-					investment_id: default_investment_id::<T>(),
-					state: RedeemState::Redeeming {
-						redeem_amount: amount
-					}
-				}
-				.into()
 			);
 			assert_eq!(
 				frame_system::Pallet::<T>::events()
@@ -1103,7 +1047,6 @@ mod development {
 				// Finally, verify we can call pallet_liquidity_pools::Pallet::<T>::add_tranche
 				// successfully when given a valid pool + tranche id pair.
 				let new_member = DomainAddress::EVM(crate::utils::MOONBEAM_EVM_CHAIN_ID, [3; 20]);
-				let valid_until = DEFAULT_VALIDITY;
 
 				// Make ALICE the MembersListAdmin of this Pool
 				assert_ok!(pallet_permissions::Pallet::<T>::add(
@@ -1121,28 +1064,23 @@ mod development {
 						pool_id,
 						tranche_id,
 						new_member.clone(),
-						valid_until,
+						DEFAULT_VALIDITY,
 					),
 					pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
 				);
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						valid_until
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+				);
 
 				// Verify the Investor role was set as expected in Permissions
 				assert!(pallet_permissions::Pallet::<T>::has(
 					PermissionScope::Pool(pool_id),
 					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, DEFAULT_VALIDITY)),
 				));
 
 				// Verify it now works
@@ -1151,7 +1089,7 @@ mod development {
 					pool_id,
 					tranche_id,
 					new_member,
-					valid_until,
+					DEFAULT_VALIDITY,
 				));
 
 				// Verify it cannot be called for another member without whitelisting the domain
@@ -1162,7 +1100,7 @@ mod development {
 						pool_id,
 						tranche_id,
 						DomainAddress::EVM(MOONBEAM_EVM_CHAIN_ID, [9; 20]),
-						valid_until,
+						DEFAULT_VALIDITY,
 					),
 					pallet_liquidity_pools::Error::<T>::InvestorDomainAddressNotAMember,
 				);
@@ -2018,7 +1956,6 @@ mod development {
 						amount,
 						investor.clone(),
 						currency_id,
-						false,
 					);
 
 					// Verify the order was updated to the amount
@@ -2042,12 +1979,6 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg
 					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: amount * 2
-						}
-					);
 				});
 			}
 
@@ -2055,10 +1986,6 @@ mod development {
 				let mut env = FudgeEnv::<T>::from_parachain_storage(
 					Genesis::default()
 						.add(genesis::balances::<T>(cfg(1_000)))
-						// .add(genesis::tokens::<T>(vec![(
-						// 	GLMR_CURRENCY_ID,
-						// 	DEFAULT_BALANCE_GLMR,
-						// )]))
 						.storage(),
 				);
 
@@ -2084,7 +2011,6 @@ mod development {
 						invest_amount,
 						investor.clone(),
 						currency_id,
-						false,
 					);
 
 					// Mock incoming decrease message
@@ -2176,7 +2102,6 @@ mod development {
 						invest_amount,
 						investor.clone(),
 						currency_id,
-						false,
 					);
 
 					// Verify investment account holds funds before cancelling
@@ -2213,20 +2138,6 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg
 					));
-
-					// Foreign InvestmentState should be cleared
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentCleared {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-							}
-							.into()
-					}));
 
 					// Verify investment was entirely drained from investment account
 					assert_eq!(
@@ -2295,7 +2206,6 @@ mod development {
 						amount,
 						investor.clone(),
 						currency_id,
-						false,
 					);
 					let events_before_collect = frame_system::Pallet::<T>::events();
 
@@ -2395,29 +2305,7 @@ mod development {
 							.into()
 					}));
 
-					assert!(!CollectedInvestment::<T>::contains_key(
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert!(!InvestmentPaymentCurrency::<T>::contains_key(
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-
 					// Clearing of foreign InvestState should be dispatched
-					assert!(events_since_collect.iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentCleared {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-							}
-							.into()
-					}));
-
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -2463,7 +2351,6 @@ mod development {
 						invest_amount,
 						investor.clone(),
 						currency_id,
-						false,
 					);
 					enable_liquidity_pool_transferability::<T>(currency_id);
 					let investment_currency_id: CurrencyId = default_investment_id::<T>().into();
@@ -2495,14 +2382,6 @@ mod development {
 							default_investment_id::<T>()
 						)
 					);
-					assert!(!CollectedInvestment::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing { invest_amount }
-					);
 
 					// Collecting through Investments should denote amounts and transition
 					// state
@@ -2511,31 +2390,13 @@ mod development {
 						investor.clone(),
 						default_investment_id::<T>()
 					));
-					assert_eq!(
-						InvestmentPaymentCurrency::<T>::get(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.unwrap(),
-						currency_id
-					);
 					assert!(
 						!pallet_investments::Pallet::<T>::investment_requires_collect(
 							&investor,
 							default_investment_id::<T>()
 						)
 					);
-					// The collected amount is transferred automatically
-					assert!(!CollectedInvestment::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount / 2
-						}
-					);
+
 					// Tranche Tokens should still be transferred to collected to
 					// domain locator account already
 					assert_eq!(
@@ -2617,22 +2478,7 @@ mod development {
 							default_investment_id::<T>()
 						)
 					);
-					assert!(!CollectedInvestment::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(!InvestmentPaymentCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!InvestmentPaymentCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
+
 					// Tranche Tokens should be transferred to collected to
 					// domain locator account already
 					let amount_tranche_tokens = invest_amount * 3;
@@ -2690,23 +2536,9 @@ mod development {
 							}
 							.into()
 					}));
-					// Clearing of foreign InvestState should have been dispatched exactly once
-					assert_eq!(
-						frame_system::Pallet::<T>::events()
-							.iter()
-							.filter(|e| {
-								e.event
-									== pallet_foreign_investments::Event::<T>::ForeignInvestmentCleared {
-									investor: investor.clone(),
-									investment_id: default_investment_id::<T>(),
-								}
-									.into()
-							})
-							.count(),
-						1
-					);
 
-					// Should fail to collect if `InvestmentState` does not exist
+					// Should fail to collect if `InvestmentState` does not
+					// exist
 					let msg = LiquidityPoolMessage::CollectInvest {
 						pool_id,
 						tranche_id: default_tranche_id::<T>(pool_id),
@@ -2718,7 +2550,7 @@ mod development {
 							DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 							msg
 						),
-						pallet_foreign_investments::Error::<T>::InvestmentPaymentCurrencyNotFound
+						pallet_foreign_investments::Error::<T>::InfoNotFound
 					);
 				});
 			}
@@ -2778,12 +2610,6 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg
 					));
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::Redeeming {
-							redeem_amount: amount * 2,
-						}
-					);
 				});
 			}
 
@@ -2868,19 +2694,6 @@ mod development {
 						),
 						decrease_amount
 					);
-
-					// Foreign RedemptionState should be updated
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignRedemptionUpdated {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-								state: RedeemState::Redeeming {
-									redeem_amount: final_amount,
-								},
-							}
-							.into()
-					}));
 
 					// Order should have been updated
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
@@ -2996,20 +2809,6 @@ mod development {
 						),
 						redeem_amount
 					);
-					assert!(!RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-
-					// Foreign RedemptionState should be updated
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignRedemptionCleared {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-							}
-							.into()
-					}));
 
 					// Order should have been updated
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
@@ -3162,29 +2961,7 @@ mod development {
 							.into()
 					}));
 
-					// Foreign CollectedRedemptionTrancheTokens should be killed
-					assert!(
-						!pallet_foreign_investments::CollectedRedemption::<T>::contains_key(
-							investor.clone(),
-							default_investment_id::<T>(),
-						)
-					);
-
-					// Foreign RedemptionState should be killed
-					assert!(!RedemptionState::<T>::contains_key(
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-
 					// Clearing of foreign RedeemState should be dispatched
-					assert!(events_since_collect.iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignRedemptionCleared {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-							}
-							.into()
-					}));
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -3267,14 +3044,7 @@ mod development {
 							default_investment_id::<T>()
 						)
 					);
-					assert!(!CollectedRedemption::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::Redeeming { redeem_amount }
-					);
+
 					// Collecting through investments should denote amounts and transition
 					// state
 					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
@@ -3321,16 +3091,6 @@ mod development {
 					);
 					// Since foreign currency is pool currency, the swap is immediately fulfilled
 					// and ExecutedCollectRedeem dispatched
-					assert!(!CollectedRedemption::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::Redeeming {
-							redeem_amount: redeem_amount / 2,
-						}
-					);
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| e.event
 						== orml_tokens::Event::<T>::Withdrawn {
 							currency_id,
@@ -3371,14 +3131,6 @@ mod development {
 							default_investment_id::<T>()
 						)
 					);
-					assert!(!CollectedRedemption::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(!RedemptionState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
 					assert!(!frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_investments::Event::<T>::RedeemCollectedForNonClearedOrderId {
@@ -3411,20 +3163,6 @@ mod development {
 						}
 						.into()));
 					// Clearing of foreign RedeemState should have been dispatched exactly once
-					assert_eq!(
-						frame_system::Pallet::<T>::events()
-							.iter()
-							.filter(|e| {
-								e.event
-									== pallet_foreign_investments::Event::<T>::ForeignRedemptionCleared {
-									investor: investor.clone(),
-									investment_id: default_investment_id::<T>(),
-								}
-									.into()
-							})
-							.count(),
-						1
-					);
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -3498,7 +3236,6 @@ mod development {
 								invest_amount,
 								investor.clone(),
 								currency_id,
-								false,
 							);
 							enable_liquidity_pool_transferability::<T>(currency_id);
 
@@ -3516,9 +3253,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::DecreaseAmountOverflow
-								)
+								pallet_foreign_investments::Error::<T>::TooMuchDecrease
 							);
 						});
 					}
@@ -3569,9 +3304,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::DecreaseTransition
-								)
+								DispatchError::Arithmetic(sp_runtime::ArithmeticError::Underflow)
 							);
 						});
 					}
@@ -3612,7 +3345,6 @@ mod development {
 								amount,
 								investor.clone(),
 								currency_id,
-								false,
 							);
 							enable_liquidity_pool_transferability::<T>(currency_id);
 
@@ -3649,9 +3381,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									increase_msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::CollectRequired
-								)
+								pallet_investments::Error::<T>::CollectRequired
 							);
 
 							// Should fail to decrease
@@ -3667,9 +3397,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									decrease_msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::CollectRequired
-								)
+								pallet_investments::Error::<T>::CollectRequired
 							);
 						});
 					}
@@ -3746,9 +3474,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									increase_msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::CollectRequired
-								)
+								pallet_investments::Error::<T>::CollectRequired
 							);
 
 							// Should fail to decrease
@@ -3764,9 +3490,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									decrease_msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::CollectRequired
-								)
+								pallet_investments::Error::<T>::CollectRequired
 							);
 						});
 					}
@@ -3809,7 +3533,6 @@ mod development {
 								amount,
 								investor.clone(),
 								pool_currency,
-								false,
 							);
 
 							enable_usdt_trading::<T>(
@@ -3821,8 +3544,9 @@ mod development {
 								|| {},
 							);
 
-							// Should fail to increase, decrease or collect for another foreign
-							// currency as long as `InvestmentState` exists
+							// Should fail to increase, decrease or collect for
+							// another foreign currency as long as
+							// `InvestmentState` exists
 							let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
@@ -3835,9 +3559,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									increase_msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::InvalidPaymentCurrency
-								)
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 							let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
 								pool_id,
@@ -3851,9 +3573,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									decrease_msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::InvalidPaymentCurrency
-								)
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 							let collect_msg = LiquidityPoolMessage::CollectInvest {
 								pool_id,
@@ -3866,9 +3586,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									collect_msg
 								),
-								pallet_foreign_investments::Error::<T>::InvestError(
-									InvestError::InvalidPaymentCurrency
-								)
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 						});
 					}
@@ -3919,8 +3637,9 @@ mod development {
 								amount,
 							));
 
-							// Should fail to increase, decrease or collect for another foreign
-							// currency as long as `RedemptionState` exists
+							// Should fail to increase, decrease or collect for
+							// another foreign currency as long as
+							// `RedemptionState` exists
 							let increase_msg = LiquidityPoolMessage::IncreaseRedeemOrder {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
@@ -3933,9 +3652,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									increase_msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::InvalidPayoutCurrency
-								)
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 							let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
 								pool_id,
@@ -3949,9 +3666,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									decrease_msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::InvalidPayoutCurrency
-								)
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 							let collect_msg = LiquidityPoolMessage::CollectRedeem {
 								pool_id,
@@ -3964,78 +3679,7 @@ mod development {
 									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 									collect_msg
 								),
-								pallet_foreign_investments::Error::<T>::RedeemError(
-									RedeemError::InvalidPayoutCurrency
-								)
-							);
-						});
-					}
-
-					fn invest_payment_currency_not_found<T: Runtime + FudgeSupport>() {
-						let mut env = FudgeEnv::<T>::from_parachain_storage(
-							Genesis::default()
-								.add(genesis::balances::<T>(cfg(1_000)))
-								.storage(),
-						);
-
-						setup_test(&mut env);
-
-						env.parachain_state_mut(|| {
-							let pool_id = DEFAULT_POOL_ID;
-							let investor: AccountId =
-								AccountConverter::<T, LocationToAccountId>::convert((
-									DOMAIN_MOONBEAM,
-									Keyring::Bob.into(),
-								));
-							let pool_currency = AUSD_CURRENCY_ID;
-							let currency_decimals = currency_decimals::AUSD;
-							let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-							let amount = 6 * decimals(18);
-
-							create_currency_pool::<T>(
-								pool_id,
-								pool_currency,
-								currency_decimals.into(),
-							);
-							do_initial_increase_investment::<T>(
-								pool_id,
-								amount,
-								investor.clone(),
-								pool_currency,
-								true,
-							);
-							enable_usdt_trading::<T>(
-								pool_currency,
-								amount,
-								true,
-								true,
-								true,
-								|| {},
-							);
-
-							// Should fail to decrease or collect for another foreign currency as
-							// long as `InvestmentState` exists
-							let decrease_msg = LiquidityPoolMessage::DecreaseInvestOrder {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								amount: 1,
-							};
-							assert_noop!(
-								pallet_liquidity_pools::Pallet::<T>::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
-								pallet_foreign_investments::Error::<T>::InvestmentPaymentCurrencyNotFound
-							);
-
-							let collect_msg = LiquidityPoolMessage::CollectInvest {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-							};
-							assert_noop!(
-								pallet_liquidity_pools::Pallet::<T>::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
-								pallet_foreign_investments::Error::<T>::InvestmentPaymentCurrencyNotFound
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 						});
 					}
@@ -4085,13 +3729,10 @@ mod development {
 								&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
 								amount,
 							));
-							RedemptionPayoutCurrency::<T>::remove(
-								&investor,
-								default_investment_id::<T>(),
-							);
 
-							// Should fail to decrease or collect for another foreign currency as
-							// long as `RedemptionState` exists
+							// Should fail to decrease or collect for another
+							// foreign currency as long as `RedemptionState`
+							// exists
 							let decrease_msg = LiquidityPoolMessage::DecreaseRedeemOrder {
 								pool_id,
 								tranche_id: default_tranche_id::<T>(pool_id),
@@ -4100,8 +3741,11 @@ mod development {
 								amount: 1,
 							};
 							assert_noop!(
-								pallet_liquidity_pools::Pallet::<T>::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, decrease_msg),
-								pallet_foreign_investments::Error::<T>::RedemptionPayoutCurrencyNotFound
+								pallet_liquidity_pools::Pallet::<T>::submit(
+									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+									decrease_msg
+								),
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 
 							let collect_msg = LiquidityPoolMessage::CollectRedeem {
@@ -4111,15 +3755,17 @@ mod development {
 								currency: general_currency_index::<T>(foreign_currency),
 							};
 							assert_noop!(
-								pallet_liquidity_pools::Pallet::<T>::submit(DEFAULT_DOMAIN_ADDRESS_MOONBEAM, collect_msg),
-								pallet_foreign_investments::Error::<T>::RedemptionPayoutCurrencyNotFound
+								pallet_liquidity_pools::Pallet::<T>::submit(
+									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+									collect_msg
+								),
+								pallet_foreign_investments::Error::<T>::MismatchedForeignCurrency
 							);
 						});
 					}
 
 					crate::test_for_runtimes!([development], invalid_invest_payment_currency);
 					crate::test_for_runtimes!([development], invalid_redeem_payout_currency);
-					crate::test_for_runtimes!([development], invest_payment_currency_not_found);
 					crate::test_for_runtimes!([development], redeem_payout_currency_not_found);
 				}
 			}
@@ -4163,18 +3809,14 @@ mod development {
 						|| {},
 					);
 
-					do_initial_increase_investment::<T>(
+					// Short cut: Invest through investments to bump pending investment amount
+					do_initial_invest_short_cut::<T>(
 						pool_id,
 						invest_amount_pool_denominated,
 						investor.clone(),
-						pool_currency,
-						true,
 					);
 
-					// Increase invest order such that collect payment currency gets overwritten
-					// NOTE: Overwriting InvestmentPaymentCurrency works here because we manually
-					// clear that state after investing with pool currency as a short cut for
-					// testing purposes.
+					// Increase invest order to initialize ForeignInvestmentInfo
 					let msg = LiquidityPoolMessage::IncreaseInvestOrder {
 						pool_id,
 						tranche_id: default_tranche_id::<T>(pool_id),
@@ -4203,14 +3845,6 @@ mod development {
 						investor.clone(),
 						default_investment_id::<T>()
 					));
-					assert_eq!(
-						InvestmentPaymentCurrency::<T>::get(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.unwrap(),
-						foreign_currency
-					);
 					assert!(orml_tokens::Pallet::<T>::balance(
 						default_investment_id::<T>().into(),
 						&investor
@@ -4234,22 +3868,12 @@ mod development {
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
 								currency_payout: invest_amount_foreign_denominated,
-								tranche_tokens_payout: invest_amount_pool_denominated * 2,
-								remaining_invest_amount: 0,
+								tranche_tokens_payout: 2 * invest_amount_pool_denominated,
+								remaining_invest_amount: invest_amount_foreign_denominated,
 							},
 						}
 							.into()
 					}));
-
-					// Should not be cleared as invest state is swapping into pool currency
-					assert_eq!(
-						InvestmentPaymentCurrency::<T>::get(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.unwrap(),
-						foreign_currency
-					);
 				});
 			}
 
@@ -4278,12 +3902,12 @@ mod development {
 						pool_currency,
 						pool_currency_decimals.into(),
 					);
-					do_initial_increase_investment::<T>(
+
+					// Short cut: Invest through investments to bump pending investment amount
+					do_initial_invest_short_cut::<T>(
 						pool_id,
 						invest_amount_pool_denominated,
 						investor.clone(),
-						pool_currency,
-						true,
 					);
 
 					// USDT investment preparations
@@ -4293,55 +3917,17 @@ mod development {
 						false,
 						true,
 						true,
-						|| {
-							let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-								pool_id,
-								tranche_id: default_tranche_id::<T>(pool_id),
-								investor: investor.clone().into(),
-								currency: general_currency_index::<T>(foreign_currency),
-								amount: 1,
-							};
-							// Should fail to increase to an invalid payment currency
-							assert_noop!(
-								pallet_liquidity_pools::Pallet::<T>::submit(
-									DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-									increase_msg
-								),
-								pallet_liquidity_pools::Error::<T>::InvalidPaymentCurrency
-							);
-						},
+						|| {},
 					);
-					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated,
-					};
 
-					// Should be able to invest since InvestmentState does not have an active swap,
-					// i.e. any tradable pair is allowed to invest at this point
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						increase_msg
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentUpdated {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-								state:
-									InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-										swap: Swap {
-											amount: invest_amount_pool_denominated,
-											currency_in: pool_currency,
-											currency_out: foreign_currency,
-										},
-										invest_amount: invest_amount_pool_denominated,
-									},
-							}
-							.into()
-					}));
+					// Should be able to invest with foreign currency as ForeignInvestmentState does
+					// not exist yet
+					do_initial_increase_investment::<T>(
+						pool_id,
+						invest_amount_foreign_denominated,
+						investor.clone(),
+						foreign_currency,
+					);
 
 					// Should be able to to decrease in the swapping foreign currency
 					enable_liquidity_pool_transferability::<T>(foreign_currency);
@@ -4356,24 +3942,6 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						decrease_msg_pool_swap_amount
 					));
-					// Entire swap amount into pool currency should be nullified
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated
-						}
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentUpdated {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-								state: InvestState::InvestmentOngoing {
-									invest_amount: invest_amount_pool_denominated,
-								},
-							}
-							.into()
-					}));
 
 					// Decrease partial investing amount
 					enable_liquidity_pool_transferability::<T>(foreign_currency);
@@ -4389,55 +3957,12 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						decrease_msg_partial_invest_amount.clone()
 					));
-					// Decreased amount should be taken from investing amount
-					let expected_state =
-						InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-							},
-							invest_amount: invest_amount_pool_denominated / 2,
-						};
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						expected_state.clone()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentUpdated {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-								state: expected_state.clone(),
-							}
-							.into()
-					}));
 
 					// Consume entire investing amount by sending same message
 					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						decrease_msg_partial_invest_amount.clone()
 					));
-					let expected_state = InvestState::ActiveSwapIntoForeignCurrency {
-						swap: Swap {
-							amount: invest_amount_foreign_denominated,
-							currency_in: foreign_currency,
-							currency_out: pool_currency,
-						},
-					};
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						expected_state.clone()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_foreign_investments::Event::<T>::ForeignInvestmentUpdated {
-								investor: investor.clone(),
-								investment_id: default_investment_id::<T>(),
-								state: expected_state.clone(),
-							}
-							.into()
-					}));
 				});
 			}
 
@@ -4492,27 +4017,15 @@ mod development {
 						invest_amount_foreign_denominated,
 						investor.clone(),
 						foreign_currency,
-						false,
 					);
-					let swap_order_id =
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>(),
-						)
-						.expect("Swap order id created during increase");
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						),
-						Some(ForeignInvestmentInfo {
-							owner: investor.clone(),
-							id: default_investment_id::<T>(),
-							last_swap_reason: Some(TokenSwapReason::Investment)
-						})
-					);
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
+						&investor,
+						default_investment_id::<T>(),
+						pallet_foreign_investments::Action::Investment,
+					)
+					.expect("Swap order exists; qed");
 
-					// Fulfilling order should propagate it from `ActiveSwapIntoForeignCurrency` to
-					// `InvestmentOngoing`.
+					// Fulfilling order should propagate it from swapping to investing
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
 						RawOrigin::Signed(trader.clone()).into(),
 						swap_order_id
@@ -4531,25 +4044,6 @@ mod development {
 							}
 							.into()
 					}));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated
-						}
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
 
 					// Decrease by half the investment amount
 					let msg = LiquidityPoolMessage::DecreaseInvestOrder {
@@ -4563,33 +4057,12 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg.clone()
 					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-							},
-							invest_amount: invest_amount_pool_denominated / 2,
-						}
-					);
-					let swap_order_id =
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>(),
-						)
-						.expect("Swap order id created during decrease");
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						),
-						Some(ForeignInvestmentInfo {
-							owner: investor.clone(),
-							id: default_investment_id::<T>(),
-							last_swap_reason: Some(TokenSwapReason::Investment)
-						})
-					);
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
+						&investor,
+						default_investment_id::<T>(),
+						pallet_foreign_investments::Action::Investment,
+					)
+					.expect("Swap order exists; qed");
 
 					// Fulfill the decrease swap order
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
@@ -4610,25 +4083,6 @@ mod development {
 							}
 							.into()
 					}));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated / 2
-						}
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4648,1658 +4102,9 @@ mod development {
 				});
 			}
 
-			/// Verify handling concurrent swap orders works if
-			/// * Invest is swapping from pool to foreign after decreasing an
-			///   unprocessed investment
-			/// * Redeem is swapping from pool to foreign after collecting
-			fn concurrent_swap_orders_same_direction<T: Runtime + FudgeSupport>() {
-				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::default()
-						.add(genesis::balances::<T>(cfg(1_000)))
-						.storage(),
-				);
-
-				setup_test(&mut env);
-
-				env.parachain_state_mut(|| {
-					let pool_id = DEFAULT_POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
-					let trader: AccountId = Keyring::Alice.into();
-					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
-					let swap_order_id = 1;
-					create_currency_pool::<T>(
-						pool_id,
-						pool_currency,
-						pool_currency_decimals.into(),
-					);
-					let invest_amount_foreign_denominated: u128 = enable_usdt_trading::<T>(
-						pool_currency,
-						invest_amount_pool_denominated,
-						true,
-						true,
-						true,
-						|| {},
-					);
-					// invest in pool currency to reach `InvestmentOngoing` quickly
-					do_initial_increase_investment::<T>(
-						pool_id,
-						invest_amount_pool_denominated,
-						investor.clone(),
-						pool_currency,
-						true,
-					);
-					// Manually set payment currency since we removed it in the above shortcut setup
-					InvestmentPaymentCurrency::<T>::insert(
-						&investor,
-						default_investment_id::<T>(),
-						foreign_currency,
-					);
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						foreign_currency,
-						&trader,
-						invest_amount_foreign_denominated * 2
-					));
-
-					// Decrease invest setup to have invest order swapping into foreign currency
-					let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-
-					// Redeem setup: Increase and process
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						default_investment_id::<T>().into(),
-						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
-						invest_amount_pool_denominated
-					));
-					let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_pool_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-						.into_account_truncating();
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						pool_currency,
-						&pool_account,
-						invest_amount_pool_denominated
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
-					// tokens
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(50),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::InvestmentAndRedemption
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::RedeemingAndActiveSwapIntoForeignCurrency {
-							redeem_amount: invest_amount_pool_denominated / 2,
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 8,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionPayoutCurrency::<T>::get(&investor, default_investment_id::<T>())
-							.unwrap(),
-						foreign_currency
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Process remaining redemption at 25% rate, i.e. 1 pool currency =
-					// 4 tranche tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(100),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 4;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-
-					// Fulfilling order should kill both the invest as well as redeem state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderFulfillment {
-								order_id: swap_order_id,
-								placing_account: investor.clone(),
-								fulfilling_account: trader.clone(),
-								partial_fulfillment: false,
-								fulfillment_amount: invest_amount_foreign_denominated / 4 * 5,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-								sell_rate_limit: Ratio::one(),
-							}
-							.into()
-					}));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(!RedemptionState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(!RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: LiquidityPoolMessage::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated / 4,
-									tranche_tokens_payout: invest_amount_pool_denominated,
-									remaining_redeem_amount: 0,
-								},
-							}
-							.into()
-					}));
-				});
-			}
-
-			/// Verify handling concurrent swap orders works if
-			/// * Invest is swapping from foreign to pool after increasing
-			/// * Redeem is swapping from pool to foreign after collecting
-			fn concurrent_swap_orders_opposite_direction<T: Runtime + FudgeSupport>() {
-				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::default()
-						.add(genesis::balances::<T>(cfg(1_000)))
-						.storage(),
-				);
-
-				setup_test(&mut env);
-
-				env.parachain_state_mut(|| {
-					let pool_id = DEFAULT_POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
-					let trader: AccountId = Keyring::Alice.into();
-					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
-					let swap_order_id = 1;
-					create_currency_pool::<T>(
-						pool_id,
-						pool_currency,
-						pool_currency_decimals.into(),
-					);
-					let invest_amount_foreign_denominated: u128 = enable_usdt_trading::<T>(
-						pool_currency,
-						invest_amount_pool_denominated,
-						true,
-						true,
-						true,
-						|| {},
-					);
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						foreign_currency,
-						&trader,
-						invest_amount_foreign_denominated * 2
-					));
-
-					// Increase invest setup to have invest order swapping into pool currency
-					do_initial_increase_investment::<T>(
-						pool_id,
-						invest_amount_foreign_denominated,
-						investor.clone(),
-						foreign_currency,
-						false,
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoPoolCurrency {
-							swap: Swap {
-								amount: invest_amount_pool_denominated,
-								currency_in: pool_currency,
-								currency_out: foreign_currency
-							}
-						},
-					);
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						),
-						Some(swap_order_id)
-					);
-
-					// Redeem setup: Increase and process
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						default_investment_id::<T>().into(),
-						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
-						3 * invest_amount_pool_denominated
-					));
-					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-						.into_account_truncating();
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						pool_currency,
-						&pool_account,
-						3 * invest_amount_pool_denominated
-					));
-					let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_pool_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						),
-						Some(swap_order_id)
-					);
-
-					// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
-					// tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(50),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						),
-						Some(swap_order_id)
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated / 8,
-							swap: Swap {
-								amount: invest_amount_pool_denominated / 8 * 7,
-								currency_in: pool_currency,
-								currency_out: foreign_currency
-							}
-						},
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::Redeeming {
-							redeem_amount: invest_amount_pool_denominated / 2,
-						}
-					);
-
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: invest_amount_pool_denominated / 8 * 7,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(pool_currency),
-							}
-							.into()
-					}));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated / 8,
-									tranche_tokens_payout: invest_amount_pool_denominated / 2,
-									remaining_redeem_amount: invest_amount_pool_denominated / 2,
-								},
-							}
-							.into()
-					}));
-
-					// Process remaining redemption at 25% rate, i.e. 1 pool currency =
-					// 4 tranche tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(100),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated / 4,
-							swap: Swap {
-								amount: invest_amount_pool_denominated / 4 * 3,
-								currency_in: pool_currency,
-								currency_out: foreign_currency
-							}
-						}
-					);
-					assert!(!RedemptionState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: invest_amount_pool_denominated / 4 * 3,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(pool_currency),
-							}
-							.into()
-					}));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: LiquidityPoolMessage::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated / 8,
-									tranche_tokens_payout: invest_amount_pool_denominated / 2,
-									remaining_redeem_amount: 0,
-								},
-							}
-							.into()
-					}));
-
-					// Redeem again with goal of redemption swap to foreign consuming investment
-					// swap to pool
-					let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_pool_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					// Process remaining redemption at 200% rate, i.e. 1 tranche token = 2 pool
-					// currency
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(100),
-							price: Ratio::checked_from_rational(2, 1).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
-					// Swap order id should be bumped since swap order update occurred for opposite
-					// direction (from foreign->pool to foreign->pool)
-					let swap_order_id = 2;
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						),
-						Some(swap_order_id)
-					);
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Redemption
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated
-						}
-					);
-					let remaining_foreign_swap_amount = 2 * invest_amount_foreign_denominated
-						- invest_amount_foreign_denominated / 4 * 3;
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-							done_amount: invest_amount_foreign_denominated / 4 * 3,
-							swap: Swap {
-								amount: remaining_foreign_swap_amount,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Fulfilling order should the invest
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderFulfillment {
-								order_id: swap_order_id,
-								placing_account: investor.clone(),
-								fulfilling_account: trader.clone(),
-								partial_fulfillment: false,
-								fulfillment_amount: remaining_foreign_swap_amount,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-								sell_rate_limit: Ratio::one(),
-							}
-							.into()
-					}));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated
-						}
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: LiquidityPoolMessage::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated * 2,
-									tranche_tokens_payout: invest_amount_pool_denominated,
-									remaining_redeem_amount: 0,
-								},
-							}
-							.into()
-					}));
-				});
-			}
-
-			/// 1. increase initial invest in pool currency
-			/// 2. increase invest in foreign
-			/// 3. process invest
-			/// 4. fulfill swap order
-			fn fulfill_invest_swap_order_requires_collect<T: Runtime + FudgeSupport>() {
-				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::default()
-						.add(genesis::balances::<T>(cfg(1_000)))
-						.add(genesis::tokens::<T>(vec![
-							(AUSD_CURRENCY_ID, AUSD_ED),
-							(USDT_CURRENCY_ID, USDT_ED),
-						]))
-						.storage(),
-				);
-
-				setup_test(&mut env);
-
-				env.parachain_state_mut(|| {
-					let pool_id = DEFAULT_POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
-					let trader: AccountId = Keyring::Alice.into();
-					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
-					let swap_order_id = 1;
-					create_currency_pool::<T>(
-						pool_id,
-						pool_currency,
-						pool_currency_decimals.into(),
-					);
-					let invest_amount_foreign_denominated: u128 = enable_usdt_trading::<T>(
-						pool_currency,
-						invest_amount_pool_denominated,
-						true,
-						true,
-						true,
-						|| {},
-					);
-					// invest in pool currency to reach `InvestmentOngoing` quickly
-					do_initial_increase_investment::<T>(
-						pool_id,
-						invest_amount_pool_denominated,
-						investor.clone(),
-						pool_currency,
-						true,
-					);
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						pool_currency,
-						&trader,
-						invest_amount_pool_denominated
-					));
-
-					// Increase invest have
-					// InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing
-					let msg = LiquidityPoolMessage::IncreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoPoolCurrencyAndInvestmentOngoing {
-							swap: Swap {
-								amount: invest_amount_pool_denominated,
-								currency_in: pool_currency,
-								currency_out: foreign_currency,
-							},
-							invest_amount: invest_amount_pool_denominated
-						}
-					);
-					// Process 50% of investment at 25% rate, i.e. 1 pool currency = 4 tranche
-					// tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_invest_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::invest_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(50),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert!(
-						pallet_investments::Pallet::<T>::investment_requires_collect(
-							&investor,
-							default_investment_id::<T>()
-						)
-					);
-
-					// Fulfill swap order should implicitly collect, otherwise the unprocessed
-					// investment amount is unknown
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id
-					));
-					assert!(
-						!pallet_investments::Pallet::<T>::investment_requires_collect(
-							&investor,
-							default_investment_id::<T>()
-						)
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::InvestmentOngoing {
-							invest_amount: invest_amount_pool_denominated / 2 * 3
-						}
-					);
-				});
-			}
-
-			/// 1. increase initial redeem
-			/// 2. process partial redemption
-			/// 3. collect
-			/// 4. process redemption
-			/// 5. fulfill swap order should implicitly collect
-			fn fulfill_redeem_swap_order_requires_collect<T: Runtime + FudgeSupport>() {
-				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::default()
-						.add(genesis::balances::<T>(cfg(1_000)))
-						.storage(),
-				);
-
-				setup_test(&mut env);
-
-				env.parachain_state_mut(|| {
-					let pool_id = DEFAULT_POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
-					let trader: AccountId = Keyring::Alice.into();
-					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
-					let swap_order_id = 1;
-					create_currency_pool::<T>(
-						pool_id,
-						pool_currency,
-						pool_currency_decimals.into(),
-					);
-					let invest_amount_foreign_denominated: u128 = enable_usdt_trading::<T>(
-						pool_currency,
-						invest_amount_pool_denominated,
-						true,
-						true,
-						true,
-						|| {},
-					);
-					// invest in pool currency to reach `InvestmentOngoing` quickly
-					do_initial_increase_investment::<T>(
-						pool_id,
-						invest_amount_pool_denominated,
-						investor.clone(),
-						pool_currency,
-						true,
-					);
-					// Manually set payment currency since we removed it in the above shortcut setup
-					InvestmentPaymentCurrency::<T>::insert(
-						&investor,
-						default_investment_id::<T>(),
-						foreign_currency,
-					);
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						foreign_currency,
-						&trader,
-						invest_amount_foreign_denominated * 2
-					));
-
-					// Decrease invest setup to have invest order swapping into foreign currency
-					let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-
-					// Redeem setup: Increase and process
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						default_investment_id::<T>().into(),
-						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
-						invest_amount_pool_denominated
-					));
-					let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_pool_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-						.into_account_truncating();
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						pool_currency,
-						&pool_account,
-						invest_amount_pool_denominated
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
-					// tokens
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(50),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::InvestmentAndRedemption
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::RedeemingAndActiveSwapIntoForeignCurrency {
-							redeem_amount: invest_amount_pool_denominated / 2,
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 8,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionPayoutCurrency::<T>::get(&investor, default_investment_id::<T>())
-							.unwrap(),
-						foreign_currency
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Process remaining redemption at 25% rate, i.e. 1 pool currency =
-					// 4 tranche tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(100),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 4;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-
-					// Partially fulfilling the swap order below the invest swapping amount should
-					// still have both states swapping into foreign
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 2
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderFulfillment {
-								order_id: swap_order_id,
-								placing_account: investor.clone(),
-								fulfilling_account: trader.clone(),
-								partial_fulfillment: true,
-								fulfillment_amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-								sell_rate_limit: Ratio::one(),
-							}
-							.into()
-					}));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-							done_amount: invest_amount_foreign_denominated / 2
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order for the remaining invest swap amount
-					// should still clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 2
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order below the redeem swap amount should still
-					// clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 8
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 8,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-							done_amount: invest_amount_foreign_denominated / 8
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order below the redeem swap amount should still
-					// clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 8
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!RedemptionState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated / 4,
-									tranche_tokens_payout: invest_amount_pool_denominated,
-									remaining_redeem_amount: 0,
-								},
-							}
-							.into()
-					}));
-				});
-			}
-
-			/// Similar to [concurrent_swap_orders_same_direction] but with
-			/// partial fulfillment
-			fn partial_fulfillment_concurrent_swap_orders_same_direction<
-				T: Runtime + FudgeSupport,
-			>() {
-				let mut env = FudgeEnv::<T>::from_parachain_storage(
-					Genesis::default()
-						.add(genesis::balances::<T>(cfg(1_000)))
-						.storage(),
-				);
-
-				setup_test(&mut env);
-
-				env.parachain_state_mut(|| {
-					// Increase invest setup
-					let pool_id = DEFAULT_POOL_ID;
-					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
-						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
-					);
-					let trader: AccountId = Keyring::Alice.into();
-					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
-					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
-					let pool_currency_decimals = currency_decimals::AUSD;
-					let invest_amount_pool_denominated: u128 = 10 * decimals(18);
-					let swap_order_id = 1;
-					create_currency_pool::<T>(
-						pool_id,
-						pool_currency,
-						pool_currency_decimals.into(),
-					);
-					let invest_amount_foreign_denominated: u128 = enable_usdt_trading::<T>(
-						pool_currency,
-						invest_amount_pool_denominated,
-						true,
-						true,
-						true,
-						|| {},
-					);
-					// invest in pool currency to reach `InvestmentOngoing` quickly
-					do_initial_increase_investment::<T>(
-						pool_id,
-						invest_amount_pool_denominated,
-						investor.clone(),
-						pool_currency,
-						true,
-					);
-					// Manually set payment currency since we removed it in the above shortcut setup
-					InvestmentPaymentCurrency::<T>::insert(
-						&investor,
-						default_investment_id::<T>(),
-						foreign_currency,
-					);
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						foreign_currency,
-						&trader,
-						invest_amount_foreign_denominated * 2
-					));
-
-					// Decrease invest setup to have invest order swapping into foreign currency
-					let msg = LiquidityPoolMessage::DecreaseInvestOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_foreign_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-
-					// Redeem setup: Increase and process
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						default_investment_id::<T>().into(),
-						&Domain::convert(DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain()),
-						invest_amount_pool_denominated
-					));
-					let msg = LiquidityPoolMessage::IncreaseRedeemOrder {
-						pool_id,
-						tranche_id: default_tranche_id::<T>(pool_id),
-						investor: investor.clone().into(),
-						currency: general_currency_index::<T>(foreign_currency),
-						amount: invest_amount_pool_denominated,
-					};
-					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
-						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
-						msg.clone()
-					));
-					let pool_account = pallet_pool_system::pool_types::PoolLocator { pool_id }
-						.into_account_truncating();
-					assert_ok!(orml_tokens::Pallet::<T>::mint_into(
-						pool_currency,
-						&pool_account,
-						invest_amount_pool_denominated
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					// Process 50% of redemption at 25% rate, i.e. 1 pool currency = 4 tranche
-					// tokens
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(50),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::Investment
-					);
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.unwrap()
-						.last_swap_reason
-						.unwrap(),
-						TokenSwapReason::InvestmentAndRedemption
-					);
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::RedeemingAndActiveSwapIntoForeignCurrency {
-							redeem_amount: invest_amount_pool_denominated / 2,
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 8,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionPayoutCurrency::<T>::get(&investor, default_investment_id::<T>())
-							.unwrap(),
-						foreign_currency
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 8;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Process remaining redemption at 25% rate, i.e. 1 pool currency =
-					// 4 tranche tokens
-					assert_ok!(pallet_investments::Pallet::<T>::process_redeem_orders(
-						default_investment_id::<T>()
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::redeem_fulfillment(
-						default_investment_id::<T>(),
-						FulfillmentWithPrice {
-							of_amount: Perquintill::from_percent(100),
-							price: Ratio::checked_from_rational(1, 4).unwrap(),
-						}
-					));
-					assert_ok!(pallet_investments::Pallet::<T>::collect_redemptions_for(
-						RawOrigin::Signed(Keyring::Charlie.into()).into(),
-						investor.clone(),
-						default_investment_id::<T>()
-					));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							}
-						}
-					);
-					let swap_amount =
-						invest_amount_foreign_denominated + invest_amount_foreign_denominated / 4;
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderUpdated {
-								order_id: swap_order_id,
-								account: investor.clone(),
-								buy_amount: swap_amount,
-								sell_rate_limit: Ratio::one(),
-								min_fulfillment_amount: min_fulfillment_amount::<T>(
-									foreign_currency,
-								),
-							}
-							.into()
-					}));
-
-					// Partially fulfilling the swap order below the invest swapping amount should
-					// still have both states swapping into foreign
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 2
-					));
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_order_book::Event::<T>::OrderFulfillment {
-								order_id: swap_order_id,
-								placing_account: investor.clone(),
-								fulfilling_account: trader.clone(),
-								partial_fulfillment: true,
-								fulfillment_amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency,
-								sell_rate_limit: Ratio::one(),
-							}
-							.into()
-					}));
-					assert_eq!(
-						InvestmentState::<T>::get(&investor, default_investment_id::<T>()),
-						InvestState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 2,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-							done_amount: invest_amount_foreign_denominated / 2
-						}
-					);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order for the remaining invest swap amount
-					// should still clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 2
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrency {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 4,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order below the redeem swap amount should still
-					// clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 8
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert_eq!(
-						RedemptionState::<T>::get(&investor, default_investment_id::<T>()),
-						RedeemState::ActiveSwapIntoForeignCurrencyAndSwapIntoForeignDone {
-							swap: Swap {
-								amount: invest_amount_foreign_denominated / 8,
-								currency_in: foreign_currency,
-								currency_out: pool_currency
-							},
-							done_amount: invest_amount_foreign_denominated / 8
-						}
-					);
-					assert!(RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_some()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_some()
-					);
-					ensure_executed_collect_redeem_not_dispatched::<T>();
-
-					// Partially fulfilling the swap order below the redeem swap amount should still
-					// clear the investment state
-					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_partial(
-						RawOrigin::Signed(trader.clone()).into(),
-						swap_order_id,
-						invest_amount_foreign_denominated / 8
-					));
-					assert!(!InvestmentState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!RedemptionState::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					),);
-					assert!(!RedemptionPayoutCurrency::<T>::contains_key(
-						&investor,
-						default_investment_id::<T>()
-					));
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::foreign_investment_info(
-							swap_order_id
-						)
-						.is_none()
-					);
-					assert!(
-						pallet_foreign_investments::Pallet::<T>::token_swap_order_ids(
-							&investor,
-							default_investment_id::<T>()
-						)
-						.is_none()
-					);
-					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
-						e.event
-							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-								sender: TreasuryAccount::get(),
-								domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
-								message: pallet_liquidity_pools::Message::ExecutedCollectRedeem {
-									pool_id,
-									tranche_id: default_tranche_id::<T>(pool_id),
-									investor: investor.clone().into(),
-									currency: general_currency_index::<T>(foreign_currency),
-									currency_payout: invest_amount_foreign_denominated / 4,
-									tranche_tokens_payout: invest_amount_pool_denominated,
-									remaining_redeem_amount: 0,
-								},
-							}
-							.into()
-					}));
-				});
-			}
-
 			crate::test_for_runtimes!([development], collect_foreign_investment_for);
 			crate::test_for_runtimes!([development], invest_increase_decrease);
 			crate::test_for_runtimes!([development], invest_swaps_happy_path);
-			crate::test_for_runtimes!([development], concurrent_swap_orders_same_direction);
-			crate::test_for_runtimes!([development], concurrent_swap_orders_opposite_direction);
-			crate::test_for_runtimes!([development], fulfill_invest_swap_order_requires_collect);
-			crate::test_for_runtimes!([development], fulfill_redeem_swap_order_requires_collect);
-			crate::test_for_runtimes!(
-				[development],
-				partial_fulfillment_concurrent_swap_orders_same_direction
-			);
 		}
 	}
 
@@ -6516,16 +4321,12 @@ mod development {
 
 				// Whitelist destination as TrancheInvestor of this Pool
 				let valid_until = u64::MAX;
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(receiver.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						valid_until
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
+				);
 
 				// Call the pallet_liquidity_pools::Pallet::<T>::update_member which ensures the
 				// destination address is whitelisted.
@@ -6634,16 +4435,11 @@ mod development {
 				));
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(receiver.clone()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					receiver.clone(),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						valid_until
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
+				);
 
 				// Finally, verify that we can now transfer the tranche to the destination
 				// address
@@ -6690,37 +4486,29 @@ mod development {
 				assert!(pallet_pool_system::Pallet::<T>::pool(invalid_pool_id).is_none());
 
 				// Make Keyring::Bob the MembersListAdmin of both pools
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					Keyring::Bob.into(),
-					PermissionScope::Pool(valid_pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
+					valid_pool_id,
+					PoolRole::InvestorAdmin,
+				);
+				crate::generic::utils::give_pool_role::<T>(
 					Keyring::Bob.into(),
-					PermissionScope::Pool(invalid_pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
+					invalid_pool_id,
+					PoolRole::InvestorAdmin,
+				);
 
 				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
 				// (invalid_pool_id, valid_tranche_id)
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(invalid_pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
-				));
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+					invalid_pool_id,
+					PoolRole::TrancheInvestor(valid_tranche_id, valid_until),
+				);
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(valid_pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
-				));
+					valid_pool_id,
+					PoolRole::TrancheInvestor(invalid_tranche_id, valid_until),
+				);
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),
