@@ -177,7 +177,7 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 }
 
 // NOTE: This code here is really critical. The test are resided in the
-// integrationb tests section for this reason.       The importance is, that
+// integration tests section for this reason. The importance is, that
 // nobody is able to create a call that can possibly bypass this filtering.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
