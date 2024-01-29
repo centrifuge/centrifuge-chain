@@ -707,7 +707,7 @@ pub mod pallet {
 
 			let router = DomainRouters::<T>::get(domain).ok_or(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
-					actual_weight: Some(read_weight.clone()),
+					actual_weight: Some(read_weight),
 					pays_fee: Pays::Yes,
 				},
 				error: Error::<T>::RouterNotFound.into(),

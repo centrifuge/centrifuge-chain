@@ -4739,6 +4739,8 @@ mod development {
 		use super::*;
 
 		mod axelar_evm {
+			use std::ops::AddAssign;
+
 			use super::*;
 
 			mod utils {
@@ -4853,12 +4855,15 @@ mod development {
 					)
 				}));
 
+				let mut nonce = T::OutboundMessageNonce::one();
+
 				let expected_event =
 					pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageExecutionFailure {
 						sender: gateway_sender.clone(),
 						domain: test_domain.clone(),
 						message: msg.clone(),
 						error: pallet_evm::Error::<T>::BalanceLow.into(),
+						nonce,
 					};
 
 				env.pass(Blocks::UntilEvent {
@@ -4868,6 +4873,8 @@ mod development {
 
 				env.check_event(expected_event)
 					.expect("expected RouterExecutionFailure event");
+
+				nonce.add_assign(T::OutboundMessageNonce::one());
 
 				// Success
 
@@ -4897,6 +4904,7 @@ mod development {
 						sender: gateway_sender.clone(),
 						domain: test_domain.clone(),
 						message: msg.clone(),
+						nonce,
 					};
 
 				env.pass(Blocks::UntilEvent {
@@ -4910,25 +4918,16 @@ mod development {
 				// Router not found
 				let unused_domain = Domain::EVM(1234);
 
-				assert_ok!(env.parachain_state_mut(|| {
-					<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
-						sender,
-						unused_domain.clone(),
-						msg,
-					)
-				}));
-
-				let expected_event = pallet_liquidity_pools_gateway::Event::<T>::RouterNotFound {
-					domain: unused_domain.clone(),
-				};
-
-				env.pass(Blocks::UntilEvent {
-					event: expected_event.clone().into(),
-					limit: 3,
+				env.parachain_state_mut(|| {
+					assert_noop!(
+						<pallet_liquidity_pools_gateway::Pallet<T> as OutboundQueue>::submit(
+							sender,
+							unused_domain.clone(),
+							msg,
+						),
+						pallet_liquidity_pools_gateway::Error::<T>::RouterNotFound
+					);
 				});
-
-				env.check_event(expected_event)
-					.expect("expected RouterNotFound event");
 			}
 
 			crate::test_for_runtimes!([development], test_via_outbound_queue);
@@ -4994,6 +4993,7 @@ mod development {
 							sender: gateway_sender,
 							domain: TEST_DOMAIN,
 							message: msg,
+							nonce: T::OutboundMessageNonce::one(),
 						};
 
 					env.pass(Blocks::UntilEvent {
