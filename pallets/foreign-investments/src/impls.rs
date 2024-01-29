@@ -6,7 +6,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{EnsureAdd, Zero};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -132,7 +132,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		T::Investment::investment(who, investment_id)
+		Ok(T::Investment::investment(who, investment_id)?.ensure_add(
+			Swaps::<T>::pending_amount_for(
+				who,
+				investment_id,
+				Action::Investment,
+				pool_currency_of::<T>(investment_id)?,
+			),
+		)?)
 	}
 
 	fn redemption(

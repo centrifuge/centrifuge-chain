@@ -411,7 +411,11 @@ mod investment {
 				})
 			);
 
-			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT))
+			);
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -442,7 +446,11 @@ mod investment {
 				})
 			);
 
-			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT + AMOUNT))
+			);
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -527,7 +535,11 @@ mod investment {
 				})
 			);
 
-			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT * 3 / 4))
+			);
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -579,6 +591,10 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT))
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 4))
 			);
 		});
@@ -597,6 +613,14 @@ mod investment {
 			));
 
 			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT))
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(3 * AMOUNT / 4))
+			);
 
 			assert_ok!(ForeignInvestment::decrease_foreign_investment(
 				&USER,
@@ -615,6 +639,10 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT / 2))
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 2))
 			);
 		});
@@ -658,6 +686,10 @@ mod investment {
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT * 3 / 2))
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(3 * AMOUNT / 4))
 			);
 		});
@@ -704,6 +736,7 @@ mod investment {
 			);
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -764,6 +797,10 @@ mod investment {
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 4))
 			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT / 4))
+			);
 		});
 	}
 
@@ -816,9 +853,12 @@ mod investment {
 					decrease_swapped_amount: 0,
 				})
 			);
-
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(3 * AMOUNT / 4))
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(AMOUNT / 4))
 			);
 		});
@@ -864,6 +904,7 @@ mod investment {
 			);
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -910,6 +951,7 @@ mod investment {
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
 				Ok(foreign_to_pool(0))
 			);
+			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
 	}
 
@@ -931,6 +973,10 @@ mod investment {
 
 				assert_eq!(
 					ForeignInvestment::investment(&USER, INVESTMENT_ID),
+					Ok(foreign_to_pool(AMOUNT))
+				);
+				assert_eq!(
+					MockInvestment::investment(&USER, INVESTMENT_ID),
 					Ok(foreign_to_pool(AMOUNT))
 				);
 			});
@@ -970,6 +1016,10 @@ mod investment {
 
 				assert_eq!(
 					ForeignInvestment::investment(&USER, INVESTMENT_ID),
+					Ok(foreign_to_pool(0))
+				);
+				assert_eq!(
+					MockInvestment::investment(&USER, INVESTMENT_ID),
 					Ok(foreign_to_pool(0))
 				);
 
