@@ -38,7 +38,10 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook, ValueProvider};
-	use cfg_types::{investments::Swap, tokens::CustomMetadata};
+	use cfg_types::{
+		investments::{Swap, SwapState},
+		tokens::CustomMetadata,
+	};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -55,7 +58,8 @@ pub mod pallet {
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
-			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Zero,
+			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Saturating,
+			Zero,
 		},
 		FixedPointNumber, FixedPointOperand, TokenError,
 	};
@@ -153,7 +157,7 @@ pub mod pallet {
 		/// The hook which acts upon a (partially) fulfilled order
 		type FulfilledOrderHook: StatusNotificationHook<
 			Id = Self::OrderIdNonce,
-			Status = Swap<Self::Balance, Self::CurrencyId>,
+			Status = SwapState<Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
 
@@ -696,10 +700,14 @@ pub mod pallet {
 
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
-				Swap {
-					amount_in,
-					currency_in: order.currency_in,
-					currency_out: order.currency_out,
+				SwapState {
+					swap: Swap {
+						amount_out: remaining_amount_out,
+						currency_in: order.currency_in,
+						currency_out: order.currency_out,
+					},
+					swapped_in: amount_in,
+					swapped_out: amount_out,
 				},
 			)?;
 
@@ -778,9 +786,9 @@ pub mod pallet {
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = Swap<T::Balance, T::CurrencyId>;
 		type OrderId = T::OrderIdNonce;
 		type Ratio = T::Ratio;
+		type SwapState = SwapState<T::Balance, T::CurrencyId>;
 
 		fn place_order(
 			account: T::AccountId,
@@ -837,22 +845,31 @@ pub mod pallet {
 			)
 		}
 
-		fn is_active(order: Self::OrderId) -> bool {
-			<Orders<T>>::contains_key(order)
-		}
-
-		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
+		fn get_swap_state(order: Self::OrderId) -> Option<SwapState<T::Balance, T::CurrencyId>> {
 			Orders::<T>::get(order)
-				.map(|order| Swap {
-					amount_in: order.amount_in,
-					currency_in: order.currency_in,
-					currency_out: order.currency_out,
+				.map(|order| SwapState {
+					swap: Swap {
+						amount_out: order.amount_out,
+						currency_in: order.currency_in,
+						currency_out: order.currency_out,
+					},
+					swapped_in: order.amount_in,
+					swapped_out: order.amount_out_initial.saturating_sub(order.amount_out),
 				})
 				.ok()
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
 			TradingPair::<T>::get(currency_in, currency_out).is_ok()
+		}
+
+		fn convert_by_market(
+			currency_in: Self::CurrencyId,
+			currency_out: Self::CurrencyId,
+			amount_out: Self::Balance,
+		) -> Result<Self::Balance, DispatchError> {
+			let ratio = Self::market_ratio(currency_out, currency_in)?;
+			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
 		}
 	}
 

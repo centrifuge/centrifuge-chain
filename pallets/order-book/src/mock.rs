@@ -13,7 +13,7 @@
 use cfg_mocks::pallet_mock_fees;
 use cfg_traits::ConversionToAssetBalance;
 use cfg_types::{
-	investments::Swap,
+	investments::SwapState,
 	tokens::{CurrencyId, CustomMetadata},
 };
 use frame_support::{
@@ -129,7 +129,7 @@ impl cfg_mocks::fees::pallet::Config for Runtime {
 
 impl cfg_mocks::status_notification::pallet::Config for Runtime {
 	type Id = OrderId;
-	type Status = Swap<Balance, CurrencyId>;
+	type Status = SwapState<Balance, CurrencyId>;
 }
 
 parameter_types! {

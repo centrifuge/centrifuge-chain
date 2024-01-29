@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::investments::Swap;
+use cfg_types::investments::{Swap, SwapState};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
 	traits::fungibles::{Inspect, InspectHold},
@@ -69,15 +69,24 @@ mod util {
 		assert!(!CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
-	pub fn expect_notification(order_id: OrderId, amount_in: Balance) {
-		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap| {
+	pub fn expect_notification(
+		order_id: OrderId,
+		amount_out: Balance,
+		swapped_in: Balance,
+		swapped_out: Balance,
+	) {
+		MockFulfilledOrderHook::mock_notify_status_change(move |id, swap_state| {
 			assert_eq!(order_id, id);
 			assert_eq!(
-				swap,
-				Swap {
-					amount_in,
-					currency_in: CURRENCY_B,
-					currency_out: CURRENCY_A,
+				swap_state,
+				SwapState {
+					swap: Swap {
+						amount_out,
+						currency_in: CURRENCY_B,
+						currency_out: CURRENCY_A,
+					},
+					swapped_in,
+					swapped_out,
 				}
 			);
 			Ok(())
@@ -409,7 +418,7 @@ fn fill_order_full() {
 		let order_id = util::create_default_order(amount_out);
 
 		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(10));
-		util::expect_notification(order_id, amount_in);
+		util::expect_notification(order_id, token_a(0), amount_in, token_a(10));
 
 		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
@@ -436,7 +445,7 @@ fn fill_order_partial_in_two_times() {
 		// First fill order partial remaining less than min fulfilled amount
 
 		let first_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
-		util::expect_notification(order_id, first_amount_in);
+		util::expect_notification(order_id, token_a(1), first_amount_in, token_a(9));
 		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
@@ -472,7 +481,7 @@ fn fill_order_partial_in_two_times() {
 		// Second fill order partial filling the whole order
 
 		let second_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(1));
-		util::expect_notification(order_id, second_amount_in);
+		util::expect_notification(order_id, token_a(0), second_amount_in, token_a(1));
 		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
@@ -526,9 +535,6 @@ fn fill_order_partial_with_insufficient_funds() {
 	new_test_ext().execute_with(|| {
 		let order_id = util::create_default_order(token_a(10));
 
-		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));
-		util::expect_notification(order_id, amount_in);
-
 		assert_err!(
 			OrderBook::fill_order(RuntimeOrigin::signed(OTHER), order_id, token_a(3)),
 			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
@@ -547,8 +553,6 @@ fn fill_order_partial_with_bigger_fulfilling_amount() {
 	new_test_ext().execute_with(|| {
 		let order_id = util::create_default_order(token_a(10));
 
-		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(11));
-		util::expect_notification(order_id, amount_in);
 		assert_err!(
 			OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(11)),
 			Error::<Runtime>::FulfillAmountTooLarge,
@@ -575,7 +579,7 @@ fn correct_order_details() {
 		let order_id = util::create_default_order(token_a(10));
 
 		let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
-		util::expect_notification(order_id, amount_in);
+		util::expect_notification(order_id, token_a(1), amount_in, token_a(9));
 		assert_ok!(OrderBook::fill_order(
 			RuntimeOrigin::signed(TO),
 			order_id,
@@ -583,11 +587,15 @@ fn correct_order_details() {
 		));
 
 		assert_eq!(
-			OrderBook::get_order_details(order_id),
-			Some(Swap {
-				amount_in,
-				currency_in: CURRENCY_B,
-				currency_out: CURRENCY_A
+			OrderBook::get_swap_state(order_id),
+			Some(SwapState {
+				swap: Swap {
+					amount_out: token_a(1),
+					currency_in: CURRENCY_B,
+					currency_out: CURRENCY_A
+				},
+				swapped_in: amount_in,
+				swapped_out: token_a(9)
 			})
 		);
 	});
@@ -627,7 +635,7 @@ mod market {
 			});
 
 			let first_amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(9));
-			util::expect_notification(order_id, first_amount_in);
+			util::expect_notification(order_id, token_a(1), first_amount_in, token_a(9));
 			assert_ok!(OrderBook::fill_order(
 				RuntimeOrigin::signed(TO),
 				order_id,
@@ -669,8 +677,6 @@ mod market {
 
 			MockRatioProvider::mock_get(move |_, _| Ok(Some(DEFAULT_RATIO)));
 
-			let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));
-			util::expect_notification(order_id, amount_in);
 			assert_err!(
 				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
 				Error::<Runtime>::MarketFeederNotFound,
@@ -686,8 +692,6 @@ mod market {
 			assert_ok!(OrderBook::set_market_feeder(RuntimeOrigin::root(), FEEDER));
 			MockRatioProvider::mock_get(move |_, _| Ok(None));
 
-			let amount_in = token_b(DEFAULT_RATIO.saturating_mul_int(3));
-			util::expect_notification(order_id, amount_in);
 			assert_err!(
 				OrderBook::fill_order(RuntimeOrigin::signed(TO), order_id, token_a(3)),
 				Error::<Runtime>::MarketRatioNotFound,

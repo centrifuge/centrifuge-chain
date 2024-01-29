@@ -10,7 +10,7 @@ pub mod pallet {
 		type Balance;
 		type Ratio;
 		type OrderId;
-		type OrderDetails;
+		type SwapState;
 	}
 
 	#[pallet::pallet]
@@ -58,17 +58,24 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
+		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::SwapState> + 'static) {
 			register_call!(f);
+		}
+
+		pub fn mock_convert_by_market(
+			f: impl Fn(T::CurrencyId, T::CurrencyId, T::Balance) -> Result<T::Balance, DispatchError>
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
+		type SwapState = T::SwapState;
 
 		fn place_order(
 			a: T::AccountId,
@@ -92,16 +99,20 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn is_active(a: Self::OrderId) -> bool {
-			execute_call!(a)
-		}
-
 		fn valid_pair(a: Self::CurrencyId, b: Self::CurrencyId) -> bool {
 			execute_call!((a, b))
 		}
 
-		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
+		fn get_swap_state(a: Self::OrderId) -> Option<Self::SwapState> {
 			execute_call!(a)
+		}
+
+		fn convert_by_market(
+			a: Self::CurrencyId,
+			b: Self::CurrencyId,
+			c: Self::Balance,
+		) -> Result<Self::Balance, DispatchError> {
+			execute_call!((a, b, c))
 		}
 	}
 }

@@ -14,10 +14,9 @@ use cfg_primitives::OrderId;
 use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
 use sp_runtime::{
 	traits::{EnsureAddAssign, Zero},
-	ArithmeticError, DispatchError, DispatchResult,
+	ArithmeticError, DispatchError,
 };
 use sp_std::cmp::PartialEq;
 
@@ -150,53 +149,17 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 }
 
 /// A simple representation of a currency swap.
-#[derive(
-	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub struct Swap<
-	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
-	Currency: Clone + PartialEq,
-> {
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct Swap<Balance, Currency> {
 	/// The incoming currency, i.e. the desired one.
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
-	/// The amount of incoming currency which shall be bought.
-	pub amount_in: Balance,
+	/// The amount of outcoming currency that will be swapped.
+	pub amount_out: Balance,
 }
 
-impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clone + PartialEq>
-	Swap<Balance, Currency>
-{
-	/// Ensures that the ingoing and outgoing currencies of two swaps...
-	/// * Either match fully (in1 = in2, out1 = out2) if the swap direction is
-	///   the same for both swaps, i.e. (into pool, into pool) or (into foreign,
-	///   into foreign)
-	/// * Or the ingoing and outgoing currencies match (in1 = out2, out1 = in2)
-	///   if the swap direction is opposite, i.e. (into pool, into foreign) or
-	///   (into foreign, into pool)
-	pub fn ensure_currencies_match(
-		&self,
-		other: &Self,
-		is_same_swap_direction: bool,
-	) -> DispatchResult {
-		if is_same_swap_direction
-			&& (self.currency_in != other.currency_in || self.currency_out != other.currency_out)
-		{
-			Err(DispatchError::Other(
-				"Swap currency mismatch for same swap direction",
-			))
-		} else if !is_same_swap_direction
-			&& (self.currency_in != other.currency_out || self.currency_out != other.currency_in)
-		{
-			Err(DispatchError::Other(
-				"Swap currency mismatch for opposite swap direction",
-			))
-		} else {
-			Ok(())
-		}
-	}
-
+impl<Balance, Currency: Clone + PartialEq> Swap<Balance, Currency> {
 	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
 		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
 			Ok(true)
@@ -208,9 +171,20 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 	}
 }
 
+/// A representation of a currency swap in process.
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct SwapState<Balance, Currency> {
+	/// Swap not yet processed with the pending outcomming amount
+	pub swap: Swap<Balance, Currency>,
+	/// Amount of incoming currency already swapped
+	pub swapped_in: Balance,
+	/// Amount of incoming currency already swapped denominated in outcomming
+	/// currency
+	pub swapped_out: Balance,
+}
+
 /// A representation of an executed investment decrement.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-
 pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 	/// The currency in which `DecreaseInvestOrder` was realised
 	pub foreign_currency: Currency,
@@ -225,7 +199,6 @@ pub struct ExecutedForeignDecreaseInvest<Balance, Currency> {
 
 /// A representation of an executed collected foreign investment or redemption.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-
 pub struct ExecutedForeignCollect<Balance, Currency> {
 	/// The foreign currency in which ...
 	/// * If investment: the payment took place
@@ -253,7 +226,6 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 /// A representation of an investment portfolio consisting of free, pending and
 /// claimable pool currency as well as tranche tokens.
 #[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-
 pub struct InvestmentPortfolio<Balance, CurrencyId> {
 	/// The identifier of the pool currency
 	pub pool_currency_id: CurrencyId,

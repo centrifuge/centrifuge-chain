@@ -515,7 +515,7 @@ pub trait TokenSwaps<Account> {
 	type Balance;
 	type Ratio;
 	type OrderId;
-	type OrderDetails;
+	type SwapState;
 
 	/// Swap tokens selling `amount_out` of `currency_out` and buying
 	/// `currency_in` given an order ratio.
@@ -542,11 +542,16 @@ pub trait TokenSwaps<Account> {
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
-	/// Check if the order is still active.
-	fn is_active(order: Self::OrderId) -> bool;
-
 	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
+	fn get_swap_state(order: Self::OrderId) -> Option<Self::SwapState>;
+
+	/// Makes a conversion between 2 currencies using the market ratio between
+	/// them
+	fn convert_by_market(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::Balance,
+	) -> Result<Self::Balance, DispatchError>;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
