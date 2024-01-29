@@ -68,29 +68,6 @@ impl<T: Config> Swaps<T> {
 			.ok_or(Error::<T>::SwapOrderNotFound.into())
 	}
 
-	/// Returns the pending swap amount denominated in the given currency
-	pub fn any_pending_amount_demominated_in(
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		action: Action,
-		currency: T::CurrencyId,
-	) -> Result<T::Balance, DispatchError> {
-		ForeignIdToSwapId::<T>::get((who, investment_id, action))
-			.and_then(T::TokenSwaps::get_swap_state)
-			.map(|state| {
-				if state.swap.currency_out == currency {
-					Ok(state.swap.amount_out)
-				} else {
-					T::TokenSwaps::convert_by_market(
-						currency,
-						state.swap.currency_out,
-						state.swap.amount_out,
-					)
-				}
-			})
-			.unwrap_or(Ok(T::Balance::default()))
-	}
-
 	/// Returns the pending swap amount for the direction that ends up in
 	/// `currency_in`
 	pub fn pending_amount_for(
