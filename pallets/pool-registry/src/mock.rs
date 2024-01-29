@@ -345,7 +345,7 @@ impl orml_tokens::Config for Test {
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = DispatchError;
-	type Id = cfg_types::investments::ForeignInvestmentInfo<AccountId, TrancheCurrency, ()>;
+	type Id = (AccountId, TrancheCurrency);
 	type Status = cfg_types::investments::CollectedAmount<Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {

@@ -15,7 +15,10 @@ use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
+use sp_runtime::{
+	traits::{EnsureAddAssign, Zero},
+	ArithmeticError, DispatchError, DispatchResult,
+};
 use sp_std::cmp::PartialEq;
 
 use crate::orders::Order;
@@ -127,6 +130,14 @@ pub struct CollectedAmount<Balance> {
 	pub amount_payment: Balance,
 }
 
+impl<Balance: EnsureAddAssign + Copy> CollectedAmount<Balance> {
+	pub fn increase(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+		self.amount_collected
+			.ensure_add_assign(other.amount_collected)?;
+		self.amount_payment.ensure_add_assign(other.amount_payment)
+	}
+}
+
 /// A representation of an investment identifier and the corresponding owner.
 ///
 /// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
@@ -140,18 +151,7 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 
 /// A simple representation of a currency swap.
 #[derive(
-	Clone,
-	Default,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub struct Swap<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
@@ -162,7 +162,7 @@ pub struct Swap<
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
 	/// The amount of incoming currency which shall be bought.
-	pub amount: Balance,
+	pub amount_in: Balance,
 }
 
 impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clone + PartialEq>
@@ -194,6 +194,16 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 			))
 		} else {
 			Ok(())
+		}
+	}
+
+	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
+		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
+			Ok(true)
+		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
+			Ok(false)
+		} else {
+			Err(DispatchError::Other("Swap contains different currencies"))
 		}
 	}
 }

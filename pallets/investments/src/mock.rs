@@ -160,7 +160,7 @@ impl cfg_mocks::pallet_mock_pools::Config for MockRuntime {
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
-	type Id = cfg_types::investments::ForeignInvestmentInfo<u64, InvestmentId, ()>;
+	type Id = (MockAccountId, InvestmentId);
 	type Status = cfg_types::investments::CollectedAmount<Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {

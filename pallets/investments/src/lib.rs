@@ -20,10 +20,7 @@ use cfg_traits::{
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	investments::{
-		CollectedAmount, ForeignInvestmentInfo, InvestCollection, InvestmentAccount,
-		RedeemCollection,
-	},
+	investments::{CollectedAmount, InvestCollection, InvestmentAccount, RedeemCollection},
 	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
@@ -104,7 +101,7 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_types::investments::{ForeignInvestmentInfo, InvestmentInfo};
+	use cfg_types::investments::InvestmentInfo;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -174,7 +171,7 @@ pub mod pallet {
 		/// NOTE: NOOP if the investment is not foreign.
 		type CollectedInvestmentHook: StatusNotificationHook<
 			Error = DispatchError,
-			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Id = (Self::AccountId, Self::InvestmentId),
 			Status = CollectedAmount<Self::Amount>,
 		>;
 
@@ -183,7 +180,7 @@ pub mod pallet {
 		/// NOTE: NOOP if the redemption is not foreign.
 		type CollectedRedemptionHook: StatusNotificationHook<
 			Error = DispatchError,
-			Id = ForeignInvestmentInfo<Self::AccountId, Self::InvestmentId, ()>,
+			Id = (Self::AccountId, Self::InvestmentId),
 			Status = CollectedAmount<Self::Amount>,
 		>;
 
@@ -734,11 +731,7 @@ impl<T: Config> Pallet<T> {
 		if collected_investment != Default::default() {
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedInvestmentHook::notify_status_change(
-				ForeignInvestmentInfo {
-					owner: who,
-					id: investment_id,
-					last_swap_reason: None,
-				},
+				(who, investment_id),
 				collected_investment,
 			)?;
 		}
@@ -869,11 +862,7 @@ impl<T: Config> Pallet<T> {
 		if collected_redemption != Default::default() {
 			// Assumption: NOOP if investment is not foreign
 			T::CollectedRedemptionHook::notify_status_change(
-				ForeignInvestmentInfo {
-					owner: who,
-					id: investment_id,
-					last_swap_reason: None,
-				},
+				(who, investment_id),
 				collected_redemption,
 			)?;
 		}

@@ -1642,10 +1642,8 @@ impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Quantity;
-	type CollectedInvestmentHook =
-		pallet_foreign_investments::hooks::CollectedInvestmentHook<Runtime>;
-	type CollectedRedemptionHook =
-		pallet_foreign_investments::hooks::CollectedRedemptionHook<Runtime>;
+	type CollectedInvestmentHook = pallet_foreign_investments::CollectedInvestmentHook<Runtime>;
+	type CollectedRedemptionHook = pallet_foreign_investments::CollectedRedemptionHook<Runtime>;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
@@ -1732,7 +1730,7 @@ impl pallet_order_book::Config for Runtime {
 	type Balance = Balance;
 	type DecimalConverter =
 		runtime_common::foreign_investments::NativeBalanceDecimalConverter<OrmlAssetRegistry>;
-	type FulfilledOrderHook = pallet_foreign_investments::hooks::FulfilledSwapOrderHook<Runtime>;
+	type FulfilledOrderHook = pallet_foreign_investments::FulfilledSwapOrderHook<Runtime>;
 	type MinFulfillmentAmountNative = MinFulfillmentAmountNative;
 	type OrderIdNonce = u64;
 	type OrderPairVecSize = OrderPairVecSize;
@@ -1829,7 +1827,7 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 111,
 		GapRewardMechanism: pallet_rewards::mechanism::gap = 112,
 		OrderBook: pallet_order_book::{Pallet, Call, Storage, Event<T>} = 113,
-		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage, Event<T>} = 114,
+		ForeignInvestments: pallet_foreign_investments::{Pallet, Storage} = 114,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 115,
 		OraclePriceFeed: pallet_oracle_feed::{Pallet, Call, Storage, Event<T>} = 116,
 		OraclePriceCollection: pallet_oracle_collection::{Pallet, Call, Storage, Event<T>} = 117,
