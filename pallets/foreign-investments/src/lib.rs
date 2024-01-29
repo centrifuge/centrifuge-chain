@@ -48,6 +48,7 @@ pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapO
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+pub use swaps::Swaps;
 
 #[cfg(test)]
 mod mock;
@@ -248,7 +249,7 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub type ForeignIdToSwapId<T: Config> =
+	pub(super) type ForeignIdToSwapId<T: Config> =
 		StorageMap<_, Blake2_128Concat, ForeignId<T>, T::SwapId>;
 
 	#[pallet::error]
