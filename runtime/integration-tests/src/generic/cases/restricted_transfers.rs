@@ -137,7 +137,7 @@ mod cfg {
 	}
 
 	fn validate_ok<T: Runtime>(who: Keyring, call: impl Into<T::RuntimeCallExt> + Clone) {
-		// With FilterCurrency::Specific(CurrencyId::Native)
+		// With FilterCurrencyAll
 		{
 			let mut env = setup::<T>(FilterCurrency::All);
 
@@ -225,6 +225,42 @@ mod cfg {
 			dest: Keyring::Charlie.into(),
 			value: cfg(TRANSFER_AMOUNT),
 		}
+	}
+
+	fn transfer_no_restriction<T: Runtime>() {
+		let mut env = RuntimeEnv::<T>::from_parachain_storage(
+			Genesis::default()
+				.add(genesis::balances::<T>(cfg(TRANSFER_AMOUNT + 10)))
+				.storage(),
+		);
+
+		let (pre_transfer_alice, pre_transfer_bob, pre_transfer_charlie) =
+			env.parachain_state(|| {
+				// NOTE: The para-id is not relevant here
+				(
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id()),
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id()),
+					pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id()),
+				)
+			});
+
+		let fee = env.submit_now(Keyring::Alice, transfer_ok::<T>()).unwrap();
+
+		env.parachain_state(|| {
+			let after_transfer_alice =
+				pallet_balances::Pallet::<T>::free_balance(&Keyring::Alice.to_account_id());
+			let after_transfer_bob =
+				pallet_balances::Pallet::<T>::free_balance(&Keyring::Bob.to_account_id());
+			let after_transfer_charlie =
+				pallet_balances::Pallet::<T>::free_balance(&Keyring::Charlie.to_account_id());
+
+			assert_eq!(
+				after_transfer_alice,
+				pre_transfer_alice - fee - cfg(TRANSFER_AMOUNT)
+			);
+			assert_eq!(after_transfer_bob, pre_transfer_bob + cfg(TRANSFER_AMOUNT));
+			assert_eq!(after_transfer_charlie, pre_transfer_charlie);
+		});
 	}
 
 	fn basic_transfer<T: Runtime>() {
@@ -353,6 +389,7 @@ mod cfg {
 		);
 	}
 
+	crate::test_for_runtimes!(all, transfer_no_restriction);
 	crate::test_for_runtimes!(all, basic_transfer);
 	crate::test_for_runtimes!(all, proxy_transfer);
 	crate::test_for_runtimes!(all, batch_proxy_transfer);
