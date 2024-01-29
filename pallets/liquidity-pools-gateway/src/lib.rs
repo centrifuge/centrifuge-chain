@@ -25,7 +25,7 @@ use frame_system::{
 };
 pub use pallet::*;
 use parity_scale_codec::{EncodeLike, FullCodec};
-use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, One};
+use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, One};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use crate::weights::WeightInfo;
@@ -512,10 +512,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let (domain, sender, message) =
-				OutboundMessageQueue::<T>::get(nonce).ok_or(Error::<T>::OutboundMessageNotFound)?;
-
-			OutboundMessageQueue::<T>::remove(nonce);
+			let (domain, sender, message) = OutboundMessageQueue::<T>::take(nonce)
+				.ok_or(Error::<T>::OutboundMessageNotFound)?;
 
 			match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
 				Ok(_) => {
@@ -636,48 +634,52 @@ pub mod pallet {
 			for (nonce, (domain, sender, message)) in OutboundMessageQueue::<T>::iter() {
 				processed_entries.push(nonce);
 
-				let mut weight = Weight::zero();
+				let weight =
+					match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
+						Ok(post_info) => {
+							Self::deposit_event(Event::OutboundMessageExecutionSuccess {
+								nonce,
+								sender,
+								domain,
+								message,
+							});
 
-				match Self::process_message(domain.clone(), sender.clone(), message.clone()) {
-					Ok(post_info) => {
-						Self::deposit_event(Event::OutboundMessageExecutionSuccess {
-							nonce,
-							sender,
-							domain,
-							message,
-						});
+							post_info
+								.actual_weight
+								.expect("Message processing success already ensured")
+								// Extra weight breakdown:
+								//
+								// 1 read for the outbound message
+								// 1 write for the event
+								// 1 write for the outbound message removal
+								.saturating_add(T::DbWeight::get().reads_writes(1, 2))
+						}
+						Err(e) => {
+							Self::deposit_event(Event::OutboundMessageExecutionFailure {
+								nonce,
+								sender: sender.clone(),
+								domain: domain.clone(),
+								message: message.clone(),
+								error: e.error,
+							});
 
-						weight = weight
-							.saturating_add(T::DbWeight::get().writes(1))
-							.saturating_add(
-								post_info
-									.actual_weight
-									.expect("expected message processing weight"),
+							FailedOutboundMessages::<T>::insert(
+								nonce,
+								(domain, sender, message, e.error),
 							);
-					}
-					Err(e) => {
-						Self::deposit_event(Event::OutboundMessageExecutionFailure {
-							nonce,
-							sender: sender.clone(),
-							domain: domain.clone(),
-							message: message.clone(),
-							error: e.error,
-						});
 
-						FailedOutboundMessages::<T>::insert(
-							nonce,
-							(domain, sender, message, e.error),
-						);
-
-						weight = weight
-							.saturating_add(T::DbWeight::get().writes(2))
-							.saturating_add(
-								e.post_info
-									.actual_weight
-									.expect("expected message processing weight"),
-							);
-					}
-				}
+							e.post_info
+								.actual_weight
+								.expect("Message processing success already ensured")
+								// Extra weight breakdown:
+								//
+								// 1 read for the outbound message
+								// 1 write for the event
+								// 1 write for the failed outbound message
+								// 1 write for the outbound message removal
+								.saturating_add(T::DbWeight::get().reads_writes(1, 3))
+						}
+					};
 
 				weight_used = weight_used.saturating_add(weight);
 
@@ -688,8 +690,6 @@ pub mod pallet {
 
 			for entry in processed_entries {
 				OutboundMessageQueue::<T>::remove(entry);
-
-				weight_used = weight_used.saturating_add(T::DbWeight::get().writes(1));
 			}
 
 			weight_used
@@ -749,8 +749,7 @@ pub mod pallet {
 			.expect("can calculate outbound message POV weight");
 
 			router_call_weight
-				.or(Some(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0)))
-				.unwrap()
+				.unwrap_or(Weight::from_parts(DEFAULT_WEIGHT_REF_TIME, 0))
 				.saturating_add(Weight::from_parts(0, pov_weight))
 				.saturating_add(extra_weight)
 		}
@@ -782,13 +781,13 @@ pub mod pallet {
 				Error::<T>::RouterNotFound
 			);
 
-			<OutboundMessageNonceStore<T>>::try_mutate(|n| {
-				*n = n.ensure_add(T::OutboundMessageNonce::one())?;
-				Ok::<_, DispatchError>(())
+			let nonce = <OutboundMessageNonceStore<T>>::try_mutate(|n| {
+				n.ensure_add_assign(T::OutboundMessageNonce::one())?;
+				Ok::<T::OutboundMessageNonce, DispatchError>(*n)
 			})?;
 
 			OutboundMessageQueue::<T>::insert(
-				OutboundMessageNonceStore::<T>::get(),
+				nonce,
 				(destination.clone(), T::Sender::get(), message.clone()),
 			);
 
