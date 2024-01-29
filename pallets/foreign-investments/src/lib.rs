@@ -248,7 +248,7 @@ pub mod pallet {
 	///
 	/// NOTE: The storage is killed when the swap order no longer exists
 	#[pallet::storage]
-	pub(super) type ForeignIdToSwapId<T: Config> =
+	pub type ForeignIdToSwapId<T: Config> =
 		StorageMap<_, Blake2_128Concat, ForeignId<T>, T::SwapId>;
 
 	#[pallet::error]
