@@ -258,21 +258,25 @@ where
 				}
 				_ => {}
 			}
-		} else if let Some(call) = IsSubType::<pallet_utility::Call<T>>::is_sub_type(call) {
-			match call {
-				pallet_utility::Call::<T>::batch { calls }
-				| pallet_utility::Call::<T>::batch_all { calls } => {
-					for call in calls {
-						checks.extend(Self::recursive_search(caller.clone(), call, check.clone())?);
+		} else if let Some(utility_call) = IsSubType::<pallet_utility::Call<T>>::is_sub_type(call) {
+			match utility_call {
+				pallet_utility::Call::<T>::batch { calls: batch_calls }
+				| pallet_utility::Call::<T>::batch_all { calls: batch_calls } => {
+					for batch_call in batch_calls {
+						checks.extend(Self::recursive_search(
+							caller.clone(),
+							batch_call,
+							check.clone(),
+						)?);
 					}
 				}
 				_ => {}
 			}
-		} else if let Some(call) = IsSubType::<pallet_remarks::Call<T>>::is_sub_type(call) {
-			match call {
-				pallet_remarks::Call::<T>::remark { call, .. } => {
-					checks.extend(Self::recursive_search(caller, call, check)?)
-				}
+		} else if let Some(remarks_call) = IsSubType::<pallet_remarks::Call<T>>::is_sub_type(call) {
+			match remarks_call {
+				pallet_remarks::Call::<T>::remark {
+					call: remark_call, ..
+				} => checks.extend(Self::recursive_search(caller, remark_call, check)?),
 				_ => {}
 			}
 		}
