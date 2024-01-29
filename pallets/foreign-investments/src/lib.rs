@@ -43,7 +43,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_types::investments::Swap;
+use cfg_types::investments::{Swap, SwapState};
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -75,11 +75,19 @@ pub type ForeignId<T> = (
 	Action,
 );
 
+/// Swap alias
 pub type SwapOf<T> = Swap<<T as Config>::Balance, <T as Config>::CurrencyId>;
+
+/// Swap state alias
+pub type SwapStateOf<T> = SwapState<<T as Config>::Balance, <T as Config>::CurrencyId>;
+
+/// TrancheId Identification
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::TrancheId;
+
+/// PoolId identification
 pub type PoolIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
@@ -98,7 +106,7 @@ pub fn pool_currency_of<T: pallet::Config>(
 pub mod pallet {
 	use cfg_traits::{
 		investments::{Investment, InvestmentCollector, TrancheCurrency},
-		IdentityCurrencyConversion, PoolInspect, StatusNotificationHook, TokenSwaps,
+		PoolInspect, StatusNotificationHook, TokenSwaps,
 	};
 	use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest};
 	use frame_support::pallet_prelude::*;
@@ -167,7 +175,7 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 			OrderId = Self::SwapId,
-			OrderDetails = SwapOf<Self>,
+			SwapState = SwapStateOf<Self>,
 			Ratio = Self::BalanceRatio,
 		>;
 
@@ -189,20 +197,6 @@ pub mod pallet {
 		type CollectedForeignInvestmentHook: StatusNotificationHook<
 			Id = (Self::AccountId, Self::InvestmentId),
 			Status = ExecutedForeignCollect<Self::Balance, Self::CurrencyId>,
-			Error = DispatchError,
-		>;
-
-		/// Type which provides a conversion from one currency amount to another
-		/// currency amount.
-		///
-		/// NOTE: Restricting to `IdentityCurrencyConversion` is solely a
-		/// short-term MVP solution. In the near future, this type must be
-		/// restricted to a more sophisticated trait which provides
-		/// unidirectional conversions based on an oracle, dynamic prices or at
-		/// least conversion ratios based on specific currency pairs.
-		type CurrencyConverter: IdentityCurrencyConversion<
-			Balance = Self::Balance,
-			Currency = Self::CurrencyId,
 			Error = DispatchError,
 		>;
 

@@ -1,6 +1,6 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::{investments::Investment, IdentityCurrencyConversion};
+use cfg_traits::{investments::Investment, TokenSwaps};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
@@ -73,17 +73,10 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
-		// NOTE: This line will be removed with market ratios
-		let pool_amount = T::CurrencyConverter::stable_to_stable(
-			pool_currency,
-			self.base.foreign_currency,
-			foreign_amount,
-		)?;
-
 		Ok(Swap {
 			currency_in: pool_currency,
 			currency_out: self.base.foreign_currency,
-			amount_in: pool_amount,
+			amount_out: foreign_amount,
 		})
 	}
 
@@ -98,17 +91,21 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		let pool_currency = pool_currency_of::<T>(investment_id)?;
 
-		// NOTE: This line will be removed with market ratios
-		let pool_amount = T::CurrencyConverter::stable_to_stable(
+		let pool_amount = T::TokenSwaps::convert_by_market(
 			pool_currency,
 			self.base.foreign_currency,
 			foreign_amount,
 		)?;
 
-		let pending_pool_amount_increment =
-			Swaps::<T>::pending_amount_for(who, investment_id, Action::Investment, pool_currency);
+		let pending_foreign_amount_increment = Swaps::<T>::pending_amount_for(
+			who,
+			investment_id,
+			Action::Investment,
+			self.base.foreign_currency,
+		);
 
-		let investment_decrement = pool_amount.saturating_sub(pending_pool_amount_increment);
+		// TODO: fix, increase_decrease must be in pool denomination
+		let investment_decrement = pool_amount.saturating_sub(pending_foreign_amount_increment);
 		if !investment_decrement.is_zero() {
 			T::Investment::update_investment(
 				who,
@@ -122,7 +119,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
 			currency_out: pool_currency,
-			amount_in: foreign_amount,
+			amount_out: foreign_amount,
 		})
 	}
 
@@ -184,8 +181,9 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<ExecutedForeignCollect<T::Balance, T::CurrencyId>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
+		// TODO: Fix this
 		// NOTE: How make this works with market ratios?
-		let collected_foreign_amount = T::CurrencyConverter::stable_to_stable(
+		let collected_foreign_amount = T::TokenSwaps::convert_by_market(
 			self.base.foreign_currency,
 			pool_currency_of::<T>(investment_id)?,
 			collected.amount_payment,
@@ -201,7 +199,7 @@ impl<T: Config> InvestmentInfo<T> {
 		Ok(msg)
 	}
 
-	pub fn remaining_foreign_amount(
+	fn remaining_foreign_amount(
 		&self,
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
@@ -213,8 +211,9 @@ impl<T: Config> InvestmentInfo<T> {
 			self.base.foreign_currency,
 		)?;
 
+		// TODO: Fix this
 		// NOTE: How make this works with market ratios?
-		let pending_invested = T::CurrencyConverter::stable_to_stable(
+		let pending_invested = T::TokenSwaps::convert_by_market(
 			self.base.foreign_currency,
 			pool_currency_of::<T>(investment_id)?,
 			T::Investment::investment(who, investment_id)?,
@@ -287,19 +286,10 @@ impl<T: Config> RedemptionInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
-
-		// NOTE: This line will be removed with market ratios
-		let foreign_amount_collected = T::CurrencyConverter::stable_to_stable(
-			self.base.foreign_currency,
-			pool_currency,
-			collected.amount_collected,
-		)?;
-
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
-			currency_out: pool_currency,
-			amount_in: foreign_amount_collected,
+			currency_out: pool_currency_of::<T>(investment_id)?,
+			amount_out: collected.amount_collected,
 		})
 	}
 
@@ -330,7 +320,7 @@ impl<T: Config> RedemptionInfo<T> {
 		Ok(None)
 	}
 
-	pub fn collected_tranche_tokens(&self) -> T::Balance {
+	fn collected_tranche_tokens(&self) -> T::Balance {
 		self.base.collected.amount_payment
 	}
 

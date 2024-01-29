@@ -14,7 +14,7 @@ use crate::{
 	pallet::{Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
 	pool_currency_of,
 	swaps::Swaps,
-	Action, SwapOf,
+	Action, SwapStateOf,
 };
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
@@ -174,23 +174,21 @@ pub struct FulfilledSwapOrderHook<T>(PhantomData<T>);
 impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 	type Error = DispatchError;
 	type Id = T::SwapId;
-	type Status = SwapOf<T>;
+	type Status = SwapStateOf<T>;
 
-	fn notify_status_change(swap_id: T::SwapId, last_swap: SwapOf<T>) -> DispatchResult {
+	fn notify_status_change(swap_id: T::SwapId, last_state: SwapStateOf<T>) -> DispatchResult {
 		match Swaps::<T>::foreign_id_from(swap_id) {
 			Ok((who, investment_id, action)) => {
 				let pool_currency = pool_currency_of::<T>(investment_id)?;
-				let swapped_amount = last_swap.amount_in;
-				let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
-					Some(swap) => swap.amount_in,
-					None => {
-						Swaps::<T>::update_id(&who, investment_id, action, None)?;
-						T::Balance::default()
-					}
-				};
+				let swapped_amount = last_state.swapped_in;
+				let pending_amount = last_state.swap.amount_out;
+
+				if pending_amount.is_zero() {
+					Swaps::<T>::update_id(&who, investment_id, action, None)?;
+				}
 
 				match action {
-					Action::Investment => match pool_currency == last_swap.currency_in {
+					Action::Investment => match pool_currency == last_state.swap.currency_in {
 						true => SwapDone::<T>::for_increase_investment(
 							&who,
 							investment_id,
