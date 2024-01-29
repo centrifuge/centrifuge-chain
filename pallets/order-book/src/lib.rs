@@ -651,7 +651,7 @@ pub mod pallet {
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
 				Swap {
-					amount: buy_amount,
+					amount_in: buy_amount,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				},
@@ -1020,7 +1020,7 @@ pub mod pallet {
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::AssetCurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
-					amount: order.buy_amount,
+					amount_in: order.buy_amount,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				})

@@ -242,7 +242,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign investment amount in
@@ -258,7 +257,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the increment of a foreign redemption amount for the given
@@ -286,7 +284,7 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(Self::Amount, Self::Amount), Self::Error>;
+	) -> Result<(), Self::Error>;
 
 	/// Collect the results of a user's foreign invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
@@ -308,7 +306,6 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Returns, if possible, the currently unprocessed investment amount (in

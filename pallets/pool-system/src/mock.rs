@@ -336,7 +336,7 @@ where
 pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = sp_runtime::DispatchError;
-	type Id = cfg_types::investments::ForeignInvestmentInfo<MockAccountId, TrancheCurrency, ()>;
+	type Id = (MockAccountId, TrancheCurrency);
 	type Status = cfg_types::investments::CollectedAmount<Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
