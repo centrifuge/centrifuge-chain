@@ -1,8 +1,8 @@
 //! Abstracts the swapping logic
 
-use cfg_traits::{IdentityCurrencyConversion, TokenSwaps};
+use cfg_traits::{IdentityCurrencyConversion, OrderRatio, TokenSwaps};
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, EnsureSub, One, Zero};
+use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 use sp_std::cmp::Ordering;
 
 use crate::{
@@ -153,7 +153,7 @@ impl<T: Config> Swaps<T> {
 					new_swap.currency_in,
 					new_swap.currency_out,
 					new_swap.amount_in,
-					T::BalanceRatio::one(),
+					OrderRatio::Market,
 				)?;
 
 				Ok(SwapStatus {
@@ -168,12 +168,7 @@ impl<T: Config> Swaps<T> {
 
 				if swap.is_same_direction(&new_swap)? {
 					let amount_to_swap = swap.amount_in.ensure_add(new_swap.amount_in)?;
-					T::TokenSwaps::update_order(
-						who.clone(),
-						swap_id,
-						amount_to_swap,
-						T::BalanceRatio::one(),
-					)?;
+					T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
 
 					Ok(SwapStatus {
 						swapped: T::Balance::zero(),
@@ -195,10 +190,9 @@ impl<T: Config> Swaps<T> {
 								inverse_swap.amount_in.ensure_sub(new_swap_amount_out)?;
 
 							T::TokenSwaps::update_order(
-								who.clone(),
 								swap_id,
 								amount_to_swap,
-								T::BalanceRatio::one(),
+								OrderRatio::Market,
 							)?;
 
 							Ok(SwapStatus {
@@ -233,7 +227,7 @@ impl<T: Config> Swaps<T> {
 								new_swap.currency_in,
 								new_swap.currency_out,
 								amount_to_swap,
-								T::BalanceRatio::one(),
+								OrderRatio::Market,
 							)?;
 
 							Ok(SwapStatus {
