@@ -124,10 +124,10 @@ pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
+pallet-remarks = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
 pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
-pallet-remarks = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
 pallet-sudo = { workspace = true }
