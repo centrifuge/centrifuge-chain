@@ -204,6 +204,7 @@ where
 		Self(sp_std::marker::PhantomData)
 	}
 
+	#[allow(clippy::type_complexity)]
 	fn retrieve(
 		caller: &T::AccountId,
 		call: &<T as frame_system::Config>::RuntimeCall,
@@ -224,12 +225,15 @@ where
 				}
 
 				// If the call is not a transfer we are fine with it to go through without
-				// futher checks
+				// further checks
 				_ => Ok(()),
 			}
 		})
 	}
 
+	#[allow(clippy::type_complexity)]
+	#[allow(clippy::single_match)]
+	#[allow(clippy::collapsible_match)]
 	fn recursive_search<F>(
 		caller: T::AccountId,
 		call: &<T as frame_system::Config>::RuntimeCall,
