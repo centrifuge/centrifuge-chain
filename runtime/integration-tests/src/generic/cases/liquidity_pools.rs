@@ -548,16 +548,11 @@ mod development {
 				.expect("Pool existence checked already");
 
 			// Make investor the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
+			crate::generic::utils::give_pool_role::<T>(
 				investor.clone(),
-				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::TrancheInvestor(
-					default_tranche_id::<T>(pool_id),
-					DEFAULT_VALIDITY
-				)),
-			));
+				pool_id,
+				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+			);
 
 			assert_ok!(orml_tokens::Pallet::<T>::mint_into(
 				pool_currency,
@@ -619,16 +614,11 @@ mod development {
 					DEFAULT_VALIDITY,
 				)),
 			) {
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					investor.clone(),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						DEFAULT_VALIDITY
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+				);
 			}
 
 			let amount_before =
@@ -720,16 +710,11 @@ mod development {
 			);
 
 			// Make investor the MembersListAdmin of this Pool
-			assert_ok!(pallet_permissions::Pallet::<T>::add(
-				<T as frame_system::Config>::RuntimeOrigin::root(),
-				Role::PoolRole(PoolRole::PoolAdmin),
+			crate::generic::utils::give_pool_role::<T>(
 				investor.clone(),
-				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::TrancheInvestor(
-					default_tranche_id::<T>(pool_id),
-					DEFAULT_VALIDITY
-				)),
-			));
+				pool_id,
+				PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+			);
 
 			assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
 				DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
@@ -1085,16 +1070,11 @@ mod development {
 				);
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Alice.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(new_member.clone()),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						DEFAULT_VALIDITY
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), DEFAULT_VALIDITY),
+				);
 
 				// Verify the Investor role was set as expected in Permissions
 				assert!(pallet_permissions::Pallet::<T>::has(
@@ -4038,12 +4018,12 @@ mod development {
 						investor.clone(),
 						foreign_currency,
 					);
-					let swap_order_id = pallet_foreign_investments::ForeignIdToSwapId::<T>::get((
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
 						&investor,
 						default_investment_id::<T>(),
 						pallet_foreign_investments::Action::Investment,
-					))
-					.unwrap();
+					)
+					.expect("Swap order exists; qed");
 
 					// Fulfilling order should propagate it from swapping to investing
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
@@ -4077,12 +4057,12 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						msg.clone()
 					));
-					let swap_order_id = pallet_foreign_investments::ForeignIdToSwapId::<T>::get((
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
 						&investor,
 						default_investment_id::<T>(),
 						pallet_foreign_investments::Action::Investment,
-					))
-					.unwrap();
+					)
+					.expect("Swap order exists; qed");
 
 					// Fulfill the decrease swap order
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order_full(
@@ -4341,16 +4321,12 @@ mod development {
 
 				// Whitelist destination as TrancheInvestor of this Pool
 				let valid_until = u64::MAX;
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(receiver.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						valid_until
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
+				);
 
 				// Call the pallet_liquidity_pools::Pallet::<T>::update_member which ensures the
 				// destination address is whitelisted.
@@ -4459,16 +4435,11 @@ mod development {
 				));
 
 				// Whitelist destination as TrancheInvestor of this Pool
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(receiver.clone()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					receiver.clone(),
-					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(
-						default_tranche_id::<T>(pool_id),
-						valid_until
-					)),
-				));
+					pool_id,
+					PoolRole::TrancheInvestor(default_tranche_id::<T>(pool_id), valid_until),
+				);
 
 				// Finally, verify that we can now transfer the tranche to the destination
 				// address
@@ -4515,37 +4486,29 @@ mod development {
 				assert!(pallet_pool_system::Pallet::<T>::pool(invalid_pool_id).is_none());
 
 				// Make Keyring::Bob the MembersListAdmin of both pools
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					Keyring::Bob.into(),
-					PermissionScope::Pool(valid_pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					<T as frame_system::Config>::RuntimeOrigin::root(),
-					Role::PoolRole(PoolRole::PoolAdmin),
+					valid_pool_id,
+					PoolRole::InvestorAdmin,
+				);
+				crate::generic::utils::give_pool_role::<T>(
 					Keyring::Bob.into(),
-					PermissionScope::Pool(invalid_pool_id),
-					Role::PoolRole(PoolRole::InvestorAdmin),
-				));
+					invalid_pool_id,
+					PoolRole::InvestorAdmin,
+				);
 
 				// Give Keyring::Bob investor role for (valid_pool_id, invalid_tranche_id) and
 				// (invalid_pool_id, valid_tranche_id)
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(invalid_pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(valid_tranche_id, valid_until)),
-				));
-				assert_ok!(pallet_permissions::Pallet::<T>::add(
-					RawOrigin::Signed(Keyring::Bob.into()).into(),
-					Role::PoolRole(PoolRole::InvestorAdmin),
+					invalid_pool_id,
+					PoolRole::TrancheInvestor(valid_tranche_id, valid_until),
+				);
+				crate::generic::utils::give_pool_role::<T>(
 					AccountConverter::<T, LocationToAccountId>::convert(dest_address.clone()),
-					PermissionScope::Pool(valid_pool_id),
-					Role::PoolRole(PoolRole::TrancheInvestor(invalid_tranche_id, valid_until)),
-				));
+					valid_pool_id,
+					PoolRole::TrancheInvestor(invalid_tranche_id, valid_until),
+				);
 				assert_noop!(
 					pallet_liquidity_pools::Pallet::<T>::transfer_tranche_tokens(
 						RawOrigin::Signed(Keyring::Bob.into()).into(),

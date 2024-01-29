@@ -59,6 +59,15 @@ impl<T: Config> Swaps<T> {
 		SwapIdToForeignId::<T>::get(swap_id).ok_or(Error::<T>::SwapOrderNotFound.into())
 	}
 
+	pub fn swap_id_from(
+		account: &T::AccountId,
+		investment_id: T::InvestmentId,
+		action: Action,
+	) -> Result<T::SwapId, DispatchError> {
+		ForeignIdToSwapId::<T>::get((account, investment_id, action))
+			.ok_or(Error::<T>::SwapOrderNotFound.into())
+	}
+
 	/// Returns the pending swap amount denominated in the given currency
 	pub fn any_pending_amount_demominated_in(
 		who: &T::AccountId,
