@@ -44,7 +44,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				investment_id,
 				status.swapped,
 				swapped_foreign_amount,
-				false || swap.currency_in == swap.currency_out,
+				swap.currency_in != swap.currency_out,
 			)?;
 		}
 
@@ -71,7 +71,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				investment_id,
 				status.swapped,
 				status.pending,
-				false || swap.currency_in == swap.currency_out,
+				swap.currency_in != swap.currency_out,
 			)?;
 		}
 
@@ -199,14 +199,14 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 							investment_id,
 							swapped_amount_in,
 							swapped_amount_out,
-							true,
+							false,
 						),
 						false => SwapDone::<T>::for_decrease_investment(
 							&who,
 							investment_id,
 							swapped_amount_in,
 							pending_amount,
-							true,
+							false,
 						),
 					},
 					Action::Redemption => SwapDone::<T>::for_redemption(
@@ -300,7 +300,7 @@ impl<T: Config> SwapDone<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
-		was_real_swap: bool,
+		from_cancel: bool,
 	) -> DispatchResult {
 		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
@@ -309,7 +309,7 @@ impl<T: Config> SwapDone<T> {
 				investment_id,
 				swapped_pool_amount,
 				swapped_foreign_amount,
-				was_real_swap,
+				from_cancel,
 			)
 		})
 	}
@@ -321,12 +321,11 @@ impl<T: Config> SwapDone<T> {
 		investment_id: T::InvestmentId,
 		swapped: T::Balance,
 		pending: T::Balance,
-		was_real_swap: bool,
+		from_cancel: bool,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg =
-				info.post_decrease_swap(who, investment_id, swapped, pending, was_real_swap)?;
+			let msg = info.post_decrease_swap(who, investment_id, swapped, pending, from_cancel)?;
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;

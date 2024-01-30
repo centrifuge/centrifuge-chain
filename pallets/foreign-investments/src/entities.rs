@@ -142,7 +142,7 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
-		was_real_swap: bool,
+		from_cancel: bool,
 	) -> DispatchResult {
 		self.decrease_swapped_foreign_amount = T::Balance::default();
 
@@ -153,7 +153,7 @@ impl<T: Config> InvestmentInfo<T> {
 				T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
 			)?;
 
-			if was_real_swap {
+			if !from_cancel {
 				self.pool_amount_in_system_but_in_foreign_amount
 					.ensure_add_assign(swapped_foreign_amount)?;
 			}
@@ -170,12 +170,12 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_foreign_amount: T::Balance,
 		pending_pool_amount: T::Balance,
-		was_real_swap: bool,
+		from_cancel: bool,
 	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
 		self.decrease_swapped_foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
 
-		if was_real_swap {
+		if !from_cancel {
 			self.pool_amount_in_system_but_in_foreign_amount
 				.ensure_sub_assign(swapped_foreign_amount)?;
 		}
