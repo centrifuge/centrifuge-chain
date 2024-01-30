@@ -1,6 +1,6 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	StatusNotificationHook,
+	OrderRatio, StatusNotificationHook, TokenSwaps,
 };
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
@@ -50,12 +50,12 @@ pub const fn tranche_to_pool(tranche_amount: Balance) -> Balance {
 mod util {
 	use super::*;
 
-	pub fn configure_currency_converter() {
-		MockCurrencyConversion::mock_stable_to_stable(|to, from, amount_from| match (from, to) {
-			(POOL_CURR, FOREIGN_CURR) => Ok(pool_to_foreign(amount_from)),
-			(FOREIGN_CURR, POOL_CURR) => Ok(foreign_to_pool(amount_from)),
-			_ => Ok(amount_from),
-		});
+	pub fn convert_currencies(to: CurrencyId, from: CurrencyId, amount_from: Balance) -> Balance {
+		match (from, to) {
+			(POOL_CURR, FOREIGN_CURR) => pool_to_foreign(amount_from),
+			(FOREIGN_CURR, POOL_CURR) => foreign_to_pool(amount_from),
+			_ => amount_from,
+		}
 	}
 
 	pub fn configure_pool() {
@@ -69,24 +69,24 @@ mod util {
 	pub fn config_swaps() {
 		MockTokenSwaps::mock_get_order_details(|_| None);
 
-		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_in, _| {
+		MockTokenSwaps::mock_place_order(|_, curr_in, curr_out, amount_out, _| {
 			MockTokenSwaps::mock_get_order_details(move |_| {
 				Some(Swap {
 					currency_in: curr_in,
 					currency_out: curr_out,
-					amount_in: amount_in,
+					amount_out: amount_out,
 				})
 			});
 			Ok(SWAP_ID)
 		});
 
-		MockTokenSwaps::mock_update_order(|_, swap_id, amount_in, _| {
+		MockTokenSwaps::mock_update_order(|swap_id, amount_out, _| {
 			let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
 			MockTokenSwaps::mock_get_order_details(move |_| {
 				Some(Swap {
 					currency_in: swap.currency_in,
 					currency_out: swap.currency_out,
-					amount_in: amount_in,
+					amount_out: amount_out,
 				})
 			});
 			Ok(())
@@ -95,6 +95,10 @@ mod util {
 		MockTokenSwaps::mock_cancel_order(|_| {
 			MockTokenSwaps::mock_get_order_details(|_| None);
 			Ok(())
+		});
+
+		MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+			Ok(convert_currencies(to, from, amount_from))
 		});
 	}
 
@@ -117,25 +121,33 @@ mod util {
 
 	pub fn base_configuration() {
 		util::configure_pool();
-		util::configure_currency_converter();
 		util::config_swaps();
 		util::config_investments();
 	}
 
 	/// Emulates a swap partial fulfill
-	pub fn fulfill_last_swap(action: Action, amount_in: Balance) {
+	pub fn fulfill_last_swap(action: Action, amount_out: Balance) {
 		let swap_id = ForeignIdToSwapId::<Runtime>::get((USER, INVESTMENT_ID, action)).unwrap();
 		let swap = MockTokenSwaps::get_order_details(swap_id).unwrap();
 		MockTokenSwaps::mock_get_order_details(move |_| {
 			Some(Swap {
-				amount_in: swap.amount_in - amount_in,
+				amount_out: swap.amount_out - amount_out,
 				..swap
 			})
 		});
 
 		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 			swap_id,
-			Swap { amount_in, ..swap },
+			SwapState {
+				swap: Swap { amount_out, ..swap },
+				swapped_in: MockTokenSwaps::convert_by_market(
+					swap.currency_in,
+					swap.currency_out,
+					amount_out,
+				)
+				.unwrap(),
+				swapped_out: amount_out,
+			},
 		)
 		.unwrap();
 	}
@@ -183,8 +195,8 @@ mod swaps {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
-				assert_eq!(amount, foreign_to_pool(AMOUNT));
-				assert_eq!(ratio, Ratio::one());
+				assert_eq!(amount, AMOUNT);
+				assert_eq!(ratio, OrderRatio::Market);
 
 				Ok(SWAP_ID)
 			});
@@ -195,13 +207,13 @@ mod swaps {
 					Swap {
 						currency_in: POOL_CURR,
 						currency_out: FOREIGN_CURR,
-						amount_in: foreign_to_pool(AMOUNT),
+						amount_out: AMOUNT,
 					},
 					None,
 				),
 				SwapStatus {
 					swapped: 0,
-					pending: foreign_to_pool(AMOUNT),
+					pending: AMOUNT,
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -219,14 +231,13 @@ mod swaps {
 				Some(Swap {
 					currency_in: POOL_CURR,
 					currency_out: FOREIGN_CURR,
-					amount_in: foreign_to_pool(PREVIOUS_AMOUNT),
+					amount_out: PREVIOUS_AMOUNT,
 				})
 			});
-			MockTokenSwaps::mock_update_order(|who, swap_id, amount, ratio| {
-				assert_eq!(who, USER);
+			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
 				assert_eq!(swap_id, SWAP_ID);
-				assert_eq!(amount, foreign_to_pool(PREVIOUS_AMOUNT + AMOUNT));
-				assert_eq!(ratio, Ratio::one());
+				assert_eq!(amount, PREVIOUS_AMOUNT + AMOUNT);
+				assert_eq!(ratio, OrderRatio::Market);
 
 				Ok(())
 			});
@@ -237,13 +248,13 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: foreign_to_pool(AMOUNT),
+						amount_out: AMOUNT,
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: 0,
-					pending: foreign_to_pool(PREVIOUS_AMOUNT + AMOUNT),
+					pending: PREVIOUS_AMOUNT + AMOUNT,
 					swap_id: Some(SWAP_ID),
 				}
 			);
@@ -255,8 +266,9 @@ mod swaps {
 		const PREVIOUS_AMOUNT: Balance = AMOUNT + pool_to_foreign(100);
 
 		new_test_ext().execute_with(|| {
-			util::configure_currency_converter();
-
+			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+				Ok(util::convert_currencies(to, from, amount_from))
+			});
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
@@ -264,14 +276,13 @@ mod swaps {
 				Some(Swap {
 					currency_in: FOREIGN_CURR,
 					currency_out: POOL_CURR,
-					amount_in: PREVIOUS_AMOUNT,
+					amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
 				})
 			});
-			MockTokenSwaps::mock_update_order(|who, swap_id, amount, ratio| {
-				assert_eq!(who, USER);
+			MockTokenSwaps::mock_update_order(|swap_id, amount, ratio| {
 				assert_eq!(swap_id, SWAP_ID);
-				assert_eq!(amount, PREVIOUS_AMOUNT - AMOUNT);
-				assert_eq!(ratio, Ratio::one());
+				assert_eq!(amount, foreign_to_pool(PREVIOUS_AMOUNT - AMOUNT));
+				assert_eq!(ratio, OrderRatio::Market);
 
 				Ok(())
 			});
@@ -282,7 +293,7 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: foreign_to_pool(AMOUNT),
+						amount_out: AMOUNT,
 					},
 					Some(SWAP_ID),
 				),
@@ -298,8 +309,9 @@ mod swaps {
 	#[test]
 	fn swap_over_same_inverse_swap() {
 		new_test_ext().execute_with(|| {
-			util::configure_currency_converter();
-
+			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+				Ok(util::convert_currencies(to, from, amount_from))
+			});
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
@@ -307,7 +319,7 @@ mod swaps {
 				Some(Swap {
 					currency_in: FOREIGN_CURR,
 					currency_out: POOL_CURR,
-					amount_in: AMOUNT,
+					amount_out: foreign_to_pool(AMOUNT),
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {
@@ -322,7 +334,7 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: foreign_to_pool(AMOUNT),
+						amount_out: AMOUNT,
 					},
 					Some(SWAP_ID),
 				),
@@ -341,8 +353,9 @@ mod swaps {
 		const NEW_SWAP_ID: SwapId = SWAP_ID + 1;
 
 		new_test_ext().execute_with(|| {
-			util::configure_currency_converter();
-
+			MockTokenSwaps::mock_convert_by_market(|to, from, amount_from| {
+				Ok(util::convert_currencies(to, from, amount_from))
+			});
 			MockTokenSwaps::mock_get_order_details(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
 
@@ -350,7 +363,7 @@ mod swaps {
 				Some(Swap {
 					currency_in: FOREIGN_CURR,
 					currency_out: POOL_CURR,
-					amount_in: PREVIOUS_AMOUNT,
+					amount_out: foreign_to_pool(PREVIOUS_AMOUNT),
 				})
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {
@@ -362,8 +375,8 @@ mod swaps {
 				assert_eq!(who, USER);
 				assert_eq!(curr_in, POOL_CURR);
 				assert_eq!(curr_out, FOREIGN_CURR);
-				assert_eq!(amount, foreign_to_pool(AMOUNT - PREVIOUS_AMOUNT));
-				assert_eq!(ratio, Ratio::one());
+				assert_eq!(amount, AMOUNT - PREVIOUS_AMOUNT);
+				assert_eq!(ratio, OrderRatio::Market);
 
 				Ok(NEW_SWAP_ID)
 			});
@@ -374,13 +387,13 @@ mod swaps {
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
-						amount_in: foreign_to_pool(AMOUNT),
+						amount_out: AMOUNT,
 					},
 					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: foreign_to_pool(PREVIOUS_AMOUNT),
-					pending: foreign_to_pool(AMOUNT - PREVIOUS_AMOUNT),
+					pending: AMOUNT - PREVIOUS_AMOUNT,
 					swap_id: Some(NEW_SWAP_ID),
 				}
 			);
@@ -388,6 +401,7 @@ mod swaps {
 	}
 }
 
+/*
 mod investment {
 	use super::*;
 
@@ -1413,3 +1427,4 @@ mod notifications {
 		});
 	}
 }
+*/

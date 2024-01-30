@@ -1,9 +1,9 @@
 use cfg_mocks::{
-	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_pools,
-	pallet_mock_status_notification, pallet_mock_token_swaps,
+	pallet_mock_investment, pallet_mock_pools, pallet_mock_status_notification,
+	pallet_mock_token_swaps,
 };
 use cfg_traits::investments::TrancheCurrency;
-use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, SwapState};
+use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap};
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -56,7 +56,6 @@ frame_support::construct_runtime!(
 		MockDecreaseInvestHook: pallet_mock_status_notification::<Instance1>,
 		MockCollectInvestHook: pallet_mock_status_notification::<Instance2>,
 		MockCollectRedeemHook: pallet_mock_status_notification::<Instance3>,
-		MockCurrencyConversion: pallet_mock_currency_conversion,
 		MockPools: pallet_mock_pools,
 		ForeignInvestment: pallet_foreign_investments,
 	}
@@ -98,9 +97,9 @@ impl pallet_mock_investment::Config for Runtime {
 impl pallet_mock_token_swaps::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type OrderDetails = Swap<Balance, CurrencyId>;
 	type OrderId = SwapId;
 	type Ratio = FixedU128;
-	type SwapState = SwapState<Balance, CurrencyId>;
 }
 
 type Hook1 = pallet_mock_status_notification::Instance1;
@@ -119,11 +118,6 @@ type Hook3 = pallet_mock_status_notification::Instance3;
 impl pallet_mock_status_notification::Config<Hook3> for Runtime {
 	type Id = (AccountId, InvestmentId);
 	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
-}
-
-impl pallet_mock_currency_conversion::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
 }
 
 impl pallet_mock_pools::Config for Runtime {
