@@ -62,7 +62,7 @@ pub mod pallet {
 		},
 		FixedPointNumber, FixedPointOperand, TokenError,
 	};
-	use sp_std::cmp::min;
+	use sp_std::cmp::{min, Ordering};
 
 	use super::*;
 
@@ -537,8 +537,8 @@ pub mod pallet {
 			let new_order = Order {
 				order_id,
 				placing_account: account.clone(),
-				currency_in: currency_in,
-				currency_out: currency_out,
+				currency_in,
+				currency_out,
 				amount_out,
 				ratio,
 				amount_out_initial: amount_out,
@@ -576,25 +576,30 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::validate_amount(amount_out, min_fulfillment_amount_out, min_amount_out)?;
 
-			// ensure proper amount can be, and is reserved of outgoing currency for updated
-			// order.
-			// Also minimise reserve/unreserve operations.
-			if amount_out > order.amount_out {
-				let amount_diff = amount_out.ensure_sub(order.amount_out)?;
-				order.amount_out_initial.ensure_add_assign(amount_diff)?;
+			match amount_out.cmp(&order.amount_out) {
+				Ordering::Greater => {
+					let amount_diff = amount_out.ensure_sub(order.amount_out)?;
+					order.amount_out_initial.ensure_add_assign(amount_diff)?;
+					T::Currency::hold(
+						order.currency_out,
+						&(),
+						&order.placing_account,
+						amount_diff,
+					)?;
+				}
+				Ordering::Less => {
+					let amount_diff = order.amount_out.ensure_sub(amount_out)?;
+					order.amount_out_initial.ensure_sub_assign(amount_diff)?;
 
-				T::Currency::hold(order.currency_out, &(), &order.placing_account, amount_diff)?;
-			} else if amount_out < order.amount_out {
-				let amount_diff = order.amount_out.ensure_sub(amount_out)?;
-				order.amount_out_initial.ensure_sub_assign(amount_diff)?;
-
-				T::Currency::release(
-					order.currency_out,
-					&(),
-					&order.placing_account,
-					amount_diff,
-					Precision::Exact,
-				)?;
+					T::Currency::release(
+						order.currency_out,
+						&(),
+						&order.placing_account,
+						amount_diff,
+						Precision::Exact,
+					)?;
+				}
+				Ordering::Equal => (),
 			}
 
 			order.amount_out = amount_out;
