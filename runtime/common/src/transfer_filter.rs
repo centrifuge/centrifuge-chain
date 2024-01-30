@@ -27,8 +27,8 @@ use sp_runtime::{
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	DispatchError, DispatchResult, TokenError,
 };
+use sp_std::vec::Vec;
 use xcm::v3::{MultiAsset, MultiLocation};
-
 pub struct PreXcmTransfer<T, C>(sp_std::marker::PhantomData<(T, C)>);
 
 impl<
@@ -176,6 +176,9 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 	}
 }
 
+// NOTE: This code here is really critical. The test are resided in the
+// integration tests section for this reason. The importance is, that
+// nobody is able to create a call that can possibly bypass this filtering.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo,
 )]
@@ -183,9 +186,106 @@ impl<T: TransferAllowance<AccountId, CurrencyId = FilterCurrency, Location = Loc
 pub struct PreBalanceTransferExtension<T: frame_system::Config>(sp_std::marker::PhantomData<T>);
 
 #[allow(clippy::new_without_default)]
-impl<T: frame_system::Config> PreBalanceTransferExtension<T> {
+impl<T> PreBalanceTransferExtension<T>
+where
+	T: frame_system::Config<AccountId = AccountId>
+		+ pallet_balances::Config
+		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ Sync
+		+ Send,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
+		+ IsSubType<pallet_utility::Call<T>>
+		+ IsSubType<pallet_proxy::Call<T>>
+		+ IsSubType<pallet_remarks::Call<T>>,
+{
 	pub fn new() -> Self {
 		Self(sp_std::marker::PhantomData)
+	}
+
+	#[allow(clippy::type_complexity)]
+	fn retrieve(
+		caller: &T::AccountId,
+		call: &<T as frame_system::Config>::RuntimeCall,
+	) -> Result<Vec<(T::AccountId, T::AccountId)>, TransactionValidityError> {
+		Self::recursive_search(caller.clone(), call, |who, balance_call, checks| {
+			match balance_call {
+				pallet_balances::Call::transfer { dest, .. }
+				| pallet_balances::Call::transfer_all { dest, .. }
+				| pallet_balances::Call::transfer_allow_death { dest, .. }
+				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
+					let recv: T::AccountId = <T as frame_system::Config>::Lookup::lookup(
+						dest.clone(),
+					)
+					.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?;
+
+					checks.push((who, recv));
+					Ok(())
+				}
+
+				// If the call is not a transfer we are fine with it to go through without
+				// further checks
+				_ => Ok(()),
+			}
+		})
+	}
+
+	#[allow(clippy::type_complexity)]
+	#[allow(clippy::single_match)]
+	#[allow(clippy::collapsible_match)]
+	fn recursive_search<F>(
+		caller: T::AccountId,
+		call: &<T as frame_system::Config>::RuntimeCall,
+		check: F,
+	) -> Result<Vec<(T::AccountId, T::AccountId)>, TransactionValidityError>
+	where
+		F: Fn(
+				T::AccountId,
+				pallet_balances::Call<T>,
+				&mut Vec<(T::AccountId, T::AccountId)>,
+			) -> Result<(), TransactionValidityError>
+			+ Clone,
+	{
+		let mut checks = Vec::new();
+
+		if let Some(balance_call) = IsSubType::<pallet_balances::Call<T>>::is_sub_type(call) {
+			check(caller, balance_call.clone(), &mut checks)?;
+		} else if let Some(call) = IsSubType::<pallet_proxy::Call<T>>::is_sub_type(call) {
+			match call {
+				pallet_proxy::Call::<T>::proxy { real, call, .. }
+				| pallet_proxy::Call::<T>::proxy_announced { real, call, .. } => {
+					let caller = T::Lookup::lookup(real.clone())
+						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?;
+
+					checks.extend(Self::recursive_search(caller, call, check)?);
+				}
+				_ => {}
+			}
+		} else if let Some(utility_call) = IsSubType::<pallet_utility::Call<T>>::is_sub_type(call) {
+			match utility_call {
+				pallet_utility::Call::<T>::batch { calls: batch_calls }
+				| pallet_utility::Call::<T>::batch_all { calls: batch_calls } => {
+					for batch_call in batch_calls {
+						checks.extend(Self::recursive_search(
+							caller.clone(),
+							batch_call,
+							check.clone(),
+						)?);
+					}
+				}
+				_ => {}
+			}
+		} else if let Some(remarks_call) = IsSubType::<pallet_remarks::Call<T>>::is_sub_type(call) {
+			match remarks_call {
+				pallet_remarks::Call::<T>::remark {
+					call: remark_call, ..
+				} => checks.extend(Self::recursive_search(caller, remark_call, check)?),
+				_ => {}
+			}
+		}
+
+		Ok(checks)
 	}
 }
 
@@ -193,14 +293,20 @@ impl<T> SignedExtension for PreBalanceTransferExtension<T>
 where
 	T: frame_system::Config<AccountId = AccountId>
 		+ pallet_balances::Config
+		+ pallet_utility::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_proxy::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
+		+ pallet_remarks::Config<RuntimeCall = <T as frame_system::Config>::RuntimeCall>
 		+ pallet_transfer_allowlist::Config<CurrencyId = FilterCurrency, Location = Location>
 		+ Sync
 		+ Send,
-	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_balances::Call<T>>
+		+ IsSubType<pallet_utility::Call<T>>
+		+ IsSubType<pallet_proxy::Call<T>>
+		+ IsSubType<pallet_remarks::Call<T>>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = ();
-	type Call = T::RuntimeCall;
+	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = ();
 
 	const IDENTIFIER: &'static str = "PreBalanceTransferExtension";
@@ -216,39 +322,23 @@ where
 		_: &DispatchInfoOf<Self::Call>,
 		_: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let recv: T::AccountId = if let Some(call) =
-			IsSubType::<pallet_balances::Call<T>>::is_sub_type(call)
-		{
-			match call {
-				pallet_balances::Call::transfer { dest, .. }
-				| pallet_balances::Call::transfer_all { dest, .. }
-				| pallet_balances::Call::transfer_allow_death { dest, .. }
-				| pallet_balances::Call::transfer_keep_alive { dest, .. } => {
-					<T as frame_system::Config>::Lookup::lookup(dest.clone())
-						.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Call))?
-				}
-
-				// If the call is not a transfer we are fine with it to go through without futher
-				// checks
-				_ => return Ok(()),
-			}
-		} else {
-			return Ok(());
-		};
-
-		amalgamate_allowance(
-			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-				who.clone(),
-				Location::Local(recv.clone()),
-				FilterCurrency::All,
-			),
-			pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
-				who.clone(),
-				Location::Local(recv.clone()),
-				FilterCurrency::Specific(CurrencyId::Native),
-			),
-		)
-		.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+		Self::retrieve(who, call)?
+			.iter()
+			.try_for_each(|(who, recv)| {
+				amalgamate_allowance(
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::All,
+					),
+					pallet_transfer_allowlist::pallet::Pallet::<T>::allowance(
+						who.clone(),
+						Location::Local(recv.clone()),
+						FilterCurrency::Specific(CurrencyId::Native),
+					),
+				)
+				.map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Custom(255)))
+			})
 	}
 }
 

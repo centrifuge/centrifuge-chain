@@ -39,6 +39,7 @@ pub mod pallet_pool_registry;
 pub mod pallet_pool_system;
 pub mod pallet_preimage;
 pub mod pallet_proxy;
+pub mod pallet_remarks;
 pub mod pallet_restricted_tokens;
 pub mod pallet_scheduler;
 pub mod pallet_session;

@@ -136,6 +136,7 @@ pallet-pool-registry = { workspace = true, features = ["std"] }
 pallet-pool-system = { workspace = true, features = ["std"] }
 pallet-preimage = { workspace = true, features = ["std"] }
 pallet-proxy = { workspace = true, features = ["std"] }
+pallet-remarks = { workspace = true, features = ["std"] }
 pallet-restricted-tokens = { workspace = true, features = ["std"] }
 pallet-restricted-xtokens = { workspace = true, features = ["std"] }
 pallet-rewards = { workspace = true, features = ["std"] }

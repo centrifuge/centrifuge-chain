@@ -6,6 +6,7 @@ use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
+	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
@@ -91,10 +92,14 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 		who: Keyring,
 		call: impl Into<T::RuntimeCallExt>,
 	) -> Result<Balance, DispatchError> {
+		let call: T::RuntimeCallExt = call.into();
+		let info = call.get_dispatch_info();
+
 		let extrinsic = self.parachain_state(|| {
 			let nonce = frame_system::Pallet::<T>::account(who.to_account_id()).nonce;
 			utils::create_extrinsic::<T>(who, call, nonce)
 		});
+		let len = extrinsic.encoded_size();
 
 		self.parachain_state_mut(|| {
 			let res = T::Api::apply_extrinsic(extrinsic);
@@ -116,9 +121,11 @@ impl<T: Runtime> Env<T> for RuntimeEnv<T> {
 				}
 				_ => None,
 			})
-			// NOTE: This is actually not always correct. Even if there is not fee event, there is a
-			//       fee substracted if the `pre_dispatch()` errors out.
-			.unwrap_or_default();
+			.unwrap_or_else(|| {
+				self.parachain_state(|| {
+					pallet_transaction_payment::Pallet::<T>::compute_fee(len as u32, &info, 0)
+				})
+			});
 
 		Ok(fee)
 	}

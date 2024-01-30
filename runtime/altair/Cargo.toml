@@ -124,6 +124,7 @@ pallet-pool-registry = { workspace = true }
 pallet-pool-system = { workspace = true }
 pallet-preimage = { workspace = true }
 pallet-proxy = { workspace = true }
+pallet-remarks = { workspace = true }
 pallet-restricted-tokens = { workspace = true }
 pallet-restricted-xtokens = { workspace = true }
 pallet-rewards = { workspace = true }
@@ -257,6 +258,7 @@ std = [
   "pallet-restricted-tokens/std",
   "pallet-restricted-xtokens/std",
   "pallet-rewards/std",
+  "pallet-remarks/std",
   "pallet-scheduler/std",
   "pallet-session/std",
   "pallet-sudo/std",
@@ -346,6 +348,7 @@ runtime-benchmarks = [
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-restricted-xtokens/runtime-benchmarks",
   "pallet-rewards/runtime-benchmarks",
+  "pallet-remarks/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-sudo/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
@@ -435,6 +438,7 @@ try-runtime = [
   "pallet-restricted-tokens/try-runtime",
   "pallet-restricted-xtokens/try-runtime",
   "pallet-rewards/try-runtime",
+  "pallet-remarks/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
   "pallet-sudo/try-runtime",

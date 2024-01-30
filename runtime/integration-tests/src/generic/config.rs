@@ -28,6 +28,7 @@ use runtime_common::{
 	apis,
 	fees::{DealWithFees, WeightToFee},
 	oracle::Feeder,
+	remarks::Remark,
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -142,6 +143,8 @@ pub trait Runtime:
 	+ pallet_collective::Config<CouncilCollective, Proposal = Self::RuntimeCallExt>
 	+ pallet_democracy::Config<Currency = pallet_balances::Pallet<Self>>
 	+ pallet_evm_chain_id::Config
+	+ pallet_remarks::Config<RuntimeCall = Self::RuntimeCallExt, Remark = Remark>
+	+ pallet_utility::Config<RuntimeCall = Self::RuntimeCallExt>
 {
 	/// Just the RuntimeCall type, but redefined with extra bounds.
 	/// You can add `From` bounds in order to convert pallet calls to
@@ -152,6 +155,7 @@ pub trait Runtime:
 		+ SelfContainedCall
 		+ Sync
 		+ Send
+		+ Clone
 		+ From<frame_system::Call<Self>>
 		+ From<pallet_timestamp::Call<Self>>
 		+ From<pallet_balances::Call<Self>>
@@ -167,7 +171,13 @@ pub trait Runtime:
 		+ From<pallet_collective::Call<Self, CouncilCollective>>
 		+ From<pallet_democracy::Call<Self>>
 		+ From<pallet_liquidity_pools_gateway::Call<Self>>
-		+ IsSubType<pallet_balances::Call<Self>>;
+		+ From<pallet_remarks::Call<Self>>
+		+ From<pallet_proxy::Call<Self>>
+		+ From<pallet_utility::Call<Self>>
+		+ IsSubType<pallet_balances::Call<Self>>
+		+ IsSubType<pallet_remarks::Call<Self>>
+		+ IsSubType<pallet_proxy::Call<Self>>
+		+ IsSubType<pallet_utility::Call<Self>>;
 
 	/// Just the RuntimeEvent type, but redefined with extra bounds.
 	/// You can add `TryInto` and `From` bounds in order to convert pallet
