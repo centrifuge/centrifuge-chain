@@ -21,5 +21,5 @@ use crate::{Config, PoolFeeInfoOf};
 #[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, Clone)]
 #[scale_info(skip_type_params(T))]
 pub enum Change<T: Config> {
-	AppendFee(PoolFeeBucket, PoolFeeInfoOf<T>),
+	AppendFee(T::FeeId, PoolFeeBucket, PoolFeeInfoOf<T>),
 }
