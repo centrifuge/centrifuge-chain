@@ -700,7 +700,7 @@ pub mod pallet {
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
 				SwapState {
-					swap: Swap {
+					remaining: Swap {
 						amount_out: remaining_amount_out,
 						currency_in: order.currency_in,
 						currency_out: order.currency_out,

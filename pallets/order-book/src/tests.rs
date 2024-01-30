@@ -80,7 +80,7 @@ mod util {
 			assert_eq!(
 				swap_state,
 				SwapState {
-					swap: Swap {
+					remaining: Swap {
 						amount_out,
 						currency_in: CURRENCY_B,
 						currency_out: CURRENCY_A,

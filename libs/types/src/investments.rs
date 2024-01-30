@@ -175,7 +175,7 @@ impl<Balance, Currency: Clone + PartialEq> Swap<Balance, Currency> {
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct SwapState<Balance, Currency> {
 	/// Swap not yet processed with the pending outcomming amount
-	pub swap: Swap<Balance, Currency>,
+	pub remaining: Swap<Balance, Currency>,
 	/// Amount of incoming currency already swapped
 	pub swapped_in: Balance,
 	/// Amount of incoming currency already swapped denominated in outcomming

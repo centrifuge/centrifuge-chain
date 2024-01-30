@@ -180,20 +180,20 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 	type Id = T::SwapId;
 	type Status = SwapStateOf<T>;
 
-	fn notify_status_change(swap_id: T::SwapId, last_state: SwapStateOf<T>) -> DispatchResult {
+	fn notify_status_change(swap_id: T::SwapId, swap_state: SwapStateOf<T>) -> DispatchResult {
 		match Swaps::<T>::foreign_id_from(swap_id) {
 			Ok((who, investment_id, action)) => {
 				let pool_currency = pool_currency_of::<T>(investment_id)?;
-				let swapped_amount_in = last_state.swapped_in;
-				let swapped_amount_out = last_state.swapped_out;
-				let pending_amount = last_state.swap.amount_out;
+				let swapped_amount_in = swap_state.swapped_in;
+				let swapped_amount_out = swap_state.swapped_out;
+				let pending_amount = swap_state.remaining.amount_out;
 
 				if pending_amount.is_zero() {
 					Swaps::<T>::update_id(&who, investment_id, action, None)?;
 				}
 
 				match action {
-					Action::Investment => match pool_currency == last_state.swap.currency_in {
+					Action::Investment => match pool_currency == swap_state.remaining.currency_in {
 						true => SwapDone::<T>::for_increase_investment(
 							&who,
 							investment_id,

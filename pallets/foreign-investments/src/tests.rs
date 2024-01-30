@@ -138,7 +138,7 @@ mod util {
 		FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 			swap_id,
 			SwapState {
-				swap: Swap {
+				remaining: Swap {
 					amount_out: swap.amount_out - amount_out,
 					..swap
 				},
@@ -1380,7 +1380,7 @@ mod notifications {
 			assert_ok!(FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 				SWAP_ID,
 				SwapState {
-					swap: Swap {
+					remaining: Swap {
 						amount_out: 0,
 						currency_in: 0,
 						currency_out: 1,
