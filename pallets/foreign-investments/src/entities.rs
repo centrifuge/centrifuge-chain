@@ -9,10 +9,10 @@ use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign, Saturating,
+		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
 		Zero,
 	},
-	DispatchError,
+	ArithmeticError, DispatchError,
 };
 use sp_std::cmp::min;
 
@@ -107,13 +107,7 @@ impl<T: Config> InvestmentInfo<T> {
 
 		let mut pool_decrement = T::Balance::default();
 		if !foreign_decrement.is_zero() {
-			// Get the proportion of pool_amount of this foreign decrement.
-			pool_decrement = T::BalanceRatio::ensure_from_rational(
-				foreign_decrement,
-				self.pool_amount_in_system_but_in_foreign_amount,
-			)
-			.map_err(|_| Error::<T>::TooMuchDecrease)?
-			.ensure_mul_int(self.pool_amount_in_system(who, investment_id)?)?;
+			pool_decrement = self.foreign_to_pool(who, investment_id, foreign_decrement)?;
 
 			T::Investment::update_investment(
 				who,
@@ -207,24 +201,18 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<ExecutedForeignCollect<T::Balance, T::CurrencyId>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
-		// Get the proportion of foreign_amount from pool collected amount.
-		let collected_foreign_amount = T::BalanceRatio::ensure_from_rational(
-			collected.amount_payment,
-			self.pool_amount_in_system(who, investment_id)?,
-		)?
-		.ensure_mul_int(self.pool_amount_in_system_but_in_foreign_amount)?;
+		let collected_foreign_amount =
+			self.pool_to_foreign(who, investment_id, collected.amount_payment)?;
 
 		self.pool_amount_in_system_but_in_foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
 
-		let msg = ExecutedForeignCollect {
+		Ok(ExecutedForeignCollect {
 			currency: self.base.foreign_currency,
 			amount_currency_payout: collected_foreign_amount,
 			amount_tranche_tokens_payout: collected.amount_collected,
 			amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
-		};
-
-		Ok(msg)
+		})
 	}
 
 	/// Contains the amount in the system that is currently denominated in pool
@@ -266,12 +254,12 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		let invested_foreign_amount = T::BalanceRatio::ensure_from_rational(
-			T::Investment::investment(who, investment_id)?,
-			self.pool_amount_in_system(who, investment_id)?,
-		)
-		.unwrap_or(T::BalanceRatio::zero())
-		.ensure_mul_int(self.pool_amount_in_system_but_in_foreign_amount)?;
+		let invested = T::Investment::investment(who, investment_id)?;
+		let invested_foreign_amount = match self.pool_to_foreign(who, investment_id, invested) {
+			Ok(amount) => amount,
+			Err(DispatchError::Arithmetic(ArithmeticError::DivisionByZero)) => T::Balance::zero(),
+			Err(err) => Err(err)?,
+		};
 
 		Ok(self
 			.pending_increase_swap(who, investment_id)?
@@ -279,7 +267,7 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// Get the pool amount representation of a foreign amount that is already
-	/// in the system as foreign amount. It does not requires a market
+	/// in the system as pool amount. It does not requires a market
 	/// conversion because it's done by relative proportions.
 	fn foreign_to_pool(
 		&self,
@@ -287,12 +275,10 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		foreign_amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(T::BalanceRatio::ensure_from_rational(
-			foreign_amount,
-			self.pool_amount_in_system_but_in_foreign_amount,
-		)
-		.map_err(|_| Error::<T>::TooMuchDecrease)?
-		.ensure_mul_int(self.pool_amount_in_system(who, investment_id)?)?)
+		foreign_amount
+			.ensure_mul(self.pool_amount_in_system(who, investment_id)?)?
+			.ensure_div(self.pool_amount_in_system_but_in_foreign_amount)
+			.map_err(|_| Error::<T>::TooMuchDecrease.into())
 	}
 
 	/// Get the foreign amount representation of a pool amount that is already
@@ -304,11 +290,9 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		pool_amount: T::Balance,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(T::BalanceRatio::ensure_from_rational(
-			pool_amount,
-			self.pool_amount_in_system(who, investment_id)?,
-		)?
-		.ensure_mul_int(self.pool_amount_in_system_but_in_foreign_amount)?)
+		Ok(pool_amount
+			.ensure_mul(self.pool_amount_in_system_but_in_foreign_amount)?
+			.ensure_div(self.pool_amount_in_system(who, investment_id)?)?)
 	}
 
 	/// In foreign currency denomination
