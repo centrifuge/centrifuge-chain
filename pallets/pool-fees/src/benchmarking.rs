@@ -62,6 +62,7 @@ mod benchmarks {
 		let change_id = T::ChangeGuard::note(
 			T::PoolId::default(),
 			Change::<T>::AppendFee(
+				(n + 1).into(),
 				PoolFeeBucket::Top,
 				PoolFees::<T>::get_default_fixed_fee_info(),
 			)

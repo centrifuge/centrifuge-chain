@@ -383,6 +383,7 @@ pub(crate) fn init_mocks() {
 	#[cfg(feature = "runtime-benchmarks")]
 	MockChangeGuard::mock_released(|_, _| {
 		Ok(Change::AppendFee(
+			PoolFees::generate_fee_id().unwrap(),
 			PoolFeeBucket::Top,
 			<PoolFees as cfg_traits::benchmarking::PoolFeesBenchmarkHelper>::get_default_fixed_fee_info(),
 		))
@@ -405,7 +406,14 @@ pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {
 	MockChangeGuard::mock_note({
 		move |pool_id, change| {
 			assert_eq!(pool_id, POOL);
-			assert_eq!(change, Change::AppendFee(BUCKET, pool_fee.clone()));
+			assert_eq!(
+				change,
+				Change::AppendFee(
+					PoolFees::generate_fee_id().unwrap(),
+					BUCKET,
+					pool_fee.clone()
+				)
+			);
 			Ok(CHANGE_ID)
 		}
 	});
@@ -415,7 +423,11 @@ pub(crate) fn config_change_mocks(fee: &PoolFeeInfoOf<Runtime>) {
 		move |pool_id, change_id| {
 			assert_eq!(pool_id, POOL);
 			assert_eq!(change_id, CHANGE_ID);
-			Ok(Change::AppendFee(BUCKET, pool_fee.clone()))
+			Ok(Change::AppendFee(
+				PoolFees::generate_fee_id().unwrap(),
+				BUCKET,
+				pool_fee.clone(),
+			))
 		}
 	});
 }
