@@ -1,6 +1,6 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::investments::Investment;
+use cfg_traits::{investments::Investment, TokenSwaps};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
@@ -14,6 +14,7 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
+use sp_std::cmp::min;
 
 use crate::{
 	pallet::{Config, Error},
@@ -101,12 +102,13 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		// We do not want to decrease the whole `foreign_amount` from the investment
 		// amount if there is a pending investment swap.
-		let foreign_decrement =
-			foreign_amount.saturating_sub(self.pending_increase_swap(who, investment_id)?);
+		let pending_increase_foreign_amount = self.pending_increase_swap(who, investment_id)?;
+		let foreign_decrement = foreign_amount.saturating_sub(pending_increase_foreign_amount);
 
+		let mut pool_decrement = T::Balance::default();
 		if !foreign_decrement.is_zero() {
 			// Get the proportion of pool_amount of this foreign decrement.
-			let pool_decrement = T::BalanceRatio::ensure_from_rational(
+			pool_decrement = T::BalanceRatio::ensure_from_rational(
 				foreign_decrement,
 				self.pool_amount_in_system_but_in_foreign_amount,
 			)
@@ -122,10 +124,18 @@ impl<T: Config> InvestmentInfo<T> {
 			)?;
 		}
 
+		// It's ok to use the market ratio because this amount will be
+		// cancelled.
+		let pending_increase_pool_amount = T::TokenSwaps::convert_by_market(
+			pool_currency_of::<T>(investment_id)?,
+			self.base.foreign_currency,
+			min(pending_increase_foreign_amount, foreign_amount),
+		)?;
+
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
 			currency_out: pool_currency_of::<T>(investment_id)?,
-			amount_out: foreign_amount,
+			amount_out: pending_increase_pool_amount.ensure_add(pool_decrement)?,
 		})
 	}
 
@@ -163,12 +173,15 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_foreign_amount: T::Balance,
 		pending_pool_amount: T::Balance,
+		was_real_swap: bool,
 	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
 		self.decrease_swapped_foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
 
-		self.pool_amount_in_system_but_in_foreign_amount
-			.ensure_sub_assign(swapped_foreign_amount)?;
+		if was_real_swap {
+			self.pool_amount_in_system_but_in_foreign_amount
+				.ensure_sub_assign(swapped_foreign_amount)?;
+		}
 
 		if pending_pool_amount.is_zero() {
 			let amount_decreased = sp_std::mem::take(&mut self.decrease_swapped_foreign_amount);
@@ -228,7 +241,7 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// Remaining amount to finalize the investment, denominated in foreign
-	/// currency. It takes case of:
+	/// currency. It takes care of:
 	/// - Any invested amount.
 	/// - Any increase pending amount to be swapped.
 	/// - Any decrease pending amount to be swapped.
@@ -242,6 +255,60 @@ impl<T: Config> InvestmentInfo<T> {
 			.pool_amount_in_system_but_in_foreign_amount
 			.ensure_add(self.decrease_swapped_foreign_amount)?
 			.ensure_add(self.pending_increase_swap(who, investment_id)?)?)
+	}
+
+	/// Invested amount in foreign currency, which is:
+	/// - Any pending increase amount to be swapped.
+	/// - Any invested amount.
+	/// Using this value for a decrease investment, will cancel the investment.
+	pub fn invested_foreign_amount(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> Result<T::Balance, DispatchError> {
+		let invested_foreign_amount = T::BalanceRatio::ensure_from_rational(
+			T::Investment::investment(who, investment_id)?,
+			self.pool_amount_in_system(who, investment_id)?,
+		)
+		.unwrap_or(T::BalanceRatio::zero())
+		.ensure_mul_int(self.pool_amount_in_system_but_in_foreign_amount)?;
+
+		Ok(self
+			.pending_increase_swap(who, investment_id)?
+			.ensure_add(invested_foreign_amount)?)
+	}
+
+	/// Get the pool amount representation of a foreign amount that is already
+	/// in the system as foreign amount. It does not requires a market
+	/// conversion because it's done by relative proportions.
+	fn foreign_to_pool(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		foreign_amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(T::BalanceRatio::ensure_from_rational(
+			foreign_amount,
+			self.pool_amount_in_system_but_in_foreign_amount,
+		)
+		.map_err(|_| Error::<T>::TooMuchDecrease)?
+		.ensure_mul_int(self.pool_amount_in_system(who, investment_id)?)?)
+	}
+
+	/// Get the foreign amount representation of a pool amount that is already
+	/// in the system as pool amount. It does not requires a market conversion
+	/// because it's done by relative proportions.
+	fn pool_to_foreign(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		pool_amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(T::BalanceRatio::ensure_from_rational(
+			pool_amount,
+			self.pool_amount_in_system(who, investment_id)?,
+		)?
+		.ensure_mul_int(self.pool_amount_in_system_but_in_foreign_amount)?)
 	}
 
 	/// In foreign currency denomination

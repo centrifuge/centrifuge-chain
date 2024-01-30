@@ -592,7 +592,7 @@ fn correct_order_details() {
 				amount_out: token_a(1),
 				currency_in: CURRENCY_B,
 				currency_out: CURRENCY_A
-			},)
+			})
 		);
 	});
 }

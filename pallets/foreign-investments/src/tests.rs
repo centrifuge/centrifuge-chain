@@ -401,7 +401,6 @@ mod swaps {
 	}
 }
 
-/*
 mod investment {
 	use super::*;
 
@@ -421,13 +420,14 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					decrease_swapped_amount: 0,
+					pool_amount_in_system_but_in_foreign_amount: 0,
+					decrease_swapped_foreign_amount: 0,
 				})
 			);
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT))
+				Ok(AMOUNT)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
@@ -456,13 +456,14 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					decrease_swapped_amount: 0,
+					pool_amount_in_system_but_in_foreign_amount: 0,
+					decrease_swapped_foreign_amount: 0,
 				})
 			);
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT + AMOUNT))
+				Ok(AMOUNT + AMOUNT)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
@@ -545,13 +546,14 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					decrease_swapped_amount: 0,
+					pool_amount_in_system_but_in_foreign_amount: 0,
+					decrease_swapped_foreign_amount: 0,
 				})
 			);
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT * 3 / 4))
+				Ok(AMOUNT * 3 / 4)
 			);
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 		});
@@ -593,19 +595,20 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, foreign_to_pool(AMOUNT / 4));
+			util::fulfill_last_swap(Action::Investment, AMOUNT / 4);
 
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					decrease_swapped_amount: 0,
+					pool_amount_in_system_but_in_foreign_amount: AMOUNT / 4,
+					decrease_swapped_foreign_amount: 0,
 				})
 			);
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT))
+				Ok(AMOUNT)
 			);
 			assert_eq!(
 				MockInvestment::investment(&USER, INVESTMENT_ID),
@@ -626,15 +629,7 @@ mod investment {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
-			assert_eq!(
-				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT))
-			);
-			assert_eq!(
-				MockInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(3 * AMOUNT / 4))
-			);
+			util::fulfill_last_swap(Action::Investment, 3 * AMOUNT / 4);
 
 			assert_ok!(ForeignInvestment::decrease_foreign_investment(
 				&USER,
@@ -647,13 +642,14 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					decrease_swapped_amount: AMOUNT / 4,
+					pool_amount_in_system_but_in_foreign_amount: 3 * AMOUNT / 4,
+					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
 
 			assert_eq!(
 				ForeignInvestment::investment(&USER, INVESTMENT_ID),
-				Ok(foreign_to_pool(AMOUNT / 2))
+				Ok(AMOUNT / 2)
 			);
 			assert_eq!(
 				MockInvestment::investment(&USER, INVESTMENT_ID),
@@ -662,6 +658,7 @@ mod investment {
 		});
 	}
 
+	/*
 	#[test]
 	fn increase_and_partial_fulfill_and_partial_decrease_and_increase() {
 		new_test_ext().execute_with(|| {
@@ -1044,8 +1041,10 @@ mod investment {
 			});
 		}
 	}
+	*/
 }
 
+/*
 mod redemption {
 	use super::*;
 
