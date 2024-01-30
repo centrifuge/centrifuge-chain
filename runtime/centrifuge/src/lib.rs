@@ -2043,7 +2043,7 @@ mod __runtime_api_use {
 
 #[cfg(not(feature = "disable-runtime-api"))]
 use __runtime_api_use::*;
-use cfg_types::{locations::Location, tokens::FilterCurrency};
+use cfg_types::{locations::Location, pools::PoolNav, tokens::FilterCurrency};
 use runtime_common::transfer_filter::PreNativeTransfer;
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2217,6 +2217,16 @@ impl_runtime_apis! {
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
+		}
+
+		fn nav(pool_id: PoolId) -> Option<PoolNav<Balance>> {
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let nav_loans = Loans::update_nav(pool_id).ok()?;
+			let nav_fees = PoolFees::update_nav(pool_id).ok()?;
+			let nav = pallet_pool_system::Nav::new(nav_loans, nav_fees);
+			let total = nav.total(pool.reserve.total).ok()?;
+
+			Some(PoolNav { nav_aum: nav.nav_aum, nav_fees: nav.nav_fees, reserve: pool.reserve.total, total })
 		}
 	}
 

@@ -42,6 +42,14 @@ pub enum PoolRegistrationStatus {
 	Unregistered,
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct PoolNav<Balance> {
+	pub nav_aum: Balance,
+	pub nav_fees: Balance,
+	pub reserve: Balance,
+	pub total: Balance,
+}
+
 /// The dynamic representation of a pool fee, its editor and destination
 /// address.
 ///
