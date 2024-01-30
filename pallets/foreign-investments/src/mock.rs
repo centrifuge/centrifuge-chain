@@ -16,10 +16,6 @@ use sp_runtime::{
 
 use crate::pallet as pallet_foreign_investments;
 
-// =============
-//     Types
-// =============
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -47,10 +43,6 @@ impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
 		self.1
 	}
 }
-
-// ======================
-//     Runtime config
-// ======================
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -148,7 +140,6 @@ impl pallet_foreign_investments::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = MockCollectInvestHook;
 	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
-	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
 	type Investment = MockInvestment;

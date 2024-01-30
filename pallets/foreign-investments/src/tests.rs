@@ -3,7 +3,7 @@ use cfg_traits::{
 	StatusNotificationHook,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
 };
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::One;

@@ -175,7 +175,7 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
 			OrderId = Self::SwapId,
-			SwapState = SwapStateOf<Self>,
+			OrderDetails = SwapOf<Self>,
 			Ratio = Self::BalanceRatio,
 		>;
 

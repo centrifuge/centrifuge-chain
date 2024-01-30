@@ -58,8 +58,7 @@ pub mod pallet {
 	use sp_runtime::{
 		traits::{
 			AtLeast32BitUnsigned, EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber,
-			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Saturating,
-			Zero,
+			EnsureMul, EnsureSub, EnsureSubAssign, MaybeSerializeDeserialize, One, Zero,
 		},
 		FixedPointNumber, FixedPointOperand, TokenError,
 	};
@@ -786,9 +785,9 @@ pub mod pallet {
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
+		type OrderDetails = Swap<T::Balance, T::CurrencyId>;
 		type OrderId = T::OrderIdNonce;
 		type Ratio = T::Ratio;
-		type SwapState = SwapState<T::Balance, T::CurrencyId>;
 
 		fn place_order(
 			account: T::AccountId,
@@ -845,16 +844,12 @@ pub mod pallet {
 			)
 		}
 
-		fn get_swap_state(order: Self::OrderId) -> Option<SwapState<T::Balance, T::CurrencyId>> {
+		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
 			Orders::<T>::get(order)
-				.map(|order| SwapState {
-					swap: Swap {
-						amount_out: order.amount_out,
-						currency_in: order.currency_in,
-						currency_out: order.currency_out,
-					},
-					swapped_in: order.amount_in,
-					swapped_out: order.amount_out_initial.saturating_sub(order.amount_out),
+				.map(|order| Swap {
+					amount_out: order.amount_out,
+					currency_in: order.currency_in,
+					currency_out: order.currency_out,
 				})
 				.ok()
 		}

@@ -77,9 +77,9 @@ impl<T: Config> Swaps<T> {
 		currency_out: T::CurrencyId,
 	) -> T::Balance {
 		ForeignIdToSwapId::<T>::get((who, investment_id, action))
-			.and_then(T::TokenSwaps::get_swap_state)
-			.filter(|state| state.swap.currency_out == currency_out)
-			.map(|state| state.swap.amount_out)
+			.and_then(T::TokenSwaps::get_order_details)
+			.filter(|swap| swap.currency_out == currency_out)
+			.map(|swap| swap.amount_out)
 			.unwrap_or_default()
 	}
 
@@ -140,11 +140,11 @@ impl<T: Config> Swaps<T> {
 				})
 			}
 			Some(swap_id) => {
-				let state =
-					T::TokenSwaps::get_swap_state(swap_id).ok_or(Error::<T>::SwapOrderNotFound)?;
+				let swap = T::TokenSwaps::get_order_details(swap_id)
+					.ok_or(Error::<T>::SwapOrderNotFound)?;
 
-				if state.swap.is_same_direction(&new_swap)? {
-					let amount_to_swap = state.swap.amount_out.ensure_add(new_swap.amount_out)?;
+				if swap.is_same_direction(&new_swap)? {
+					let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
 					T::TokenSwaps::update_order(swap_id, amount_to_swap, OrderRatio::Market)?;
 
 					Ok(SwapStatus {
@@ -153,8 +153,7 @@ impl<T: Config> Swaps<T> {
 						swap_id: Some(swap_id),
 					})
 				} else {
-					let inverse_state = state;
-					let inverse_swap = inverse_state.swap;
+					let inverse_swap = swap;
 
 					let new_swap_amount_in = T::TokenSwaps::convert_by_market(
 						new_swap.currency_in,

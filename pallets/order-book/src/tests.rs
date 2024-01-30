@@ -587,16 +587,12 @@ fn correct_order_details() {
 		));
 
 		assert_eq!(
-			OrderBook::get_swap_state(order_id),
-			Some(SwapState {
-				swap: Swap {
-					amount_out: token_a(1),
-					currency_in: CURRENCY_B,
-					currency_out: CURRENCY_A
-				},
-				swapped_in: amount_in,
-				swapped_out: token_a(9)
-			})
+			OrderBook::get_order_details(order_id),
+			Some(Swap {
+				amount_out: token_a(1),
+				currency_in: CURRENCY_B,
+				currency_out: CURRENCY_A
+			},)
 		);
 	});
 }
