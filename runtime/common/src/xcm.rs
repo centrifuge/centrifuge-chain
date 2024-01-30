@@ -126,6 +126,7 @@ mod test {
 		pallet_mock_liquidity_pools, pallet_mock_routers, pallet_mock_try_convert, MessageMock,
 		RouterMock,
 	};
+	use cfg_primitives::OutboundMessageNonce;
 	use frame_support::{assert_ok, traits::EnsureOrigin};
 	use frame_system::EnsureRoot;
 	use pallet_liquidity_pools_gateway::{EnsureLocal, GatewayOrigin};
@@ -218,6 +219,7 @@ mod test {
 		type MaxIncomingMessageSize = ConstU32<1024>;
 		type Message = MessageMock;
 		type OriginRecovery = MockOriginRecovery;
+		type OutboundMessageNonce = OutboundMessageNonce;
 		type Router = RouterMock<Runtime>;
 		type RuntimeEvent = RuntimeEvent;
 		type RuntimeOrigin = RuntimeOrigin;

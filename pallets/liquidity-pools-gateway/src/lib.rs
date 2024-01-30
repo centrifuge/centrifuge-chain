@@ -60,6 +60,11 @@ impl<T: Config> From<RelayerMessageDecodingError> for Error<T> {
 pub mod pallet {
 	const BYTES_U32: usize = 4;
 	const BYTES_ACCOUNT_20: usize = 20;
+
+	/// Some gateway routers do not return an actual weight when sending a
+	/// message, thus, this default is required, and it's based on:
+	///
+	/// https://github.com/centrifuge/centrifuge-chain/pull/1696#discussion_r1456370592
 	const DEFAULT_WEIGHT_REF_TIME: u64 = 5_000_000_000;
 
 	use frame_support::dispatch::PostDispatchInfo;
@@ -537,7 +542,7 @@ pub mod pallet {
 
 					FailedOutboundMessages::<T>::insert(nonce, (domain, sender, message, e.error));
 
-					Err(e.error)
+					Ok(())
 				}
 			}
 		}
@@ -576,7 +581,7 @@ pub mod pallet {
 						error: e.error,
 					});
 
-					Err(e.error)
+					Ok(())
 				}
 			}
 		}
