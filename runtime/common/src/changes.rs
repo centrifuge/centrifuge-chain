@@ -67,7 +67,7 @@ impl<T: Changeable, Options: Clone> RuntimeChange<T, Options> {
 				OracleCollectionChange::CollectionInfo(_) => vec![],
 			},
 			RuntimeChange::PoolFee(pool_fees_change) => match pool_fees_change {
-				PoolFeesChange::AppendFee(_, _) => vec![week],
+				PoolFeesChange::AppendFee(_, _, _) => vec![week],
 			},
 			RuntimeChange::_Unreachable(_) => vec![],
 		}

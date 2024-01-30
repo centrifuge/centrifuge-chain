@@ -231,6 +231,7 @@ pub mod pallet {
 		/// A new pool fee was proposed.
 		Proposed {
 			pool_id: T::PoolId,
+			fee_id: T::FeeId,
 			bucket: PoolFeeBucket,
 			fee: PoolFeeInfoOf<T>,
 		},
@@ -275,6 +276,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Attempted to add a fee id which already exists.
+		FeeIdAlreadyExists,
 		/// A fee could not be found.
 		FeeNotFound,
 		/// A pool could not be found.
@@ -317,10 +320,15 @@ pub mod pallet {
 				Error::<T>::NotPoolAdmin
 			);
 
-			T::ChangeGuard::note(pool_id, Change::AppendFee(bucket, fee.clone()).into())?;
+			let fee_id = Self::generate_fee_id()?;
+			T::ChangeGuard::note(
+				pool_id,
+				Change::AppendFee(fee_id, bucket, fee.clone()).into(),
+			)?;
 
 			Self::deposit_event(Event::<T>::Proposed {
 				pool_id,
+				fee_id,
 				bucket,
 				fee,
 			});
@@ -345,10 +353,10 @@ pub mod pallet {
 				T::PoolReserve::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
-			let (bucket, fee) = Self::get_released_change(pool_id, change_id)
-				.map(|Change::AppendFee(bucket, fee)| (bucket, fee))?;
+			let (fee_id, bucket, fee) = Self::get_released_change(pool_id, change_id)
+				.map(|Change::AppendFee(id, bucket, fee)| (id, bucket, fee))?;
 
-			Self::add_fee(pool_id, bucket, fee)?;
+			Self::add_fee_with_id(pool_id, fee_id, bucket, fee)?;
 
 			Ok(())
 		}
@@ -515,7 +523,7 @@ pub mod pallet {
 		}
 
 		/// Return the the last fee id and bump it for the next query
-		fn generate_fee_id() -> Result<T::FeeId, ArithmeticError> {
+		pub(crate) fn generate_fee_id() -> Result<T::FeeId, ArithmeticError> {
 			LastFeeId::<T>::try_mutate(|last_fee_id| {
 				last_fee_id.ensure_add_assign(One::one())?;
 				Ok(*last_fee_id)
@@ -719,6 +727,34 @@ pub mod pallet {
 
 			Ok((valuation, values.len().saturated_into()))
 		}
+
+		fn add_fee_with_id(
+			pool_id: T::PoolId,
+			fee_id: T::FeeId,
+			bucket: PoolFeeBucket,
+			fee: PoolFeeInfoOf<T>,
+		) -> DispatchResult {
+			ensure!(
+				!FeeIdsToPoolBucket::<T>::contains_key(fee_id),
+				Error::<T>::FeeIdAlreadyExists
+			);
+			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
+			FeeIds::<T>::mutate(pool_id, bucket, |list| list.try_push(fee_id))
+				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+			ActiveFees::<T>::mutate(pool_id, bucket, |list| {
+				list.try_push(PoolFeeOf::<T>::from_info(fee.clone(), fee_id))
+			})
+			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
+
+			Self::deposit_event(Event::<T>::Added {
+				pool_id,
+				bucket,
+				fee,
+				fee_id,
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> PoolFees for Pallet<T> {
@@ -731,23 +767,7 @@ pub mod pallet {
 			fee: Self::FeeInfo,
 		) -> Result<(), DispatchError> {
 			let fee_id = Self::generate_fee_id()?;
-
-			FeeIds::<T>::mutate(pool_id, bucket, |list| list.try_push(fee_id))
-				.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-			ActiveFees::<T>::mutate(pool_id, bucket, |list| {
-				list.try_push(PoolFeeOf::<T>::from_info(fee.clone(), fee_id))
-			})
-			.map_err(|_| Error::<T>::MaxPoolFeesPerBucket)?;
-			FeeIdsToPoolBucket::<T>::insert(fee_id, (pool_id, bucket));
-
-			Self::deposit_event(Event::<T>::Added {
-				pool_id,
-				bucket,
-				fee,
-				fee_id,
-			});
-
-			Ok(())
+			Self::add_fee_with_id(pool_id, fee_id, bucket, fee)
 		}
 
 		fn get_max_fees_per_bucket() -> u32 {
