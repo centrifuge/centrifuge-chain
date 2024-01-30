@@ -422,7 +422,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 0,
+					invested_foreign_amount: 0,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -458,7 +459,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 0,
+					invested_foreign_amount: 0,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -548,7 +550,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 0,
+					invested_foreign_amount: 0,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -603,7 +606,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: AMOUNT / 4,
+					invested_foreign_amount: AMOUNT / 4,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -644,7 +648,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 3 * AMOUNT / 4,
+					invested_foreign_amount: AMOUNT / 2,
+					decrease_pending_foreign_amount: AMOUNT / 4,
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
@@ -692,7 +697,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 3 * AMOUNT / 4,
+					invested_foreign_amount: 3 * AMOUNT / 4,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -779,7 +785,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: 3 * AMOUNT / 4,
+					invested_foreign_amount: AMOUNT / 4,
+					decrease_pending_foreign_amount: 3 * AMOUNT / 4,
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
@@ -802,7 +809,8 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					pool_amount_in_system_but_in_foreign_amount: AMOUNT / 4,
+					invested_foreign_amount: AMOUNT / 4,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -864,7 +872,8 @@ mod investment {
 							amount_payment: foreign_to_pool(AMOUNT / 4)
 						}
 					},
-					pool_amount_in_system_but_in_foreign_amount: AMOUNT / 4,
+					invested_foreign_amount: AMOUNT / 4,
+					decrease_pending_foreign_amount: 0,
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -987,7 +996,8 @@ mod investment {
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 					Some(InvestmentInfo {
 						base: BaseInfo::new(POOL_CURR).unwrap(),
-						pool_amount_in_system_but_in_foreign_amount: foreign_to_pool(AMOUNT),
+						invested_foreign_amount: foreign_to_pool(AMOUNT),
+						decrease_pending_foreign_amount: 0,
 						decrease_swapped_foreign_amount: 0,
 					})
 				);
