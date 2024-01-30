@@ -12,7 +12,7 @@ use sp_runtime::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
 		Zero,
 	},
-	ArithmeticError, DispatchError,
+	DispatchError,
 };
 use sp_std::cmp::min;
 
@@ -107,7 +107,10 @@ impl<T: Config> InvestmentInfo<T> {
 
 		let mut pool_decrement = T::Balance::default();
 		if !foreign_decrement.is_zero() {
-			pool_decrement = self.foreign_to_pool(who, investment_id, foreign_decrement)?;
+			pool_decrement = foreign_decrement
+				.ensure_mul(self.pool_amount_in_system(who, investment_id)?)?
+				.ensure_div(self.pool_amount_in_system_but_in_foreign_amount)
+				.map_err(|_| Error::<T>::TooMuchDecrease)?;
 
 			T::Investment::update_investment(
 				who,
@@ -123,7 +126,7 @@ impl<T: Config> InvestmentInfo<T> {
 		let pending_increase_pool_amount = T::TokenSwaps::convert_by_market(
 			pool_currency_of::<T>(investment_id)?,
 			self.base.foreign_currency,
-			min(pending_increase_foreign_amount, foreign_amount),
+			min(foreign_amount, pending_increase_foreign_amount),
 		)?;
 
 		Ok(Swap {
@@ -204,13 +207,14 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<ExecutedForeignCollect<T::Balance, T::CurrencyId>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
+		let pool_amount_in_system = self
+			.pool_amount_in_system(who, investment_id)?
+			.ensure_add(collected.amount_payment)?;
+
 		let collected_foreign_amount = collected
 			.amount_payment
 			.ensure_mul(self.pool_amount_in_system_but_in_foreign_amount)?
-			.ensure_div(
-				self.pool_amount_in_system(who, investment_id)?
-					.ensure_add(collected.amount_payment)?,
-			)?;
+			.ensure_div(pool_amount_in_system)?;
 
 		self.pool_amount_in_system_but_in_foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
@@ -262,45 +266,16 @@ impl<T: Config> InvestmentInfo<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		let invested = T::Investment::investment(who, investment_id)?;
-		let invested_foreign_amount = match self.pool_to_foreign(who, investment_id, invested) {
-			Ok(amount) => amount,
-			Err(DispatchError::Arithmetic(ArithmeticError::DivisionByZero)) => T::Balance::zero(),
-			Err(err) => Err(err)?,
-		};
+		let invested_pool_amount = T::Investment::investment(who, investment_id)?;
+
+		let invested_foreign_amount = invested_pool_amount
+			.ensure_mul(self.pool_amount_in_system_but_in_foreign_amount)?
+			.ensure_div(self.pool_amount_in_system(who, investment_id)?)
+			.unwrap_or_default();
 
 		Ok(self
 			.pending_increase_swap(who, investment_id)?
 			.ensure_add(invested_foreign_amount)?)
-	}
-
-	/// Get the pool amount representation of a foreign amount that is already
-	/// in the system as pool amount. It does not requires a market
-	/// conversion because it's done by relative proportions.
-	fn foreign_to_pool(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		foreign_amount: T::Balance,
-	) -> Result<T::Balance, DispatchError> {
-		foreign_amount
-			.ensure_mul(self.pool_amount_in_system(who, investment_id)?)?
-			.ensure_div(self.pool_amount_in_system_but_in_foreign_amount)
-			.map_err(|_| Error::<T>::TooMuchDecrease.into())
-	}
-
-	/// Get the foreign amount representation of a pool amount that is already
-	/// in the system as pool amount. It does not requires a market conversion
-	/// because it's done by relative proportions.
-	fn pool_to_foreign(
-		&self,
-		who: &T::AccountId,
-		investment_id: T::InvestmentId,
-		pool_amount: T::Balance,
-	) -> Result<T::Balance, DispatchError> {
-		Ok(pool_amount
-			.ensure_mul(self.pool_amount_in_system_but_in_foreign_amount)?
-			.ensure_div(self.pool_amount_in_system(who, investment_id)?)?)
 	}
 
 	/// In foreign currency denomination
