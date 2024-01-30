@@ -208,7 +208,7 @@ impl<T: Config> Swaps<T> {
 							)?;
 
 							Ok(SwapStatus {
-								swapped: new_swap_amount_in.ensure_sub(inverse_swap.amount_out)?,
+								swapped: inverse_swap.amount_out,
 								pending: amount_to_swap,
 								swap_id: Some(swap_id),
 							})

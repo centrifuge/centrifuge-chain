@@ -35,7 +35,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_increase_swap(investment_id, foreign_amount)
 		})?;
 
-		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
+		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
 
 		if !status.swapped.is_zero() {
 			let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
@@ -44,6 +44,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				investment_id,
 				status.swapped,
 				swapped_foreign_amount,
+				false || swap.currency_in == swap.currency_out,
 			)?;
 		}
 
@@ -62,7 +63,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			info.pre_decrease_swap(who, investment_id, foreign_amount)
 		})?;
 
-		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
+		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
 
 		if !status.swapped.is_zero() {
 			SwapDone::<T>::for_decrease_investment(
@@ -70,7 +71,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				investment_id,
 				status.swapped,
 				status.pending,
-				false,
+				false || swap.currency_in == swap.currency_out,
 			)?;
 		}
 
@@ -198,6 +199,7 @@ impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 							investment_id,
 							swapped_amount_in,
 							swapped_amount_out,
+							true,
 						),
 						false => SwapDone::<T>::for_decrease_investment(
 							&who,
@@ -298,6 +300,7 @@ impl<T: Config> SwapDone<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
+		was_real_swap: bool,
 	) -> DispatchResult {
 		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
@@ -306,6 +309,7 @@ impl<T: Config> SwapDone<T> {
 				investment_id,
 				swapped_pool_amount,
 				swapped_foreign_amount,
+				was_real_swap,
 			)
 		})
 	}

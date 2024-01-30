@@ -142,6 +142,7 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
+		was_real_swap: bool,
 	) -> DispatchResult {
 		self.decrease_swapped_foreign_amount = T::Balance::default();
 
@@ -152,8 +153,10 @@ impl<T: Config> InvestmentInfo<T> {
 				T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
 			)?;
 
-			self.pool_amount_in_system_but_in_foreign_amount
-				.ensure_add_assign(swapped_foreign_amount)?;
+			if was_real_swap {
+				self.pool_amount_in_system_but_in_foreign_amount
+					.ensure_add_assign(swapped_foreign_amount)?;
+			}
 		}
 
 		Ok(())
@@ -201,8 +204,13 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<ExecutedForeignCollect<T::Balance, T::CurrencyId>, DispatchError> {
 		self.base.collected.increase(&collected)?;
 
-		let collected_foreign_amount =
-			self.pool_to_foreign(who, investment_id, collected.amount_payment)?;
+		let collected_foreign_amount = collected
+			.amount_payment
+			.ensure_mul(self.pool_amount_in_system_but_in_foreign_amount)?
+			.ensure_div(
+				self.pool_amount_in_system(who, investment_id)?
+					.ensure_add(collected.amount_payment)?,
+			)?;
 
 		self.pool_amount_in_system_but_in_foreign_amount
 			.ensure_sub_assign(collected_foreign_amount)?;
