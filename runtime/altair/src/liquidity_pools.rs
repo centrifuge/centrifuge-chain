@@ -23,9 +23,8 @@ use pallet_liquidity_pools::hooks::{
 	CollectedForeignInvestmentHook, CollectedForeignRedemptionHook, DecreasedForeignInvestOrderHook,
 };
 use runtime_common::{
-	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
-	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
-	transfer_filter::PreLpTransfer,
+	account_conversion::AccountConverter, gateway::GatewayAccountProvider,
+	liquidity_pools::LiquidityPoolsMessage, transfer_filter::PreLpTransfer,
 };
 
 use crate::{
@@ -39,7 +38,6 @@ impl pallet_foreign_investments::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = CollectedForeignInvestmentHook<Runtime>;
 	type CollectedForeignRedemptionHook = CollectedForeignRedemptionHook<Runtime>;
-	type CurrencyConverter = IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
 	type Investment = Investments;
