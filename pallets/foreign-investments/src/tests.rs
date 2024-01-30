@@ -6,7 +6,6 @@ use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
 };
 use frame_support::{assert_err, assert_ok};
-use sp_runtime::traits::One;
 
 use crate::{
 	entities::{BaseInfo, InvestmentInfo, RedemptionInfo},
@@ -1046,7 +1045,6 @@ mod investment {
 	}
 }
 
-/*
 mod redemption {
 	use super::*;
 
@@ -1200,10 +1198,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(
-				Action::Redemption,
-				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
-			);
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1246,10 +1241,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::fulfill_last_swap(
-				Action::Redemption,
-				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
-			);
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 2));
 
 			MockCollectRedeemHook::mock_notify_status_change(|(who, investment_id), msg| {
 				assert_eq!(who, USER);
@@ -1268,10 +1260,7 @@ mod redemption {
 				Ok(())
 			});
 
-			util::fulfill_last_swap(
-				Action::Redemption,
-				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 4)),
-			);
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT / 4));
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1323,10 +1312,7 @@ mod redemption {
 				Ok(())
 			});
 
-			util::fulfill_last_swap(
-				Action::Redemption,
-				pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT)),
-			);
+			util::fulfill_last_swap(Action::Redemption, tranche_to_pool(TRANCHE_AMOUNT));
 
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
@@ -1393,11 +1379,15 @@ mod notifications {
 		new_test_ext().execute_with(|| {
 			assert_ok!(FulfilledSwapOrderHook::<Runtime>::notify_status_change(
 				SWAP_ID,
-				Swap {
-					amount_in: 0,
-					currency_in: 0,
-					currency_out: 0
-				},
+				SwapState {
+					swap: Swap {
+						amount_out: 0,
+						currency_in: 0,
+						currency_out: 1,
+					},
+					swapped_in: 0,
+					swapped_out: 0,
+				}
 			));
 		});
 	}
@@ -1428,4 +1418,3 @@ mod notifications {
 		});
 	}
 }
-*/
