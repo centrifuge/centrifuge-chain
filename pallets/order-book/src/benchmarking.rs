@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{benchmarking::OrderBookBenchmarkHelper, ConversionToAssetBalance, ValueProvider};
-use frame_benchmarking::v2::*;
-use frame_support::traits::Get;
+use cfg_traits::{ConversionToAssetBalance, ValueProvider};
+use cfg_types::tokens::CustomMetadata;
+use frame_benchmarking::{account, v2::*};
+use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
-use orml_traits::asset_registry::Inspect;
+use orml_traits::asset_registry::{Inspect as _, Mutate};
 use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
@@ -39,7 +40,59 @@ where
 	T::CurrencyId: From<u32>,
 	T::AssetRegistry: orml_traits::asset_registry::Mutate,
 	T::FeederId: From<u32>,
+	T::AssetRegistry: Mutate,
 {
+	pub fn setup_currencies() {
+		T::AssetRegistry::register_asset(
+			Some(CURRENCY_IN.into()),
+			orml_asset_registry::AssetMetadata {
+				decimals: 6,
+				name: "CURRENCY IN".as_bytes().to_vec(),
+				symbol: "IN".as_bytes().to_vec(),
+				existential_deposit: T::Balance::zero(),
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+		)
+		.unwrap();
+
+		T::AssetRegistry::register_asset(
+			Some(CURRENCY_OUT.into()),
+			orml_asset_registry::AssetMetadata {
+				decimals: 3,
+				name: "CURRENCY OUT".as_bytes().to_vec(),
+				symbol: "OUT".as_bytes().to_vec(),
+				existential_deposit: T::Balance::zero(),
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+		)
+		.unwrap();
+	}
+
+	pub fn setup_accounts() -> (T::AccountId, T::AccountId) {
+		let expected_amount_in = Pallet::<T>::convert_with_ratio(
+			CURRENCY_OUT.into(),
+			CURRENCY_IN.into(),
+			T::Ratio::saturating_from_integer(RATIO),
+			Self::amount_out(),
+		)
+		.unwrap();
+
+		let account_out = account::<T::AccountId>("account_out", 0, 0);
+		let account_in = account::<T::AccountId>("account_in", 0, 0);
+
+		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out()).unwrap();
+		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in).unwrap();
+
+		(account_out, account_in)
+	}
+
+	pub fn setup() -> (T::AccountId, T::AccountId) {
+		Self::setup_currencies();
+		Self::setup_accounts()
+	}
+
 	pub fn amount_out() -> T::Balance {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
 			T::MinFulfillmentAmountNative::get(),
@@ -56,21 +109,14 @@ where
 		min_fulfillment + T::Balance::from(5u32) * zeros
 	}
 
-	pub fn setup_trading_pair() -> (T::AccountId, T::AccountId) {
-		let expected_amount_in = Pallet::<T>::convert_with_ratio(
-			CURRENCY_OUT.into(),
+	pub fn add_trading_pair() {
+		Pallet::<T>::add_trading_pair(
+			RawOrigin::Root.into(),
 			CURRENCY_IN.into(),
-			T::Ratio::saturating_from_integer(RATIO),
-			Self::amount_out(),
+			CURRENCY_OUT.into(),
+			Zero::zero(),
 		)
 		.unwrap();
-
-		Pallet::<T>::bench_setup_trading_pair(
-			CURRENCY_IN.into(),
-			CURRENCY_OUT.into(),
-			expected_amount_in,
-			Self::amount_out(),
-		)
 	}
 
 	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
@@ -108,7 +154,8 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup_trading_pair();
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
 
 		#[extrinsic_call]
 		place_order(
@@ -127,7 +174,8 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup_trading_pair();
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
@@ -146,7 +194,8 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, _) = Helper::<T>::setup_trading_pair();
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		#[extrinsic_call]
@@ -160,7 +209,8 @@ mod benchmarks {
 		#[cfg(test)]
 		init_mocks();
 
-		let (account_out, account_in) = Helper::<T>::setup_trading_pair();
+		let (account_out, account_in) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
 		let order_id = Helper::<T>::place_order(&account_out);
 
 		Helper::<T>::feed_market();
