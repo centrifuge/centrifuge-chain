@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cfg_mocks::{pallet_mock_liquidity_pools, pallet_mock_routers, MessageMock, RouterMock};
-use cfg_primitives::{BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
+use cfg_primitives::{OutboundMessageNonce, BLOCK_STORAGE_LIMIT, MAX_POV_SIZE};
 use cfg_traits::TryConvert;
 use cfg_types::domain_address::DomainAddress;
 use cumulus_primitives_core::{
@@ -153,6 +153,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type OriginRecovery = MockOriginRecovery;
+	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

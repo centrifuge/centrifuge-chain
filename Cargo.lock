@@ -2450,7 +2450,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.38"
+version = "0.10.39"
 dependencies = [
  "axelar-gateway-precompile",
  "cfg-primitives",
@@ -7420,6 +7420,7 @@ name = "pallet-liquidity-pools-gateway"
 version = "0.0.1"
 dependencies = [
  "cfg-mocks",
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "cfg-utils",

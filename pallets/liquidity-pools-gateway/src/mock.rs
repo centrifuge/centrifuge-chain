@@ -2,6 +2,7 @@ use cfg_mocks::{
 	pallet_mock_liquidity_pools, pallet_mock_routers, pallet_mock_try_convert, MessageMock,
 	RouterMock,
 };
+use cfg_primitives::OutboundMessageNonce;
 use cfg_types::domain_address::DomainAddress;
 use frame_system::EnsureRoot;
 use sp_core::{crypto::AccountId32, ConstU128, ConstU16, ConstU32, ConstU64, H256};
@@ -79,7 +80,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type HoldIdentifier = ();
 	type MaxFreezes = ();
-	type MaxHolds = frame_support::traits::ConstU32<1>;
+	type MaxHolds = ConstU32<1>;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
@@ -111,6 +112,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = MessageMock;
 	type OriginRecovery = MockOriginRecovery;
+	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = RouterMock<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

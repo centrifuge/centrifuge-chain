@@ -19,6 +19,8 @@ pub trait WeightInfo {
 	fn add_relayer() -> Weight;
 	fn remove_relayer() -> Weight;
 	fn process_msg() -> Weight;
+	fn process_outbound_message() -> Weight;
+	fn process_failed_outbound_message() -> Weight;
 }
 
 // NOTE: We use temporary weights here. `execute_epoch` is by far our heaviest
@@ -97,5 +99,27 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(8))
 			.saturating_add(RocksDbWeight::get().writes((6_u64).saturating_mul(N)))
 			.saturating_add(Weight::from_parts(0, 17774).saturating_mul(N))
+	}
+
+	fn process_outbound_message() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+
+	fn process_failed_outbound_message() -> Weight {
+		// TODO: BENCHMARK CORRECTLY
+		//
+		// NOTE: Reasonable weight taken from `PoolSystem::set_max_reserve`
+		//       This one has one read and one write for sure and possible one
+		//       read for `AdminOrigin`
+		Weight::from_parts(30_117_000, 5991)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 }

@@ -12,7 +12,7 @@
 
 use cfg_primitives::{
 	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, EnsureRootOr, HalfOfCouncil,
-	PalletIndex, PoolId, TrancheId,
+	OutboundMessageNonce, PalletIndex, PoolId, TrancheId,
 };
 use cfg_types::{
 	fixed_point::Ratio,
@@ -93,6 +93,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

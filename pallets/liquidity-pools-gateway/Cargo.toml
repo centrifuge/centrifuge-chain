@@ -32,6 +32,7 @@ cfg-utils = { path = "../../libs/utils", default-features = false }
 
 [dev-dependencies]
 cfg-mocks = { path = "../../libs/mocks", features = ["std"] }
+cfg-primitives = { path = "../../libs/primitives" }
 hex-literal = "0.4.1"
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.43" }

@@ -28,7 +28,9 @@ pub mod pallet {
 			register_call!(move |()| f());
 		}
 
-		pub fn mock_send(f: impl Fn(T::AccountId, MessageMock) -> DispatchResult + 'static) {
+		pub fn mock_send(
+			f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+		) {
 			register_call!(move |(sender, message)| f(sender, message));
 		}
 	}
@@ -41,7 +43,7 @@ pub mod pallet {
 			execute_call!(())
 		}
 
-		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResult {
+		fn send(sender: Self::Sender, message: MessageMock) -> DispatchResultWithPostInfo {
 			execute_call!((sender, message))
 		}
 	}
@@ -68,7 +70,10 @@ impl<T: pallet::Config> RouterMock<T> {
 		pallet::Pallet::<T>::mock_init(f)
 	}
 
-	pub fn mock_send(&self, f: impl Fn(T::AccountId, MessageMock) -> DispatchResult + 'static) {
+	pub fn mock_send(
+		&self,
+		f: impl Fn(T::AccountId, MessageMock) -> DispatchResultWithPostInfo + 'static,
+	) {
 		pallet::Pallet::<T>::mock_send(f)
 	}
 }
@@ -83,7 +88,7 @@ impl<T: pallet::Config> Router for RouterMock<T> {
 		pallet::Pallet::<T>::init()
 	}
 
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo {
 		pallet::Pallet::<T>::send(sender, message)
 	}
 }
@@ -105,5 +110,5 @@ trait MockedRouter {
 	fn init() -> DispatchResult;
 
 	/// Send the message to the router's destination.
-	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResult;
+	fn send(sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo;
 }

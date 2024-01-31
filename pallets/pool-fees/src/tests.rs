@@ -38,6 +38,7 @@ mod extrinsics {
 
 					System::assert_last_event(
 						Event::<Runtime>::Proposed {
+							fee_id: (i + 1) as u64,
 							pool_id: POOL,
 							bucket: BUCKET,
 							fee,
@@ -399,12 +400,28 @@ mod extrinsics {
 					add_fees(vec![default_fixed_fee()]);
 				}
 				MockChangeGuard::mock_released(|_, _| {
-					Ok(Change::AppendFee(BUCKET, default_fixed_fee()))
+					Ok(Change::AppendFee(u64::MAX, BUCKET, default_fixed_fee()))
 				});
 
 				assert_noop!(
 					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
 					Error::<Runtime>::MaxPoolFeesPerBucket
+				);
+			});
+		}
+
+		#[test]
+		fn fee_id_already_exists() {
+			ExtBuilder::default().build().execute_with(|| {
+				add_fees(vec![default_fixed_fee()]);
+
+				MockChangeGuard::mock_released(|_, _| {
+					Ok(Change::AppendFee(1u64, BUCKET, default_fixed_fee()))
+				});
+
+				assert_noop!(
+					PoolFees::apply_new_fee(RuntimeOrigin::signed(ANY), POOL, CHANGE_ID),
+					Error::<Runtime>::FeeIdAlreadyExists
 				);
 			});
 		}
