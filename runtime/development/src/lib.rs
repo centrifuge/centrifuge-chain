@@ -489,7 +489,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Preimage(..) |
 					RuntimeCall::Fees(..) |
 					RuntimeCall::Anchor(..) |
-					RuntimeCall::Claims(..) |
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
@@ -1001,22 +1000,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
-}
-
-// Parameterize claims pallet
-parameter_types! {
-	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
-	pub const MinimalPayoutAmount: Balance = 5 * CFG;
-}
-
-// Implement claims pallet configuration trait for the centrifuge runtime
-impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Tokens;
-	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = ClaimsPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 // Pool config parameters
@@ -1900,7 +1883,7 @@ construct_runtime!(
 		// our pallets part 1
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
+		// Removed: Claims = 02
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
