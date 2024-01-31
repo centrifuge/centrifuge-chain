@@ -1042,7 +1042,7 @@ mod investment {
 
 	#[test]
 	fn increase_and_fulfill_and_very_small_partial_collects() {
-		// Rate is: 1 pool amount = 0.1 foreing amount.
+		// Rate is: 1 pool amount = 0.1 foreign amount.
 		// There is no equivalent foreign amount to return when it collects just 1 pool
 		// token, so most of the first messages seems to return nothing.
 		//
@@ -1060,21 +1060,21 @@ mod investment {
 
 			util::fulfill_last_swap(Action::Investment, AMOUNT);
 
-			let total_foreing_collected = Arc::new(Mutex::new(0));
-			let foreing_remaining = Arc::new(Mutex::new(0));
+			let total_foreign_collected = Arc::new(Mutex::new(0));
+			let foreign_remaining = Arc::new(Mutex::new(0));
 
 			for _ in 0..foreign_to_pool(AMOUNT) {
 				util::process_investment(1 /* pool_amount */);
 
 				MockCollectInvestHook::mock_notify_status_change({
-					let total_foreing_collected = total_foreing_collected.clone();
-					let foreing_remaining = foreing_remaining.clone();
+					let total_foreign_collected = total_foreign_collected.clone();
+					let foreign_remaining = foreign_remaining.clone();
 					move |_, msg| {
 						// First messages returns nothing, until last messages fix the expected
 						// returned value.
 
-						*total_foreing_collected.lock().unwrap() += msg.amount_currency_payout;
-						*foreing_remaining.lock().unwrap() = msg.amount_remaining;
+						*total_foreign_collected.lock().unwrap() += msg.amount_currency_payout;
+						*foreign_remaining.lock().unwrap() = msg.amount_remaining;
 						Ok(())
 					}
 				});
@@ -1086,8 +1086,8 @@ mod investment {
 				));
 			}
 
-			assert_eq!(*total_foreing_collected.lock().unwrap(), AMOUNT);
-			assert_eq!(*foreing_remaining.lock().unwrap(), 0);
+			assert_eq!(*total_foreign_collected.lock().unwrap(), AMOUNT);
+			assert_eq!(*foreign_remaining.lock().unwrap(), 0);
 		});
 	}
 

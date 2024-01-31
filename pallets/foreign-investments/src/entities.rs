@@ -135,8 +135,8 @@ impl<T: Config> InvestmentInfo<T> {
 	) -> Result<SwapOf<T>, DispatchError> {
 		// We do not want to decrease the whole `foreign_amount` from the investment
 		// amount if there is a pending investment swap.
-		let increasing_foreing_amount = self.pending_increase_swap(who, investment_id)?;
-		let foreign_investment_decrement = foreign_amount.saturating_sub(increasing_foreing_amount);
+		let increasing_foreign_amount = self.pending_increase_swap(who, investment_id)?;
+		let foreign_investment_decrement = foreign_amount.saturating_sub(increasing_foreign_amount);
 
 		let mut pool_investment_decrement = T::Balance::default();
 		if !foreign_investment_decrement.is_zero() {
@@ -169,7 +169,7 @@ impl<T: Config> InvestmentInfo<T> {
 		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
 			pool_currency,
 			self.base.foreign_currency,
-			min(foreign_amount, increasing_foreing_amount),
+			min(foreign_amount, increasing_foreign_amount),
 		)?;
 
 		Ok(Swap {
