@@ -787,7 +787,7 @@ mod investment {
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
 					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: 3 * AMOUNT / 4,
+					decrease_pending_foreign_amount: AMOUNT / 2,
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
