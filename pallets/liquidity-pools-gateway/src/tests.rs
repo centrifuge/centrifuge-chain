@@ -29,7 +29,6 @@ mod utils {
 
 	pub fn event_exists<E: Into<MockEvent>>(e: E) {
 		let e: MockEvent = e.into();
-		let _ee = frame_system::Pallet::<Runtime>::events();
 		assert!(frame_system::Pallet::<Runtime>::events()
 			.iter()
 			.any(|ev| ev.event == e));
@@ -1097,7 +1096,7 @@ mod outbound_queue_impl {
 
 			let expected_nonce = OutboundMessageNonce::one();
 
-			let queue_entry = OutboundMessageQueue::<Runtime>::take(expected_nonce)
+			let queue_entry = OutboundMessageQueue::<Runtime>::get(expected_nonce)
 				.expect("an entry is added to the queue");
 
 			let gateway_sender = <Runtime as Config>::Sender::get();
