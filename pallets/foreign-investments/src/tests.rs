@@ -6,6 +6,7 @@ use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
 };
 use frame_support::{assert_err, assert_ok};
+use sp_std::sync::{Arc, Mutex};
 
 use crate::{
 	entities::{BaseInfo, InvestmentInfo, RedemptionInfo},
@@ -973,6 +974,60 @@ mod investment {
 
 			assert_eq!(ForeignInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
 			assert_eq!(MockInvestment::investment(&USER, INVESTMENT_ID), Ok(0));
+		});
+	}
+
+	#[test]
+	fn increase_and_fulfill_and_very_small_partial_collects() {
+		// Rate is: 1 pool amount = 0.1 foreing amount.
+		// There is no equivalent foreign amount to return when it collects just 1 pool
+		// token, so most of the first messages seems to return nothing.
+		//
+		// Nevertheless the system can recover itself from this situation and the
+		// accumulated result is the expected one.
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT);
+
+			let total_foreing_collected = Arc::new(Mutex::new(0));
+			let foreing_remaining = Arc::new(Mutex::new(0));
+
+			for _ in 0..foreign_to_pool(AMOUNT) {
+				util::allow_collect_investment(1 /* pool_amount */);
+
+				MockCollectInvestHook::mock_notify_status_change({
+					let total_foreing_collected = total_foreing_collected.clone();
+					let foreing_remaining = foreing_remaining.clone();
+					move |_, msg| {
+						// First messages returns nothing, until last messages fix the expected
+						// returned value.
+
+						*total_foreing_collected.lock().unwrap() += msg.amount_currency_payout;
+						*foreing_remaining.lock().unwrap() = msg.amount_remaining;
+						Ok(())
+					}
+				});
+
+				assert_ok!(ForeignInvestment::collect_foreign_investment(
+					&USER,
+					INVESTMENT_ID,
+					FOREIGN_CURR
+				));
+			}
+
+			assert_eq!(
+				*total_foreing_collected.lock().unwrap(),
+				foreign_to_pool(AMOUNT)
+			);
+			assert_eq!(*foreing_remaining.lock().unwrap(), 0);
 		});
 	}
 
