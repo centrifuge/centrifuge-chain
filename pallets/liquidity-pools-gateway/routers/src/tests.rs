@@ -169,7 +169,7 @@ mod evm_router {
 				let res = router.do_send(test_data.sender, test_data.msg);
 
 				assert_eq!(
-					res.err().unwrap(),
+					res.err().unwrap().error,
 					pallet_evm::Error::<Runtime>::BalanceLow.into()
 				);
 			});
@@ -483,7 +483,7 @@ mod axelar_evm {
 				let res = domain_router.send(test_data.sender, test_data.msg);
 
 				assert_eq!(
-					res.err().unwrap(),
+					res.err().unwrap().error,
 					pallet_evm::Error::<Runtime>::BalanceLow.into()
 				);
 			});
