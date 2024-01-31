@@ -159,7 +159,6 @@ dependencies = [
  "pallet-base-fee",
  "pallet-block-rewards",
  "pallet-bridge",
- "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -2494,7 +2493,6 @@ dependencies = [
  "pallet-base-fee",
  "pallet-block-rewards",
  "pallet-bridge",
- "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -6846,23 +6844,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-claims"
-version = "2.0.0"
-dependencies = [
- "cfg-primitives",
- "cfg-types",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec 3.6.9",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-collator-allowlist"
 version = "2.0.0"
 dependencies = [
@@ -10899,7 +10880,6 @@ dependencies = [
  "pallet-base-fee",
  "pallet-block-rewards",
  "pallet-bridge",
- "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -11022,7 +11002,6 @@ dependencies = [
  "pallet-base-fee",
  "pallet-block-rewards",
  "pallet-bridge",
- "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
