@@ -828,6 +828,69 @@ mod investment {
 	}
 
 	#[test]
+	fn increase_and_fulfill_and_decrease_and_partial_fulfill_and_partial_increase() {
+		new_test_ext().execute_with(|| {
+			util::base_configuration();
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, AMOUNT);
+
+			assert_ok!(ForeignInvestment::decrease_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT,
+				FOREIGN_CURR
+			));
+
+			util::fulfill_last_swap(Action::Investment, foreign_to_pool(3 * AMOUNT / 4));
+
+			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+				assert_eq!(
+					msg,
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: AMOUNT / 2,
+						foreign_currency: FOREIGN_CURR,
+						amount_remaining: AMOUNT / 2,
+					}
+				);
+				Ok(())
+			});
+
+			assert_ok!(ForeignInvestment::increase_foreign_investment(
+				&USER,
+				INVESTMENT_ID,
+				AMOUNT / 2,
+				FOREIGN_CURR
+			));
+
+			assert_eq!(
+				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
+				Some(InvestmentInfo {
+					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					invested_foreign_amount: AMOUNT / 4,
+					decrease_pending_foreign_amount: 0,
+					decrease_swapped_foreign_amount: 0,
+				})
+			);
+
+			assert_eq!(
+				ForeignInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(AMOUNT / 2)
+			);
+			assert_eq!(
+				MockInvestment::investment(&USER, INVESTMENT_ID),
+				Ok(foreign_to_pool(AMOUNT / 4))
+			);
+		});
+	}
+
+	#[test]
 	fn increase_and_partial_fulfill_and_partial_collect() {
 		new_test_ext().execute_with(|| {
 			util::base_configuration();

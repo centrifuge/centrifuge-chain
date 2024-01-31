@@ -87,14 +87,61 @@ impl<T: Config> InvestmentInfo<T> {
 	/// This method is performed before applying the swap.
 	pub fn pre_increase_swap(
 		&mut self,
+		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 		foreign_amount: T::Balance,
-	) -> Result<SwapOf<T>, DispatchError> {
-		Ok(Swap {
-			currency_in: pool_currency_of::<T>(investment_id)?,
-			currency_out: self.base.foreign_currency,
-			amount_out: foreign_amount,
-		})
+	) -> Result<
+		(
+			SwapOf<T>,
+			Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>,
+		),
+		DispatchError,
+	> {
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+
+		let decreasing_pool_amount = self.pending_decrease_swap(who, investment_id)?;
+
+		// It's ok to use the market ratio because this amount will be
+		// cancelled.
+		let decreasing_foreign_amount = T::TokenSwaps::convert_by_market(
+			self.base.foreign_currency,
+			pool_currency,
+			decreasing_pool_amount,
+		)?;
+
+		let mut msg = None;
+		if foreign_amount >= decreasing_foreign_amount {
+			let swap_foreign_amount = foreign_amount.ensure_sub(decreasing_foreign_amount)?;
+
+			self.decrease_swapped_foreign_amount = self
+				.decrease_swapped_foreign_amount
+				.saturating_sub(swap_foreign_amount);
+
+			if !self.decrease_swapped_foreign_amount.is_zero() {
+				let amount_decreased = sp_std::mem::take(&mut self.decrease_swapped_foreign_amount);
+
+				self.decrease_pending_foreign_amount
+					.ensure_sub_assign(amount_decreased)?;
+
+				msg = Some(ExecutedForeignDecreaseInvest {
+					amount_decreased,
+					foreign_currency: self.base.foreign_currency,
+					amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
+				});
+
+				self.decrease_pending_foreign_amount
+					.ensure_sub_assign(swap_foreign_amount)?;
+			}
+		}
+
+		Ok((
+			Swap {
+				currency_in: pool_currency,
+				currency_out: self.base.foreign_currency,
+				amount_out: foreign_amount,
+			},
+			msg,
+		))
 	}
 
 	/// Decrease an investment taking into account that a previous increment
@@ -162,8 +209,6 @@ impl<T: Config> InvestmentInfo<T> {
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
 	) -> DispatchResult {
-		self.decrease_swapped_foreign_amount = T::Balance::default();
-
 		if !swapped_pool_amount.is_zero() {
 			T::Investment::update_investment(
 				who,
@@ -265,6 +310,20 @@ impl<T: Config> InvestmentInfo<T> {
 			investment_id,
 			Action::Investment,
 			self.base.foreign_currency,
+		))
+	}
+
+	/// In foreign currency denomination
+	pub fn pending_decrease_swap(
+		&self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+	) -> Result<T::Balance, DispatchError> {
+		Ok(Swaps::<T>::pending_amount_for(
+			who,
+			investment_id,
+			Action::Investment,
+			pool_currency_of::<T>(investment_id)?,
 		))
 	}
 

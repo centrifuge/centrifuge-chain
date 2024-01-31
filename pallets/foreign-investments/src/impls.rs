@@ -29,13 +29,13 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_amount: T::Balance,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
+		let (swap, msg) = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.get_or_insert(InvestmentInfo::new(foreign_currency)?);
 			info.base.ensure_same_foreign(foreign_currency)?;
-			info.pre_increase_swap(investment_id, foreign_amount)
+			info.pre_increase_swap(who, investment_id, foreign_amount)
 		})?;
 
-		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
 
 		if !status.swapped.is_zero() {
 			let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
@@ -44,6 +44,14 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 				investment_id,
 				status.swapped,
 				swapped_foreign_amount,
+			)?;
+		}
+
+		// We send the event out of the Info mutation closure
+		if let Some(msg) = msg {
+			T::DecreasedForeignInvestOrderHook::notify_status_change(
+				(who.clone(), investment_id),
+				msg,
 			)?;
 		}
 
