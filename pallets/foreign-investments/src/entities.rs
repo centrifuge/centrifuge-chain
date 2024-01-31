@@ -135,17 +135,19 @@ impl<T: Config> InvestmentInfo<T> {
 				.ensure_add_assign(foreign_investment_decrement)?;
 		}
 
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+
 		// It's ok to use the market ratio because this amount will be
 		// cancelled.
 		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
-			pool_currency_of::<T>(investment_id)?,
+			pool_currency,
 			self.base.foreign_currency,
 			min(foreign_amount, increasing_foreing_amount),
 		)?;
 
 		Ok(Swap {
 			currency_in: self.base.foreign_currency,
-			currency_out: pool_currency_of::<T>(investment_id)?,
+			currency_out: pool_currency,
 			amount_out: increasing_pool_amount.ensure_add(pool_investment_decrement)?,
 		})
 	}

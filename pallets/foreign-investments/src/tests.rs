@@ -156,7 +156,7 @@ mod util {
 	}
 
 	/// Emulates partial collected investment
-	pub fn allow_collect_investment(pool_amount: Balance) {
+	pub fn process_investment(pool_amount: Balance) {
 		let value = MockInvestment::investment(&USER, INVESTMENT_ID).unwrap();
 		MockInvestment::mock_collect_investment(move |_, _| {
 			MockInvestment::mock_investment(move |_, _| Ok(value - pool_amount));
@@ -172,7 +172,7 @@ mod util {
 	}
 
 	/// Emulates partial collected redemption
-	pub fn allow_collect_redemption(tranche_amount: Balance) {
+	pub fn process_redemption(tranche_amount: Balance) {
 		let value = MockInvestment::redemption(&USER, INVESTMENT_ID).unwrap();
 		MockInvestment::mock_collect_redemption(move |_, _| {
 			MockInvestment::mock_redemption(move |_, _| Ok(value - tranche_amount));
@@ -840,7 +840,7 @@ mod investment {
 			));
 
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
-			util::allow_collect_investment(foreign_to_pool(AMOUNT / 4));
+			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
 			MockCollectInvestHook::mock_notify_status_change(|(who, investment_id), msg| {
 				assert_eq!(who, USER);
@@ -902,7 +902,7 @@ mod investment {
 			));
 
 			util::fulfill_last_swap(Action::Investment, AMOUNT / 2);
-			util::allow_collect_investment(foreign_to_pool(AMOUNT / 4));
+			util::process_investment(foreign_to_pool(AMOUNT / 4));
 
 			MockCollectInvestHook::mock_notify_status_change(|_, _| Ok(()));
 
@@ -946,7 +946,7 @@ mod investment {
 			));
 
 			util::fulfill_last_swap(Action::Investment, AMOUNT);
-			util::allow_collect_investment(foreign_to_pool(AMOUNT));
+			util::process_investment(foreign_to_pool(AMOUNT));
 
 			MockCollectInvestHook::mock_notify_status_change(|_, msg| {
 				assert_eq!(
@@ -1001,7 +1001,7 @@ mod investment {
 			let foreing_remaining = Arc::new(Mutex::new(0));
 
 			for _ in 0..foreign_to_pool(AMOUNT) {
-				util::allow_collect_investment(1 /* pool_amount */);
+				util::process_investment(1 /* pool_amount */);
 
 				MockCollectInvestHook::mock_notify_status_change({
 					let total_foreing_collected = total_foreing_collected.clone();
@@ -1023,10 +1023,7 @@ mod investment {
 				));
 			}
 
-			assert_eq!(
-				*total_foreing_collected.lock().unwrap(),
-				foreign_to_pool(AMOUNT)
-			);
+			assert_eq!(*total_foreing_collected.lock().unwrap(), AMOUNT);
 			assert_eq!(*foreing_remaining.lock().unwrap(), 0);
 		});
 	}
@@ -1324,7 +1321,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
+			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
 			assert_ok!(ForeignInvestment::collect_foreign_redemption(
 				&USER,
@@ -1365,7 +1362,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
+			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
 			assert_ok!(ForeignInvestment::collect_foreign_redemption(
 				&USER,
@@ -1408,7 +1405,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::allow_collect_redemption(3 * TRANCHE_AMOUNT / 4);
+			util::process_redemption(3 * TRANCHE_AMOUNT / 4);
 
 			assert_ok!(ForeignInvestment::collect_foreign_redemption(
 				&USER,
@@ -1464,7 +1461,7 @@ mod redemption {
 				FOREIGN_CURR
 			));
 
-			util::allow_collect_redemption(TRANCHE_AMOUNT);
+			util::process_redemption(TRANCHE_AMOUNT);
 
 			assert_ok!(ForeignInvestment::collect_foreign_redemption(
 				&USER,
@@ -1513,7 +1510,7 @@ mod redemption {
 					POOL_CURR,
 				));
 
-				util::allow_collect_redemption(TRANCHE_AMOUNT);
+				util::process_redemption(TRANCHE_AMOUNT);
 
 				MockCollectRedeemHook::mock_notify_status_change(|_, msg| {
 					assert_eq!(
