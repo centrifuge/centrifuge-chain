@@ -24,6 +24,80 @@ use sp_runtime::DispatchError;
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;
 
+/// This upgrade nukes all storage from the pallet individually.
+///
+/// If the pallet shall be kept, please use [ResetPallet] instead because
+/// here we neither check nor reset the corresponding storage version.
+pub struct KillPrefix<PalletName, DbWeight>(sp_std::marker::PhantomData<(PalletName, DbWeight)>);
+
+impl<PalletName, DbWeight> OnRuntimeUpgrade for KillPrefix<PalletName, DbWeight>
+where
+	PalletName: Get<&'static str>,
+	DbWeight: Get<RuntimeDbWeight>,
+{
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+		if !unhashed::contains_prefixed_key(&sp_io::hashing::twox_128(PalletName::get().as_bytes()))
+		{
+			log::info!(
+				"Clear pallet {:?}: Pallet prefix doesn't exist, storage is empty already",
+				PalletName::get(),
+			)
+		}
+
+		Ok(Vec::new())
+	}
+
+	fn on_runtime_upgrade() -> Weight {
+		log::info!(
+			"Clear pallet {:?}: nuking pallet prefix...",
+			PalletName::get()
+		);
+
+		let result = unhashed::clear_prefix(
+			&sp_io::hashing::twox_128(PalletName::get().as_bytes()),
+			None,
+			None,
+		);
+		match result.maybe_cursor {
+			None => log::info!(
+				"Clear pallet {:?}: storage cleared successful",
+				PalletName::get()
+			),
+			Some(_) => {
+				// TODO: Should we loop over maybe_cursor as a new prefix?
+				// By now, returning error.
+				log::error!(
+					"Clear pallet {:?}: storage not totally cleared",
+					PalletName::get()
+				)
+			}
+		}
+
+		log::info!(
+			"Clear pallet {:?}: iteration result. backend: {} unique: {} loops: {}",
+			PalletName::get(),
+			result.backend,
+			result.unique,
+			result.loops,
+		);
+
+		DbWeight::get().writes(result.unique.into()) + DbWeight::get().reads(result.loops.into())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(_: Vec<u8>) -> Result<(), DispatchError> {
+		ensure!(
+			!unhashed::contains_prefixed_key(&sp_io::hashing::twox_128(
+				PalletName::get().as_bytes()
+			)),
+			"Pallet prefix still exists!"
+		);
+
+		Ok(())
+	}
+}
+
 /// This upgrade nukes all storages from the pallet individually.
 /// This upgrade is only executed if pallet version has changed.
 ///
@@ -31,12 +105,12 @@ use sp_std::vec::Vec;
 /// you must specify the ON_CHAIN_VERSION,
 /// which represent the expected previous on-chain version when the upgrade is
 /// done. If these numbers mismatch, the upgrade will not take effect.
-pub struct Migration<Pallet, DbWeight, const ON_CHAIN_VERSION: u16>(
+pub struct ResetPallet<Pallet, DbWeight, const ON_CHAIN_VERSION: u16>(
 	sp_std::marker::PhantomData<(Pallet, DbWeight)>,
 );
 
 impl<Pallet, DbWeight, const ON_CHAIN_VERSION: u16> OnRuntimeUpgrade
-	for Migration<Pallet, DbWeight, ON_CHAIN_VERSION>
+	for ResetPallet<Pallet, DbWeight, ON_CHAIN_VERSION>
 where
 	Pallet: GetStorageVersion<CurrentStorageVersion = StorageVersion> + PalletInfoAccess,
 	DbWeight: Get<RuntimeDbWeight>,
