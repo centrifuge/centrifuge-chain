@@ -18,7 +18,7 @@ pub struct SwapStatus<T: Config> {
 	/// The incoming amount already swapped and available to use.
 	pub swapped: T::Balance,
 
-	/// The outcoming amount pending to be swapped
+	/// The outgoing amount pending to be swapped
 	pub pending: T::Balance,
 
 	/// The swap id for a possible reminder swap order after `apply_swap()`

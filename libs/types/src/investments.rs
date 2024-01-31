@@ -178,7 +178,7 @@ pub struct SwapState<Balance, Currency> {
 	pub remaining: Swap<Balance, Currency>,
 	/// Amount of incoming currency already swapped
 	pub swapped_in: Balance,
-	/// Amount of incoming currency already swapped denominated in outcomming
+	/// Amount of incoming currency already swapped denominated in outgoing
 	/// currency
 	pub swapped_out: Balance,
 }
