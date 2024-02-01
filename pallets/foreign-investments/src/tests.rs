@@ -682,6 +682,18 @@ mod investment {
 				FOREIGN_CURR
 			));
 
+			MockDecreaseInvestHook::mock_notify_status_change(|_, msg| {
+				assert_eq!(
+					msg,
+					ExecutedForeignDecreaseInvest {
+						amount_decreased: AMOUNT / 2,
+						foreign_currency: FOREIGN_CURR,
+						amount_remaining: 3 * AMOUNT / 2,
+					}
+				);
+				Ok(())
+			});
+
 			assert_ok!(ForeignInvestment::increase_foreign_investment(
 				&USER,
 				INVESTMENT_ID,
@@ -846,7 +858,7 @@ mod investment {
 				assert_eq!(
 					msg,
 					ExecutedForeignDecreaseInvest {
-						amount_decreased: AMOUNT / 2,
+						amount_decreased: AMOUNT,
 						foreign_currency: FOREIGN_CURR,
 						amount_remaining: AMOUNT / 2,
 					}
