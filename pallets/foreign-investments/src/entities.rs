@@ -203,7 +203,6 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// This method is performed after resolve the swap
-	#[allow(clippy::type_complexity)]
 	pub fn post_increase_swap(
 		&mut self,
 		who: &T::AccountId,
@@ -224,6 +223,7 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// This method is performed after resolve the swap by cancelling it
+	#[allow(clippy::type_complexity)]
 	pub fn post_increase_swap_by_cancel(
 		&mut self,
 		who: &T::AccountId,
@@ -296,6 +296,7 @@ impl<T: Config> InvestmentInfo<T> {
 	}
 
 	/// This method is performed after a collect
+	#[allow(clippy::type_complexity)]
 	pub fn post_collect(
 		&mut self,
 		who: &T::AccountId,
