@@ -70,6 +70,10 @@ impl<T: Config> Correlation<T> {
 
 	/// Transform any pool amount into a foreign amount
 	pub fn pool_to_foreign(&self, pool_amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		if pool_amount.is_zero() {
+			return Ok(T::Balance::default());
+		}
+
 		Ok(pool_amount
 			.ensure_mul(self.foreign_amount)?
 			.ensure_div(self.pool_amount)?)
@@ -77,6 +81,10 @@ impl<T: Config> Correlation<T> {
 
 	/// Transform any foreign amount into a pool amount
 	pub fn foreign_to_pool(&self, foreign_amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		if foreign_amount.is_zero() {
+			return Ok(T::Balance::default());
+		}
+
 		foreign_amount
 			.ensure_mul(self.pool_amount)?
 			.ensure_div(self.foreign_amount)
@@ -146,29 +154,18 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		foreign_amount: T::Balance,
 	) -> Result<SwapOf<T>, DispatchError> {
+		let pool_currency = pool_currency_of::<T>(investment_id)?;
+
 		// We do not want to decrease the whole `foreign_amount` from the investment
 		// amount if there is a pending investment swap.
 		let increasing_foreign_amount = self.pending_increase_swap(who, investment_id)?;
 		let foreign_investment_decrement = foreign_amount.saturating_sub(increasing_foreign_amount);
 
-		let mut pool_investment_decrement = T::Balance::default();
-		if !foreign_investment_decrement.is_zero() {
-			let invested_pool_amount = T::Investment::investment(who, investment_id)?;
+		let pool_investment_decrement = self
+			.correlation
+			.foreign_to_pool(foreign_investment_decrement)?;
 
-			pool_investment_decrement = self
-				.correlation
-				.foreign_to_pool(foreign_investment_decrement)?;
-
-			T::Investment::update_investment(
-				who,
-				investment_id,
-				invested_pool_amount
-					.ensure_sub(pool_investment_decrement)
-					.map_err(|_| Error::<T>::TooMuchDecrease)?,
-			)?;
-		}
-
-		let pool_currency = pool_currency_of::<T>(investment_id)?;
+		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
 
 		// It's ok to use the market ratio because this amount will be
 		// cancelled.
@@ -196,13 +193,7 @@ impl<T: Config> InvestmentInfo<T> {
 		self.correlation
 			.increase(swapped_pool_amount, swapped_foreign_amount)?;
 
-		T::Investment::update_investment(
-			who,
-			investment_id,
-			T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
-		)?;
-
-		Ok(())
+		self.increase_investment(who, investment_id, swapped_pool_amount)
 	}
 
 	/// This method is performed after resolve the swap by cancelling it
@@ -214,11 +205,7 @@ impl<T: Config> InvestmentInfo<T> {
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
 	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
-		T::Investment::update_investment(
-			who,
-			investment_id,
-			T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
-		)?;
+		self.increase_investment(who, investment_id, swapped_pool_amount)?;
 
 		self.decrease_swapped_foreign_amount
 			.ensure_sub_assign(swapped_foreign_amount)?;
@@ -297,6 +284,42 @@ impl<T: Config> InvestmentInfo<T> {
 			amount_tranche_tokens_payout: collected.amount_collected,
 			amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
 		})
+	}
+
+	fn increase_investment(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		pool_amount: T::Balance,
+	) -> DispatchResult {
+		if !pool_amount.is_zero() {
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_add(pool_amount)?,
+			)?;
+		}
+
+		Ok(())
+	}
+
+	fn decrease_investment(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		pool_amount: T::Balance,
+	) -> DispatchResult {
+		if !pool_amount.is_zero() {
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?
+					.ensure_sub(pool_amount)
+					.map_err(|_| Error::<T>::TooMuchDecrease)?,
+			)?;
+		}
+
+		Ok(())
 	}
 
 	/// Remaining amount to finalize the investment, denominated in foreign
