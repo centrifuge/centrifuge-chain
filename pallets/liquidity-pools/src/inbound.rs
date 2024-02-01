@@ -138,6 +138,8 @@ where
 		// the trading pair needs to be registered for the opposite direction as hin
 		// case a swap from pool to foreign results from updating the `InvestState`
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
+		#[cfg(feature = "std")]
+		dbg!(&payout_currency);
 
 		T::ForeignInvestment::decrease_foreign_investment(
 			&investor,
@@ -167,6 +169,10 @@ where
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let amount = T::ForeignInvestment::investment(&investor, invest_id)?;
 
+		#[cfg(feature = "std")]
+		{
+			println!("Decreasing");
+		}
 		Self::handle_decrease_invest_order(pool_id, tranche_id, investor, currency_index, amount)
 	}
 

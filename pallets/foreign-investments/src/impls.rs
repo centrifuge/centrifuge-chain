@@ -57,12 +57,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
 		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
+			#[cfg(feature = "std")]
+			dbg!(&info);
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
 			info.base.ensure_same_foreign(foreign_currency)?;
 			info.pre_decrease_swap(who, investment_id, foreign_amount)
 		})?;
 
+		#[cfg(feature = "std")]
+		dbg!(&swap);
 		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+		#[cfg(feature = "std")]
+		dbg!(&status);
 
 		if !status.swapped.is_zero() {
 			SwapDone::<T>::for_decrease_investment(

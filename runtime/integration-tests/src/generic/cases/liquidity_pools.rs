@@ -3884,7 +3884,7 @@ mod development {
 					let invest_amount_foreign_denominated = enable_usdt_trading::<T>(
 						pool_currency,
 						invest_amount_pool_denominated,
-						false,
+						true,
 						true,
 						true,
 					);
@@ -3910,7 +3910,7 @@ mod development {
 						trader,
 					);
 
-					// Do seconds investment and not fulfill swap order
+					// Do second investment and not fulfill swap order
 					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
 						pool_id,
 						tranche_id: default_tranche_id::<T>(pool_id),
@@ -3924,7 +3924,6 @@ mod development {
 					));
 
 					// Decrease pending pool swap by same amount
-					enable_liquidity_pool_transferability::<T>(foreign_currency);
 					let decrease_msg_pool_swap_amount = LiquidityPoolMessage::DecreaseInvestOrder {
 						pool_id,
 						tranche_id: default_tranche_id::<T>(pool_id),
@@ -3956,6 +3955,22 @@ mod development {
 						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
 						decrease_msg_partial_invest_amount.clone()
 					));
+					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
+						e.event
+							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
+							sender: TreasuryAccount::get(),
+							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
+								pool_id,
+								tranche_id: default_tranche_id::<T>(pool_id),
+								investor: investor.clone().into(),
+								currency: general_currency_index::<T>(foreign_currency),
+								currency_payout: invest_amount_foreign_denominated,
+								remaining_invest_amount: 0,
+							},
+						}
+							.into()
+					}));
 				});
 			}
 
@@ -4093,10 +4108,133 @@ mod development {
 				});
 			}
 
+			fn increase_fulfill_decrease_fulfill_partial_increase<T: Runtime + FudgeSupport>() {
+				let mut env = FudgeEnv::<T>::from_parachain_storage(
+					Genesis::default()
+						.add(genesis::balances::<T>(cfg(1_000)))
+						.storage(),
+				);
+
+				setup_test(&mut env);
+
+				env.parachain_state_mut(|| {
+					let pool_id = POOL_ID;
+					let investor: AccountId = AccountConverter::<T, LocationToAccountId>::convert(
+						(DOMAIN_MOONBEAM, Keyring::Bob.into()),
+					);
+					let pool_currency: CurrencyId = AUSD_CURRENCY_ID;
+					let foreign_currency: CurrencyId = USDT_CURRENCY_ID;
+					let pool_currency_decimals = currency_decimals::AUSD;
+					let invest_amount_pool_denominated: u128 = 20 * decimals(18);
+					let trader: AccountId = Keyring::Alice.into();
+					create_currency_pool::<T>(
+						pool_id,
+						pool_currency,
+						pool_currency_decimals.into(),
+					);
+
+					// USDT investment preparations
+					let invest_amount_foreign_denominated = enable_usdt_trading::<T>(
+						pool_currency,
+						invest_amount_pool_denominated,
+						true,
+						true,
+						true,
+					);
+
+					// Do first investment and fulfill swap order
+					do_initial_increase_investment::<T>(
+						pool_id,
+						invest_amount_foreign_denominated,
+						investor.clone(),
+						foreign_currency,
+					);
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
+						&investor,
+						default_investment_id::<T>(),
+						pallet_foreign_investments::Action::Investment,
+					)
+					.expect("Swap order exists; qed");
+					fulfill_swap::<T>(
+						pool_id,
+						swap_order_id,
+						invest_amount_pool_denominated,
+						invest_amount_foreign_denominated,
+						trader.clone(),
+					);
+					println!("1");
+
+					// Decrease pending pool swap by same amount
+					let decrease_msg_pool_swap_amount = LiquidityPoolMessage::DecreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id::<T>(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index::<T>(foreign_currency),
+						amount: invest_amount_foreign_denominated,
+					};
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						decrease_msg_pool_swap_amount
+					));
+					println!("2");
+
+					// Fulfill decrease swap partially
+					let swap_order_id = pallet_foreign_investments::Swaps::<T>::swap_id_from(
+						&investor,
+						default_investment_id::<T>(),
+						pallet_foreign_investments::Action::Investment,
+					)
+					.expect("Swap order exists; qed");
+					fulfill_swap::<T>(
+						pool_id,
+						swap_order_id,
+						invest_amount_pool_denominated / 4 * 3,
+						invest_amount_foreign_denominated / 4 * 3,
+						trader,
+					);
+					println!("3");
+
+					// Increase more than pending swap (pool -> foreign) amount from decrease
+					let increase_msg = LiquidityPoolMessage::IncreaseInvestOrder {
+						pool_id,
+						tranche_id: default_tranche_id::<T>(pool_id),
+						investor: investor.clone().into(),
+						currency: general_currency_index::<T>(foreign_currency),
+						amount: invest_amount_foreign_denominated / 2,
+					};
+					assert_ok!(pallet_liquidity_pools::Pallet::<T>::submit(
+						DEFAULT_DOMAIN_ADDRESS_MOONBEAM,
+						increase_msg
+					));
+
+					dbg!(frame_system::Pallet::<T>::events());
+					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
+						e.event
+							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
+							sender: TreasuryAccount::get(),
+							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
+							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
+								pool_id,
+								tranche_id: default_tranche_id::<T>(pool_id),
+								investor: investor.clone().into(),
+								currency: general_currency_index::<T>(foreign_currency),
+								currency_payout: invest_amount_foreign_denominated,
+								remaining_invest_amount: invest_amount_foreign_denominated / 2,
+							},
+						}
+							.into()
+					}));
+				});
+			}
+
 			crate::test_for_runtimes!([development], collect_foreign_investment_for);
 			crate::test_for_runtimes!(
 				[development],
 				increase_fulfill_increase_decrease_decrease_partial
+			);
+			crate::test_for_runtimes!(
+				[development],
+				increase_fulfill_decrease_fulfill_partial_increase
 			);
 			crate::test_for_runtimes!([development], invest_swaps_happy_path);
 		}
