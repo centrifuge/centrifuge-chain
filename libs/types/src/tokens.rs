@@ -64,11 +64,6 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
-	#[codec(index = 3)]
-	/// DEPRECATED - Will be removed in the following up Runtime Upgrade once
-	/// the orml_tokens' balances are migrated to the new CurrencyId for AUSD.
-	AUSD,
-
 	/// A foreign asset
 	#[codec(index = 4)]
 	ForeignAsset(ForeignAssetId),
@@ -365,6 +360,62 @@ pub enum FilterCurrency {
 impl From<CurrencyId> for FilterCurrency {
 	fn from(value: CurrencyId) -> Self {
 		Self::Specific(value)
+	}
+}
+
+pub mod altair {
+	use super::*;
+
+	/// The type for all Currency ids that our chains handles.
+	/// Foreign assets gather all the tokens that are native to other chains,
+	/// such as DOT, AUSD, UDST, etc.
+	///
+	/// NOTE: We MUST NEVER change the `#[codec(index =_)]` below as doing so
+	/// results in corrupted storage keys; if changing the index value of a
+	/// variant is mandatory, a storage migration must take place to ensure that
+	/// the values under an old codec-encoded key are moved to the new key.
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum TempCurrencyId {
+		// The Native token, representing AIR in Altair and CFG in Centrifuge.
+		#[default]
+		#[codec(index = 0)]
+		Native,
+
+		/// A Tranche token
+		#[codec(index = 1)]
+		Tranche(PoolId, TrancheId),
+
+		#[codec(index = 3)]
+		/// DEPRECATED - Will be removed in the following up Runtime Upgrade
+		/// once the orml_tokens' balances are migrated to the new CurrencyId
+		/// for AUSD.
+		AUSD,
+
+		/// A foreign asset
+		#[codec(index = 4)]
+		ForeignAsset(ForeignAssetId),
+
+		/// A staking currency
+		#[codec(index = 5)]
+		Staking(StakingCurrency),
+
+		/// A local asset
+		#[codec(index = 6)]
+		Local(LocalAssetId),
 	}
 }
 

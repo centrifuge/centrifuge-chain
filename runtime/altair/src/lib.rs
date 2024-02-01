@@ -19,13 +19,12 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	investments::{OrderManager, TrancheCurrency as _},
 	Millis, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions, Seconds,
 	TryConvert,
 };
-pub use cfg_types::tokens::CurrencyId;
+pub use cfg_types::tokens::altair::TempCurrencyId as CurrencyId;
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::{Fee, FeeKey},
@@ -37,6 +36,7 @@ use cfg_types::{
 	tokens::{CustomMetadata, StakingCurrency, TrancheCurrency},
 };
 use constants::currency::*;
+pub use efg_primitives::{constants::*, types::*};
 use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
