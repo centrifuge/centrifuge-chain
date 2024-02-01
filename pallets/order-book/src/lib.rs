@@ -868,6 +868,10 @@ pub mod pallet {
 			currency_out: Self::CurrencyId,
 			amount_out: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
+			if currency_in == currency_out {
+				return Ok(amount_out);
+			}
+
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
 		}
