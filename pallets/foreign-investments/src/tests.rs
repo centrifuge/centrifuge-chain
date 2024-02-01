@@ -9,7 +9,7 @@ use frame_support::{assert_err, assert_ok};
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
-	entities::{BaseInfo, InvestmentInfo, RedemptionInfo},
+	entities::{BaseInfo, Correlation, InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook},
 	mock::*,
 	pallet::ForeignInvestmentInfo,
@@ -423,8 +423,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: 0,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -460,8 +459,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: 0,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -551,8 +549,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: 0,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -607,8 +604,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -649,8 +645,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: AMOUNT / 2,
-					decrease_pending_foreign_amount: AMOUNT / 4,
+					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
@@ -698,8 +693,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: 3 * AMOUNT / 4,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -786,8 +780,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: AMOUNT / 2,
+					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
 			);
@@ -810,8 +803,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -873,8 +865,7 @@ mod investment {
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
 					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
-					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -936,8 +927,7 @@ mod investment {
 							amount_payment: foreign_to_pool(AMOUNT / 4)
 						}
 					},
-					invested_foreign_amount: AMOUNT / 4,
-					decrease_pending_foreign_amount: 0,
+					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
 			);
@@ -1111,8 +1101,10 @@ mod investment {
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 					Some(InvestmentInfo {
 						base: BaseInfo::new(POOL_CURR).unwrap(),
-						invested_foreign_amount: foreign_to_pool(AMOUNT),
-						decrease_pending_foreign_amount: 0,
+						correlation: Correlation::new(
+							foreign_to_pool(AMOUNT),
+							foreign_to_pool(AMOUNT)
+						),
 						decrease_swapped_foreign_amount: 0,
 					})
 				);
