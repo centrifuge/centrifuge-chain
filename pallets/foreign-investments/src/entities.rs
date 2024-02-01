@@ -102,8 +102,11 @@ pub struct InvestmentInfo<T: Config> {
 	/// Used to correlate the pool amount into foreign amount and vice-versa
 	/// when the market conversion is not known upfront.
 	///
-	/// The correlation is increased & decreased to be have the following
-	/// values:
+	/// The correlation
+	/// - is increased when an increase swap is paritally swapped
+	/// - is decreased when a decrease swap is partially swapped.
+	///
+	/// Which can also be seen an addition of the following values:
 	/// - The invested amount.
 	/// - The pending decrease amount not swapped yet.
 	pub correlation: Correlation<T>,
@@ -459,6 +462,7 @@ impl<T: Config> RedemptionInfo<T> {
 		pending_amount: T::Balance,
 	) -> Result<Option<ExecutedForeignCollect<T::Balance, T::CurrencyId>>, DispatchError> {
 		self.swapped_amount.ensure_add_assign(swapped_amount)?;
+
 		if pending_amount.is_zero() {
 			let msg = ExecutedForeignCollect {
 				currency: self.foreign_currency,
