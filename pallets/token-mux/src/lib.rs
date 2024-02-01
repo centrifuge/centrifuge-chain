@@ -38,9 +38,10 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::TokenSwaps;
+	use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
 	use cfg_types::{
 		investments::Swap,
+		orders::MuxSwap,
 		tokens::{CustomMetadata, LocalAssetId},
 	};
 	use frame_support::{
@@ -73,8 +74,8 @@ pub mod pallet {
 		<<T as Config>::Tokens as fungibles::Inspect<AccountIdFor<T>>>::Balance;
 	pub type CurrencyFor<T> =
 		<<T as Config>::Tokens as fungibles::Inspect<AccountIdFor<T>>>::AssetId;
-	pub type OrderIdFor<T> =
-		<<T as Config>::Swaps as cfg_traits::TokenSwaps<AccountIdFor<T>>>::OrderId;
+	pub type OrderIdFor<T> = <<T as Config>::Swaps as TokenSwaps<AccountIdFor<T>>>::OrderId;
+	pub type RatioFor<T> = <<T as Config>::Swaps as TokenSwaps<AccountIdFor<T>>>::Ratio;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -96,7 +97,11 @@ pub mod pallet {
 
 		type Tokens: fungibles::Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 
-		type Swaps: TokenSwaps<Self::AccountId, CurrencyId = CurrencyFor<Self>>;
+		type Swaps: TokenSwaps<Self::AccountId, CurrencyId = CurrencyFor<Self>, Balance = BalanceFor<Self>>
+			+ OrderDetails<
+				MuxSwap<BalanceFor<Self>, CurrencyFor<Self>, RatioFor<Self>>,
+				OrderId = OrderIdFor<Self>,
+			>;
 
 		type Weights: WeightInfo;
 	}
@@ -131,12 +136,17 @@ pub mod pallet {
 		/// The provided local currency does not match the local representation
 		/// of the currency to be unlocked
 		LocalCurrencyMismatch,
+		/// Swap could not be find by id
+		SwapNotFound,
+		/// Matching orders does only work if there is a one-to-one conversion
+		NonOneToOneRatio,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
 		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
+		BalanceFor<T>: FixedPointOperand,
 	{
 		#[pallet::call_index(0)]
 		#[pallet::weight(0)]
@@ -233,6 +243,18 @@ pub mod pallet {
 			order_id: OrderIdFor<T>,
 			amount: BalanceFor<T>,
 		) -> DispatchResult {
+			let order = T::Swaps::get_order_details(order_id).ok_or(Error::<T>::SwapNotFound)?;
+
+			let ratio = match order.ratio {
+				OrderRatio::Market => RatioFor::<T>::ensure_from_rational(
+					amount,
+					T::Swaps::convert_by_market(order.currency_in, order.currency_out, amount)?,
+				)?,
+				OrderRatio::Custom(ratio) => ratio,
+			};
+
+			ensure!(ratio == One::one(), Error::<T>::NonOneToOneRatio);
+
 			Ok(())
 		}
 	}

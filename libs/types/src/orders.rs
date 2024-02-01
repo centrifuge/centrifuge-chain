@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::OrderRatio;
 use frame_support::RuntimeDebug;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -125,4 +126,16 @@ impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, Orde
 	pub fn submitted_at(&self) -> OrderId {
 		self.submitted_at
 	}
+}
+
+/// Swap details that the multiplexing pallet needs in order to match orders
+pub struct MuxSwap<Balance, Currency, Ratio> {
+	/// The incoming currency, i.e. the desired one.
+	pub currency_in: Currency,
+	/// The outgoing currency, i.e. the one which should be replaced.
+	pub currency_out: Currency,
+	/// The amount of incoming currency which shall be bought.
+	pub amount_in: Balance,
+	/// The ratio at which the swap should happen
+	pub ratio: OrderRatio<Ratio>,
 }

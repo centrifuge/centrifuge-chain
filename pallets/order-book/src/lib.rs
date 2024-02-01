@@ -37,9 +37,12 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook, ValueProvider};
+	use cfg_traits::{
+		ConversionToAssetBalance, OrderDetails, StatusNotificationHook, ValueProvider,
+	};
 	use cfg_types::{
 		investments::{Swap, SwapState},
+		orders::MuxSwap,
 		tokens::CustomMetadata,
 	};
 	use frame_support::{
@@ -787,10 +790,43 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
+	impl<T: Config> OrderDetails<Swap<T::Balance, T::CurrencyId>> for Pallet<T> {
+		type OrderId = T::OrderIdNonce;
+
+		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
+			Orders::<T>::get(order)
+				.map(|order| Swap {
+					amount_out: order.amount_out,
+					currency_in: order.currency_in,
+					currency_out: order.currency_out,
+				})
+				.ok()
+		}
+	}
+
+	impl<T: Config> OrderDetails<MuxSwap<T::Balance, T::CurrencyId, T::Ratio>> for Pallet<T> {
+		type OrderId = T::OrderIdNonce;
+
+		fn get_order_details(
+			order: Self::OrderId,
+		) -> Option<MuxSwap<T::Balance, T::CurrencyId, T::Ratio>> {
+			Orders::<T>::get(order)
+				.map(|order| MuxSwap {
+					amount_in: order.amount_in,
+					currency_in: order.currency_in,
+					currency_out: order.currency_out,
+					ratio: order.ratio,
+				})
+				.ok()
+		}
+	}
+
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
+	where
+		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
+	{
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = Swap<T::Balance, T::CurrencyId>;
 		type OrderId = T::OrderIdNonce;
 		type Ratio = T::Ratio;
 
@@ -859,14 +895,8 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, buy_amount, account)
 		}
 
-		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
-			Orders::<T>::get(order)
-				.map(|order| Swap {
-					amount_out: order.amount_out,
-					currency_in: order.currency_in,
-					currency_out: order.currency_out,
-				})
-				.ok()
+		fn is_active(order: Self::OrderId) -> bool {
+			<Orders<T>>::contains_key(order)
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {

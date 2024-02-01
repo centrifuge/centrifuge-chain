@@ -26,6 +26,7 @@ use frame_support::{
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
@@ -510,10 +511,16 @@ pub enum OrderRatio<Ratio> {
 	Custom(Ratio),
 }
 
+pub trait OrderDetails<T> {
+	type OrderId;
+
+	fn get_order_details(order: Self::OrderId) -> Option<T>;
+}
+
 pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
-	type Ratio;
+	type Ratio: FixedPointNumber;
 	type OrderId: Parameter
 		+ Member
 		+ AtLeast32BitUnsigned
@@ -521,7 +528,6 @@ pub trait TokenSwaps<Account> {
 		+ MaybeSerializeDeserialize
 		+ TypeInfo
 		+ MaxEncodedLen;
-	type OrderDetails;
 
 	/// Swap tokens selling `amount_out` of `currency_out` and buying
 	/// `currency_in` given an order ratio.
@@ -554,9 +560,6 @@ pub trait TokenSwaps<Account> {
 	/// Cancel an already active order.
 	fn cancel_order(order: Self::OrderId) -> DispatchResult;
 
-	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
-
 	/// Makes a conversion between 2 currencies using the market ratio between
 	/// them
 	fn convert_by_market(
@@ -564,6 +567,9 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		amount_out: Self::Balance,
 	) -> Result<Self::Balance, DispatchError>;
+
+	/// Check if the order is still active.
+	fn is_active(order: Self::OrderId) -> bool;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.
