@@ -1,16 +1,20 @@
-use std::{future, future::Future, pin::Pin, str::FromStr, sync::Arc, task::Poll};
+use std::{future, future::Future, pin::Pin, str::FromStr, sync::Arc, thread, time::Duration};
 
-use cfg_primitives::Bytes;
 use cumulus_primitives_core::BlockT;
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
 use sc_network::{
-	config::ExHashT, Event, NetworkEventStream, NetworkNotification, NetworkService, PeerId,
-	ProtocolName,
+	config::{ExHashT, IncomingRequest, OutgoingResponse},
+	IfDisconnected, NetworkRequest, NetworkService, NetworkStateInfo, PeerId,
 };
+use sc_telemetry::serde_json;
 
 use crate::data_extension_worker::{
-	service::{DocumentNotifier, Service},
-	types::{BaseError, Document as DocumentT},
+	config::PROTOCOL_NAME,
+	service::Service,
+	types::{
+		BaseError, DataExtensionWorkerMessageSender, DataExtensionWorkerP2PMessage,
+		Document as DocumentT,
+	},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -22,159 +26,149 @@ pub enum P2PError {
 	NotificationSendError(BaseError),
 }
 
-pub struct P2PService<B: BlockT + 'static, H: ExHashT> {
+pub struct P2PService<B: BlockT + 'static, H: ExHashT, Document: DocumentT> {
 	network_service: Arc<NetworkService<B, H>>,
+	p2p_request_receiver: async_channel::Receiver<IncomingRequest>,
+	message_sender: DataExtensionWorkerMessageSender<Document>,
 }
 
-impl<B: BlockT + 'static, H: ExHashT> P2PService<B, H> {
-	pub fn new(network_service: Arc<NetworkService<B, H>>) -> Self {
-		Self { network_service }
-	}
-
-	async fn send_notification(
+impl<B: BlockT + 'static, H: ExHashT, Document: DocumentT> P2PService<B, H, Document> {
+	pub fn new(
 		network_service: Arc<NetworkService<B, H>>,
-		peer: PeerId,
-		message: Vec<u8>,
-	) -> Result<(), P2PError> {
-		let notification_sender = network_service
-			.notification_sender(
-				peer,
-				ProtocolName::Static(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME),
-			)
-			.map_err(|e| P2PError::NotificationSendError(BaseError::from(e)))?;
-
-		let mut ready = notification_sender
-			.ready()
-			.await
-			.map_err(|e| P2PError::NotificationSendError(BaseError::from(e)))?;
-
-		ready
-			.send(message)
-			.map_err(|e| P2PError::NotificationSendError(BaseError::from(e)))
+		p2p_request_receiver: async_channel::Receiver<IncomingRequest>,
+		message_sender: DataExtensionWorkerMessageSender<Document>,
+	) -> Self {
+		Self {
+			network_service,
+			p2p_request_receiver,
+			message_sender,
+		}
 	}
 }
 
-const DATA_EXTENSION_WORKER_EVENT_STREAM_NAME: &'static str = "data-extension-worker";
-
-impl<B: BlockT + 'static, H: ExHashT> Service for P2PService<B, H> {
+impl<B: BlockT + 'static, H: ExHashT, Document: DocumentT> Service for P2PService<B, H, Document> {
 	fn get_runner(&self) -> Result<Pin<Box<dyn Future<Output = ()> + Send>>, BaseError> {
 		let network_service = self.network_service.clone();
-
-		let event_stream = network_service.event_stream(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME);
 
 		log::info!(target: "data-extension-worker-p2p", "Running Data Extension Worker P2P service");
 
 		let mut handles = Vec::new();
 
-		let ping_ns = self.network_service.clone();
+		let peers: Vec<PeerId> = vec![
+			PeerId::from_str("12D3KooWDNuHdrRQjd6P2azZxNXqm7YC13UndSz5xvZxBoVNREK1")
+				.expect("can parse peer ID"),
+			PeerId::from_str("12D3KooWHxgLKo1DeNbTpWDZ3qHEQ1KD36na2NqhYBdQYr9bAsCi")
+				.expect("can parse peer ID"),
+		];
 
-		let ping_fn = async move {
-			loop {
-				log::info!(target: "data-extension-worker-p2p", "Getting network state...");
+		for peer_id in peers {
+			if network_service.local_peer_id() == peer_id {
+				continue;
+			}
 
-				let network_state = ping_ns
-					.network_state()
-					.await
-					.expect("can retrieve network state");
+			log::info!(target: "data-extension-worker-p2p", "Sending initial PING to - {}", peer_id);
 
-				log::info!(target: "data-extension-worker-p2p", "Found {} connected peers", network_state.connected_peers.len());
+			let ping_ns = network_service.clone();
 
-				let peers = network_state
-					.connected_peers
-					.into_iter()
-					.map(|(peer_id, _)| {
-						PeerId::from_str(peer_id.as_str()).expect("can parse peer id")
-					})
-					.collect::<Vec<_>>();
+			let handle = tokio::spawn(async move {
+				let req = serde_json::to_string(&DataExtensionWorkerP2PMessage::Ping)
+					.expect("can serialize ping");
 
-				log::info!(target: "data-extension-worker-p2p", "Parsed {} peers", peers.len());
+				loop {
+					match ping_ns
+						.request(
+							peer_id,
+							PROTOCOL_NAME.into(),
+							req.clone().into(),
+							IfDisconnected::TryConnect,
+						)
+						.await
+					{
+						Ok(r) => {
+							log::info!(target: "data-extension-worker-p2p", "Sent PING  to - {}", peer_id);
 
-				for peer in peers {
-					log::info!(target: "data-extension-worker-p2p", "Sending ping to - {}", peer);
+							let p2p_msg = serde_json::from_str(
+								String::from_utf8(r)
+									.expect("can decode msg payload")
+									.as_str(),
+							)
+							.expect("Can deserialize p2p message");
 
-					match Self::send_notification(ping_ns.clone(), peer, "ping".into()).await {
-						Err(e) => {
-							log::error!(target: "data-extension-worker-p2p", "Notification sender error - {}", e)
+							match p2p_msg {
+								DataExtensionWorkerP2PMessage::Pong => {
+									log::info!(target: "data-extension-worker-p2p", "Received PONG from - {}", peer_id);
+								}
+								_ => {
+									log::error!(target: "data-extension-worker-p2p", "Expected PONG from - {}", peer_id);
+
+									return;
+								}
+							}
 						}
-						Ok(_) => {}
+						Err(e) => {
+							log::info!(target: "data-extension-worker-p2p", "Error while sending PING to - {};\nError: {}", peer_id, e);
+						}
 					}
+
+					thread::sleep(Duration::from_secs(1));
+				}
+			});
+
+			handles.push(handle);
+		}
+
+		let pong_fn = self.p2p_request_receiver.clone().for_each(|req| {
+			let p2p_msg = serde_json::from_str(
+				String::from_utf8(req.payload)
+					.expect("can decode msg payload")
+					.as_str(),
+			)
+			.expect("Can deserialize p2p message");
+
+			let mut res_msg: Option<Vec<u8>> = None;
+
+			match p2p_msg {
+				DataExtensionWorkerP2PMessage::Ping => {
+					log::info!(target: "data-extension-worker-p2p", "Got PING from - {}, sending PONG.", req.peer);
+
+					res_msg = Some(
+						serde_json::to_string(&DataExtensionWorkerP2PMessage::Pong)
+							.expect("can serialize pong")
+							.into(),
+					);
+				}
+				_ => {
+					log::error!(target: "data-extension-worker-p2p", "Expected PING from - {}", req.peer);
 				}
 			}
-		};
 
-		handles.push(tokio::spawn(ping_fn));
+			if let Some(m) = res_msg {
+				let res = OutgoingResponse {
+					result: Ok(m),
+					reputation_changes: vec![],
+					//TODO(cdamian) use this?
+					sent_feedback: None,
+				};
 
-		let stream_ns = self.network_service.clone();
-
-		let stream_fn = event_stream.for_each(move |event| {
-			match event {
-				Event::NotificationsReceived { remote, messages } => {
-					let peers = messages
-						.iter()
-						.filter_map(|res| {
-							let ping = Bytes::from("ping");
-							let pong = Bytes::from("pong");
-
-							match res {
-								(
-									ProtocolName::Static(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME),
-									ping,
-								) => {
-									log::info!(target: "data-extension-worker-p2p", "Got ping from - {}", remote);
-
-									Some(remote)
-								}
-								(
-									ProtocolName::Static(DATA_EXTENSION_WORKER_EVENT_STREAM_NAME),
-									pong,
-								) => {
-									log::info!(target: "data-extension-worker-p2p", "Got pong from - {}", remote);
-
-									None
-								}
-								_ => None,
-							}
-						})
-						.collect::<Vec<_>>();
-
-					for peer in peers {
-						match futures::executor::block_on(Self::send_notification(
-							stream_ns.clone(),
-							peer,
-							"pong".into(),
-						)) {
-							Err(e) => {
-								log::error!(target: "data-extension-worker-p2p", "Notification sender error - {}", e)
-							}
-							Ok(_) => {}
-						}
+				match req.pending_response.send(res) {
+					Ok(_) => {
+						log::info!(target: "data-extension-worker-p2p", "Response sent to {}.", req.peer);
+					}
+					Err(_) => {
+						log::info!(target: "data-extension-worker-p2p", "Error sending response sent to {}.", req.peer);
 					}
 				}
-				_ => {}
 			}
 
 			future::ready(())
 		});
 
-		handles.push(tokio::spawn(stream_fn));
+		handles.push(tokio::spawn(pong_fn));
 
 		Ok(Box::pin(async move {
 			for handle in handles {
 				let _ = handle.await;
-
-				log::error!(target: "data-extension-worker-p2p", "P2PService handle finished");
 			}
 		}))
-	}
-}
-
-impl<Document, B, H> DocumentNotifier<Document> for P2PService<B, H>
-where
-	Document: DocumentT,
-	B: BlockT + 'static,
-	H: ExHashT,
-{
-	fn send_new_document_notification(&self, _document: Document) -> Result<(), BaseError> {
-		todo!()
 	}
 }

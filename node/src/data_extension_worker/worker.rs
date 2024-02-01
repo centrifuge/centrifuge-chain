@@ -8,12 +8,12 @@ use std::{
 
 use async_channel::TryRecvError;
 use cumulus_primitives_core::BlockT;
-use sc_network::{config::ExHashT, NetworkService};
+use sc_network::config::ExHashT;
 use tokio::task::JoinHandle;
 
 use crate::data_extension_worker::{
 	config::DataExtensionWorkerConfiguration,
-	service::{DBDocumentStorage, DocumentNotifier, DocumentStorage, P2PService, Service},
+	service::{DBDocumentStorage, DocumentStorage, P2PService},
 	types::{
 		BaseError, Batch as BatchT, DataExtensionWorkerMessage, DataExtensionWorkerMessageReceiver,
 		Document as DocumentT, PoolInfo as PoolInfoT,
@@ -49,10 +49,9 @@ where
 	B: BlockT + 'static,
 	H: ExHashT,
 {
-	handles: Vec<JoinHandle<()>>,
 	message_receiver: DataExtensionWorkerMessageReceiver<Document>,
 	document_storage: Box<dyn DocumentStorage<Document>>,
-	p2p_service: P2PService<B, H>,
+	p2p_service: P2PService<B, H, Document>,
 	_marker: PhantomData<(Document, Batch, PoolInfo, B, H)>,
 }
 
@@ -66,8 +65,8 @@ where
 {
 	pub fn new(
 		config: DataExtensionWorkerConfiguration,
-		network_service: Arc<NetworkService<B, H>>,
 		message_receiver: DataExtensionWorkerMessageReceiver<Document>,
+		p2p_service: P2PService<B, H, Document>,
 	) -> Result<Self, WorkerError> {
 		let storage = Box::new(DBDocumentStorage::<Document>::new(
 			config
@@ -76,18 +75,7 @@ where
 				.expect("RocksDB path should have default"),
 		));
 
-		let p2p_service = P2PService::<B, H>::new(network_service);
-
-		let mut handles = Vec::new();
-
-		let fut = p2p_service
-			.get_runner()
-			.map_err(|e| WorkerError::ServicesStartError(e))?;
-
-		handles.push(tokio::spawn(fut));
-
 		Ok(Self {
-			handles,
 			message_receiver,
 			document_storage: storage,
 			p2p_service,
@@ -110,17 +98,6 @@ where
 					Err(e) => {
 						res_channel
 							.send(Err(WorkerError::DocumentCreationError.into()))
-							.map_err(|_| WorkerError::ResponseSendingError)?;
-
-						return Err(e);
-					}
-					Ok(_) => {}
-				};
-
-				match self.p2p_service.send_new_document_notification(document) {
-					Err(e) => {
-						res_channel
-							.send(Err(WorkerError::DocumentNotificationError.into()))
 							.map_err(|_| WorkerError::ResponseSendingError)?;
 
 						return Err(e);
@@ -205,17 +182,6 @@ where
 				TryRecvError::Empty => {}
 				TryRecvError::Closed => return Poll::Ready(()),
 			},
-		}
-
-		for handle in &self.handles {
-			if handle.is_finished() {
-				log::error!(
-					target: "data-extension-worker",
-					"DEW handle finished",
-				);
-
-				return Poll::Ready(());
-			}
 		}
 
 		Poll::Pending

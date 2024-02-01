@@ -8,6 +8,7 @@ pub type DataExtensionWorkerMessageSender<Document> =
 pub type DataExtensionWorkerMessageReceiver<Document> =
 	async_channel::Receiver<DataExtensionWorkerMessage<Document>>;
 
+/// Message type used for communicating with the Data Extension Worker.
 pub enum DataExtensionWorkerMessage<Document: DocumentT> {
 	CreateDocument {
 		document: Document,

@@ -87,6 +87,8 @@ start-collator-1)
     --database=rocksdb
   ;;
 
+# TODO(cdamian): Used for testing the Data Extension Worker, to be removed.
+
 start-collator-2)
   parachain_dir=$base_dir/parachain/2/${para_id}
   mkdir -p $parachain_dir;
@@ -104,7 +106,8 @@ start-collator-2)
     --rpc-cors all \
     --rpc-methods=Unsafe \
     --log="info" \
-    --database=rocksdb
+    --database=rocksdb \
+    --bootnodes="/ip4/127.0.0.1/tcp/32355/p2p/12D3KooWDNuHdrRQjd6P2azZxNXqm7YC13UndSz5xvZxBoVNREK1"
   ;;
 
 onboard-parachain)

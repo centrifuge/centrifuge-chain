@@ -57,7 +57,8 @@ use substrate_prometheus_endpoint::Registry;
 
 use super::{rpc, FullBackend, FullClient, ParachainBlockImport};
 use crate::data_extension_worker::{
-	config::DataExtensionWorkerConfiguration,
+	config::{get_data_extension_worker_request_response_config, DataExtensionWorkerConfiguration},
+	service::{P2PService, Service},
 	types::{
 		CentrifugePoolInfo, DataExtensionWorkerBatch, DataExtensionWorkerDocument,
 		DataExtensionWorkerMessageSender, Document as DocumentT,
@@ -429,7 +430,13 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
-	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+	let mut net_config =
+		sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+
+	let (p2p_tx, p2p_rx) = async_channel::unbounded();
+
+	net_config
+		.add_request_response_protocol(get_data_extension_worker_request_response_config(p2p_tx));
 
 	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
 		build_network(BuildNetworkParams {
@@ -456,7 +463,9 @@ where
 		prometheus_registry.clone(),
 	));
 
-	let (tx, rx) = async_channel::unbounded();
+	let (dewm_tx, dewm_rx) = async_channel::unbounded();
+
+	let rpc_ms = dewm_tx.clone();
 
 	let rpc_builder = {
 		let network = network.clone();
@@ -478,16 +487,28 @@ where
 				fee_history_cache.clone(),
 				overrides.clone(),
 				block_data_cache.clone(),
-				tx.clone(),
+				rpc_ms.clone(),
 			)
 		}
 	};
 
+	let p2p_service = P2PService::new(network.clone(), p2p_rx, dewm_tx.clone());
+
+	let p2p_fut = p2p_service
+		.get_runner()
+		.map_err(|e| sc_service::error::Error::Other(e.to_string()))?;
+
+	task_manager.spawn_essential_handle().spawn(
+		"data-extension-worker-p2p",
+		Some("data-extension-worker"),
+		p2p_fut,
+	);
+
 	let data_extension_worker =
 		DataExtensionWorker::<Document, DataExtensionWorkerBatch, CentrifugePoolInfo, _, _>::new(
 			dew_config,
-			network.clone(),
-			rx,
+			dewm_rx,
+			p2p_service,
 		)
 		.map_err(|e| sc_service::error::Error::Other(e.to_string()))?;
 
