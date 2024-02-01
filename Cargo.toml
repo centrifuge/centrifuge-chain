@@ -40,6 +40,7 @@ members = [
   "pallets/pool-registry",
   "pallets/restricted-tokens",
   "pallets/restricted-xtokens",
+  "pallets/token-mux",
   "pallets/transfer-allowlist",
   "pallets/rewards",
   "runtime/altair",
@@ -288,6 +289,7 @@ cfg-traits = { path = "libs/traits", default-features = false }
 cfg-types = { path = "libs/types", default-features = false }
 cfg-utils = { path = "libs/utils", default-features = false }
 cfg-mocks = { path = "libs/mocks", default-features = false }
+cfg-test-utils = { path = "libs/test-utils", default-features = false }
 
 # Centrifuge runtimes
 runtime-common = { path = "runtime/common", default-features = false }

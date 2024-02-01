@@ -514,7 +514,13 @@ pub trait TokenSwaps<Account> {
 	type CurrencyId;
 	type Balance;
 	type Ratio;
-	type OrderId;
+	type OrderId: Parameter
+		+ Member
+		+ AtLeast32BitUnsigned
+		+ Copy
+		+ MaybeSerializeDeserialize
+		+ TypeInfo
+		+ MaxEncodedLen;
 	type OrderDetails;
 
 	/// Swap tokens selling `amount_out` of `currency_out` and buying

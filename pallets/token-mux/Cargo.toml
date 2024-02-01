@@ -1,0 +1,85 @@
+[package]
+name = "pallet-token-mux"
+description = "Pallet token multiplexing takes care of locking variants of the same token and minting a local representation of said token. Burning local representations releases the locked tokens again."
+version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+homepage = "https://centrifuge.io"
+license = "LGPL-3.0"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+
+# Benchmark dependencies
+## Orml crates
+orml-asset-registry = { workspace = true }
+orml-traits = { workspace = true }
+
+frame-benchmarking = { workspace = true }
+
+[dev-dependencies]
+cfg-mocks = { workspace = true, default-features = true }
+cfg-test-utils = { workspace = true, default-features = true }
+pallet-restricted-tokens = { workspace = true, default-features = false }
+# Orml crates
+orml-asset-registry = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+# Parity crates
+pallet-balances = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+xcm = { workspace = true, default-features = false }
+
+[features]
+default = ["std"]
+std = [
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "parity-scale-codec/std",
+  "frame-benchmarking/std",
+  "frame-support/std",
+  "frame-system/std",
+  "orml-traits/std",
+  "scale-info/std",
+  "serde/std",
+  "sp-arithmetic/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
+]
+runtime-benchmarks = [
+  "cfg-mocks/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-test-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
+]
