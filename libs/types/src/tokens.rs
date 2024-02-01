@@ -76,6 +76,34 @@ pub enum CurrencyId {
 	/// A staking currency
 	#[codec(index = 5)]
 	Staking(StakingCurrency),
+
+	/// A local asset
+	#[codec(index = 6)]
+	Local(LocalAssetId),
+}
+
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct LocalAssetId(u32);
+
+impl From<LocalAssetId> for CurrencyId {
+	fn from(value: LocalAssetId) -> Self {
+		Self::Local(value)
+	}
+}
+
+impl TryFrom<CurrencyId> for LocalAssetId {
+	type Error = ();
+
+	fn try_from(value: CurrencyId) -> Result<Self, Self::Error> {
+		if let CurrencyId::Local(local) = value {
+			Ok(local)
+		} else {
+			Err(())
+		}
+	}
 }
 
 #[derive(
@@ -248,6 +276,11 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
+
+	/// Whether an asset has a local representation. Usually, this means that we
+	/// are receiving the same asset from multiple domains and unify the asset
+	/// under a common local representation.
+	pub local_representation: Option<LocalAssetId>,
 }
 
 /// The Cross Chain Transferability property of an asset describes the way(s),
@@ -441,6 +474,7 @@ pub mod usdc {
 				mintable: false,
 				permissioned: false,
 				pool_currency,
+				local_representation: None,
 			},
 		}
 	}

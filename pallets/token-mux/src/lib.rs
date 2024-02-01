@@ -39,12 +39,16 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use cfg_traits::TokenSwaps;
-	use cfg_types::{investments::Swap, tokens::CustomMetadata};
+	use cfg_types::{
+		investments::Swap,
+		tokens::{CustomMetadata, LocalAssetId},
+	};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
 			fungibles,
-			tokens::{AssetId, Precision, Preservation},
+			fungibles::Mutate,
+			tokens::{AssetId, Fortitude, Precision, Preservation},
 		},
 		PalletId, Twox64Concat,
 	};
@@ -55,8 +59,8 @@ pub mod pallet {
 	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{
 		traits::{
-			AtLeast32BitUnsigned, EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureMul,
-			EnsureSub, MaybeSerializeDeserialize, One, Zero,
+			AccountIdConversion, AtLeast32BitUnsigned, EnsureAdd, EnsureDiv,
+			EnsureFixedPointNumber, EnsureMul, EnsureSub, MaybeSerializeDeserialize, One, Zero,
 		},
 		FixedPointNumber, FixedPointOperand,
 	};
@@ -85,12 +89,12 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		type AssetRegistry: asset_registry::Inspect<CustomMetadata = CustomMetadata>;
+		type AssetRegistry: asset_registry::Inspect<
+			CustomMetadata = CustomMetadata,
+			AssetId = CurrencyFor<Self>,
+		>;
 
-		type Tokens: fungibles::Inspect<Self::AccountId>
-			+ fungibles::InspectHold<Self::AccountId, Reason = ()>
-			+ fungibles::MutateHold<Self::AccountId>
-			+ fungibles::Mutate<Self::AccountId>;
+		type Tokens: fungibles::Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 
 		type Swaps: TokenSwaps<Self::AccountId, CurrencyId = CurrencyFor<Self>>;
 
@@ -99,14 +103,41 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		Deposited {
+			who: T::AccountId,
+			what: CurrencyFor<T>,
+			received: CurrencyFor<T>,
+			amount: BalanceFor<T>,
+		},
+		Burned {
+			who: T::AccountId,
+			what: CurrencyFor<T>,
+			received: CurrencyFor<T>,
+			amount: BalanceFor<T>,
+		},
+	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// The given currency has no metadata set.
+		MissingMetadata,
+		/// The given currency has no local representation and can hence not be
+		/// deposited to receive a local representation.
+		NoLocalRepresentation,
+		/// The given currency is not a local currency
+		NotLocalCurrency,
+		/// The provided local currency does not match the local representation
+		/// of the currency to be unlocked
+		LocalCurrencyMismatch,
+	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		CurrencyFor<T>: From<LocalAssetId> + TryInto<LocalAssetId>,
+	{
 		#[pallet::call_index(0)]
 		#[pallet::weight(0)]
 		pub fn deposit(
@@ -114,6 +145,32 @@ pub mod pallet {
 			to_deposit: CurrencyFor<T>,
 			amount: BalanceFor<T>,
 		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let local: CurrencyFor<T> = T::AssetRegistry::metadata(&to_deposit)
+				.ok_or(Error::<T>::MissingMetadata)?
+				.additional
+				.local_representation
+				.ok_or(Error::<T>::NoLocalRepresentation)?
+				.into();
+
+			T::Tokens::transfer(
+				to_deposit.clone(),
+				&who,
+				&T::PalletId::get().into_account_truncating(),
+				amount,
+				Preservation::Expendable,
+			)?;
+
+			T::Tokens::mint_into(local.clone(), &who, amount)?;
+
+			Self::deposit_event(Event::<T>::Deposited {
+				who,
+				what: to_deposit,
+				received: local,
+				amount,
+			});
+
 			Ok(())
 		}
 
@@ -122,8 +179,50 @@ pub mod pallet {
 		pub fn burn(
 			origin: OriginFor<T>,
 			to_burn: CurrencyFor<T>,
+			to_receive: CurrencyFor<T>,
 			amount: BalanceFor<T>,
 		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let provide_local_id: LocalAssetId = to_burn
+				.clone()
+				.try_into()
+				.map_err(|_| Error::<T>::NotLocalCurrency)?;
+
+			let needed_local_id = T::AssetRegistry::metadata(&to_receive)
+				.ok_or(Error::<T>::MissingMetadata)?
+				.additional
+				.local_representation
+				.ok_or(Error::<T>::NoLocalRepresentation)?;
+
+			ensure!(
+				provide_local_id == needed_local_id,
+				Error::<T>::LocalCurrencyMismatch
+			);
+
+			T::Tokens::burn_from(
+				provide_local_id.into(),
+				&who,
+				amount,
+				Precision::Exact,
+				Fortitude::Polite,
+			)?;
+
+			T::Tokens::transfer(
+				to_receive.clone(),
+				&T::PalletId::get().into_account_truncating(),
+				&who,
+				amount,
+				Preservation::Expendable,
+			)?;
+
+			Self::deposit_event(Event::<T>::Burned {
+				who,
+				what: to_burn,
+				received: to_receive,
+				amount,
+			});
+
 			Ok(())
 		}
 
