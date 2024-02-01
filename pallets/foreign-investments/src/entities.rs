@@ -230,9 +230,7 @@ impl<T: Config> InvestmentInfo<T> {
 		})
 	}
 
-	/// Increase an investment taking into account that a previous decrement
-	/// could be pending.
-	/// This method is performed after resolve the swap or by cancelling a swap
+	/// This method is performed after resolve the swap
 	#[allow(clippy::type_complexity)]
 	pub fn post_increase_swap(
 		&mut self,
@@ -240,8 +238,28 @@ impl<T: Config> InvestmentInfo<T> {
 		investment_id: T::InvestmentId,
 		swapped_pool_amount: T::Balance,
 		swapped_foreign_amount: T::Balance,
+	) -> DispatchResult {
+		self.correlation
+			.increase(swapped_pool_amount, swapped_foreign_amount)?;
+
+		if !swapped_pool_amount.is_zero() {
+			T::Investment::update_investment(
+				who,
+				investment_id,
+				T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
+			)?;
+		}
+
+		Ok(())
+	}
+
+	/// This method is performed after resolve the swap by cancelling it
+	pub fn post_increase_swap_by_cancel(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		swapped_pool_amount: T::Balance,
 		send_decrease_msg: bool,
-		from_cancelation: bool,
 	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
 		if !swapped_pool_amount.is_zero() {
 			T::Investment::update_investment(
@@ -249,25 +267,20 @@ impl<T: Config> InvestmentInfo<T> {
 				investment_id,
 				T::Investment::investment(who, investment_id)?.ensure_add(swapped_pool_amount)?,
 			)?;
+		}
 
-			if !from_cancelation {
-				self.correlation
-					.increase(swapped_pool_amount, swapped_foreign_amount)?;
-			}
-
-			if send_decrease_msg {
-				return Ok(Some(ExecutedForeignDecreaseInvest {
-					amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
-					foreign_currency: self.base.foreign_currency,
-					amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
-				}));
-			}
+		if send_decrease_msg {
+			return Ok(Some(ExecutedForeignDecreaseInvest {
+				amount_decreased: sp_std::mem::take(&mut self.decrease_swapped_foreign_amount),
+				foreign_currency: self.base.foreign_currency,
+				amount_remaining: self.remaining_foreign_amount(who, investment_id)?,
+			}));
 		}
 
 		Ok(None)
 	}
 
-	/// This method is performed after resolve the swap or by cancelling a swap
+	/// This method is performed after resolve the swap
 	#[allow(clippy::type_complexity)]
 	pub fn post_decrease_swap(
 		&mut self,
@@ -276,14 +289,28 @@ impl<T: Config> InvestmentInfo<T> {
 		swapped_foreign_amount: T::Balance,
 		swapped_pool_amount: T::Balance,
 		pending_pool_amount: T::Balance,
-		from_cancelation: bool,
+	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
+		self.correlation.decrease(swapped_pool_amount)?;
+
+		self.post_decrease_swap_by_cancel(
+			who,
+			investment_id,
+			swapped_foreign_amount,
+			pending_pool_amount,
+		)
+	}
+
+	/// This method is performed after resolve the swap by cancelling it
+	#[allow(clippy::type_complexity)]
+	pub fn post_decrease_swap_by_cancel(
+		&mut self,
+		who: &T::AccountId,
+		investment_id: T::InvestmentId,
+		swapped_foreign_amount: T::Balance,
+		pending_pool_amount: T::Balance,
 	) -> Result<Option<ExecutedForeignDecreaseInvest<T::Balance, T::CurrencyId>>, DispatchError> {
 		self.decrease_swapped_foreign_amount
 			.ensure_add_assign(swapped_foreign_amount)?;
-
-		if !from_cancelation {
-			self.correlation.decrease(swapped_pool_amount)?;
-		}
 
 		if pending_pool_amount.is_zero() {
 			return Ok(Some(ExecutedForeignDecreaseInvest {
