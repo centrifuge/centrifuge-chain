@@ -9,7 +9,7 @@ use frame_support::{assert_err, assert_ok};
 use sp_std::sync::{Arc, Mutex};
 
 use crate::{
-	entities::{BaseInfo, Correlation, InvestmentInfo, RedemptionInfo},
+	entities::{Correlation, InvestmentInfo, RedemptionInfo},
 	impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook},
 	mock::*,
 	pallet::ForeignInvestmentInfo,
@@ -422,7 +422,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -458,7 +458,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -548,7 +548,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(0, 0),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -603,7 +603,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -644,7 +644,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
@@ -692,7 +692,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -779,7 +779,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(3 * AMOUNT / 4), 3 * AMOUNT / 4),
 					decrease_swapped_foreign_amount: AMOUNT / 4,
 				})
@@ -802,7 +802,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -864,7 +864,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -920,13 +920,7 @@ mod investment {
 			assert_eq!(
 				ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(InvestmentInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount {
-							amount_collected: pool_to_tranche(foreign_to_pool(AMOUNT / 4)),
-							amount_payment: foreign_to_pool(AMOUNT / 4)
-						}
-					},
+					foreign_currency: FOREIGN_CURR,
 					correlation: Correlation::new(foreign_to_pool(AMOUNT / 4), AMOUNT / 4),
 					decrease_swapped_foreign_amount: 0,
 				})
@@ -1100,7 +1094,7 @@ mod investment {
 				assert_eq!(
 					ForeignInvestmentInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 					Some(InvestmentInfo {
-						base: BaseInfo::new(POOL_CURR).unwrap(),
+						foreign_currency: POOL_CURR,
 						correlation: Correlation::new(
 							foreign_to_pool(AMOUNT),
 							foreign_to_pool(AMOUNT)
@@ -1290,8 +1284,9 @@ mod redemption {
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(RedemptionInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
+					collected: CollectedAmount::default(),
 				})
 			);
 
@@ -1324,8 +1319,9 @@ mod redemption {
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(RedemptionInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
+					collected: CollectedAmount::default(),
 				})
 			);
 
@@ -1387,14 +1383,12 @@ mod redemption {
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(RedemptionInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount {
-							amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
-							amount_payment: 3 * TRANCHE_AMOUNT / 4
-						}
-					},
+					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
+					collected: CollectedAmount {
+						amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+						amount_payment: 3 * TRANCHE_AMOUNT / 4
+					}
 				})
 			);
 
@@ -1430,14 +1424,12 @@ mod redemption {
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(RedemptionInfo {
-					base: BaseInfo {
-						foreign_currency: FOREIGN_CURR,
-						collected: CollectedAmount {
-							amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
-							amount_payment: 3 * TRANCHE_AMOUNT / 4
-						}
-					},
+					foreign_currency: FOREIGN_CURR,
 					swapped_amount: pool_to_foreign(tranche_to_pool(TRANCHE_AMOUNT / 2)),
+					collected: CollectedAmount {
+						amount_collected: tranche_to_pool(3 * TRANCHE_AMOUNT / 4),
+						amount_payment: 3 * TRANCHE_AMOUNT / 4
+					}
 				})
 			);
 
@@ -1492,8 +1484,9 @@ mod redemption {
 			assert_eq!(
 				ForeignRedemptionInfo::<Runtime>::get(&USER, INVESTMENT_ID),
 				Some(RedemptionInfo {
-					base: BaseInfo::new(FOREIGN_CURR).unwrap(),
+					foreign_currency: FOREIGN_CURR,
 					swapped_amount: 0,
+					collected: CollectedAmount::default(),
 				})
 			);
 

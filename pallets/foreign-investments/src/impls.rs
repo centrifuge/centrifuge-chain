@@ -30,8 +30,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |entry| {
-			let info = entry.get_or_insert(InvestmentInfo::new(foreign_currency)?);
-			info.base.ensure_same_foreign(foreign_currency)?;
+			let info = entry.get_or_insert(InvestmentInfo::new(foreign_currency));
+			info.ensure_same_foreign(foreign_currency)?;
 
 			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
 			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
@@ -77,7 +77,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(foreign_currency)?;
+			info.ensure_same_foreign(foreign_currency)?;
 
 			let swap = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
 			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
@@ -126,8 +126,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		payout_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| -> DispatchResult {
-			let info = info.get_or_insert(RedemptionInfo::new(payout_foreign_currency)?);
-			info.base.ensure_same_foreign(payout_foreign_currency)?;
+			let info = info.get_or_insert(RedemptionInfo::new(payout_foreign_currency));
+			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.increase(who, investment_id, tranche_tokens_amount)
 		})
 	}
@@ -140,7 +140,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payout_foreign_currency)?;
+			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.decrease(who, investment_id, tranche_tokens_amount)?;
 
 			if info.is_completed(who, investment_id)? {
@@ -158,7 +158,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payment_foreign_currency)
+			info.ensure_same_foreign(payment_foreign_currency)
 		})?;
 
 		T::Investment::collect_investment(who.clone(), investment_id)
@@ -171,7 +171,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payout_foreign_currency)
+			info.ensure_same_foreign(payout_foreign_currency)
 		})?;
 
 		T::Investment::collect_redemption(who.clone(), investment_id)
