@@ -540,6 +540,12 @@ pub trait TokenSwaps<Account> {
 		ratio: OrderRatio<Self::Ratio>,
 	) -> DispatchResult;
 
+	fn fill_order(
+		account: Account,
+		order_id: Self::OrderId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+
 	/// A sanity check that can be used for validating that a trading pair
 	/// is supported. Will also be checked when placing an order but might be
 	/// cheaper.

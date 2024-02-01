@@ -74,7 +74,7 @@ pub enum CurrencyId {
 
 	/// A local asset
 	#[codec(index = 6)]
-	Local(LocalAssetId),
+	LocalAsset(LocalAssetId),
 }
 
 #[derive(
@@ -85,7 +85,7 @@ pub struct LocalAssetId(u32);
 
 impl From<LocalAssetId> for CurrencyId {
 	fn from(value: LocalAssetId) -> Self {
-		Self::Local(value)
+		Self::LocalAsset(value)
 	}
 }
 
@@ -93,7 +93,7 @@ impl TryFrom<CurrencyId> for LocalAssetId {
 	type Error = ();
 
 	fn try_from(value: CurrencyId) -> Result<Self, Self::Error> {
-		if let CurrencyId::Local(local) = value {
+		if let CurrencyId::LocalAsset(local) = value {
 			Ok(local)
 		} else {
 			Err(())

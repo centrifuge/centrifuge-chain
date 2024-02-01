@@ -849,6 +849,16 @@ pub mod pallet {
 			)
 		}
 
+		fn fill_order(
+			account: T::AccountId,
+			order_id: Self::OrderId,
+			buy_amount: T::Balance,
+		) -> DispatchResult {
+			let order = <Orders<T>>::get(order_id)?;
+
+			Self::fulfill_order_with_amount(order, buy_amount, account)
+		}
+
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
