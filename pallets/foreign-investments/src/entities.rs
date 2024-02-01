@@ -93,7 +93,7 @@ impl<T: Config> Correlation<T> {
 }
 
 /// Hold the information of a foreign investment
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct InvestmentInfo<T: Config> {
 	/// Foreign currency of this investment
@@ -380,7 +380,7 @@ impl<T: Config> InvestmentInfo<T> {
 }
 
 /// Hold the information of an foreign redemption
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct RedemptionInfo<T: Config> {
 	/// Foreign currency of this redemption
