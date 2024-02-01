@@ -211,7 +211,7 @@ impl<T: Config> InvestmentInfo<T> {
 		self.increase_investment(who, investment_id, swapped_pool_amount)?;
 
 		self.decrease_swapped_foreign_amount
-			.ensure_sub_assign(swapped_foreign_amount)?;
+			.ensure_add_assign(swapped_foreign_amount)?;
 
 		let no_pending_decrease = self.pending_decrease_swap(who, investment_id)?.is_zero();
 		if no_pending_decrease && !self.decrease_swapped_foreign_amount.is_zero() {

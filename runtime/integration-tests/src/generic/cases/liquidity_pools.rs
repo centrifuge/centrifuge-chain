@@ -4232,8 +4232,6 @@ mod development {
 					));
 
 					dbg!(frame_system::Pallet::<T>::events());
-					dbg!(invest_amount_foreign_denominated);
-
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4244,8 +4242,7 @@ mod development {
 								tranche_id: default_tranche_id::<T>(pool_id),
 								investor: investor.clone().into(),
 								currency: general_currency_index::<T>(foreign_currency),
-								// FIXME: Expects invest_amount_foreign_denominated / 2 but should be invest_amount_foreign_denominated 
-								currency_payout: invest_amount_foreign_denominated / 2,
+								currency_payout: invest_amount_foreign_denominated,
 								// FIXME: Expects invest_amount_foreign_denominated / 4 but should be invest_amount_foreign_denominated / 2
 								remaining_invest_amount: invest_amount_foreign_denominated / 4,
 							},
