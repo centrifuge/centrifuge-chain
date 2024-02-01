@@ -33,20 +33,20 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let info = entry.get_or_insert(InvestmentInfo::new(foreign_currency)?);
 			info.base.ensure_same_foreign(foreign_currency)?;
 
-			let (swap, send) = info.pre_increase_swap(who, investment_id, foreign_amount)?;
+			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
 			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
 
 			let mut msg = None;
 			if !status.swapped.is_zero() {
+				let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
 				if swap.currency_in != swap.currency_out {
 					msg = info.post_increase_swap_by_cancel(
 						who,
 						investment_id,
 						status.swapped,
-						send,
+						swapped_foreign_amount,
 					)?;
 				} else {
-					let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
 					info.post_increase_swap(
 						who,
 						investment_id,
