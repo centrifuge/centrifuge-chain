@@ -51,7 +51,7 @@ jobs:
 
       - name: Setup docker metadata
         id: meta
-        uses: docker/metadata-action@9dc751fe249ad99385a2583ee0d084c400eee04e #v5
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 #v5
         with:
           images: |
             ghcr.io/centrifuge/centrifuge-chain
