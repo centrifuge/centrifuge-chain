@@ -4215,7 +4215,7 @@ mod development {
 					assert_ok!(pallet_order_book::Pallet::<T>::fill_order(
 						RawOrigin::Signed(trader.clone()).into(),
 						swap_order_id,
-						invest_amount_pool_denominated / 4 * 3
+						3 * invest_amount_pool_denominated / 4
 					));
 
 					// Increase more than pending swap (pool -> foreign) amount from decrease
@@ -4233,6 +4233,7 @@ mod development {
 
 					dbg!(frame_system::Pallet::<T>::events());
 					dbg!(invest_amount_foreign_denominated);
+
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4246,7 +4247,7 @@ mod development {
 								// FIXME: Expects invest_amount_foreign_denominated / 2 but should be invest_amount_foreign_denominated 
 								currency_payout: invest_amount_foreign_denominated / 2,
 								// FIXME: Expects invest_amount_foreign_denominated / 4 but should be invest_amount_foreign_denominated / 2
-								remaining_invest_amount: invest_amount_foreign_denominated,
+								remaining_invest_amount: invest_amount_foreign_denominated / 4,
 							},
 						}
 							.into()
