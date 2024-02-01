@@ -39,7 +39,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 			let mut msg = None;
 			if !status.swapped.is_zero() {
 				let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
-				if swap.currency_in != swap.currency_out {
+				if !swap.has_same_currencies() {
 					msg = info.post_increase_swap_by_cancel(
 						who,
 						investment_id,
@@ -84,7 +84,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 
 			let mut msg = None;
 			if !status.swapped.is_zero() {
-				if swap.currency_in != swap.currency_out {
+				if !swap.has_same_currencies() {
 					msg = info.post_decrease_swap_by_cancel(
 						who,
 						investment_id,

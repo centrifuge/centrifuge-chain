@@ -159,7 +159,11 @@ pub struct Swap<Balance, Currency> {
 	pub amount_out: Balance,
 }
 
-impl<Balance, Currency: Clone + PartialEq> Swap<Balance, Currency> {
+impl<Balance, Currency: PartialEq> Swap<Balance, Currency> {
+	pub fn has_same_currencies(&self) -> bool {
+		self.currency_in == self.currency_out
+	}
+
 	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
 		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
 			Ok(true)
