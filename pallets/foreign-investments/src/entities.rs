@@ -4,7 +4,7 @@ use cfg_traits::{investments::Investment, TokenSwaps};
 use cfg_types::investments::{
 	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
 };
-use frame_support::{dispatch::DispatchResult, ensure};
+use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// Hold the base information of a foreign investment/redemption
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct BaseInfo<T: Config> {
 	pub foreign_currency: T::CurrencyId,
@@ -50,7 +50,7 @@ impl<T: Config> BaseInfo<T> {
 }
 
 /// Hold the information of a foreign investment
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct InvestmentInfo<T: Config> {
 	/// General info
