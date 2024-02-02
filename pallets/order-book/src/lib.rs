@@ -241,21 +241,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OrderIdNonceStore<T: Config> = StorageValue<_, T::OrderIdNonce, ValueQuery>;
 
-	/// Map of Vec containing OrderIds of same currency in/out pairs.
-	/// Allows looking up orders available corresponding pairs.
-	///
-	/// NOTE: The key order is (currency_in, currency_out).
-	#[pallet::storage]
-	pub type CurrencyPairOrders<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::CurrencyId,
-		Twox64Concat,
-		T::CurrencyId,
-		BoundedVec<T::OrderIdNonce, T::OrderPairVecSize>,
-		ValueQuery,
-	>;
-
 	/// Storage of valid order pairs.
 	/// Stores:
 	///  - key1 -> CurrencyIn
@@ -336,10 +321,6 @@ pub mod pallet {
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
-		/// Error when the number of orders for a trading pair has exceeded the
-		/// BoundedVec size for the order pair for the currency pair in
-		/// question.
-		CurrencyPairOrdersLimit,
 		/// Error when order is placed attempting to exchange currencies of the
 		/// same type.
 		SameCurrencyIds,
@@ -549,12 +530,6 @@ pub mod pallet {
 				amount_in: Zero::zero(),
 			};
 
-			CurrencyPairOrders::<T>::try_mutate(currency_in, currency_out, |orders| {
-				orders
-					.try_push(order_id)
-					.map_err(|_| Error::<T>::CurrencyPairOrdersLimit)
-			})?;
-
 			Orders::<T>::insert(order_id, new_order.clone());
 			UserOrders::<T>::insert(&account, order_id, ());
 
@@ -628,10 +603,6 @@ pub mod pallet {
 
 			Orders::<T>::remove(order.order_id);
 			UserOrders::<T>::remove(&order.placing_account, order.order_id);
-
-			CurrencyPairOrders::<T>::mutate(order.currency_in, order.currency_out, |orders| {
-				orders.retain(|o| *o != order.order_id);
-			});
 
 			Ok(())
 		}
