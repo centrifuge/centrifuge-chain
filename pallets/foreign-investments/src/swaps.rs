@@ -39,14 +39,15 @@ impl<T: Config> Swaps<T> {
 		let previous_swap_id = ForeignIdToSwapId::<T>::get((who, investment_id, action));
 
 		if previous_swap_id != new_swap_id {
+			if let Some(old_id) = previous_swap_id {
+				SwapIdToForeignId::<T>::remove(old_id);
+				// Must be removed before potentially re-adding an entry below
+				ForeignIdToSwapId::<T>::remove((who.clone(), investment_id, action));
+			}
+
 			if let Some(new_id) = new_swap_id {
 				SwapIdToForeignId::<T>::insert(new_id, (who.clone(), investment_id, action));
 				ForeignIdToSwapId::<T>::insert((who.clone(), investment_id, action), new_id);
-			}
-
-			if let Some(old_id) = previous_swap_id {
-				SwapIdToForeignId::<T>::remove(old_id);
-				ForeignIdToSwapId::<T>::remove((who.clone(), investment_id, action));
 			}
 		}
 
