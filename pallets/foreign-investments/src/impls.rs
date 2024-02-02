@@ -6,7 +6,7 @@ use cfg_traits::{
 };
 use cfg_types::investments::CollectedAmount;
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{EnsureAdd, Zero};
+use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 use sp_std::marker::PhantomData;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
 	pallet::{Config, Error, ForeignInvestmentInfo, ForeignRedemptionInfo, Pallet},
 	pool_currency_of,
 	swaps::Swaps,
-	Action, SwapOf,
+	Action, SwapStateOf,
 };
 
 impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
@@ -29,16 +29,41 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_amount: T::Balance,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
-			let info = info.get_or_insert(InvestmentInfo::new(foreign_currency)?);
-			info.base.ensure_same_foreign(foreign_currency)?;
-			info.pre_increase_swap(investment_id, foreign_amount)
+		let msg = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |entry| {
+			let info = entry.get_or_insert(InvestmentInfo::new(foreign_currency));
+			info.ensure_same_foreign(foreign_currency)?;
+
+			let swap = info.pre_increase_swap(who, investment_id, foreign_amount)?;
+			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+
+			let mut msg = None;
+			if !status.swapped.is_zero() {
+				let swapped_foreign_amount = foreign_amount.ensure_sub(status.pending)?;
+				if !swap.has_same_currencies() {
+					msg = info.post_increase_swap_by_cancel(
+						who,
+						investment_id,
+						status.swapped,
+						swapped_foreign_amount,
+					)?;
+				} else {
+					info.post_increase_swap(
+						who,
+						investment_id,
+						status.swapped,
+						swapped_foreign_amount,
+					)?;
+				}
+			}
+
+			Ok::<_, DispatchError>(msg)
 		})?;
 
-		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
-
-		if !status.swapped.is_zero() {
-			SwapDone::<T>::for_increase_investment(who, investment_id, status.swapped)?;
+		if let Some(msg) = msg {
+			T::DecreasedForeignInvestOrderHook::notify_status_change(
+				(who.clone(), investment_id),
+				msg,
+			)?;
 		}
 
 		Ok(())
@@ -50,20 +75,44 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		foreign_amount: T::Balance,
 		foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
-		let swap = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
-			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(foreign_currency)?;
-			info.pre_decrease_swap(who, investment_id, foreign_amount)
+		let msg = ForeignInvestmentInfo::<T>::mutate(who, investment_id, |entry| {
+			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
+			info.ensure_same_foreign(foreign_currency)?;
+
+			let swap = info.pre_decrease_swap(who, investment_id, foreign_amount)?;
+			let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap.clone())?;
+
+			let mut msg = None;
+			if !status.swapped.is_zero() {
+				if !swap.has_same_currencies() {
+					msg = info.post_decrease_swap_by_cancel(
+						who,
+						investment_id,
+						status.swapped,
+						status.pending,
+					)?;
+				} else {
+					msg = info.post_decrease_swap(
+						who,
+						investment_id,
+						status.swapped,
+						status.swapped,
+						status.pending,
+					)?;
+				}
+			}
+
+			if info.is_completed(who, investment_id)? {
+				*entry = None;
+			}
+
+			Ok::<_, DispatchError>(msg)
 		})?;
 
-		let status = Swaps::<T>::apply(who, investment_id, Action::Investment, swap)?;
-
-		if !status.swapped.is_zero() {
-			SwapDone::<T>::for_decrease_investment(
-				who,
-				investment_id,
-				status.swapped,
-				status.pending,
+		if let Some(msg) = msg {
+			T::DecreasedForeignInvestOrderHook::notify_status_change(
+				(who.clone(), investment_id),
+				msg,
 			)?;
 		}
 
@@ -77,8 +126,8 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		payout_foreign_currency: T::CurrencyId,
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| -> DispatchResult {
-			let info = info.get_or_insert(RedemptionInfo::new(payout_foreign_currency)?);
-			info.base.ensure_same_foreign(payout_foreign_currency)?;
+			let info = info.get_or_insert(RedemptionInfo::new(payout_foreign_currency));
+			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.increase(who, investment_id, tranche_tokens_amount)
 		})
 	}
@@ -91,7 +140,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payout_foreign_currency)?;
+			info.ensure_same_foreign(payout_foreign_currency)?;
 			info.decrease(who, investment_id, tranche_tokens_amount)?;
 
 			if info.is_completed(who, investment_id)? {
@@ -109,7 +158,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignInvestmentInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payment_foreign_currency)
+			info.ensure_same_foreign(payment_foreign_currency)
 		})?;
 
 		T::Investment::collect_investment(who.clone(), investment_id)
@@ -122,7 +171,7 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 	) -> DispatchResult {
 		ForeignRedemptionInfo::<T>::mutate(who, investment_id, |info| {
 			let info = info.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.base.ensure_same_foreign(payout_foreign_currency)
+			info.ensure_same_foreign(payout_foreign_currency)
 		})?;
 
 		T::Investment::collect_redemption(who.clone(), investment_id)
@@ -132,14 +181,18 @@ impl<T: Config> ForeignInvestment<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> Result<T::Balance, DispatchError> {
-		Ok(T::Investment::investment(who, investment_id)?.ensure_add(
-			Swaps::<T>::pending_amount_for(
-				who,
-				investment_id,
-				Action::Investment,
-				pool_currency_of::<T>(investment_id)?,
-			),
-		)?)
+		Ok(match ForeignInvestmentInfo::<T>::get(who, investment_id) {
+			Some(info) => {
+				let pool_investment = T::Investment::investment(who, investment_id)?;
+				let foreing_investment = info
+					.correlation
+					.pool_to_foreign(pool_investment)
+					.unwrap_or_default();
+
+				foreing_investment.ensure_add(info.pending_increase_swap(who, investment_id)?)?
+			}
+			None => T::Balance::default(),
+		})
 	}
 
 	fn redemption(
@@ -174,39 +227,40 @@ pub struct FulfilledSwapOrderHook<T>(PhantomData<T>);
 impl<T: Config> StatusNotificationHook for FulfilledSwapOrderHook<T> {
 	type Error = DispatchError;
 	type Id = T::SwapId;
-	type Status = SwapOf<T>;
+	type Status = SwapStateOf<T>;
 
-	fn notify_status_change(swap_id: T::SwapId, last_swap: SwapOf<T>) -> DispatchResult {
+	fn notify_status_change(swap_id: T::SwapId, swap_state: SwapStateOf<T>) -> DispatchResult {
 		match Swaps::<T>::foreign_id_from(swap_id) {
 			Ok((who, investment_id, action)) => {
 				let pool_currency = pool_currency_of::<T>(investment_id)?;
-				let swapped_amount = last_swap.amount_in;
-				let pending_amount = match T::TokenSwaps::get_order_details(swap_id) {
-					Some(swap) => swap.amount_in,
-					None => {
-						Swaps::<T>::update_id(&who, investment_id, action, None)?;
-						T::Balance::default()
-					}
-				};
+				let swapped_amount_in = swap_state.swapped_in;
+				let swapped_amount_out = swap_state.swapped_out;
+				let pending_amount = swap_state.remaining.amount_out;
+
+				if pending_amount.is_zero() {
+					Swaps::<T>::update_id(&who, investment_id, action, None)?;
+				}
 
 				match action {
-					Action::Investment => match pool_currency == last_swap.currency_in {
+					Action::Investment => match pool_currency == swap_state.remaining.currency_in {
 						true => SwapDone::<T>::for_increase_investment(
 							&who,
 							investment_id,
-							swapped_amount,
+							swapped_amount_in,
+							swapped_amount_out,
 						),
 						false => SwapDone::<T>::for_decrease_investment(
 							&who,
 							investment_id,
-							swapped_amount,
+							swapped_amount_in,
+							swapped_amount_out,
 							pending_amount,
 						),
 					},
 					Action::Redemption => SwapDone::<T>::for_redemption(
 						&who,
 						investment_id,
-						swapped_amount,
+						swapped_amount_in,
 						pending_amount,
 					),
 				}
@@ -292,11 +346,17 @@ impl<T: Config> SwapDone<T> {
 	fn for_increase_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		swapped: T::Balance,
+		swapped_pool_amount: T::Balance,
+		swapped_foreign_amount: T::Balance,
 	) -> DispatchResult {
 		ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			info.post_increase_swap(who, investment_id, swapped)
+			info.post_increase_swap(
+				who,
+				investment_id,
+				swapped_pool_amount,
+				swapped_foreign_amount,
+			)
 		})
 	}
 
@@ -305,12 +365,19 @@ impl<T: Config> SwapDone<T> {
 	fn for_decrease_investment(
 		who: &T::AccountId,
 		investment_id: T::InvestmentId,
-		swapped: T::Balance,
-		pending: T::Balance,
+		swapped_foreign_amount: T::Balance,
+		swapped_pool_amount: T::Balance,
+		pending_pool_amount: T::Balance,
 	) -> DispatchResult {
 		let msg = ForeignInvestmentInfo::<T>::mutate_exists(who, investment_id, |entry| {
 			let info = entry.as_mut().ok_or(Error::<T>::InfoNotFound)?;
-			let msg = info.post_decrease_swap(who, investment_id, swapped, pending)?;
+			let msg = info.post_decrease_swap(
+				who,
+				investment_id,
+				swapped_foreign_amount,
+				swapped_pool_amount,
+				pending_pool_amount,
+			)?;
 
 			if info.is_completed(who, investment_id)? {
 				*entry = None;

@@ -10,127 +10,258 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#![cfg(feature = "runtime-benchmarks")]
-
-use cfg_primitives::CFG;
-use cfg_traits::benchmarking::OrderBookBenchmarkHelper;
-use cfg_types::tokens::{CurrencyId, CustomMetadata};
-use frame_benchmarking::*;
+use cfg_traits::{ConversionToAssetBalance, ValueProvider};
+use cfg_types::tokens::CustomMetadata;
+use frame_benchmarking::{account, v2::*};
+use frame_support::traits::{fungibles::Mutate as _, Get};
 use frame_system::RawOrigin;
-use orml_traits::asset_registry::{Inspect, Mutate};
-use sp_runtime::FixedPointNumber;
+use orml_traits::asset_registry::{Inspect as _, Mutate};
+use sp_runtime::{traits::checked_pow, FixedPointNumber};
 
 use super::*;
 
-const AMOUNT_IN: u128 = 100 * CFG;
-const AMOUNT_OUT: u128 = 100_000_000 * CFG;
-const BUY_AMOUNT: u128 = 100 * AMOUNT_IN;
-const ASSET_IN: CurrencyId = CurrencyId::ForeignAsset(1);
-const ASSET_OUT: CurrencyId = CurrencyId::ForeignAsset(2);
-const DECIMALS_IN: u32 = 12;
-const DECIMALS_OUT: u32 = 6;
+const CURRENCY_IN: u32 = 1;
+const CURRENCY_OUT: u32 = 2;
+const RATIO: u32 = 2; // x2
+const FEEDER: u32 = 23;
 
-benchmarks! {
-	where_clause {
-		where
-			T: Config<AssetCurrencyId = CurrencyId, Balance = u128>,
-			<T as pallet::Config>::AssetRegistry: orml_traits::asset_registry::Mutate,
-	}
+#[cfg(test)]
+fn init_mocks() {
+	use crate::mock::{MockFulfilledOrderHook, MockRatioProvider, Ratio};
 
-	create_order {
-		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-		}:create_order(RawOrigin::Signed(account_out.clone()), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2))
-
-
-	user_update_order {
-		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
-
-		}:user_update_order(RawOrigin::Signed(account_out.clone()), order_id, 10 * BUY_AMOUNT, T::SellRatio::saturating_from_integer(1))
-
-	user_cancel_order {
-		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
-
-	}:user_cancel_order(RawOrigin::Signed(account_out.clone()), order_id)
-
-	fill_order_full {
-		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
-
-	}:fill_order_full(RawOrigin::Signed(account_in.clone()), order_id)
-
-	fill_order_partial {
-		let (account_out, account_in) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-
-		let order_id = Pallet::<T>::place_order(account_out.clone(), ASSET_IN, ASSET_OUT, BUY_AMOUNT, T::SellRatio::saturating_from_integer(2).into())?;
-
-	}:fill_order_partial(RawOrigin::Signed(account_in.clone()), order_id, BUY_AMOUNT / 2)
-
-	add_trading_pair {
-		}:add_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT, BUY_AMOUNT)
-
-	rm_trading_pair {
-		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-		}:rm_trading_pair(RawOrigin::Root, ASSET_IN, ASSET_OUT)
-
-	update_min_order {
-		let (account_out, _) = Pallet::<T>::bench_setup_trading_pair(ASSET_IN, ASSET_OUT, 1000 * AMOUNT_IN, 1000 * AMOUNT_OUT, DECIMALS_IN, DECIMALS_OUT);
-		}:update_min_order(RawOrigin::Root, ASSET_IN, ASSET_OUT, AMOUNT_IN)
+	MockFulfilledOrderHook::mock_notify_status_change(|_, _| Ok(()));
+	MockRatioProvider::mock_get(|_, _| Ok(Some(Ratio::saturating_from_integer(RATIO))));
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
-
-pub(crate) struct Helper<T>(sp_std::marker::PhantomData<T>);
+struct Helper<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> Helper<T>
 where
-	T::AssetRegistry:
-		Mutate<AssetId = T::AssetCurrencyId, Balance = T::Balance, CustomMetadata = CustomMetadata>,
+	T::CurrencyId: From<u32>,
+	T::AssetRegistry: orml_traits::asset_registry::Mutate,
+	T::FeederId: From<u32>,
+	T::AssetRegistry: Mutate,
 {
-	pub fn register_trading_assets(
-		asset_in: T::AssetCurrencyId,
-		asset_out: T::AssetCurrencyId,
-		decimals_in: u32,
-		decimals_out: u32,
-	) {
-		match T::AssetRegistry::metadata(&asset_in) {
-			Some(_) => (),
-			None => {
-				T::AssetRegistry::register_asset(
-					Some(asset_in),
-					orml_asset_registry::AssetMetadata {
-						decimals: decimals_in,
-						name: "ASSET IN".as_bytes().to_vec(),
-						symbol: "INC".as_bytes().to_vec(),
-						existential_deposit: T::Balance::zero(),
-						location: None,
-						additional: CustomMetadata::default(),
-					},
-				)
-				.expect("Registering Pool asset must work");
-			}
-		}
+	pub fn setup_currencies() {
+		T::AssetRegistry::register_asset(
+			Some(CURRENCY_IN.into()),
+			orml_asset_registry::AssetMetadata {
+				decimals: 6,
+				name: "CURRENCY IN".as_bytes().to_vec(),
+				symbol: "IN".as_bytes().to_vec(),
+				existential_deposit: T::Balance::zero(),
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+		)
+		.unwrap();
 
-		match T::AssetRegistry::metadata(&asset_out) {
-			Some(_) => (),
-			None => {
-				T::AssetRegistry::register_asset(
-					Some(asset_out),
-					orml_asset_registry::AssetMetadata {
-						decimals: decimals_out,
-						name: "ASSET OUT".as_bytes().to_vec(),
-						symbol: "OUT".as_bytes().to_vec(),
-						existential_deposit: T::Balance::zero(),
-						location: None,
-						additional: CustomMetadata::default(),
-					},
-				)
-				.expect("Registering Pool asset must work");
-			}
-		}
+		T::AssetRegistry::register_asset(
+			Some(CURRENCY_OUT.into()),
+			orml_asset_registry::AssetMetadata {
+				decimals: 3,
+				name: "CURRENCY OUT".as_bytes().to_vec(),
+				symbol: "OUT".as_bytes().to_vec(),
+				existential_deposit: T::Balance::zero(),
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+		)
+		.unwrap();
 	}
+
+	pub fn setup_accounts() -> (T::AccountId, T::AccountId) {
+		let expected_amount_in = Pallet::<T>::convert_with_ratio(
+			CURRENCY_OUT.into(),
+			CURRENCY_IN.into(),
+			T::Ratio::saturating_from_integer(RATIO),
+			Self::amount_out(),
+		)
+		.unwrap();
+
+		let account_out = account::<T::AccountId>("account_out", 0, 0);
+		let account_in = account::<T::AccountId>("account_in", 0, 0);
+
+		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out()).unwrap();
+		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in).unwrap();
+
+		(account_out, account_in)
+	}
+
+	pub fn setup() -> (T::AccountId, T::AccountId) {
+		Self::setup_currencies();
+		Self::setup_accounts()
+	}
+
+	pub fn amount_out() -> T::Balance {
+		let min_fulfillment = T::DecimalConverter::to_asset_balance(
+			T::MinFulfillmentAmountNative::get(),
+			CURRENCY_OUT.into(),
+		)
+		.unwrap();
+
+		let decimals_out = T::AssetRegistry::metadata(&CURRENCY_OUT.into())
+			.unwrap()
+			.decimals as usize;
+
+		let zeros = checked_pow(T::Balance::from(10u32), decimals_out).unwrap();
+
+		min_fulfillment + T::Balance::from(5u32) * zeros
+	}
+
+	pub fn add_trading_pair() {
+		Pallet::<T>::add_trading_pair(
+			RawOrigin::Root.into(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
+			Zero::zero(),
+		)
+		.unwrap();
+	}
+
+	pub fn place_order(account_out: &T::AccountId) -> T::OrderIdNonce {
+		<Pallet<T> as TokenSwaps<T::AccountId>>::place_order(
+			account_out.clone(),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
+			Self::amount_out(),
+			OrderRatio::Market,
+		)
+		.unwrap()
+	}
+
+	pub fn feed_market() {
+		Pallet::<T>::set_market_feeder(RawOrigin::Root.into(), FEEDER.into()).unwrap();
+		T::RatioProvider::set(
+			&FEEDER.into(),
+			&(CURRENCY_OUT.into(), CURRENCY_IN.into()),
+			T::Ratio::saturating_from_integer(RATIO),
+		);
+	}
+}
+
+#[benchmarks(
+    where
+        T::CurrencyId: From<u32>,
+        T::AssetRegistry: orml_traits::asset_registry::Mutate,
+        T::FeederId: From<u32>,
+)]
+mod benchmarks {
+	use super::*;
+
+	#[benchmark]
+	fn place_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+
+		#[extrinsic_call]
+		place_order(
+			RawOrigin::Signed(account_out.clone()),
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
+			Helper::<T>::amount_out(),
+			OrderRatio::Market, // Market is the expensive one
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn update_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
+
+		#[extrinsic_call]
+		update_order(
+			RawOrigin::Signed(account_out),
+			order_id,
+			Helper::<T>::amount_out() - 1u32.into(),
+			OrderRatio::Market,
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn cancel_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let (account_out, _) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
+
+		#[extrinsic_call]
+		cancel_order(RawOrigin::Signed(account_out), order_id);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn fill_order() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		let (account_out, account_in) = Helper::<T>::setup();
+		Helper::<T>::add_trading_pair();
+		let order_id = Helper::<T>::place_order(&account_out);
+
+		Helper::<T>::feed_market();
+
+		#[extrinsic_call]
+		fill_order(
+			RawOrigin::Signed(account_in),
+			order_id,
+			Helper::<T>::amount_out(),
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn add_trading_pair() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		#[extrinsic_call]
+		add_trading_pair(
+			RawOrigin::Root,
+			CURRENCY_IN.into(),
+			CURRENCY_OUT.into(),
+			1u32.into(),
+		);
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn rm_trading_pair() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		#[extrinsic_call]
+		rm_trading_pair(RawOrigin::Root, CURRENCY_IN.into(), CURRENCY_OUT.into());
+
+		Ok(())
+	}
+
+	#[benchmark]
+	fn set_market_feeder() -> Result<(), BenchmarkError> {
+		#[cfg(test)]
+		init_mocks();
+
+		#[extrinsic_call]
+		set_market_feeder(RawOrigin::Root, FEEDER.into());
+
+		Ok(())
+	}
+
+	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
 }

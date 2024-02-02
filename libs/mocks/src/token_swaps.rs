@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::TokenSwaps;
+	use cfg_traits::{OrderRatio, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -8,7 +8,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
 		type Balance;
-		type SellRatio;
+		type Ratio;
 		type OrderId;
 		type OrderDetails;
 	}
@@ -31,7 +31,7 @@ pub mod pallet {
 					T::CurrencyId,
 					T::CurrencyId,
 					T::Balance,
-					T::SellRatio,
+					OrderRatio<T::Ratio>,
 				) -> Result<T::OrderId, DispatchError>
 				+ 'static,
 		) {
@@ -39,9 +39,9 @@ pub mod pallet {
 		}
 
 		pub fn mock_update_order(
-			f: impl Fn(T::AccountId, T::OrderId, T::Balance, T::SellRatio) -> DispatchResult + 'static,
+			f: impl Fn(T::OrderId, T::Balance, OrderRatio<T::Ratio>) -> DispatchResult + 'static,
 		) {
-			register_call!(move |(a, b, c, d)| f(a, b, c, d));
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
 		pub fn mock_cancel_order(f: impl Fn(T::OrderId) -> DispatchResult + 'static) {
@@ -61,6 +61,13 @@ pub mod pallet {
 		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
 			register_call!(f);
 		}
+
+		pub fn mock_convert_by_market(
+			f: impl Fn(T::CurrencyId, T::CurrencyId, T::Balance) -> Result<T::Balance, DispatchError>
+				+ 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
 	}
 
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
@@ -68,32 +75,27 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
-		type SellRatio = T::SellRatio;
+		type Ratio = T::Ratio;
 
 		fn place_order(
 			a: T::AccountId,
 			b: Self::CurrencyId,
 			c: Self::CurrencyId,
 			d: Self::Balance,
-			e: Self::SellRatio,
+			e: OrderRatio<Self::Ratio>,
 		) -> Result<Self::OrderId, DispatchError> {
 			execute_call!((a, b, c, d, e))
 		}
 
 		fn update_order(
-			a: T::AccountId,
-			b: Self::OrderId,
-			c: Self::Balance,
-			d: Self::SellRatio,
+			a: Self::OrderId,
+			b: Self::Balance,
+			c: OrderRatio<Self::Ratio>,
 		) -> DispatchResult {
-			execute_call!((a, b, c, d))
+			execute_call!((a, b, c))
 		}
 
 		fn cancel_order(a: Self::OrderId) -> DispatchResult {
-			execute_call!(a)
-		}
-
-		fn is_active(a: Self::OrderId) -> bool {
 			execute_call!(a)
 		}
 
@@ -103,6 +105,14 @@ pub mod pallet {
 
 		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
 			execute_call!(a)
+		}
+
+		fn convert_by_market(
+			a: Self::CurrencyId,
+			b: Self::CurrencyId,
+			c: Self::Balance,
+		) -> Result<Self::Balance, DispatchError> {
+			execute_call!((a, b, c))
 		}
 	}
 }

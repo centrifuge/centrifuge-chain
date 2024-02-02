@@ -1,6 +1,6 @@
 use cfg_mocks::{
-	pallet_mock_currency_conversion, pallet_mock_investment, pallet_mock_pools,
-	pallet_mock_status_notification, pallet_mock_token_swaps,
+	pallet_mock_investment, pallet_mock_pools, pallet_mock_status_notification,
+	pallet_mock_token_swaps,
 };
 use cfg_traits::investments::TrancheCurrency;
 use cfg_types::investments::{ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap};
@@ -15,10 +15,6 @@ use sp_runtime::{
 };
 
 use crate::pallet as pallet_foreign_investments;
-
-// =============
-//     Types
-// =============
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -48,10 +44,6 @@ impl TrancheCurrency<PoolId, TrancheId> for InvestmentId {
 	}
 }
 
-// ======================
-//     Runtime config
-// ======================
-
 frame_support::construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -64,7 +56,6 @@ frame_support::construct_runtime!(
 		MockDecreaseInvestHook: pallet_mock_status_notification::<Instance1>,
 		MockCollectInvestHook: pallet_mock_status_notification::<Instance2>,
 		MockCollectRedeemHook: pallet_mock_status_notification::<Instance3>,
-		MockCurrencyConversion: pallet_mock_currency_conversion,
 		MockPools: pallet_mock_pools,
 		ForeignInvestment: pallet_foreign_investments,
 	}
@@ -108,7 +99,7 @@ impl pallet_mock_token_swaps::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type OrderDetails = Swap<Balance, CurrencyId>;
 	type OrderId = SwapId;
-	type SellRatio = FixedU128;
+	type Ratio = FixedU128;
 }
 
 type Hook1 = pallet_mock_status_notification::Instance1;
@@ -129,11 +120,6 @@ impl pallet_mock_status_notification::Config<Hook3> for Runtime {
 	type Status = ExecutedForeignCollect<Balance, CurrencyId>;
 }
 
-impl pallet_mock_currency_conversion::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-}
-
 impl pallet_mock_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Ratio;
@@ -148,7 +134,6 @@ impl pallet_foreign_investments::Config for Runtime {
 	type BalanceRatio = Ratio;
 	type CollectedForeignInvestmentHook = MockCollectInvestHook;
 	type CollectedForeignRedemptionHook = MockCollectRedeemHook;
-	type CurrencyConverter = MockCurrencyConversion;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = MockDecreaseInvestHook;
 	type Investment = MockInvestment;
