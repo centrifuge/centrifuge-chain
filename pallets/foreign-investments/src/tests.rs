@@ -198,8 +198,6 @@ mod swaps {
 		assert_eq!(ForeignIdToSwapId::<Runtime>::get(foreign_id), Some(swap_id));
 	}
 
-	fn assert_swap_id_no_registered(swap_id: SwapId) {}
-
 	#[test]
 	fn swap_over_no_swap() {
 		new_test_ext().execute_with(|| {
