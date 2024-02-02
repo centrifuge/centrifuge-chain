@@ -305,6 +305,9 @@ pub mod pallet {
 			let meta_local =
 				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MissingMetadata)?;
 
+			// NOTE: We could also think about making conversion between local
+			//       representations and variants but I fear that we then have problems with
+			//       SUM(locked variants) = local. Hence, this restriction.
 			ensure!(
 				meta_local.decimals == meta_variant.decimals,
 				Error::<T>::DecimalMismatch
