@@ -24,8 +24,6 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**bridge**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/bridge) ([docs](https://reference.centrifuge.io/pallet_bridge/index.html)): Connecting [ChainBridge](https://github.com/centrifuge/chainbridge-substrate) to transfer tokens to and from Ethereum.
 
-- [**claims**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/claims) ([docs](https://reference.centrifuge.io/pallet_claims/index.html)): Processing claims of liquidity rewards acquired through Tinlake investments.
-
 - [**collator-allowlist**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/collator-allowlist) ([docs](https://reference.centrifuge.io/pallet_collator_allowlist/index.html)): Tracking active collators, and allows the root account to manage this list.
 
 - [**crowdloan-claim**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/crowdloan-claim) ([docs](https://reference.centrifuge.io/pallet_crowdloan_claim/index.html)): Claiming user rewards for their crowdloan funding support.

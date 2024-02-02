@@ -101,7 +101,6 @@ pallet-balances = { workspace = true, features = ["std"] }
 pallet-base-fee = { workspace = true, features = ["std"] }
 pallet-block-rewards = { workspace = true, features = ["std"] }
 pallet-bridge = { workspace = true, features = ["std"] }
-pallet-claims = { workspace = true, features = ["std"] }
 pallet-collator-allowlist = { workspace = true, features = ["std"] }
 pallet-collator-selection = { workspace = true, features = ["std"] }
 pallet-collective = { workspace = true, features = ["std"] }

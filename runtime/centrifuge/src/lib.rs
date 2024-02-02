@@ -1139,25 +1139,6 @@ impl chainbridge::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// Parameterize claims pallet
-parameter_types! {
-	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
-	pub const MinimalPayoutAmount: Balance = 5 * CFG;
-}
-
-// Implement claims pallet configuration trait for the mock runtime
-impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Balances;
-	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = ClaimsPalletId;
-	type RuntimeEvent = RuntimeEvent;
-	// NOTE: No benchmarks available.
-	//       BUT will be deprecated once Tinlake
-	//       is wind down.
-	type WeightInfo = ();
-}
-
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
@@ -1918,7 +1899,7 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
+		// Removed: Claims = 92
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,

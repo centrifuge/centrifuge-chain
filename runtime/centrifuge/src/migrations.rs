@@ -10,6 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+frame_support::parameter_types! {
+	pub const ClaimsPalletName: &'static str = "Claims";
+}
+
 pub type UpgradeCentrifuge1025 = (
 	// Burns tokens from other domains that are falsly not burned when they were transferred back
 	// to their domain
@@ -17,7 +21,9 @@ pub type UpgradeCentrifuge1025 = (
 	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
 	// Migrates the currency used in `pallet-transfer-allowlist` from our global currency to a
 	// special filter currency enum
-	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
+	runtime_common::migrations::transfer_allowlist_currency::Migration<super::Runtime>,
+	// Removes tinlake reward claims pallet
+	runtime_common::migrations::nuke::KillPallet<ClaimsPalletName, crate::RocksDbWeight>,
 );
 
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
