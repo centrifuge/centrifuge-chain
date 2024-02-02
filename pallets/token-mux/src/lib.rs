@@ -231,12 +231,28 @@ pub mod pallet {
 					return Err(Error::<T>::InvalidSwapCurrencies.into())
 				}
 				(Ok(local), Err(_)) => {
+					ensure!(
+						order.currency_in == local,
+						Error::<T>::InvalidSwapCurrencies
+					);
+
+					T::Tokens::mint_into(local, &Self::account(), amount)?;
 					T::Swaps::fill_order(Self::account(), order_id, amount)?;
-					Self::burn_route(&Self::account(), local, order.currency_in, amount)?;
 				}
 				(Err(_), Ok(local)) => {
-					Self::mint_route(&Self::account(), local, order.currency_in, amount)?;
+					ensure!(
+						order.currency_out == local,
+						Error::<T>::InvalidSwapCurrencies
+					);
+
 					T::Swaps::fill_order(Self::account(), order_id, amount)?;
+					T::Tokens::burn_from(
+						local,
+						&Self::account(),
+						amount,
+						Precision::Exact,
+						Fortitude::Polite,
+					)?;
 				}
 			}
 
