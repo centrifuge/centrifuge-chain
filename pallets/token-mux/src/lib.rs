@@ -53,7 +53,8 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
-	use sp_runtime::traits::{AccountIdConversion, One};
+	use sp_arithmetic::FixedPointOperand;
+	use sp_runtime::traits::{AccountIdConversion, EnsureFixedPointNumber, One};
 
 	use super::*;
 
@@ -140,6 +141,9 @@ pub mod pallet {
 		/// This means the swap is either not a local to variant or not a
 		/// variant to local swap
 		InvalidSwapCurrencies,
+		/// Variant and local representation have missmatching decimals in their
+		/// metadata. A conversion between the two is not possible
+		DecimalMismatch,
 	}
 
 	#[pallet::call]
@@ -208,7 +212,11 @@ pub mod pallet {
 			let ratio = match order.ratio {
 				OrderRatio::Market => RatioFor::<T>::ensure_from_rational(
 					amount,
-					T::Swaps::convert_by_market(order.currency_in, order.currency_out, amount)?,
+					T::Swaps::convert_by_market(
+						order.currency_in.clone(),
+						order.currency_out.clone(),
+						amount,
+					)?,
 				)?,
 				OrderRatio::Custom(ratio) => ratio,
 			};
@@ -285,12 +293,22 @@ pub mod pallet {
 		}
 
 		fn try_local(currency: &CurrencyFor<T>) -> Result<CurrencyFor<T>, DispatchError> {
-			let local = T::AssetRegistry::metadata(currency)
-				.ok_or(Error::<T>::MissingMetadata)?
+			let meta_variant =
+				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MissingMetadata)?;
+
+			let local: CurrencyFor<T> = meta_variant
 				.additional
 				.local_representation
 				.ok_or(Error::<T>::NoLocalRepresentation)?
 				.into();
+
+			let meta_local =
+				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MissingMetadata)?;
+
+			ensure!(
+				meta_local.decimals == meta_variant.decimals,
+				Error::<T>::DecimalMismatch
+			);
 
 			Ok(local)
 		}
