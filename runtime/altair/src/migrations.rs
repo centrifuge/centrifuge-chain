@@ -17,13 +17,13 @@ pub type UpgradeAltair1034 = (
 	// FIXME: This migration fails to decode 4 entries against Altair
 	// orml_tokens_migration::CurrencyIdRefactorMigration,
 	// At minimum, bumps storage version from 1 to 2
-	runtime_common::migrations::nuke::Migration<crate::Loans, crate::RocksDbWeight, 1>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Loans, crate::RocksDbWeight, 1>,
 	// At minimum, bumps storage version from 0 to 3
-	runtime_common::migrations::nuke::Migration<crate::InterestAccrual, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::InterestAccrual, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::PoolSystem, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::PoolSystem, crate::RocksDbWeight, 0>,
 	// At minimum, bumps storage version from 0 to 1
-	runtime_common::migrations::nuke::Migration<crate::Investments, crate::RocksDbWeight, 0>,
+	runtime_common::migrations::nuke::ResetPallet<crate::Investments, crate::RocksDbWeight, 0>,
 	// Funds pallet_rewards::Instance2 account with existential deposit
 	pallet_rewards::migrations::new_instance::FundExistentialDeposit<
 		crate::Runtime,
