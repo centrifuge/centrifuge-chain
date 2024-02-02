@@ -95,7 +95,7 @@ pub mod pallet {
 				OrderId = OrderIdFor<Self>,
 			>;
 
-		type Weights: WeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -153,7 +153,7 @@ pub mod pallet {
 		BalanceFor<T>: FixedPointOperand,
 	{
 		#[pallet::call_index(0)]
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			to_deposit: CurrencyFor<T>,
@@ -176,7 +176,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
 			to_receive: CurrencyFor<T>,
@@ -199,7 +199,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::match_swap())]
 		pub fn match_swap(
 			origin: OriginFor<T>,
 			order_id: OrderIdFor<T>,
