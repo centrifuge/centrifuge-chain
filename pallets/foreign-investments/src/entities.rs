@@ -171,7 +171,7 @@ impl<T: Config> InvestmentInfo<T> {
 		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
 
 		// It's ok to use the market ratio because this amount will be
-		// cancelled.
+		// cancelled in this instant.
 		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
 			pool_currency,
 			self.foreign_currency,
