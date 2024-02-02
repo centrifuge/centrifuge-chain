@@ -12,7 +12,7 @@ use sp_runtime::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
 		Zero,
 	},
-	DispatchError,
+	ArithmeticError, DispatchError,
 };
 use sp_std::cmp::min;
 
@@ -85,10 +85,9 @@ impl<T: Config> Correlation<T> {
 			return Ok(T::Balance::default());
 		}
 
-		foreign_amount
+		Ok(foreign_amount
 			.ensure_mul(self.pool_amount)?
-			.ensure_div(self.foreign_amount)
-			.map_err(|_| Error::<T>::TooMuchDecrease.into())
+			.ensure_div(self.foreign_amount)?)
 	}
 }
 
@@ -166,7 +165,13 @@ impl<T: Config> InvestmentInfo<T> {
 
 		let pool_investment_decrement = self
 			.correlation
-			.foreign_to_pool(foreign_investment_decrement)?;
+			.foreign_to_pool(foreign_investment_decrement)
+			.map_err(|e| match e {
+				DispatchError::Arithmetic(ArithmeticError::DivisionByZero) => {
+					Error::<T>::TooMuchDecrease.into()
+				}
+				e => e,
+			})?;
 
 		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
 
