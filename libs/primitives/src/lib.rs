@@ -363,6 +363,7 @@ pub mod xcm {
 	};
 	use xcm_executor::traits::Convert;
 
+	// TODO(william): Check
 	/// NOTE: Copied from <https://github.com/moonbeam-foundation/polkadot/blob/d83bb6cc7d7c93ead2fd3cafce0e268fd3f6b9bc/xcm/xcm-builder/src/location_conversion.rs#L25C1-L68C2>
 	///
 	/// temporary struct that mimics the behavior of the upstream type that we

@@ -12,23 +12,23 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 ethabi = { version = "16.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 hex = { version = "0.4.3", default_features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.43" }
-parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+orml-traits = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 # Substrate crates
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-core = { workspace = true }
 
 # Optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.43" }
+frame-benchmarking = { workspace = true, optional = true }
+orml-tokens = { workspace = true, optional = true }
+pallet-balances = { workspace = true, optional = true }
+pallet-uniques = { workspace = true, optional = true }
 
 # Our custom pallets
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
@@ -37,26 +37,26 @@ cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 
 # Polkadot
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.43" }
+xcm = { workspace = true }
 
-fp-self-contained = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-pallet-ethereum = { git = "https://github.com/moonbeam-foundation/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.43" }
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "96ac7576f93bb6828415bf3edeef9e8c4b5b4adf" }
+fp-self-contained = { workspace = true }
+pallet-ethereum = { workspace = true }
+xcm-primitives = { workspace = true }
 
 [dev-dependencies]
 hex = "0.4.3"
 serde = { version = "1.0.102" }
 
 # Substrate crates & pallets
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.43" }
+pallet-balances = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-uniques = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
 
 # Orml crates
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.43" }
+orml-tokens = { workspace = true, optional = true }
+orml-traits = { workspace = true, optional = true }
 
 [features]
 default = ["std"]
