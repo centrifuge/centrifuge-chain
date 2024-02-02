@@ -804,15 +804,12 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> OrderDetails<MuxSwap<T::Balance, T::CurrencyId, T::Ratio>> for Pallet<T> {
+	impl<T: Config> OrderDetails<MuxSwap<T::CurrencyId, T::Ratio>> for Pallet<T> {
 		type OrderId = T::OrderIdNonce;
 
-		fn get_order_details(
-			order: Self::OrderId,
-		) -> Option<MuxSwap<T::Balance, T::CurrencyId, T::Ratio>> {
+		fn get_order_details(order: Self::OrderId) -> Option<MuxSwap<T::CurrencyId, T::Ratio>> {
 			Orders::<T>::get(order)
 				.map(|order| MuxSwap {
-					amount_in: order.amount_in,
 					currency_in: order.currency_in,
 					currency_out: order.currency_out,
 					ratio: order.ratio,

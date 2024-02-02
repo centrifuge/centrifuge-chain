@@ -129,13 +129,11 @@ impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, Orde
 }
 
 /// Swap details that the multiplexing pallet needs in order to match orders
-pub struct MuxSwap<Balance, Currency, Ratio> {
+pub struct MuxSwap<Currency, Ratio> {
 	/// The incoming currency, i.e. the desired one.
 	pub currency_in: Currency,
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
-	/// The amount of incoming currency which shall be bought.
-	pub amount_in: Balance,
 	/// The ratio at which the swap should happen
 	pub ratio: OrderRatio<Ratio>,
 }

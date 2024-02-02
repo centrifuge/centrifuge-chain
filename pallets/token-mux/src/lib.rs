@@ -90,10 +90,7 @@ pub mod pallet {
 		type Tokens: fungibles::Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 
 		type Swaps: TokenSwaps<Self::AccountId, CurrencyId = CurrencyFor<Self>, Balance = BalanceFor<Self>>
-			+ OrderDetails<
-				MuxSwap<BalanceFor<Self>, CurrencyFor<Self>, RatioFor<Self>>,
-				OrderId = OrderIdFor<Self>,
-			>;
+			+ OrderDetails<MuxSwap<CurrencyFor<Self>, RatioFor<Self>>, OrderId = OrderIdFor<Self>>;
 
 		type WeightInfo: WeightInfo;
 	}
