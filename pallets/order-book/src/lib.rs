@@ -329,6 +329,8 @@ pub mod pallet {
 			currency_in: T::CurrencyId,
 			currency_out: T::CurrencyId,
 		},
+		/// Event emitted when a valid trading pair is removed.
+		FeederChanged { feeder_id: T::FeederId },
 	}
 
 	#[pallet::error]
@@ -507,7 +509,9 @@ pub mod pallet {
 		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			MarketFeederId::<T>::put(feeder_id);
+			MarketFeederId::<T>::put(feeder_id.clone());
+
+			Self::deposit_event(Event::<T>::FeederChanged { feeder_id });
 
 			Ok(())
 		}
