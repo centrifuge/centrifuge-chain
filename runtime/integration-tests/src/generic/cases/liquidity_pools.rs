@@ -262,7 +262,7 @@ type FudgeRelayRuntime<T> = <<T as FudgeSupport>::FudgeHandle as FudgeHandle<T>>
 use utils::*;
 
 mod development {
-	use development_runtime::{LocationToAccountId, TreasuryAccount};
+	use development_runtime::LocationToAccountId;
 
 	use super::*;
 
@@ -3992,7 +3992,7 @@ mod development {
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: TreasuryAccount::get(),
+							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
 							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
 								pool_id,
@@ -4041,7 +4041,7 @@ mod development {
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: TreasuryAccount::get(),
+							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
 							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
 								pool_id,
@@ -4175,6 +4175,7 @@ mod development {
 
 					let sender = <T as pallet_liquidity_pools_gateway::Config>::Sender::get();
 
+					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
@@ -4288,10 +4289,11 @@ mod development {
 						increase_msg
 					));
 
+					dbg!(frame_system::Pallet::<T>::events());
 					assert!(frame_system::Pallet::<T>::events().iter().any(|e| {
 						e.event
 							== pallet_liquidity_pools_gateway::Event::<T>::OutboundMessageSubmitted {
-							sender: TreasuryAccount::get(),
+							sender: <T as pallet_liquidity_pools_gateway::Config>::Sender::get(),
 							domain: DEFAULT_DOMAIN_ADDRESS_MOONBEAM.domain(),
 							message: LiquidityPoolMessage::ExecutedDecreaseInvestOrder {
 								pool_id,
