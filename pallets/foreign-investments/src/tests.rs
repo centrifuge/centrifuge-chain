@@ -191,6 +191,15 @@ mod util {
 mod swaps {
 	use super::*;
 
+	fn assert_swap_id_registered(swap_id: SwapId) {
+		let foreign_id = (USER, INVESTMENT_ID, Action::Investment);
+
+		assert_eq!(SwapIdToForeignId::<Runtime>::get(swap_id), Some(foreign_id));
+		assert_eq!(ForeignIdToSwapId::<Runtime>::get(foreign_id), Some(swap_id));
+	}
+
+	fn assert_swap_id_no_registered(swap_id: SwapId) {}
+
 	#[test]
 	fn swap_over_no_swap() {
 		new_test_ext().execute_with(|| {
@@ -205,14 +214,15 @@ mod swaps {
 			});
 
 			assert_ok!(
-				Swaps::<Runtime>::apply_over_swap(
+				Swaps::<Runtime>::apply(
 					&USER,
+					INVESTMENT_ID,
+					Action::Investment,
 					Swap {
 						currency_in: POOL_CURR,
 						currency_out: FOREIGN_CURR,
 						amount_out: AMOUNT,
 					},
-					None,
 				),
 				SwapStatus {
 					swapped: 0,
@@ -220,6 +230,8 @@ mod swaps {
 					swap_id: Some(SWAP_ID),
 				}
 			);
+
+			assert_swap_id_registered(SWAP_ID);
 		});
 	}
 
@@ -245,15 +257,19 @@ mod swaps {
 				Ok(())
 			});
 
+			Swaps::<Runtime>::update_id(&USER, INVESTMENT_ID, Action::Investment, Some(SWAP_ID))
+				.unwrap();
+
 			assert_ok!(
-				Swaps::<Runtime>::apply_over_swap(
+				Swaps::<Runtime>::apply(
 					&USER,
+					INVESTMENT_ID,
+					Action::Investment,
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
 						amount_out: AMOUNT,
 					},
-					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: 0,
@@ -261,6 +277,8 @@ mod swaps {
 					swap_id: Some(SWAP_ID),
 				}
 			);
+
+			assert_swap_id_registered(SWAP_ID);
 		});
 	}
 
@@ -290,15 +308,19 @@ mod swaps {
 				Ok(())
 			});
 
+			Swaps::<Runtime>::update_id(&USER, INVESTMENT_ID, Action::Investment, Some(SWAP_ID))
+				.unwrap();
+
 			assert_ok!(
-				Swaps::<Runtime>::apply_over_swap(
+				Swaps::<Runtime>::apply(
 					&USER,
+					INVESTMENT_ID,
+					Action::Investment,
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
 						amount_out: AMOUNT,
 					},
-					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: foreign_to_pool(AMOUNT),
@@ -306,6 +328,8 @@ mod swaps {
 					swap_id: Some(SWAP_ID),
 				}
 			);
+
+			assert_swap_id_registered(SWAP_ID);
 		});
 	}
 
@@ -327,25 +351,34 @@ mod swaps {
 			});
 			MockTokenSwaps::mock_cancel_order(|swap_id| {
 				assert_eq!(swap_id, SWAP_ID);
-
 				Ok(())
 			});
 
+			Swaps::<Runtime>::update_id(&USER, INVESTMENT_ID, Action::Investment, Some(SWAP_ID))
+				.unwrap();
+
 			assert_ok!(
-				Swaps::<Runtime>::apply_over_swap(
+				Swaps::<Runtime>::apply(
 					&USER,
+					INVESTMENT_ID,
+					Action::Investment,
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
 						amount_out: AMOUNT,
 					},
-					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: foreign_to_pool(AMOUNT),
 					pending: 0,
 					swap_id: None,
 				}
+			);
+
+			assert_eq!(SwapIdToForeignId::<Runtime>::get(SWAP_ID), None);
+			assert_eq!(
+				ForeignIdToSwapId::<Runtime>::get((USER, INVESTMENT_ID, Action::Investment)),
+				None
 			);
 		});
 	}
@@ -384,15 +417,19 @@ mod swaps {
 				Ok(NEW_SWAP_ID)
 			});
 
+			Swaps::<Runtime>::update_id(&USER, INVESTMENT_ID, Action::Investment, Some(SWAP_ID))
+				.unwrap();
+
 			assert_ok!(
-				Swaps::<Runtime>::apply_over_swap(
+				Swaps::<Runtime>::apply(
 					&USER,
+					INVESTMENT_ID,
+					Action::Investment,
 					Swap {
 						currency_out: FOREIGN_CURR,
 						currency_in: POOL_CURR,
 						amount_out: AMOUNT,
 					},
-					Some(SWAP_ID),
 				),
 				SwapStatus {
 					swapped: foreign_to_pool(PREVIOUS_AMOUNT),
@@ -400,6 +437,9 @@ mod swaps {
 					swap_id: Some(NEW_SWAP_ID),
 				}
 			);
+
+			assert_eq!(SwapIdToForeignId::<Runtime>::get(SWAP_ID), None);
+			assert_swap_id_registered(NEW_SWAP_ID);
 		});
 	}
 }
