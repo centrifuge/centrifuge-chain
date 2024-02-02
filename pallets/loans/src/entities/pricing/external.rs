@@ -4,8 +4,8 @@ use cfg_traits::{
 	interest::InterestRate,
 };
 use cfg_types::adjustments::Adjustment;
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, ensure, RuntimeDebug, RuntimeDebugNoBound};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{EnsureAdd, EnsureFixedPointNumber, EnsureSub, Zero},

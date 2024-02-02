@@ -16,8 +16,8 @@
 use cfg_primitives::{
 	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Index as CentrifugeIndex,
 };
-use codec::Encode;
 use node_primitives::Index as RelayIndex;
+use parity_scale_codec::Encode;
 use polkadot_core_primitives::{AccountId as RelayAccountId, BlockId as RelayBlockId};
 use sc_client_api::client::BlockBackend;
 use sp_core::H256;
@@ -108,6 +108,7 @@ fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtr
 		frame_system::CheckNonce::<CentrifugeRuntime>::from(nonce),
 		frame_system::CheckWeight::<CentrifugeRuntime>::new(),
 		pallet_transaction_payment::ChargeTransactionPayment::<CentrifugeRuntime>::from(0),
+		runtime_common::transfer_filter::PreBalanceTransferExtension::<CentrifugeRuntime>::new(),
 	)
 }
 
@@ -126,6 +127,7 @@ fn sign_centrifuge(
 		tx_version,
 		genesis_hash,
 		genesis_hash.clone(),
+		(),
 		(),
 		(),
 		(),
@@ -151,8 +153,6 @@ fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
 		frame_system::CheckNonce::<RelayRuntime>::from(nonce),
 		frame_system::CheckWeight::<RelayRuntime>::new(),
 		pallet_transaction_payment::ChargeTransactionPayment::<RelayRuntime>::from(0),
-		#[cfg(not(feature = "runtime-development"))]
-		polkadot_runtime_common::claims::PrevalidateAttests::<RelayRuntime>::new(),
 	)
 }
 
@@ -222,9 +222,9 @@ where
 }
 
 mod tests {
-	use codec::Encode;
 	use fudge::primitives::Chain;
 	use pallet_balances::Call as BalancesCall;
+	use parity_scale_codec::Encode;
 	use sp_runtime::Storage;
 	use tokio::runtime::Handle;
 

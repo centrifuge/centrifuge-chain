@@ -2,143 +2,130 @@ use cfg_primitives::{
 	conversion::fixed_point_to_balance,
 	types::{AccountId, Balance, PoolId},
 };
-use cfg_traits::{Millis, PoolInspect};
+use cfg_traits::{Millis, PoolInspect, ValueProvider};
 use cfg_types::{
 	fixed_point::Quantity,
 	oracles::OracleKey,
 	tokens::{CurrencyId, CustomMetadata},
 };
-use orml_traits::{asset_registry, CombineData, DataProviderExtended, OnNewData};
-use sp_runtime::traits::Zero;
-use sp_std::{marker::PhantomData, vec::Vec};
+use frame_support::{traits::OriginTrait, RuntimeDebugNoBound};
+use orml_traits::asset_registry;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
+use sp_runtime::{traits::EnsureInto, DispatchError};
+use sp_std::marker::PhantomData;
 
-type TimestampedQuantity = orml_oracle::TimestampedValue<Quantity, Millis>;
+#[derive(Clone, RuntimeDebugNoBound, TypeInfo, Encode, Decode, MaxEncodedLen)]
+#[scale_info(skip_type_params(O))]
+pub struct Feeder<O: OriginTrait>(pub O::PalletsOrigin);
 
-/// A provider that maps an `TimestampedQuantity` into a tuple
-/// `(Balance, Millis)`.
-pub struct DataProviderBridge<Oracle, AssetRegistry, Pools>(
-	PhantomData<(Oracle, AssetRegistry, Pools)>,
+impl<O: OriginTrait<AccountId = AccountId>> Feeder<O> {
+	pub fn signed(account: AccountId) -> Self {
+		Self(O::signed(account).into_caller())
+	}
+
+	pub fn root() -> Self {
+		Self(O::root().into_caller())
+	}
+
+	pub fn none() -> Self {
+		Self(O::none().into_caller())
+	}
+}
+
+impl<O: OriginTrait> PartialEq for Feeder<O> {
+	fn eq(&self, other: &Self) -> bool {
+		self.0.eq(&other.0)
+	}
+}
+
+impl<O: OriginTrait> Eq for Feeder<O> {}
+
+impl<O: OriginTrait> PartialOrd for Feeder<O> {
+	fn partial_cmp(&self, other: &Self) -> Option<sp_std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl<O: OriginTrait> Ord for Feeder<O> {
+	fn cmp(&self, other: &Self) -> sp_std::cmp::Ordering {
+		// Since the inner object could not be Ord,
+		// we compare their encoded representations
+		self.0.encode().cmp(&other.encode())
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl<O: OriginTrait<AccountId = AccountId>> From<u32> for Feeder<O> {
+	fn from(value: u32) -> Self {
+		Self(O::signed(frame_benchmarking::account("feeder", value, 0)).into_caller())
+	}
+}
+
+/// Get the decimals for the pool currency
+pub fn decimals_for_pool<Pools, AssetRegistry>(pool_id: PoolId) -> Result<u32, DispatchError>
+where
+	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
+{
+	let currency = Pools::currency_for(pool_id).ok_or(DispatchError::Other(
+		"OracleConverterBridge: No currency for pool",
+	))?;
+
+	let metadata = AssetRegistry::metadata(&currency).ok_or(DispatchError::Other(
+		"OracleConverterBridge: No metadata for currency",
+	))?;
+
+	Ok(metadata.decimals)
+}
+
+/// A provider bridge that transform generic quantity representation of a price
+/// into a balance denominated in a pool currency.
+pub struct OracleConverterBridge<Origin, Provider, Pools, AssetRegistry>(
+	PhantomData<(Origin, Provider, Pools, AssetRegistry)>,
 );
 
-impl<Oracle, AssetRegistry, Pools> DataProviderExtended<(OracleKey, PoolId), (Balance, Millis)>
-	for DataProviderBridge<Oracle, AssetRegistry, Pools>
+impl<Origin, Provider, Pools, AssetRegistry> ValueProvider<(Feeder<Origin>, PoolId), OracleKey>
+	for OracleConverterBridge<Origin, Provider, Pools, AssetRegistry>
 where
-	Oracle: DataProviderExtended<OracleKey, TimestampedQuantity>,
-	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
+	Origin: OriginTrait,
+	Provider: ValueProvider<Origin, OracleKey, Value = (Quantity, Millis)>,
 	Pools: PoolInspect<AccountId, CurrencyId, PoolId = PoolId>,
+	AssetRegistry: asset_registry::Inspect<AssetId = CurrencyId, CustomMetadata = CustomMetadata>,
 {
-	fn get_no_op((key, pool_id): &(OracleKey, PoolId)) -> Option<(Balance, Millis)> {
-		let TimestampedQuantity { value, timestamp } = Oracle::get_no_op(key)?;
-		let currency = Pools::currency_for(*pool_id)?;
-		let decimals = AssetRegistry::metadata(&currency)?.decimals;
+	type Value = (Balance, Millis);
 
-		let balance = fixed_point_to_balance(value, decimals as usize).ok()?;
+	fn get(
+		(feeder, pool_id): &(Feeder<Origin>, PoolId),
+		key: &OracleKey,
+	) -> Result<Option<Self::Value>, DispatchError> {
+		match Provider::get(&feeder.0.clone().into(), key)? {
+			Some((quantity, timestamp)) => {
+				let decimals =
+					decimals_for_pool::<Pools, AssetRegistry>(*pool_id)?.ensure_into()?;
+				let balance = fixed_point_to_balance(quantity, decimals)?;
 
-		Some((balance, timestamp))
-	}
-
-	fn get_all_values() -> Vec<((OracleKey, PoolId), Option<(Balance, Millis)>)> {
-		// Unimplemented.
-		//
-		// This method is not used by pallet-data-collector and there is no way to
-		// implementing it because `PoolId` is not known by the oracle.
-		sp_std::vec![]
-	}
-}
-
-/// Trigger the new data event as a `Balance` type.
-pub struct OnNewPrice<Collector>(PhantomData<Collector>);
-
-impl<Collector> OnNewData<AccountId, OracleKey, Quantity> for OnNewPrice<Collector>
-where
-	Collector: OnNewData<AccountId, OracleKey, Balance>,
-{
-	fn on_new_data(account_id: &AccountId, key: &OracleKey, _: &Quantity) {
-		// An expected user of `OnNewData` trait should never read/trust the `value`
-		// parameter of this call, and instead use a `DataProvider` as source of truth
-		// to get the real value, that could be modified by it.
-		//
-		// Tracking issue: https://github.com/open-web3-stack/open-runtime-module-library/issues/937
-		// (4 point)
-		Collector::on_new_data(account_id, key, &Balance::zero())
-	}
-}
-
-/// Always choose the last updated value in case of several values.
-pub struct LastOracleValue;
-
-#[cfg(not(feature = "runtime-benchmarks"))]
-impl CombineData<OracleKey, TimestampedQuantity> for LastOracleValue {
-	fn combine_data(
-		_: &OracleKey,
-		values: Vec<TimestampedQuantity>,
-		_: Option<TimestampedQuantity>,
-	) -> Option<TimestampedQuantity> {
-		values
-			.into_iter()
-			.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
-	}
-}
-
-/// This is used for feeding the oracle from the data-collector in
-/// benchmarks.
-/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> is merged.
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarks_util {
-	use frame_support::traits::SortedMembers;
-	use orml_traits::{DataFeeder, DataProvider};
-	use sp_runtime::DispatchResult;
-	use sp_std::vec::Vec;
-
-	use super::*;
-
-	// This implementation can be removed once:
-	// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged.
-	impl<Oracle, AssetRegistry, Pools> DataProvider<OracleKey, Balance>
-		for DataProviderBridge<Oracle, AssetRegistry, Pools>
-	where
-		Oracle: DataProvider<OracleKey, Quantity>,
-	{
-		fn get(_: &OracleKey) -> Option<Balance> {
-			None
+				Ok(Some((balance, timestamp)))
+			}
+			None => Ok(None),
 		}
 	}
 
-	impl<Oracle, AssetRegistry, Pools> DataFeeder<OracleKey, Balance, AccountId>
-		for DataProviderBridge<Oracle, AssetRegistry, Pools>
-	where
-		Oracle: DataFeeder<OracleKey, Quantity, AccountId>,
-	{
-		fn feed_value(who: Option<AccountId>, key: OracleKey, _: Balance) -> DispatchResult {
-			Oracle::feed_value(who, key, Default::default())
-		}
-	}
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(
+		(feeder, pool_id): &(Feeder<Origin>, PoolId),
+		key: &OracleKey,
+		(balance, timestamp): (Balance, Millis),
+	) {
+		use cfg_primitives::conversion::balance_to_fixed_point;
 
-	impl CombineData<OracleKey, TimestampedQuantity> for LastOracleValue {
-		fn combine_data(
-			_: &OracleKey,
-			_: Vec<TimestampedQuantity>,
-			_: Option<TimestampedQuantity>,
-		) -> Option<TimestampedQuantity> {
-			Some(TimestampedQuantity {
-				value: Default::default(),
-				timestamp: 0,
-			})
-		}
-	}
+		let decimals = decimals_for_pool::<Pools, AssetRegistry>(*pool_id)
+			.unwrap()
+			.ensure_into()
+			.unwrap();
 
-	pub struct Members;
+		let fixed_point = balance_to_fixed_point(balance, decimals).unwrap();
 
-	impl SortedMembers<AccountId> for Members {
-		fn sorted_members() -> Vec<AccountId> {
-			// We do not want members for benchmarking
-			Vec::default()
-		}
-
-		fn contains(_: &AccountId) -> bool {
-			// We want to mock the member permission for benchmark
-			// Allowing any member
-			true
-		}
+		Provider::set(&feeder.0.clone().into(), key, (fixed_point, timestamp));
 	}
 }

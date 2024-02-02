@@ -23,10 +23,10 @@ pub use types::*;
 
 /// Common types for all runtimes
 pub mod types {
-	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use frame_support::traits::EitherOfDiverse;
 	use frame_system::EnsureRoot;
 	use pallet_collective::EnsureProportionAtLeast;
+	use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -176,6 +176,12 @@ pub mod types {
 
 	/// The type for indexing pallets on a Substrate runtime
 	pub type PalletIndex = u8;
+
+	/// The representation of a pool fee identifier
+	pub type PoolFeeId = u64;
+
+	/// The type for outbound LP message nonces.
+	pub type OutboundMessageNonce = u64;
 }
 
 /// Common constants for all runtimes
@@ -222,7 +228,7 @@ pub mod constants {
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
 	pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0)
 		.saturating_div(2)
-		.set_proof_size(MAX_POV_SIZE as u64);
+		.set_proof_size(MAX_POV_SIZE);
 
 	pub const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
 	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
@@ -272,6 +278,14 @@ pub mod constants {
 	pub const MAX_POV_SIZE: u64 = cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64;
 	/// Block storage limit in bytes. Set to 40 KB.
 	pub const BLOCK_STORAGE_LIMIT: u64 = 40 * 1024;
+
+	/// The maximum number of fees per pool.
+	///
+	/// NOTE: Must be ge than [MAX_POOL_FEES_PER_BUCKET].
+	pub const MAX_FEES_PER_POOL: u32 = 200;
+
+	/// The maximum number of pool fees per pool fee bucket
+	pub const MAX_POOL_FEES_PER_BUCKET: u32 = 100;
 }
 
 /// Listing of parachains we integrate with.
@@ -340,7 +354,7 @@ pub mod liquidity_pools {
 }
 
 pub mod xcm {
-	use codec::{Compact, Encode};
+	use parity_scale_codec::{Compact, Encode};
 	use sp_io::hashing::blake2_256;
 	use sp_std::{marker::PhantomData, vec::Vec};
 	use xcm::prelude::{

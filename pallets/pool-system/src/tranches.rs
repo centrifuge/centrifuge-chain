@@ -22,7 +22,6 @@ use cfg_types::{
 	pools::TrancheMetadata,
 	tokens::{CrossChainTransferability, CustomMetadata},
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -31,6 +30,7 @@ use frame_support::{
 	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
 };
 use orml_traits::asset_registry::AssetMetadata;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use rev_slice::{RevSlice, SliceExt};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]

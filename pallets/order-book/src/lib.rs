@@ -42,7 +42,6 @@ pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
 	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook};
 	use cfg_types::{investments::Swap, tokens::CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -53,6 +52,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use orml_traits::asset_registry::{self, Inspect as _};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::{BaseArithmetic, CheckedSub};
 	use sp_runtime::{
@@ -651,7 +651,7 @@ pub mod pallet {
 			T::FulfilledOrderHook::notify_status_change(
 				order.order_id,
 				Swap {
-					amount: buy_amount,
+					amount_in: buy_amount,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				},
@@ -1020,7 +1020,7 @@ pub mod pallet {
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::AssetCurrencyId>> {
 			Orders::<T>::get(order)
 				.map(|order| Swap {
-					amount: order.buy_amount,
+					amount_in: order.buy_amount,
 					currency_in: order.asset_in_id,
 					currency_out: order.asset_out_id,
 				})

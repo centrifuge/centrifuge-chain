@@ -12,13 +12,14 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 cfg-primitives = { path = "../primitives", default-features = false }
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
 impl-trait-for-tuples = "0.2.1"
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.43" }
+strum = { workspace = true, default-features = false }
 
 [dev-dependencies]
 cfg-mocks = { path = "../mocks" }
@@ -35,13 +36,14 @@ runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
 ]
 std = [
-  "codec/std",
+  "parity-scale-codec/std",
   "frame-support/std",
   "sp-runtime/std",
   "sp-arithmetic/std",
   "sp-std/std",
   "cfg-primitives/std",
   "scale-info/std",
+  "strum/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",

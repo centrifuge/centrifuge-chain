@@ -1,16 +1,21 @@
 name: Docker Build
 on:
   # Keep in mind the Docker tagging on the "metadata" step if you add new triggers
+  workflow_dispatch: # In case a repo contributor needs a specific docker tag built.
   push:
     branches: [main]
   release:
-    types: [unpublished] # GITHUB_REF == tag pushed with the release
+    # Release logic:
+    #  https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=unpublished#release
+    types: [ created ] # GITHUB_REF == tag pushed with the release
   pull_request:
     paths:
       - ".github/workflows/build-docker.yml"
-      - "docker/centrifuge-chain/Dockerfile"
+      - "docker/centrifuge-chain"
+      - "docker/scripts"
+      - ".dockerignore"
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.ref == '/refs/heads/main' && github.sha || 'false' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}${{ github.event_name }}
   cancel-in-progress: true
 jobs:
   docker:
@@ -18,67 +23,68 @@ jobs:
       matrix:
         target: [ release, test ]
     runs-on: ubuntu-latest-8-cores
+    permissions:
+      contents: write # to update the GH release w/ Docker tags
+      packages: write # to upload images to ghcr
+      id-token: write
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4.1.1
         with:
           fetch-depth: 0
-      - name: Free space
-      # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          # sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
-      - name: check available docker space
-        run: |
-          docker volume ls
-          df -h
-
-      - name: Install toolchain from rust-toolchain.toml
-        shell: sh
-        run: |
-          TOOLCHAIN_VERSION=$(grep 'channel =' rust-toolchain.toml | awk -F'"' '{print $2}')
-          rustup toolchain install "$TOOLCHAIN_VERSION"
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3
-      - name: DockerHub Login
-        uses: docker/login-action@v3
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 #v3.0.0
+
+      - name: DockerHub Registry Login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - run: echo "NOW=$(date -u +%y-%m-%d)" >> $GITHUB_ENV
+      - name: Github Registry login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: echo "NOW=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
 
       - name: Setup docker metadata
         id: meta
-        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 #v5
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 #v5.5.1
         with:
-          images: centrifugeio/centrifuge-chain
-          flavor: |
-            suffix=-${{ env.NOW }}
-            prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
+          images: |
+            ghcr.io/centrifuge/centrifuge-chain
+            ${{ github.event_name != 'pull_request' && 'centrifugeio/centrifuge-chain' || ''}}
           tags: |
-            type=raw,event=branch,value={{branch}}-{{sha}}
-            type=semver,pattern={{raw}},suffix=,prefix=${{ matrix.target == 'test' && 'test-' || 'latest=auto' }}
-            type=semver,pattern={{major}},prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=
-            type=edge
+            type=semver,pattern={{raw}},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=ref,event=tag,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}
+            type=ref,event=pr,suffix=-{{sha}}-${{ env.NOW }},prefix=${{ matrix.target == 'test' && 'test-' || '' }}PR
+            type=ref,event=branch,prefix=${{ matrix.target == 'test' && 'test-' || '' }},suffix=-{{sha}}-${{ env.NOW }}
+          labels: |
+            org.opencontainers.image.vendor="k-f dev AG" \
+            org.opencontainers.image.authors="protocol@k-f.co" \	
+            org.opencontainers.image.documentation="https://github.com/centrifuge/centrifuge-chain/blob/main/README.md" \
+            org.opencontainers.image.base.name="ubuntu/jammy" \
+            org.opencontainers.image.base.digest="ubuntu@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b" 
 
-      - name: Configure sccache
-        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 #v6
+      - name: Configure GHA cache
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Build and push centrifugeio/centrifuge-chain
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 #v5
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 #v5.1.0
         with:
           context: .
           file: ./docker/centrifuge-chain/Dockerfile
           build-args: |
             FEATURES=${{ matrix.target == 'test' && 'fast-runtime' || '' }}
-          push: ${{ github.ref == '/refs/heads/main' && true || false }}
+          # Always push, either to ghcr or Dockerhub
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           # Cache options:
           # https://docs.docker.com/build/ci/github-actions/cache/
@@ -90,13 +96,22 @@ jobs:
 
       - name: Update DockerHub descriptions
         if: contains(github.ref, 'refs/tags/release-v')
-        uses: peter-evans/dockerhub-description@dc67fad7001ef9e8e3c124cb7a64e16d0a63d864 #v3.4.2
+        uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae #v4.0.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
           repository: centrifuge/centrifuge-chain
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
+
+      - name: Update GitHub release
+        if: github.event_name == 'release' && matrix.target == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          append_body: true
+          body: |
+            **Docker tags:**
+               ${{ steps.meta.outputs.tags }}
 
       - if: failure()
         name: Check available space after build failed

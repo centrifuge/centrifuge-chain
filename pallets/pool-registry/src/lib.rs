@@ -11,20 +11,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
 
 use cfg_traits::{
-	investments::TrancheCurrency, Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState,
+	fee::PoolFeeBucket, investments::TrancheCurrency, Permissions, PoolMutate,
+	PoolWriteOffPolicyMutate, UpdateState,
 };
 use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PoolMetadata, PoolRegistrationStatus},
+	pools::{PoolFeeInfo, PoolMetadata, PoolRegistrationStatus},
 	tokens::CustomMetadata,
 };
-use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::asset_registry::{Inspect, Mutate};
 pub use pallet::*;
+use parity_scale_codec::{HasCompact, MaxEncodedLen};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
 	FixedPointNumber, FixedPointOperand,
@@ -57,9 +59,13 @@ type PolicyOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWrite
 	<T as Config>::PoolId,
 >>::Policy;
 
+type PoolFeeInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::PoolId,
+>>::PoolFeeInput;
+
 #[frame_support::pallet]
 pub mod pallet {
-
 	use super::*;
 
 	#[pallet::config]
@@ -100,6 +106,10 @@ pub mod pallet {
 			Self::PoolId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
+			PoolFeeInput = (
+				PoolFeeBucket,
+				PoolFeeInfo<Self::AccountId, Self::Balance, Self::InterestRate>,
+			),
 		>;
 
 		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
@@ -241,6 +251,7 @@ pub mod pallet {
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
 			write_off_policy: PolicyOf<T>,
+			pool_fees: Vec<PoolFeeInputOf<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -278,6 +289,7 @@ pub mod pallet {
 				tranche_inputs,
 				currency,
 				max_reserve,
+				pool_fees,
 			)
 			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?;
 

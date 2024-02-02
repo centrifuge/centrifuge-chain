@@ -11,7 +11,7 @@ version = "1.0.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
@@ -26,6 +26,7 @@ xcm = { package = "staging-xcm",  git = "https://github.com/paritytech/polkadot-
 # Benchmarking dependencies - optional
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, tag = "polkadot-v1.1.0" }
 pallet-investments = { path = "../investments", default-features = false, optional = true }
+pallet-pool-fees = { workspace = true, default-features = false, optional = true }
 pallet-pool-system = { path = "../pool-system", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, tag = "polkadot-v1.1.0" }
 
@@ -59,12 +60,13 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
 ]
 std = [
-  "codec/std",
+  "parity-scale-codec/std",
   "frame-support/std",
   "frame-system/std",
   "sp-runtime/std",
@@ -78,6 +80,7 @@ std = [
   "pallet-investments/std",
   "scale-info/std",
   "xcm/std",
+  "pallet-pool-fees/std",
   "pallet-pool-system/std",
 ]
 try-runtime = [
@@ -88,6 +91,7 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
+  "pallet-pool-fees/try-runtime",
   "pallet-investments/try-runtime",
   "sp-runtime/try-runtime",
 ]

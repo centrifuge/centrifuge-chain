@@ -11,7 +11,7 @@ version = "1.0.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
@@ -27,7 +27,7 @@ sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features 
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, optional = true, tag = "polkadot-v1.1.0" }
 
 [dev-dependencies]
-cfg-test-utils = { path = "../../libs/test-utils" }
+cfg-mocks = { workspace = true, default-features = true }
 cfg-types = { path = "../../libs/types" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
@@ -41,9 +41,9 @@ sp-io = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1
 default = ["std"]
 runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
-  "cfg-test-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
@@ -54,7 +54,7 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
-  "codec/std",
+  "parity-scale-codec/std",
   "frame-benchmarking/std",
   "frame-support/std",
   "frame-system/std",
@@ -65,8 +65,8 @@ std = [
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
-  "cfg-test-utils/try-runtime",
   "cfg-traits/try-runtime",
+  "cfg-mocks/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "sp-runtime/try-runtime",

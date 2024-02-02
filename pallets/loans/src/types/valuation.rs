@@ -13,11 +13,11 @@
 
 use cfg_primitives::SECONDS_PER_YEAR;
 use cfg_traits::{interest::InterestRate, Seconds};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
 	RuntimeDebug,
 };
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
@@ -106,6 +106,10 @@ pub enum ValuationMethod<Rate> {
 	DiscountedCashFlow(DiscountedCashFlow<Rate>),
 	/// Outstanding debt valuation
 	OutstandingDebt,
+	/// Equal to OutstandingDebt but signals
+	/// that the given loan is i.e. an account
+	/// holding cash
+	Cash,
 }
 
 impl<Rate> ValuationMethod<Rate>
@@ -115,7 +119,7 @@ where
 	pub fn is_valid(&self) -> bool {
 		match self {
 			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate.per_year() <= One::one(),
-			ValuationMethod::OutstandingDebt => true,
+			ValuationMethod::OutstandingDebt | ValuationMethod::Cash => true,
 		}
 	}
 }

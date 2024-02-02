@@ -18,22 +18,22 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Codec, Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
+	scale_info::TypeInfo,
 	traits::UnixTime,
-	Parameter,
+	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
-use scale_info::TypeInfo;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{
 	traits::{
 		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
-	DispatchError, RuntimeDebug,
+	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
+use sp_std::{fmt::Debug, hash::Hash, marker::PhantomData, str::FromStr, vec::Vec};
 
 /// Traits related to checked changes.
 pub mod changes;
@@ -53,6 +53,7 @@ pub mod rewards;
 #[cfg(feature = "runtime-benchmarks")]
 /// Traits related to benchmarking tooling.
 pub mod benchmarking;
+pub mod fee;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -176,6 +177,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+	type PoolFeeInput: Encode + Decode + Clone + TypeInfo + Debug;
 
 	fn create(
 		admin: AccountId,
@@ -184,6 +186,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
@@ -336,6 +339,11 @@ pub trait PreConditions<T> {
 	type Result;
 
 	fn check(t: T) -> Self::Result;
+
+	/// Perform the required changes to satisfy the `check()` method in a
+	/// successful way
+	#[cfg(feature = "runtime-benchmarks")]
+	fn satisfy(_t: T) {}
 }
 
 #[impl_for_tuples(1, 10)]
@@ -373,8 +381,8 @@ impl<T> PreConditions<T> for Never {
 }
 
 pub mod fees {
-	use codec::FullCodec;
 	use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
+	use parity_scale_codec::FullCodec;
 	use scale_info::TypeInfo;
 	use sp_runtime::traits::MaybeSerializeDeserialize;
 
@@ -402,6 +410,15 @@ pub mod fees {
 
 		/// The fee value is already stored and identified by a key.
 		Key(FeeKey),
+	}
+
+	impl<Balance: Copy, FeeKey: Clone> Fee<Balance, FeeKey> {
+		pub fn value<F: Fees<Balance = Balance, FeeKey = FeeKey>>(&self) -> Balance {
+			match self {
+				Fee::Balance(value) => *value,
+				Fee::Key(key) => F::fee_value(key.clone()),
+			}
+		}
 	}
 
 	/// A trait that used to deal with fees
@@ -434,6 +451,32 @@ pub mod fees {
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls pay a fee
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_fee_requirements(_from: &Self::AccountId, _fee: Fee<Self::Balance, Self::FeeKey>) {}
+	}
+
+	/// Trait to pay fees
+	/// This trait can be used by a pallet to just pay fees without worring
+	/// about the value or where the fee goes.
+	pub trait PayFee<AccountId> {
+		/// Pay the fee using a payer
+		fn pay(payer: &AccountId) -> DispatchResult;
+
+		/// Allows to initialize an initial state required for a pallet that
+		/// calls `pay()`.
+		#[cfg(feature = "runtime-benchmarks")]
+		fn add_pay_requirements(_payer: &AccountId) {}
+	}
+
+	/// Type to avoid paying fees
+	pub struct NoPayFee;
+	impl<AccountId> PayFee<AccountId> for NoPayFee {
+		fn pay(_: &AccountId) -> DispatchResult {
+			Ok(())
+		}
 	}
 }
 
@@ -449,7 +492,7 @@ pub trait TransferAllowance<AccountId> {
 		send: AccountId,
 		receive: Self::Location,
 		currency: Self::CurrencyId,
-	) -> DispatchResult;
+	) -> Result<Option<Self::Location>, DispatchError>;
 }
 
 /// Trait to retrieve information about currencies.
@@ -584,6 +627,25 @@ pub trait StatusNotificationHook {
 	fn notify_status_change(id: Self::Id, status: Self::Status) -> Result<(), Self::Error>;
 }
 
+/// Trait to signal an epoch transition.
+pub trait EpochTransitionHook {
+	type Balance;
+	type PoolId;
+	type Time;
+	type Error;
+
+	/// Hook into the closing of an epoch
+	fn on_closing_mutate_reserve(
+		pool_id: Self::PoolId,
+		assets_under_management: Self::Balance,
+		reserve: &mut Self::Balance,
+	) -> Result<(), Self::Error>;
+
+	/// Hook into the execution of an epoch before any investment and
+	/// redemption fulfillments
+	fn on_execution_pre_fulfillments(pool_id: Self::PoolId) -> Result<(), Self::Error>;
+}
+
 /// Trait to synchronously provide a currency conversion estimation for foreign
 /// currencies into/from pool currencies.
 pub trait IdentityCurrencyConversion {
@@ -659,5 +721,24 @@ pub trait IntoSeconds {
 impl IntoSeconds for Millis {
 	fn into_seconds(self) -> Seconds {
 		self / 1000
+	}
+}
+
+pub trait ValueProvider<Source, Key> {
+	type Value;
+
+	fn get(source: &Source, id: &Key) -> Result<Option<Self::Value>, DispatchError>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn set(_source: &Source, _key: &Key, _value: Self::Value) {}
+}
+
+/// A provider that never returns a value
+pub struct NoProvider<Value>(PhantomData<Value>);
+impl<Source, Key, Value> ValueProvider<Source, Key> for NoProvider<Value> {
+	type Value = Value;
+
+	fn get(_: &Source, _: &Key) -> Result<Option<Self::Value>, DispatchError> {
+		Err(DispatchError::Other("No value"))
 	}
 }

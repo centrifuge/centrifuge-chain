@@ -11,11 +11,15 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::OrderId;
-use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{dispatch::fmt::Debug, RuntimeDebug};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureAdd, EnsureSub};
-use sp_runtime::{traits::Zero, DispatchError, DispatchResult, RuntimeDebug};
-use sp_std::{cmp::PartialEq, fmt::Debug};
+use sp_runtime::{
+	traits::{EnsureAddAssign, Zero},
+	ArithmeticError, DispatchError, DispatchResult,
+};
+use sp_std::cmp::PartialEq;
 
 use crate::orders::Order;
 
@@ -126,6 +130,14 @@ pub struct CollectedAmount<Balance> {
 	pub amount_payment: Balance,
 }
 
+impl<Balance: EnsureAddAssign + Copy> CollectedAmount<Balance> {
+	pub fn increase(&mut self, other: &Self) -> Result<(), ArithmeticError> {
+		self.amount_collected
+			.ensure_add_assign(other.amount_collected)?;
+		self.amount_payment.ensure_add_assign(other.amount_payment)
+	}
+}
+
 /// A representation of an investment identifier and the corresponding owner.
 ///
 /// NOTE: Trimmed version of `InvestmentInfo` required for foreign investments.
@@ -139,18 +151,7 @@ pub struct ForeignInvestmentInfo<AccountId, InvestmentId, TokenSwapReason> {
 
 /// A simple representation of a currency swap.
 #[derive(
-	Clone,
-	Default,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	Clone, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub struct Swap<
 	Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug,
@@ -161,7 +162,7 @@ pub struct Swap<
 	/// The outgoing currency, i.e. the one which should be replaced.
 	pub currency_out: Currency,
 	/// The amount of incoming currency which shall be bought.
-	pub amount: Balance,
+	pub amount_in: Balance,
 }
 
 impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clone + PartialEq>
@@ -193,6 +194,16 @@ impl<Balance: Clone + Copy + EnsureAdd + EnsureSub + Ord + Debug, Currency: Clon
 			))
 		} else {
 			Ok(())
+		}
+	}
+
+	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
+		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
+			Ok(true)
+		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
+			Ok(false)
+		} else {
+			Err(DispatchError::Other("Swap contains different currencies"))
 		}
 	}
 }
@@ -237,4 +248,70 @@ pub struct ExecutedForeignCollect<Balance, Currency> {
 	/// * If redemption: redemption amount of tranche tokens (denominated in
 	///   pool currency)
 	pub amount_remaining: Balance,
+}
+
+/// A representation of an investment portfolio consisting of free, pending and
+/// claimable pool currency as well as tranche tokens.
+#[derive(Encode, Decode, Default, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+
+pub struct InvestmentPortfolio<Balance, CurrencyId> {
+	/// The identifier of the pool currency
+	pub pool_currency_id: CurrencyId,
+	/// The unprocessed invest order amount in pool currency
+	pub pending_invest_currency: Balance,
+	/// The amount of tranche tokens which can be collected for an invest order
+	pub claimable_tranche_tokens: Balance,
+	/// The amount of tranche tokens which can be transferred
+	pub free_tranche_tokens: Balance,
+	/// The amount of tranche tokens which can not be used at all and could get
+	/// slashed
+	pub reserved_tranche_tokens: Balance,
+	/// The unprocessed redeem order amount in tranche tokens
+	pub pending_redeem_tranche_tokens: Balance,
+	/// The amount of pool currency which can be collected for a redeem order
+	pub claimable_currency: Balance,
+}
+
+impl<Balance: Default, CurrencyId> InvestmentPortfolio<Balance, CurrencyId> {
+	pub fn new(pool_currency_id: CurrencyId) -> Self {
+		Self {
+			pool_currency_id,
+			pending_invest_currency: Balance::default(),
+			claimable_tranche_tokens: Balance::default(),
+			free_tranche_tokens: Balance::default(),
+			reserved_tranche_tokens: Balance::default(),
+			pending_redeem_tranche_tokens: Balance::default(),
+			claimable_currency: Balance::default(),
+		}
+	}
+
+	pub fn with_pending_invest_currency(mut self, amount: Balance) -> Self {
+		self.pending_invest_currency = amount;
+		self
+	}
+
+	pub fn with_free_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.free_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_reserved_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.reserved_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_claimable_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.claimable_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_pending_redeem_tranche_tokens(mut self, amount: Balance) -> Self {
+		self.pending_redeem_tranche_tokens = amount;
+		self
+	}
+
+	pub fn with_claimable_currency(mut self, amount: Balance) -> Self {
+		self.claimable_currency = amount;
+		self
+	}
 }

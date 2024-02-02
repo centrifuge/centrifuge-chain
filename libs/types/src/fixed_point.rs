@@ -13,7 +13,7 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
@@ -550,7 +550,7 @@ impl<const DIV: u128> FixedPointNumberExtension for FixedU128<DIV> {
 
 		multiply_by_rational_with_rounding(
 			lhs.value,
-			Self::DIV as u128,
+			Self::DIV,
 			rhs.value,
 			Rounding::from_signed(r, negative),
 		)

@@ -47,8 +47,8 @@ benchmarks! {
 		we remove it again.
 
   reward{
-		let para_account: T::AccountId = codec::Decode::decode(&mut codec::Encode::encode(&mut 1u64).as_slice()).unwrap();
-		let contribution: T::RelayChainBalance = codec::Decode::decode(&mut codec::Encode::encode(&mut 100u64).as_slice()).unwrap();
+		let para_account: T::AccountId = parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&mut 1u64).as_slice()).unwrap();
+		let contribution: T::RelayChainBalance = parity_scale_codec::Decode::decode(&mut parity_scale_codec::Encode::encode(&mut 100u64).as_slice()).unwrap();
 
   }: reward(RawOrigin::Root, para_account, contribution)
   verify {

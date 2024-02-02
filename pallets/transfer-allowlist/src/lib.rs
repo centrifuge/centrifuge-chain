@@ -40,14 +40,17 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::fees::Fees;
-	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
-		traits::{tokens::AssetId, Currency, ReservableCurrency},
+		traits::{
+			fungible,
+			fungible::MutateHold,
+			tokens::{AssetId, Precision},
+		},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
+	use parity_scale_codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::{
 		traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub},
@@ -57,15 +60,20 @@ pub mod pallet {
 	use super::*;
 
 	/// Balance type for the reserve/deposit made when creating an Allowance
-	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
 	/// AllowanceDetails where `BlockNumber` is of type BlockNumberFor<T>
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
 
+	/// Resons for holding as defined by the fungible::hold::Inspect trait
+	pub type ReasonOf<T> = <<T as Config>::ReserveCurrency as fungible::hold::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Reason;
+
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -76,32 +84,17 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Id type of Currency transfer restrictions will be checked for
-		type CurrencyId: AssetId
-			+ Parameter
-			+ Debug
-			+ Default
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		type CurrencyId: AssetId + Parameter + Member + Copy;
 
-		/// Currency for Reserve/Unreserve with allowlist adding/removal,
+		/// Currency for holding/unholding with allowlist adding/removal,
 		/// given that the allowlist will be in storage
-		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type ReserveCurrency: fungible::hold::Mutate<Self::AccountId>;
 
-		/// Fee handler for the reserve/unreserve
-		/// Currently just stores the amounts, will be extended to handle
-		/// reserve/unreserve as well in future
-		type Fees: Fees<
-			AccountId = <Self as frame_system::Config>::AccountId,
-			Balance = DepositBalanceOf<Self>,
-		>;
+		/// The identifier to be used for holding.
+		type HoldId: Get<ReasonOf<Self>>;
 
-		/// Fee Key used to find amount for allowance reserve/unreserve
-		type AllowanceFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
+		/// Deposit amount
+		type Deposit: Get<DepositBalanceOf<Self>>;
 
 		/// Type containing the locations a transfer can be sent to.
 		type Location: Member
@@ -351,10 +344,7 @@ pub mod pallet {
 				&receiver,
 			)) {
 				Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
-				T::ReserveCurrency::reserve(
-					&account_id,
-					T::Fees::fee_value(T::AllowanceFeeKey::get()),
-				)?;
+				T::ReserveCurrency::hold(&T::HoldId::get(), &account_id, T::Deposit::get())?;
 			};
 			<AccountCurrencyTransferAllowance<T>>::insert(
 				(&account_id, &currency_id, &receiver),
@@ -376,7 +366,7 @@ pub mod pallet {
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::remove_transfer_allowance_missing_allowance().max(T::WeightInfo::remove_transfer_allowance_delay_present()))]
+		#[pallet::weight(T::WeightInfo::remove_transfer_allowance_delay_present().max(T::WeightInfo::remove_transfer_allowance_no_delay()))]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -433,10 +423,12 @@ pub mod pallet {
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
 			{
 				Some(AllowanceDetails { blocked_at, .. }) if blocked_at < current_block => {
-					T::ReserveCurrency::unreserve(
+					T::ReserveCurrency::release(
+						&T::HoldId::get(),
 						&account_id,
-						T::Fees::fee_value(T::AllowanceFeeKey::get()),
-					);
+						T::Deposit::get(),
+						Precision::BestEffort,
+					)?;
 					<AccountCurrencyTransferAllowance<T>>::remove((
 						&account_id,
 						&currency_id,
@@ -761,24 +753,28 @@ pub mod pallet {
 			send: T::AccountId,
 			receive: Self::Location,
 			currency: T::CurrencyId,
-		) -> DispatchResult {
+		) -> Result<Option<Self::Location>, DispatchError> {
 			match Self::get_account_currency_restriction_count_delay(&send, currency) {
 				Some(AllowanceMetadata {
 					allowance_count: count,
 					..
 				}) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						receive.clone(),
+					)) {
 						Some(AllowanceDetails {
 							allowed_at,
 							blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(()),
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(Some(receive)),
 						_ => Err(DispatchError::from(Error::<T>::NoAllowanceForDestination)),
 					}
 				}
 				// In this case no allowances are set for the sending account & currency,
 				// therefore no restrictions should be in place.
-				_ => Ok(()),
+				_ => Ok(None),
 			}
 		}
 	}

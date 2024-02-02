@@ -30,10 +30,23 @@ pub struct FudgeEnv<T: Runtime + FudgeSupport> {
 	nonce_storage: HashMap<Keyring, Index>,
 }
 
+impl<T: Runtime + FudgeSupport> Default for FudgeEnv<T> {
+	fn default() -> Self {
+		Self::from_storage(Default::default(), Default::default(), Default::default())
+	}
+}
+
 impl<T: Runtime + FudgeSupport> Env<T> for FudgeEnv<T> {
-	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self {
-		let mut handle =
-			T::FudgeHandle::new(Storage::default(), parachain_storage, sibling_storage);
+	fn from_parachain_storage(parachain_storage: Storage) -> Self {
+		Self::from_storage(Default::default(), parachain_storage, Default::default())
+	}
+
+	fn from_storage(
+		relay_storage: Storage,
+		parachain_storage: Storage,
+		sibling_storage: Storage,
+	) -> Self {
+		let mut handle = T::FudgeHandle::new(relay_storage, parachain_storage, sibling_storage);
 
 		handle.evolve();
 
@@ -140,13 +153,12 @@ mod tests {
 	use crate::generic::{env::Blocks, utils::genesis::Genesis};
 
 	fn correct_nonce_for_submit_later<T: Runtime + FudgeSupport>() {
-		let mut env = FudgeEnv::<T>::from_storage(
+		let mut env = FudgeEnv::<T>::from_parachain_storage(
 			Genesis::default()
 				.add(pallet_balances::GenesisConfig::<T> {
 					balances: vec![(Keyring::Alice.to_account_id(), 1 * CFG)],
 				})
 				.storage(),
-			Genesis::<T>::default().storage(),
 		);
 
 		env.submit_later(

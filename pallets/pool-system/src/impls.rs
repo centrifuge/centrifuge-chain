@@ -12,10 +12,11 @@
 
 use cfg_traits::{
 	changes::ChangeGuard,
+	fee::{PoolFeeBucket, PoolFees},
 	investments::{InvestmentAccountant, TrancheCurrency},
 	CurrencyPair, PoolUpdateGuard, PriceValue, TrancheTokenPrice, UpdateState,
 };
-use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
+use cfg_types::{epoch::EpochState, investments::InvestmentInfo, pools::PoolFeeInfo};
 use frame_support::traits::{
 	tokens::{Fortitude, Precision, Preservation},
 	Contains,
@@ -70,7 +71,7 @@ impl<T: Config> TrancheTokenPrice<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 		// Get cached nav as calculating current nav would be too computationally
 		// expensive
-		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
+		let (nav, nav_last_updated) = T::AssetsUnderManagementNAV::nav(pool_id)?;
 		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
 		let tranche_index: usize = pool
@@ -108,6 +109,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
 	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
+	type PoolFeeInput = (
+		PoolFeeBucket,
+		PoolFeeInfo<T::AccountId, T::Balance, T::Rate>,
+	);
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(
@@ -117,6 +122,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
+		pool_fees: Vec<Self::PoolFeeInput>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -175,6 +181,10 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
+		}
+
+		for (fee_bucket, pool_fee) in pool_fees.into_iter() {
+			T::PoolFees::add_fee(pool_id, fee_bucket, pool_fee)?;
 		}
 
 		let pool_details = PoolDetails {
@@ -401,12 +411,13 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 	type PoolId = T::PoolId;
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
+		// NOTE: Essentially, this key-generation allows to override previously
+		//       submitted changes, if they are identical.
+		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
 		let noted_change = NotedPoolChange {
 			submitted_time: T::Time::now(),
 			change,
 		};
-
-		let change_id: Self::ChangeId = T::Hashing::hash(&noted_change.encode());
 		NotedChange::<T>::insert(pool_id, change_id, noted_change.clone());
 
 		Self::deposit_event(Event::ProposedChange {
@@ -455,7 +466,9 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks_utils {
 	use cfg_traits::{
-		benchmarking::{InvestmentIdBenchmarkHelper, PoolBenchmarkHelper},
+		benchmarking::{
+			FundedPoolBenchmarkHelper, InvestmentIdBenchmarkHelper, PoolBenchmarkHelper,
+		},
 		investments::Investment,
 	};
 	use cfg_types::{
@@ -470,20 +483,13 @@ mod benchmarks_utils {
 	use super::*;
 
 	const POOL_CURRENCY: CurrencyId = CurrencyId::ForeignAsset(1);
+	const FUNDS: u128 = u64::max_value() as u128;
 
-	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
-	where
-		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
-		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
-	{
+	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T> {
 		type AccountId = T::AccountId;
-		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
 		fn bench_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
-			const FUNDS: u128 = u64::max_value() as u128;
-			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
-
 			if T::AssetRegistry::metadata(&POOL_CURRENCY).is_none() {
 				frame_support::assert_ok!(T::AssetRegistry::register_asset(
 					Some(POOL_CURRENCY),
@@ -533,9 +539,27 @@ mod benchmarks_utils {
 				],
 				POOL_CURRENCY,
 				FUNDS.into(),
+				// NOTE: Genesis pool fees missing per default, could be added via <T::PoolFees as
+				// PoolFeesBenchmarkHelper>::add_pool_fees(..)
+				vec![],
 			));
+		}
+	}
+
+	impl<T: Config<CurrencyId = CurrencyId>> FundedPoolBenchmarkHelper for Pallet<T>
+	where
+		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
+		<T::Investments as Investment<T::AccountId>>::Amount: From<u128>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn bench_create_funded_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+			Self::bench_create_pool(pool_id, admin);
 
 			// Fund pool account
+			const POOL_ACCOUNT_BALANCE: u128 = u64::max_value() as u128;
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			frame_support::assert_ok!(T::Tokens::mint_into(
 				POOL_CURRENCY,
@@ -555,7 +579,7 @@ mod benchmarks_utils {
 					.of_tranche();
 			frame_support::assert_ok!(T::Investments::update_investment(
 				&investor,
-				T::TrancheCurrency::generate(pool_id.into(), tranche),
+				T::TrancheCurrency::generate(pool_id, tranche),
 				FUNDS.into(),
 			));
 

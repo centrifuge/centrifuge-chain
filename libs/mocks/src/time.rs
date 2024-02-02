@@ -33,4 +33,13 @@ pub mod pallet {
 			execute_call!(())
 		}
 	}
+
+	impl<T: Config> frame_support::traits::UnixTime for Pallet<T>
+	where
+		T::Moment: Into<u64>,
+	{
+		fn now() -> std::time::Duration {
+			core::time::Duration::from_millis(<Pallet<T> as Time>::now().into())
+		}
+	}
 }

@@ -219,26 +219,6 @@ pub trait InvestmentAccountant<AccountId> {
 	) -> Result<(), Self::Error>;
 }
 
-/// Trait to handle Investment Portfolios for accounts
-pub trait InvestmentsPortfolio<Account> {
-	type InvestmentId;
-	type CurrencyId;
-	type Balance;
-	type Error;
-	type AccountInvestmentPortfolio;
-
-	/// Get the payment currency for an investment.
-	fn get_investment_currency_id(
-		investment_id: Self::InvestmentId,
-	) -> Result<Self::CurrencyId, Self::Error>;
-
-	/// Get the investments and associated payment currencies and balances for
-	/// an account.
-	fn get_account_investments_currency(
-		who: &Account,
-	) -> Result<Self::AccountInvestmentPortfolio, Self::Error>;
-}
-
 /// Trait to handle investments in (presumably) foreign currencies, i.e., other
 /// currencies than the pool currency.
 ///
@@ -262,7 +242,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the decrement of a foreign investment amount in
@@ -278,7 +257,6 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payment_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Initiates the increment of a foreign redemption amount for the given
@@ -306,7 +284,7 @@ pub trait ForeignInvestment<AccountId> {
 		investment_id: Self::InvestmentId,
 		amount: Self::Amount,
 		foreign_payout_currency: Self::CurrencyId,
-	) -> Result<(Self::Amount, Self::Amount), Self::Error>;
+	) -> Result<(), Self::Error>;
 
 	/// Collect the results of a user's foreign invest orders for the given
 	/// investment. If any amounts are not fulfilled they are directly
@@ -328,7 +306,6 @@ pub trait ForeignInvestment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 		foreign_payout_currency: Self::CurrencyId,
-		pool_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
 	/// Returns, if possible, the currently unprocessed investment amount (in

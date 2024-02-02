@@ -9,12 +9,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::fees::{self, Fee, FeeKey};
-use codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 };
 pub use pallet::*;
+use parity_scale_codec::EncodeLike;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -196,6 +196,12 @@ impl<T: Config> fees::Fees for Pallet<T> {
 		});
 		Ok(())
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_fee_requirements(from: &Self::AccountId, fee: Fee<Self::Balance, Self::FeeKey>) {
+		T::Currency::deposit_creating(from, T::Currency::minimum_balance());
+		T::Currency::deposit_creating(from, fee.value::<Self>());
+	}
 }
 
 impl<T: Config> Pallet<T> {
@@ -203,14 +209,9 @@ impl<T: Config> Pallet<T> {
 		from: &T::AccountId,
 		fee: Fee<BalanceOf<T>, T::FeeKey>,
 	) -> Result<ImbalanceOf<T>, DispatchError> {
-		let balance = match fee {
-			Fee::Balance(balance) => balance,
-			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
-		};
-
 		T::Currency::withdraw(
 			from,
-			balance,
+			fee.value::<Self>(),
 			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,
 		)

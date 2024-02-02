@@ -12,7 +12,7 @@ version = "0.1.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+parity-scale-codec = { version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
@@ -57,7 +57,7 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
-  "codec/std",
+  "parity-scale-codec/std",
   "frame-benchmarking/std",
   "frame-support/std",
   "frame-system/std",

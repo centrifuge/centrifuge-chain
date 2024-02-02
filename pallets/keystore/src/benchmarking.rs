@@ -11,10 +11,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
+use parity_scale_codec::EncodeLike;
 use scale_info::prelude::format;
 use sp_runtime::traits::Hash;
 
@@ -103,7 +103,7 @@ fn build_test_keys<T: Config>(n: u32) -> Vec<AddKey<T::Hash>> {
 		});
 	}
 
-	return keys;
+	keys
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

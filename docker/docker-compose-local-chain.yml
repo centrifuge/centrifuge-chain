@@ -3,19 +3,20 @@ services:
   cc_alice:
     profiles:
       - default
+    user: root
     container_name: cc-alice
-    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-latest}"
     platform: "linux/x86_64"
     ports:
       - "30355:30333"
       - "9946:9933"
     volumes:
       - type: bind
-        source: ./res/rococo-local.json
+        source: ../node/res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
-      --chain="${PARA_CHAIN_SPEC:-development}" 
+      --chain="${PARA_CHAIN_SPEC:-development}"
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
@@ -26,18 +27,18 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --log="main,info,xcm=trace,xcm-executor=trace"
-      --database=auto
-      -- 
-      --wasm-execution=compiled 
+      --database=rocksdb
+      --
+      --wasm-execution=compiled
       --execution=wasm
-      --chain=/chainspec.json 
+      --chain=/chainspec.json
       --bootnodes="/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWDLpRT9KFo6pKdkmdQQt599tmqVYpoeiHemY32Gf4RUpp"
       --bootnodes="/ip4/127.0.0.1/tcp/30344/p2p/12D3KooWKpaJZbNymrZmKG6BNNDC58z8p9YKDXfZtyhEjktgtph4"
   cc_alice_pre_polkadot_v0.9.43:
     profiles:
       - old
     container_name: cc-alice
-    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-latest}"
     platform: "linux/x86_64"
     ports:
       - "30355:30333"
@@ -45,11 +46,11 @@ services:
       - "9946:9944"
     volumes:
       - type: bind
-        source: ./res/rococo-local.json
+        source: ../node/res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
-      --chain="${PARA_CHAIN_SPEC:-development}" 
+      --chain="${PARA_CHAIN_SPEC:-development}"
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
@@ -60,9 +61,9 @@ services:
       --rpc-methods=Unsafe
       --state-cache-size=0
       --log="main,info,xcm=trace,xcm-executor=trace"
-      -- 
-      --wasm-execution=compiled 
+      --
+      --wasm-execution=compiled
       --execution=wasm
-      --chain=/chainspec.json 
+      --chain=/chainspec.json
       --bootnodes="/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWDLpRT9KFo6pKdkmdQQt599tmqVYpoeiHemY32Gf4RUpp"
       --bootnodes="/ip4/127.0.0.1/tcp/30344/p2p/12D3KooWKpaJZbNymrZmKG6BNNDC58z8p9YKDXfZtyhEjktgtph4"

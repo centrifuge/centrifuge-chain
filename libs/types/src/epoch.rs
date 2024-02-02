@@ -11,12 +11,10 @@
 // GNU General Public License for more details.
 
 use cfg_traits::Seconds;
-use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{One, Saturating},
-	RuntimeDebug,
-};
+use sp_runtime::traits::{One, Saturating};
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochState<EpochId> {

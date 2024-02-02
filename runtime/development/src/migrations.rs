@@ -10,4 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub type UpgradeDevelopment1033 = ();
+pub type UpgradeDevelopment1038 = (
+	runtime_common::migrations::epoch_execution::Migration<super::Runtime>,
+	runtime_common::migrations::transfer_allowlist_currency::Migration<crate::Runtime>,
+);

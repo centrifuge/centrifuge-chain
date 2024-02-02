@@ -5,13 +5,14 @@ use std::marker::PhantomData;
 
 use cfg_primitives::Balance;
 use cfg_types::tokens::CurrencyId;
-use codec::Encode;
 use frame_support::traits::GenesisBuild;
+use parity_scale_codec::Encode;
+use sp_core::crypto::AccountId32;
 use sp_runtime::Storage;
 
 use crate::{
 	generic::{config::Runtime, utils::currency},
-	utils::accounts::default_accounts,
+	utils::accounts::{default_accounts, Keyring},
 };
 
 pub struct Genesis<T> {
@@ -29,7 +30,7 @@ impl<T> Default for Genesis<T> {
 }
 
 impl<T: Runtime> Genesis<T> {
-	pub fn add(mut self, builder: impl GenesisBuild<T>) -> Self {
+	pub fn add<I: 'static>(mut self, builder: impl GenesisBuild<T, I>) -> Self {
 		builder.assimilate_storage(&mut self.storage).unwrap();
 		self
 	}
@@ -39,7 +40,7 @@ impl<T: Runtime> Genesis<T> {
 	}
 }
 
-// Add GenesisBuild functions for initialize your pallets
+// Add GenesisBuild functions for pallet initialization.
 
 pub fn balances<T: Runtime>(balance: Balance) -> impl GenesisBuild<T> {
 	pallet_balances::GenesisConfig::<T> {
@@ -73,5 +74,20 @@ pub fn assets<T: Runtime>(currency_ids: Vec<CurrencyId>) -> impl GenesisBuild<T>
 			.map(|currency_id| (currency_id, currency::find_metadata(currency_id).encode()))
 			.collect(),
 		last_asset_id: Default::default(), // It seems deprecated
+	}
+}
+
+pub fn council_members<T, I>(members: Vec<Keyring>) -> impl GenesisBuild<T, I>
+where
+	I: 'static,
+	T: pallet_collective::Config<I>,
+	T::AccountId: From<AccountId32>,
+{
+	pallet_collective::GenesisConfig::<T, I> {
+		phantom: Default::default(),
+		members: members
+			.into_iter()
+			.map(|acc| acc.to_account_id().into())
+			.collect(),
 	}
 }

@@ -15,22 +15,46 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod tests;
-
 pub mod account_conversion;
 pub mod apis;
+pub mod changes;
 pub mod evm;
+pub mod fees;
 pub mod gateway;
 pub mod migrations;
 pub mod oracle;
+pub mod remarks;
+pub mod transfer_filter;
 pub mod xcm;
 
 use cfg_primitives::Balance;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::{fee_keys::FeeKey, tokens::CurrencyId};
 use orml_traits::GetByKey;
+use sp_core::parameter_types;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
+
+parameter_types! {
+	/// The native currency identifier of our currency id enum
+	/// to be used for Get<CurrencyId> types.
+	pub const NativeCurrency: CurrencyId = CurrencyId::Native;
+
+	/// The hold identifier in our system to be used for
+	/// Get<()> types
+	pub const HoldId: HoldIdentifier = ();
+}
+
+pub struct AllowanceDeposit<T>(sp_std::marker::PhantomData<T>);
+impl<T: cfg_traits::fees::Fees<Balance = Balance, FeeKey = FeeKey>> Get<Balance>
+	for AllowanceDeposit<T>
+{
+	fn get() -> Balance {
+		T::fee_value(FeeKey::AllowanceCreation)
+	}
+}
+
+/// To be used with the transfer-allowlist pallet across runtimes
+pub type HoldIdentifier = ();
 
 #[macro_export]
 macro_rules! production_or_benchmark {
@@ -91,103 +115,17 @@ pub mod xcm_fees {
 	}
 }
 
-pub mod fees {
-	use cfg_primitives::{
-		constants::{CENTI_CFG, TREASURY_FEE_RATIO},
-		types::Balance,
-	};
-	use frame_support::{
-		traits::{Currency, Imbalance, OnUnbalanced},
-		weights::{
-			constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
-			WeightToFeePolynomial,
-		},
-	};
-	use smallvec::smallvec;
-	use sp_arithmetic::Perbill;
-
-	pub type NegativeImbalance<R> = <pallet_balances::Pallet<R> as Currency<
-		<R as frame_system::Config>::AccountId,
-	>>::NegativeImbalance;
-
-	struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
-	impl<R> OnUnbalanced<NegativeImbalance<R>> for ToAuthor<R>
-	where
-		R: pallet_balances::Config + pallet_authorship::Config,
-	{
-		fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
-			if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
-				<pallet_balances::Pallet<R>>::resolve_creating(&author, amount);
-			}
-		}
-	}
-
-	pub struct DealWithFees<R>(sp_std::marker::PhantomData<R>);
-	impl<R> OnUnbalanced<NegativeImbalance<R>> for DealWithFees<R>
-	where
-		R: pallet_balances::Config + pallet_treasury::Config + pallet_authorship::Config,
-		pallet_treasury::Pallet<R>: OnUnbalanced<NegativeImbalance<R>>,
-	{
-		fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance<R>>) {
-			if let Some(fees) = fees_then_tips.next() {
-				// for fees, split the destination
-				let (treasury_amount, mut author_amount) = fees.ration(
-					TREASURY_FEE_RATIO.deconstruct(),
-					(Perbill::one() - TREASURY_FEE_RATIO).deconstruct(),
-				);
-				if let Some(tips) = fees_then_tips.next() {
-					// for tips, if any, 100% to author
-					tips.merge_into(&mut author_amount);
-				}
-
-				use pallet_treasury::Pallet as Treasury;
-				<Treasury<R> as OnUnbalanced<_>>::on_unbalanced(treasury_amount);
-				<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(author_amount);
-			}
-		}
-	}
-
-	/// Handles converting a weight scalar to a fee value, based on the scale
-	/// and granularity of the node's balance type.
-	///
-	/// This should typically create a mapping between the following ranges:
-	///   - [0, frame_system::MaximumBlockWeight]
-	///   - [Balance::min, Balance::max]
-	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some
-	/// examples being:
-	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to
-	///     be charged.
-	pub struct WeightToFee;
-	impl WeightToFeePolynomial for WeightToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			let p = CENTI_CFG;
-			let q = 10 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
-
-			smallvec!(WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			})
-		}
-	}
-}
-
 /// AssetRegistry's AssetProcessor
 pub mod asset_registry {
 	use cfg_primitives::types::{AccountId, Balance};
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
-	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		dispatch::RawOrigin,
 		sp_std::marker::PhantomData,
 		traits::{EnsureOrigin, EnsureOriginWithArg},
 	};
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
@@ -251,177 +189,181 @@ pub mod asset_registry {
 	}
 }
 
-pub mod changes {
-	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::RuntimeDebug;
-	use pallet_loans::entities::changes::Change as LoansChange;
-	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
-	use scale_info::TypeInfo;
-	use sp_runtime::DispatchError;
-
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub enum RuntimeChange<T: pallet_loans::Config> {
-		Loan(LoansChange<T>),
-	}
-
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(loans_change): RuntimeChange<T>) -> Self {
-			use cfg_primitives::SECONDS_PER_WEEK;
-			use pallet_loans::entities::changes::{InternalMutation, LoanMutation};
-			use pallet_pool_system::pool_types::changes::Requirement;
-			use sp_std::vec;
-
-			let epoch = Requirement::NextEpoch;
-			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
-			let blocked = Requirement::BlockedByLockedRedemptions;
-
-			let requirements = match loans_change {
-				// Requirements gathered from
-				// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
-				LoansChange::<T>::Loan(_, loan_mutation) => match loan_mutation {
-					LoanMutation::Maturity(_) => vec![week, blocked],
-					LoanMutation::MaturityExtension(_) => vec![],
-					LoanMutation::InterestPayments(_) => vec![week, blocked],
-					LoanMutation::PayDownSchedule(_) => vec![week, blocked],
-					LoanMutation::InterestRate(_) => vec![epoch],
-					LoanMutation::Internal(mutation) => match mutation {
-						InternalMutation::ValuationMethod(_) => vec![week, blocked],
-						InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
-						InternalMutation::LossGivenDefault(_) => vec![epoch],
-						InternalMutation::DiscountRate(_) => vec![epoch],
-					},
-				},
-				LoansChange::<T>::Policy(_) => vec![week, blocked],
-				LoansChange::<T>::TransferDebt(_, _, _, _) => vec![epoch, blocked],
-			};
-
-			PoolChangeProposal::new(requirements)
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-		fn from(RuntimeChange::Loan(_): RuntimeChange<T>) -> Self {
-			// We dont add any requirement in case of benchmarking.
-			// We assume checking requirements in the pool is something very fast and
-			// deprecable in relation to reading from any storage.
-			// If tomorrow any requirement requires a lot of time,
-			// it should be precomputed in any pool stage, to make the requirement
-			// validation as fast as possible.
-			PoolChangeProposal::new([])
-		}
-	}
-
-	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-			RuntimeChange::Loan(loan_change)
-		}
-	}
-
-	/// Used for recovering LoanChange in pallet-loans
-	impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-		type Error = DispatchError;
-
-		fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-			let RuntimeChange::Loan(loan_change) = self;
-			Ok(loan_change)
-		}
-	}
-
-	pub mod fast {
-		use pallet_pool_system::pool_types::changes::Requirement;
-
-		use super::*;
-
-		const SECONDS_PER_WEEK: u32 = 60;
-
-		#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-		pub struct RuntimeChange<T: pallet_loans::Config>(super::RuntimeChange<T>);
-
-		impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
-			fn from(runtime_change: RuntimeChange<T>) -> Self {
-				PoolChangeProposal::new(
-					PoolChangeProposal::from(runtime_change.0)
-						.requirements()
-						.map(|req| match req {
-							Requirement::DelayTime(_) => Requirement::DelayTime(SECONDS_PER_WEEK),
-							req => req,
-						}),
-				)
-			}
-		}
-
-		/// Used for building CfgChanges in pallet-loans
-		impl<T: pallet_loans::Config> From<LoansChange<T>> for RuntimeChange<T> {
-			fn from(loan_change: LoansChange<T>) -> RuntimeChange<T> {
-				Self(loan_change.into())
-			}
-		}
-
-		/// Used for recovering LoanChange in pallet-loans
-		impl<T: pallet_loans::Config> TryInto<LoansChange<T>> for RuntimeChange<T> {
-			type Error = DispatchError;
-
-			fn try_into(self) -> Result<LoansChange<T>, DispatchError> {
-				self.0.try_into()
-			}
-		}
-	}
-}
-
 /// Module for investment portfolio common to all runtimes
 pub mod investment_portfolios {
-
-	use cfg_traits::investments::{InvestmentsPortfolio, TrancheCurrency};
-	use sp_std::vec::Vec;
+	use cfg_primitives::{Balance, PoolId, TrancheId};
+	use cfg_traits::{
+		investments::{InvestmentCollector, TrancheCurrency},
+		PoolInspect, Seconds,
+	};
+	use cfg_types::{investments::InvestmentPortfolio, tokens::CurrencyId};
+	use frame_support::traits::{
+		fungibles,
+		tokens::{Fortitude, Preservation},
+	};
+	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	/// Get the PoolId, CurrencyId, InvestmentId, and Balance for all
 	/// investments for an account.
-	pub fn get_portfolios<
-		Runtime,
-		AccountId,
-		TrancheId,
-		Investments,
-		InvestmentId,
-		CurrencyId,
-		PoolId,
-		Balance,
-	>(
-		account_id: AccountId,
-	) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>
+	///
+	/// NOTE: Moving inner scope to any pallet would introduce tight(er)
+	/// coupling due to requirement of iterating over storage maps which in turn
+	/// require the pallet's Config trait.
+	pub fn get_account_portfolio<T, PoolInspector>(
+		investor: <T as frame_system::Config>::AccountId,
+	) -> Vec<(
+		<T as pallet_investments::Config>::InvestmentId,
+		InvestmentPortfolio<Balance, CurrencyId>,
+	)>
 	where
-		Investments: InvestmentsPortfolio<
-			AccountId,
-			AccountInvestmentPortfolio = Vec<(InvestmentId, CurrencyId, Balance)>,
-			InvestmentId = InvestmentId,
-			CurrencyId = CurrencyId,
-			Balance = Balance,
+		T: frame_system::Config
+			+ pallet_investments::Config
+			+ orml_tokens::Config
+			+ pallet_restricted_tokens::Config,
+		<T as pallet_investments::Config>::InvestmentId: TrancheCurrency<PoolId, TrancheId>
+			+ Into<<T as orml_tokens::Config>::CurrencyId>
+			+ Ord
+			+ Into<<T as pallet_restricted_tokens::Config>::CurrencyId>,
+		CurrencyId: From<<T as orml_tokens::Config>::CurrencyId>
+			+ From<<T as pallet_restricted_tokens::Config>::CurrencyId>,
+		<T as pallet_restricted_tokens::Config>::CurrencyId:
+			From<<T as orml_tokens::Config>::CurrencyId>,
+		Balance: From<<T as pallet_investments::Config>::Amount>
+			+ From<<T as pallet_restricted_tokens::Config>::Balance>,
+		PoolInspector: PoolInspect<
+			<T as frame_system::Config>::AccountId,
+			<T as pallet_restricted_tokens::Config>::CurrencyId,
+			PoolId = PoolId,
+			TrancheId = TrancheId,
+			Moment = Seconds,
 		>,
-		AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
-		InvestmentId: TrancheCurrency<PoolId, TrancheId>,
-		Runtime: frame_system::Config,
 	{
-		let account_investments: Vec<(InvestmentId, CurrencyId, Balance)> =
-			Investments::get_account_investments_currency(&account_id).ok()?;
-		// Pool getting defined in runtime
-		// as opposed to pallet helper method
-		// as getting pool id in investments pallet
-		// would force tighter coupling of investments
-		// and pool pallets.
-		let portfolio: Vec<(PoolId, CurrencyId, InvestmentId, Balance)> = account_investments
-			.into_iter()
-			.map(|(investment_id, currency_id, balance)| {
-				(investment_id.of_pool(), currency_id, investment_id, balance)
-			})
-			.collect();
-		Some(portfolio)
+		let mut portfolio = BTreeMap::<
+			<T as pallet_investments::Config>::InvestmentId,
+			InvestmentPortfolio<Balance, CurrencyId>,
+		>::new();
+
+		// Denote current tranche token balances before dry running collecting
+		orml_tokens::Accounts::<T>::iter_key_prefix(&investor).for_each(|currency| {
+			if let CurrencyId::Tranche(pool_id, tranche_id) = CurrencyId::from(currency) {
+				let pool_currency = PoolInspector::currency_for(pool_id)
+					.expect("Pool must exist; qed")
+					.into();
+				let free_balance = <pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
+					T::AccountId,
+				>>::reducible_balance(
+					currency.into(),
+					&investor,
+					Preservation::Preserve,
+					Fortitude::Polite,
+				);
+				let reserved_balance = <pallet_restricted_tokens::Pallet<T> as fungibles::InspectHold<
+					T::AccountId,
+				>>::balance_on_hold(currency.into(), &(), &investor);
+
+				portfolio
+					.entry(TrancheCurrency::generate(pool_id, tranche_id))
+					.and_modify(|p| {
+						p.free_tranche_tokens = free_balance.into();
+						p.reserved_tranche_tokens = reserved_balance.into();
+					})
+					.or_insert(
+						InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency)
+							.with_free_tranche_tokens(free_balance.into())
+							.with_reserved_tranche_tokens(reserved_balance.into()),
+					);
+			}
+		});
+
+		// Set pending invest currency and claimable tranche tokens
+		pallet_investments::InvestOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
+			let pool_currency =
+				PoolInspector::currency_for(invest_id.of_pool()).expect("Pool must exist; qed");
+
+			// Collect such that we can determine claimable tranche tokens
+			// NOTE: Does not modify storage since RtAPI is readonly
+			let _ =
+				pallet_investments::Pallet::<T>::collect_investment(investor.clone(), invest_id);
+			let amount = pallet_investments::InvestOrders::<T>::get(&investor, invest_id)
+				.map(|order| order.amount())
+				.unwrap_or_default();
+			let free_tranche_tokens_new: Balance = <pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
+				T::AccountId,
+			>>::reducible_balance(
+				invest_id.into(),
+				&investor,
+				Preservation::Preserve,
+				Fortitude::Polite,
+			).into();
+
+			portfolio
+				.entry(invest_id)
+				.and_modify(|p| {
+					p.pending_invest_currency = amount.into();
+					if p.free_tranche_tokens < free_tranche_tokens_new {
+						p.claimable_tranche_tokens =
+							free_tranche_tokens_new.saturating_sub(p.free_tranche_tokens);
+					}
+				})
+				.or_insert(
+					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency.into())
+						.with_pending_invest_currency(amount.into())
+						.with_claimable_tranche_tokens(free_tranche_tokens_new),
+				);
+		});
+
+		// Set pending tranche tokens and claimable invest currency
+		pallet_investments::RedeemOrders::<T>::iter_key_prefix(&investor).for_each(|invest_id| {
+			let pool_currency =
+				PoolInspector::currency_for(invest_id.of_pool()).expect("Pool must exist; qed");
+			let balance_before: Balance =
+					<pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
+						T::AccountId,
+					>>::reducible_balance(
+						pool_currency,
+						&investor,
+						Preservation::Preserve,
+						Fortitude::Polite,
+					).into();
+
+			// Collect such that we can determine claimable invest currency
+			// NOTE: Does not modify storage since RtAPI is readonly
+			let _ =
+				pallet_investments::Pallet::<T>::collect_redemption(investor.clone(), invest_id);
+			let amount = pallet_investments::RedeemOrders::<T>::get(&investor, invest_id)
+				.map(|order| order.amount())
+				.unwrap_or_default();
+			let balance_after: Balance =
+					<pallet_restricted_tokens::Pallet<T> as fungibles::Inspect<
+						T::AccountId,
+					>>::reducible_balance(
+						pool_currency,
+						&investor,
+						Preservation::Preserve,
+						Fortitude::Polite,
+					).into();
+
+			portfolio
+				.entry(invest_id)
+				.and_modify(|p| {
+					p.pending_redeem_tranche_tokens = amount.into();
+					if balance_before < balance_after {
+						p.claimable_currency = balance_after.saturating_sub(balance_before);
+					}
+				})
+				.or_insert(
+					InvestmentPortfolio::<Balance, CurrencyId>::new(pool_currency.into())
+						.with_pending_redeem_tranche_tokens(amount.into())
+						.with_claimable_currency(balance_after),
+				);
+		});
+
+		portfolio.into_iter().collect()
 	}
 }
 
 pub mod xcm_transactor {
-	use codec::{Decode, Encode};
+	use parity_scale_codec::{Decode, Encode};
 	use scale_info::TypeInfo;
 	use sp_std::{vec, vec::Vec};
 	use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall, XcmTransact};
@@ -787,6 +729,44 @@ pub mod origin {
 
 				assert!(EnsureAccountOrRoot::<Admin>::ensure_origin(origin).is_err())
 			}
+		}
+	}
+}
+
+pub mod permissions {
+	use cfg_primitives::{AccountId, PoolId};
+	use cfg_traits::{Permissions, PreConditions};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::CurrencyId,
+	};
+	use sp_std::marker::PhantomData;
+
+	/// Check if an account has a pool admin role
+	pub struct PoolAdminCheck<P>(PhantomData<P>);
+
+	impl<P> PreConditions<(AccountId, PoolId)> for PoolAdminCheck<P>
+	where
+		P: Permissions<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+	{
+		type Result = bool;
+
+		fn check((account_id, pool_id): (AccountId, PoolId)) -> bool {
+			P::has(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn satisfy((account_id, pool_id): (AccountId, PoolId)) {
+			P::add(
+				PermissionScope::Pool(pool_id),
+				account_id,
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)
+			.unwrap();
 		}
 	}
 }

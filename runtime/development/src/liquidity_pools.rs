@@ -12,7 +12,7 @@
 
 use cfg_primitives::{
 	liquidity_pools::GeneralCurrencyPrefix, AccountId, Balance, EnsureRootOr, HalfOfCouncil,
-	PalletIndex, PoolId, TrancheId,
+	OutboundMessageNonce, PalletIndex, PoolId, TrancheId,
 };
 use cfg_types::{
 	fixed_point::Ratio,
@@ -26,18 +26,15 @@ use pallet_liquidity_pools::hooks::{
 use runtime_common::{
 	account_conversion::AccountConverter, foreign_investments::IdentityPoolCurrencyConverter,
 	gateway::GatewayAccountProvider, liquidity_pools::LiquidityPoolsMessage,
+	transfer_filter::PreLpTransfer,
 };
-use sp_runtime::traits::One;
 
 use crate::{
 	ForeignInvestments, Investments, LiquidityPools, LiquidityPoolsAxelarGateway,
 	LiquidityPoolsGateway, LocationToAccountId, OrderBook, OrmlAssetRegistry, Permissions,
-	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TreasuryAccount,
+	PoolSystem, Runtime, RuntimeEvent, RuntimeOrigin, Timestamp, Tokens, TransferAllowList,
+	TreasuryAccount,
 };
-
-parameter_types! {
-	pub DefaultTokenSellRatio: Ratio = Ratio::one();
-}
 
 impl pallet_foreign_investments::Config for Runtime {
 	type Balance = Balance;
@@ -47,16 +44,11 @@ impl pallet_foreign_investments::Config for Runtime {
 	type CurrencyConverter = IdentityPoolCurrencyConverter<OrmlAssetRegistry>;
 	type CurrencyId = CurrencyId;
 	type DecreasedForeignInvestOrderHook = DecreasedForeignInvestOrderHook<Runtime>;
-	type DefaultTokenSellRatio = DefaultTokenSellRatio;
 	type Investment = Investments;
 	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
-	type RuntimeEvent = RuntimeEvent;
-	type TokenSwapOrderId = u64;
+	type SwapId = u64;
 	type TokenSwaps = OrderBook;
-	type TrancheId = TrancheId;
-	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -78,6 +70,7 @@ impl pallet_liquidity_pools::Config for Runtime {
 	type Permission = Permissions;
 	type PoolId = PoolId;
 	type PoolInspect = PoolSystem;
+	type PreTransferFilter = PreLpTransfer<TransferAllowList>;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
@@ -100,6 +93,7 @@ impl pallet_liquidity_pools_gateway::Config for Runtime {
 	type MaxIncomingMessageSize = MaxIncomingMessageSize;
 	type Message = LiquidityPoolsMessage;
 	type OriginRecovery = LiquidityPoolsAxelarGateway;
+	type OutboundMessageNonce = OutboundMessageNonce;
 	type Router = liquidity_pools_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;

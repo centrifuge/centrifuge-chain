@@ -16,7 +16,6 @@
 
 mod evm;
 mod generic;
-mod liquidity_pools;
 mod rewards;
 mod runtime_apis;
 mod utils;

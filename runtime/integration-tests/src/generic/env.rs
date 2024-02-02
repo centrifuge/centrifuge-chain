@@ -1,6 +1,6 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
-use codec::Encode;
+use parity_scale_codec::Encode;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -59,9 +59,16 @@ impl<Event> Blocks<Event> {
 }
 
 /// Define an environment behavior
-pub trait Env<T: Runtime> {
+pub trait Env<T: Runtime>: Default {
+	/// Load the environment from a parachain storage
+	fn from_parachain_storage(parachain_storage: Storage) -> Self;
+
 	/// Load the environment from a storage
-	fn from_storage(parachain_storage: Storage, sibling_storage: Storage) -> Self;
+	fn from_storage(
+		relay_storage: Storage,
+		parachain_storage: Storage,
+		sibling_storage: Storage,
+	) -> Self;
 
 	/// Submit an extrinsic mutating the state instantly and returning the
 	/// consumed fee
@@ -171,6 +178,7 @@ pub mod utils {
 			frame_system::CheckNonce::<T>::from(nonce),
 			frame_system::CheckWeight::<T>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<T>::from(0),
+			runtime_common::transfer_filter::PreBalanceTransferExtension::<T>::new(),
 		);
 
 		let raw_payload = SignedPayload::new(runtime_call.clone(), signed_extra.clone()).unwrap();

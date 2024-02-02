@@ -13,14 +13,14 @@
 
 use cfg_primitives::Balance;
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
-#[cfg(feature = "try-runtime")]
-use codec::Encode;
 use frame_support::{
 	traits::OnRuntimeUpgrade,
 	weights::{constants::RocksDbWeight, Weight},
 	StoragePrefixedMap,
 };
 use orml_traits::asset_registry::AssetMetadata;
+#[cfg(feature = "try-runtime")]
+use parity_scale_codec::Encode;
 #[cfg(feature = "try-runtime")]
 use sp_arithmetic::traits::Zero;
 #[cfg(feature = "try-runtime")]

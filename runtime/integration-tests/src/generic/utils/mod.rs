@@ -9,12 +9,13 @@
 //! Divide this utilities into files when it grows
 
 pub mod currency;
+pub mod democracy;
 pub mod genesis;
 
 use cfg_primitives::{AccountId, Balance, CollectionId, ItemId, PoolId, TrancheId};
 use cfg_traits::{investments::TrancheCurrency as _, Seconds};
 use cfg_types::{
-	fixed_point::Quantity,
+	fixed_point::Ratio,
 	oracles::OracleKey,
 	permissions::{PermissionScope, PoolRole, Role},
 	pools::TrancheMetadata,
@@ -22,7 +23,9 @@ use cfg_types::{
 };
 use frame_support::BoundedVec;
 use frame_system::RawOrigin;
+use pallet_oracle_collection::types::CollectionInfo;
 use pallet_pool_system::tranches::{TrancheInput, TrancheType};
+use runtime_common::oracle::Feeder;
 use sp_runtime::{
 	traits::{One, StaticLookup},
 	Perquintill,
@@ -31,6 +34,17 @@ use sp_runtime::{
 use crate::generic::config::{Runtime, RuntimeKind};
 
 pub const POOL_MIN_EPOCH_TIME: Seconds = 24;
+
+fn find_event<T: Runtime, E, R>(f: impl Fn(E) -> Option<R>) -> Option<R>
+where
+	T::RuntimeEventExt: TryInto<E>,
+{
+	frame_system::Pallet::<T>::events()
+		.into_iter()
+		.rev()
+		.find_map(|record| record.event.try_into().map(|e| f(e)).ok())
+		.flatten()
+}
 
 pub fn give_nft<T: Runtime>(dest: AccountId, (collection_id, item_id): (CollectionId, ItemId)) {
 	pallet_uniques::Pallet::<T>::force_create(
@@ -116,6 +130,7 @@ pub fn create_empty_pool<T: Runtime>(admin: AccountId, pool_id: PoolId, currency
 		Balance::MAX,
 		None,
 		BoundedVec::default(),
+		vec![],
 	)
 	.unwrap();
 
@@ -147,7 +162,89 @@ pub fn invest<T: Runtime>(
 	.unwrap();
 }
 
-pub fn feed_oracle<T: Runtime>(values: Vec<(OracleKey, Quantity)>) {
-	orml_oracle::Pallet::<T>::feed_values(RawOrigin::Root.into(), values.try_into().unwrap())
+pub fn redeem<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+	amount: Balance,
+) {
+	pallet_investments::Pallet::<T>::update_redeem_order(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+		amount,
+	)
+	.unwrap();
+}
+
+pub fn collect_investments<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+) {
+	pallet_investments::Pallet::<T>::collect_investments(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+	)
+	.unwrap();
+}
+
+pub fn collect_redemptions<T: Runtime>(
+	investor: AccountId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+) {
+	pallet_investments::Pallet::<T>::collect_redemptions(
+		RawOrigin::Signed(investor).into(),
+		TrancheCurrency::generate(pool_id, tranche_id),
+	)
+	.unwrap();
+}
+
+pub fn last_change_id<T: Runtime>() -> T::Hash {
+	find_event::<T, _, _>(|e| match e {
+		pallet_pool_system::Event::<T>::ProposedChange { change_id, .. } => Some(change_id),
+		_ => None,
+	})
+	.unwrap()
+}
+
+pub mod oracle {
+	use super::*;
+
+	pub fn feed_from_root<T: Runtime>(key: OracleKey, value: Ratio) {
+		pallet_oracle_feed::Pallet::<T>::feed(RawOrigin::Root.into(), key, value).unwrap();
+	}
+
+	pub fn update_feeders<T: Runtime>(
+		admin: AccountId,
+		pool_id: PoolId,
+		feeders: impl IntoIterator<Item = Feeder<T::RuntimeOriginExt>>,
+	) {
+		pallet_oracle_collection::Pallet::<T>::propose_update_collection_info(
+			RawOrigin::Signed(admin.clone()).into(),
+			pool_id,
+			CollectionInfo {
+				feeders: pallet_oracle_collection::util::feeders_from(feeders).unwrap(),
+				..Default::default()
+			},
+		)
 		.unwrap();
+
+		let change_id = last_change_id::<T>();
+
+		pallet_oracle_collection::Pallet::<T>::apply_update_collection_info(
+			RawOrigin::Signed(admin).into(), //or any account
+			pool_id,
+			change_id,
+		)
+		.unwrap();
+	}
+
+	pub fn update_collection<T: Runtime>(any: AccountId, pool_id: PoolId) {
+		pallet_oracle_collection::Pallet::<T>::update_collection(
+			RawOrigin::Signed(any).into(),
+			pool_id,
+		)
+		.unwrap();
+	}
 }

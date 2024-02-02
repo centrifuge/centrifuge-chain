@@ -29,12 +29,20 @@ runs:
       shell: sh
       run: scripts/install_toolchain.sh
 
+    - name: Disable cache on forks and dependabot
+      if:  github.event_name == 'pull_request'
+      shell: sh
+      run: |
+        if [ "${{ github.event.pull_request.head.repo.fork }}" == "true" ] || \
+           [ "${{ github.actor }}" == "dependabot[bot]" ] || \
+           [ "${{ github.actor }}" == "dependabot-preview[bot]" ]; then
+          echo "disable_cache=true" >> $GITHUB_ENV
+        fi
+
     - name: SCcache setup
-      if: ${{ inputs.cache == 'enabled' }}
+      if: ${{ inputs.cache == 'enabled' && !env.disable_cache }}
       uses: ./.github/actions/sccache-gcloud
       with:
         GWIP: ${{ inputs.GWIP }}
         GSA: ${{ inputs.GSA }}
-
-
 

@@ -18,12 +18,12 @@ use cfg_mocks::{
 };
 use cfg_traits::Millis;
 use cfg_types::{permissions::PermissionScope, tokens::TrancheCurrency};
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_arithmetic::{fixed_point::FixedU64, Perbill};
 use sp_core::{ConstU128, H256};
@@ -218,8 +218,6 @@ impl pallet_mock_data::Config for Runtime {
 	type Data = (Balance, Millis);
 	type DataElem = Balance;
 	type DataId = PriceId;
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxCollectionSize = MaxActiveLoansPerPool;
 }
 
 impl pallet_mock_change_guard::Config for Runtime {

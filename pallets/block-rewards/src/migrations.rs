@@ -24,8 +24,8 @@ use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
 use {
 	cfg_traits::rewards::AccountRewards,
-	codec::{Decode, Encode},
 	num_traits::Zero,
+	parity_scale_codec::{Decode, Encode},
 };
 
 use crate::{ActiveSessionData, Config, Pallet, SessionData};

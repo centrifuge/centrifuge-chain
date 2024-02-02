@@ -10,10 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_traits::liquidity_pools::Codec;
-use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Contract, Function, Param, ParamType, Token};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo};
 use frame_system::pallet_prelude::OriginFor;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::{
 	prelude::{format, string::String},
 	TypeInfo,
@@ -61,7 +61,7 @@ where
 
 	/// Encodes the message to the required format,
 	/// then executes the EVM call using the generic EVM router.
-	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
+	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResultWithPostInfo {
 		let eth_msg = get_axelar_encoded_msg(
 			msg.serialize(),
 			self.evm_chain.clone().into_inner(),

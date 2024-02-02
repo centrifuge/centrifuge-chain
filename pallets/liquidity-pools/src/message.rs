@@ -1,7 +1,7 @@
 use cfg_traits::{liquidity_pools::Codec, Seconds};
 use cfg_utils::{decode, decode_be_bytes, encode_be};
-use codec::{Decode, Encode, Input};
 use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
 
@@ -28,7 +28,7 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 ///
 /// NOTE: The sender of a message cannot ensure whether the
 /// corresponding receiver rejects it.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Ratio>
 where
 	Domain: Codec,
@@ -71,6 +71,9 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 		decimals: u8,
+		/// The RestrictionManager implementation to be used for this tranche
+		/// token on the domain it will be added and subsequently deployed in.
+		restriction_set: u8,
 	},
 	/// Update the price of a tranche token on the target domain.
 	///
@@ -359,6 +362,14 @@ where
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
+	/// Disallow a currency to be used as a pool currency and to invest in a
+	/// pool.
+	///
+	/// Directionality: Centrifuge -> EVM Domain.
+	DisallowInvestmentCurrency {
+		pool_id: PoolId,
+		currency: u128,
+	},
 }
 
 impl<
@@ -401,6 +412,7 @@ impl<
 			Self::ScheduleUpgrade { .. } => 21,
 			Self::CancelUpgrade { .. } => 22,
 			Self::UpdateTrancheTokenMetadata { .. } => 23,
+			Self::DisallowInvestmentCurrency { .. } => 24,
 		}
 	}
 }
@@ -436,6 +448,7 @@ impl<
 				token_name,
 				token_symbol,
 				decimals,
+				restriction_set,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -444,6 +457,7 @@ impl<
 					token_name.encode(),
 					token_symbol.encode(),
 					decimals.encode(),
+					restriction_set.encode(),
 				],
 			),
 			Message::UpdateTrancheTokenPrice {
@@ -724,10 +738,14 @@ impl<
 					token_symbol.encode(),
 				],
 			),
+			Message::DisallowInvestmentCurrency { pool_id, currency } => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), encode_be(currency)],
+			),
 		}
 	}
 
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		let call_type = input.read_byte()?;
 
 		match call_type {
@@ -749,6 +767,7 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				decimals: decode::<1, _, _>(input)?,
+				restriction_set: decode::<1, _, _>(input)?,
 			}),
 			5 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -875,7 +894,11 @@ impl<
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 			}),
-			_ => Err(codec::Error::from(
+			24 => Ok(Self::DisallowInvestmentCurrency {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			_ => Err(parity_scale_codec::Error::from(
 				"Unsupported decoding for this Message variant",
 			)),
 		}
@@ -883,7 +906,9 @@ impl<
 }
 
 /// Decode a type that implements our custom [Codec] trait
-pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn deserialize<const S: usize, O: Codec, I: Input>(
+	input: &mut I,
+) -> Result<O, parity_scale_codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 
@@ -1017,8 +1042,9 @@ mod tests {
 				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 				decimals: 15,
+				restriction_set: 1,
 			},
-			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f",
+			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f01",
 		)
 	}
 
@@ -1307,6 +1333,28 @@ mod tests {
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 			},
 			"170000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c0000000000000000000000000000000000000000000000000000",
+		)
+	}
+
+	#[test]
+	fn disallow_investment_currency() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::DisallowInvestmentCurrency {
+				pool_id: POOL_ID,
+				currency: TOKEN_ID,
+			},
+			"180000000000bce1a40000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
+	fn disallow_investment_currency_zero() {
+		test_encode_decode_identity(
+			LiquidityPoolsMessage::DisallowInvestmentCurrency {
+				pool_id: 0,
+				currency: 0,
+			},
+			"18000000000000000000000000000000000000000000000000",
 		)
 	}
 

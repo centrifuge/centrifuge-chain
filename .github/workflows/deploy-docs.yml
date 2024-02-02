@@ -1,0 +1,68 @@
+name: Rustdoc
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-docs.yml"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.label || github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-docs:
+    permissions:
+      contents: read
+      id-token: write
+      pages: write
+    runs-on: ubuntu-latest-4-cores
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac #v4
+
+      - name: Prep build on Ubuntu
+        uses: ./.github/actions/prep-ubuntu
+        with:
+          cache: enabled
+          # Cache needs Google credentials:
+          GWIP: ${{ secrets.GWIP_SCCACHE }}
+          GSA: ${{ secrets.GSA_SCCACHE }}
+
+      - name: Build documentation
+        id: build_docs
+        run: cargo doc --all --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+          RUSTC_WRAPPER: "sccache"
+
+      - name: Build Documentation failed
+        if: always() && steps.build_docs.outcome == 'failure'
+        run: echo ":::error::cargo doc --all --no-deps failed"
+        # Job will stop here and the check will be red if Build documentation failed
+
+      - name: Create Index file
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "<meta http-equiv=\"refresh\" content=\"0; url=centrifuge_chain/index.html\">" \ > ./target/doc/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Fix permissions
+        run: |
+          chmod -c -R +rX "./target/doc" | while read line; do
+            echo "::warning title=Invalid file permissions automatically fixed::$line"
+          done
+
+      - name: upload Docs files
+        uses: actions/upload-pages-artifact@0252fc4ba7626f0298f0cf00902a25c6afc77fa8 # v3.0
+        with:
+          path: ./target/doc
+
+      - name: Deploy Docs
+        # if: github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@87c3283f01cd6fe19a0ab93a23b2f6fcba5a8e42 # v4.0.3

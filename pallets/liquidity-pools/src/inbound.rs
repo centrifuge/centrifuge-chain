@@ -12,8 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, PoolInspect,
-	TimeAsSecs,
+	investments::ForeignInvestment, liquidity_pools::OutboundQueue, Permissions, TimeAsSecs,
 };
 use cfg_types::{
 	domain_address::{Domain, DomainAddress},
@@ -104,8 +103,6 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payment_currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		// Mint additional amount of payment currency
 		T::Tokens::mint_into(payment_currency, &investor, amount)?;
@@ -115,7 +112,6 @@ where
 			invest_id,
 			amount,
 			payment_currency,
-			pool_currency,
 		)?;
 
 		Ok(())
@@ -139,18 +135,15 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		// NOTE: Even though we can assume this currency to have been used as payment,
-		// the trading pair needs to be registered for the opposite direction in case a
-		// swap from pool to foreign results from updating the `InvestState`
+		// the trading pair needs to be registered for the opposite direction as hin
+		// case a swap from pool to foreign results from updating the `InvestState`
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
 		T::ForeignInvestment::decrease_foreign_investment(
 			&investor,
 			invest_id,
 			amount,
 			payout_currency,
-			pool_currency,
 		)?;
 
 		Ok(())
@@ -228,7 +221,7 @@ where
 		pool_id: T::PoolId,
 		tranche_id: T::TrancheId,
 		investor: T::AccountId,
-		amount: <T as Config>::Balance,
+		tranche_tokens_payout: <T as Config>::Balance,
 		currency_index: GeneralCurrencyIndexOf<T>,
 		destination: DomainAddress,
 	) -> DispatchResult {
@@ -236,16 +229,15 @@ where
 		let currency_u128 = currency_index.index;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
 
-		let (tranche_tokens_payout, remaining_redeem_amount) =
-			T::ForeignInvestment::decrease_foreign_redemption(
-				&investor,
-				invest_id.clone(),
-				amount,
-				payout_currency,
-			)?;
+		T::ForeignInvestment::decrease_foreign_redemption(
+			&investor,
+			invest_id.clone(),
+			tranche_tokens_payout,
+			payout_currency,
+		)?;
 
 		T::Tokens::transfer(
-			invest_id.into(),
+			invest_id.clone().into(),
 			&investor,
 			&Domain::convert(destination.domain()),
 			tranche_tokens_payout,
@@ -255,10 +247,13 @@ where
 		let message: MessageOf<T> = Message::ExecutedDecreaseRedeemOrder {
 			pool_id,
 			tranche_id,
-			investor: investor.into(),
+			investor: investor.clone().into(),
 			currency: currency_u128,
 			tranche_tokens_payout,
-			remaining_redeem_amount,
+			remaining_redeem_amount: T::ForeignInvestment::redemption(
+				&investor,
+				invest_id.clone(),
+			)?,
 		};
 
 		T::OutboundQueue::submit(T::TreasuryAccount::get(), destination.domain(), message)?;
@@ -337,15 +332,8 @@ where
 	) -> DispatchResult {
 		let invest_id: T::TrancheCurrency = Self::derive_invest_id(pool_id, tranche_id)?;
 		let payout_currency = Self::try_get_payout_currency(invest_id.clone(), currency_index)?;
-		let pool_currency =
-			T::PoolInspect::currency_for(pool_id).ok_or(Error::<T>::PoolNotFound)?;
 
-		T::ForeignInvestment::collect_foreign_redemption(
-			&investor,
-			invest_id,
-			payout_currency,
-			pool_currency,
-		)?;
+		T::ForeignInvestment::collect_foreign_redemption(&investor, invest_id, payout_currency)?;
 
 		Ok(())
 	}

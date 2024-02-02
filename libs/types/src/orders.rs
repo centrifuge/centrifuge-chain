@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Zero, Perquintill, RuntimeDebug};
+use sp_runtime::{traits::Zero, Perquintill};
 use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	vec::Vec,

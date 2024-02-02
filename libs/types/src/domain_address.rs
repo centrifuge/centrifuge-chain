@@ -12,12 +12,10 @@
 
 use cfg_traits::liquidity_pools::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
-use codec::{Decode, Encode, Input, MaxEncodedLen};
+use frame_support::RuntimeDebug;
+use parity_scale_codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{AccountIdConversion, Convert},
-	RuntimeDebug,
-};
+use sp_runtime::traits::{AccountIdConversion, Convert};
 use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
@@ -51,7 +49,7 @@ impl Codec for Domain {
 		}
 	}
 
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, parity_scale_codec::Error> {
 		let variant = input.read_byte()?;
 
 		match variant {
@@ -60,7 +58,7 @@ impl Codec for Domain {
 				let chain_id = decode_be_bytes::<8, _, _>(input)?;
 				Ok(Self::EVM(chain_id))
 			}
-			_ => Err(codec::Error::from("Unknown Domain variant")),
+			_ => Err(parity_scale_codec::Error::from("Unknown Domain variant")),
 		}
 	}
 }

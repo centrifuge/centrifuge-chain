@@ -13,8 +13,8 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, Input};
 use frame_system::pallet_prelude::BlockNumberFor;
+use parity_scale_codec::{Decode, Encode, Error, Input};
 use sp_std::{cmp::min, vec::Vec};
 
 /// Build a fixed-size array using as many elements from `src` as possible
@@ -40,9 +40,7 @@ pub fn encode_be(x: impl Encode) -> Vec<u8> {
 /// Decode a type O by reading S bytes from I. Those bytes are expected to be
 /// encoded as big-endian and thus needs reversing to little-endian before
 /// decoding to O.
-pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
-	input: &mut I,
-) -> Result<O, codec::Error> {
+pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 	bytes.reverse();
@@ -51,7 +49,7 @@ pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
 }
 
 /// Decode a type 0 by reading S bytes from I.
-pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 

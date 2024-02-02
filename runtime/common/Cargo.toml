@@ -1,108 +1,147 @@
 [package]
 name = "runtime-common"
 version = "1.0.0"
-authors = ["Centrifuge <admin@centrifuge.io>"]
-edition = "2021"
-license = "LGPL-3.0"
-homepage = "https://centrifuge.io/"
-repository = "https://github.com/centrifuge/centrifuge-chain"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
-hex-literal = { version = "0.3.4", default-features = false }
-serde = { version = "1.0.119" }
-smallvec = "1.6.1"
+hex-literal = { workspace = true }
+log = { workspace = true }
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
+smallvec = { workspace = true }
 
-# Substrate dependencies
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-pallet-treasury = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-sp-api = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 
-# Polkadot dependencies
-polkadot-parachain-primitives = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-xcm = { package = "staging-xcm",  git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
-xcm-executor = { package = "staging-xcm-executor", git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+sp-api = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
-# ORML dependencies
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v1.1.0" }
+polkadot-parachain = { workspace = true }
+xcm = { workspace = true }
+xcm-executor = { workspace = true }
 
-# Frontier dependencies
-pallet-base-fee = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-ethereum = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-blake2 = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-bn128 = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-dispatch = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-modexp = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-sha3fips = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
-pallet-evm-precompile-simple = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+orml-traits = { workspace = true }
 
-# There is a bug in the frontier repo that adds pallet-ethereum without a try-runtime dependency
-# for this crate which makes our compilation fail with the i_know_what_i_am_doing error.
-# It seem fixed in 0.9.39, and this dependency can be removed from this file safely.
-fp-self-contained = { git = "https://github.com/paritytech/frontier", default-features = false, branch = "polkadot-v1.1.0" }
+pallet-evm-precompile-blake2 = { workspace = true }
+pallet-evm-precompile-bn128 = { workspace = true }
+pallet-evm-precompile-dispatch = { workspace = true }
+pallet-evm-precompile-modexp = { workspace = true }
+pallet-evm-precompile-sha3fips = { workspace = true }
+pallet-evm-precompile-simple = { workspace = true }
 
-# Moonbeam dependencies
-xcm-primitives = { git = "https://github.com/moonbeam-foundation/moonbeam", default-features = false, rev = "7fee3fd72c3a02e33b0f059fd9cc5cc20c1c6fd5" }
+xcm-primitives = { workspace = true }
 
-# Local Dependencies
-axelar-gateway-precompile = { path = "../../pallets/liquidity-pools-gateway/axelar-gateway-precompile", default-features = false }
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-cfg-utils = { path = "../../libs/utils", default-features = false }
-pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
-pallet-investments = { path = "../../pallets/investments", default-features = false }
-pallet-liquidity-pools = { path = "../../pallets/liquidity-pools", default-features = false }
-pallet-liquidity-pools-gateway = { path = "../../pallets/liquidity-pools-gateway", default-features = false }
-pallet-loans = { path = "../../pallets/loans", default-features = false }
-pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+# Local
+cfg-primitives = { workspace = true }
+cfg-traits = { workspace = true }
+cfg-types = { workspace = true }
+cfg-utils = { workspace = true }
 
-# Used for migrations
-log = "0.4"
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, tag = "polkadot-v1.1.0" }
+# Pallets in the export list
+axelar-gateway-precompile = { workspace = true }
+chainbridge = { workspace = true }
+cumulus-pallet-aura-ext = { workspace = true }
+cumulus-pallet-dmp-queue = { workspace = true }
+cumulus-pallet-parachain-system = { workspace = true }
+cumulus-pallet-xcm = { workspace = true }
+cumulus-pallet-xcmp-queue = { workspace = true }
+orml-asset-registry = { workspace = true }
+orml-tokens = { workspace = true }
+orml-xcm = { workspace = true }
+orml-xtokens = { workspace = true }
+pallet-anchors = { workspace = true }
+pallet-aura = { workspace = true }
+pallet-authorship = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-base-fee = { workspace = true }
+pallet-block-rewards = { workspace = true }
+pallet-bridge = { workspace = true }
+pallet-claims = { workspace = true }
+pallet-collator-allowlist = { workspace = true }
+pallet-collator-selection = { workspace = true }
+pallet-collective = { workspace = true }
+pallet-crowdloan-claim = { workspace = true }
+pallet-crowdloan-reward = { workspace = true }
+pallet-democracy = { workspace = true }
+pallet-elections-phragmen = { workspace = true }
+pallet-ethereum = { workspace = true }
+pallet-ethereum-transaction = { workspace = true }
+pallet-evm = { workspace = true }
+pallet-evm-chain-id = { workspace = true }
+pallet-fees = { workspace = true }
+pallet-foreign-investments = { workspace = true }
+pallet-identity = { workspace = true }
+pallet-interest-accrual = { workspace = true }
+pallet-investments = { workspace = true }
+pallet-keystore = { workspace = true }
+pallet-liquidity-pools = { workspace = true }
+pallet-liquidity-pools-gateway = { workspace = true }
+pallet-liquidity-rewards = { workspace = true }
+pallet-loans = { workspace = true }
+pallet-membership = { workspace = true }
+pallet-migration-manager = { workspace = true }
+pallet-multisig = { workspace = true }
+pallet-nft = { workspace = true }
+pallet-nft-sales = { workspace = true }
+pallet-oracle-collection = { workspace = true }
+pallet-oracle-feed = { workspace = true }
+pallet-order-book = { workspace = true }
+pallet-permissions = { workspace = true }
+pallet-pool-fees = { workspace = true }
+pallet-pool-registry = { workspace = true }
+pallet-pool-system = { workspace = true }
+pallet-preimage = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-remarks = { workspace = true }
+pallet-restricted-tokens = { workspace = true }
+pallet-restricted-xtokens = { workspace = true }
+pallet-rewards = { workspace = true }
+pallet-scheduler = { workspace = true }
+pallet-session = { workspace = true }
+pallet-sudo = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-transaction-payment = { workspace = true }
+pallet-transfer-allowlist = { workspace = true }
+pallet-treasury = { workspace = true }
+pallet-uniques = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-vesting = { workspace = true }
+pallet-xcm = { workspace = true }
+pallet-xcm-transactor = { workspace = true }
+parachain-info = { workspace = true }
+
+# Optionals for benchmarking
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-cfg-mocks = { path = "../../libs/mocks", features = ["runtime-benchmarks", "std"] }
-hex-literal = "0.3.4"
-pallet-collective = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", default-features = true, tag = "polkadot-v1.1.0" }
+cfg-mocks = { workspace = true }
 
 [features]
 default = ["std"]
 std = [
-  "axelar-gateway-precompile/std",
-  "cfg-primitives/std",
-  "cfg-traits/std",
-  "cfg-types/std",
-  "cfg-utils/std",
-  "codec/std",
-  "fp-self-contained/std",
-  "frame-support/std",
+  "parity-scale-codec/std",
+  "log/std",
+
+  # Substrate related
   "frame-support/std",
   "frame-system/std",
-  "log/std",
-  "orml-asset-registry/std",
-  "orml-oracle/std",
+  "frame-benchmarking?/std",
   "orml-traits/std",
+  "orml-tokens/std",
   "pallet-anchors/std",
   "pallet-authorship/std",
   "pallet-balances/std",
   "pallet-base-fee/std",
-  "pallet-data-collector/std",
   "pallet-ethereum/std",
   "pallet-evm-chain-id/std",
   "pallet-evm-precompile-blake2/std",
@@ -117,9 +156,10 @@ std = [
   "pallet-liquidity-pools/std",
   "pallet-loans/std",
   "pallet-pool-system/std",
+  "pallet-restricted-tokens/std",
   "pallet-treasury/std",
   "parachain-info/std",
-  "polkadot-parachain-primitives/std",
+  "polkadot-parachain/std",
   "scale-info/std",
   "serde/std",
   "sp-api/std",
@@ -132,64 +172,254 @@ std = [
   "xcm-executor/std",
   "xcm-primitives/std",
   "xcm/std",
+  "pallet-evm-precompile-blake2/std",
+  "pallet-evm-precompile-bn128/std",
+  "pallet-evm-precompile-dispatch/std",
+  "pallet-evm-precompile-modexp/std",
+  "pallet-evm-precompile-sha3fips/std",
+  "pallet-evm-precompile-simple/std",
+
+  # Locals
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-utils/std",
+  "cfg-mocks/std",
+
+  # Pallet exporting list
+  "axelar-gateway-precompile/std",
+  "chainbridge/std",
+  "cumulus-pallet-aura-ext/std",
+  "cumulus-pallet-dmp-queue/std",
+  "cumulus-pallet-parachain-system/std",
+  "cumulus-pallet-xcm/std",
+  "cumulus-pallet-xcmp-queue/std",
+  "orml-asset-registry/std",
+  "orml-tokens/std",
+  "orml-xcm/std",
+  "orml-xtokens/std",
+  "pallet-anchors/std",
+  "pallet-aura/std",
+  "pallet-authorship/std",
+  "pallet-balances/std",
+  "pallet-base-fee/std",
+  "pallet-block-rewards/std",
+  "pallet-bridge/std",
+  "pallet-claims/std",
+  "pallet-collator-allowlist/std",
+  "pallet-collator-selection/std",
+  "pallet-collective/std",
+  "pallet-crowdloan-claim/std",
+  "pallet-crowdloan-reward/std",
+  "pallet-democracy/std",
+  "pallet-elections-phragmen/std",
+  "pallet-ethereum/std",
+  "pallet-ethereum-transaction/std",
+  "pallet-evm/std",
+  "pallet-evm-chain-id/std",
+  "pallet-fees/std",
+  "pallet-foreign-investments/std",
+  "pallet-identity/std",
+  "pallet-interest-accrual/std",
+  "pallet-investments/std",
+  "pallet-keystore/std",
+  "pallet-liquidity-pools/std",
+  "pallet-liquidity-pools-gateway/std",
+  "pallet-liquidity-rewards/std",
+  "pallet-loans/std",
+  "pallet-membership/std",
+  "pallet-migration-manager/std",
+  "pallet-multisig/std",
+  "pallet-nft/std",
+  "pallet-nft-sales/std",
+  "pallet-oracle-collection/std",
+  "pallet-oracle-feed/std",
+  "pallet-order-book/std",
+  "pallet-permissions/std",
+  "pallet-pool-fees/std",
+  "pallet-pool-registry/std",
+  "pallet-pool-system/std",
+  "pallet-preimage/std",
+  "pallet-proxy/std",
+  "pallet-restricted-tokens/std",
+  "pallet-restricted-xtokens/std",
+  "pallet-rewards/std",
+  "pallet-remarks/std",
+  "pallet-scheduler/std",
+  "pallet-session/std",
+  "pallet-sudo/std",
+  "pallet-timestamp/std",
+  "pallet-transaction-payment/std",
+  "pallet-transfer-allowlist/std",
+  "pallet-treasury/std",
+  "pallet-uniques/std",
+  "pallet-utility/std",
+  "pallet-vesting/std",
+  "pallet-xcm/std",
+  "pallet-xcm-transactor/std",
+  "parachain-info/std",
 ]
 runtime-benchmarks = [
-  "axelar-gateway-precompile/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
+  # Substrate related
+  "sp-runtime/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks", # Optional enabled
+  "xcm-executor/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
+  "polkadot-parachain/runtime-benchmarks",
+
+  # Locals
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
+  "cfg-mocks/runtime-benchmarks",
+
+  # Pallet exporting list
+  "axelar-gateway-precompile/runtime-benchmarks",
+  "chainbridge/runtime-benchmarks",
+  "cumulus-pallet-parachain-system/runtime-benchmarks",
+  "cumulus-pallet-xcmp-queue/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
+  "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
-  "pallet-data-collector/runtime-benchmarks",
+  "pallet-block-rewards/runtime-benchmarks",
+  "pallet-bridge/runtime-benchmarks",
+  "pallet-claims/runtime-benchmarks",
+  "pallet-collator-allowlist/runtime-benchmarks",
+  "pallet-collator-selection/runtime-benchmarks",
+  "pallet-collective/runtime-benchmarks",
+  "pallet-crowdloan-claim/runtime-benchmarks",
+  "pallet-crowdloan-reward/runtime-benchmarks",
+  "pallet-democracy/runtime-benchmarks",
+  "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-transaction/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
+  "pallet-fees/runtime-benchmarks",
+  "pallet-foreign-investments/runtime-benchmarks",
+  "pallet-identity/runtime-benchmarks",
+  "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
-  "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-keystore/runtime-benchmarks",
   "pallet-liquidity-pools/runtime-benchmarks",
+  "pallet-liquidity-pools-gateway/runtime-benchmarks",
+  "pallet-liquidity-rewards/runtime-benchmarks",
   "pallet-loans/runtime-benchmarks",
+  "pallet-membership/runtime-benchmarks",
+  "pallet-migration-manager/runtime-benchmarks",
+  "pallet-multisig/runtime-benchmarks",
+  "pallet-nft/runtime-benchmarks",
+  "pallet-nft-sales/runtime-benchmarks",
+  "pallet-oracle-collection/runtime-benchmarks",
+  "pallet-oracle-feed/runtime-benchmarks",
+  "pallet-order-book/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-fees/runtime-benchmarks",
+  "pallet-pool-registry/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
+  "pallet-proxy/runtime-benchmarks",
+  "pallet-restricted-tokens/runtime-benchmarks",
+  "pallet-rewards/runtime-benchmarks",
+  "pallet-remarks/runtime-benchmarks",
+  "pallet-scheduler/runtime-benchmarks",
+  "pallet-sudo/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
-  "polkadot-parachain-primitives/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "xcm-executor/runtime-benchmarks",
-  "xcm-primitives/runtime-benchmarks",
-]
-
-on-chain-release-build = [
-  "sp-api/disable-logging",
+  "pallet-uniques/runtime-benchmarks",
+  "pallet-utility/runtime-benchmarks",
+  "pallet-vesting/runtime-benchmarks",
+  "pallet-xcm/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
 ]
 try-runtime = [
-  "axelar-gateway-precompile/try-runtime",
-  "cfg-mocks/try-runtime",
-  "cfg-primitives/try-runtime",
+  "sp-runtime/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
-  "fp-self-contained/try-runtime",
+  "cfg-mocks/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+
+  # Pallet exporting list
+  "axelar-gateway-precompile/try-runtime",
+  "chainbridge/try-runtime",
+  "cumulus-pallet-aura-ext/try-runtime",
+  "cumulus-pallet-dmp-queue/try-runtime",
+  "cumulus-pallet-parachain-system/try-runtime",
+  "cumulus-pallet-xcm/try-runtime",
+  "cumulus-pallet-xcmp-queue/try-runtime",
   "orml-asset-registry/try-runtime",
-  "orml-oracle/try-runtime",
+  "orml-tokens/try-runtime",
+  "orml-xcm/try-runtime",
+  "orml-xtokens/try-runtime",
   "pallet-anchors/try-runtime",
+  "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-base-fee/try-runtime",
-  "pallet-data-collector/try-runtime",
+  "pallet-block-rewards/try-runtime",
+  "pallet-bridge/try-runtime",
+  "pallet-claims/try-runtime",
+  "pallet-collator-allowlist/try-runtime",
+  "pallet-collator-selection/try-runtime",
+  "pallet-collective/try-runtime",
+  "pallet-crowdloan-claim/try-runtime",
+  "pallet-crowdloan-reward/try-runtime",
+  "pallet-democracy/try-runtime",
+  "pallet-elections-phragmen/try-runtime",
   "pallet-ethereum/try-runtime",
-  "pallet-evm-chain-id/try-runtime",
+  "pallet-ethereum-transaction/try-runtime",
   "pallet-evm/try-runtime",
+  "pallet-evm-chain-id/try-runtime",
+  "pallet-fees/try-runtime",
+  "pallet-foreign-investments/try-runtime",
+  "pallet-identity/try-runtime",
+  "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
-  "pallet-liquidity-pools-gateway/try-runtime",
+  "pallet-keystore/try-runtime",
   "pallet-liquidity-pools/try-runtime",
+  "pallet-liquidity-pools-gateway/try-runtime",
+  "pallet-liquidity-rewards/try-runtime",
   "pallet-loans/try-runtime",
+  "pallet-membership/try-runtime",
+  "pallet-migration-manager/try-runtime",
+  "pallet-multisig/try-runtime",
+  "pallet-nft/try-runtime",
+  "pallet-nft-sales/try-runtime",
+  "pallet-oracle-collection/try-runtime",
+  "pallet-oracle-feed/try-runtime",
+  "pallet-order-book/try-runtime",
+  "pallet-permissions/try-runtime",
+  "pallet-pool-fees/try-runtime",
+  "pallet-pool-registry/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-preimage/try-runtime",
+  "pallet-proxy/try-runtime",
+  "pallet-restricted-tokens/try-runtime",
+  "pallet-restricted-xtokens/try-runtime",
+  "pallet-rewards/try-runtime",
+  "pallet-remarks/try-runtime",
+  "pallet-scheduler/try-runtime",
+  "pallet-session/try-runtime",
+  "pallet-sudo/try-runtime",
+  "pallet-timestamp/try-runtime",
+  "pallet-transaction-payment/try-runtime",
+  "pallet-transfer-allowlist/try-runtime",
   "pallet-treasury/try-runtime",
+  "pallet-uniques/try-runtime",
+  "pallet-utility/try-runtime",
+  "pallet-vesting/try-runtime",
+  "pallet-xcm/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
   "parachain-info/try-runtime",
-  "sp-runtime/try-runtime",
+]
+on-chain-release-build = [
+  "sp-api/disable-logging",
 ]

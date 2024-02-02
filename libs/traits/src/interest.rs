@@ -1,14 +1,13 @@
 use cfg_primitives::SECONDS_PER_YEAR;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::DispatchResult, Parameter};
-use scale_info::TypeInfo;
+use frame_support::{dispatch::DispatchResult, scale_info::TypeInfo, Parameter, RuntimeDebug};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use sp_arithmetic::{
 	traits::{EnsureAdd, EnsureDiv, EnsureSub},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_runtime::{
 	traits::{Get, Member, One, Zero},
-	DispatchError, RuntimeDebug,
+	DispatchError,
 };
 
 use crate::Seconds;

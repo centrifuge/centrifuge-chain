@@ -10,20 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Codec;
+use parity_scale_codec::Codec;
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 		/// Runtime API for investments
-		pub trait InvestmentsApi<AccountId, InvestmentId, CurrencyId, PoolId, Balance>
+		pub trait InvestmentsApi<AccountId, InvestmentId, InvestmentPortfolio>
 				where
 				AccountId: Codec,
 				InvestmentId: Codec,
-				PoolId: Codec,
-				CurrencyId: Codec,
-				Balance: Codec,
+				InvestmentPortfolio: Codec,
 		{
-				fn investment_portfolio(account_id: AccountId) -> Option<Vec<(PoolId, CurrencyId, InvestmentId, Balance)>>;
+				fn investment_portfolio(account_id: AccountId) -> Vec<(InvestmentId, InvestmentPortfolio)>;
 		}
 }
