@@ -28,9 +28,9 @@ use sp_std::vec::Vec;
 ///
 /// If the pallet shall be kept, please use [ResetPallet] instead because
 /// here we neither check nor reset the corresponding storage version.
-pub struct KillPrefix<PalletName, DbWeight>(sp_std::marker::PhantomData<(PalletName, DbWeight)>);
+pub struct KillPallet<PalletName, DbWeight>(sp_std::marker::PhantomData<(PalletName, DbWeight)>);
 
-impl<PalletName, DbWeight> OnRuntimeUpgrade for KillPrefix<PalletName, DbWeight>
+impl<PalletName, DbWeight> OnRuntimeUpgrade for KillPallet<PalletName, DbWeight>
 where
 	PalletName: Get<&'static str>,
 	DbWeight: Get<RuntimeDbWeight>,
