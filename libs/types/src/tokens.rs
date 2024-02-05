@@ -86,7 +86,7 @@ pub enum CurrencyId {
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct LocalAssetId(u32);
+pub struct LocalAssetId(pub u32);
 
 impl From<LocalAssetId> for CurrencyId {
 	fn from(value: LocalAssetId) -> Self {

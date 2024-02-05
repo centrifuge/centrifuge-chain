@@ -15,7 +15,7 @@
 // TODO(william): Add pallet description
 
 #[cfg(test)]
-pub(crate) mod mock;
+mod mock;
 
 #[cfg(test)]
 mod tests;
