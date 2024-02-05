@@ -661,8 +661,8 @@ pub mod pallet {
 					.map_err(|_| {
 						Self::deposit_event(Event::NegativeBalanceSheet {
 							pool_id,
-							nav_aum: nav_aum.clone(),
-							nav_fees: nav_fees.clone(),
+							nav_aum,
+							nav_fees,
 							reserve: pool.reserve.total,
 						});
 					})
