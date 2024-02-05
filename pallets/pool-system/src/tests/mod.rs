@@ -2680,7 +2680,7 @@ mod pool_fees {
 	use pallet_pool_fees::PoolFeeInfoOf;
 
 	use super::*;
-	use crate::mock::default_pool_fees;
+	use crate::{mock::default_pool_fees, Event};
 
 	const POOL_OWNER: MockAccountId = 2;
 	const INVESTMENT_AMOUNT: Balance = DEFAULT_POOL_MAX_RESERVE / 10;
@@ -3059,7 +3059,7 @@ mod pool_fees {
 	}
 
 	#[test]
-	fn execute_epoch_with_overcharged_fees() {
+	fn negative_balance_sheet() {
 		new_test_ext().execute_with(|| {
 			let charged_amount = 2 * NAV_AMOUNT;
 			let fees: Vec<(PoolFeeBucket, pallet_pool_fees::PoolFeeInfoOf<Runtime>)> =
@@ -3079,10 +3079,48 @@ mod pool_fees {
 			));
 
 			// NAV = 0 + AUM - PoolFeesNAV = -AUM
-			assert_noop!(
-				PoolSystem::close_epoch(RuntimeOrigin::signed(POOL_OWNER), 0),
-				Error::<Runtime>::NegativeBalanceSheet
-			);
+			assert_ok!(PoolSystem::close_epoch(
+				RuntimeOrigin::signed(POOL_OWNER),
+				0
+			));
+			assert!(System::events().iter().any(|e| match e.event {
+				RuntimeEvent::PoolSystem(Event::NegativeBalanceSheet {
+					pool_id,
+					nav_aum,
+					nav_fees,
+					reserve,
+				}) => {
+					assert_eq!(pool_id, DEFAULT_POOL_ID);
+					assert!(nav_aum + reserve < nav_fees);
+					assert_eq!(reserve, 0);
+					assert!(nav_fees > 0);
+					assert!(nav_aum < nav_fees);
+					true
+				}
+				_ => false,
+			}));
+		});
+	}
+
+	#[test]
+	fn execute_epoch_with_overcharged_fees() {
+		new_test_ext().execute_with(|| {
+			let charged_amount = 2 * NAV_AMOUNT;
+			let fees: Vec<(PoolFeeBucket, pallet_pool_fees::PoolFeeInfoOf<Runtime>)> =
+				default_pool_fees()
+					.into_iter()
+					.map(|fee| (PoolFeeBucket::Top, fee))
+					.collect();
+
+			// Create pool with fees
+			create_fee_pool_setup(fees);
+
+			// Overcharge fee to increase pending amount and thus PoolFeesNAV
+			assert_ok!(PoolFees::charge_fee(
+				RuntimeOrigin::signed(DEFAULT_FEE_DESTINATION),
+				2,
+				charged_amount,
+			));
 
 			// Increase NAV by NAV_AMOUNT to reach equilibrium (AUM == PoolFeesNAV)
 			test_nav_up(DEFAULT_POOL_ID, NAV_AMOUNT);
