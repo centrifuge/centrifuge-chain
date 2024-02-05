@@ -106,6 +106,7 @@ mod asset_registry {
 							transferability: CrossChainTransferability::Xcm(XcmMetadata {
 								fee_per_second: None,
 							}),
+							local_representation: None,
 						},
 					},
 				),
@@ -127,6 +128,7 @@ mod asset_registry {
 							transferability: CrossChainTransferability::Xcm(XcmMetadata {
 								fee_per_second: None,
 							}),
+							local_representation: None,
 						},
 					},
 				),
@@ -154,6 +156,7 @@ mod asset_registry {
 							transferability: CrossChainTransferability::Xcm(XcmMetadata {
 								fee_per_second: None,
 							}),
+							local_representation: None,
 						},
 					},
 				),
@@ -175,6 +178,7 @@ mod asset_registry {
 							transferability: CrossChainTransferability::Xcm(XcmMetadata {
 								fee_per_second: None,
 							}),
+							local_representation: None,
 						},
 					},
 				),

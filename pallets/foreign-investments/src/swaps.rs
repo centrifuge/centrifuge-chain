@@ -1,6 +1,6 @@
 //! Abstracts the swapping logic
 
-use cfg_traits::{OrderRatio, TokenSwaps};
+use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
 use frame_support::pallet_prelude::*;
 use sp_runtime::traits::{EnsureAdd, EnsureSub, Zero};
 use sp_std::cmp::Ordering;
