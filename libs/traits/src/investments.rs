@@ -27,6 +27,7 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 /// investment classes
 pub trait Investment<AccountId> {
 	type Amount;
+	type TrancheAmount;
 	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
@@ -66,7 +67,7 @@ pub trait Investment<AccountId> {
 	fn update_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::TrancheAmount,
 	) -> Result<(), Self::Error>;
 
 	/// Checks whether a currency is accepted as a payout for the given
@@ -84,7 +85,7 @@ pub trait Investment<AccountId> {
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
+	) -> Result<Self::TrancheAmount, Self::Error>;
 
 	/// Checks whether an investment requires to be collected before it can be
 	/// updated.
@@ -224,7 +225,8 @@ pub trait InvestmentAccountant<AccountId> {
 ///
 /// NOTE: Has many similarities with the [Investment] trait.
 pub trait ForeignInvestment<AccountId> {
-	type Amount;
+	type ForeignAmount;
+	type TrancheAmount;
 	type CurrencyId;
 	type Error: Debug;
 	type InvestmentId;
@@ -240,7 +242,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn increase_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::ForeignAmount,
 		foreign_payment_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
@@ -255,7 +257,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn decrease_foreign_investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::ForeignAmount,
 		foreign_payment_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
@@ -268,7 +270,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn increase_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::TrancheAmount,
 		foreign_payout_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
@@ -282,7 +284,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn decrease_foreign_redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-		amount: Self::Amount,
+		amount: Self::TrancheAmount,
 		foreign_payout_currency: Self::CurrencyId,
 	) -> Result<(), Self::Error>;
 
@@ -316,7 +318,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
+	) -> Result<Self::ForeignAmount, Self::Error>;
 
 	/// Returns, if possible, the currently unprocessed redemption amount (in
 	/// tranche tokens) of who into the given investment class.
@@ -326,7 +328,7 @@ pub trait ForeignInvestment<AccountId> {
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
-	) -> Result<Self::Amount, Self::Error>;
+	) -> Result<Self::TrancheAmount, Self::Error>;
 
 	/// Checks whether a currency can be used for buying the given investment.
 	fn accepted_payment_currency(
