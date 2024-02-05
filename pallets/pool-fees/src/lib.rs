@@ -394,7 +394,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = Self::mutate_active_fee(fee_id, |fee| {
+			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -410,7 +410,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Charged {
-				pool_id: Self::get_pool_id(&fee_id)?,
+				pool_id,
 				fee_id,
 				amount,
 				pending,
@@ -431,7 +431,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pending = Self::mutate_active_fee(fee_id, |fee| {
+			let (pool_id, pending) = Self::mutate_active_fee(fee_id, |fee| {
 				ensure!(
 					fee.destination == who,
 					DispatchError::from(Error::<T>::UnauthorizedCharge)
@@ -447,7 +447,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Uncharged {
-				pool_id: Self::get_pool_id(&fee_id)?,
+				pool_id,
 				fee_id,
 				amount,
 				pending,
@@ -494,12 +494,6 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		pub fn get_pool_id(&fee_id: &T::FeeId) -> Result<T::PoolId, DispatchError> {
-			FeeIdsToPoolBucket::<T>::get(fee_id)
-				.map(|(pool_id, _)| pool_id)
-				.ok_or(Error::<T>::FeeNotFound.into())
-		}
-
 		/// Retrieve the specified fee from the list of active fees
 		pub fn get_active_fee(fee_id: T::FeeId) -> Result<PoolFeeOf<T>, DispatchError> {
 			Ok(FeeIdsToPoolBucket::<T>::get(fee_id)
@@ -511,11 +505,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::FeeNotFound)?)
 		}
 
-		/// Mutate fee id entry in ActiveFees
+		/// Mutate the given fee id entry in ActiveFees and return the
+		/// corresponding pool id.
 		fn mutate_active_fee(
 			fee_id: T::FeeId,
 			mut f: impl FnMut(&mut PoolFeeOf<T>) -> Result<T::Balance, DispatchError>,
-		) -> Result<T::Balance, DispatchError> {
+		) -> Result<(T::PoolId, T::Balance), DispatchError> {
 			let (pool_id, bucket) =
 				FeeIdsToPoolBucket::<T>::get(fee_id).ok_or(Error::<T>::FeeNotFound)?;
 
@@ -526,9 +521,9 @@ pub mod pallet {
 					.ok_or(Error::<T>::FeeNotFound)?;
 
 				if let Some(fee) = fees.get_mut(pos) {
-					f(fee)
+					Ok((pool_id, f(fee)?))
 				} else {
-					Ok(T::Balance::zero())
+					Ok((pool_id, T::Balance::zero()))
 				}
 			})
 		}
