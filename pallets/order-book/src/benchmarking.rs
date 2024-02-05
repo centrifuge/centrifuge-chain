@@ -49,7 +49,7 @@ where
 				decimals: 6,
 				name: "CURRENCY IN".as_bytes().to_vec(),
 				symbol: "IN".as_bytes().to_vec(),
-				existential_deposit: T::Balance::zero(),
+				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata::default(),
 			},
@@ -62,7 +62,7 @@ where
 				decimals: 3,
 				name: "CURRENCY OUT".as_bytes().to_vec(),
 				symbol: "OUT".as_bytes().to_vec(),
-				existential_deposit: T::Balance::zero(),
+				existential_deposit: Zero::zero(),
 				location: None,
 				additional: CustomMetadata::default(),
 			},
@@ -82,8 +82,9 @@ where
 		let account_out = account::<T::AccountId>("account_out", 0, 0);
 		let account_in = account::<T::AccountId>("account_in", 0, 0);
 
-		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out()).unwrap();
-		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in).unwrap();
+		T::Currency::mint_into(CURRENCY_OUT.into(), &account_out, Self::amount_out().into())
+			.unwrap();
+		T::Currency::mint_into(CURRENCY_IN.into(), &account_in, expected_amount_in.into()).unwrap();
 
 		(account_out, account_in)
 	}
@@ -93,7 +94,7 @@ where
 		Self::setup_accounts()
 	}
 
-	pub fn amount_out() -> T::Balance {
+	pub fn amount_out() -> T::BalanceOut {
 		let min_fulfillment = T::DecimalConverter::to_asset_balance(
 			T::MinFulfillmentAmountNative::get(),
 			CURRENCY_OUT.into(),
@@ -104,9 +105,9 @@ where
 			.unwrap()
 			.decimals as usize;
 
-		let zeros = checked_pow(T::Balance::from(10u32), decimals_out).unwrap();
+		let zeros = checked_pow(T::BalanceOut::from(10u32), decimals_out).unwrap();
 
-		min_fulfillment + T::Balance::from(5u32) * zeros
+		min_fulfillment + T::BalanceOut::from(5u32) * zeros
 	}
 
 	pub fn add_trading_pair() {

@@ -171,14 +171,14 @@ impl<Balance, Currency: PartialEq> Swap<Balance, Currency> {
 
 /// A representation of a currency swap in process.
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub struct SwapState<Balance, Currency> {
+pub struct SwapState<BalanceIn, BalanceOut, Currency> {
 	/// Swap not yet processed with the pending outcomming amount
-	pub remaining: Swap<Balance, Currency>,
+	pub remaining: Swap<BalanceOut, Currency>,
 	/// Amount of incoming currency already swapped
-	pub swapped_in: Balance,
+	pub swapped_in: BalanceIn,
 	/// Amount of incoming currency already swapped denominated in outgoing
 	/// currency
-	pub swapped_out: Balance,
+	pub swapped_out: BalanceOut,
 }
 
 /// A representation of an executed investment decrement.
