@@ -250,18 +250,21 @@ pub mod pallet {
 		},
 		/// A pool fee was charged.
 		Charged {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
 		/// A pool fee was uncharged.
 		Uncharged {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			pending: T::Balance,
 		},
 		/// A pool fee was paid.
 		Paid {
+			pool_id: T::PoolId,
 			fee_id: T::FeeId,
 			amount: T::Balance,
 			destination: T::AccountId,
@@ -407,6 +410,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Charged {
+				pool_id: Self::get_pool_id(&fee_id)?,
 				fee_id,
 				amount,
 				pending,
@@ -443,6 +447,7 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Uncharged {
+				pool_id: Self::get_pool_id(&fee_id)?,
 				fee_id,
 				amount,
 				pending,
@@ -487,6 +492,12 @@ pub mod pallet {
 		/// make sure you cache the value and only call this once.
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
+		}
+
+		pub fn get_pool_id(&fee_id: &T::FeeId) -> Result<T::PoolId, DispatchError> {
+			FeeIdsToPoolBucket::<T>::get(fee_id)
+				.map(|(pool_id, _)| pool_id)
+				.ok_or(Error::<T>::FeeNotFound.into())
 		}
 
 		/// Retrieve the specified fee from the list of active fees
@@ -560,6 +571,7 @@ pub mod pallet {
 					)?;
 
 					Self::deposit_event(Event::<T>::Paid {
+						pool_id,
 						fee_id: fee.id,
 						amount: fee.amounts.disbursement,
 						destination: fee.destination.clone(),
