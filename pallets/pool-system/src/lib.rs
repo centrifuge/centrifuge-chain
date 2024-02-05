@@ -470,6 +470,14 @@ pub mod pallet {
 			change_id: T::Hash,
 			change: T::RuntimeChange,
 		},
+		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
+		/// the pool
+		NegativeBalanceSheet {
+			pool_id: T::PoolId,
+			nav_aum: T::Balance,
+			nav_fees: T::Balance,
+			reserve: T::Balance,
+		},
 	}
 
 	#[pallet::error]
@@ -548,9 +556,6 @@ pub mod pallet {
 		ChangeNotFound,
 		/// The external change was found for is not ready yet to be released.
 		ChangeNotReady,
-		/// The PoolFeesNAV exceeds the sum of the AUM and the total reserve of
-		/// the pool
-		NegativeBalanceSheet,
 	}
 
 	#[pallet::call]
@@ -649,7 +654,19 @@ pub mod pallet {
 				let nav = Nav::new(nav_aum, nav_fees);
 				let nav_total = nav
 					.total(pool.reserve.total)
-					.map_err(|_| Error::<T>::NegativeBalanceSheet)?;
+					// NOTE: From an accounting perspective, erroring out would be correct. However,
+					// since investments of this epoch are included in the reserve only in the next
+					// epoch, every new pool with a configured fee is likely to be blocked if we
+					// threw an error here. Thus, we dispatch an event as a defensive workaround.
+					.map_err(|_| {
+						Self::deposit_event(Event::NegativeBalanceSheet {
+							pool_id,
+							nav_aum: nav_aum.clone(),
+							nav_fees: nav_fees.clone(),
+							reserve: pool.reserve.total,
+						});
+					})
+					.unwrap_or(T::Balance::default());
 				let submission_period_epoch = pool.epoch.current;
 
 				pool.start_next_epoch(now)?;
