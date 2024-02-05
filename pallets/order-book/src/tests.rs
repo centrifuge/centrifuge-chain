@@ -52,7 +52,6 @@ mod util {
 	pub fn assert_exists_order(order_id: OrderId) {
 		assert_ok!(Orders::<Runtime>::get(order_id));
 		assert_ok!(UserOrders::<Runtime>::get(FROM, order_id));
-		assert!(CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
 	pub fn assert_no_exists_order(order_id: OrderId) {
@@ -65,8 +64,6 @@ mod util {
 			UserOrders::<Runtime>::get(FROM, order_id),
 			Error::<Runtime>::OrderNotFound
 		);
-
-		assert!(!CurrencyPairOrders::<Runtime>::get(CURRENCY_B, CURRENCY_A).contains(&order_id));
 	}
 
 	pub fn expect_notification(

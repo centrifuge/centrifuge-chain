@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
 use parity_scale_codec::Input;
 use sp_std::vec::Vec;
 
@@ -34,7 +34,7 @@ pub trait Router {
 	fn init(&self) -> DispatchResult;
 
 	/// Send the message to the router's destination.
-	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult;
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResultWithPostInfo;
 }
 
 /// The trait required for processing outbound messages.

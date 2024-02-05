@@ -28,7 +28,6 @@ impl<InvestmentId> TypeId for InvestmentAccount<InvestmentId> {
 // Pallet-Ids that define pallets accounts
 pub const POOLS_PALLET_ID: PalletId = PalletId(*b"roc/pool");
 pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"chnbrdge");
-pub const CLAIMS_PALLET_ID: PalletId = PalletId(*b"p/claims");
 pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
 pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = PalletId(*b"cc/claim");
 pub const TREASURY_PALLET_ID: PalletId = PalletId(*b"py/trsry");

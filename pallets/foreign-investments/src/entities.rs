@@ -12,7 +12,7 @@ use sp_runtime::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureMul, EnsureSub, EnsureSubAssign, Saturating,
 		Zero,
 	},
-	DispatchError,
+	ArithmeticError, DispatchError,
 };
 use sp_std::cmp::min;
 
@@ -85,15 +85,14 @@ impl<T: Config> Correlation<T> {
 			return Ok(T::Balance::default());
 		}
 
-		foreign_amount
+		Ok(foreign_amount
 			.ensure_mul(self.pool_amount)?
-			.ensure_div(self.foreign_amount)
-			.map_err(|_| Error::<T>::TooMuchDecrease.into())
+			.ensure_div(self.foreign_amount)?)
 	}
 }
 
 /// Hold the information of a foreign investment
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct InvestmentInfo<T: Config> {
 	/// Foreign currency of this investment
@@ -166,12 +165,18 @@ impl<T: Config> InvestmentInfo<T> {
 
 		let pool_investment_decrement = self
 			.correlation
-			.foreign_to_pool(foreign_investment_decrement)?;
+			.foreign_to_pool(foreign_investment_decrement)
+			.map_err(|e| match e {
+				DispatchError::Arithmetic(ArithmeticError::DivisionByZero) => {
+					Error::<T>::TooMuchDecrease.into()
+				}
+				e => e,
+			})?;
 
 		self.decrease_investment(who, investment_id, pool_investment_decrement)?;
 
 		// It's ok to use the market ratio because this amount will be
-		// cancelled.
+		// cancelled in this instant.
 		let increasing_pool_amount = T::TokenSwaps::convert_by_market(
 			pool_currency,
 			self.foreign_currency,
@@ -211,7 +216,7 @@ impl<T: Config> InvestmentInfo<T> {
 		self.increase_investment(who, investment_id, swapped_pool_amount)?;
 
 		self.decrease_swapped_foreign_amount
-			.ensure_sub_assign(swapped_foreign_amount)?;
+			.ensure_add_assign(swapped_foreign_amount)?;
 
 		let no_pending_decrease = self.pending_decrease_swap(who, investment_id)?.is_zero();
 		if no_pending_decrease && !self.decrease_swapped_foreign_amount.is_zero() {
@@ -380,7 +385,7 @@ impl<T: Config> InvestmentInfo<T> {
 }
 
 /// Hold the information of an foreign redemption
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, RuntimeDebugNoBound, Encode, Decode, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct RedemptionInfo<T: Config> {
 	/// Foreign currency of this redemption

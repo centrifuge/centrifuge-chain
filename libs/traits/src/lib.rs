@@ -567,9 +567,6 @@ pub trait TokenSwaps<Account> {
 		currency_out: Self::CurrencyId,
 		amount_out: Self::Balance,
 	) -> Result<Self::Balance, DispatchError>;
-
-	/// Check if the order is still active.
-	fn is_active(order: Self::OrderId) -> bool;
 }
 
 /// Trait to transmit a change of status for anything uniquely identifiable.

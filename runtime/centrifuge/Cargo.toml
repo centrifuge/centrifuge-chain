@@ -88,7 +88,6 @@ pallet-balances = { workspace = true }
 pallet-base-fee = { workspace = true }
 pallet-block-rewards = { workspace = true }
 pallet-bridge = { workspace = true }
-pallet-claims = { workspace = true }
 pallet-collator-allowlist = { workspace = true }
 pallet-collator-selection = { workspace = true }
 pallet-collective = { workspace = true }
@@ -219,7 +218,6 @@ std = [
   "pallet-base-fee/std",
   "pallet-block-rewards/std",
   "pallet-bridge/std",
-  "pallet-claims/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
@@ -309,7 +307,6 @@ runtime-benchmarks = [
   "pallet-balances/runtime-benchmarks",
   "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
-  "pallet-claims/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
@@ -398,7 +395,6 @@ try-runtime = [
   "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",
   "pallet-bridge/try-runtime",
-  "pallet-claims/try-runtime",
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-collective/try-runtime",

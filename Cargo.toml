@@ -12,7 +12,6 @@ members = [
   "pallets/anchors",
   "pallets/bridge",
   "pallets/block-rewards",
-  "pallets/claims",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
   "pallets/crowdloan-reward",
@@ -254,7 +253,6 @@ liquidity-pools-gateway-routers = { path = "pallets/liquidity-pools-gateway/rout
 pallet-anchors = { path = "pallets/anchors", default-features = false }
 pallet-block-rewards = { path = "pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "pallets/bridge", default-features = false }
-pallet-claims = { path = "pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "pallets/collator-allowlist", default-features = false }
 pallet-crowdloan-claim = { path = "pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "pallets/crowdloan-reward", default-features = false }

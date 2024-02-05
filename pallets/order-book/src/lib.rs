@@ -244,21 +244,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OrderIdNonceStore<T: Config> = StorageValue<_, T::OrderIdNonce, ValueQuery>;
 
-	/// Map of Vec containing OrderIds of same currency in/out pairs.
-	/// Allows looking up orders available corresponding pairs.
-	///
-	/// NOTE: The key order is (currency_in, currency_out).
-	#[pallet::storage]
-	pub type CurrencyPairOrders<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::CurrencyId,
-		Twox64Concat,
-		T::CurrencyId,
-		BoundedVec<T::OrderIdNonce, T::OrderPairVecSize>,
-		ValueQuery,
-	>;
-
 	/// Storage of valid order pairs.
 	/// Stores:
 	///  - key1 -> CurrencyIn
@@ -332,15 +317,13 @@ pub mod pallet {
 			currency_in: T::CurrencyId,
 			currency_out: T::CurrencyId,
 		},
+		/// Event emitted when a valid trading pair is removed.
+		FeederChanged { feeder_id: T::FeederId },
 	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
-		/// Error when the number of orders for a trading pair has exceeded the
-		/// BoundedVec size for the order pair for the currency pair in
-		/// question.
-		CurrencyPairOrdersLimit,
 		/// Error when order is placed attempting to exchange currencies of the
 		/// same type.
 		SameCurrencyIds,
@@ -510,7 +493,9 @@ pub mod pallet {
 		pub fn set_market_feeder(origin: OriginFor<T>, feeder_id: T::FeederId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			MarketFeederId::<T>::put(feeder_id);
+			MarketFeederId::<T>::put(feeder_id.clone());
+
+			Self::deposit_event(Event::<T>::FeederChanged { feeder_id });
 
 			Ok(())
 		}
@@ -547,12 +532,6 @@ pub mod pallet {
 				amount_out_initial: amount_out,
 				amount_in: Zero::zero(),
 			};
-
-			CurrencyPairOrders::<T>::try_mutate(currency_in, currency_out, |orders| {
-				orders
-					.try_push(order_id)
-					.map_err(|_| Error::<T>::CurrencyPairOrdersLimit)
-			})?;
 
 			Orders::<T>::insert(order_id, new_order.clone());
 			UserOrders::<T>::insert(&account, order_id, ());
@@ -627,10 +606,6 @@ pub mod pallet {
 
 			Orders::<T>::remove(order.order_id);
 			UserOrders::<T>::remove(&order.placing_account, order.order_id);
-
-			CurrencyPairOrders::<T>::mutate(order.currency_in, order.currency_out, |orders| {
-				orders.retain(|o| *o != order.order_id);
-			});
 
 			Ok(())
 		}
@@ -790,7 +765,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> OrderDetails<Swap<T::Balance, T::CurrencyId>> for Pallet<T> {
+	impl<T: Config> OrderDetails<MuxSwap<T::CurrencyId, T::Ratio>> for Pallet<T> {
 		type OrderId = T::OrderIdNonce;
 
 		fn get_order_details(order: Self::OrderId) -> Option<Swap<T::Balance, T::CurrencyId>> {
@@ -804,24 +779,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> OrderDetails<MuxSwap<T::CurrencyId, T::Ratio>> for Pallet<T> {
-		type OrderId = T::OrderIdNonce;
-
-		fn get_order_details(order: Self::OrderId) -> Option<MuxSwap<T::CurrencyId, T::Ratio>> {
-			Orders::<T>::get(order)
-				.map(|order| MuxSwap {
-					currency_in: order.currency_in,
-					currency_out: order.currency_out,
-					ratio: order.ratio,
-				})
-				.ok()
-		}
-	}
-
-	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::Hash: PartialEq<<T as frame_system::Config>::Hash>,
-	{
+	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
 		type OrderId = T::OrderIdNonce;
@@ -892,10 +850,6 @@ pub mod pallet {
 			Self::fulfill_order_with_amount(order, buy_amount, account)
 		}
 
-		fn is_active(order: Self::OrderId) -> bool {
-			<Orders<T>>::contains_key(order)
-		}
-
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
 			TradingPair::<T>::get(currency_in, currency_out).is_ok()
 		}
@@ -905,6 +859,10 @@ pub mod pallet {
 			currency_out: Self::CurrencyId,
 			amount_out: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
+			if currency_in == currency_out {
+				return Ok(amount_out);
+			}
+
 			let ratio = Self::market_ratio(currency_out, currency_in)?;
 			Self::convert_with_ratio(currency_out, currency_in, ratio, amount_out)
 		}
