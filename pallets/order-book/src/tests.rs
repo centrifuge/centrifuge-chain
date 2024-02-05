@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::OrderDetails;
 use cfg_types::investments::{Swap, SwapState};
 use frame_support::{
 	assert_err, assert_noop, assert_ok,

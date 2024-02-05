@@ -1,15 +1,22 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderRatio, TokenSwaps};
+	use cfg_traits::{OrderDetails, OrderRatio, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
+	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type CurrencyId;
 		type Balance;
-		type Ratio;
-		type OrderId;
+		type Ratio: FixedPointNumber;
+		type OrderId: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
 		type OrderDetails;
 	}
 
@@ -70,10 +77,17 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config, S> OrderDetails<S> for Pallet<T> {
+		type OrderId = T::OrderId;
+
+		fn get_order_details(a: Self::OrderId) -> Option<S> {
+			execute_call!(a)
+		}
+	}
+
 	impl<T: Config> TokenSwaps<T::AccountId> for Pallet<T> {
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
 
@@ -103,15 +117,15 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
-			execute_call!(a)
-		}
-
 		fn convert_by_market(
 			a: Self::CurrencyId,
 			b: Self::CurrencyId,
 			c: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
+			execute_call!((a, b, c))
+		}
+
+		fn fill_order(a: T::AccountId, b: Self::OrderId, c: T::Balance) -> DispatchResult {
 			execute_call!((a, b, c))
 		}
 	}

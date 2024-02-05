@@ -10,14 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// This pallet was made using the ZeitGeist Orderbook pallet as a reference;
-// with much of the code being copied or adapted from that pallet.
-// The ZeitGeist Orderbook pallet can be found here: https://github.com/zeitgeistpm/zeitgeist/tree/main/zrml/orderbook-v1
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//! This module adds an orderbook pallet, allowing orders for currency swaps to
-//! be placed and fulfilled for currencies in an asset registry.
+// TODO(william): Add pallet description
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -103,14 +98,14 @@ pub mod pallet {
 	{
 		Deposited {
 			who: T::AccountId,
-			what: CurrencyFor<T>,
-			received: CurrencyFor<T>,
+			currency_out: CurrencyFor<T>,
+			currency_in: CurrencyFor<T>,
 			amount: BalanceFor<T>,
 		},
 		Burned {
 			who: T::AccountId,
-			what: CurrencyFor<T>,
-			received: CurrencyFor<T>,
+			currency_out: CurrencyFor<T>,
+			currency_in: CurrencyFor<T>,
 			amount: BalanceFor<T>,
 		},
 		SwapMatched {
@@ -122,7 +117,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// The given currency has no metadata set.
-		MissingMetadata,
+		MetadataNotFound,
 		/// The given currency has no local representation and can hence not be
 		/// deposited to receive a local representation.
 		NoLocalRepresentation,
@@ -131,14 +126,14 @@ pub mod pallet {
 		/// The provided local currency does not match the local representation
 		/// of the currency to be unlocked
 		LocalCurrencyMismatch,
-		/// Swap could not be find by id
+		/// Swap could not be found by id
 		SwapNotFound,
 		/// Matching orders does only work if there is a one-to-one conversion
-		NonOneToOneRatio,
+		NotIdenticalSwap,
 		/// This means the swap is either not a local to variant or not a
 		/// variant to local swap
 		InvalidSwapCurrencies,
-		/// Variant and local representation have missmatching decimals in their
+		/// Variant and local representation have mismatching decimals in their
 		/// metadata. A conversion between the two is not possible
 		DecimalMismatch,
 	}
@@ -153,20 +148,20 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
-			to_deposit: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			currency_out: CurrencyFor<T>,
+			amount_out: BalanceFor<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let local = Self::try_local(&to_deposit)?;
+			let local = Self::try_local(&currency_out)?;
 
-			Self::mint_route(&who, local.clone(), to_deposit.clone(), amount)?;
+			Self::mint_route(&who, local.clone(), currency_out.clone(), amount_out)?;
 
 			Self::deposit_event(Event::<T>::Deposited {
 				who,
-				what: to_deposit,
-				received: local,
-				amount,
+				currency_out,
+				currency_in: local,
+				amount: amount_out,
 			});
 
 			Ok(())
@@ -176,20 +171,20 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
-			to_receive: CurrencyFor<T>,
-			amount: BalanceFor<T>,
+			currency_out: CurrencyFor<T>,
+			amount_out: BalanceFor<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let local = Self::try_local(&to_receive)?;
+			let local = Self::try_local(&currency_out)?;
 
-			Self::burn_route(&who, local.clone(), to_receive.clone(), amount)?;
+			Self::burn_route(&who, local.clone(), currency_out.clone(), amount_out)?;
 
 			Self::deposit_event(Event::<T>::Burned {
 				who,
-				what: local,
-				received: to_receive,
-				amount,
+				currency_out: local,
+				currency_in: currency_out,
+				amount: amount_out,
 			});
 
 			Ok(())
@@ -204,7 +199,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			let order = T::Swaps::get_order_details(order_id).ok_or(Error::<T>::SwapNotFound)?;
+			let order =
+				T::Swaps::get_order_details(order_id.clone()).ok_or(Error::<T>::SwapNotFound)?;
 
 			let ratio = match order.ratio {
 				OrderRatio::Market => RatioFor::<T>::ensure_from_rational(
@@ -218,7 +214,7 @@ pub mod pallet {
 				OrderRatio::Custom(ratio) => ratio,
 			};
 
-			ensure!(ratio == One::one(), Error::<T>::NonOneToOneRatio);
+			ensure!(ratio == One::one(), Error::<T>::NotIdenticalSwap);
 
 			match (
 				Self::try_local(&order.currency_out),
@@ -234,7 +230,7 @@ pub mod pallet {
 					);
 
 					T::Tokens::mint_into(local, &Self::account(), amount)?;
-					T::Swaps::fill_order(Self::account(), order_id, amount)?;
+					T::Swaps::fill_order(Self::account(), order_id.clone(), amount)?;
 				}
 				(Err(_), Ok(local)) => {
 					ensure!(
@@ -242,7 +238,7 @@ pub mod pallet {
 						Error::<T>::InvalidSwapCurrencies
 					);
 
-					T::Swaps::fill_order(Self::account(), order_id, amount)?;
+					T::Swaps::fill_order(Self::account(), order_id.clone(), amount)?;
 					T::Tokens::burn_from(
 						local,
 						&Self::account(),
@@ -307,7 +303,7 @@ pub mod pallet {
 
 		fn try_local(currency: &CurrencyFor<T>) -> Result<CurrencyFor<T>, DispatchError> {
 			let meta_variant =
-				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MissingMetadata)?;
+				T::AssetRegistry::metadata(currency).ok_or(Error::<T>::MetadataNotFound)?;
 
 			let local: CurrencyFor<T> = meta_variant
 				.additional
@@ -316,7 +312,7 @@ pub mod pallet {
 				.into();
 
 			let meta_local =
-				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MissingMetadata)?;
+				T::AssetRegistry::metadata(&local).ok_or(Error::<T>::MetadataNotFound)?;
 
 			// NOTE: We could also think about making conversion between local
 			//       representations and variants but I fear that we then have problems with
