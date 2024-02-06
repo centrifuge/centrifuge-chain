@@ -96,7 +96,8 @@ impl pallet_mock_investment::Config for Runtime {
 }
 
 impl pallet_mock_token_swaps::Config for Runtime {
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type CurrencyId = CurrencyId;
 	type OrderDetails = Swap<Balance, CurrencyId>;
 	type OrderId = SwapId;

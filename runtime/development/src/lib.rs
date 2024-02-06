@@ -1812,7 +1812,8 @@ parameter_types! {
 impl pallet_order_book::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
-	type Balance = Balance;
+	type BalanceIn = Balance;
+	type BalanceOut = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DecimalConverter =

@@ -73,7 +73,8 @@ pub type ForeignId<T> = (
 pub type SwapOf<T> = Swap<<T as Config>::SwapBalance, <T as Config>::CurrencyId>;
 
 /// Swap state alias
-pub type SwapStateOf<T> = SwapState<<T as Config>::SwapBalance, <T as Config>::CurrencyId>;
+pub type SwapStateOf<T> =
+	SwapState<<T as Config>::SwapBalance, <T as Config>::SwapBalance, <T as Config>::CurrencyId>;
 
 /// TrancheId Identification
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as cfg_traits::PoolInspect<
@@ -194,7 +195,8 @@ pub mod pallet {
 		type TokenSwaps: TokenSwaps<
 			Self::AccountId,
 			CurrencyId = Self::CurrencyId,
-			Balance = Self::SwapBalance,
+			BalanceIn = Self::SwapBalance,
+			BalanceOut = Self::SwapBalance,
 			OrderId = Self::SwapId,
 			OrderDetails = SwapOf<Self>,
 		>;
