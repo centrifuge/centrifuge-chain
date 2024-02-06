@@ -39,7 +39,9 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 
 	// The flow is based in the following code from the Solidity and needs to be
 	// adapted if this deployment script changes in the future
-	// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L23
+	// * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L17-L31
+	//
+	// PART: Deploy InvestmentManager
 	//   * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L45-L69
 	env.deploy(
 		"Escrow",
@@ -123,7 +125,6 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 		Some(&[Token::Address(env.deployed("pool_manager").address())]),
 	)
 	.unwrap();
-
 	env.call_mut(
 		Keyring::Alice,
 		Default::default(),
@@ -149,14 +150,64 @@ pub fn setup<T: Runtime>() -> impl EvmEnv<T> {
 	)
 	.unwrap();
 
-	// Deploy router
+	// PART: Deploy router (using the testing LocalRouter here)
+	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Axelar.s.sol#L24
 	env.deploy("LocalRouter", "router", Keyring::Alice, None);
 
-	// Wire router
+	// PART: Wire router + file gateway
+	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L71-L98
+	/*
+	   pauseAdmin = new PauseAdmin(address(root));
+	   delayedAdmin = new DelayedAdmin(address(root), address(pauseAdmin));
+	   gateway = new Gateway(address(root), address(investmentManager), address(poolManager), address(router));
 
-	// Give admin access
+	   pauseAdmin.rely(address(delayedAdmin));
+	   root.rely(address(pauseAdmin));
+	   root.rely(address(delayedAdmin));
+	   root.rely(address(gateway));
 
-	// Remove deployer access
+	   investmentManager.file("poolManager", address(poolManager));
+	   poolManager.file("investmentManager", address(investmentManager));
+	   investmentManager.file("gateway", address(gateway));
+	   poolManager.file("gateway", address(gateway));
+	   investmentManager.rely(address(root));
+	   investmentManager.rely(address(poolManager));
+	   poolManager.rely(address(root));
+	   gateway.rely(address(root));
+	   AuthLike(router).rely(address(root));
+	   AuthLike(address(escrow)).rely(address(root));
+	   AuthLike(address(escrow)).rely(address(investmentManager));
+	   AuthLike(address(userEscrow)).rely(address(root));
+	   AuthLike(address(userEscrow)).rely(address(investmentManager));
+	   AuthLike(address(escrow)).rely(address(poolManager));
+	*/
+
+	// PART: Give admin access
+	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L100-L106
+	/*
+		delayedAdmin.rely(address(admin));
+
+		for (uint256 i = 0; i < pausers.length; i++) {
+			pauseAdmin.addPauser(pausers[i]);
+		}
+	*/
+
+	// PART: Remove deployer access
+	//  * https://github.com/centrifuge/liquidity-pools/blob/e2c3ac92d1cea991e7e0d5f57be8658a46cbf1fe/script/Deployer.sol#L108-L121
+	/*
+	   AuthLike(router).deny(deployer);
+	   AuthLike(liquidityPoolFactory).deny(deployer);
+	   AuthLike(trancheTokenFactory).deny(deployer);
+	   AuthLike(restrictionManagerFactory).deny(deployer);
+	   root.deny(deployer);
+	   investmentManager.deny(deployer);
+	   poolManager.deny(deployer);
+	   escrow.deny(deployer);
+	   userEscrow.deny(deployer);
+	   gateway.deny(deployer);
+	   pauseAdmin.deny(deployer);
+	   delayedAdmin.deny(deployer);
+	*/
 
 	env
 }
