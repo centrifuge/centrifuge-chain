@@ -10,6 +10,27 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use crate::{
+	generic::{
+		config::Runtime,
+		env::{Env, EvmEnv},
+	},
+	utils::accounts::Keyring,
+};
+
 mod utils {}
 
 pub mod deploy_pool;
+
+pub fn setup<T: Runtime>(env: &mut impl EvmEnv<T>) {
+	// Deploy InvestmentManager
+
+	// Deploy router
+	env.deploy("LocalRouter", "router", Keyring::Alice, None);
+
+	// Wire router
+
+	// Give admin access
+
+	// Remove deployer access
+}

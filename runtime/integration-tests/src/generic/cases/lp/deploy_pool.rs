@@ -37,7 +37,7 @@ fn deploy<T: Runtime>() {
 	)
 	.load_contracts();
 
-	env.deploy("LocalRouter", "router", Keyring::Alice, None);
+	super::setup::<T>(&mut env);
 }
 
 crate::test_for_runtimes!(all, deploy);
