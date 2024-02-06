@@ -12,6 +12,8 @@ use crate::generic::utils::ESSENTIAL;
 /// All needed contracts can be loaded from here
 pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to populate environment variable LP_SOL_SOURCES pointing to solidity source files.");
 
+pub const IRREGULAR: &str = "__$a334d32fe50f4079904586988e51d312a5$__";
+
 #[derive(Clone)]
 pub struct ContractInfo {
 	pub contract: Contract,
@@ -87,6 +89,12 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 						.expect(ESSENTIAL)
 						.trim_start_matches("0x"),
 				)
+				.map_err(|e| {
+					println!(
+						"Error: Failed decoding contract code {}. Error: {}",
+						contract_name, e,
+					)
+				})
 				.map(|code| {
 					// NOTE: There are some overlapping contract names in the LP codebase atm, but
 					//       non that we care about for now. If we do care, we need to have some

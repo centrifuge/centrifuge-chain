@@ -10,10 +10,19 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{Balance, CFG};
+
 use crate::{
-	generic::{config::Runtime, env::EvmEnv, envs::runtime_env::RuntimeEnv},
+	generic::{
+		config::Runtime,
+		env::{Env, EvmEnv},
+		envs::runtime_env::RuntimeEnv,
+		utils::{genesis, genesis::Genesis},
+	},
 	utils::accounts::Keyring,
 };
+
+const DEFAULT_BALANCE: Balance = 100 * CFG;
 
 #[test]
 fn _test() {
@@ -21,9 +30,14 @@ fn _test() {
 }
 
 fn deploy<T: Runtime>() {
-	let mut env = RuntimeEnv::<T>::default().load_contracts();
+	let mut env = RuntimeEnv::<T>::from_parachain_storage(
+		Genesis::default()
+			.add(genesis::balances::<T>(DEFAULT_BALANCE))
+			.storage(),
+	)
+	.load_contracts();
 
-	env.deploy("LocalRouterScript", "deployer", Keyring::Alice, None);
+	env.deploy("LocalRouter", "router", Keyring::Alice, None);
 }
 
 crate::test_for_runtimes!(all, deploy);
