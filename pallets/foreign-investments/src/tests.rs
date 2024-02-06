@@ -1,9 +1,9 @@
 use cfg_traits::{
 	investments::{ForeignInvestment as _, Investment, TrancheCurrency},
-	OrderRatio, StatusNotificationHook, TokenSwaps,
+	OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
 };
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap, SwapState,
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };
 use frame_support::{assert_err, assert_ok};
 use sp_std::sync::{Arc, Mutex};

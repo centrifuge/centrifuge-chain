@@ -37,7 +37,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_types::investments::{Swap, SwapState};
+use cfg_traits::{Swap, SwapState};
 pub use impls::{CollectedInvestmentHook, CollectedRedemptionHook, FulfilledSwapOrderHook};
 pub use pallet::*;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
@@ -198,7 +198,6 @@ pub mod pallet {
 			BalanceIn = Self::SwapBalance,
 			BalanceOut = Self::SwapBalance,
 			OrderId = Self::SwapId,
-			OrderDetails = SwapOf<Self>,
 		>;
 
 		/// The hook type which acts upon a finalized investment decrement.

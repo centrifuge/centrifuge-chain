@@ -30,18 +30,17 @@ mod benchmarking;
 
 pub mod weights;
 
-pub use cfg_traits::{OrderRatio, TokenSwaps};
 pub use pallet::*;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::conversion::convert_balance_decimals;
-	use cfg_traits::{ConversionToAssetBalance, StatusNotificationHook, ValueProvider};
-	use cfg_types::{
-		investments::{Swap, SwapState},
-		tokens::CustomMetadata,
+	use cfg_traits::{
+		ConversionToAssetBalance, OrderRatio, StatusNotificationHook, Swap, SwapState, TokenSwaps,
+		ValueProvider,
 	};
+	use cfg_types::{self, tokens::CustomMetadata};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, StorageDoubleMap, StorageValue, *},
 		traits::{
@@ -779,7 +778,6 @@ pub mod pallet {
 		type BalanceIn = T::BalanceIn;
 		type BalanceOut = T::BalanceOut;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = Swap<T::BalanceOut, T::CurrencyId>;
 		type OrderId = T::OrderIdNonce;
 		type Ratio = T::Ratio;
 

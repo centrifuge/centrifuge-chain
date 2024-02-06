@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderRatio, TokenSwaps};
+	use cfg_traits::{OrderRatio, Swap, TokenSwaps};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -11,7 +11,6 @@ pub mod pallet {
 		type BalanceOut;
 		type Ratio;
 		type OrderId;
-		type OrderDetails;
 	}
 
 	#[pallet::pallet]
@@ -59,7 +58,9 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_get_order_details(f: impl Fn(T::OrderId) -> Option<T::OrderDetails> + 'static) {
+		pub fn mock_get_order_details(
+			f: impl Fn(T::OrderId) -> Option<Swap<T::BalanceOut, T::CurrencyId>> + 'static,
+		) {
 			register_call!(f);
 		}
 
@@ -79,7 +80,6 @@ pub mod pallet {
 		type BalanceIn = T::BalanceOut;
 		type BalanceOut = T::BalanceIn;
 		type CurrencyId = T::CurrencyId;
-		type OrderDetails = T::OrderDetails;
 		type OrderId = T::OrderId;
 		type Ratio = T::Ratio;
 
@@ -109,7 +109,7 @@ pub mod pallet {
 			execute_call!((a, b))
 		}
 
-		fn get_order_details(a: Self::OrderId) -> Option<Self::OrderDetails> {
+		fn get_order_details(a: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>> {
 			execute_call!(a)
 		}
 

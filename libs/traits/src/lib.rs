@@ -510,51 +510,6 @@ pub enum OrderRatio<Ratio> {
 	Custom(Ratio),
 }
 
-pub trait TokenSwaps<Account> {
-	type CurrencyId;
-	type BalanceOut;
-	type BalanceIn;
-	type Ratio;
-	type OrderId;
-	type OrderDetails;
-
-	/// Swap tokens selling `amount_out` of `currency_out` and buying
-	/// `currency_in` given an order ratio.
-	fn place_order(
-		account: Account,
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		amount_out: Self::BalanceOut,
-		ratio: OrderRatio<Self::Ratio>,
-	) -> Result<Self::OrderId, DispatchError>;
-
-	/// Update an existing active order.
-	fn update_order(
-		order_id: Self::OrderId,
-		amount_out: Self::BalanceOut,
-		ratio: OrderRatio<Self::Ratio>,
-	) -> DispatchResult;
-
-	/// A sanity check that can be used for validating that a trading pair
-	/// is supported. Will also be checked when placing an order but might be
-	/// cheaper.
-	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
-
-	/// Cancel an already active order.
-	fn cancel_order(order: Self::OrderId) -> DispatchResult;
-
-	/// Retrieve the details of the order if it exists.
-	fn get_order_details(order: Self::OrderId) -> Option<Self::OrderDetails>;
-
-	/// Makes a conversion between 2 currencies using the market ratio between
-	/// them
-	fn convert_by_market(
-		currency_in: Self::CurrencyId,
-		currency_out: Self::CurrencyId,
-		amount_out: Self::BalanceOut,
-	) -> Result<Self::BalanceIn, DispatchError>;
-}
-
 /// A simple representation of a currency swap.
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
 pub struct Swap<Amount, Currency> {
@@ -582,6 +537,50 @@ impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
 			Err(DispatchError::Other("Swap contains different currencies"))
 		}
 	}
+}
+
+pub trait TokenSwaps<Account> {
+	type CurrencyId;
+	type BalanceOut;
+	type BalanceIn;
+	type Ratio;
+	type OrderId;
+
+	/// Swap tokens selling `amount_out` of `currency_out` and buying
+	/// `currency_in` given an order ratio.
+	fn place_order(
+		account: Account,
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::BalanceOut,
+		ratio: OrderRatio<Self::Ratio>,
+	) -> Result<Self::OrderId, DispatchError>;
+
+	/// Update an existing active order.
+	fn update_order(
+		order_id: Self::OrderId,
+		amount_out: Self::BalanceOut,
+		ratio: OrderRatio<Self::Ratio>,
+	) -> DispatchResult;
+
+	/// A sanity check that can be used for validating that a trading pair
+	/// is supported. Will also be checked when placing an order but might be
+	/// cheaper.
+	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+
+	/// Cancel an already active order.
+	fn cancel_order(order: Self::OrderId) -> DispatchResult;
+
+	/// Retrieve the details of the order if it exists.
+	fn get_order_details(order: Self::OrderId) -> Option<Swap<Self::BalanceOut, Self::CurrencyId>>;
+
+	/// Makes a conversion between 2 currencies using the market ratio between
+	/// them
+	fn convert_by_market(
+		currency_in: Self::CurrencyId,
+		currency_out: Self::CurrencyId,
+		amount_out: Self::BalanceOut,
+	) -> Result<Self::BalanceIn, DispatchError>;
 }
 
 /// A representation of a currency swap in process.

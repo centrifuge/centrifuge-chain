@@ -1,8 +1,8 @@
 //! Types with Config access. This module does not mutate FI storage
 
-use cfg_traits::{investments::Investment, TokenSwaps};
+use cfg_traits::{investments::Investment, Swap, TokenSwaps};
 use cfg_types::investments::{
-	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest, Swap,
+	CollectedAmount, ExecutedForeignCollect, ExecutedForeignDecreaseInvest,
 };
 use frame_support::{dispatch::DispatchResult, ensure, RuntimeDebugNoBound};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
