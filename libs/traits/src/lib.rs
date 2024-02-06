@@ -555,6 +555,50 @@ pub trait TokenSwaps<Account> {
 	) -> Result<Self::BalanceIn, DispatchError>;
 }
 
+/// Used as result of `Pallet::apply_swap()`
+/// Amounts are donominated referenced by the `new_swap` paramenter given to
+/// `apply_swap()`
+pub struct SwapStatus<Amount> {
+	/// The incoming amount already swapped and available to use.
+	pub swapped: Amount,
+
+	/// The outgoing amount pending to be swapped
+	pub pending: Amount,
+}
+
+/// Trait to perform swaps without handling directly an order book
+pub trait Swaps<AccountId> {
+	type Amount;
+	type CurrencyId;
+	type SwapId;
+
+	/// Apply a swap over a current possible swap state.
+	/// - If there was no previous swap, it adds it.
+	/// - If there was a swap in the same direction, it increments it.
+	/// - If there was a swap in the opposite direction:
+	///   - If the amount is smaller, it decrements it.
+	///   - If the amount is the same, it removes the inverse swap.
+	///   - If the amount is greater, it removes the inverse swap and create
+	///     another with the excess
+	///
+	/// The returned status contains the swapped amount after this call
+	/// (denominated in the incoming currency) and the pending amounts to be
+	/// swapped.
+	fn apply_swap(who: &AccountId, swap_id: Self::SwapId) -> DispatchResult;
+
+	/// Returns the pending amount for a pending swap. The direction of the swap
+	/// is determined by the `from_currency` parameter. The amount returned is
+	/// denominated in the same currency as the given `from_currency`.
+	fn pending_amount(
+		who: &AccountId,
+		swap_id: Self::SwapId,
+		from_currency: Self::CurrencyId,
+	) -> Result<Self::Amount, DispatchError>;
+
+	/// Check that validates that if swapping pair is supported.
+	fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool;
+}
+
 /// Trait to transmit a change of status for anything uniquely identifiable.
 ///
 /// NOTE: The main use case to handle asynchronous operations.
