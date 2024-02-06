@@ -160,8 +160,10 @@ impl Keyring {
 		let h160: H160 = self.into();
 
 		runtime_common::account_conversion::AccountConverter::<(), ()>::convert_evm_address(
-			pallet_evm_chain_id::ChainId::<T>::get(),
-			h160.0,
+			// TODO: creating a balance storage with
+			//       this call fails as not executed within externalties
+			// pallet_evm_chain_id::ChainId::<T>::get(),
+			0, h160.0,
 		)
 	}
 
