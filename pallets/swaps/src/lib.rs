@@ -16,10 +16,12 @@
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{StatusNotificationHook, Swaps, TokenSwaps};
-	use cfg_types::investments::{Swap, SwapState};
+	use cfg_traits::{
+		OrderRatio, StatusNotificationHook, Swap, SwapState, SwapStatus, Swaps, TokenSwaps,
+	};
 	use frame_support::pallet_prelude::*;
-	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use sp_runtime::traits::{AtLeast32BitUnsigned, EnsureAdd, EnsureSub, Zero};
+	use sp_std::cmp::Ordering;
 
 	use super::*;
 
@@ -59,8 +61,8 @@ pub mod pallet {
 		>;
 
 		/// The hook which acts upon a (partially) fulfilled the swap
-		type FulfilledOrderHook: StatusNotificationHook<
-			Id = Self::SwapId,
+		type FulfilledSwap: StatusNotificationHook<
+			Id = (Self::AccountId, Self::SwapId),
 			Status = SwapState<Self::Balance, Self::Balance, Self::CurrencyId>,
 			Error = DispatchError,
 		>;
@@ -83,22 +85,22 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Failed to retrieve the order.
-		OrderIdNotFound,
+		OrderNotFound,
 
 		/// Failed to retrieve the swap.
-		SwapIdNotFound,
+		SwapNotFound,
 	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn swap_id(order_id: T::OrderId) -> Result<(T::AccountId, T::SwapId), DispatchError> {
-			OrderIdToSwapId::<T>::get(order_id).ok_or(Error::<T>::SwapIdNotFound.into())
+			OrderIdToSwapId::<T>::get(order_id).ok_or(Error::<T>::SwapNotFound.into())
 		}
 
 		pub fn order_id(
 			account: &T::AccountId,
 			swap_id: T::SwapId,
 		) -> Result<T::OrderId, DispatchError> {
-			SwapIdToOrderId::<T>::get((account, swap_id)).ok_or(Error::<T>::OrderIdNotFound.into())
+			SwapIdToOrderId::<T>::get((account, swap_id)).ok_or(Error::<T>::OrderNotFound.into())
 		}
 
 		fn update_id(
@@ -122,6 +124,117 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn apply_over_swap(
+			who: &T::AccountId,
+			new_swap: Swap<T::Balance, T::CurrencyId>,
+			over_swap_id: Option<T::OrderId>,
+		) -> Result<(SwapStatus<T::Balance>, Option<T::OrderId>), DispatchError> {
+			match over_swap_id {
+				None => {
+					let order_id = T::OrderBook::place_order(
+						who.clone(),
+						new_swap.currency_in,
+						new_swap.currency_out,
+						new_swap.amount_out,
+						OrderRatio::Market,
+					)?;
+
+					Ok((
+						SwapStatus {
+							swapped: T::Balance::zero(),
+							pending: new_swap.amount_out,
+						},
+						Some(order_id),
+					))
+				}
+				Some(order_id) => {
+					let swap = T::OrderBook::get_order_details(order_id)
+						.ok_or(Error::<T>::OrderNotFound)?;
+
+					if swap.is_same_direction(&new_swap)? {
+						let amount_to_swap = swap.amount_out.ensure_add(new_swap.amount_out)?;
+						T::OrderBook::update_order(order_id, amount_to_swap, OrderRatio::Market)?;
+
+						Ok((
+							SwapStatus {
+								swapped: T::Balance::zero(),
+								pending: amount_to_swap,
+							},
+							Some(order_id),
+						))
+					} else {
+						let inverse_swap = swap;
+
+						let new_swap_amount_in = T::OrderBook::convert_by_market(
+							new_swap.currency_in,
+							new_swap.currency_out,
+							new_swap.amount_out,
+						)?;
+
+						match inverse_swap.amount_out.cmp(&new_swap_amount_in) {
+							Ordering::Greater => {
+								let amount_to_swap =
+									inverse_swap.amount_out.ensure_sub(new_swap_amount_in)?;
+
+								T::OrderBook::update_order(
+									order_id,
+									amount_to_swap,
+									OrderRatio::Market,
+								)?;
+
+								Ok((
+									SwapStatus {
+										swapped: new_swap_amount_in,
+										pending: T::Balance::zero(),
+									},
+									Some(order_id),
+								))
+							}
+							Ordering::Equal => {
+								T::OrderBook::cancel_order(order_id)?;
+
+								Ok((
+									SwapStatus {
+										swapped: new_swap_amount_in,
+										pending: T::Balance::zero(),
+									},
+									None,
+								))
+							}
+							Ordering::Less => {
+								T::OrderBook::cancel_order(order_id)?;
+
+								let inverse_swap_amount_in = T::OrderBook::convert_by_market(
+									inverse_swap.currency_in,
+									inverse_swap.currency_out,
+									inverse_swap.amount_out,
+								)?;
+
+								let amount_to_swap =
+									new_swap.amount_out.ensure_sub(inverse_swap_amount_in)?;
+
+								let order_id = T::OrderBook::place_order(
+									who.clone(),
+									new_swap.currency_in,
+									new_swap.currency_out,
+									amount_to_swap,
+									OrderRatio::Market,
+								)?;
+
+								Ok((
+									SwapStatus {
+										swapped: inverse_swap.amount_out,
+										pending: amount_to_swap,
+									},
+									Some(order_id),
+								))
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	/// Trait to perform swaps without handling directly an order book
@@ -130,8 +243,26 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 		type SwapId = T::SwapId;
 
-		fn apply_swap(who: &T::AccountId, swap_id: Self::SwapId) -> DispatchResult {
-			todo!()
+		fn apply_swap(
+			who: &T::AccountId,
+			swap_id: Self::SwapId,
+			swap: Swap<T::Balance, T::CurrencyId>,
+		) -> Result<SwapStatus<Self::Amount>, DispatchError> {
+			// Bypassing the swap if both currencies are the same
+			if swap.currency_in == swap.currency_out {
+				return Ok(SwapStatus {
+					swapped: swap.amount_out,
+					pending: T::Balance::zero(),
+				});
+			}
+
+			let previous_order_id = SwapIdToOrderId::<T>::get((who, swap_id));
+
+			let (status, new_order_id) = Self::apply_over_swap(who, swap, previous_order_id)?;
+
+			Self::update_id(who, swap_id, new_order_id)?;
+
+			Ok(status)
 		}
 
 		fn pending_amount(
@@ -139,11 +270,15 @@ pub mod pallet {
 			swap_id: Self::SwapId,
 			from_currency: Self::CurrencyId,
 		) -> Result<Self::Amount, DispatchError> {
-			todo!()
+			Ok(SwapIdToOrderId::<T>::get((who, swap_id))
+				.and_then(T::OrderBook::get_order_details)
+				.filter(|swap| swap.currency_out == from_currency)
+				.map(|swap| swap.amount_out)
+				.unwrap_or_default())
 		}
 
 		fn valid_pair(currency_in: Self::CurrencyId, currency_out: Self::CurrencyId) -> bool {
-			todo!()
+			T::OrderBook::valid_pair(currency_in, currency_out)
 		}
 	}
 
@@ -156,7 +291,15 @@ pub mod pallet {
 			order_id: T::OrderId,
 			swap_state: SwapState<T::Balance, T::Balance, T::CurrencyId>,
 		) -> DispatchResult {
-			todo!()
+			if let Ok((who, swap_id)) = Self::swap_id(order_id) {
+				if swap_state.remaining.amount_out.is_zero() {
+					Self::update_id(&who, swap_id, None)?;
+				}
+
+				T::FulfilledSwap::notify_status_change((who, swap_id), swap_state)?;
+			}
+
+			Ok(())
 		}
 	}
 }

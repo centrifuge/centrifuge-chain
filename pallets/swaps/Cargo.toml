@@ -22,7 +22,6 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 cfg-traits = { workspace = true }
-cfg-types = { workspace = true }
 
 [dev-dependencies]
 cfg-mocks = { workspace = true, default-features = true }
@@ -37,14 +36,12 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "cfg-traits/std",
-  "cfg-types/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
-  "cfg-types/runtime-benchmarks",
   "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
@@ -52,6 +49,5 @@ try-runtime = [
   "frame-system/try-runtime",
   "sp-runtime/try-runtime",
   "cfg-traits/try-runtime",
-  "cfg-types/try-runtime",
   "cfg-mocks/try-runtime",
 ]

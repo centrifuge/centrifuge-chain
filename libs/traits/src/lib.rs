@@ -555,6 +555,49 @@ pub trait TokenSwaps<Account> {
 	) -> Result<Self::BalanceIn, DispatchError>;
 }
 
+/// A simple representation of a currency swap.
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct Swap<Amount, Currency> {
+	/// The incoming currency, i.e. the desired one.
+	pub currency_in: Currency,
+
+	/// The outgoing currency, i.e. the one which should be replaced.
+	pub currency_out: Currency,
+
+	/// The amount of outcoming currency that will be swapped.
+	pub amount_out: Amount,
+}
+
+impl<Amount, Currency: PartialEq> Swap<Amount, Currency> {
+	pub fn has_same_currencies(&self) -> bool {
+		self.currency_in == self.currency_out
+	}
+
+	pub fn is_same_direction(&self, other: &Self) -> Result<bool, DispatchError> {
+		if self.currency_in == other.currency_in && self.currency_out == other.currency_out {
+			Ok(true)
+		} else if self.currency_in == other.currency_out && self.currency_out == other.currency_in {
+			Ok(false)
+		} else {
+			Err(DispatchError::Other("Swap contains different currencies"))
+		}
+	}
+}
+
+/// A representation of a currency swap in process.
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct SwapState<AmountIn, AmountOut, Currency> {
+	/// Swap not yet processed with the pending outcomming amount
+	pub remaining: Swap<AmountOut, Currency>,
+
+	/// Amount of incoming currency already swapped
+	pub swapped_in: AmountIn,
+
+	/// Amount of incoming currency already swapped denominated in outgoing
+	/// currency
+	pub swapped_out: AmountOut,
+}
+
 /// Used as result of `Pallet::apply_swap()`
 /// Amounts are donominated referenced by the `new_swap` paramenter given to
 /// `apply_swap()`
@@ -584,7 +627,11 @@ pub trait Swaps<AccountId> {
 	/// The returned status contains the swapped amount after this call
 	/// (denominated in the incoming currency) and the pending amounts to be
 	/// swapped.
-	fn apply_swap(who: &AccountId, swap_id: Self::SwapId) -> DispatchResult;
+	fn apply_swap(
+		who: &AccountId,
+		swap_id: Self::SwapId,
+		swap: Swap<Self::Amount, Self::CurrencyId>,
+	) -> Result<SwapStatus<Self::Amount>, DispatchError>;
 
 	/// Returns the pending amount for a pending swap. The direction of the swap
 	/// is determined by the `from_currency` parameter. The amount returned is
