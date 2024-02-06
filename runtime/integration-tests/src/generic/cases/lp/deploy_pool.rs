@@ -10,16 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, CFG};
-
-use crate::{
-	generic::{
-		config::Runtime,
-		env::{Env, EvmEnv},
-		envs::runtime_env::RuntimeEnv,
-		utils::{genesis, genesis::Genesis},
-	},
-	utils::accounts::Keyring,
+use crate::generic::{
+	config::Runtime,
+	env::{Env, EvmEnv},
 };
 
 #[test]

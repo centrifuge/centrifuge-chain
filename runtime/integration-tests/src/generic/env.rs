@@ -1,7 +1,9 @@
 use cfg_primitives::{Address, Balance, BlockNumber, Index};
 use cfg_traits::{IntoSeconds, Seconds};
 use ethabi::Token;
+use pallet_evm::CallInfo;
 use parity_scale_codec::Encode;
+use sp_core::U256;
 use sp_runtime::{
 	generic::{Era, SignedPayload},
 	traits::{Block, Extrinsic},
@@ -9,7 +11,13 @@ use sp_runtime::{
 };
 use sp_std::ops::Range;
 
-use crate::{generic::config::Runtime, utils::accounts::Keyring};
+use crate::{
+	generic::{
+		config::Runtime,
+		utils::evm::{ContractInfo, DeployedContractInfo},
+	},
+	utils::accounts::Keyring,
+};
 
 /// Used by Env::pass() to determine how many blocks should be passed
 #[derive(Clone)]
@@ -162,6 +170,10 @@ pub trait Env<T: Runtime>: Default {
 pub trait EvmEnv<T: Runtime>: Env<T> {
 	fn load_contracts(self) -> Self;
 
+	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo;
+
+	fn contract(&self, name: impl Into<String>) -> ContractInfo;
+
 	fn deploy(
 		&mut self,
 		what: impl Into<String>,
@@ -170,11 +182,37 @@ pub trait EvmEnv<T: Runtime>: Env<T> {
 		args: Option<&[Token]>,
 	);
 
-	fn call(&mut self);
+	fn call(
+		// TODO: Needs to imutable actually, but the current state implementation does
+		//       not rollback but error out upon changes, which is not ideal if you want to
+		//       test stuff without altering your state.
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError>;
 
-	fn mut_call(&mut self);
+	fn call_mut(
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError>;
 
-	fn view(&self);
+	fn view(
+		// TODO: Needs to imutable actually, but the current state implementation does
+		//       not rollback but error out upon changes, which is not ideal if you want to
+		//       test stuff without altering your state.
+		&mut self,
+		caller: Keyring,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError>;
 }
 
 pub mod utils {

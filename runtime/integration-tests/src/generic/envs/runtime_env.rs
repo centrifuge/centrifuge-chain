@@ -5,18 +5,18 @@ use cfg_types::ParaId;
 use cumulus_primitives_core::PersistedValidationData;
 use cumulus_primitives_parachain_inherent::ParachainInherentData;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use ethabi::{ethereum_types::H160, Contract, Token};
+use ethabi::Token;
 use frame_support::{
 	dispatch::GetDispatchInfo,
 	inherent::{InherentData, ProvideInherent},
 	traits::GenesisBuild,
 };
-use pallet_evm::{FeeCalculator, Runner};
+use pallet_evm::{CallInfo, FeeCalculator, Runner};
 use parity_scale_codec::Encode;
 use sp_api::runtime_decl_for_core::CoreV4;
 use sp_block_builder::runtime_decl_for_block_builder::BlockBuilderV6;
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_core::{sr25519::Public, H256};
+use sp_core::{sr25519::Public, H256, U256};
 use sp_runtime::{
 	traits::Extrinsic,
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
@@ -28,7 +28,11 @@ use crate::{
 	generic::{
 		config::Runtime,
 		env::{utils, Env, EvmEnv},
-		utils::{evm, evm::ContractInfo, ESSENTIAL},
+		utils::{
+			evm,
+			evm::{ContractInfo, DeployedContractInfo},
+			ESSENTIAL,
+		},
 	},
 	utils::accounts::Keyring,
 };
@@ -41,7 +45,7 @@ pub struct RuntimeEnv<T: Runtime> {
 	pending_extrinsics: Vec<(Keyring, T::RuntimeCallExt)>,
 	pending_xcm: Vec<(ParaId, Vec<u8>)>,
 	sol_contracts: Option<HashMap<String, ContractInfo>>,
-	deployed_contracts: HashMap<String, (H160, Contract)>,
+	deployed_contracts: HashMap<String, DeployedContractInfo>,
 	_config: PhantomData<T>,
 }
 
@@ -59,6 +63,22 @@ impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
 	fn load_contracts(mut self) -> Self {
 		self.sol_contracts = Some(evm::fetch_contracts());
 		self
+	}
+
+	fn deployed(&self, name: impl Into<String>) -> DeployedContractInfo {
+		self.deployed_contracts
+			.get(&name.into())
+			.expect("Not deployed")
+			.clone()
+	}
+
+	fn contract(&self, name: impl Into<String>) -> ContractInfo {
+		self.sol_contracts
+			.as_ref()
+			.expect("Need to load_contracts first")
+			.get(&name.into())
+			.expect("Not deployed")
+			.clone()
 	}
 
 	fn deploy(
@@ -87,7 +107,7 @@ impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
 			(None, Some(_)) => panic!("Contract expects constructor arguments."),
 		};
 
-		let address = self.parachain_state_mut(|| {
+		let create_info = self.parachain_state_mut(|| {
 			let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
 
 			<T as pallet_evm::Config>::Runner::create(
@@ -108,23 +128,148 @@ impl<T: Runtime> EvmEnv<T> for RuntimeEnv<T> {
 				<T as pallet_evm::Config>::config(),
 			)
 			.expect(ESSENTIAL)
-			.value
 		});
 
-		self.deployed_contracts
-			.insert(name.into(), (H160::from(address.0), info.contract.clone()));
+		let runtime_code =
+			self.parachain_state(|| pallet_evm::AccountCodes::<T>::get(create_info.value));
+
+		self.deployed_contracts.insert(
+			name.into(),
+			DeployedContractInfo::new(info.contract.clone(), runtime_code, create_info),
+		);
 	}
 
-	fn call(&mut self) {
-		todo!()
+	fn call(
+		// TODO: Needs to imutable actually, but the current state implementation does
+		//       not rollback but error out upon changes, which is not ideal if you want to
+		//       test stuff without altering your state.
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError> {
+		self.call(caller, value, contract, function, args)
 	}
 
-	fn mut_call(&mut self) {
-		todo!()
+	fn call_mut(
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError> {
+		self.call_mut(caller, value, contract, function, args)
 	}
 
-	fn view(&self) {
-		todo!()
+	fn view(
+		&mut self,
+		caller: Keyring,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError> {
+		self.call(caller, U256::zero(), contract, function, args)
+	}
+}
+
+impl<T: Runtime> RuntimeEnv<T> {
+	pub fn call_mut(
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError> {
+		let contract_info = self
+			.deployed_contracts
+			.get(&contract.into())
+			.expect("Contract not deployed")
+			.clone();
+		let input = contract_info
+			.contract
+			.function(function.into().as_ref())
+			.expect(ESSENTIAL)
+			.encode_input(args.unwrap_or_default())
+			.expect(ESSENTIAL);
+
+		self.parachain_state_mut(|| {
+			let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
+
+			<T as pallet_evm::Config>::Runner::call(
+				caller.into(),
+				sp_core::H160::from(contract_info.address().0),
+				input,
+				value,
+				GAS_LIMIT,
+				Some(base_fee),
+				None,
+				None,
+				Vec::new(),
+				// NOTE: Taken from pallet-evm implementation
+				VALIDATE,
+				// NOTE: Taken from pallet-evm implementation
+				TRANSACTIONAL,
+				None,
+				None,
+				<T as pallet_evm::Config>::config(),
+			)
+			.map_err(|re| re.error.into())
+		})
+	}
+
+	pub fn call(
+		// TODO: Needs to imutable actually, but the current state implementation does
+		//       not rollback but error out upon changes, which is not ideal if you want to
+		//       test stuff without altering your state.
+		&mut self,
+		caller: Keyring,
+		value: U256,
+		contract: impl Into<String>,
+		function: impl Into<String>,
+		args: Option<&[Token]>,
+	) -> Result<CallInfo, DispatchError> {
+		let contract_info = self
+			.deployed_contracts
+			.get(&contract.into())
+			.expect("Contract not deployed")
+			.clone();
+		let input = contract_info
+			.contract
+			.function(function.into().as_ref())
+			.expect(ESSENTIAL)
+			.encode_input(args.unwrap_or_default())
+			.expect(ESSENTIAL);
+
+		// TODO: Needs to imutable actually, but the current state implementation does
+		//       not rollback but error out upon changes, which is not ideal if you want
+		// to       test stuff without altering your state.
+		self.parachain_state_mut(|| {
+			let (base_fee, _) = <T as pallet_evm::Config>::FeeCalculator::min_gas_price();
+
+			<T as pallet_evm::Config>::Runner::call(
+				caller.into(),
+				sp_core::H160::from(contract_info.address().0),
+				input,
+				value,
+				GAS_LIMIT,
+				Some(base_fee),
+				None,
+				None,
+				Vec::new(),
+				// NOTE: Taken from pallet-evm implementation
+				VALIDATE,
+				// NOTE: Taken from pallet-evm implementation
+				TRANSACTIONAL,
+				None,
+				None,
+				<T as pallet_evm::Config>::config(),
+			)
+			.map_err(|re| re.error.into())
+		})
 	}
 }
 

@@ -4,7 +4,8 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use ethabi::Contract;
+use ethabi::{ethereum_types::H160, Contract};
+use pallet_evm::CreateInfo;
 
 use crate::generic::utils::ESSENTIAL;
 
@@ -14,15 +15,41 @@ pub const LP_SOL_SOURCES: &str = env!("LP_SOL_SOURCES", "Build script failed to 
 
 pub const IRREGULAR: &str = "__$a334d32fe50f4079904586988e51d312a5$__";
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeployedContractInfo {
+	pub contract: Contract,
+	pub deployed_bytecode: Vec<u8>,
+	pub create_info: CreateInfo,
+}
+
+impl DeployedContractInfo {
+	pub fn new(contract: Contract, deployed_bytecode: Vec<u8>, create_info: CreateInfo) -> Self {
+		Self {
+			create_info,
+			contract,
+			deployed_bytecode,
+		}
+	}
+
+	pub fn address(&self) -> H160 {
+		H160::from(self.create_info.value.0)
+	}
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct ContractInfo {
 	pub contract: Contract,
 	pub bytecode: Vec<u8>,
+	pub deployed_bytecode: Vec<u8>,
 }
 
 impl ContractInfo {
-	fn new(contract: Contract, bytecode: Vec<u8>) -> Self {
-		Self { contract, bytecode }
+	pub fn new(contract: Contract, bytecode: Vec<u8>, deployed_bytecode: Vec<u8>) -> Self {
+		Self {
+			contract,
+			bytecode,
+			deployed_bytecode,
+		}
 	}
 }
 
@@ -95,13 +122,34 @@ pub fn fetch_contracts() -> HashMap<String, ContractInfo> {
 						contract_name, e,
 					)
 				})
-				.map(|code| {
+				.and_then(|code| {
+					// NOTE: We do not care of the code is invalid for now.
+					let deployed = hex::decode(
+						contract_json
+							.get("deployedBytecode")
+							.expect(ESSENTIAL)
+							.get("object")
+							.expect(ESSENTIAL)
+							.as_str()
+							.expect(ESSENTIAL)
+							.trim_start_matches("0x"),
+					)
+					.map_err(|e| {
+						println!(
+							"Error: Failed decoding deployed contract code {}. Error: {}",
+							contract_name, e,
+						)
+					})?;
+
+					Ok((code, deployed))
+				})
+				.map(|(code, deployed)| {
 					// NOTE: There are some overlapping contract names in the LP codebase atm, but
 					//       non that we care about for now. If we do care, we need to have some
 					//       prefix or sort here.
 					//
 					//       For now: Use latest contract.
-					contracts.insert(contract_name, ContractInfo::new(contract, code));
+					contracts.insert(contract_name, ContractInfo::new(contract, code, deployed));
 				});
 			});
 	});
