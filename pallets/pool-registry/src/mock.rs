@@ -346,7 +346,7 @@ pub struct NoopCollectHook;
 impl cfg_traits::StatusNotificationHook for NoopCollectHook {
 	type Error = DispatchError;
 	type Id = (AccountId, TrancheCurrency);
-	type Status = cfg_types::investments::CollectedAmount<Balance>;
+	type Status = cfg_types::investments::CollectedAmount<Balance, Balance>;
 
 	fn notify_status_change(_id: Self::Id, _status: Self::Status) -> DispatchResult {
 		Ok(())
